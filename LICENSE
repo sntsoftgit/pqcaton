@@ -8,16 +8,9 @@ Licensor:             (주)에스앤티소프트 (SNT Soft Co., Ltd.)
 Licensed Work:        pqcaton
                       The Licensed Work is (c) 2026 SNT Soft Co., Ltd.
 
-Additional Use Grant: You may make production use of the Licensed Work if either
-                      of the following applies:
-
-                      (a) You use it to manage 5 or fewer nodes, counting every
-                          node observed or provisioned through the Licensed Work
-                          across your organization; or
-
-                      (b) You are a registered non-profit, an educational
-                          institution, or a public research body, and your use is
-                          not on behalf of a third party on a paid basis.
+Additional Use Grant: You may make production use of the Licensed Work to manage
+                      5 or fewer nodes, counting every node observed or provisioned
+                      through the Licensed Work across your organization.
 
                       Use that is not production use — evaluation, development,
                       testing, and continuous integration — is always permitted,
