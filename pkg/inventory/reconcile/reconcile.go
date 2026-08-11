@@ -6,6 +6,9 @@
 package reconcile
 
 // State — 3-상태 reconciliation 결과(§3.3).
+//
+// 어휘의 SSOT는 pqcota의 계약(`inventoryv1.ReconState`)이다 — 밖으로 나갈 때 그것으로 바꾼다
+// (contract.go). 안에서 문자열을 쓰는 것은 리포트·CSV로 그대로 나가기 때문이다.
 type State string
 
 const (
