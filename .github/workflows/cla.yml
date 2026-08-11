@@ -2,8 +2,8 @@ name: cla
 
 # CLA 게이트 — 서명하지 않은 기여자의 PR을 막는다.
 #
-# 왜 필요한가: pqcaton은 같은 코드를 AGPL-3.0과 상업 라이선스 양쪽으로 낸다. 서명 없이
-# 들어온 코드는 AGPL로만 존재해 상업 라이선스에 넣을 수 없다. 한 줄만 섞여도 그 파일이
+# 왜 필요한가: pqcaton은 BUSL-1.1로 내고 Change Date에 Apache-2.0으로 전환한다. 서명 없이
+# 들어온 코드는 그 전환을 약속대로 지킬 수 없게 만든다. 한 줄만 섞여도 그 파일이
 # 막히고, 나중에 소급하려면 기여자 전원의 동의를 다시 받아야 한다 — 한 사람과 연락이
 # 닿지 않으면 그 코드를 들어내는 수밖에 없다. 그래서 처음부터 막는다.
 #
@@ -37,7 +37,7 @@ jobs:
           branch: 'main'
           allowlist: ktyinsntsoft,dependabot[bot]
           custom-notsigned-prcomment: |
-            이 리포는 듀얼 라이선스(AGPL-3.0 · 상업)라, 코드 기여에는 CLA 동의가 필요합니다.
+            이 리포는 소스 공개형 상용 라이선스(BUSL-1.1)라, 코드 기여에는 CLA 동의가 필요합니다.
             [CLA 문서](https://github.com/sntsoftgit/pqcaton/blob/main/CLA.md)를 읽으신 뒤
             아래 문장을 그대로 댓글로 남겨 주십시오. 한 번만 하면 됩니다.
           custom-pr-sign-comment: 'I have read the CLA Document and I hereby sign the CLA'

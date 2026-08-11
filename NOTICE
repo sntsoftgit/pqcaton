@@ -14,4 +14,5 @@ pqcaton consumes pqcota through its published contracts (`contracts/`) and does
 not modify pqcota itself. Where pqcota source is included in a distribution of
 pqcaton, it remains under the Apache License, Version 2.0.
 
-Third-party dependencies and their licenses are listed in THIRD-PARTY-NOTICES.md.
+pqcaton itself is licensed under the Business Source License 1.1 — see LICENSE.
+Third-party dependency licenses are recorded in licenses.txt.
