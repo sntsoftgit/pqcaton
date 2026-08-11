@@ -1,0 +1,17 @@
+pqcaton
+Copyright (c) 2026 (주)에스앤티소프트 (SNT Soft Co., Ltd.)
+
+This product includes software developed as part of the pqcota project.
+
+  pqcota — https://github.com/randyinthedev-hash/pqcota
+  Copyright (c) 2026 the pqcota authors
+  Licensed under the Apache License, Version 2.0
+
+  A copy of the Apache License, Version 2.0 is available at
+  http://www.apache.org/licenses/LICENSE-2.0
+
+pqcaton consumes pqcota through its published contracts (`contracts/`) and does
+not modify pqcota itself. Where pqcota source is included in a distribution of
+pqcaton, it remains under the Apache License, Version 2.0.
+
+Third-party dependencies and their licenses are listed in THIRD-PARTY-NOTICES.md.

@@ -1,0 +1,11 @@
+# 링크되는 의존성의 라이선스 — `go run ./tools/checklicenses`가 이 표와 대조한다.
+#
+# 형식:  <모듈 경로>  <SPDX 식별자>
+#
+# 확인하는 법: 그 모듈 리포의 LICENSE 파일이 정답지다. "아파치"·"ASL2" 같은 임의 표기
+# 대신 MIT·Apache-2.0·BSD-3-Clause처럼 공식 SPDX 표기를 쓴다.
+#
+# 허용적(MIT·Apache-2.0·BSD·ISC)만 받는다. 카피레프트를 링크하면 상업 라이선스가
+# 불가능해진다 — 이유는 CONTRIBUTING.md.
+
+github.com/pqcota/pqcota  Apache-2.0
