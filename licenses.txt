@@ -8,4 +8,5 @@
 # 허용적(MIT·Apache-2.0·BSD·ISC)만 받는다. 카피레프트를 링크하면 상업 라이선스가
 # 불가능해진다 — 이유는 CONTRIBUTING.md.
 
-github.com/pqcota/pqcota  Apache-2.0
+github.com/pqcota/pqcota    Apache-2.0
+google.golang.org/protobuf  BSD-3-Clause
