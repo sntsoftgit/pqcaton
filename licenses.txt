@@ -10,3 +10,16 @@
 
 github.com/pqcota/pqcota    Apache-2.0
 google.golang.org/protobuf  BSD-3-Clause
+
+# 인벤토리 거버넌스가 끌어오는 것들. 값은 각 리포의 LICENSE에서 확인했다
+# (pqcota의 docs/licensing.md 표와 같은 근거).
+github.com/jackc/pgx/v5                     MIT
+github.com/jackc/pgpassfile                 MIT
+github.com/jackc/pgservicefile              MIT
+github.com/jackc/puddle/v2                  MIT
+google.golang.org/grpc                      Apache-2.0
+google.golang.org/genproto/googleapis/rpc   Apache-2.0
+golang.org/x/net                            BSD-3-Clause
+golang.org/x/sync                           BSD-3-Clause
+golang.org/x/sys                            BSD-3-Clause
+golang.org/x/text                           BSD-3-Clause

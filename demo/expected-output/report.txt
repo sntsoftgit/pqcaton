@@ -1,0 +1,22 @@
+╔══════════════════════════════════════════════════════════╗
+║  pqcota 디스커버리 → 인벤토리 데모 리포트                  ║
+╚══════════════════════════════════════════════════════════╝
+
+노드 3 · 관측 자산 5 · 관측 엣지 3 · 선언 자산 5 · 선언 엣지 3
+
+──────── ① 자산 인벤토리 (3-상태 대조) ────────
+대조: CONFIRMED 4 · UNDECLARED(shadow) 1 · UNOBSERVED 1
+자동통과 후보(일괄 승인 제안): 4
+
+필수 리뷰 큐 (우선순위 순):
+#   state        conf   runtime  component
+1   UNDECLARED   0.60   openssl  libcrypto
+2   UNOBSERVED   0.30   openssl  libssl
+
+──────── ② 통신 엣지 + 양자내성 posture ────────
+  ⚪ node-db    → node-app           TLS    (불명)                     UNOBSERVED
+  🟢 node-web   → node-app           TLS    X25519MLKEM768           CONFIRMED
+  🔴 node-web   → node-db            TLS    x25519                   CONFIRMED
+  🟢 node-web   → node-db            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED
+
+  posture 합계: 🟢 PQC 2 · 🔴 고전 1 · ⚪ 불명 1

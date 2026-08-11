@@ -1,0 +1,43 @@
+# 데모 — pqcota 위에 얹는 거버넌스
+
+📊 **실행 전 예상 결과**: [`expected-output/`](expected-output/) — 확장 리포트·거버넌스 토폴로지 샘플 + 차이점 설명.
+
+이 데모는 **독립 스택이 아니라 확장**입니다. [pqcota의 디스커버리 데모](https://github.com/randyinthedev-hash/pqcota/tree/main/demo)를
+그대로 띄운 뒤, 그 위에 이 리포의 기능 — **선언 대비 3-상태 대조(CONFIRMED/UNDECLARED shadow/UNOBSERVED) +
+리뷰 큐 + 거버넌스 토폴로지** — 를 얹습니다.
+
+```
+관측 등급 (pqcota)         →   + 선언 대비 reconciliation (pqcaton)
+🟢 web→app MLKEM                    🟢 web→app  CONFIRMED
+🔴 web→db  고전                     🔴 web→db   CONFIRMED
+🟢 web→db  SSH sntrup761            🟢 web→db   SSH  UNDECLARED(shadow)
+                                    🔴 app→db   UNDECLARED(shadow)  ← 선언 안 된 통신!
+                                    ⚪ db→app   UNOBSERVED (선언했으나 미관측 ≠ 부재)
+```
+
+## 실행
+
+```bash
+# 1) OSS 디스커버리 데모를 먼저 띄운다 (환경 + 수집)
+../../pqcota/demo/scripts/up.sh
+../../pqcota/demo/scripts/demo.sh
+
+# 2) pqcaton의 대조·토폴로지를 그 위에 확장
+./scripts/extend.sh          # 산출: demo/topology-governance.svg
+
+# 3) 정리 (core 데모가 환경 소유)
+../../pqcota/demo/scripts/down.sh
+```
+
+`extend.sh`는 새 컨테이너를 만들지 않습니다. 실행 중인 `pqcota-ctl`에 이 리포의 `pqcota-report`를 주입하고,
+core가 이미 수집한 `/work/results`에 **선언(declaration.json)** 을 대조해 3-상태 인벤토리 + 거버넌스
+토폴로지를 만듭니다.
+
+## 요구 사항
+- 실행 중인 pqcota 디스커버리 데모(위 1단계).
+- 빌드 머신에 **Go** + 형제 `pqcota` 체크아웃(gen 생성: `cd ../pqcota && make generate`).
+  `pqcota-report`는 core를 `replace ../pqcota`로 링크해 빌드됩니다.
+
+## 커스터마이즈
+`declaration.json`(고객 선언)을 편집하면 CONFIRMED/UNDECLARED/UNOBSERVED 분포가 달라집니다.
+`extend.sh`가 `__IP_*__`를 실제 컨테이너 IP로 채웁니다.

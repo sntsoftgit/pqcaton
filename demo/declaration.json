@@ -1,0 +1,21 @@
+{
+  "_comment": "고객 선언(스코프 마스터 + 선언 자산·엣지). extend.sh가 __IP_*__ 자리표시자를 실제 컨테이너 IP로 치환한다. 자유롭게 편집해 대조 결과를 바꿔보라.",
+  "scope": ["node-web", "node-app", "node-db"],
+  "nodes": [
+    { "name": "node-web", "ips": ["__IP_node-web__"] },
+    { "name": "node-app", "ips": ["__IP_node-app__"] },
+    { "name": "node-db",  "ips": ["__IP_node-db__"] }
+  ],
+  "assets": [
+    { "node": "node-web", "runtime": "openssl", "component": "libssl" },
+    { "node": "node-web", "runtime": "openssl", "component": "libcrypto" },
+    { "node": "node-db",  "runtime": "openssl", "component": "libssl" },
+    { "node": "node-db",  "runtime": "openssl", "component": "libcrypto" },
+    { "node": "node-app", "runtime": "jca",     "component": "jca-provider-chain" }
+  ],
+  "edges": [
+    { "src": "node-web", "dst": "node-app", "port": 8443, "proto": "TLS" },
+    { "src": "node-web", "dst": "node-db",  "port": 4433, "proto": "TLS" },
+    { "src": "node-db",  "dst": "node-app", "port": 8443, "proto": "TLS" }
+  ]
+}
