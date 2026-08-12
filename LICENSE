@@ -16,6 +16,10 @@ Additional Use Grant: You may make production use of the Licensed Work to manage
                       testing, and continuous integration — is always permitted,
                       at any scale.
 
+                      Offering the Licensed Work to third parties on a hosted or
+                      embedded basis is not permitted under this grant, whatever
+                      the node count.
+
                       "Node" means a host, virtual machine, or container instance
                       from which the Licensed Work collects observations, or to
                       which it applies generated artifacts.
