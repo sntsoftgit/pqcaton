@@ -63,26 +63,45 @@
 | [CP-PG-3](internal/access/pg_test.go) | `TestPgRunnerRoundTrip` — 등록·갱신·빈 버전으로 갱신 | 빈 버전이 기존 값을 **지우지 않는다** | `status`가 버전을 안 보내는 경우에 기록이 지워지면 안 됩니다 |
 | [CP-PG-4](internal/access/pg_test.go) | `TestPgRefusesMissingSchema` — 테이블이 없는 곳을 가리킴 | `ErrSchemaMissing` | 생성자가 말없이 DDL을 돌면, 가리키는 곳이 어긋났을 때 빈 테이블이 생기고 거기에 씁니다 — 데이터가 사라진 것처럼 보입니다 |
 
-## 2. 아직 없는 것
+## 2. M1 — 결과 수신 (진행 중)
+
+수신 경계의 **순수 로직**입니다. HTTP는 아직 없습니다 — 미들웨어·핸들러가 붙으면
+`CP-HTTP-*`를 여기 더합니다.
+
+### CP-INTAKE. 검증 · 멱등 · 적재 (§5.1 · §6.4.2 · §6.5)
+
+| 케이스 | Given → When | Then | 목적 |
+|---|---|---|---|
+| [CP-INTAKE-1](internal/intake/intake_test.go) | `TestAcceptsResultSignedByRegisteredKey` — 등록된 키로 서명된 결과 | 통과해서 스냅샷이 쌓인다 | 거절만 시험하면 게이트가 **정상 반입까지 막는 것**을 못 잡습니다 |
+| [CP-INTAKE-2](internal/intake/intake_test.go) | `TestRejectsUnsignedResult` — 서명 없는 결과 | 거절 | 여러 조직의 결과가 한 저장소로 모이는 곳에 조용히 통과하는 경로를 두지 않습니다 |
+| [CP-INTAKE-3](internal/intake/intake_test.go) | `TestRejectsResultSignedByAnotherOrgsKey` — **다른 조직에 등록된 키**로 서명 | 거절 | 등록소 조회에 조직 조건이 붙는다는 것이 여기서 값을 합니다. 안 걸면 남의 collector가 서명한 결과가 우리 조직으로 들어옵니다 |
+| [CP-INTAKE-4](internal/intake/intake_test.go) | `TestResendIsFoldedNotRejected` — 같은 결과 재전송 | **중복으로 세고 받았다고 답한다** | 재전송은 러너의 정상 동작입니다(올린 뒤 응답을 못 받은 경우). 거절로 세면 러너가 고장 난 것처럼 보입니다 |
+| [**CP-INTAKE-5**](internal/intake/intake_test.go) | `TestResultsFromSameNodeAndInstantAreDistinct` — 같은 collector·노드·시각인데 **내용이 다른 결과 둘** | 둘 다 통과, 지문도 다르다 | **멱등 키 선택의 이유입니다.** 엔벨로프 삼중키였다면 둘이 같은 키가 되어 정상 결과 하나가 조용히 사라집니다(JVM마다 결과 하나) |
+| [**CP-INTAKE-6**](internal/intake/intake_test.go) | `TestRejectedResultCanBeRetriedAfterKeyIsRegistered` — 거절된 뒤 키를 등록하고 같은 결과 재전송 | **들어온다** | 거절된 것까지 「본 것」으로 남기면 그 결과는 영영 못 들어옵니다. 멱등은 재전송을 접는 장치이지 **실패를 굳히는 장치가 아닙니다** |
+| [CP-INTAKE-7](internal/intake/intake_test.go) | `TestBothKeysWorkDuringRotation` — 옛 키·새 키로 각각 서명 | 둘 다 통과 | 교체 구간이 적재 경로에서도 성립하는지 — 등록소만 되고 여기서 막히면 소용이 없습니다 |
+| [CP-INTAKE-8](internal/intake/intake_test.go) | `TestReceiveRequiresOrg` — 조직 없이 수신 | `ErrNoOrg` | 여기까지 왔는데 조직이 비었으면 인증 경로가 깨진 것입니다. 품지 않습니다 |
+| [CP-INTAKE-9](internal/intake/intake_test.go) | `TestSeenStoreIsolatesOrg` — 멱등 저장소에 두 조직의 같은 지문 | 서로 안 보인다 | 여기서 섞이면 한 조직의 결과가 다른 조직에서 **"이미 받았다"로 사라집니다** |
+
+## 3. 아직 없는 것
 
 M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 마일스톤 | 검증할 것 |
 |---|---|
-| **M1** 결과 수신 | 서명 없는 결과 거절 · **서명 형식 불일치를 위조와 다른 사유로** 기록(§6.6) · canonical 해시 멱등 · 본문 크기 초과는 자르지 않고 거절 · 조직이 토큰에서만 유도됨 |
+| **M1** HTTP 경계 | 프록시 신뢰·`https` 확인 · 본문 크기 초과는 자르지 않고 거절 · Bearer 토큰 → 조직 · 거절 응답은 사유를 구분하지 않음 |
 | **M2** 작업 배포 | 롱폴 · 만료·재배포 · `provision`은 `observe`와 다른 재배포 정책 |
 | **M3** 등재 | 지문 충돌 보류 · 등재 실패는 과금하지 않음 · 월중 고유 노드 누적 |
 | **M4** 관측 | 접속 정보가 컨트롤 플레인에 올라오지 않음 · `target_node_ids`로만 지시 |
 
-## 3. 세는 법
+## 4. 세는 법
 
 케이스는 **테스트 함수 단위**입니다. 아래 값과 어긋나면 이 표가 틀린 것입니다.
 
 | 레벨 | 수 |
 |---|---|
-| unit | 13 |
+| unit | 22 |
 | Postgres 필요 | 5 |
-| **전체** | **18** |
+| **전체** | **27** |
 
 ```bash
 grep -rh '^func Test' --include='*_test.go' saas/ | wc -l    # 전체
