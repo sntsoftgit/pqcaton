@@ -63,10 +63,9 @@
 | [CP-PG-3](internal/access/pg_test.go) | `TestPgRunnerRoundTrip` — 등록·갱신·빈 버전으로 갱신 | 빈 버전이 기존 값을 **지우지 않는다** | `status`가 버전을 안 보내는 경우에 기록이 지워지면 안 됩니다 |
 | [CP-PG-4](internal/access/pg_test.go) | `TestPgRefusesMissingSchema` — 테이블이 없는 곳을 가리킴 | `ErrSchemaMissing` | 생성자가 말없이 DDL을 돌면, 가리키는 곳이 어긋났을 때 빈 테이블이 생기고 거기에 씁니다 — 데이터가 사라진 것처럼 보입니다 |
 
-## 2. M1 — 결과 수신 (진행 중)
+## 2. M1 — 결과 수신
 
-수신 경계의 **순수 로직**입니다. HTTP는 아직 없습니다 — 미들웨어·핸들러가 붙으면
-`CP-HTTP-*`를 여기 더합니다.
+검증·멱등·적재(`CP-INTAKE`)와 그 위의 HTTP 경계(`CP-HTTP`)입니다.
 
 ### CP-INTAKE. 검증 · 멱등 · 적재 (§5.1 · §6.4.2 · §6.5)
 
@@ -82,13 +81,24 @@
 | [CP-INTAKE-8](internal/intake/intake_test.go) | `TestReceiveRequiresOrg` — 조직 없이 수신 | `ErrNoOrg` | 여기까지 왔는데 조직이 비었으면 인증 경로가 깨진 것입니다. 품지 않습니다 |
 | [CP-INTAKE-9](internal/intake/intake_test.go) | `TestSeenStoreIsolatesOrg` — 멱등 저장소에 두 조직의 같은 지문 | 서로 안 보인다 | 여기서 섞이면 한 조직의 결과가 다른 조직에서 **"이미 받았다"로 사라집니다** |
 
+### CP-HTTP. 경계 (§6.2)
+
+| 케이스 | Given → When | Then | 목적 |
+|---|---|---|---|
+| [CP-HTTP-1](internal/api/api_test.go) | `TestResultsAcceptedAndStoredInTokensOrg` — 유효 토큰 + 서명된 결과 | 200, **그 토큰의 조직**에 쌓인다 | 경계가 실제로 끝까지 이어지는지 |
+| [**CP-HTTP-2**](internal/api/api_test.go) | `TestOrgComesFromTokenNotBody` — 본문에 `"org":"beta"`를 적어 보냄 | 무시하고 토큰의 조직에 쌓는다. beta 저장소는 **열리지도 않는다** | **조직은 러너가 주장하는 것이 아닙니다**(§6.4). 핸들러가 본문에서 조직을 읽을 방법을 두지 않는 것이 이 성질을 지킵니다 |
+| [CP-HTTP-3](internal/api/api_test.go) | `TestAuthFailuresAreIndistinguishable` — 모르는 토큰 / 비밀 불일치 / 헤더 없음 | 셋 다 401이고 **응답 본문이 같다** | 어느 쪽이 틀렸는지 알려 주면 시도하는 쪽에 정보를 줍니다. 구분은 기록에서만 합니다 |
+| [**CP-HTTP-4**](internal/api/api_test.go) | `TestOversizedBodyIsRejectedNotTruncated` — 상한을 넘는 본문 | 413, **아무것도 적재되지 않는다** | 잘라서 받으면 관측 결과가 조용히 훼손되고 "관측했는데 없더라"가 됩니다 |
+| [CP-HTTP-5](internal/api/api_test.go) | `TestTrustProxyRejectsPlainRequest` — 앞단 신뢰 켬, `X-Forwarded-Proto` 없음/`https` | 없으면 400, `https`면 통과 | 조용히 받으면 프록시 설정이 풀린 것을 아무도 모릅니다 |
+| [CP-HTTP-6](internal/api/api_test.go) | `TestForwardedProtoIgnoredWhenNotTrusted` — 앞단 신뢰 끔, `X-Forwarded-Proto: http` | 무시하고 통과 | 아무나 붙일 수 있는 헤더라, 믿으면 평문 요청이 HTTPS로 둔갑합니다 |
+| [CP-HTTP-7](internal/api/api_test.go) | `TestBrokenResultDoesNotDropTheBatch` — 계약에 안 맞는 결과가 섞임 | 나머지는 들어간다 | 하나가 깨졌다고 배치를 버리면 러너가 그것만 골라낼 방법이 없습니다 |
+
 ## 3. 아직 없는 것
 
 M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 마일스톤 | 검증할 것 |
 |---|---|
-| **M1** HTTP 경계 | 프록시 신뢰·`https` 확인 · 본문 크기 초과는 자르지 않고 거절 · Bearer 토큰 → 조직 · 거절 응답은 사유를 구분하지 않음 |
 | **M2** 작업 배포 | 롱폴 · 만료·재배포 · `provision`은 `observe`와 다른 재배포 정책 |
 | **M3** 등재 | 지문 충돌 보류 · 등재 실패는 과금하지 않음 · 월중 고유 노드 누적 |
 | **M4** 관측 | 접속 정보가 컨트롤 플레인에 올라오지 않음 · `target_node_ids`로만 지시 |
@@ -99,9 +109,9 @@ M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 레벨 | 수 |
 |---|---|
-| unit | 22 |
+| unit | 29 |
 | Postgres 필요 | 5 |
-| **전체** | **27** |
+| **전체** | **34** |
 
 ```bash
 grep -rh '^func Test' --include='*_test.go' saas/ | wc -l    # 전체
