@@ -9,7 +9,7 @@ go 1.26.4
 //   해소하지 못한다. upstream이 모듈 경로를 정리하면 이 줄을 지운다.
 require (
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/pqcota/pqcota v0.1.2
+	github.com/pqcota/pqcota v0.2.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -25,4 +25,4 @@ require (
 	google.golang.org/grpc v1.82.1 // indirect
 )
 
-replace github.com/pqcota/pqcota => github.com/randyinthedev-hash/pqcota v0.1.2
+replace github.com/pqcota/pqcota => github.com/randyinthedev-hash/pqcota v0.2.0
