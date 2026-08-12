@@ -285,6 +285,87 @@ PQCATON_EXPOSE_ADDR=off   # 기본값 — 주소를 올리지 않는다
 조직은 러너가 주장하는 것이 아니라 **토큰에서 유도합니다.** 결과 본문에 조직이 적혀 있어도
 보지 않습니다.
 
+#### 6.4.1 러너 토큰
+
+**불투명 랜덤입니다. 서명 토큰(JWT 류)을 쓰지 않습니다.**
+
+§6.4가 세운 전제가 *"러너가 감염되면 토큰도 함께 넘어간다"*입니다. 그러면 **즉시 폐기**가
+요건인데, 서명 토큰은 만료 전까지 유효하고 폐기하려면 결국 폐기 목록을 매 요청 조회해야
+합니다 — DB를 안 본다는 이점이 사라지고 서명 키 관리만 남습니다.
+
+```
+pqcrt_<조회키 8자>_<비밀 32자>          base32
+```
+
+| | |
+|---|---|
+| 접두어 | 로그에서 눈에 띄고 시크릿 스캐너에 걸립니다. 실수로 붙여 넣은 것을 찾을 수 있습니다 |
+| 조회키 | **평문으로 저장**하고 인덱스를 겁니다. 해시 전체를 뒤지지 않고 한 번에 찾습니다 |
+| 비밀 | **SHA-256으로 저장.** bcrypt·argon2를 쓰지 않습니다 — 고엔트로피 랜덤이라 사전공격 대상이 아니고, 매 요청 검증이라 느린 해시는 비용만 됩니다. 비교는 상수시간으로 합니다 |
+| 평문 | **발급 순간에만 보여 줍니다.** 다시 못 봅니다 |
+
+```
+pqcaton_runner_token
+    lookup         TEXT PRIMARY KEY     -- 토큰 앞부분(평문)
+    org            TEXT NOT NULL
+    secret_sha256  BYTEA NOT NULL
+    label          TEXT                 -- "본사 러너", "DR 센터"
+    issued_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    last_used_at   TIMESTAMPTZ
+    revoked_at     TIMESTAMPTZ          -- NULL이면 유효
+```
+
+**만료를 두지 않습니다.** 러너는 상주 프로세스라 만료는 장애로만 나타납니다. 대신 폐기와
+`last_used_at`을 둡니다 — 오래 안 쓰인 토큰을 찾아 거둘 수 있습니다.
+
+**조직당 여러 개 발급합니다.** 러너가 여러 대일 때 하나를 폐기해도 나머지가 살아 있어야
+합니다. 러너가 어느 토큰으로 등록했는지 남기므로, 폐기하면 **그 토큰을 쓴 러너만** 끊깁니다.
+
+```
+pqcaton_runner
+    id             TEXT PRIMARY KEY     -- 우리가 발급
+    org            TEXT NOT NULL
+    token_lookup   TEXT NOT NULL        -- 어느 토큰으로 등록했나
+    label          TEXT
+    version        TEXT
+    registered_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    last_seen_at   TIMESTAMPTZ
+```
+
+발급은 **관리자 콘솔에서만** 합니다. 러너가 닿는 어떤 엔드포인트로도 토큰을 만들 수
+없습니다 — 만들 수 있으면 토큰 하나로 토큰을 늘릴 수 있습니다.
+
+#### 6.4.2 collector 공개키 등록소
+
+```
+pqcaton_collector_key
+    org            TEXT NOT NULL
+    collector_id   TEXT NOT NULL
+    public_key     TEXT NOT NULL        -- base64 ed25519
+    label          TEXT
+    registered_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    revoked_at     TIMESTAMPTZ          -- NULL이면 유효
+    PRIMARY KEY (org, collector_id, public_key)
+```
+
+**기본키에 `public_key`가 들어가는 것이 요점입니다.** 같은 `(조직, collector_id)`에 유효한
+키가 **둘 이상인 구간**이 필요합니다 — 새 키를 등록하고, 러너들이 갈아탄 뒤, 옛 키를
+폐기합니다. 그 구간이 없으면 키를 바꾸는 순간 그 조직의 관측이 전부 거절됩니다.
+
+**그래서 `sign.VerifyFrom`을 쓰지 않습니다.** 그 함수는 `collector_id → 공개키` 하나만
+받아 교체 구간을 표현할 수 없습니다. 대신 이렇게 합니다.
+
+```sql
+SELECT public_key FROM pqcaton_collector_key
+ WHERE org = $1 AND collector_id = $2 AND revoked_at IS NULL
+```
+
+이 목록을 `sign.Verify`에 넘깁니다. **안전성은 같습니다** — `VerifyFrom`도 결국 엔벨로프의
+`collector_id`로 키를 찾고, 우리는 그 좁히는 일을 질의로 할 뿐입니다. 대신 조직 조건이
+질의에 함께 붙어 조직 경계도 같은 자리에서 걸립니다.
+
+**등록도 관리자 콘솔에서만** 합니다(§6.2).
+
 ### 6.5 중복과 순서
 
 같은 결과가 두 번 올 수 있습니다 — 러너가 올린 뒤 응답을 못 받고 재시도하는 경우입니다.
