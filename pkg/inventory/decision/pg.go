@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/sntsoftgit/pqcaton/pkg/org"
+	"github.com/pqcota/pqcota/pkg/org"
 )
 
 const judgmentSchemaSQL = `

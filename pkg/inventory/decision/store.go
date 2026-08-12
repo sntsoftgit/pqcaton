@@ -3,7 +3,7 @@ package decision
 import (
 	"sync"
 
-	"github.com/sntsoftgit/pqcaton/pkg/org"
+	"github.com/pqcota/pqcota/pkg/org"
 )
 
 // JudgmentStore — 판정 영속화(§3.6, §7). append-only — Save는 언제나 새 레코드를 쌓는다(§0.2).

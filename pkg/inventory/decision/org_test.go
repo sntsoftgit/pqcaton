@@ -4,8 +4,16 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/pqcota/pqcota/pkg/org"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
-	"github.com/sntsoftgit/pqcaton/pkg/org"
+)
+
+// 두 저장소가 org.Scoped를 만족해야 컨트롤 플레인이 기동할 때 핸들에 직접 물어볼 수 있다
+// — 환경변수는 프로세스마다 달라지므로 실제 핸들에 묻는 편이 안전하다.
+// 조직 타입이 상류와 갈리면 빌드가 여기서 먼저 깨진다.
+var (
+	_ org.Scoped = (*decision.MemJudgmentStore)(nil)
+	_ org.Scoped = (*decision.PgJudgmentStore)(nil)
 )
 
 // 격리가 있는지가 아니라 **격리를 끌 수 없는지**를 본다.
