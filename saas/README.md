@@ -4,7 +4,8 @@ pqcaton을 서비스로 제공할 때, **고객 네트워크 안에 놓이는 �
 
 > **아직 만들지 않았습니다.** 지금은 설계뿐입니다. 무엇이 없는지는
 > [design.md의 「지금 없는 것」](design.md#5-지금-없는-것)이 결정적이고,
-> 무엇부터 만들지는 [implementation.md](implementation.md)에 있습니다.
+> 무엇부터 만들지는 [implementation.md](implementation.md), 무엇으로 끝났다고 말하는지는
+> [testcases.md](testcases.md)에 있습니다.
 
 ## 여기 있는 것과 없는 것
 
