@@ -1,14 +1,14 @@
 # 테스트케이스 — 인벤토리 거버넌스
 
-케이스 번호가 곧 테스트 파일 링크다. 설계는 [design.md](design.md).
+케이스 번호가 곧 테스트 파일 링크입니다. 설계는 [design.md](design.md)에 있습니다.
 
-**문서 성격**: [설계](design.md) §1(인벤토리 엔진)를 **검증 가능한 인수 기준**으로 전개한다.
-구현은 이 테스트를 통과하는 것을 목표로 한다 — `pkg/inventory/{reconcile,decision}`, `inventory/cmd/pqcota-reconcile`.
+**문서 성격**: [설계](design.md) §1(인벤토리 엔진)를 **검증 가능한 인수 기준**으로 전개합니다.
+구현은 이 테스트를 통과하는 것을 목표로 합니다 — `pkg/inventory/{reconcile,decision}`, `inventory/cmd/pqcota-reconcile`.
 **검증 대상**: 3-상태 reconciliation·confidence·리뷰 큐·리뷰-확정 상태기계·판정 영속화·확정 계획·핸드오프 게이트·엣지 대조.
 **실행 방침**: 대조·상태기계·게이트는 순수 로직(실물 불필요), 판정 영속화는 Postgres 통합.
 
 > 적재·이력·보존·자산 스코프 등 **pqcota가 구현하는 부분**의 인수 기준은
-> [pqcota 인벤토리 테스트케이스](../../pqcota/inventory/인벤토리_테스트케이스.md).
+> [pqcota 인벤토리 테스트케이스](../../pqcota/inventory/인벤토리_테스트케이스.md)에 있습니다.
 
 ---
 
@@ -73,7 +73,7 @@
 | IC-E2 ✅ | 토폴로지 렌더 | 색=등급(🟢PQC/🔴취약/⚪불명), 미관측=점선(≠부재, §12.2 정직성) |
 | IC-E3 ✅ | 스코프 밖 관측 상대 | off-scope 표기 "등재 판정 요청"(§0.4/§5) |
 
-> **구현 위치**: 엣지 대조 `reconcile/edge.go`(없음) · 등급 분류 `pkg/kernel/posture/` · 토폴로지 DOT `reconcile/topology.go`(없음) · 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB). 관측 엣지 스키마 `contracts` `ObservedEdge`(CollectionResult.observed_edges). 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급**한다(대조 엔진은 합성 데이터로도 검증됨).
+> **구현 위치**: 엣지 대조 `reconcile/edge.go`(없음) · 등급 분류 `pkg/kernel/posture/` · 토폴로지 DOT `reconcile/topology.go`(없음) · 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB). 관측 엣지 스키마 `contracts` `ObservedEdge`(CollectionResult.observed_edges). 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
 
 ---
 
