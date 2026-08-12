@@ -97,7 +97,10 @@ func TestLatestPerSubject(t *testing.T) {
 
 // MemStore append-only: 같은 subject 재판정 시 이전 판정도 보존.
 func TestMemJudgmentStore_appendOnly(t *testing.T) {
-	st := NewMemJudgmentStore()
+	st, err := NewMemJudgmentStore("acme")
+	if err != nil {
+		t.Fatal(err)
+	}
 	_ = st.Save(&Judgment{ID: "j1", Subject: "s1", Conclusion: "허용"})
 	_ = st.Save(&Judgment{ID: "j2", Subject: "s1", Conclusion: "제거"})
 	hist, _ := st.BySubject("s1")

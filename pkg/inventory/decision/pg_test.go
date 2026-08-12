@@ -18,7 +18,7 @@ func TestPgJudgmentStore(t *testing.T) {
 		t.Skip("PQCOTA_TEST_DSN 미설정 — Postgres 통합 테스트 스킵")
 	}
 	ctx := context.Background()
-	st, err := decision.NewPgJudgmentStore(ctx, dsn)
+	st, err := decision.NewPgJudgmentStore(ctx, dsn, "acme")
 	if err != nil {
 		t.Fatal(err)
 	}
