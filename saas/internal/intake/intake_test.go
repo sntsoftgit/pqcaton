@@ -237,17 +237,17 @@ func TestReceiveRequiresOrg(t *testing.T) {
 // 여기서 섞이면 한 조직의 결과가 다른 조직에서 "이미 받았다"로 사라진다.
 func TestSeenStoreIsolatesOrg(t *testing.T) {
 	s := intake.NewMemSeen()
-	if err := s.Mark(acme, "fp"); err != nil {
-		t.Fatalf("표시: %v", err)
+	if ok, err := s.Claim(acme, "fp"); err != nil || !ok {
+		t.Fatalf("확보: %v %v", ok, err)
 	}
-	got, err := s.Seen("beta", "fp")
+	fresh, err := s.Claim("beta", "fp")
 	if err != nil {
-		t.Fatalf("조회: %v", err)
+		t.Fatalf("확보: %v", err)
 	}
-	if got {
+	if !fresh {
 		t.Fatal("다른 조직의 지문이 보인다")
 	}
-	if _, err := s.Seen("", "fp"); !errors.Is(err, org.ErrEmpty) {
-		t.Fatalf("조직 없이 조회됐다: %v", err)
+	if _, err := s.Claim("", "fp"); !errors.Is(err, org.ErrEmpty) {
+		t.Fatalf("조직 없이 확보됐다: %v", err)
 	}
 }

@@ -70,17 +70,19 @@ func Receive(o Options, results []*discoveryv1.CollectionResult) (Report, error)
 
 	var rep Report
 	fresh := make([]*discoveryv1.CollectionResult, 0, len(results))
+	claimed := make([]string, 0, len(results))
 	for _, res := range results {
 		h := Fingerprint(res)
-		seen, err := o.Seen.Seen(o.Org, h)
+		ok, err := o.Seen.Claim(o.Org, h)
 		if err != nil {
-			return rep, fmt.Errorf("멱등 조회: %w", err)
+			return rep, fmt.Errorf("멱등 확보: %w", err)
 		}
-		if seen {
+		if !ok {
 			rep.Duplicate++
 			continue
 		}
 		fresh = append(fresh, res)
+		claimed = append(claimed, h)
 	}
 	if len(fresh) == 0 {
 		return rep, nil
@@ -99,25 +101,28 @@ func Receive(o Options, results []*discoveryv1.CollectionResult) (Report, error)
 		RequireSignature: true,
 	})
 	if err != nil {
+		// 적재가 통째로 실패하면 확보한 것을 전부 놓는다 — 안 그러면 그 결과들이
+		// 영영 못 들어온다.
+		o.releaseAll(claimed)
 		return rep, err
 	}
 	rep.IngestReport = *out
 
-	// **실제로 쌓인 것만** 본 것으로 표시한다.
+	// **실제로 쌓이지 못한 것은 확보를 놓는다.**
 	//
-	// 거절된 것까지 표시하면 그 결과는 영영 못 들어온다 — 키를 고쳐 등록하거나 노드를
-	// 등재한 뒤 같은 결과를 다시 올려도 중복으로 접힌다. 멱등은 재전송을 접는 장치이지
+	// 쥔 채로 두면 그 결과는 영영 못 들어온다 — 키를 고쳐 등록하거나 노드를 등재한 뒤
+	// 같은 결과를 다시 올려도 "이미 봤다"로 접힌다. 멱등은 재전송을 접는 장치이지
 	// 실패를 굳히는 장치가 아니다.
 	stored := make(map[string]bool, len(out.Nodes))
 	for _, n := range out.Nodes {
 		stored[n] = true
 	}
-	for _, res := range fresh {
-		if !stored[res.GetEnvelope().GetTargetNodeId()] || !verify(res) {
+	for i, res := range fresh {
+		if stored[res.GetEnvelope().GetTargetNodeId()] && verify(res) {
 			continue
 		}
-		if err := o.Seen.Mark(o.Org, Fingerprint(res)); err != nil {
-			return rep, fmt.Errorf("멱등 기록: %w", err)
+		if err := o.Seen.Release(o.Org, claimed[i]); err != nil {
+			return rep, fmt.Errorf("멱등 반환: %w", err)
 		}
 	}
 	return rep, nil
@@ -150,4 +155,12 @@ func (o Options) verifier() func(*discoveryv1.CollectionResult) bool {
 func Fingerprint(res *discoveryv1.CollectionResult) string {
 	sum := sha256.Sum256(sign.Canonical(res))
 	return hex.EncodeToString(sum[:])
+}
+
+// releaseAll — 확보한 지문을 전부 놓는다. 반환 실패는 삼킨다 —
+// 이미 다른 오류를 올리는 중이고, 여기서 덮어쓰면 원인이 가려진다.
+func (o Options) releaseAll(fps []string) {
+	for _, fp := range fps {
+		_ = o.Seen.Release(o.Org, fp)
+	}
 }
