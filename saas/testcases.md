@@ -26,7 +26,8 @@
 ### 돌리는 법
 
 ```bash
-docker run -d --name pqcaton-test-pg -e POSTGRES_PASSWORD=CHANGEME -e POSTGRES_DB=pqcaton \
+docker run -d --name pqcaton-test-pg --label pqcota-test \
+  -e POSTGRES_PASSWORD=CHANGEME -e POSTGRES_DB=pqcaton \
   -p 127.0.0.1:55432:5432 postgres:16-alpine
 
 PQCATON_TEST_DSN='postgres://postgres:CHANGEME@127.0.0.1:55432/pqcaton?sslmode=disable' \
@@ -34,6 +35,11 @@ PQCATON_TEST_DSN='postgres://postgres:CHANGEME@127.0.0.1:55432/pqcaton?sslmode=d
 
 docker rm -f pqcaton-test-pg
 ```
+
+**DB는 테스트가 도는 머신에 띄웁니다.** 다른 머신의 Postgres를 가리키면 방화벽에 걸리기
+쉽고, 그때 나오는 오류(`no route to host`)가 테스트 실패처럼 보여 시간을 버립니다.
+
+`--label pqcota-test`는 이 머신의 teardown 규약입니다 — 그 라벨만 정리합니다.
 
 표는 매번 `CREATE TABLE IF NOT EXISTS`로 올라가고, 케이스마다 조직 이름을 다르게 두므로
 같은 DB를 여러 번 돌려도 서로 밟지 않습니다.
