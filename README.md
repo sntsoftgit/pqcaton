@@ -47,8 +47,7 @@ pqcota                          pqcaton
 "실제 없음"인지를 갈라 주고, 그 위에서 사람이 정합니다.
 
 설계는 [docs/design.md](docs/design.md), 검증 기준은 [docs/testcases.md](docs/testcases.md)에
-있습니다. 그 설계를 **고객이 겪는 순서로** 다시 세운 것이 [docs/journey.md](docs/journey.md)입니다 —
-각 단계에 지금 되는지 여부를 함께 답니다.
+있습니다.
 
 ## 써보기
 
