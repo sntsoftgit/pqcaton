@@ -60,34 +60,34 @@ func enrollments(t *testing.T, body map[string]any) []map[string]any {
 
 // plane — 컨트롤 플레인 흉내. 러너가 **무엇을 보냈나**를 그대로 붙든다.
 type plane struct {
-	job      any // nil이면 204
 	gotAuth  string
 	gotQuery string
-	gotBody  map[string]any
-	fail     bool // 결과 업로드를 실패시킨다
+	gotBody  map[string]any // 마지막 결과 업로드
+	gotEnr   map[string]any // 마지막 연결확인 업로드
+	fail     bool           // 결과 업로드를 실패시킨다
+	failEnr  bool           // 연결확인 업로드를 실패시킨다
 }
 
 func (p *plane) start(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /v1/runner/jobs", func(w http.ResponseWriter, r *http.Request) {
-		p.gotAuth, p.gotQuery = r.Header.Get("Authorization"), r.URL.RawQuery
-		if p.job == nil {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		_ = json.NewEncoder(w).Encode(p.job)
-	})
 	mux.HandleFunc("POST /v1/runner/results", func(w http.ResponseWriter, r *http.Request) {
+		p.gotAuth, p.gotQuery = r.Header.Get("Authorization"), r.URL.RawQuery
 		_ = json.NewDecoder(r.Body).Decode(&p.gotBody)
 		if p.fail {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"accepted": count(p.gotBody, "results"), "job": "closed",
-			"enrolled": count(p.gotBody, "enrollments"),
-		})
+		_ = json.NewEncoder(w).Encode(map[string]any{"accepted": count(p.gotBody, "results")})
+	})
+	mux.HandleFunc("POST /v1/runner/enrollments", func(w http.ResponseWriter, r *http.Request) {
+		p.gotAuth, p.gotQuery = r.Header.Get("Authorization"), r.URL.RawQuery
+		_ = json.NewDecoder(r.Body).Decode(&p.gotEnr)
+		if p.failEnr {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"enrolled": count(p.gotEnr, "enrollments")})
 	})
 	s := httptest.NewServer(mux)
 	t.Cleanup(s.Close)
@@ -107,39 +107,12 @@ func setup(t *testing.T, srv *httptest.Server, names ...string) (runner.Config, 
 	return cfg, runner.NewClient(cfg)
 }
 
-// RUN-1 — 작업을 받으면 **그 작업 id를 결과와 함께** 올린다.
+// RUN-2 — **컨트롤 플레인에 할 일을 묻지 않는다.**
 //
-// 올리기와 닫기가 한 왕복이어야 한다 — 나누면 "결과는 올렸는데 닫지 못한" 구간이 생기고,
-// 그 작업은 만료돼 한 번 더 배포된다.
-func TestJobIdRidesWithTheResults(t *testing.T) {
-	p := &plane{job: map[string]any{"id": "j1", "kind": "observe"}}
-	srv := p.start(t)
-	cfg, cl := setup(t, srv, "web-01-openssl.json")
-
-	rep, err := runner.RunOnce(cfg, cl, quiet())
-	if err != nil {
-		t.Fatalf("실행: %v", err)
-	}
-	if rep.JobID != "j1" || rep.Files != 1 || rep.Accepted != 1 {
-		t.Fatalf("왕복이 닫히지 않았다: %+v", rep)
-	}
-	if p.gotBody["job_id"] != "j1" {
-		t.Fatalf("작업 id가 결과와 함께 가지 않았다: %v", p.gotBody["job_id"])
-	}
-	if p.gotBody["runner_id"] != "r1" || p.gotBody["runner_version"] != runner.Version {
-		t.Fatalf("누가 무엇으로 올렸는지가 빠졌다: %v", p.gotBody)
-	}
-	if rep.Job != "closed" {
-		t.Fatalf("작업이 닫히지 않았다: %q", rep.Job)
-	}
-}
-
-// RUN-2 — **작업이 없어도 결과는 올린다.**
-//
-// 스케줄이 돌린 관측이 남아 있을 수 있고, 다음 작업이 올 때까지 묵혀 둘 이유가 없다.
-// 그때는 `job_id`를 붙이지 않는다 — 없는 작업을 닫으려 들면 안 된다.
-func TestResultsGoUpWithoutAJob(t *testing.T) {
-	p := &plane{job: nil} // 204
+// 스케줄이 곧 관측 주기다. 러너가 매번 "할 일이 있나"를 물어야 돈다면, 그 자리가 비어 있는
+// 동안 **관측이 통째로 멈춘다** — 스케줄을 둔 이유가 사라진다.
+func TestNothingIsAskedOfTheControlPlane(t *testing.T) {
+	p := &plane{}
 	srv := p.start(t)
 	cfg, cl := setup(t, srv, "web-01-openssl.json", "db-01-openssl.json")
 
@@ -147,11 +120,11 @@ func TestResultsGoUpWithoutAJob(t *testing.T) {
 	if err != nil {
 		t.Fatalf("실행: %v", err)
 	}
-	if rep.JobID != "" || rep.Files != 2 {
-		t.Fatalf("작업 없이 올리는 길이 막혔다: %+v", rep)
+	if rep.Files != 2 {
+		t.Fatalf("스케줄만으로 올리는 길이 막혔다: %+v", rep)
 	}
 	if _, has := p.gotBody["job_id"]; has {
-		t.Fatalf("없는 작업을 닫으려 했다: %v", p.gotBody["job_id"])
+		t.Fatalf("작업 개념이 남아 있다: %v", p.gotBody["job_id"])
 	}
 }
 
@@ -383,44 +356,12 @@ func fakeAnsible(t *testing.T, dir, script string) string {
 	return p
 }
 
-// RUN-11 — 작업을 받으면 **플레이북을 돌리고, 대상을 `--limit`으로 좁힌다.**
+// RUN-12 — **플레이북이 실패해도 생긴 결과는 올린다.** 다만 실패를 숨기지 않는다.
 //
-// 지목된 노드가 있는데 인벤토리 전체를 돌리면 「이 노드만」이라는 지시가 뜻을 잃고,
-// 과금 대상도 늘어난다.
-func TestPlaybookRunsLimitedToTargets(t *testing.T) {
-	p := &plane{job: map[string]any{"id": "j1", "kind": "observe", "targets": []string{"web-01", "db-01"}}}
-	srv := p.start(t)
-	cfg, cl := setup(t, srv)
-
-	args := filepath.Join(cfg.ResultsDir, "args")
-	cfg.Ansible = fakeAnsible(t, t.TempDir(), `echo "$@" > `+args+`
-echo '{"envelope":{"targetNodeId":"web-01"}}' > `+filepath.Join(cfg.ResultsDir, "web-01.json"))
-	cfg.Playbook, cfg.Inventory = "discover.yml", "targets.ini"
-
-	rep, err := runner.RunOnce(cfg, cl, quiet())
-	if err != nil {
-		t.Fatalf("실행: %v", err)
-	}
-	if !rep.Played || rep.Files != 1 {
-		t.Fatalf("돌리고 올리는 데까지 안 갔다: %+v", rep)
-	}
-	got, _ := os.ReadFile(args)
-	for _, want := range []string{"-i targets.ini", "--limit web-01,db-01", "discover.yml"} {
-		if !strings.Contains(string(got), want) {
-			t.Fatalf("인자가 빠졌다 (%q): %s", want, got)
-		}
-	}
-	if p.gotBody["job_id"] != "j1" {
-		t.Fatalf("돌린 작업이 닫히지 않았다: %v", p.gotBody["job_id"])
-	}
-}
-
-// RUN-12 — **플레이북이 실패하면 그 작업을 닫지 않는다.** 생긴 결과는 그래도 올린다.
-//
-// 반쯤 된 것을 「끝났다」로 두면 그 노드는 다음 관측까지 빈 채로 남는다. 만료가 회수해
-// 다시 배포한다 — 읽기라 안전하다. 그렇다고 이미 생긴 결과를 버릴 이유는 없다.
-func TestFailedPlaybookDoesNotCloseTheJob(t *testing.T) {
-	p := &plane{job: map[string]any{"id": "j1", "kind": "observe"}}
+// 반쯤 나온 것을 버리면 그 관측은 사라진다. 그렇다고 조용히 0으로 끝내면 스케줄러가 잘 돈
+// 것으로 읽는다 — 무엇이 왜 안 됐는지는 완전성 맵에서 봐야 한다.
+func TestFailedPlaybookStillUploadsWhatExists(t *testing.T) {
+	p := &plane{}
 	srv := p.start(t)
 	cfg, cl := setup(t, srv, "web-01-openssl.json")
 	cfg.Ansible = fakeAnsible(t, t.TempDir(), "exit 4")
@@ -433,11 +374,8 @@ func TestFailedPlaybookDoesNotCloseTheJob(t *testing.T) {
 	if rep.Played {
 		t.Fatalf("실패했는데 돌린 것으로 셌다: %+v", rep)
 	}
-	if p.gotBody == nil {
-		t.Fatal("생긴 결과까지 버렸다")
-	}
-	if _, has := p.gotBody["job_id"]; has {
-		t.Fatalf("반쯤 된 작업을 닫았다: %v", p.gotBody["job_id"])
+	if p.gotBody == nil || rep.Files != 1 {
+		t.Fatalf("생긴 결과까지 버렸다: %+v", rep)
 	}
 }
 
@@ -446,7 +384,7 @@ func TestFailedPlaybookDoesNotCloseTheJob(t *testing.T) {
 // 관측을 다른 방식으로 돌리는 고객이 있을 수 있다. 러너의 값은 「올리는 입」이지
 // 「돌리는 손」이 아니다.
 func TestNoPlaybookStillUploads(t *testing.T) {
-	p := &plane{job: map[string]any{"id": "j1", "kind": "observe"}}
+	p := &plane{}
 	srv := p.start(t)
 	cfg, cl := setup(t, srv, "web-01-openssl.json")
 
@@ -454,89 +392,17 @@ func TestNoPlaybookStillUploads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("실행: %v", err)
 	}
-	if rep.Played || rep.Files != 1 || p.gotBody["job_id"] != "j1" {
+	if rep.Played || rep.Files != 1 {
 		t.Fatalf("올리기만 하는 길이 막혔다: %+v", rep)
 	}
 }
 
-// RUN-14 — **점유가 곧 만료되면 시작하지 않는다.**
+// RUN-18 — 연결확인은 **관측과 다른 자리로 간다.** 하나가 실패해도 다른 하나는 올라간다.
 //
-// 만료된 뒤에 끝나 봐야 그 작업은 이미 회수됐다 — 도는 동안 대상 노드에 부담만 준다.
-func TestExpiringLeaseIsNotStarted(t *testing.T) {
-	p := &plane{job: map[string]any{
-		"id": "j1", "kind": "observe",
-		"lease_till": time.Now().Add(2 * time.Second).UTC().Format(time.RFC3339),
-	}}
-	srv := p.start(t)
-	cfg, cl := setup(t, srv)
-	ran := filepath.Join(cfg.ResultsDir, "ran")
-	cfg.Ansible = fakeAnsible(t, t.TempDir(), "touch "+ran)
-	cfg.Playbook = "discover.yml"
-
-	if _, err := runner.RunOnce(cfg, cl, quiet()); err == nil {
-		t.Fatal("만료 직전인데 오류가 안 났다")
-	}
-	if _, err := os.Stat(ran); err == nil {
-		t.Fatal("만료 직전인데 대상 노드에 붙었다")
-	}
-}
-
-// RUN-16 — **모르는 작업 종류는 아무것도 하지 않는다.**
-//
-// 모르는 것을 관측 플레이북으로 돌리면, 그것이 쓰기 작업일 때 대상 노드에 무슨 일이 날지
-// 우리가 모른다. 새 종류가 생길 때 옛 러너가 조용히 엉뚱한 일을 하는 것을 막는다.
-//
-// `provision`도 지금은 여기 걸린다 — 적용 경로를 만들지 않았고, 반쯤 만든 것으로 고객
-// 서버에 쓰지 않는다.
-func TestUnknownKindDoesNothing(t *testing.T) {
-	for _, kind := range []string{"provision", "아직-없는-종류"} {
-		p := &plane{job: map[string]any{"id": "j1", "kind": kind}}
-		srv := p.start(t)
-		cfg, cl := setup(t, srv)
-		ran := filepath.Join(cfg.ResultsDir, "ran")
-		cfg.Ansible = fakeAnsible(t, t.TempDir(), "touch "+ran)
-		cfg.Playbook = "discover.yml"
-
-		if _, err := runner.RunOnce(cfg, cl, quiet()); err == nil {
-			t.Fatalf("%s: 모르는 종류인데 오류가 안 났다", kind)
-		}
-		if _, err := os.Stat(ran); err == nil {
-			t.Fatalf("%s: 모르는 종류인데 대상 노드에 붙었다", kind)
-		}
-	}
-}
-
-// RUN-17 — `enroll`과 `observe`는 같은 참조 플레이북으로 돈다.
-//
-// 둘 다 읽기이고, 등재는 그중 지문 확인만 쓴다 — 대상을 좁히는 것 말고 러너가 달리 할
-// 일이 없다.
-func TestEnrollRunsTheSamePlaybook(t *testing.T) {
-	p := &plane{job: map[string]any{"id": "j1", "kind": "enroll", "targets": []string{"web-01"}}}
-	srv := p.start(t)
-	cfg, cl := setup(t, srv)
-	args := filepath.Join(cfg.ResultsDir, "args")
-	cfg.Ansible = fakeAnsible(t, t.TempDir(), `echo "$@" > `+args)
-	cfg.Playbook = "discover.yml"
-
-	rep, err := runner.RunOnce(cfg, cl, quiet())
-	if err != nil {
-		t.Fatalf("실행: %v", err)
-	}
-	if !rep.Played {
-		t.Fatalf("등재 작업이 안 돌았다: %+v", rep)
-	}
-	got, _ := os.ReadFile(args)
-	if !strings.Contains(string(got), "--limit web-01") {
-		t.Fatalf("대상이 안 좁혀졌다: %s", got)
-	}
-}
-
-// RUN-18 — 연결확인은 **관측과 같은 왕복**에 실린다.
-//
-// 나누면 하나는 올라가고 하나는 못 올라간 구간이 생깁니다. 다섯 번째 엔드포인트를 두지
-// 않는 것과 같은 이유입니다(§6.2).
-func TestEnrollmentsRideWithTheResults(t *testing.T) {
-	p := &plane{job: map[string]any{"id": "j1", "kind": "enroll", "targets": []string{"web-01"}}}
+// 둘은 같은 때에 올라오지 않는다 — 연결확인은 대상 목록이 바뀔 때, 관측은 매 스케줄이다.
+// 한 본문에 묶으면 **두 종류의 실패가 한 응답에 섞이고**, 하나가 막히면 나머지도 묵힌다.
+func TestEnrollmentsGoToTheirOwnEndpoint(t *testing.T) {
+	p := &plane{failEnr: true}
 	srv := p.start(t)
 	cfg, cl := setup(t, srv, "obs.json")
 	enrollFileOn(t, cfg.ResultsDir, "web-01.json",
@@ -544,18 +410,28 @@ func TestEnrollmentsRideWithTheResults(t *testing.T) {
 
 	rep, err := runner.RunOnce(cfg, cl, quiet())
 	if err != nil {
+		t.Fatalf("연결확인이 막혔다고 관측까지 멈췄다: %v", err)
+	}
+	if count(p.gotBody, "results") != 1 || rep.Files != 1 {
+		t.Fatalf("관측이 안 올라갔다: %+v", rep)
+	}
+	if count(p.gotBody, "enrollments") != 0 {
+		t.Fatalf("연결확인이 결과에 섞여 갔다: %#v", p.gotBody)
+	}
+	// 못 올린 연결확인은 그대로 남는다 — 다음 실행이 다시 올린다.
+	if _, err := os.Stat(filepath.Join(cfg.ResultsDir, "enroll", "web-01.json")); err != nil {
+		t.Fatalf("못 올렸는데 치웠다: %v", err)
+	}
+
+	// 막지 않으면 제 자리로 올라가고 파일이 옮겨진다.
+	p.failEnr = false
+	rep, err = runner.RunOnce(cfg, cl, quiet())
+	if err != nil {
 		t.Fatalf("돌지 못했다: %v", err)
 	}
-	if count(p.gotBody, "results") != 1 || count(p.gotBody, "enrollments") != 1 {
-		t.Fatalf("한 왕복에 둘 다 실리지 않았다: %#v", p.gotBody)
+	if rep.Enrollments != 1 || rep.Enrolled != 1 || count(p.gotEnr, "enrollments") != 1 {
+		t.Fatalf("연결확인이 안 올라갔다: %+v %#v", rep, p.gotEnr)
 	}
-	if p.gotBody["job_id"] != "j1" {
-		t.Fatalf("작업이 함께 닫히지 않았다: %#v", p.gotBody["job_id"])
-	}
-	if rep.Enrollments != 1 || rep.Enrolled != 1 {
-		t.Fatalf("리포트가 다르다: %+v", rep)
-	}
-	// 올린 파일은 옮긴다 — 안 옮기면 매번 다시 올라간다.
 	if _, err := os.Stat(filepath.Join(cfg.ResultsDir, "enroll", "sent", "web-01.json")); err != nil {
 		t.Fatalf("올린 연결확인이 안 옮겨졌다: %v", err)
 	}
@@ -577,11 +453,11 @@ func TestAddrBecomesATokenAndNeverLeaves(t *testing.T) {
 	if _, err := runner.RunOnce(cfg, cl, quiet()); err != nil {
 		t.Fatalf("돌지 못했다: %v", err)
 	}
-	body, _ := json.Marshal(p.gotBody)
+	body, _ := json.Marshal(p.gotEnr)
 	if strings.Contains(string(body), addr) {
 		t.Fatalf("주소가 그대로 나갔다: %s", body)
 	}
-	got := enrollments(t, p.gotBody)
+	got := enrollments(t, p.gotEnr)
 	tok, _ := got[0]["addr_token"].(string)
 	if tok == "" {
 		t.Fatal("주소 토큰이 안 붙었다 — 영역 간 엣지를 이어 붙일 표가 안 생긴다")
@@ -597,7 +473,7 @@ func TestAddrBecomesATokenAndNeverLeaves(t *testing.T) {
 	if _, err := runner.RunOnce(cfg2, cl2, quiet()); err != nil {
 		t.Fatalf("돌지 못했다: %v", err)
 	}
-	if again, _ := enrollments(t, p2.gotBody)[0]["addr_token"].(string); again != tok {
+	if again, _ := enrollments(t, p2.gotEnr)[0]["addr_token"].(string); again != tok {
 		t.Fatalf("같은 주소가 다른 토큰이 됐다: %q ≠ %q", again, tok)
 	}
 }
@@ -615,9 +491,9 @@ func TestConnectedWithoutFingerprintIsReportedAsFailure(t *testing.T) {
 	if _, err := runner.RunOnce(cfg, cl, quiet()); err != nil {
 		t.Fatalf("돌지 못했다: %v", err)
 	}
-	got := enrollments(t, p.gotBody)
+	got := enrollments(t, p.gotEnr)
 	if len(got) != 1 {
-		t.Fatalf("조용히 버렸다: %#v", p.gotBody)
+		t.Fatalf("조용히 버렸다: %#v", p.gotEnr)
 	}
 	if e, _ := got[0]["error"].(string); e == "" {
 		t.Fatalf("지문 없이 그대로 올라갔다: %#v", got[0])
@@ -639,8 +515,8 @@ func TestEnrollmentsGoUpWithoutAnyResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("돌지 못했다: %v", err)
 	}
-	if rep.Enrollments != 1 || count(p.gotBody, "enrollments") != 1 {
-		t.Fatalf("연결확인만으로는 안 올렸다: %+v %#v", rep, p.gotBody)
+	if rep.Enrollments != 1 || count(p.gotEnr, "enrollments") != 1 {
+		t.Fatalf("연결확인만으로는 안 올렸다: %+v %#v", rep, p.gotEnr)
 	}
 }
 

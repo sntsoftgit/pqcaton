@@ -19,7 +19,7 @@ import (
 //
 // 다른 프로세스가 잡은 상태를 흉내 내려고 잠금 파일을 직접 건다. 실제로 겪는 것이 그것이다.
 func TestSecondRunDoesNothingWhileFirstHoldsTheLock(t *testing.T) {
-	p := &plane{job: map[string]any{"id": "j1", "kind": "observe"}}
+	p := &plane{}
 	srv := p.start(t)
 	cfg, cl := setup(t, srv, "web-01-openssl.json")
 

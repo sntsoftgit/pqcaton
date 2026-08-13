@@ -5,7 +5,8 @@
 // 규정을 그대로 따른다.
 //
 // 상태를 갖지 않는다. 스케줄에 깨어나 [RunOnce]를 한 번 돌고 끝난다 — 죽으면 다음 스케줄에
-// 다시 뜨면 그만이고, 진행 중이던 작업은 컨트롤 플레인의 점유 만료가 회수한다.
+// 다시 뜨면 그만이다. **컨트롤 플레인에 할 일을 묻지 않는다**: 스케줄이 곧 관측 주기이고,
+// 무엇을 볼지는 운영자가 채운 인벤토리가 정한다.
 package runner
 
 import (
@@ -61,7 +62,7 @@ type Config struct {
 	// BadKeepDays — 못 올린 결과를 며칠 두나. `sent`보다 길다(위 [badDir]).
 	BadKeepDays int
 
-	// Playbook — 관측 작업을 받으면 돌릴 플레이북. pqcota의 참조 플레이북을 그대로 쓴다.
+	// Playbook — 스케줄마다 돌릴 플레이북. pqcota의 참조 플레이북을 그대로 쓴다.
 	// 비면 돌리지 않는다 — 결과를 올리는 일만 한다.
 	Playbook string
 	// Inventory — 그 플레이북에 넘길 대상 목록. **운영자가 채운 파일이다.**
@@ -186,13 +187,10 @@ func (c *Config) check() error {
 
 // Report — 한 번 돈 결과.
 type Report struct {
-	JobID    string // 받아 온 작업. 없었으면 빈 값
-	Kind     string
-	Files    int    // 올린 결과 파일 수
-	Bad      int    // 읽을 수 없어 치운 파일 수
-	Played   bool   // 플레이북을 돌렸나
-	Accepted int    // 컨트롤 플레인이 적재한 수
-	Job      string // 작업 처리 결과 — closed · not-found · not-leased …
+	Files    int  // 올린 결과 파일 수
+	Bad      int  // 읽을 수 없어 치운 파일 수
+	Played   bool // 플레이북을 돌렸나
+	Accepted int  // 컨트롤 플레인이 적재한 수
 
 	// 연결확인. 올린 수와 그 판정이다(§6.3).
 	Enrollments int
@@ -202,12 +200,12 @@ type Report struct {
 
 // RunOnce — 한 번 돈다. 스케줄이 이것을 부른다.
 //
-// 순서가 이렇다는 것이 요점이다 — **작업을 먼저 묻고, 결과를 올리며 그 작업을 닫는다.**
-// 올리기와 닫기가 한 왕복인 이유는 §6.2.1에 있다: 나누면 "결과는 올렸는데 닫지 못한"
-// 구간이 생기고, 그 작업은 만료돼 한 번 더 배포된다.
+// **스케줄이 곧 관측 주기다.** 컨트롤 플레인에 할 일을 묻지 않는다 — 무엇을 볼지는 운영자가
+// 채운 인벤토리가 정하고, 언제 볼지는 이 프로세스를 깨우는 스케줄이 정한다. 그래서 러너는
+// **말할 줄만 알면 된다.**
 //
-// **작업이 없어도 결과는 올린다.** 스케줄이 돌린 관측이 결과 디렉터리에 남아 있을 수 있고,
-// 그것을 다음 작업이 올 때까지 묵혀 둘 이유가 없다.
+// 올리는 자리는 둘이고 **서로 독립이다.** 하나가 실패해도 다른 하나는 올라간다 — 연결확인이
+// 안 올라갔다고 이미 끝난 관측까지 묵힐 이유가 없다.
 func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	var rep Report
 
@@ -220,36 +218,71 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	defer release()
 	defer sweepBoth(c, log) // 실패해도 청소는 한다 — 디스크가 차면 관측이 멈춘다
 
-	job, ok, err := cl.NextJob(c.RunnerID)
-	if err != nil {
-		return rep, fmt.Errorf("작업 조회: %w", err)
-	}
 	var playErr error
-	if ok {
-		rep.JobID, rep.Kind = job.ID, job.Kind
-		log.Info("작업을 받았다", "job", job.ID, "kind", job.Kind, "targets", len(job.Targets))
-
-		if c.Playbook != "" {
-			if playErr = runPlaybook(c, job, log); playErr == nil {
-				rep.Played = true
-			} else {
-				// **작업을 닫지 않는다.** 반쯤 된 것을 「끝났다」로 두면 그 노드는 다음
-				// 관측까지 빈 채로 남는다. 만료가 회수해 다시 배포한다 — 읽기라 안전하다.
-				rep.JobID = ""
-			}
+	if c.Playbook != "" {
+		if playErr = runPlaybook(c, log); playErr == nil {
+			rep.Played = true
 		}
+		// 실패해도 계속한다. **반쯤 나온 결과라도 올린다** — 버리면 그 관측은 사라지고,
+		// 무엇이 왜 안 됐는지는 컨트롤 플레인의 완전성 맵에서 봐야 한다.
 	}
 
+	if err := sendEnrollments(c, cl, &rep, log); err != nil {
+		log.Error("연결확인을 올리지 못했다 — 다음 실행이 다시 올린다", "err", err)
+	}
+	if err := sendResults(c, cl, &rep, log); err != nil {
+		return rep, err
+	}
+	return rep, playErr
+}
+
+// sendResults — 관측 결과를 올리고 옮긴다.
+func sendResults(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 	files, err := jsonFiles(c.ResultsDir)
 	if err != nil {
-		return rep, fmt.Errorf("결과 디렉터리: %w", err)
+		return fmt.Errorf("결과 디렉터리: %w", err)
+	}
+	payloads, good, bad := read(files)
+	if len(bad) > 0 {
+		// **하나가 깨졌다고 나머지를 버리지 않는다.** 다만 조용히 넘기지도 않는다 —
+		// 그대로 두면 다음 실행마다 같은 파일에 걸려 그 디렉터리가 영영 안 올라간다.
+		rep.Bad += len(bad)
+		log.Warn("읽을 수 없는 결과를 치운다 — 왜 깨졌는지 봐야 한다",
+			"files", bad, "moved_to", filepath.Join(c.ResultsDir, badDir))
+		if err := move(c.ResultsDir, badDir, bad); err != nil {
+			log.Error("치우지 못했다 — 다음 실행에서 또 걸린다", "err", err)
+		}
+	}
+	if len(payloads) == 0 {
+		return nil
 	}
 
-	// **연결확인은 관측과 같은 왕복에 실린다.** 다섯 번째 엔드포인트를 두지 않는 것과
-	// 같은 이유다(§6.2) — 나누면 하나가 성공하고 하나가 실패한 구간이 생긴다.
+	res, err := cl.SendResults(c.RunnerID, payloads)
+	if err != nil {
+		// **파일을 그대로 둔다.** 다음 실행이 다시 올린다 — 같은 결과는 멱등이 접는다.
+		return fmt.Errorf("결과 전송: %w", err)
+	}
+	rep.Files, rep.Accepted = len(good), res.Accepted
+
+	// 올린 것은 옮긴다. 안 옮기면 매번 다시 올리게 되고, 멱등이 접어 주더라도
+	// 그만큼 러너와 경계가 헛일을 한다.
+	if err := move(c.ResultsDir, sentDir, good); err != nil {
+		log.Error("올린 결과를 옮기지 못했다 — 다음 실행에 다시 올라간다", "err", err)
+	}
+	// **`off_scope`를 함께 찍는다.** 이 값이 없으면 `accepted:0`만 보이고, 왜 안
+	// 들어왔는지는 컨트롤 플레인 DB를 열어야 안다 — 운영자 눈에는 아무 일도 안 일어난
+	// 것으로 보인다.
+	log.Info("결과를 올렸다", "files", rep.Files, "accepted", rep.Accepted,
+		"duplicate", res.Duplicate, "rejected", res.Rejected,
+		"unverified", res.Unverified, "off_scope", res.OffScope)
+	return nil
+}
+
+// sendEnrollments — 연결확인을 올리고 옮긴다.
+func sendEnrollments(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 	enr, err := readEnrollments(c.ResultsDir, c.AddrKey)
 	if err != nil {
-		return rep, fmt.Errorf("등재 디렉터리: %w", err)
+		return fmt.Errorf("등재 디렉터리: %w", err)
 	}
 	if enr.SawAddr && c.AddrKey == "" {
 		// 조용히 넘기면, 영역 간 엣지를 이어 붙일 표가 없다는 것을 **몇 달 뒤에**
@@ -264,56 +297,22 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 			log.Error("치우지 못했다 — 다음 실행에서 또 걸린다", "err", err)
 		}
 	}
-
-	payloads, good, bad := read(files)
-	if len(bad) > 0 {
-		// **하나가 깨졌다고 나머지를 버리지 않는다.** 다만 조용히 넘기지도 않는다 —
-		// 그대로 두면 다음 실행마다 같은 파일에 걸려 그 디렉터리가 영영 안 올라간다.
-		rep.Bad = len(bad)
-		log.Warn("읽을 수 없는 결과를 치운다 — 왜 깨졌는지 봐야 한다",
-			"files", bad, "moved_to", filepath.Join(c.ResultsDir, badDir))
-		if err := move(c.ResultsDir, badDir, bad); err != nil {
-			log.Error("치우지 못했다 — 다음 실행에서 또 걸린다", "err", err)
-		}
-	}
-	if len(payloads) == 0 && len(enr.Items) == 0 {
-		if ok {
-			// 작업은 받았는데 올릴 것이 없다. 닫지 않는다 — 만료가 회수한다.
-			log.Warn("작업을 받았는데 올릴 결과가 없다", "job", job.ID, "dir", c.ResultsDir)
-		}
-		return rep, playErr
+	if len(enr.Items) == 0 {
+		return nil
 	}
 
-	res, err := cl.SendResults(c.RunnerID, rep.JobID, payloads, enr.Items)
+	res, err := cl.SendEnrollments(c.RunnerID, enr.Items)
 	if err != nil {
-		// **파일을 그대로 둔다.** 다음 실행이 다시 올린다 — 같은 결과는 멱등이 접는다.
-		return rep, fmt.Errorf("결과 전송: %w", err)
+		return fmt.Errorf("연결확인 전송: %w", err)
 	}
-	rep.Files, rep.Accepted, rep.Job = len(good), res.Accepted, res.Job
 	rep.Enrollments, rep.Enrolled, rep.Held = len(enr.Items), res.Enrolled, res.Held
-
-	// 올린 것은 옮긴다. 안 옮기면 매번 다시 올리게 되고, 멱등이 접어 주더라도
-	// 그만큼 러너와 경계가 헛일을 한다.
-	if err := move(c.ResultsDir, sentDir, good); err != nil {
-		log.Error("올린 결과를 옮기지 못했다 — 다음 실행에 다시 올라간다", "err", err)
-	}
 	if err := move(filepath.Join(c.ResultsDir, enrollDir), sentDir, enr.Good); err != nil {
 		log.Error("올린 연결확인을 옮기지 못했다 — 다음 실행에 다시 올라간다", "err", err)
 	}
-	if rep.Files > 0 {
-		// **`off_scope`를 함께 찍는다.** 이 값이 없으면 `accepted:0`만 보이고, 왜
-		// 안 들어왔는지는 컨트롤 플레인 DB를 열어야 안다 — 운영자 눈에는 아무 일도
-		// 안 일어난 것으로 보인다.
-		log.Info("결과를 올렸다", "files", rep.Files, "accepted", rep.Accepted,
-			"duplicate", res.Duplicate, "rejected", res.Rejected,
-			"unverified", res.Unverified, "off_scope", res.OffScope, "job", res.Job)
-	}
-	if rep.Enrollments > 0 {
-		log.Info("연결확인을 올렸다", "sent", rep.Enrollments, "enrolled", res.Enrolled,
-			"held", res.Held, "failed", res.FailedNodes,
-			"refused", res.Refused, "refused_reason", res.RefusedReason)
-	}
-	return rep, playErr
+	log.Info("연결확인을 올렸다", "sent", rep.Enrollments, "enrolled", res.Enrolled,
+		"held", res.Held, "failed", res.FailedNodes,
+		"refused", res.Refused, "refused_reason", res.RefusedReason)
+	return nil
 }
 
 // read — 파일을 읽어 보낼 것과 치울 것으로 가른다.

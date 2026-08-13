@@ -38,8 +38,9 @@ func main() {
 	}
 	if err != nil {
 		// **실패를 숨기지 않는다.** 조용히 0으로 끝내면 스케줄러가 잘 돈 것으로 읽는다.
-		log.Error("돌지 못했다", "err", err, "job", rep.JobID)
+		log.Error("돌지 못했다", "err", err)
 		os.Exit(1)
 	}
-	log.Info("끝", "job", rep.JobID, "files", rep.Files, "accepted", rep.Accepted, "job_result", rep.Job)
+	log.Info("끝", "played", rep.Played, "files", rep.Files, "accepted", rep.Accepted,
+		"enrollments", rep.Enrollments, "enrolled", rep.Enrolled, "held", rep.Held)
 }

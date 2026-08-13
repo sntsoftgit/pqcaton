@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -36,46 +35,6 @@ func NewClient(c Config) *Client {
 	}
 }
 
-// Job — 받아 온 작업.
-type Job struct {
-	ID        string    `json:"id"`
-	Kind      string    `json:"kind"`
-	Targets   []string  `json:"targets"`
-	Payload   []byte    `json:"payload"`
-	LeaseTill time.Time `json:"lease_till"`
-	Attempts  int       `json:"attempts"`
-}
-
-// NextJob — 할 일이 있나. 없으면 (Job{}, false, nil).
-//
-// **기다리지 않는다.** 러너는 상주하지 않으므로 붙들고 있어 봐야 그 프로세스는 곧 끝난다 —
-// 새 작업이 러너에 닿는 지연은 스케줄 간격이고, 그것이 이 배포 형태의 대가다.
-func (c *Client) NextJob(runnerID string) (Job, bool, error) {
-	q := url.Values{"runner_id": {runnerID}}
-	req, err := c.request(http.MethodGet, "/v1/runner/jobs?"+q.Encode(), nil)
-	if err != nil {
-		return Job{}, false, err
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return Job{}, false, err
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusNoContent:
-		return Job{}, false, nil
-	case http.StatusOK:
-		var j Job
-		if err := json.NewDecoder(resp.Body).Decode(&j); err != nil {
-			return Job{}, false, fmt.Errorf("작업을 읽을 수 없다: %w", err)
-		}
-		return j, true, nil
-	default:
-		return Job{}, false, statusError(resp)
-	}
-}
-
 // Enrollment — 연결확인 하나의 결과. 대상 하나에 하나다.
 //
 // **접속에 쓸 수 있는 것이 하나도 없다.** 주소는 러너가 토큰으로 바꾸고 버린다(§6.3.1) —
@@ -90,12 +49,16 @@ type Enrollment struct {
 
 type resultsRequest struct {
 	RunnerID      string            `json:"runner_id"`
-	JobID         string            `json:"job_id,omitempty"`
 	RunnerVersion string            `json:"runner_version"`
 	Results       []json.RawMessage `json:"results"`
-	// Enrollments — 연결확인 결과. **같은 요청에 실린다** — 다섯 번째 엔드포인트를
-	// 두지 않는다(§6.2).
-	Enrollments []Enrollment `json:"enrollments,omitempty"`
+}
+
+// enrollRequest — 연결확인. **결과와 다른 자리로 간다** — 둘은 같은 때에 올라오지
+// 않는다(연결확인은 대상 목록이 바뀔 때, 관측은 매 스케줄).
+type enrollRequest struct {
+	RunnerID      string       `json:"runner_id"`
+	RunnerVersion string       `json:"runner_version"`
+	Enrollments   []Enrollment `json:"enrollments"`
 }
 
 // Results — 컨트롤 플레인이 무엇을 했는지.
@@ -106,10 +69,10 @@ type Results struct {
 	Unverified int      `json:"unverified"`
 	OffScope   int      `json:"off_scope"`
 	Nodes      []string `json:"nodes"`
-	// Job — 작업 처리 결과. closed · not-found · not-leased · no-runner
-	Job string `json:"job"`
+}
 
-	// 등재 판정. 셋으로 갈린다(§6.3).
+// Enrolled — 연결확인의 판정. 셋으로 갈린다(§6.3).
+type Enrolled struct {
 	Enrolled    int `json:"enrolled"`
 	Held        int `json:"held"`
 	FailedNodes int `json:"failed_nodes"`
@@ -118,37 +81,53 @@ type Results struct {
 	RefusedReason string `json:"refused_reason"`
 }
 
-// SendResults — 결과와 연결확인을 올리고, jobID가 있으면 **그 작업까지 닫는다.**
+// SendResults — 관측 결과를 올린다.
 //
 // 본문은 이미 읽힌 것을 받는다 — 무엇을 보내고 무엇을 치울지는 [RunOnce]가 정한다.
-func (c *Client) SendResults(runnerID, jobID string, payloads []json.RawMessage, enrolls []Enrollment) (Results, error) {
+func (c *Client) SendResults(runnerID string, payloads []json.RawMessage) (Results, error) {
 	body := resultsRequest{
-		RunnerID: runnerID, JobID: jobID, RunnerVersion: Version,
-		Results: payloads, Enrollments: enrolls,
+		RunnerID: runnerID, RunnerVersion: Version, Results: payloads,
 	}
+	var out Results
+	err := c.post("/v1/runner/results", body, &out)
+	return out, err
+}
+
+// SendEnrollments — 연결확인을 올린다.
+func (c *Client) SendEnrollments(runnerID string, items []Enrollment) (Enrolled, error) {
+	body := enrollRequest{
+		RunnerID: runnerID, RunnerVersion: Version, Enrollments: items,
+	}
+	var out Enrolled
+	err := c.post("/v1/runner/enrollments", body, &out)
+	return out, err
+}
+
+// post — 본문을 보내고 응답을 읽는다. 두 경로가 같은 규칙을 쓰게 한 자리다 —
+// 갈라 두면 한쪽에만 상태 코드 처리가 빠지는 날이 온다.
+func (c *Client) post(path string, body, out any) error {
 	buf, err := json.Marshal(body)
 	if err != nil {
-		return Results{}, err
+		return err
 	}
-	req, err := c.request(http.MethodPost, "/v1/runner/results", bytes.NewReader(buf))
+	req, err := c.request(http.MethodPost, path, bytes.NewReader(buf))
 	if err != nil {
-		return Results{}, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return Results{}, err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return Results{}, statusError(resp)
+		return statusError(resp)
 	}
-	var out Results
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return Results{}, fmt.Errorf("응답을 읽을 수 없다: %w", err)
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("응답을 읽을 수 없다: %w", err)
 	}
-	return out, nil
+	return nil
 }
 
 func (c *Client) request(method, path string, body io.Reader) (*http.Request, error) {
