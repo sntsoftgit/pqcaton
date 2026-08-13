@@ -19,6 +19,25 @@
 객체가 애초에 달라서, 통과해도 격리를 증명하지 않습니다 — **한 테이블을 공유하는 쪽에서만**
 잴 수 있습니다.
 
+> **실측으로 확인했습니다**(2026-08-12, PostgreSQL 16). `ActiveKeys`의 질의에서 `org` 조건만
+> 빼 보면 `CP-ORG-1`은 *"다른 조직의 키가 보인다"*로 실패하는데, **같은 것을 보는 인메모리
+> 케이스는 그대로 통과합니다.** 위 문단이 주장이 아니라 사실이라는 뜻입니다.
+
+### 돌리는 법
+
+```bash
+docker run -d --name pqcaton-test-pg -e POSTGRES_PASSWORD=CHANGEME -e POSTGRES_DB=pqcaton \
+  -p 127.0.0.1:55432:5432 postgres:16-alpine
+
+PQCATON_TEST_DSN='postgres://postgres:CHANGEME@127.0.0.1:55432/pqcaton?sslmode=disable' \
+  go test ./... -count=1
+
+docker rm -f pqcaton-test-pg
+```
+
+표는 매번 `CREATE TABLE IF NOT EXISTS`로 올라가고, 케이스마다 조직 이름을 다르게 두므로
+같은 DB를 여러 번 돌려도 서로 밟지 않습니다.
+
 케이스 번호는 **`CP`(Control Plane) - 무엇을 보나 - 순번**입니다 — `CP-TOKEN`(러너 토큰) ·
 `CP-KEY`(collector 공개키 등록소) · `CP-RUNNER`(러너 등록) · `CP-ORG`(조직 격리) ·
 `CP-PG`(실 Postgres). 번호는 그것을 검증하는 **테스트 파일로 이어집니다.**
