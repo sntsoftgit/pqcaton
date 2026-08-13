@@ -63,9 +63,10 @@ type enrollRequest struct {
 
 // Results — 컨트롤 플레인이 무엇을 했는지.
 type Results struct {
-	Accepted   int      `json:"accepted"`
-	Duplicate  int      `json:"duplicate"`
-	Rejected   int      `json:"rejected"`
+	Accepted  int `json:"accepted"`
+	Duplicate int `json:"duplicate"`
+	Rejected  int `json:"rejected"`
+	// Unverified — 상류가 「확인 못 했다」로 센 수. 서명을 요구하지 않으므로 늘 전부다.
 	Unverified int      `json:"unverified"`
 	OffScope   int      `json:"off_scope"`
 	Nodes      []string `json:"nodes"`

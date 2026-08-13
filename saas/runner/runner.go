@@ -272,9 +272,11 @@ func sendResults(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 	// **`off_scope`를 함께 찍는다.** 이 값이 없으면 `accepted:0`만 보이고, 왜 안
 	// 들어왔는지는 컨트롤 플레인 DB를 열어야 안다 — 운영자 눈에는 아무 일도 안 일어난
 	// 것으로 보인다.
+	//
+	// `unverified`는 찍지 않는다. 서명을 요구하지 않으므로 **전부 미검증으로 세어져**
+	// 늘 결과 수와 같다 — 늘 켜져 있는 경고등은 아무것도 알리지 못한다.
 	log.Info("결과를 올렸다", "files", rep.Files, "accepted", rep.Accepted,
-		"duplicate", res.Duplicate, "rejected", res.Rejected,
-		"unverified", res.Unverified, "off_scope", res.OffScope)
+		"duplicate", res.Duplicate, "rejected", res.Rejected, "off_scope", res.OffScope)
 	return nil
 }
 
