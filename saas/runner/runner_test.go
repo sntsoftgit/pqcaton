@@ -439,3 +439,53 @@ func TestExpiringLeaseIsNotStarted(t *testing.T) {
 		t.Fatal("만료 직전인데 대상 노드에 붙었다")
 	}
 }
+
+// RUN-16 — **모르는 작업 종류는 아무것도 하지 않는다.**
+//
+// 모르는 것을 관측 플레이북으로 돌리면, 그것이 쓰기 작업일 때 대상 노드에 무슨 일이 날지
+// 우리가 모른다. 새 종류가 생길 때 옛 러너가 조용히 엉뚱한 일을 하는 것을 막는다.
+//
+// `provision`도 지금은 여기 걸린다 — 적용 경로를 만들지 않았고, 반쯤 만든 것으로 고객
+// 서버에 쓰지 않는다.
+func TestUnknownKindDoesNothing(t *testing.T) {
+	for _, kind := range []string{"provision", "아직-없는-종류"} {
+		p := &plane{job: map[string]any{"id": "j1", "kind": kind}}
+		srv := p.start(t)
+		cfg, cl := setup(t, srv)
+		ran := filepath.Join(cfg.ResultsDir, "ran")
+		cfg.Ansible = fakeAnsible(t, t.TempDir(), "touch "+ran)
+		cfg.Playbook = "discover.yml"
+
+		if _, err := runner.RunOnce(cfg, cl, quiet()); err == nil {
+			t.Fatalf("%s: 모르는 종류인데 오류가 안 났다", kind)
+		}
+		if _, err := os.Stat(ran); err == nil {
+			t.Fatalf("%s: 모르는 종류인데 대상 노드에 붙었다", kind)
+		}
+	}
+}
+
+// RUN-17 — `enroll`과 `observe`는 같은 참조 플레이북으로 돈다.
+//
+// 둘 다 읽기이고, 등재는 그중 지문 확인만 쓴다 — 대상을 좁히는 것 말고 러너가 달리 할
+// 일이 없다.
+func TestEnrollRunsTheSamePlaybook(t *testing.T) {
+	p := &plane{job: map[string]any{"id": "j1", "kind": "enroll", "targets": []string{"web-01"}}}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv)
+	args := filepath.Join(cfg.ResultsDir, "args")
+	cfg.Ansible = fakeAnsible(t, t.TempDir(), `echo "$@" > `+args)
+	cfg.Playbook = "discover.yml"
+
+	rep, err := runner.RunOnce(cfg, cl, quiet())
+	if err != nil {
+		t.Fatalf("실행: %v", err)
+	}
+	if !rep.Played {
+		t.Fatalf("등재 작업이 안 돌았다: %+v", rep)
+	}
+	got, _ := os.ReadFile(args)
+	if !strings.Contains(string(got), "--limit web-01") {
+		t.Fatalf("대상이 안 좁혀졌다: %s", got)
+	}
+}

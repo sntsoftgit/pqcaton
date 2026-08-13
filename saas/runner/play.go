@@ -10,8 +10,26 @@ import (
 	"time"
 )
 
-// ErrNoPlaybook — 플레이북이 설정되지 않았다.
-var ErrNoPlaybook = errors.New("플레이북이 설정되지 않았다")
+// 작업 종류. 컨트롤 플레인이 정한 이름을 그대로 쓴다(§6.2).
+const (
+	// KindEnroll — 대상에 붙어 머신 지문만 확인한다.
+	KindEnroll = "enroll"
+	// KindObserve — collector를 반입·실행·회수한다.
+	KindObserve = "observe"
+	// KindProvision — 확정된 계획을 적용한다.
+	KindProvision = "provision"
+)
+
+var (
+	// ErrNoPlaybook — 플레이북이 설정되지 않았다.
+	ErrNoPlaybook = errors.New("플레이북이 설정되지 않았다")
+	// ErrUnknownKind — 모르는 작업 종류다.
+	//
+	// **아무것도 하지 않는다.** 모르는 것을 관측 플레이북으로 돌리면, 그것이 쓰기
+	// 작업일 때 대상 노드에 무슨 일이 날지 우리가 모른다 — 새 종류가 생길 때
+	// 옛 러너가 조용히 엉뚱한 일을 하는 것을 막는다(§6.6).
+	ErrUnknownKind = errors.New("모르는 작업 종류다")
+)
 
 // DefaultAnsible — 부를 명령. PATH에서 찾는다.
 const DefaultAnsible = "ansible-playbook"
@@ -33,6 +51,17 @@ const playDeadlineMargin = 30 * time.Second
 // **점유 만료를 데드라인으로 쓴다.** 만료된 뒤에 끝나 봐야 그 작업은 이미 회수됐다 —
 // 그때까지 도는 것은 대상 노드에 부담만 준다.
 func runPlaybook(c Config, job Job, log *slog.Logger) error {
+	switch job.Kind {
+	case KindEnroll, KindObserve:
+		// 둘 다 읽기다. pqcota의 참조 플레이북이 반입·실행·회수를 하고, 등재는 그중
+		// 지문 확인만 쓴다 — 대상을 좁히는 것 말고 러너가 달리 할 일이 없다.
+	case KindProvision:
+		// **쓰기다. 아직 하지 않는다.** 확정된 계획을 받아 적용하는 경로는 만들지
+		// 않았고, 반쯤 만든 것으로 고객 서버에 쓰지 않는다.
+		return fmt.Errorf("%w: %s — 적용은 아직 만들지 않았다", ErrUnknownKind, job.Kind)
+	default:
+		return fmt.Errorf("%w: %q", ErrUnknownKind, job.Kind)
+	}
 	if c.Playbook == "" {
 		return ErrNoPlaybook
 	}
