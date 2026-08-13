@@ -183,11 +183,21 @@ func TestJobsRequireOrg(t *testing.T) {
 }
 
 // CP-JOB-10 — 종류가 재배포 가능 여부를 안다. 정책이 한 자리에만 있어야 한다.
+//
+// **모르는 종류는 재배포하지 않는다.** `!= Provision`으로 쓰면 새 종류가 자동 재배포로
+// 떨어진다 — 그것이 쓰기 작업이면 아무도 손대지 않아도 두 번 적용되는 쪽으로 기운다.
 func TestRedeployablePolicy(t *testing.T) {
 	if !jobs.Observe.Redeployable() || !jobs.Enroll.Redeployable() {
 		t.Fatal("읽기 작업이 재배포 불가로 잡혔다")
 	}
 	if jobs.Provision.Redeployable() {
 		t.Fatal("쓰기 작업이 재배포 가능으로 잡혔다")
+	}
+	if jobs.Kind("아직-없는-종류").Redeployable() {
+		t.Fatal("모르는 종류가 재배포 가능으로 잡혔다")
+	}
+	// AllKinds가 뒤처지면 Pg판의 정리 질의가 아는 종류를 빠뜨린다.
+	if len(jobs.AllKinds) != 3 {
+		t.Fatalf("AllKinds가 종류를 따라가지 못한다: %v", jobs.AllKinds)
 	}
 }

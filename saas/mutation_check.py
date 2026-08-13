@@ -84,6 +84,53 @@ MUTATIONS = [
         "TestOversizedBodyIsRejectedNotTruncated",
     ),
     (
+        "조직 격리 · Lease 질의에서 org 조건 제거 → CP-PG-8",
+        "saas/internal/jobs/pg.go",
+        [("      WHERE org=$1 AND state='pending'", "      WHERE ($1 IS NOT NULL) AND state='pending'")],
+        "./saas/internal/jobs/...",
+        "TestPgLeaseIsolatesOrg",
+    ),
+    (
+        "동시 점유 · 고르는 것과 표시하는 것 사이를 벌림 → CP-PG-9",
+        "saas/internal/jobs/pg.go",
+        # 같은 줄이 Sweep에도 있다 — LIMIT과 함께 잡아 Lease 쪽만 겨냥한다.
+        [("		      FOR UPDATE SKIP LOCKED\n		      LIMIT 1\n", "		      LIMIT 1\n")],
+        "./saas/internal/jobs/...",
+        "TestPgLeaseIsExclusiveUnderConcurrency",
+    ),
+    (
+        "재배포 정책 · Pg 정리가 종류를 안 가림 → CP-PG-10",
+        "saas/internal/jobs/pg.go",
+        [("		if k.Redeployable() {", "		if true {")],
+        "./saas/internal/jobs/...",
+        "TestPgSweepFollowsKindPolicy",
+    ),
+    (
+        "재배포 정책 · 모르는 종류가 자동 재배포로 떨어짐 → CP-JOB-10",
+        "saas/internal/jobs/jobs.go",
+        [("func (k Kind) Redeployable() bool { return k == Enroll || k == Observe }",
+          "func (k Kind) Redeployable() bool { return k != Provision }")],
+        "./saas/internal/jobs/...",
+        "TestRedeployablePolicy",
+    ),
+    (
+        "롱폴 · 조직을 질의 문자열에서 읽음 → CP-HTTP-10",
+        "saas/internal/api/api.go",
+        [('\trunnerID := strings.TrimSpace(r.URL.Query().Get("runner_id"))',
+          '\tif q := r.URL.Query().Get("org"); q != "" {\n\t\to = org.ID(q)\n\t}\n'
+          '\trunnerID := strings.TrimSpace(r.URL.Query().Get("runner_id"))')],
+        "./saas/internal/api/...",
+        "TestJobsOrgComesFromTokenNotQuery",
+    ),
+    (
+        "롱폴 · 기다리지 않고 곧장 없다고 답함 → CP-HTTP-9",
+        "saas/internal/api/api.go",
+        [("\tctx, cancel := context.WithTimeout(r.Context(), wait)",
+          "\t_ = wait\n\tctx, cancel := context.WithTimeout(r.Context(), 0)")],
+        "./saas/internal/api/...",
+        "TestLongPollDeliversJobThatArrivesWhileWaiting",
+    ),
+    (
         "HTTP · 인증 실패 사유를 응답에 담음 → CP-HTTP-3",
         "saas/internal/api/api.go",
         [('s.fail(w, http.StatusUnauthorized, "인증할 수 없다")', "s.fail(w, http.StatusUnauthorized, err.Error())")],

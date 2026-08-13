@@ -23,6 +23,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/saas/internal/access"
 	"github.com/sntsoftgit/pqcaton/saas/internal/api"
 	"github.com/sntsoftgit/pqcaton/saas/internal/intake"
+	"github.com/sntsoftgit/pqcaton/saas/internal/jobs"
 )
 
 func main() {
@@ -47,6 +48,10 @@ func main() {
 			log.Error("멱등 스키마", "err", err)
 			os.Exit(1)
 		}
+		if err := jobs.Migrate(ctx, dsn); err != nil {
+			log.Error("작업 스키마", "err", err)
+			os.Exit(1)
+		}
 		log.Info("스키마를 올렸다")
 		return
 	}
@@ -65,6 +70,17 @@ func main() {
 	}
 	defer seen.Close()
 
+	q, err := jobs.NewPgStore(ctx, dsn)
+	if err != nil {
+		log.Error("작업 저장소", "err", err)
+		os.Exit(1)
+	}
+	defer q.Close()
+
+	// 만료된 점유를 되돌리는 것은 배경 일이다 — 요청이 오지 않아도 돌아야 한다.
+	// 러너가 죽어 조용해진 조직일수록 그 작업이 오래 묶인다(§6.2.1).
+	go sweeping(ctx, q, log)
+
 	// 조직마다 히스토리 핸들이 다르다. 여기서 한 번 열고 재사용한다 —
 	// 조직 수만큼 풀이 늘어나므로, 고객이 늘면 이 자리를 다시 본다.
 	pools := map[org.ID]history.Store{}
@@ -80,7 +96,7 @@ func main() {
 		return s, nil
 	}
 
-	srv := api.New(acc, seen, stores, api.Config{
+	srv := api.New(acc, seen, q, stores, api.Config{
 		TrustProxy: os.Getenv("PQCATON_TRUST_PROXY") == "1",
 	}, log)
 
@@ -99,5 +115,33 @@ func main() {
 	if err := h.ListenAndServe(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+
+// sweepEvery — 만료된 점유를 훑는 간격.
+const sweepEvery = time.Minute
+
+// sweeping — 만료된 점유를 주기적으로 정리한다.
+//
+// 읽기 작업은 대기로 돌아가고, `provision`은 **사람이 볼 자리**로 간다 — 러너가 이미
+// 적용했는데 응답만 못 준 것일 수 있어 자동으로 다시 주지 않는다(§6.2.1).
+func sweeping(ctx context.Context, q *jobs.PgStore, log *slog.Logger) {
+	tick := time.NewTicker(sweepEvery)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+		back, review, err := q.Sweep(time.Now())
+		if err != nil {
+			log.Error("작업 정리", "err", err)
+			continue
+		}
+		if back > 0 || review > 0 {
+			// 조용히 넘기지 않는다 — 사람이 볼 자리로 간 것이 있으면 그 사실이 남아야 한다.
+			log.Info("만료된 점유를 정리했다", "redeployed", back, "needs_review", review)
+		}
 	}
 }

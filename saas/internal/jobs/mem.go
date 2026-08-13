@@ -131,7 +131,7 @@ func (s *MemStore) Sweep(now time.Time) (int, int, error) {
 			// 쓰기 작업은 자동으로 다시 주지 않는다 — 두 번 적용될 수 있고,
 			// 두 번째 before 캡처는 이미 바뀐 상태를 찍는다(§6.2.1).
 			j.State, j.LeaseTill = NeedsReview, time.Time{}
-			j.Note = "점유가 만료됐다 — 러너가 이미 적용했을 수 있어 자동으로 다시 주지 않는다"
+			j.Note = NoteExpired
 			review++
 		}
 		j.Updated = now

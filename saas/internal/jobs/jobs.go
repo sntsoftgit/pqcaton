@@ -23,6 +23,12 @@ const (
 	Provision Kind = "provision"
 )
 
+// AllKinds — 아는 종류 전부.
+//
+// Pg판이 재배포 정책을 질의 파라미터로 넘겨야 해서 목록이 필요하다. 정책 자체는
+// [Kind.Redeployable] 하나에만 두고, 이 목록은 그것을 훑는 데만 쓴다.
+var AllKinds = []Kind{Enroll, Observe, Provision}
+
 // State — 작업의 상태.
 type State string
 
@@ -39,9 +45,16 @@ const (
 
 // Redeployable — 만료됐을 때 자동으로 다시 배포해도 되는 종류인가.
 //
-// `provision`만 false다. 러너가 플레이북을 이미 적용했는데 응답만 못 준 것일 수 있어,
-// 다시 주면 두 번 적용되고 두 번째 before 캡처가 이미 바뀐 상태를 찍는다(§6.2.1).
-func (k Kind) Redeployable() bool { return k != Provision }
+// **읽기만 열거한다.** `k != Provision`으로 쓰면 모르는 종류가 자동 재배포로 떨어진다 —
+// 새 종류가 쓰기일 때 아무도 손대지 않아도 조용히 두 번 실행되는 쪽으로 기운다.
+// 러너가 플레이북을 이미 적용했는데 응답만 못 준 것일 수 있어, 다시 주면 두 번 적용되고
+// 두 번째 before 캡처가 이미 바뀐 상태를 찍는다(§6.2.1).
+func (k Kind) Redeployable() bool { return k == Enroll || k == Observe }
+
+// NoteExpired — 자동 재배포를 하지 않고 사람에게 넘길 때 남기는 사유.
+//
+// 저장소마다 다른 문구를 두지 않는다 — 화면에서 같은 일이 두 가지로 보인다.
+const NoteExpired = "점유가 만료됐다 — 러너가 이미 적용했을 수 있어 자동으로 다시 주지 않는다"
 
 // Job — 작업 하나.
 type Job struct {

@@ -22,6 +22,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/saas/internal/access"
 	"github.com/sntsoftgit/pqcaton/saas/internal/api"
 	"github.com/sntsoftgit/pqcaton/saas/internal/intake"
+	"github.com/sntsoftgit/pqcaton/saas/internal/jobs"
 )
 
 var t0 = time.Date(2026, 8, 12, 9, 0, 0, 0, time.UTC)
@@ -31,26 +32,30 @@ const collector = "openssl-collector"
 type harness struct {
 	srv    http.Handler
 	acc    *access.MemStore
+	jobs   *jobs.MemStore
 	stores map[org.ID]*history.MemStore
 	token  string // acme의 유효 토큰 평문
+	beta   string // 다른 조직(beta)의 유효 토큰 평문
 	priv   string // acme에 등록된 collector 개인키
 }
 
 func newHarness(t *testing.T, cfg api.Config) *harness {
 	t.Helper()
 	acc := access.NewMemStore()
-	h := &harness{acc: acc, stores: map[org.ID]*history.MemStore{}}
+	h := &harness{acc: acc, jobs: jobs.NewMemStore(), stores: map[org.ID]*history.MemStore{}}
 
-	tok, err := access.NewToken()
-	if err != nil {
-		t.Fatalf("발급: %v", err)
+	for o, into := range map[org.ID]*string{"acme": &h.token, "beta": &h.beta} {
+		tok, err := access.NewToken()
+		if err != nil {
+			t.Fatalf("발급: %v", err)
+		}
+		if err := acc.PutToken(access.TokenRecord{
+			Lookup: tok.Lookup, Org: o, Digest: tok.Digest(), IssuedAt: t0,
+		}); err != nil {
+			t.Fatalf("토큰 저장: %v", err)
+		}
+		*into = tok.Plaintext
 	}
-	if err := acc.PutToken(access.TokenRecord{
-		Lookup: tok.Lookup, Org: "acme", Digest: tok.Digest(), IssuedAt: t0,
-	}); err != nil {
-		t.Fatalf("토큰 저장: %v", err)
-	}
-	h.token = tok.Plaintext
 
 	pub, priv, _ := sign.Generate()
 	h.priv = priv
@@ -70,7 +75,7 @@ func newHarness(t *testing.T, cfg api.Config) *harness {
 		return h.stores[o], nil
 	}
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
-	h.srv = api.New(acc, intake.NewMemSeen(), stores, cfg, quiet).Handler()
+	h.srv = api.New(acc, intake.NewMemSeen(), h.jobs, stores, cfg, quiet).Handler()
 	return h
 }
 
