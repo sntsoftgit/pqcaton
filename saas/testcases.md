@@ -20,8 +20,21 @@
 잴 수 있습니다.
 
 > **실측으로 확인했습니다**(2026-08-12, PostgreSQL 16). `ActiveKeys`의 질의에서 `org` 조건만
-> 빼 보면 `CP-ORG-1`은 *"다른 조직의 키가 보인다"*로 실패하는데, **같은 것을 보는 인메모리
-> 케이스는 그대로 통과합니다.** 위 문단이 주장이 아니라 사실이라는 뜻입니다.
+> 빼 보면 `CP-ORG-1`은 실패하는데, **같은 것을 보는 인메모리 케이스는 그대로 통과합니다.**
+> 위 문단이 주장이 아니라 사실이라는 뜻입니다.
+
+### 통과는 검증이 아닙니다
+
+케이스가 무엇을 재는지는 **일부러 깨서** 확인합니다. 지금까지 확인한 것:
+
+| 무엇을 깼나 | 어느 케이스가 잡았나 |
+|---|---|
+| `ActiveKeys` 질의에서 `org` 조건 제거 | `CP-ORG-1` (인메모리 케이스는 못 잡음) |
+| 검증자가 다른 조직의 키를 조회 | `CP-INTAKE-3` — *"다른 조직 키가 통과했다"* |
+| 거절된 것까지 멱등에 표시 | `CP-INTAKE-6` — *"거절이 굳어 다시 들어오지 못했다"* |
+
+`-race`도 같습니다. 단일 고루틴 케이스만 있으면 검출기가 볼 것이 없어 **깨끗한 것이
+아무것도 증명하지 않습니다.** `CP-INTAKE-10·11`이 그 자리를 메웁니다.
 
 ### 돌리는 법
 
@@ -105,6 +118,8 @@ docker rm -f pqcaton-test-pg
 | [CP-INTAKE-7](internal/intake/intake_test.go) | `TestBothKeysWorkDuringRotation` — 옛 키·새 키로 각각 서명 | 둘 다 통과 | 교체 구간이 적재 경로에서도 성립하는지 — 등록소만 되고 여기서 막히면 소용이 없습니다 |
 | [CP-INTAKE-8](internal/intake/intake_test.go) | `TestReceiveRequiresOrg` — 조직 없이 수신 | `ErrNoOrg` | 여기까지 왔는데 조직이 비었으면 인증 경로가 깨진 것입니다. 품지 않습니다 |
 | [CP-INTAKE-9](internal/intake/intake_test.go) | `TestSeenStoreIsolatesOrg` — 멱등 저장소에 두 조직의 같은 지문 | 서로 안 보인다 | 여기서 섞이면 한 조직의 결과가 다른 조직에서 **"이미 받았다"로 사라집니다** |
+| [CP-INTAKE-10](internal/intake/concurrency_test.go) | `TestConcurrentDistinctResults` — 서로 다른 결과 24개를 동시에 | 전부 들어간다 | 저장소는 요청 사이에서 공유됩니다. 동시성 케이스가 없으면 `-race`가 볼 것이 없어 **깨끗한 것이 아무것도 증명하지 않습니다** |
+| [**CP-INTAKE-11**](internal/intake/concurrency_test.go) | `TestConcurrentResendIsCountedOnce` — **같은** 결과를 16개 고루틴이 동시에 | 한 번만 적재, 나머지는 중복 | **실제 버그를 잡은 케이스입니다.** 확인과 표시가 나뉘어 있어 16번 다 적재됐습니다 — 러너의 재시도가 앞 요청과 겹치면 관측 횟수가 부풀려집니다 |
 
 ### CP-HTTP. 경계 (§6.2)
 
@@ -134,9 +149,9 @@ M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 레벨 | 수 |
 |---|---|
-| unit | 29 |
+| unit | 31 |
 | Postgres 필요 | 5 |
-| **전체** | **34** |
+| **전체** | **36** |
 
 ```bash
 grep -rh '^func Test' --include='*_test.go' saas/ | wc -l    # 전체
