@@ -51,9 +51,12 @@ pqcota가 규정으로 세운 *"레거시 호스트에 실행체 투입 = RCE �
 
 ```bash
 docker run -d --restart=always \
-  -e PQCATON_ORG=<조직> -e PQCATON_TOKEN=<발급 토큰> \
+  -e PQCATON_TOKEN=<발급 토큰> -e PQCATON_API=<컨트롤 플레인 주소> \
   <이미지>
 ```
+
+**조직을 적는 자리가 없습니다.** 토큰에서 유도합니다(§6.4) — 적는 자리를 두면 러너가 자기
+조직을 주장하는 길이 생기고, 그 순간 §6.4의 전제가 무너집니다.
 
 ## 4. 밖으로 보내는 것과 보내지 않는 것
 
