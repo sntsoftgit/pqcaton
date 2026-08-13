@@ -76,11 +76,26 @@ func (c *Client) NextJob(runnerID string) (Job, bool, error) {
 	}
 }
 
+// Enrollment — 연결확인 하나의 결과. 대상 하나에 하나다.
+//
+// **접속에 쓸 수 있는 것이 하나도 없다.** 주소는 러너가 토큰으로 바꾸고 버린다(§6.3.1) —
+// 이 구조체에 주소 필드가 아예 없는 것이 그 보장이다.
+type Enrollment struct {
+	NodeID      string `json:"node_id"`
+	Fingerprint string `json:"fingerprint"`
+	DisplayName string `json:"display_name"`
+	AddrToken   string `json:"addr_token,omitempty"`
+	Err         string `json:"error,omitempty"`
+}
+
 type resultsRequest struct {
 	RunnerID      string            `json:"runner_id"`
 	JobID         string            `json:"job_id,omitempty"`
 	RunnerVersion string            `json:"runner_version"`
 	Results       []json.RawMessage `json:"results"`
+	// Enrollments — 연결확인 결과. **같은 요청에 실린다** — 다섯 번째 엔드포인트를
+	// 두지 않는다(§6.2).
+	Enrollments []Enrollment `json:"enrollments,omitempty"`
 }
 
 // Results — 컨트롤 플레인이 무엇을 했는지.
@@ -93,14 +108,23 @@ type Results struct {
 	Nodes      []string `json:"nodes"`
 	// Job — 작업 처리 결과. closed · not-found · not-leased · no-runner
 	Job string `json:"job"`
+
+	// 등재 판정. 셋으로 갈린다(§6.3).
+	Enrolled    int `json:"enrolled"`
+	Held        int `json:"held"`
+	FailedNodes int `json:"failed_nodes"`
+	// Refused — 한도에 걸려 받지 않은 수. 사유가 함께 온다.
+	Refused       int    `json:"refused"`
+	RefusedReason string `json:"refused_reason"`
 }
 
-// SendResults — 결과를 올리고, jobID가 있으면 **그 작업까지 닫는다.**
+// SendResults — 결과와 연결확인을 올리고, jobID가 있으면 **그 작업까지 닫는다.**
 //
 // 본문은 이미 읽힌 것을 받는다 — 무엇을 보내고 무엇을 치울지는 [RunOnce]가 정한다.
-func (c *Client) SendResults(runnerID, jobID string, payloads []json.RawMessage) (Results, error) {
+func (c *Client) SendResults(runnerID, jobID string, payloads []json.RawMessage, enrolls []Enrollment) (Results, error) {
 	body := resultsRequest{
-		RunnerID: runnerID, JobID: jobID, RunnerVersion: Version, Results: payloads,
+		RunnerID: runnerID, JobID: jobID, RunnerVersion: Version,
+		Results: payloads, Enrollments: enrolls,
 	}
 	buf, err := json.Marshal(body)
 	if err != nil {

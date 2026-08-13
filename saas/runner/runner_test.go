@@ -19,6 +19,45 @@ const token = "pqcrt_a3f9k2mq_7x4bn8wr2ejd5vh6tzc9pkm3sq0yfla"
 
 func quiet() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
+// count — 본문의 그 배열이 몇 개인가. 없으면 0이다.
+func count(body map[string]any, key string) int {
+	v, ok := body[key].([]any)
+	if !ok {
+		return 0
+	}
+	return len(v)
+}
+
+// enrollFileOn — 연결확인 파일 하나를 놓는다. 플레이북이 쓰는 자리다.
+func enrollFileOn(t *testing.T, dir, name, body string) {
+	t.Helper()
+	d := filepath.Join(dir, "enroll")
+	if err := os.MkdirAll(d, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(d, name), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// enrollments — 러너가 보낸 연결확인들.
+func enrollments(t *testing.T, body map[string]any) []map[string]any {
+	t.Helper()
+	raw, ok := body["enrollments"].([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]map[string]any, 0, len(raw))
+	for _, e := range raw {
+		m, ok := e.(map[string]any)
+		if !ok {
+			t.Fatalf("연결확인이 객체가 아니다: %#v", e)
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
 // plane — 컨트롤 플레인 흉내. 러너가 **무엇을 보냈나**를 그대로 붙든다.
 type plane struct {
 	job      any // nil이면 204
@@ -45,8 +84,10 @@ func (p *plane) start(t *testing.T) *httptest.Server {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		n := len(p.gotBody["results"].([]any))
-		_ = json.NewEncoder(w).Encode(map[string]any{"accepted": n, "job": "closed"})
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"accepted": count(p.gotBody, "results"), "job": "closed",
+			"enrolled": count(p.gotBody, "enrollments"),
+		})
 	})
 	s := httptest.NewServer(mux)
 	t.Cleanup(s.Close)
@@ -487,5 +528,141 @@ func TestEnrollRunsTheSamePlaybook(t *testing.T) {
 	got, _ := os.ReadFile(args)
 	if !strings.Contains(string(got), "--limit web-01") {
 		t.Fatalf("대상이 안 좁혀졌다: %s", got)
+	}
+}
+
+// RUN-18 — 연결확인은 **관측과 같은 왕복**에 실린다.
+//
+// 나누면 하나는 올라가고 하나는 못 올라간 구간이 생깁니다. 다섯 번째 엔드포인트를 두지
+// 않는 것과 같은 이유입니다(§6.2).
+func TestEnrollmentsRideWithTheResults(t *testing.T) {
+	p := &plane{job: map[string]any{"id": "j1", "kind": "enroll", "targets": []string{"web-01"}}}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv, "obs.json")
+	enrollFileOn(t, cfg.ResultsDir, "web-01.json",
+		`{"node_id":"web-01","fingerprint":"SHA256:abc","display_name":"웹 1호"}`)
+
+	rep, err := runner.RunOnce(cfg, cl, quiet())
+	if err != nil {
+		t.Fatalf("돌지 못했다: %v", err)
+	}
+	if count(p.gotBody, "results") != 1 || count(p.gotBody, "enrollments") != 1 {
+		t.Fatalf("한 왕복에 둘 다 실리지 않았다: %#v", p.gotBody)
+	}
+	if p.gotBody["job_id"] != "j1" {
+		t.Fatalf("작업이 함께 닫히지 않았다: %#v", p.gotBody["job_id"])
+	}
+	if rep.Enrollments != 1 || rep.Enrolled != 1 {
+		t.Fatalf("리포트가 다르다: %+v", rep)
+	}
+	// 올린 파일은 옮긴다 — 안 옮기면 매번 다시 올라간다.
+	if _, err := os.Stat(filepath.Join(cfg.ResultsDir, "enroll", "sent", "web-01.json")); err != nil {
+		t.Fatalf("올린 연결확인이 안 옮겨졌다: %v", err)
+	}
+}
+
+// RUN-19 — **주소는 토큰이 되어 나가고, 원본은 어디에도 없다.**
+//
+// 이 제품이 파는 성질입니다 — 우리 DB가 털려도 고객 내부 주소 지도가 나오지 않습니다.
+// 같은 주소가 늘 같은 토큰이 되어야 영역 간에 같은 상대를 이어 붙일 수 있습니다(§6.3.1).
+func TestAddrBecomesATokenAndNeverLeaves(t *testing.T) {
+	const addr = "10.20.3.14:22"
+	p := &plane{}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv)
+	cfg.AddrKey = "조직-키"
+	enrollFileOn(t, cfg.ResultsDir, "web-01.json",
+		`{"node_id":"web-01","fingerprint":"SHA256:abc","addr":"`+addr+`"}`)
+
+	if _, err := runner.RunOnce(cfg, cl, quiet()); err != nil {
+		t.Fatalf("돌지 못했다: %v", err)
+	}
+	body, _ := json.Marshal(p.gotBody)
+	if strings.Contains(string(body), addr) {
+		t.Fatalf("주소가 그대로 나갔다: %s", body)
+	}
+	got := enrollments(t, p.gotBody)
+	tok, _ := got[0]["addr_token"].(string)
+	if tok == "" {
+		t.Fatal("주소 토큰이 안 붙었다 — 영역 간 엣지를 이어 붙일 표가 안 생긴다")
+	}
+
+	// 같은 키·같은 주소면 같은 토큰이어야 한다. 매번 다르면 이어 붙일 수 없다.
+	p2 := &plane{}
+	srv2 := p2.start(t)
+	cfg2, cl2 := setup(t, srv2)
+	cfg2.AddrKey = cfg.AddrKey
+	enrollFileOn(t, cfg2.ResultsDir, "other.json",
+		`{"node_id":"other","fingerprint":"SHA256:zzz","addr":"`+addr+`"}`)
+	if _, err := runner.RunOnce(cfg2, cl2, quiet()); err != nil {
+		t.Fatalf("돌지 못했다: %v", err)
+	}
+	if again, _ := enrollments(t, p2.gotBody)[0]["addr_token"].(string); again != tok {
+		t.Fatalf("같은 주소가 다른 토큰이 됐다: %q ≠ %q", again, tok)
+	}
+}
+
+// RUN-20 — **붙었다는데 지문이 없으면 사유를 붙여 올린다.**
+//
+// 그대로 올리면 지문 없는 노드가 등재되어 클론 검출을 통째로 빠져나갑니다. 그렇다고 조용히
+// 버리면 운영자는 그 대상이 등재된 줄 압니다.
+func TestConnectedWithoutFingerprintIsReportedAsFailure(t *testing.T) {
+	p := &plane{}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv)
+	enrollFileOn(t, cfg.ResultsDir, "web-01.json", `{"node_id":"web-01"}`)
+
+	if _, err := runner.RunOnce(cfg, cl, quiet()); err != nil {
+		t.Fatalf("돌지 못했다: %v", err)
+	}
+	got := enrollments(t, p.gotBody)
+	if len(got) != 1 {
+		t.Fatalf("조용히 버렸다: %#v", p.gotBody)
+	}
+	if e, _ := got[0]["error"].(string); e == "" {
+		t.Fatalf("지문 없이 그대로 올라갔다: %#v", got[0])
+	}
+}
+
+// RUN-21 — 관측 결과가 없어도 **연결확인만으로 올린다.**
+//
+// 등재가 관측의 게이트라, 첫 연결확인은 결과 파일이 하나도 없는 상태에서 일어납니다.
+// 결과가 있어야만 올린다면 **아무도 등재되지 못합니다.**
+func TestEnrollmentsGoUpWithoutAnyResults(t *testing.T) {
+	p := &plane{}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv)
+	enrollFileOn(t, cfg.ResultsDir, "web-01.json",
+		`{"node_id":"web-01","fingerprint":"SHA256:abc"}`)
+
+	rep, err := runner.RunOnce(cfg, cl, quiet())
+	if err != nil {
+		t.Fatalf("돌지 못했다: %v", err)
+	}
+	if rep.Enrollments != 1 || count(p.gotBody, "enrollments") != 1 {
+		t.Fatalf("연결확인만으로는 안 올렸다: %+v %#v", rep, p.gotBody)
+	}
+}
+
+// RUN-22 — `node_id`가 없는 연결확인은 **보내지 않고 치운다.**
+//
+// 컨트롤 플레인이 쓸 수 없는 파일입니다. 그대로 두면 다음 실행마다 걸려 그 디렉터리가 영영
+// 안 올라갑니다 — 지우지는 않습니다. 왜 그렇게 나왔는지의 유일한 증거입니다.
+func TestEnrollmentWithoutNodeIdIsSetAside(t *testing.T) {
+	p := &plane{}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv)
+	enrollFileOn(t, cfg.ResultsDir, "ok.json", `{"node_id":"web-01","fingerprint":"SHA256:abc"}`)
+	enrollFileOn(t, cfg.ResultsDir, "broken.json", `{"fingerprint":"SHA256:zzz"}`)
+
+	rep, err := runner.RunOnce(cfg, cl, quiet())
+	if err != nil {
+		t.Fatalf("돌지 못했다: %v", err)
+	}
+	if rep.Enrollments != 1 {
+		t.Fatalf("나머지까지 버렸거나 깨진 것을 보냈다: %+v", rep)
+	}
+	if _, err := os.Stat(filepath.Join(cfg.ResultsDir, "enroll", "bad", "broken.json")); err != nil {
+		t.Fatalf("증거가 안 남았다: %v", err)
 	}
 }

@@ -68,6 +68,13 @@ type Config struct {
 	Inventory string
 	// Ansible — 부를 명령. 비면 [DefaultAnsible].
 	Ansible string
+
+	// AddrKey — 주소를 토큰으로 바꿀 조직 단위 키(§6.3.1).
+	//
+	// **이 키는 러너에만 있다.** 우리 쪽에서는 토큰을 주소로 되돌릴 수 없고, 같은
+	// 주소는 늘 같은 토큰이 되므로 영역 간에 같은 상대를 이어 붙일 수 있다.
+	// 없으면 토큰이 안 붙는다 — 그 대가는 [RunOnce]가 로그로 알린다.
+	AddrKey string
 }
 
 // 설정 파일의 키. 이름은 설치 문서와 같은 것을 쓴다 — 두 벌이 되면 어긋난다.
@@ -81,6 +88,7 @@ const (
 	keyPlaybook   = "PQCATON_PLAYBOOK"
 	keyInventory  = "PQCATON_INVENTORY"
 	keyAnsible    = "PQCATON_ANSIBLE"
+	keyAddrKey    = "PQCATON_ADDR_KEY"
 )
 
 var (
@@ -134,6 +142,8 @@ func LoadConfig(path string) (Config, error) {
 			c.Inventory = v
 		case keyAnsible:
 			c.Ansible = v
+		case keyAddrKey:
+			c.AddrKey = v
 		}
 		if perr != nil {
 			return Config{}, fmt.Errorf("%s: %w", k, perr)
@@ -183,6 +193,11 @@ type Report struct {
 	Played   bool   // 플레이북을 돌렸나
 	Accepted int    // 컨트롤 플레인이 적재한 수
 	Job      string // 작업 처리 결과 — closed · not-found · not-leased …
+
+	// 연결확인. 올린 수와 그 판정이다(§6.3).
+	Enrollments int
+	Enrolled    int
+	Held        int
 }
 
 // RunOnce — 한 번 돈다. 스케줄이 이것을 부른다.
@@ -225,9 +240,29 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 		}
 	}
 
-	files, err := resultFiles(c.ResultsDir)
+	files, err := jsonFiles(c.ResultsDir)
 	if err != nil {
 		return rep, fmt.Errorf("결과 디렉터리: %w", err)
+	}
+
+	// **연결확인은 관측과 같은 왕복에 실린다.** 다섯 번째 엔드포인트를 두지 않는 것과
+	// 같은 이유다(§6.2) — 나누면 하나가 성공하고 하나가 실패한 구간이 생긴다.
+	enr, err := readEnrollments(c.ResultsDir, c.AddrKey)
+	if err != nil {
+		return rep, fmt.Errorf("등재 디렉터리: %w", err)
+	}
+	if enr.SawAddr && c.AddrKey == "" {
+		// 조용히 넘기면, 영역 간 엣지를 이어 붙일 표가 없다는 것을 **몇 달 뒤에**
+		// 안다. 그때는 전 노드를 다시 등재해야 한다(§6.3.1).
+		log.Warn("주소는 있는데 "+keyAddrKey+"가 없다 — 주소 토큰 없이 등재한다",
+			"dir", filepath.Join(c.ResultsDir, enrollDir))
+	}
+	if len(enr.Bad) > 0 {
+		rep.Bad += len(enr.Bad)
+		log.Warn("읽을 수 없는 연결확인을 치운다", "files", enr.Bad)
+		if err := move(filepath.Join(c.ResultsDir, enrollDir), badDir, enr.Bad); err != nil {
+			log.Error("치우지 못했다 — 다음 실행에서 또 걸린다", "err", err)
+		}
 	}
 
 	payloads, good, bad := read(files)
@@ -241,7 +276,7 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 			log.Error("치우지 못했다 — 다음 실행에서 또 걸린다", "err", err)
 		}
 	}
-	if len(payloads) == 0 {
+	if len(payloads) == 0 && len(enr.Items) == 0 {
 		if ok {
 			// 작업은 받았는데 올릴 것이 없다. 닫지 않는다 — 만료가 회수한다.
 			log.Warn("작업을 받았는데 올릴 결과가 없다", "job", job.ID, "dir", c.ResultsDir)
@@ -249,20 +284,35 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 		return rep, playErr
 	}
 
-	res, err := cl.SendResults(c.RunnerID, rep.JobID, payloads)
+	res, err := cl.SendResults(c.RunnerID, rep.JobID, payloads, enr.Items)
 	if err != nil {
 		// **파일을 그대로 둔다.** 다음 실행이 다시 올린다 — 같은 결과는 멱등이 접는다.
 		return rep, fmt.Errorf("결과 전송: %w", err)
 	}
 	rep.Files, rep.Accepted, rep.Job = len(good), res.Accepted, res.Job
+	rep.Enrollments, rep.Enrolled, rep.Held = len(enr.Items), res.Enrolled, res.Held
 
 	// 올린 것은 옮긴다. 안 옮기면 매번 다시 올리게 되고, 멱등이 접어 주더라도
 	// 그만큼 러너와 경계가 헛일을 한다.
 	if err := move(c.ResultsDir, sentDir, good); err != nil {
 		log.Error("올린 결과를 옮기지 못했다 — 다음 실행에 다시 올라간다", "err", err)
 	}
-	log.Info("결과를 올렸다", "files", rep.Files, "accepted", rep.Accepted,
-		"duplicate", res.Duplicate, "rejected", res.Rejected, "job", res.Job)
+	if err := move(filepath.Join(c.ResultsDir, enrollDir), sentDir, enr.Good); err != nil {
+		log.Error("올린 연결확인을 옮기지 못했다 — 다음 실행에 다시 올라간다", "err", err)
+	}
+	if rep.Files > 0 {
+		// **`off_scope`를 함께 찍는다.** 이 값이 없으면 `accepted:0`만 보이고, 왜
+		// 안 들어왔는지는 컨트롤 플레인 DB를 열어야 안다 — 운영자 눈에는 아무 일도
+		// 안 일어난 것으로 보인다.
+		log.Info("결과를 올렸다", "files", rep.Files, "accepted", rep.Accepted,
+			"duplicate", res.Duplicate, "rejected", res.Rejected,
+			"unverified", res.Unverified, "off_scope", res.OffScope, "job", res.Job)
+	}
+	if rep.Enrollments > 0 {
+		log.Info("연결확인을 올렸다", "sent", rep.Enrollments, "enrolled", res.Enrolled,
+			"held", res.Held, "failed", res.FailedNodes,
+			"refused", res.Refused, "refused_reason", res.RefusedReason)
+	}
 	return rep, playErr
 }
 
@@ -283,8 +333,8 @@ func read(files []string) (payloads []json.RawMessage, good, bad []string) {
 	return payloads, good, bad
 }
 
-// resultFiles — 결과 디렉터리의 `*.json`. 하위 디렉터리는 보지 않는다(`sent`·`bad`가 거기 있다).
-func resultFiles(dir string) ([]string, error) {
+// jsonFiles — 그 디렉터리의 `*.json`. 하위 디렉터리는 보지 않는다(`sent`·`bad`·`enroll`이 거기 있다).
+func jsonFiles(dir string) ([]string, error) {
 	if dir == "" {
 		return nil, nil
 	}
@@ -318,9 +368,13 @@ func move(dir, sub string, files []string) error {
 	return nil
 }
 
+// sweepBoth — 두 자리를 각자의 보존 기간으로 청소한다. **등재 쪽도 같이 본다** —
+// 빠뜨리면 그 디렉터리만 조용히 쌓여 디스크가 찬다.
 func sweepBoth(c Config, log *slog.Logger) {
-	sweep(filepath.Join(c.ResultsDir, sentDir), c.SentKeepDays, log)
-	sweep(filepath.Join(c.ResultsDir, badDir), c.BadKeepDays, log)
+	for _, base := range []string{c.ResultsDir, filepath.Join(c.ResultsDir, enrollDir)} {
+		sweep(filepath.Join(base, sentDir), c.SentKeepDays, log)
+		sweep(filepath.Join(base, badDir), c.BadKeepDays, log)
+	}
 }
 
 // sweep — 보존 기간이 지난 것을 지운다. 0이면 지우지 않는다.
