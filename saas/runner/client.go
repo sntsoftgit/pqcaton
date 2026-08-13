@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
@@ -98,23 +97,11 @@ type Results struct {
 
 // SendResults — 결과를 올리고, jobID가 있으면 **그 작업까지 닫는다.**
 //
-// 결과 본문은 열어 보지 않고 그대로 넘긴다. 계약을 아는 쪽은 collector와 수신 API이고,
-// 러너가 중간에서 해석하면 **버전이 어긋날 때 러너가 먼저 깨진다.**
-func (c *Client) SendResults(runnerID, jobID string, files []string) (Results, error) {
-	body := resultsRequest{RunnerID: runnerID, JobID: jobID, RunnerVersion: Version}
-	for _, f := range files {
-		raw, err := os.ReadFile(f)
-		if err != nil {
-			return Results{}, fmt.Errorf("%s: %w", f, err)
-		}
-		if !json.Valid(raw) {
-			// 깨진 파일 하나로 나머지를 버리지 않는다. 다만 **조용히 넘기지도 않는다** —
-			// 수신 API가 계약 위반을 세는 것과 같은 이유다.
-			return Results{}, fmt.Errorf("%s: JSON이 아니다", f)
-		}
-		body.Results = append(body.Results, json.RawMessage(raw))
+// 본문은 이미 읽힌 것을 받는다 — 무엇을 보내고 무엇을 치울지는 [RunOnce]가 정한다.
+func (c *Client) SendResults(runnerID, jobID string, payloads []json.RawMessage) (Results, error) {
+	body := resultsRequest{
+		RunnerID: runnerID, JobID: jobID, RunnerVersion: Version, Results: payloads,
 	}
-
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return Results{}, err

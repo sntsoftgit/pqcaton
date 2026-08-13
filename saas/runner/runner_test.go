@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sntsoftgit/pqcaton/saas/runner"
 )
@@ -223,5 +224,110 @@ func TestConfigNeedsTokenAndApi(t *testing.T) {
 	}
 	if c.RunnerID == "" {
 		t.Fatal("러너 id가 비었다 — 호스트이름으로라도 채워야 완료 보고를 맞춰 볼 수 있다")
+	}
+}
+
+// RUN-8 — **깨진 파일 하나가 나머지를 막지 않는다.** 다만 조용히 넘기지도 않는다.
+//
+// 그대로 두면 다음 실행마다 같은 파일에 걸려 그 디렉터리가 영영 안 올라간다. 치우되
+// 지우지는 않는다 — **올라간 적이 없어 그 사본이 왜 깨졌는지의 유일한 증거다.**
+func TestBrokenFileIsSetAsideNotDropped(t *testing.T) {
+	p := &plane{}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv, "web-01-openssl.json")
+	if err := os.WriteFile(filepath.Join(cfg.ResultsDir, "torn.json"), []byte("{반쯤 쓰다 만"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	rep, err := runner.RunOnce(cfg, cl, quiet())
+	if err != nil {
+		t.Fatalf("실행: %v", err)
+	}
+	if rep.Files != 1 || rep.Bad != 1 {
+		t.Fatalf("깨진 파일이 나머지를 막았다: %+v", rep)
+	}
+	if n := len(p.gotBody["results"].([]any)); n != 1 {
+		t.Fatalf("깨진 것까지 올렸다: %d개", n)
+	}
+	if _, err := os.Stat(filepath.Join(cfg.ResultsDir, "bad", "torn.json")); err != nil {
+		t.Fatalf("증거가 사라졌다: %v", err)
+	}
+}
+
+// RUN-9 — 보존 기간이 지난 것만 지운다. `bad`가 `sent`보다 오래 남는다.
+//
+// 디스크가 차면 플레이북이 결과를 못 써 관측이 멈춘다. 그렇다고 증거까지 같은 기간에
+// 지우면, 왜 깨졌는지 볼 것이 없어진다.
+func TestOldResultsAreSweptByAge(t *testing.T) {
+	p := &plane{}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv)
+	cfg.SentKeepDays, cfg.BadKeepDays = 7, 30
+
+	old := time.Now().AddDate(0, 0, -10) // sent는 지나고 bad는 안 지난 나이
+	for _, sub := range []string{"sent", "bad"} {
+		dir := filepath.Join(cfg.ResultsDir, sub)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for _, n := range []string{"old.json", "new.json"} {
+			f := filepath.Join(dir, n)
+			if err := os.WriteFile(f, []byte("{}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if n == "old.json" {
+				if err := os.Chtimes(f, old, old); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+
+	if _, err := runner.RunOnce(cfg, cl, quiet()); err != nil {
+		t.Fatalf("실행: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(cfg.ResultsDir, "sent", "old.json")); err == nil {
+		t.Fatal("보존 기간이 지난 것이 남았다")
+	}
+	for _, keep := range []string{"sent/new.json", "bad/old.json", "bad/new.json"} {
+		if _, err := os.Stat(filepath.Join(cfg.ResultsDir, filepath.FromSlash(keep))); err != nil {
+			t.Fatalf("아직 둬야 할 것을 지웠다: %s", keep)
+		}
+	}
+}
+
+// RUN-10 — 보존 기간 설정. **0이면 지우지 않고, 음수는 거절한다.**
+//
+// 오타를 "지우지 않음"으로 삼키면 디스크가 조용히 찬다.
+func TestKeepDaysConfig(t *testing.T) {
+	dir := t.TempDir()
+	write := func(body string) string {
+		p := filepath.Join(dir, "conf")
+		if err := os.WriteFile(p, []byte("PQCATON_API=https://cp\nPQCATON_TOKEN="+token+"\n"+body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+
+	c, err := runner.LoadConfig(write(""))
+	if err != nil {
+		t.Fatalf("읽기: %v", err)
+	}
+	if c.SentKeepDays != runner.DefaultSentKeepDays || c.BadKeepDays != runner.DefaultBadKeepDays {
+		t.Fatalf("기본값이 아니다: %+v", c)
+	}
+	if c.BadKeepDays <= c.SentKeepDays {
+		t.Fatal("bad가 sent보다 오래 남지 않는다 — 증거가 먼저 사라진다")
+	}
+
+	c, err = runner.LoadConfig(write("PQCATON_SENT_KEEP_DAYS=0\nPQCATON_BAD_KEEP_DAYS=90\n"))
+	if err != nil || c.SentKeepDays != 0 || c.BadKeepDays != 90 {
+		t.Fatalf("설정이 안 먹었다: %+v %v", c, err)
+	}
+	if _, err := runner.LoadConfig(write("PQCATON_SENT_KEEP_DAYS=-1\n")); err == nil {
+		t.Fatal("음수가 통과했다")
+	}
+	if _, err := runner.LoadConfig(write("PQCATON_BAD_KEEP_DAYS=이레\n")); err == nil {
+		t.Fatal("일수가 아닌 값이 통과했다")
 	}
 }

@@ -10,16 +10,35 @@ package runner
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Version — 러너 버전. 컨트롤 플레인이 옛 러너를 거를 때 본다.
 const Version = "0.1.0"
+
+// 결과 디렉터리 아래 두 자리. 성격이 반대라 보존 기간도 다르다.
+const (
+	// sentDir — 올린 것. 정말 들어갔는지의 **원본 근거는 컨트롤 플레인에 있다**(적재됐거나
+	// 거절 사유가 남는다). 여기 사본은 며칠짜리 확인용이라 짧게 둔다.
+	sentDir = "sent"
+	// badDir — 못 올린 것. 올라간 적이 없어 **여기 사본이 유일한 증거다** — 왜 깨졌는지
+	// 보려면 그것이 남아 있어야 한다. 그래서 더 길게 둔다.
+	badDir = "bad"
+)
+
+// 보존 기간 기본값(일). 0이면 지우지 않는다.
+const (
+	DefaultSentKeepDays = 7
+	DefaultBadKeepDays  = 30
+)
 
 // Config — 러너 설정. 설치 플레이북이 파일로 놓고, 운영자가 대상 목록을 채운다.
 type Config struct {
@@ -34,6 +53,13 @@ type Config struct {
 	RunnerID string
 	// ResultsDir — 플레이북이 결과 JSON을 모아 두는 곳.
 	ResultsDir string
+	// SentKeepDays — 올린 결과를 며칠 두나.
+	//
+	// **짧게 둔다.** 고객 노드의 암호 자산 정보라 러너에 쌓일수록 반출 위험이 커지고,
+	// 디스크가 차면 플레이북이 결과를 못 쓴다.
+	SentKeepDays int
+	// BadKeepDays — 못 올린 결과를 며칠 두나. `sent`보다 길다(위 [badDir]).
+	BadKeepDays int
 }
 
 // 설정 파일의 키. 이름은 설치 문서와 같은 것을 쓴다 — 두 벌이 되면 어긋난다.
@@ -42,6 +68,8 @@ const (
 	keyToken      = "PQCATON_TOKEN"
 	keyRunnerID   = "PQCATON_RUNNER_ID"
 	keyResultsDir = "PQCATON_RESULTS_DIR"
+	keySentKeep   = "PQCATON_SENT_KEEP_DAYS"
+	keyBadKeep    = "PQCATON_BAD_KEEP_DAYS"
 )
 
 var (
@@ -62,7 +90,7 @@ func LoadConfig(path string) (Config, error) {
 	}
 	defer f.Close()
 
-	var c Config
+	c := Config{SentKeepDays: DefaultSentKeepDays, BadKeepDays: DefaultBadKeepDays}
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
@@ -74,6 +102,8 @@ func LoadConfig(path string) (Config, error) {
 			continue
 		}
 		k, v = strings.TrimSpace(k), strings.Trim(strings.TrimSpace(v), `"'`)
+
+		var perr error
 		switch k {
 		case keyAPI:
 			c.API = v
@@ -83,12 +113,31 @@ func LoadConfig(path string) (Config, error) {
 			c.RunnerID = v
 		case keyResultsDir:
 			c.ResultsDir = v
+		case keySentKeep:
+			c.SentKeepDays, perr = days(v)
+		case keyBadKeep:
+			c.BadKeepDays, perr = days(v)
+		}
+		if perr != nil {
+			return Config{}, fmt.Errorf("%s: %w", k, perr)
 		}
 	}
 	if err := sc.Err(); err != nil {
 		return Config{}, err
 	}
 	return c, c.check()
+}
+
+// days — 보존 기간. 음수는 거절한다 — 오타를 "지우지 않음"으로 삼키면 디스크가 조용히 찬다.
+func days(v string) (int, error) {
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil {
+		return 0, fmt.Errorf("일수가 아니다: %q", v)
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("음수다: %d", n)
+	}
+	return n, nil
 }
 
 func (c *Config) check() error {
@@ -113,6 +162,7 @@ type Report struct {
 	JobID    string // 받아 온 작업. 없었으면 빈 값
 	Kind     string
 	Files    int    // 올린 결과 파일 수
+	Bad      int    // 읽을 수 없어 치운 파일 수
 	Accepted int    // 컨트롤 플레인이 적재한 수
 	Job      string // 작업 처리 결과 — closed · not-found · not-leased …
 }
@@ -127,6 +177,7 @@ type Report struct {
 // 그것을 다음 작업이 올 때까지 묵혀 둘 이유가 없다.
 func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	var rep Report
+	defer sweepBoth(c, log) // 실패해도 청소는 한다 — 디스크가 차면 관측이 멈춘다
 
 	job, ok, err := cl.NextJob(c.RunnerID)
 	if err != nil {
@@ -141,24 +192,36 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	if err != nil {
 		return rep, fmt.Errorf("결과 디렉터리: %w", err)
 	}
-	if len(files) == 0 {
+
+	payloads, good, bad := read(files)
+	if len(bad) > 0 {
+		// **하나가 깨졌다고 나머지를 버리지 않는다.** 다만 조용히 넘기지도 않는다 —
+		// 그대로 두면 다음 실행마다 같은 파일에 걸려 그 디렉터리가 영영 안 올라간다.
+		rep.Bad = len(bad)
+		log.Warn("읽을 수 없는 결과를 치운다 — 왜 깨졌는지 봐야 한다",
+			"files", bad, "moved_to", filepath.Join(c.ResultsDir, badDir))
+		if err := move(c.ResultsDir, badDir, bad); err != nil {
+			log.Error("치우지 못했다 — 다음 실행에서 또 걸린다", "err", err)
+		}
+	}
+	if len(payloads) == 0 {
 		if ok {
 			// 작업은 받았는데 올릴 것이 없다. 닫지 않는다 — 만료가 회수한다.
-			log.Warn("작업을 받았는데 결과가 없다", "job", job.ID, "dir", c.ResultsDir)
+			log.Warn("작업을 받았는데 올릴 결과가 없다", "job", job.ID, "dir", c.ResultsDir)
 		}
 		return rep, nil
 	}
 
-	res, err := cl.SendResults(c.RunnerID, rep.JobID, files)
+	res, err := cl.SendResults(c.RunnerID, rep.JobID, payloads)
 	if err != nil {
 		// **파일을 그대로 둔다.** 다음 실행이 다시 올린다 — 같은 결과는 멱등이 접는다.
 		return rep, fmt.Errorf("결과 전송: %w", err)
 	}
-	rep.Files, rep.Accepted, rep.Job = len(files), res.Accepted, res.Job
+	rep.Files, rep.Accepted, rep.Job = len(good), res.Accepted, res.Job
 
 	// 올린 것은 옮긴다. 안 옮기면 매번 다시 올리게 되고, 멱등이 접어 주더라도
 	// 그만큼 러너와 경계가 헛일을 한다.
-	if err := archive(c.ResultsDir, files); err != nil {
+	if err := move(c.ResultsDir, sentDir, good); err != nil {
 		log.Error("올린 결과를 옮기지 못했다 — 다음 실행에 다시 올라간다", "err", err)
 	}
 	log.Info("결과를 올렸다", "files", rep.Files, "accepted", rep.Accepted,
@@ -166,7 +229,24 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	return rep, nil
 }
 
-// resultFiles — 결과 디렉터리의 `*.json`. 하위 디렉터리는 보지 않는다(`sent/`가 거기 있다).
+// read — 파일을 읽어 보낼 것과 치울 것으로 가른다.
+//
+// 러너는 **내용을 해석하지 않는다.** JSON인지만 본다 — 계약을 아는 쪽은 collector와 수신
+// API이고, 러너가 중간에서 해석하면 버전이 어긋날 때 러너가 먼저 깨진다.
+func read(files []string) (payloads []json.RawMessage, good, bad []string) {
+	for _, f := range files {
+		raw, err := os.ReadFile(f)
+		if err != nil || !json.Valid(raw) {
+			bad = append(bad, f)
+			continue
+		}
+		payloads = append(payloads, json.RawMessage(raw))
+		good = append(good, f)
+	}
+	return payloads, good, bad
+}
+
+// resultFiles — 결과 디렉터리의 `*.json`. 하위 디렉터리는 보지 않는다(`sent`·`bad`가 거기 있다).
 func resultFiles(dir string) ([]string, error) {
 	if dir == "" {
 		return nil, nil
@@ -188,12 +268,8 @@ func resultFiles(dir string) ([]string, error) {
 	return out, nil
 }
 
-// sentDir — 올린 결과를 옮겨 두는 곳. 지우지 않는 이유는 하나다 — **올린 것이 정말
-// 들어갔는지 나중에 확인할 근거가 남아야 한다.** 정리는 운영자 몫이다.
-const sentDir = "sent"
-
-func archive(dir string, files []string) error {
-	dst := filepath.Join(dir, sentDir)
+func move(dir, sub string, files []string) error {
+	dst := filepath.Join(dir, sub)
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err
 	}
@@ -203,4 +279,39 @@ func archive(dir string, files []string) error {
 		}
 	}
 	return nil
+}
+
+func sweepBoth(c Config, log *slog.Logger) {
+	sweep(filepath.Join(c.ResultsDir, sentDir), c.SentKeepDays, log)
+	sweep(filepath.Join(c.ResultsDir, badDir), c.BadKeepDays, log)
+}
+
+// sweep — 보존 기간이 지난 것을 지운다. 0이면 지우지 않는다.
+//
+// **지운 사실을 남긴다.** 조용히 사라지면, 나중에 그 결과를 찾는 사람이 *"올라가지 않았나"*
+// 와 *"보존 기간이 지났나"* 를 구분할 수 없다.
+func sweep(dir string, keepDays int, log *slog.Logger) {
+	if keepDays <= 0 || dir == "" {
+		return
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return // 아직 없다. 오류가 아니다
+	}
+	cutoff := time.Now().AddDate(0, 0, -keepDays)
+	var gone int
+	for _, e := range entries {
+		info, err := e.Info()
+		if err != nil || e.IsDir() || info.ModTime().After(cutoff) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
+			log.Error("지우지 못했다", "file", e.Name(), "err", err)
+			continue
+		}
+		gone++
+	}
+	if gone > 0 {
+		log.Info("보존 기간이 지난 결과를 지웠다", "dir", dir, "files", gone, "keep_days", keepDays)
+	}
 }
