@@ -167,6 +167,13 @@ func (s *Server) authenticate(r *http.Request) (org.ID, access.TokenRecord, erro
 // ── 결과 수신 ──────────────────────────────────────────────────────────────
 
 type resultsRequest struct {
+	// RunnerID·JobID — 이 결과가 어느 작업의 것인가. **둘 다 있으면 그 작업을 닫는다.**
+	//
+	// 작업을 닫는 엔드포인트를 따로 두지 않는다(§6.2는 엔드포인트가 넷이다). 나누면
+	// "결과는 올렸는데 닫지 못한" 구간이 생기고, 그 작업은 만료돼 **한 번 더 배포된다.**
+	RunnerID string `json:"runner_id"`
+	JobID    string `json:"job_id"`
+
 	RunnerVersion string            `json:"runner_version"`
 	Results       []json.RawMessage `json:"results"`
 }
@@ -178,7 +185,18 @@ type resultsResponse struct {
 	Unverified int      `json:"unverified"`
 	OffScope   int      `json:"off_scope"`
 	Nodes      []string `json:"nodes,omitempty"`
+	// Job — 작업을 닫으려 했다면 그 결과. 안 닫혔어도 **적재는 그대로다**(아래).
+	Job string `json:"job,omitempty"`
 }
+
+// 작업을 닫은 결과. 러너가 무엇이 어긋났는지 알아야 다음 요청을 고칠 수 있다.
+const (
+	jobClosed    = "closed"
+	jobNotFound  = "not-found"  // 그런 작업이 없다
+	jobNotLeased = "not-leased" // 그 러너가 점유한 작업이 아니다
+	jobNoRunner  = "no-runner"  // job_id는 왔는데 runner_id가 없다
+	jobCloseFail = "error"      // 저장소가 답하지 않았다. 만료가 회수한다
+)
 
 func (s *Server) results(w http.ResponseWriter, r *http.Request) {
 	o := orgOf(r)
@@ -226,6 +244,8 @@ func (s *Server) results(w http.ResponseWriter, r *http.Request) {
 		RulesetVersion: "ruleset-v1",
 	}, results)
 	if err != nil {
+		// 작업을 닫지 않는다. 러너가 다시 올리면 그때 닫히고, 러너가 죽으면 만료가
+		// 회수한다 — 적재되지 않은 것을 「끝났다」로 두는 편이 훨씬 나쁘다.
 		s.log.Error("적재 실패", "org", o, "err", err)
 		s.fail(w, http.StatusInternalServerError, "적재할 수 없다")
 		return
@@ -234,10 +254,47 @@ func (s *Server) results(w http.ResponseWriter, r *http.Request) {
 	s.log.Info("결과 수신", "org", o, "accepted", rep.Accepted, "duplicate", rep.Duplicate,
 		"rejected", rep.Rejected, "unverified", rep.Unverified, "runner_version", req.RunnerVersion)
 
-	s.ok(w, resultsResponse{
+	resp := resultsResponse{
 		Accepted: rep.Accepted, Duplicate: rep.Duplicate, Rejected: rep.Rejected,
 		Unverified: rep.Unverified, OffScope: rep.OffScope, Nodes: rep.Nodes,
-	})
+	}
+	if req.JobID != "" {
+		resp.Job = s.closeJob(o, req.JobID, req.RunnerID)
+	}
+	s.ok(w, resp)
+}
+
+// closeJob — 결과를 올린 러너가 점유한 작업을 닫는다.
+//
+// **닫지 못해도 결과를 버리지 않는다.** 여기서 요청 전체를 실패시키면 이미 적재된 관측을
+// 러너가 다시 올리게 되고, 정작 어긋난 것(작업 id·러너 id)은 그대로다. 무엇이 어긋났는지는
+// 응답에 담아 돌려준다 — 적재와 작업은 별개의 일이다.
+//
+// **거절된 결과가 있어도 닫는다.** 러너는 시킨 일을 했다. 서명이 맞지 않는 것은 다시
+// 시킨다고 달라지지 않고(옛 collector는 같은 서명을 다시 만든다), 사유는 `pqcota_rejections`에
+// 남는다 — 무한히 다시 배포하는 것이 답이 아니다(§6.6).
+func (s *Server) closeJob(o org.ID, id, runnerID string) string {
+	if runnerID == "" {
+		// 누가 점유했는지 모르면 맞춰 볼 수 없다. 조용히 닫으면 남의 작업을 닫는 길이 된다.
+		s.log.Info("작업을 닫을 수 없다 — runner_id가 없다", "org", o, "job", id)
+		return jobNoRunner
+	}
+	err := s.jobs.Complete(o, id, runnerID, s.cfg.Now())
+	switch {
+	case err == nil:
+		s.log.Info("작업을 닫았다", "org", o, "job", id, "runner", runnerID)
+		return jobClosed
+	case errors.Is(err, jobs.ErrNotFound):
+		s.log.Info("없는 작업을 닫으려 했다", "org", o, "job", id, "runner", runnerID)
+		return jobNotFound
+	case errors.Is(err, jobs.ErrNotLeased):
+		// 점유가 이미 만료돼 회수됐거나, 남의 작업이다. 어느 쪽이든 이 러너가 닫을 것이 아니다.
+		s.log.Warn("점유하지 않은 작업을 닫으려 했다", "org", o, "job", id, "runner", runnerID)
+		return jobNotLeased
+	default:
+		s.log.Error("작업을 닫지 못했다", "org", o, "job", id, "err", err)
+		return jobCloseFail
+	}
 }
 
 // ── 작업 배포 ──────────────────────────────────────────────────────────────

@@ -233,6 +233,112 @@ func TestForwardedProtoIgnoredWhenNotTrusted(t *testing.T) {
 	}
 }
 
+// leased — 점유된 작업 하나를 만들어 둔다. 결과를 올릴 러너는 runnerID다.
+func (h *harness) leased(t *testing.T, id, runnerID string) {
+	t.Helper()
+	h.put(t, "acme", id, jobs.Observe)
+	j, ok, err := h.jobs.Lease("acme", runnerID, t0.Add(time.Hour), t0)
+	if err != nil || !ok || j.ID != id {
+		t.Fatalf("점유: %+v %v %v", j, ok, err)
+	}
+}
+
+// jobOf — 응답의 작업 처리 결과.
+func jobOf(t *testing.T, w *httptest.ResponseRecorder) string {
+	t.Helper()
+	var got struct {
+		Job      string `json:"job"`
+		Accepted int    `json:"accepted"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("응답: %v", err)
+	}
+	if got.Accepted != 1 {
+		t.Fatalf("결과가 적재되지 않았다: %s", w.Body.String())
+	}
+	return got.Job
+}
+
+// CP-HTTP-13 — **결과를 올리면 그 작업이 닫힌다.**
+//
+// 작업을 닫는 엔드포인트를 따로 두지 않는다(§6.2는 엔드포인트가 넷이다). 나누면
+// "결과는 올렸는데 닫지 못한" 구간이 생기고, 그 작업은 만료돼 한 번 더 배포된다.
+func TestResultsCloseTheirJob(t *testing.T) {
+	h := newHarness(t, api.Config{})
+	h.leased(t, "j1", "r1")
+
+	w := h.post(h.body(t, "web-01", map[string]any{"job_id": "j1", "runner_id": "r1"}))
+	if w.Code != http.StatusOK {
+		t.Fatalf("상태 %d: %s", w.Code, w.Body.String())
+	}
+	if got := jobOf(t, w); got != "closed" {
+		t.Fatalf("작업이 닫혔다고 답하지 않았다: %q", got)
+	}
+	j, _ := h.jobs.Get("acme", "j1")
+	if j.State != jobs.Done {
+		t.Fatalf("작업이 닫히지 않았다 — 만료로만 끝난다: %+v", j)
+	}
+}
+
+// CP-HTTP-14 — **점유하지 않은 러너는 닫을 수 없다.** 그래도 결과는 들어간다.
+//
+// 남의 작업을 닫으면 그 작업은 실행되지 않은 채 사라진다. 그렇다고 결과를 버리면,
+// 어긋난 것은 작업 id 하나인데 관측 전체를 잃는다.
+func TestResultsDoNotCloseAnotherRunnersJob(t *testing.T) {
+	h := newHarness(t, api.Config{})
+	h.leased(t, "j1", "r1")
+
+	w := h.post(h.body(t, "web-01", map[string]any{"job_id": "j1", "runner_id": "r2"}))
+	if w.Code != http.StatusOK {
+		t.Fatalf("상태 %d: %s", w.Code, w.Body.String())
+	}
+	if got := jobOf(t, w); got != "not-leased" {
+		t.Fatalf("남의 작업을 닫았거나 사유를 안 알렸다: %q", got)
+	}
+	j, _ := h.jobs.Get("acme", "j1")
+	if j.State != jobs.Leased || j.RunnerID != "r1" {
+		t.Fatalf("남의 작업이 닫혔다: %+v", j)
+	}
+	if snap, _ := h.stores["acme"].Latest("web-01"); snap == nil {
+		t.Fatal("작업을 못 닫았다고 결과까지 버렸다")
+	}
+}
+
+// CP-HTTP-15 — **없는 작업을 대도 결과는 버리지 않는다.**
+//
+// 여기서 요청을 실패시키면 이미 적재된 관측을 러너가 다시 올리게 되고, 정작 어긋난 것은
+// 그대로다. 적재와 작업은 별개의 일이다.
+func TestUnknownJobDoesNotDropResults(t *testing.T) {
+	h := newHarness(t, api.Config{})
+
+	w := h.post(h.body(t, "web-01", map[string]any{"job_id": "없는것", "runner_id": "r1"}))
+	if w.Code != http.StatusOK {
+		t.Fatalf("상태 %d: %s", w.Code, w.Body.String())
+	}
+	if got := jobOf(t, w); got != "not-found" {
+		t.Fatalf("사유를 알리지 않았다: %q", got)
+	}
+	if snap, _ := h.stores["acme"].Latest("web-01"); snap == nil {
+		t.Fatal("없는 작업을 댔다고 결과를 버렸다")
+	}
+}
+
+// CP-HTTP-16 — 작업 없이 올리는 길이 그대로 열려 있다.
+//
+// 결과는 작업 없이도 올 수 있다(수동 반입·시험). `job_id`가 없으면 닫을 것도 없고,
+// 응답에 작업 이야기가 붙지 않는다.
+func TestResultsWithoutJobIDStillLand(t *testing.T) {
+	h := newHarness(t, api.Config{})
+
+	w := h.post(h.body(t, "web-01", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("상태 %d: %s", w.Code, w.Body.String())
+	}
+	if got := jobOf(t, w); got != "" {
+		t.Fatalf("작업을 대지 않았는데 작업 이야기가 왔다: %q", got)
+	}
+}
+
 // CP-HTTP-7 — 계약에 맞지 않는 결과가 섞여도 나머지는 들어간다.
 func TestBrokenResultDoesNotDropTheBatch(t *testing.T) {
 	h := newHarness(t, api.Config{})

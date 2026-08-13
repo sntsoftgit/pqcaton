@@ -114,6 +114,32 @@ MUTATIONS = [
         "TestRedeployablePolicy",
     ),
     (
+        "완료 보고 · 닫지도 않고 닫혔다고 답함 → CP-HTTP-13",
+        "saas/internal/api/api.go",
+        [("		resp.Job = s.closeJob(o, req.JobID, req.RunnerID)", "		resp.Job = jobClosed")],
+        "./saas/internal/api/...",
+        "TestResultsCloseTheirJob",
+    ),
+    (
+        "완료 보고 · 남의 점유를 닫고도 닫혔다고 답함 → CP-HTTP-14",
+        "saas/internal/api/api.go",
+        [("		return jobNotLeased", "		return jobClosed")],
+        "./saas/internal/api/...",
+        "TestResultsDoNotCloseAnotherRunnersJob",
+    ),
+    (
+        "완료 보고 · 작업을 못 닫으면 결과까지 버림 → CP-HTTP-15",
+        "saas/internal/api/api.go",
+        [("		resp.Job = s.closeJob(o, req.JobID, req.RunnerID)\n	}",
+          "		resp.Job = s.closeJob(o, req.JobID, req.RunnerID)\n"
+          "		if resp.Job != jobClosed {\n"
+          "			s.fail(w, http.StatusConflict, \"작업을 닫을 수 없다\")\n"
+          "			return\n"
+          "		}\n	}")],
+        "./saas/internal/api/...",
+        "TestUnknownJobDoesNotDropResults",
+    ),
+    (
         "롱폴 · 조직을 질의 문자열에서 읽음 → CP-HTTP-10",
         "saas/internal/api/api.go",
         [('\trunnerID := strings.TrimSpace(r.URL.Query().Get("runner_id"))',
