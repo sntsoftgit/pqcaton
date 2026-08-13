@@ -54,6 +54,9 @@ PQCATON_TEST_DSN='postgres://...' python3 saas/mutation_check.py
 | 모르는 종류가 자동 재배포로 떨어짐(`!= Provision`) | `CP-JOB-10` |
 | 롱폴이 조직을 질의 문자열에서 읽음 | `CP-HTTP-10` |
 | 롱폴이 기다리지 않고 곧장 없다고 답함 | `CP-HTTP-9` |
+| 닫지도 않고 닫혔다고 답함 | `CP-HTTP-13` |
+| 남의 점유를 닫고도 닫혔다고 답함 | `CP-HTTP-14` |
+| 작업을 못 닫으면 결과까지 버림 | `CP-HTTP-15` |
 
 스크립트가 스스로도 지킵니다 — 겨냥할 자리를 **정확히 한 곳** 찾지 못하면 실패로 세고
 (코드가 바뀌었다는 신호), 변이가 **컴파일되지 않아도** 실패로 셉니다. 컴파일이 깨지면
@@ -202,13 +205,25 @@ docker rm -f pqcaton-test-pg
 | [CP-HTTP-11](internal/api/jobs_test.go) | `TestJobsRequireRunnerID` — `runner_id` 없이 요청 | 400, 작업은 대기 그대로 | 누가 가져갔는지 모르면 완료 보고를 점유와 맞춰 볼 수 없습니다 — 그 작업은 만료될 때까지 아무도 닫지 못합니다 |
 | [CP-HTTP-12](internal/api/jobs_test.go) | `TestLongPollGivesUpAndReleasesDisconnected` — 상한을 넘는 `wait=10s` / 요청이 끊김 | 상한까지만 기다려 204, 끊기면 곧 반환 | 상한이 없으면 러너가 큰 값을 보내 연결을 붙듭니다. 끊긴 요청을 붙들면 **죽은 러너 수만큼 고루틴이 쌓입니다** |
 
+### CP-HTTP. 작업 닫기 (§6.2.1)
+
+작업은 **결과로 닫습니다** — 닫는 엔드포인트를 따로 두지 않습니다. 아래 넷이 그 결정이
+무엇을 지켜야 하는지를 정합니다.
+
+| 케이스 | Given → When | Then | 목적 |
+|---|---|---|---|
+| [**CP-HTTP-13**](internal/api/api_test.go) | `TestResultsCloseTheirJob` — 점유한 러너가 `job_id`와 함께 결과를 올림 | 적재되고 **그 작업이 닫힌다** | 닫는 경로가 없으면 모든 작업이 만료로만 끝납니다 — 읽기는 그때마다 다시 배포되고, `provision`은 잘 끝나도 「확인 필요」로 갑니다 |
+| [**CP-HTTP-14**](internal/api/api_test.go) | `TestResultsDoNotCloseAnotherRunnersJob` — 점유하지 않은 러너가 그 작업을 댐 | `not-leased`, 작업은 그대로. **결과는 들어간다** | 남의 작업을 닫으면 그 작업은 실행되지 않은 채 사라집니다. 그렇다고 결과를 버리면 어긋난 것이 id 하나인데 관측 전체를 잃습니다 |
+| [**CP-HTTP-15**](internal/api/api_test.go) | `TestUnknownJobDoesNotDropResults` — 없는 작업 id를 댐 | `not-found`, **결과는 들어간다** | 요청을 실패시키면 이미 적재된 관측을 러너가 다시 올리게 되고, 정작 어긋난 것은 그대로입니다. **적재와 작업은 별개의 일입니다** |
+| [CP-HTTP-16](internal/api/api_test.go) | `TestResultsWithoutJobIDStillLand` — `job_id` 없이 올림 | 그대로 적재되고 응답에 작업 이야기가 없다 | 결과는 작업 없이도 옵니다(수동 반입·시험). 작업을 필수로 만들면 그 길이 막힙니다 |
+
 ## 4. 아직 없는 것
 
 M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 마일스톤 | 검증할 것 |
 |---|---|
-| **M2** 나머지 | 완료·연장 보고 경로(러너가 점유를 닫는 자리) · **옛 러너에게 작업을 주지 않는 것**(§6.6) |
+| **M2** 나머지 | 점유 만료를 **종류가 정하는 것**(§6.2.1) · 진행 중 알림으로 만료를 미루는 것(`status`, M5) · **옛 러너에게 작업을 주지 않는 것**(§6.6) |
 | **M3** 등재 | 지문 충돌 보류 · 등재 실패는 과금하지 않음 · 월중 고유 노드 누적 |
 | **M4** 관측 | 접속 정보가 컨트롤 플레인에 올라오지 않음 · `target_node_ids`로만 지시 |
 
@@ -218,9 +233,9 @@ M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 레벨 | 수 |
 |---|---|
-| unit | 46 |
+| unit | 50 |
 | Postgres 필요 | 13 |
-| **전체** | **59** |
+| **전체** | **63** |
 
 ```bash
 grep -rh '^func Test' --include='*_test.go' saas/ | wc -l              # 전체
