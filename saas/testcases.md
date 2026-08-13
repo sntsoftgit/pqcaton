@@ -18,9 +18,12 @@
 **`CP-PG-5`가 스킵되면 멱등의 원자성을 확인하지 못한 것입니다.** 인메모리는 뮤텍스라
 자명하지만 Pg판은 전제가 다릅니다.
 
-**`CP-ORG-1`이 스킵되면 조직 격리를 확인하지 못한 것입니다.** 인메모리 케이스는 저장소
-객체가 애초에 달라서, 통과해도 격리를 증명하지 않습니다 — **한 테이블을 공유하는 쪽에서만**
-잴 수 있습니다.
+**`CP-ORG-1`·`CP-PG-8`이 스킵되면 조직 격리를 확인하지 못한 것입니다.** 인메모리 케이스는
+저장소 객체가 애초에 달라서, 통과해도 격리를 증명하지 않습니다 — **한 테이블을 공유하는
+쪽에서만** 잴 수 있습니다.
+
+**`CP-PG-9`가 스킵되면 같은 작업이 두 러너에게 나가지 않는지를 확인하지 못한 것입니다.**
+인메모리는 뮤텍스 하나로 자명하지만, Pg판은 `FOR UPDATE SKIP LOCKED`에 기댑니다.
 
 > **실측으로 확인했습니다**(2026-08-12, PostgreSQL 16). `ActiveKeys`의 질의에서 `org` 조건만
 > 빼 보면 `CP-ORG-1`은 실패하는데, **같은 것을 보는 인메모리 케이스는 그대로 통과합니다.**
@@ -45,6 +48,12 @@ PQCATON_TEST_DSN='postgres://...' python3 saas/mutation_check.py
 | 조직을 본문에서 읽음 | `CP-HTTP-2` |
 | 본문 상한을 안 걺 | `CP-HTTP-4` |
 | 인증 실패 사유를 응답에 담음 | `CP-HTTP-3` |
+| `Lease` 질의에서 `org` 조건 제거 | `CP-PG-8` (인메모리 `CP-JOB-2`는 **못 잡음**) |
+| 고르는 것과 표시하는 것 사이를 벌림(`SKIP LOCKED` 제거) | `CP-PG-9` |
+| Pg 정리가 작업 종류를 안 가림 | `CP-PG-10` |
+| 모르는 종류가 자동 재배포로 떨어짐(`!= Provision`) | `CP-JOB-10` |
+| 롱폴이 조직을 질의 문자열에서 읽음 | `CP-HTTP-10` |
+| 롱폴이 기다리지 않고 곧장 없다고 답함 | `CP-HTTP-9` |
 
 스크립트가 스스로도 지킵니다 — 겨냥할 자리를 **정확히 한 곳** 찾지 못하면 실패로 세고
 (코드가 바뀌었다는 신호), 변이가 **컴파일되지 않아도** 실패로 셉니다. 컴파일이 깨지면
@@ -155,7 +164,8 @@ docker rm -f pqcaton-test-pg
 
 ## 3. M2 — 작업 배포 (진행 중)
 
-작업 저장소와 만료·재배포 정책입니다. 롱폴 엔드포인트(`CP-HTTP-*`)는 아직 없습니다.
+작업 저장소와 만료·재배포 정책(`CP-JOB`), 그것이 실 테이블에서도 성립하는지(`CP-PG-8~12`),
+그 위의 롱폴 경계(`CP-HTTP-8~12`)입니다. 완료·연장 보고 경로는 아직 없습니다.
 
 ### CP-JOB. 작업의 일생 (§6.2.1)
 
@@ -170,7 +180,27 @@ docker rm -f pqcaton-test-pg
 | [**CP-JOB-7**](internal/jobs/jobs_test.go) | `TestSweepDoesNotRedeployProvision` — `provision` 점유 만료 | **재배포하지 않고** 「확인 필요」로. 이유도 남는다 | 러너가 이미 적용했는데 응답만 못 준 것일 수 있습니다. 다시 주면 **두 번 적용**되고 두 번째 `before` 캡처는 이미 바뀐 상태를 찍습니다 |
 | [CP-JOB-8](internal/jobs/jobs_test.go) | `TestSweepLeavesLiveLeases` — 만료 전 정리 | 건드리지 않는다 | 멀쩡히 도는 작업을 뺏으면 두 러너가 같은 일을 합니다 |
 | [CP-JOB-9](internal/jobs/jobs_test.go) | `TestJobsRequireOrg` — 조직 없이 넣기·점유·조회 | `org.ErrEmpty` | 조직 없이 열리는 경로를 하나도 두지 않습니다 |
-| [CP-JOB-10](internal/jobs/jobs_test.go) | `TestRedeployablePolicy` — 종류별 재배포 가능 여부 | 읽기만 true | **정책이 한 자리에만 있어야** 저장소마다 갈리지 않습니다 |
+| [**CP-JOB-10**](internal/jobs/jobs_test.go) | `TestRedeployablePolicy` — 종류별 재배포 가능 여부. **모르는 종류**도 물어봄 | 읽기만 true | **정책이 한 자리에만 있어야** 저장소마다 갈리지 않습니다. `!= Provision`으로 쓰면 새 종류가 자동 재배포로 떨어지고, 그것이 쓰기면 아무도 손대지 않아도 **두 번 적용되는 쪽으로 기웁니다** |
+
+### CP-PG. 실 Postgres — 작업 저장소
+
+| 케이스 | Given → When | Then | 목적 |
+|---|---|---|---|
+| [**CP-PG-8**](internal/jobs/pg_test.go) | `TestPgLeaseIsolatesOrg` — **한 테이블에** 두 조직의 작업 | 남의 것은 안 나가고 조회도 안 된다. 자기 것은 나간다 | `CP-JOB-2`는 인메모리에서만 통과했습니다. 조직 조건이 질의에 실제로 붙었는지는 **여기서만** 잽니다 |
+| [**CP-PG-9**](internal/jobs/pg_test.go) | `TestPgLeaseIsExclusiveUnderConcurrency` — 러너 24개가 작업 8개를 동시에 받아감 | 8개가 나가고 **같은 작업이 둘에게 가지 않는다** | 고르는 것과 표시하는 것이 나뉘면 두 러너가 같은 행을 집습니다 — 관측은 중복되고 적용은 두 번 됩니다. `FOR UPDATE SKIP LOCKED`의 전제는 실 테이블에서만 확인됩니다 |
+| [CP-PG-10](internal/jobs/pg_test.go) | `TestPgSweepFollowsKindPolicy` — 실 테이블에서 `observe`·`provision` 만료, 살아 있는 점유 하나 | 읽기는 대기로, `provision`은 사유와 함께 「확인 필요」로, 산 것은 그대로 | 질의에 `kind <> 'provision'`을 적으면 정책이 Go와 SQL 두 곳에 생깁니다. 한쪽만 고치는 날이 오고, 그때 쓰기 작업이 조용히 두 번 적용됩니다 |
+| [CP-PG-11](internal/jobs/pg_test.go) | `TestPgJobLifecycle` — 오래된 것부터 → 연장 → 완료, 남의 점유·없는 작업도 | 순서대로 나가고, 남의 것은 `ErrNotLeased`, 없는 것은 `ErrNotFound` | 「그런 작업 없음」과 「네 것이 아님」이 같은 말이 되면 운영자가 무엇이 잘못됐는지 못 봅니다 |
+| [CP-PG-12](internal/jobs/pg_test.go) | `TestPgJobsRefuseMissingSchema` — 표가 없는 곳을 가리킴 | `ErrSchemaMissing` | 말없이 DDL을 돌면 빈 표가 새로 생기고 거기에 씁니다 — **받아 갈 작업이 통째로 사라진 것처럼** 보입니다 |
+
+### CP-HTTP. 롱폴 경계 (§6.2)
+
+| 케이스 | Given → When | Then | 목적 |
+|---|---|---|---|
+| [CP-HTTP-8](internal/api/jobs_test.go) | `TestJobIsLeasedToTheAskingRunner` — 대기 중 작업이 있음 | 200으로 나가고 **그 자리에서 점유**된다. 다음 러너에게는 204 | 점유가 응답과 함께 남지 않으면 다음 러너가 같은 작업을 또 받아갑니다 |
+| [**CP-HTTP-9**](internal/api/jobs_test.go) | `TestLongPollDeliversJobThatArrivesWhileWaiting` — 빈 상태로 물어보고, **기다리는 동안** 작업이 들어옴 | 그 요청으로 나간다 | 러너는 밖으로만 걸어서 밀어 줄 방법이 없습니다(§6.1). 곧장 「없다」고 답하면 **묻는 간격이 곧 새 작업의 지연**이 됩니다 |
+| [**CP-HTTP-10**](internal/api/jobs_test.go) | `TestJobsOrgComesFromTokenNotQuery` — 다른 조직 토큰으로 `?org=acme` | 204, acme 작업은 건드려지지도 않는다 | 조직은 러너가 주장하는 것이 아닙니다(§6.4). 핸들러가 조직을 읽을 자리를 **하나도 두지 않는 것**이 이 성질을 지킵니다 |
+| [CP-HTTP-11](internal/api/jobs_test.go) | `TestJobsRequireRunnerID` — `runner_id` 없이 요청 | 400, 작업은 대기 그대로 | 누가 가져갔는지 모르면 완료 보고를 점유와 맞춰 볼 수 없습니다 — 그 작업은 만료될 때까지 아무도 닫지 못합니다 |
+| [CP-HTTP-12](internal/api/jobs_test.go) | `TestLongPollGivesUpAndReleasesDisconnected` — 상한을 넘는 `wait=10s` / 요청이 끊김 | 상한까지만 기다려 204, 끊기면 곧 반환 | 상한이 없으면 러너가 큰 값을 보내 연결을 붙듭니다. 끊긴 요청을 붙들면 **죽은 러너 수만큼 고루틴이 쌓입니다** |
 
 ## 4. 아직 없는 것
 
@@ -178,7 +208,7 @@ M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 마일스톤 | 검증할 것 |
 |---|---|
-| **M2** 나머지 | 롱폴 엔드포인트 · Postgres 저장소 · 동시 점유(같은 작업이 둘에게 안 나가는지) |
+| **M2** 나머지 | 완료·연장 보고 경로(러너가 점유를 닫는 자리) · **옛 러너에게 작업을 주지 않는 것**(§6.6) |
 | **M3** 등재 | 지문 충돌 보류 · 등재 실패는 과금하지 않음 · 월중 고유 노드 누적 |
 | **M4** 관측 | 접속 정보가 컨트롤 플레인에 올라오지 않음 · `target_node_ids`로만 지시 |
 
@@ -188,11 +218,13 @@ M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 레벨 | 수 |
 |---|---|
-| unit | 41 |
-| Postgres 필요 | 8 |
-| **전체** | **49** |
+| unit | 46 |
+| Postgres 필요 | 13 |
+| **전체** | **59** |
 
 ```bash
-grep -rh '^func Test' --include='*_test.go' saas/ | wc -l    # 전체
-grep -c '^func Test' saas/internal/access/pg_test.go          # Postgres 필요
+grep -rh '^func Test' --include='*_test.go' saas/ | wc -l              # 전체
+grep -rh '^func Test' --include='*pg_test.go' saas/ | wc -l            # Postgres 필요
 ```
+
+`*pg_test.go` 셋(`access` · `intake/seen` · `jobs`)이 DSN을 요구하는 파일 전부입니다.
