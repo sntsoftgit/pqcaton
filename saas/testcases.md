@@ -28,22 +28,30 @@
 
 ### 통과는 검증이 아닙니다
 
-케이스가 무엇을 재는지는 **일부러 깨서** 확인합니다. 지금까지 확인한 것:
+케이스가 무엇을 재는지는 **일부러 깨서** 확인합니다. 손으로 하면 낡으므로 스크립트에
+둡니다 — **리팩터링 뒤에 이것이 통과하지 못하면 잃은 보장이 있다는 뜻입니다.**
 
-| 무엇을 깼나 | 어느 케이스가 잡았나 |
+```bash
+PQCATON_TEST_DSN='postgres://...' python3 saas/mutation_check.py
+```
+
+| 무엇을 깨나 | 어느 케이스가 잡나 |
 |---|---|
-| `ActiveKeys` 질의에서 `org` 조건 제거 | `CP-ORG-1` (인메모리 케이스는 못 잡음) |
-| 검증자가 다른 조직의 키를 조회 | `CP-INTAKE-3` — *"다른 조직 키가 통과했다"* |
-| 거절된 것까지 멱등에 표시 | `CP-INTAKE-6` — *"거절이 굳어 다시 들어오지 못했다"* |
-| `Claim`이 영향 행 수를 안 봄 | `CP-PG-5` — *"동시 확보에서 24개가 성공했다"* · `CP-PG-6`도 함께 |
+| `ActiveKeys` 질의에서 `org` 조건 제거 | `CP-ORG-1` (인메모리 케이스는 **못 잡음**) |
+| 검증자가 남의 조직 키를 조회 | `CP-INTAKE-3` |
+| 적재 못 한 것의 확보를 안 놓음 | `CP-INTAKE-6` |
+| 확보를 곧바로 되돌려 경합 창을 엶 | `CP-INTAKE-11` |
+| `Claim`이 영향 행 수를 안 봄 | `CP-PG-5` |
+| 조직을 본문에서 읽음 | `CP-HTTP-2` |
+| 본문 상한을 안 걺 | `CP-HTTP-4` |
+| 인증 실패 사유를 응답에 담음 | `CP-HTTP-3` |
 
-**헛다리도 기록해 둡니다.** `Claim` 안에 `SELECT`를 덧붙여 「확인과 표시를 나눈」 변이는
-**케이스를 깨지 못했습니다.** 판정은 여전히 `INSERT`의 영향 행 수가 하므로 원자성이
-그대로였기 때문입니다 — 실제 경합 창은 `Claim` 안이 아니라 **`Receive`가 확보를 적재
-앞에 두는가**에 있습니다. 그쪽은 `CP-INTAKE-11`이 지킵니다.
+스크립트가 스스로도 지킵니다 — 겨냥할 자리를 **정확히 한 곳** 찾지 못하면 실패로 세고
+(코드가 바뀌었다는 신호), 변이가 **컴파일되지 않아도** 실패로 셉니다. 컴파일이 깨지면
+테스트는 어차피 실패하므로, 그것을 "잡았다"로 세면 도구가 거짓말을 하게 됩니다.
 
 `-race`도 같습니다. 단일 고루틴 케이스만 있으면 검출기가 볼 것이 없어 **깨끗한 것이
-아무것도 증명하지 않습니다.** `CP-INTAKE-10·11`이 그 자리를 메웁니다.
+아무것도 증명하지 않습니다.** `CP-INTAKE-10·11`과 `CP-PG-5`가 그 자리를 메웁니다.
 
 ### 돌리는 법
 
@@ -145,25 +153,44 @@ docker rm -f pqcaton-test-pg
 | [CP-HTTP-6](internal/api/api_test.go) | `TestForwardedProtoIgnoredWhenNotTrusted` — 앞단 신뢰 끔, `X-Forwarded-Proto: http` | 무시하고 통과 | 아무나 붙일 수 있는 헤더라, 믿으면 평문 요청이 HTTPS로 둔갑합니다 |
 | [CP-HTTP-7](internal/api/api_test.go) | `TestBrokenResultDoesNotDropTheBatch` — 계약에 안 맞는 결과가 섞임 | 나머지는 들어간다 | 하나가 깨졌다고 배치를 버리면 러너가 그것만 골라낼 방법이 없습니다 |
 
-## 3. 아직 없는 것
+## 3. M2 — 작업 배포 (진행 중)
+
+작업 저장소와 만료·재배포 정책입니다. 롱폴 엔드포인트(`CP-HTTP-*`)는 아직 없습니다.
+
+### CP-JOB. 작업의 일생 (§6.2.1)
+
+| 케이스 | Given → When | Then | 목적 |
+|---|---|---|---|
+| [CP-JOB-1](internal/jobs/jobs_test.go) | `TestLeaseMarksLeased` — 대기 중 작업을 받아감 | 점유가 되고, **다른 러너에게는 안 나간다** | 같은 작업이 둘에게 나가면 관측은 중복되고 적용은 두 번 된다 |
+| [**CP-JOB-2**](internal/jobs/jobs_test.go) | `TestLeaseIsolatesOrg` — 다른 조직이 받아가려 함 | 안 나가고 조회도 안 된다 | 러너의 조직은 토큰에서 유도된 것입니다. 작업 조회에 그 조건이 붙어야 경계가 섭니다 |
+| [CP-JOB-3](internal/jobs/jobs_test.go) | `TestLeaseTakesOldestFirst` — 여러 개가 대기 | 오래 기다린 것부터 | 순서가 흔들리면 **굶는 작업이 생겨도 보이지 않습니다** |
+| [CP-JOB-4](internal/jobs/jobs_test.go) | `TestCompleteRequiresOwnLease` — 남의 러너가 완료 보고 | `ErrNotLeased` | 점유하지 않은 러너가 남의 작업을 닫으면 그 작업은 실행되지 않은 채 사라집니다 |
+| [CP-JOB-5](internal/jobs/jobs_test.go) | `TestExtendPushesLease` — 진행 중임을 알림 | 만료가 미뤄지고, 남의 점유는 못 미룬다 | 없으면 긴 작업에 억지로 큰 만료값을 잡아야 하고, 그러면 죽은 러너의 작업이 오래 묶입니다 |
+| [CP-JOB-6](internal/jobs/jobs_test.go) | `TestSweepRedeploysReadJobs` — `observe`·`enroll` 점유 만료 | 대기로 돌아간다 | 읽기는 두 번 해도 대상이 안 바뀌고 결과는 멱등이 접습니다 |
+| [**CP-JOB-7**](internal/jobs/jobs_test.go) | `TestSweepDoesNotRedeployProvision` — `provision` 점유 만료 | **재배포하지 않고** 「확인 필요」로. 이유도 남는다 | 러너가 이미 적용했는데 응답만 못 준 것일 수 있습니다. 다시 주면 **두 번 적용**되고 두 번째 `before` 캡처는 이미 바뀐 상태를 찍습니다 |
+| [CP-JOB-8](internal/jobs/jobs_test.go) | `TestSweepLeavesLiveLeases` — 만료 전 정리 | 건드리지 않는다 | 멀쩡히 도는 작업을 뺏으면 두 러너가 같은 일을 합니다 |
+| [CP-JOB-9](internal/jobs/jobs_test.go) | `TestJobsRequireOrg` — 조직 없이 넣기·점유·조회 | `org.ErrEmpty` | 조직 없이 열리는 경로를 하나도 두지 않습니다 |
+| [CP-JOB-10](internal/jobs/jobs_test.go) | `TestRedeployablePolicy` — 종류별 재배포 가능 여부 | 읽기만 true | **정책이 한 자리에만 있어야** 저장소마다 갈리지 않습니다 |
+
+## 4. 아직 없는 것
 
 M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 마일스톤 | 검증할 것 |
 |---|---|
-| **M2** 작업 배포 | 롱폴 · 만료·재배포 · `provision`은 `observe`와 다른 재배포 정책 |
+| **M2** 나머지 | 롱폴 엔드포인트 · Postgres 저장소 · 동시 점유(같은 작업이 둘에게 안 나가는지) |
 | **M3** 등재 | 지문 충돌 보류 · 등재 실패는 과금하지 않음 · 월중 고유 노드 누적 |
 | **M4** 관측 | 접속 정보가 컨트롤 플레인에 올라오지 않음 · `target_node_ids`로만 지시 |
 
-## 4. 세는 법
+## 5. 세는 법
 
 케이스는 **테스트 함수 단위**입니다. 아래 값과 어긋나면 이 표가 틀린 것입니다.
 
 | 레벨 | 수 |
 |---|---|
-| unit | 31 |
+| unit | 41 |
 | Postgres 필요 | 8 |
-| **전체** | **39** |
+| **전체** | **49** |
 
 ```bash
 grep -rh '^func Test' --include='*_test.go' saas/ | wc -l    # 전체
