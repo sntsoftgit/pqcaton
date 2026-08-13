@@ -15,6 +15,9 @@
 **케이스는 대부분 unit입니다** — 실물 없이 어디서나 돕니다. 예외는 `CP-PG-*`와 `CP-ORG-1`로,
 `PQCATON_TEST_DSN`이 있으면 실 Postgres로 돌고 없으면 스킵합니다. **스킵은 통과가 아닙니다.**
 
+**`CP-PG-5`가 스킵되면 멱등의 원자성을 확인하지 못한 것입니다.** 인메모리는 뮤텍스라
+자명하지만 Pg판은 전제가 다릅니다.
+
 **`CP-ORG-1`이 스킵되면 조직 격리를 확인하지 못한 것입니다.** 인메모리 케이스는 저장소
 객체가 애초에 달라서, 통과해도 격리를 증명하지 않습니다 — **한 테이블을 공유하는 쪽에서만**
 잴 수 있습니다.
@@ -32,6 +35,12 @@
 | `ActiveKeys` 질의에서 `org` 조건 제거 | `CP-ORG-1` (인메모리 케이스는 못 잡음) |
 | 검증자가 다른 조직의 키를 조회 | `CP-INTAKE-3` — *"다른 조직 키가 통과했다"* |
 | 거절된 것까지 멱등에 표시 | `CP-INTAKE-6` — *"거절이 굳어 다시 들어오지 못했다"* |
+| `Claim`이 영향 행 수를 안 봄 | `CP-PG-5` — *"동시 확보에서 24개가 성공했다"* · `CP-PG-6`도 함께 |
+
+**헛다리도 기록해 둡니다.** `Claim` 안에 `SELECT`를 덧붙여 「확인과 표시를 나눈」 변이는
+**케이스를 깨지 못했습니다.** 판정은 여전히 `INSERT`의 영향 행 수가 하므로 원자성이
+그대로였기 때문입니다 — 실제 경합 창은 `Claim` 안이 아니라 **`Receive`가 확보를 적재
+앞에 두는가**에 있습니다. 그쪽은 `CP-INTAKE-11`이 지킵니다.
 
 `-race`도 같습니다. 단일 고루틴 케이스만 있으면 검출기가 볼 것이 없어 **깨끗한 것이
 아무것도 증명하지 않습니다.** `CP-INTAKE-10·11`이 그 자리를 메웁니다.
@@ -100,6 +109,9 @@ docker rm -f pqcaton-test-pg
 | [CP-PG-2](internal/access/pg_test.go) | `TestPgRotationWindowAndRevoke` — 실 테이블에서 키 둘 | 덮어쓰이지 않는다 | 기본키에 `public_key`가 빠지면 두 번째 등록이 첫 번째를 **조용히 덮습니다** |
 | [CP-PG-3](internal/access/pg_test.go) | `TestPgRunnerRoundTrip` — 등록·갱신·빈 버전으로 갱신 | 빈 버전이 기존 값을 **지우지 않는다** | `status`가 버전을 안 보내는 경우에 기록이 지워지면 안 됩니다 |
 | [CP-PG-4](internal/access/pg_test.go) | `TestPgRefusesMissingSchema` — 테이블이 없는 곳을 가리킴 | `ErrSchemaMissing` | 생성자가 말없이 DDL을 돌면, 가리키는 곳이 어긋났을 때 빈 테이블이 생기고 거기에 씁니다 — 데이터가 사라진 것처럼 보입니다 |
+| [**CP-PG-5**](internal/intake/seen_pg_test.go) | `TestPgClaimIsAtomicUnderConcurrency` — 24개 고루틴이 **같은 지문**을 동시에 확보 | 하나만 성공 | 인메모리는 뮤텍스라 원자성이 자명하지만, Pg판은 `ON CONFLICT DO NOTHING`의 **영향 행 수**에 기댑니다. 그 전제는 실 테이블에서만 확인됩니다 |
+| [CP-PG-6](internal/intake/seen_pg_test.go) | `TestPgReleaseAllowsReclaim` — 확보 → 반환 → 재확보 | 다시 확보된다 | 없으면 거절이 굳어, 키를 고쳐 등록해도 그 결과가 영영 못 들어옵니다 |
+| [CP-PG-7](internal/intake/seen_pg_test.go) | `TestPgSeenIsolatesOrg` — 두 조직이 같은 지문 | 서로 안 막는다 | 멱등 표도 한 테이블을 공유합니다 — 섞이면 한 조직의 결과가 다른 조직에서 "이미 받았다"로 사라집니다 |
 
 ## 2. M1 — 결과 수신
 
@@ -150,8 +162,8 @@ M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 | 레벨 | 수 |
 |---|---|
 | unit | 31 |
-| Postgres 필요 | 5 |
-| **전체** | **36** |
+| Postgres 필요 | 8 |
+| **전체** | **39** |
 
 ```bash
 grep -rh '^func Test' --include='*_test.go' saas/ | wc -l    # 전체
