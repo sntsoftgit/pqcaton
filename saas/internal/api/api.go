@@ -5,7 +5,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -30,24 +29,12 @@ import (
 // "관측했는데 없더라"가 되어 이 제품이 가장 피하는 오답이 된다.
 const DefaultMaxBody = 32 << 20 // 32MiB
 
-// 롱폴의 기본값들.
+// DefaultJobLease — 나눠 준 작업의 점유 만료.
 //
-// 러너는 상태를 갖지 않고 **밖으로만 겁니다**(§6.1). 그래서 할 일은 밀어 주는 것이 아니라
-// 러너가 물어보고 기다리는 모양이 된다. 기다리는 길이가 곧 새 작업이 러너에 닿는 지연이다.
-const (
-	// DefaultJobWait — 작업이 없을 때 붙들고 기다리는 길이의 기본이자 상한.
-	//
-	// 상한이 없으면 러너가 큰 값을 보내 연결을 오래 붙든다. 앞단 프록시의 유휴 타임아웃보다
-	// 짧아야 한다 — 길면 기다리다 프록시가 먼저 끊는다.
-	DefaultJobWait = 30 * time.Second
-	// DefaultJobPoll — 저장소를 다시 보는 간격.
-	DefaultJobPoll = time.Second
-	// DefaultJobLease — 나눠 준 작업의 점유 만료.
-	//
-	// 짧으면 멀쩡히 도는 작업을 뺏고, 길면 죽은 러너의 작업이 그만큼 묶인다(§6.2.1).
-	// 긴 작업은 러너가 진행 중임을 알려 미룬다 — 그래서 여기 큰 값을 잡지 않는다.
-	DefaultJobLease = 10 * time.Minute
-)
+// 짧으면 멀쩡히 도는 작업을 뺏고, 길면 죽은 러너의 작업이 그만큼 묶인다(§6.2.1).
+// **러너는 자기 스케줄에 깨어나 물어본다**(§3). 그래서 이 값은 그 간격보다 넉넉해야 한다 —
+// 다음 실행 전에 회수되면 같은 작업이 두 번 나간다.
+const DefaultJobLease = 10 * time.Minute
 
 // StoresFor — 조직에 묶인 히스토리 저장소를 돌려준다.
 //
@@ -64,16 +51,9 @@ type Config struct {
 	TrustProxy bool
 	// MaxBody — 0이면 DefaultMaxBody.
 	MaxBody int64
-	// JobWait — 롱폴이 기다리는 길이의 기본이자 상한. 0이면 DefaultJobWait.
-	JobWait time.Duration
-	// JobPoll — 작업 저장소를 다시 보는 간격. 0이면 DefaultJobPoll.
-	JobPoll time.Duration
 	// JobLease — 나눠 준 작업의 점유 만료. 0이면 DefaultJobLease.
 	JobLease time.Duration
 	// Now — 시각. 테스트가 고정한다.
-	//
-	// **롱폴이 기다리는 길이에는 쓰지 않는다.** 고정된 시계로는 기다림이 끝나지 않는다 —
-	// 저장에 남는 시각과 대기는 다른 것이다.
 	Now func() time.Time
 }
 
@@ -91,12 +71,6 @@ type Server struct {
 func New(a access.Store, seen intake.SeenStore, q jobs.Store, stores StoresFor, cfg Config, log *slog.Logger) *Server {
 	if cfg.MaxBody == 0 {
 		cfg.MaxBody = DefaultMaxBody
-	}
-	if cfg.JobWait == 0 {
-		cfg.JobWait = DefaultJobWait
-	}
-	if cfg.JobPoll == 0 {
-		cfg.JobPoll = DefaultJobPoll
 	}
 	if cfg.JobLease == 0 {
 		cfg.JobLease = DefaultJobLease
@@ -312,10 +286,11 @@ type jobResponse struct {
 	Attempts  int       `json:"attempts"`
 }
 
-// nextJob — 할 일을 하나 받아간다. 없으면 잠시 기다린다(롱폴).
+// nextJob — 할 일을 하나 받아간다. 없으면 204.
 //
-// 러너는 밖으로만 걸기 때문에(§6.1) 밀어 줄 방법이 없다. 기다리지 않고 곧장 답하면 러너가
-// 짧은 간격으로 계속 물어야 하고, 그 간격이 곧 새 작업의 지연이 된다.
+// **기다리지 않는다.** 러너는 상주하지 않고 **자기 스케줄에 깨어나** 물어본다(§3) —
+// 붙들고 기다려 봐야 그 프로세스는 곧 끝난다. 새 작업이 러너에 닿는 지연은 그래서
+// **스케줄 간격**이고, 그것이 이 배포 형태의 대가다.
 //
 // **없으면 204다.** 빈 몸통을 200으로 주면 "작업 없음"과 "작업이 왔는데 못 읽었다"가
 // 러너 쪽에서 같은 모양이 된다.
@@ -330,48 +305,23 @@ func (s *Server) nextJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wait := s.cfg.JobWait
-	if q := r.URL.Query().Get("wait"); q != "" {
-		d, err := time.ParseDuration(q)
-		if err != nil || d < 0 {
-			s.fail(w, http.StatusBadRequest, "wait를 읽을 수 없다")
-			return
-		}
-		// 상한을 넘겨 잡지 못한다. 넘기면 앞단 유휴 타임아웃에 걸려 끊기고,
-		// 러너 쪽에는 그것이 오류로 보인다.
-		wait = min(d, s.cfg.JobWait)
+	now := s.cfg.Now()
+	j, ok, err := s.jobs.Lease(o, runnerID, now.Add(s.cfg.JobLease), now)
+	if err != nil {
+		s.log.Error("작업을 꺼낼 수 없다", "org", o, "runner", runnerID, "err", err)
+		s.fail(w, http.StatusInternalServerError, "작업을 꺼낼 수 없다")
+		return
 	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), wait)
-	defer cancel()
-
-	tick := time.NewTicker(s.cfg.JobPoll)
-	defer tick.Stop()
-	for {
-		now := s.cfg.Now()
-		j, ok, err := s.jobs.Lease(o, runnerID, now.Add(s.cfg.JobLease), now)
-		if err != nil {
-			s.log.Error("작업을 꺼낼 수 없다", "org", o, "runner", runnerID, "err", err)
-			s.fail(w, http.StatusInternalServerError, "작업을 꺼낼 수 없다")
-			return
-		}
-		if ok {
-			s.log.Info("작업을 배포했다", "org", o, "runner", runnerID,
-				"job", j.ID, "kind", j.Kind, "attempts", j.Attempts)
-			s.ok(w, jobResponse{
-				ID: j.ID, Kind: string(j.Kind), Targets: j.Targets, Payload: j.Payload,
-				LeaseTill: j.LeaseTill, Attempts: j.Attempts,
-			})
-			return
-		}
-		select {
-		case <-ctx.Done():
-			// 기다림이 끝났거나 러너가 끊었다. 어느 쪽이든 붙들지 않는다.
-			w.WriteHeader(http.StatusNoContent)
-			return
-		case <-tick.C:
-		}
+	if !ok {
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
+	s.log.Info("작업을 배포했다", "org", o, "runner", runnerID,
+		"job", j.ID, "kind", j.Kind, "attempts", j.Attempts)
+	s.ok(w, jobResponse{
+		ID: j.ID, Kind: string(j.Kind), Targets: j.Targets, Payload: j.Payload,
+		LeaseTill: j.LeaseTill, Attempts: j.Attempts,
+	})
 }
 
 // ── 응답 ───────────────────────────────────────────────────────────────────

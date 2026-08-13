@@ -233,7 +233,7 @@ sequenceDiagram
 
     운영자->>CP: 관측 지시 (target_node_ids)
     Note over CP: 작업 = 대기
-    러너->>CP: GET /v1/runner/jobs (롱폴)
+    러너->>CP: GET /v1/runner/jobs (스케줄에 깨어나)
     CP-->>러너: 작업 · 점유 만료시각
     Note over CP: 대기 → 점유
     러너->>노드: collector 반입 · 실행 · 회수

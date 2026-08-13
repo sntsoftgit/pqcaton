@@ -56,8 +56,8 @@ PQCATON_TEST_DSN='postgres://...' python3 saas/mutation_check.py
 | 고르는 것과 표시하는 것 사이를 벌림(`SKIP LOCKED` 제거) | `CP-PG-9` |
 | Pg 정리가 작업 종류를 안 가림 | `CP-PG-10` |
 | 모르는 종류가 자동 재배포로 떨어짐(`!= Provision`) | `CP-JOB-10` |
-| 롱폴이 조직을 질의 문자열에서 읽음 | `CP-HTTP-10` |
-| 롱폴이 기다리지 않고 곧장 없다고 답함 | `CP-HTTP-9` |
+| 작업 배포가 조직을 질의 문자열에서 읽음 | `CP-HTTP-10` |
+| 작업 없음을 빈 200으로 답함 | `CP-HTTP-9` |
 | 닫지도 않고 닫혔다고 답함 | `CP-HTTP-13` |
 | 남의 점유를 닫고도 닫혔다고 답함 | `CP-HTTP-14` |
 | 작업을 못 닫으면 결과까지 버림 | `CP-HTTP-15` |
@@ -172,7 +172,7 @@ docker rm -f pqcaton-test-pg
 ## 3. M2 — 작업 배포 (진행 중)
 
 작업 저장소와 만료·재배포 정책(`CP-JOB`), 그것이 실 테이블에서도 성립하는지(`CP-PG-8~12`),
-그 위의 롱폴 경계(`CP-HTTP-8~12`)입니다. 완료·연장 보고 경로는 아직 없습니다.
+그 위의 작업 배포 경계(`CP-HTTP-8~11`)입니다. 완료·연장 보고 경로는 아직 없습니다.
 
 ### CP-JOB. 작업의 일생 (§6.2.1)
 
@@ -199,15 +199,14 @@ docker rm -f pqcaton-test-pg
 | [CP-PG-11](internal/jobs/pg_test.go) | `TestPgJobLifecycle` — 오래된 것부터 → 연장 → 완료, 남의 점유·없는 작업도 | 순서대로 나가고, 남의 것은 `ErrNotLeased`, 없는 것은 `ErrNotFound` | 「그런 작업 없음」과 「네 것이 아님」이 같은 말이 되면 운영자가 무엇이 잘못됐는지 못 봅니다 |
 | [CP-PG-12](internal/jobs/pg_test.go) | `TestPgJobsRefuseMissingSchema` — 표가 없는 곳을 가리킴 | `ErrSchemaMissing` | 말없이 DDL을 돌면 빈 표가 새로 생기고 거기에 씁니다 — **받아 갈 작업이 통째로 사라진 것처럼** 보입니다 |
 
-### CP-HTTP. 롱폴 경계 (§6.2)
+### CP-HTTP. 작업 배포 경계 (§6.2)
 
 | 케이스 | Given → When | Then | 목적 |
 |---|---|---|---|
 | [CP-HTTP-8](internal/api/jobs_test.go) | `TestJobIsLeasedToTheAskingRunner` — 대기 중 작업이 있음 | 200으로 나가고 **그 자리에서 점유**된다. 다음 러너에게는 204 | 점유가 응답과 함께 남지 않으면 다음 러너가 같은 작업을 또 받아갑니다 |
-| [**CP-HTTP-9**](internal/api/jobs_test.go) | `TestLongPollDeliversJobThatArrivesWhileWaiting` — 빈 상태로 물어보고, **기다리는 동안** 작업이 들어옴 | 그 요청으로 나간다 | 러너는 밖으로만 걸어서 밀어 줄 방법이 없습니다(§6.1). 곧장 「없다」고 답하면 **묻는 간격이 곧 새 작업의 지연**이 됩니다 |
+| [CP-HTTP-9](internal/api/jobs_test.go) | `TestNoJobAnswersImmediately` — 작업이 없는데 물어봄 | **곧바로 204**, 몸통 없음 | 러너는 상주하지 않고 **스케줄에 깨어나** 묻습니다(§3) — 붙들어 봐야 그 프로세스는 곧 끝납니다. 빈 몸통을 200으로 주면 「작업 없음」과 「작업이 왔는데 못 읽었다」가 러너 쪽에서 같은 모양이 됩니다 |
 | [**CP-HTTP-10**](internal/api/jobs_test.go) | `TestJobsOrgComesFromTokenNotQuery` — 다른 조직 토큰으로 `?org=acme` | 204, acme 작업은 건드려지지도 않는다 | 조직은 러너가 주장하는 것이 아닙니다(§6.4). 핸들러가 조직을 읽을 자리를 **하나도 두지 않는 것**이 이 성질을 지킵니다 |
 | [CP-HTTP-11](internal/api/jobs_test.go) | `TestJobsRequireRunnerID` — `runner_id` 없이 요청 | 400, 작업은 대기 그대로 | 누가 가져갔는지 모르면 완료 보고를 점유와 맞춰 볼 수 없습니다 — 그 작업은 만료될 때까지 아무도 닫지 못합니다 |
-| [CP-HTTP-12](internal/api/jobs_test.go) | `TestLongPollGivesUpAndReleasesDisconnected` — 상한을 넘는 `wait=10s` / 요청이 끊김 | 상한까지만 기다려 204, 끊기면 곧 반환 | 상한이 없으면 러너가 큰 값을 보내 연결을 붙듭니다. 끊긴 요청을 붙들면 **죽은 러너 수만큼 고루틴이 쌓입니다** |
 
 ### CP-HTTP. 작업 닫기 (§6.2.1)
 
@@ -239,9 +238,9 @@ M1 이후의 케이스입니다. 만들 때 이 문서에 함께 채웁니다.
 
 | 레벨 | 수 |
 |---|---|
-| unit | 50 |
+| unit | 49 |
 | Postgres 필요 | 13 |
-| **전체** | **63** |
+| **전체** | **62** |
 
 ```bash
 grep -rh '^func Test' --include='*_test.go' saas/ | wc -l              # 전체

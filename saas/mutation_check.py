@@ -140,7 +140,7 @@ MUTATIONS = [
         "TestUnknownJobDoesNotDropResults",
     ),
     (
-        "롱폴 · 조직을 질의 문자열에서 읽음 → CP-HTTP-10",
+        "작업 배포 · 조직을 질의 문자열에서 읽음 → CP-HTTP-10",
         "saas/internal/api/api.go",
         [('\trunnerID := strings.TrimSpace(r.URL.Query().Get("runner_id"))',
           '\tif q := r.URL.Query().Get("org"); q != "" {\n\t\to = org.ID(q)\n\t}\n'
@@ -149,12 +149,11 @@ MUTATIONS = [
         "TestJobsOrgComesFromTokenNotQuery",
     ),
     (
-        "롱폴 · 기다리지 않고 곧장 없다고 답함 → CP-HTTP-9",
+        "작업 없음을 빈 200으로 답함 → CP-HTTP-9",
         "saas/internal/api/api.go",
-        [("\tctx, cancel := context.WithTimeout(r.Context(), wait)",
-          "\t_ = wait\n\tctx, cancel := context.WithTimeout(r.Context(), 0)")],
+        [("\t\tw.WriteHeader(http.StatusNoContent)\n\t\treturn", "\t\ts.ok(w, jobResponse{})\n\t\treturn")],
         "./saas/internal/api/...",
-        "TestLongPollDeliversJobThatArrivesWhileWaiting",
+        "TestNoJobAnswersImmediately",
     ),
     (
         "HTTP · 인증 실패 사유를 응답에 담음 → CP-HTTP-3",
