@@ -37,7 +37,9 @@ MUTATIONS = [
     (
         "멱등 · 적재 못 한 것의 확보를 안 놓음 → CP-INTAKE-6",
         "saas/internal/intake/intake.go",
-        [("if err := o.Seen.Release(o.Org, claimed[i]); err != nil {", "if false {")],
+        [("""		if err := o.Seen.Release(o.Org, claimed[i]); err != nil {
+			return rep, fmt.Errorf("멱등 반환: %w", err)
+		}""", "\t\t_ = claimed[i]")],
         "./saas/internal/intake/...",
         "TestRejectedResultCanBeRetriedAfterKeyIsRegistered",
     ),
