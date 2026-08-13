@@ -8,6 +8,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"log/slog"
 	"os"
@@ -29,6 +30,12 @@ func main() {
 	}
 
 	rep, err := runner.RunOnce(cfg, runner.NewClient(cfg), log)
+	if errors.Is(err, runner.ErrAlreadyRunning) {
+		// **고장이 아니다.** 스케줄이 관측 시간보다 촘촘하면 정상적으로 생긴다 —
+		// 다음 스케줄에 다시 온다. 다만 반복되면 간격을 다시 봐야 한다는 신호다.
+		log.Info("이전 실행이 아직 돈다 — 이번 차례는 건너뛴다")
+		return
+	}
 	if err != nil {
 		// **실패를 숨기지 않는다.** 조용히 0으로 끝내면 스케줄러가 잘 돈 것으로 읽는다.
 		log.Error("돌지 못했다", "err", err, "job", rep.JobID)

@@ -195,6 +195,14 @@ type Report struct {
 // 그것을 다음 작업이 올 때까지 묵혀 둘 이유가 없다.
 func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	var rep Report
+
+	// **같은 결과 디렉터리를 쓰는 실행은 하나뿐이다.** 스케줄이 관측 시간보다 촘촘하면
+	// 이전 실행이 아직 도는 채로 다음이 뜬다(cron은 그것을 보지 않는다).
+	release, err := lock(c.ResultsDir)
+	if err != nil {
+		return rep, err // ErrAlreadyRunning이면 부르는 쪽이 실패로 세지 않는다
+	}
+	defer release()
 	defer sweepBoth(c, log) // 실패해도 청소는 한다 — 디스크가 차면 관측이 멈춘다
 
 	job, ok, err := cl.NextJob(c.RunnerID)
