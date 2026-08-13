@@ -331,3 +331,111 @@ func TestKeepDaysConfig(t *testing.T) {
 		t.Fatal("일수가 아닌 값이 통과했다")
 	}
 }
+
+// fakeAnsible — 부를 명령을 가짜로 바꾼다. 실제 exec 경로를 그대로 태워야 인자 전달까지 잰다.
+func fakeAnsible(t *testing.T, dir, script string) string {
+	t.Helper()
+	p := filepath.Join(dir, "fake-ansible")
+	if err := os.WriteFile(p, []byte("#!/bin/sh\n"+script+"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// RUN-11 — 작업을 받으면 **플레이북을 돌리고, 대상을 `--limit`으로 좁힌다.**
+//
+// 지목된 노드가 있는데 인벤토리 전체를 돌리면 「이 노드만」이라는 지시가 뜻을 잃고,
+// 과금 대상도 늘어난다.
+func TestPlaybookRunsLimitedToTargets(t *testing.T) {
+	p := &plane{job: map[string]any{"id": "j1", "kind": "observe", "targets": []string{"web-01", "db-01"}}}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv)
+
+	args := filepath.Join(cfg.ResultsDir, "args")
+	cfg.Ansible = fakeAnsible(t, t.TempDir(), `echo "$@" > `+args+`
+echo '{"envelope":{"targetNodeId":"web-01"}}' > `+filepath.Join(cfg.ResultsDir, "web-01.json"))
+	cfg.Playbook, cfg.Inventory = "discover.yml", "targets.ini"
+
+	rep, err := runner.RunOnce(cfg, cl, quiet())
+	if err != nil {
+		t.Fatalf("실행: %v", err)
+	}
+	if !rep.Played || rep.Files != 1 {
+		t.Fatalf("돌리고 올리는 데까지 안 갔다: %+v", rep)
+	}
+	got, _ := os.ReadFile(args)
+	for _, want := range []string{"-i targets.ini", "--limit web-01,db-01", "discover.yml"} {
+		if !strings.Contains(string(got), want) {
+			t.Fatalf("인자가 빠졌다 (%q): %s", want, got)
+		}
+	}
+	if p.gotBody["job_id"] != "j1" {
+		t.Fatalf("돌린 작업이 닫히지 않았다: %v", p.gotBody["job_id"])
+	}
+}
+
+// RUN-12 — **플레이북이 실패하면 그 작업을 닫지 않는다.** 생긴 결과는 그래도 올린다.
+//
+// 반쯤 된 것을 「끝났다」로 두면 그 노드는 다음 관측까지 빈 채로 남는다. 만료가 회수해
+// 다시 배포한다 — 읽기라 안전하다. 그렇다고 이미 생긴 결과를 버릴 이유는 없다.
+func TestFailedPlaybookDoesNotCloseTheJob(t *testing.T) {
+	p := &plane{job: map[string]any{"id": "j1", "kind": "observe"}}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv, "web-01-openssl.json")
+	cfg.Ansible = fakeAnsible(t, t.TempDir(), "exit 4")
+	cfg.Playbook = "discover.yml"
+
+	rep, err := runner.RunOnce(cfg, cl, quiet())
+	if err == nil {
+		t.Fatal("플레이북이 실패했는데 오류가 안 났다 — 조용히 0으로 끝나면 스케줄러가 잘 돈 것으로 읽는다")
+	}
+	if rep.Played {
+		t.Fatalf("실패했는데 돌린 것으로 셌다: %+v", rep)
+	}
+	if p.gotBody == nil {
+		t.Fatal("생긴 결과까지 버렸다")
+	}
+	if _, has := p.gotBody["job_id"]; has {
+		t.Fatalf("반쯤 된 작업을 닫았다: %v", p.gotBody["job_id"])
+	}
+}
+
+// RUN-13 — 플레이북이 설정되지 않았으면 **돌리지 않고 올리기만 한다.**
+//
+// 관측을 다른 방식으로 돌리는 고객이 있을 수 있다. 러너의 값은 「올리는 입」이지
+// 「돌리는 손」이 아니다.
+func TestNoPlaybookStillUploads(t *testing.T) {
+	p := &plane{job: map[string]any{"id": "j1", "kind": "observe"}}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv, "web-01-openssl.json")
+
+	rep, err := runner.RunOnce(cfg, cl, quiet())
+	if err != nil {
+		t.Fatalf("실행: %v", err)
+	}
+	if rep.Played || rep.Files != 1 || p.gotBody["job_id"] != "j1" {
+		t.Fatalf("올리기만 하는 길이 막혔다: %+v", rep)
+	}
+}
+
+// RUN-14 — **점유가 곧 만료되면 시작하지 않는다.**
+//
+// 만료된 뒤에 끝나 봐야 그 작업은 이미 회수됐다 — 도는 동안 대상 노드에 부담만 준다.
+func TestExpiringLeaseIsNotStarted(t *testing.T) {
+	p := &plane{job: map[string]any{
+		"id": "j1", "kind": "observe",
+		"lease_till": time.Now().Add(2 * time.Second).UTC().Format(time.RFC3339),
+	}}
+	srv := p.start(t)
+	cfg, cl := setup(t, srv)
+	ran := filepath.Join(cfg.ResultsDir, "ran")
+	cfg.Ansible = fakeAnsible(t, t.TempDir(), "touch "+ran)
+	cfg.Playbook = "discover.yml"
+
+	if _, err := runner.RunOnce(cfg, cl, quiet()); err == nil {
+		t.Fatal("만료 직전인데 오류가 안 났다")
+	}
+	if _, err := os.Stat(ran); err == nil {
+		t.Fatal("만료 직전인데 대상 노드에 붙었다")
+	}
+}

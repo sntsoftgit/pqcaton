@@ -60,6 +60,14 @@ type Config struct {
 	SentKeepDays int
 	// BadKeepDays — 못 올린 결과를 며칠 두나. `sent`보다 길다(위 [badDir]).
 	BadKeepDays int
+
+	// Playbook — 관측 작업을 받으면 돌릴 플레이북. pqcota의 참조 플레이북을 그대로 쓴다.
+	// 비면 돌리지 않는다 — 결과를 올리는 일만 한다.
+	Playbook string
+	// Inventory — 그 플레이북에 넘길 대상 목록. **운영자가 채운 파일이다.**
+	Inventory string
+	// Ansible — 부를 명령. 비면 [DefaultAnsible].
+	Ansible string
 }
 
 // 설정 파일의 키. 이름은 설치 문서와 같은 것을 쓴다 — 두 벌이 되면 어긋난다.
@@ -70,6 +78,9 @@ const (
 	keyResultsDir = "PQCATON_RESULTS_DIR"
 	keySentKeep   = "PQCATON_SENT_KEEP_DAYS"
 	keyBadKeep    = "PQCATON_BAD_KEEP_DAYS"
+	keyPlaybook   = "PQCATON_PLAYBOOK"
+	keyInventory  = "PQCATON_INVENTORY"
+	keyAnsible    = "PQCATON_ANSIBLE"
 )
 
 var (
@@ -117,6 +128,12 @@ func LoadConfig(path string) (Config, error) {
 			c.SentKeepDays, perr = days(v)
 		case keyBadKeep:
 			c.BadKeepDays, perr = days(v)
+		case keyPlaybook:
+			c.Playbook = v
+		case keyInventory:
+			c.Inventory = v
+		case keyAnsible:
+			c.Ansible = v
 		}
 		if perr != nil {
 			return Config{}, fmt.Errorf("%s: %w", k, perr)
@@ -163,6 +180,7 @@ type Report struct {
 	Kind     string
 	Files    int    // 올린 결과 파일 수
 	Bad      int    // 읽을 수 없어 치운 파일 수
+	Played   bool   // 플레이북을 돌렸나
 	Accepted int    // 컨트롤 플레인이 적재한 수
 	Job      string // 작업 처리 결과 — closed · not-found · not-leased …
 }
@@ -183,9 +201,20 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	if err != nil {
 		return rep, fmt.Errorf("작업 조회: %w", err)
 	}
+	var playErr error
 	if ok {
 		rep.JobID, rep.Kind = job.ID, job.Kind
 		log.Info("작업을 받았다", "job", job.ID, "kind", job.Kind, "targets", len(job.Targets))
+
+		if c.Playbook != "" {
+			if playErr = runPlaybook(c, job, log); playErr == nil {
+				rep.Played = true
+			} else {
+				// **작업을 닫지 않는다.** 반쯤 된 것을 「끝났다」로 두면 그 노드는 다음
+				// 관측까지 빈 채로 남는다. 만료가 회수해 다시 배포한다 — 읽기라 안전하다.
+				rep.JobID = ""
+			}
+		}
 	}
 
 	files, err := resultFiles(c.ResultsDir)
@@ -209,7 +238,7 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 			// 작업은 받았는데 올릴 것이 없다. 닫지 않는다 — 만료가 회수한다.
 			log.Warn("작업을 받았는데 올릴 결과가 없다", "job", job.ID, "dir", c.ResultsDir)
 		}
-		return rep, nil
+		return rep, playErr
 	}
 
 	res, err := cl.SendResults(c.RunnerID, rep.JobID, payloads)
@@ -226,7 +255,7 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	}
 	log.Info("결과를 올렸다", "files", rep.Files, "accepted", rep.Accepted,
 		"duplicate", res.Duplicate, "rejected", res.Rejected, "job", res.Job)
-	return rep, nil
+	return rep, playErr
 }
 
 // read — 파일을 읽어 보낼 것과 치울 것으로 가른다.
