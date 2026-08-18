@@ -1,0 +1,38 @@
+# site/ 를 GitHub Pages로 올린다.
+#
+# **Settings → Pages → Source 를 "GitHub Actions"로 두어야 돕니다.** 그 설정은 리포
+# 소유자만 바꿀 수 있어 여기서 할 수 없습니다.
+#
+# private 리포에서는 Pages가 유료 플랜에서만 열립니다 — 공개로 바꾸면 바로 뜹니다.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 하나씩. 밀린 것은 최신만 남긴다 — 중간 것을 굳이 올릴 이유가 없다.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -67,6 +67,17 @@
   }
   .wrap { max-width: 900px; margin: 0 auto; padding: 72px 24px 120px; }
 
+  nav {
+    display: flex; align-items: baseline; gap: 10px;
+    padding-bottom: 22px; margin-bottom: 34px; border-bottom: 1px solid var(--rule);
+    font-size: 14px;
+  }
+  .brand { font-weight: 650; color: var(--ink); text-decoration: none; letter-spacing: -.01em; }
+  .navsep { color: var(--ink-3); }
+  .navhere { color: var(--ink-2); }
+  .navout { margin-left: auto; color: var(--ink-2); text-decoration: none; }
+  .navout:hover, .brand:hover { color: var(--accent); }
+
   header { border-bottom: 1px solid var(--rule); padding-bottom: 28px; margin-bottom: 44px; }
   .eyebrow {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -140,6 +151,13 @@
 </head>
 <body>
 <div class="wrap">
+
+<nav aria-label="사이트">
+  <a class="brand" href="./">pqcaton</a>
+  <span class="navsep">/</span>
+  <span class="navhere">아키텍처</span>
+  <a class="navout" href="https://github.com/sntsoftgit/pqcaton">GitHub</a>
+</nav>
 
 <header>
   <p class="eyebrow">pqcaton · architecture</p>
@@ -430,8 +448,8 @@
 </p>
 
 <footer>
-  설계 근거는 <a href="design.md">docs/design.md</a>, 검증 기준은 <a href="testcases.md">docs/testcases.md</a>,
-  자기 서버에 설치해 쓰는 여정은 <a href="journey.md">docs/journey.md</a>에 있습니다.
+  설계 근거는 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/design.md">docs/design.md</a>, 검증 기준은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/testcases.md">docs/testcases.md</a>,
+  자기 서버에 설치해 쓰는 여정은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/journey.md">docs/journey.md</a>에 있습니다.
 </footer>
 
 </div>

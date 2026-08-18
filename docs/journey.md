@@ -8,7 +8,7 @@
 
 > **§ 표기**: 별도 언급이 없으면 pqcota
 > [규정서](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/regulation.md)의 절 번호입니다.
-> 구조 그림은 [architecture.html](architecture.html)에 있습니다.
+> 구조 그림은 [site/index.html](../site/index.html)에 있습니다.
 
 ---
 
