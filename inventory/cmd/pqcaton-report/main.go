@@ -181,9 +181,12 @@ func printObservation(seenBy map[string][]string, assets []reconcile.Observed,
 		fmt.Println("없습니다 — 이 범위에서는 관측이 완전합니다")
 	} else {
 		if len(gaps) > 0 {
-			fmt.Printf("계층 %s ", strings.Join(uniq(gaps), ", "))
+			fmt.Printf("계층 %s", strings.Join(uniq(gaps), ", "))
 		}
 		if len(uncovered) > 0 {
+			if len(gaps) > 0 {
+				fmt.Print(" ")
+			}
 			un := make([]string, 0, len(uncovered))
 			for n := range uncovered {
 				un = append(un, n)
