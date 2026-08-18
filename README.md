@@ -47,7 +47,7 @@ pqcota                          pqcaton
 본 것*인지 *이미 없어진 것*인지는 사람만 압니다. pqcota의 완전성 맵이 "원리상 관측 불가"인지
 "실제 없음"인지를 갈라 주고, 그 위에서 사람이 정합니다.
 
-**구조 그림**은 [site/index.html](site/index.html), **처음부터 끝까지 따라가는 여정**은
+**구조 그림**은 [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/)([소스](site/index.html)), **처음부터 끝까지 따라가는 여정**은
 [docs/journey.md](docs/journey.md)에 있습니다. 설계 근거는 [docs/design.md](docs/design.md),
 검증 기준은 [docs/testcases.md](docs/testcases.md)입니다.
 

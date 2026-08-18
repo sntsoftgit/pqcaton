@@ -22,12 +22,12 @@
 `index.html`을 소개 페이지로 새로 쓰고, 지금 것을 `architecture.html`로 옮깁니다. 머리의
 `<nav>`가 그때 쓰라고 미리 있는 자리입니다.
 
-## 켜는 법 — 그리고 켜면 무엇이 공개되나
+## 켜져 있습니다
 
-**Settings → Pages → Source 를 「GitHub Actions」**로 두면 위 워크플로가 배포합니다. 그 설정은
-리포 소유자만 바꿉니다.
+**https://www.sntsoft.co.kr/pqcaton/** — 조직에 커스텀 도메인(`www.sntsoft.co.kr`)이 걸려 있어
+`github.io`가 아닙니다. Source는 GitHub Actions이고 HTTPS를 강제합니다.
 
-조직이 Team 플랜이라 **private 리포에서도 배포됩니다.** 다만 그 대가를 알고 켜야 합니다:
+조직이 Team 플랜이라 **private 리포에서도 배포됩니다.** 다만 그 대가를 알고 있어야 합니다:
 
 > **리포가 private이어도 배포된 사이트는 공개입니다.** URL을 아는 사람은 누구나 봅니다 —
 > 접근 제어가 붙은 Pages는 Enterprise Cloud에서만 됩니다.
