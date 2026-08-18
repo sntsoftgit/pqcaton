@@ -98,7 +98,10 @@ func (f *FileJudgmentStore) All() ([]*Judgment, error) {
 			return nil, fmt.Errorf("%s:%d 읽을 수 없다: %w", f.path, n, err)
 		}
 		if r.Org != string(f.org) {
-			return nil, fmt.Errorf("%w: %s:%d", ErrOrgMismatch, f.path, n)
+			// **무엇이 어긋났는지 적는다.** 대개 -org 를 저장할 때와 다르게 준 것인데,
+			// "다른 조직의 판정이 있다"만 보면 파일이 오염된 줄 안다.
+			return nil, fmt.Errorf("%w: %s:%d - 이 핸들은 %q인데 그 줄은 %q다",
+				ErrOrgMismatch, f.path, n, f.org, r.Org)
 		}
 		j := r.J
 		out = append(out, &j)
