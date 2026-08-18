@@ -115,6 +115,7 @@ pqcota-provision --level l2 plan.json > provision.yml   # pqcota 리포의 명�
 
 자세한 것은 [LICENSING.md](LICENSING.md)에 있습니다. 기여하실 때는
 [CONTRIBUTING.md](CONTRIBUTING.md)를 먼저 읽어 주십시오(CLA가 필요합니다).
+보안 취약점은 이슈가 아니라 [SECURITY.md](SECURITY.md)의 경로로 알려 주십시오.
 
 상류 pqcota는 Apache-2.0이고, 귀속 고지는 [NOTICE](NOTICE)에 있습니다.
 

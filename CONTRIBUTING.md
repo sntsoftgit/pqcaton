@@ -58,4 +58,4 @@ CI가 이것을 검사합니다(`make check-licenses`). 게이트에 걸리면 �
 
 - 버그·제안 → [이슈](https://github.com/sntsoftgit/pqcaton/issues)
 - 상업 라이선스 → **kty@sntsoft.co.kr**
-- 보안 취약점 → 이슈로 열지 마시고 **kty@sntsoft.co.kr**로 알려 주십시오
+- 보안 취약점 → 이슈로 열지 마시고 [SECURITY.md](SECURITY.md)의 경로로 알려 주십시오
