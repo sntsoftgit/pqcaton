@@ -3,7 +3,9 @@
 # **Settings → Pages → Source 를 "GitHub Actions"로 두어야 돕니다.** 그 설정은 리포
 # 소유자만 바꿀 수 있어 여기서 할 수 없습니다.
 #
-# private 리포에서는 Pages가 유료 플랜에서만 열립니다 — 공개로 바꾸면 바로 뜹니다.
+# 조직이 Team 플랜이라 private 리포에서도 배포됩니다. 다만 **배포된 사이트는 공개**입니다 —
+# 접근 제어가 붙은 Pages는 Enterprise Cloud에서만 됩니다. `site/` 아래에는 공개돼도 되는
+# 것만 둡니다.
 name: pages
 
 on:
