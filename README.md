@@ -39,6 +39,7 @@ pqcota                          pqcaton
 |---|---|
 | [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만 = shadow) · UNOBSERVED(선언만) |
 | [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
+| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 냅니다 |
 | [`inventory/cmd/pqcota-reconcile`](inventory/cmd/pqcota-reconcile) | 대조 실행 |
 | [`inventory/cmd/pqcota-report`](inventory/cmd/pqcota-report) | 거버넌스 리포트·토폴로지 |
 
@@ -58,6 +59,41 @@ pqcota                          pqcaton
 ```bash
 make            # 라이선스 게이트 → 빌드 → 테스트
 ```
+
+**이 리포만으로 한 바퀴가 돕니다.** 관측할 대상은 이 머신입니다.
+
+```bash
+go build -o bin/ ./inventory/cmd/...
+
+# ① 선언 — CMDB가 "있다"고 말하는 것. 직접 씁니다
+printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,provider-chain\n' > decl.csv
+
+# ② 대조 — 이 머신을 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 냅니다
+bin/pqcaton-decide open decl.csv local > session.json
+
+# ③ 판정 — 사람이 하는 자리. session.json 을 열어
+#    필수 항목의 conclusion, 그리고 reviewer · signature 를 채웁니다
+#    확정 계획에 넣을 항목은 `확정_계획에_넣는다`를 true 로
+
+# ④ 확정 — 전 필수 판정과 승인 서명이 있어야 통과합니다
+bin/pqcaton-decide close session.json > plan.json
+```
+
+**④가 이 리포의 최강 게이트입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 말합니다.**
+
+```
+❌ finalize: 미판정 필수 항목 존재(전 필수 판정 전 불가)
+   · signature 가 비어 있습니다
+   · 결론 없음: local/openssl/libssl-e2f2d68a (UNDECLARED)
+```
+
+나온 `plan.json`은 **상류가 그대로 받습니다** — 계약 형식이라 우리 형식이 따로 없습니다.
+
+```bash
+pqcota-provision --level l2 plan.json > provision.yml   # pqcota 리포의 명령
+```
+
+여러 노드를 훑는 길과 거버넌스 토폴로지는 [여정](docs/journey.md)에 있습니다.
 
 데모는 pqcota의 디스커버리 데모 위에 얹습니다 — [demo/README.md](demo/README.md).
 
