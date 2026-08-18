@@ -108,6 +108,13 @@
 | IC-E2 ✅ | 토폴로지 렌더 | 색=등급(🟢PQC/🔴취약/⚪불명), 미관측=점선(≠부재, §12.2 정직성) |
 | IC-E3 ✅ | 스코프 밖 관측 상대 | off-scope 표기 "등재 판정 요청"(§0.4/§5) |
 
+### N. 리포트 명령 — 여러 노드 (`pqcaton-report`) ✅
+| TC | Given → When | Then |
+|---|---|---|
+| **IC-N1 ✅** | 관측 IP → 스코프 노드 해소(포트 붙은 주소 · 망 둘에 걸친 노드 · 스코프 밖 · 이미 해소된 것) | 맞는 것만 해소하고 나머지는 그대로 — **해소가 틀리면 CONFIRMED 여야 할 엣지가 shadow 로 올라온다**(그럴듯한 오답) |
+| IC-N2 ✅ | NETWORK 계층이 커버 vs 강등 | 강등을 커버로 세지 않는다 — 세면 **못 본 노드가 「봤다」가 되어** 토폴로지 점선이 실선이 된다 |
+| IC-N3 ✅ | 한 노드를 collector 둘이 봄 | 중복은 지우되 **처음 순서를 지키고 입력을 덮지 않는다** |
+
 > **구현 위치**: 엣지 대조 `reconcile/edge.go`(없음) · 등급 분류 `pkg/kernel/posture/` · 토폴로지 DOT `reconcile/topology.go`(없음) · 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB). 관측 엣지 스키마 `contracts` `ObservedEdge`(CollectionResult.observed_edges). 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
 
 ---
@@ -125,6 +132,7 @@
 | 7 | **대조의 조직 축**(엔진이 조직을 들고 섞인 입력을 끊음) | O1~5 | ✅ pure |
 | 8 | **자산 스코프 거버넌스**(계층 상속·변경 승인·감사·제외분 재검토) | S1~7 | ✅ pure |
 | 9 | **행 수준 보안**(핸들 격리가 뚫려도 DB가 막음) | L1~4 | ✅ integration |
+| 10 | **명령 계층**(게이트·해소·집계가 명령에서 실제로 도는가) | S8~14, N1~3, P6~7 | ✅ |
 
 **핵심 인수 기준**: **IC-P4**(finalized 아니면 Deploy 거부 — 최강 게이트)와 **IC-F3~F5**(승인 서명·전 필수 판정 없으면 확정 불가).
 

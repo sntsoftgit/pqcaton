@@ -17,7 +17,7 @@ func completeness(covered, missing []commonv1.CollectionLayer) *discoveryv1.Coll
 	}
 }
 
-// IC-P8 — **관측 IP를 스코프 노드로 해소한다**(§0.4).
+// IC-N1 — **관측 IP를 스코프 노드로 해소한다**(§0.4).
 //
 // 해소되지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 shadow 로 올라온다** —
 // 틀린 답이 아니라 그럴듯한 답이라 눈으로는 안 잡힌다. 포트가 붙은 주소와 다중 IP 노드가
@@ -44,7 +44,7 @@ func TestResolveEdgeDsts(t *testing.T) {
 	}
 }
 
-// IC-P9 — **커버와 강등을 가른다.**
+// IC-N2 — **커버와 강등을 가른다.**
 //
 // `networkCovered` 는 실제로 캡처한 것만 참이어야 한다. 강등(layers_missing)까지 참으로
 // 보면 **못 본 노드가 「봤다」로 세어져** 토폴로지에서 점선이 실선이 된다 — 미관측과 부재를
@@ -72,7 +72,7 @@ func TestNetworkCoveredVsDegraded(t *testing.T) {
 	}
 }
 
-// IC-P10 — 같은 것을 두 번 세지 않되 **처음 순서를 지킨다.**
+// IC-N3 — 같은 것을 두 번 세지 않되 **처음 순서를 지킨다.**
 //
 // 노드 하나를 collector 둘이 보면 목록에 두 번 나온다 — 그대로 두면 「무엇이 이 노드를
 // 봤나」가 부풀어 오른다. 정렬하지 않는 것은 부르는 쪽이 이미 정렬해 넘기기 때문이고,
