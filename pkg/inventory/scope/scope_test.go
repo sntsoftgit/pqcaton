@@ -24,7 +24,7 @@ func finding(lib, app string) *discoveryv1.Finding {
 	return &discoveryv1.Finding{
 		CryptoRuntime:    commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL,
 		EvidenceStrength: commonv1.EvidenceStrength_EVIDENCE_STRENGTH_CONFIRMED,
-		Openssl:          &discoveryv1.OpenSSLFinding{Lib: lib},
+		RuntimeAxes:      &discoveryv1.Finding_Openssl{Openssl: &discoveryv1.OpensslAxes{Lib: lib}},
 		AppKeys:          []string{app},
 	}
 }
@@ -51,7 +51,7 @@ func TestDiffOnlyChanges(t *testing.T) {
 	base := &kscope.AssetPolicy{Rules: []kscope.AssetRule{ex("openssl", "libssl*", "", "옛 규칙")}}
 	layers := []scope.Layer{{Name: "corp", Rules: []kscope.AssetRule{
 		ex("openssl", "libssl*", "", "설명만 고쳤다"), // 그대로 — 올라오면 안 된다
-		ex("jca", "*", "/usr/bin/java", "새 제외"),   // 추가
+		ex("jca", "*", "/usr/bin/java", "새 제외"), // 추가
 	}}}
 
 	got := scope.Diff(base, layers)
