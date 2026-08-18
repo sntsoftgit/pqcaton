@@ -1,6 +1,6 @@
 # 여정 — 자기 서버에 설치해 쓰는 경우
 
-[개요](../README.md) · **여정** · [설계](design.md) · [검증 기준](testcases.md) · [데모](../demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.md) · [릴리스 노트](../RELEASE_NOTES.md) · **여정** · [설계](design.md) · [검증 기준](testcases.md) · [데모](../demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 이 문서는 **직접 설치해 쓰는 길**을 처음부터 끝까지 따라갑니다. 호스팅으로 맡기는 길은 여기
 없습니다 — 그쪽은 러너·토큰·등재가 더 붙고, 문서도 따로 있습니다([saas/README.md](../saas/README.md)).

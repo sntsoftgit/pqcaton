@@ -1,6 +1,6 @@
 # 테스트케이스 — 인벤토리 거버넌스
 
-[개요](../README.md) · [여정](journey.md) · [설계](design.md) · **검증 기준** · [데모](../demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.md) · [설계](design.md) · **검증 기준** · [데모](../demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 케이스 번호가 곧 테스트 파일 링크입니다. 설계는 [design.md](design.md)에 있습니다.
 
