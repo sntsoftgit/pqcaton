@@ -39,10 +39,12 @@ pqcota                          pqcaton
 |---|---|
 | [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만 = shadow) · UNOBSERVED(선언만) |
 | [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
+| [`pkg/inventory/review`](pkg/inventory/review) | **세션 파일 형식과 확정 게이트** — 명령과 화면이 이 하나를 씁니다 |
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스** — 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 냅니다 |
 | [`inventory/cmd/pqcaton-reconcile`](inventory/cmd/pqcaton-reconcile) | 대조 실행 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포** — 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
+| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **리뷰 큐를 사람이 다루는 화면** — 표준 라이브러리만 쓰고 기본은 127.0.0.1입니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
 **UNDECLARED가 이 도구의 첫 값입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지 — 조직이
@@ -83,6 +85,13 @@ bin/pqcaton-decide close session.json -judgments judgments.jsonl -org acme > pla
 
 # ⑤ 재관측한 뒤 — 근거가 바뀐 판정만 다시 봅니다 (전면 재리뷰가 아닙니다)
 bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
+```
+
+**JSON을 눈으로 훑기 싫으면 화면으로 채웁니다.** 같은 파일, 같은 게이트입니다.
+
+```bash
+bin/pqcaton-ui session.json -judgments judgments.jsonl -org acme
+# → http://127.0.0.1:8765 — 정책 단위로 결론을 채우고 「확정하고 계획 내기」
 ```
 
 **무엇을 계속 볼지도 승인을 거칩니다.** 「이 자산은 안 본다」는 사고 뒤에 근거를 대야 하는
