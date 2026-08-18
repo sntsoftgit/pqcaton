@@ -348,8 +348,8 @@
 
 <figure>
 <div class="scroll">
-<svg viewBox="0 0 960 260" role="img"
-     aria-label="선언 반입과 관측이 각각 들어와 적재된 뒤 대조되고, 리뷰 큐를 거쳐 확정되며, 확정된 계획만 적용으로 내려가고 다시 재관측으로 돌아오는 순환 흐름도">
+<svg viewBox="0 0 960 330" role="img"
+     aria-label="pqcota의 관측·적재·조회와 확정 계획·생성·적용 사이에 pqcaton의 선언·대조·리뷰 확정이 끼어드는 흐름도. 조회에서 확정 계획으로 가는 점선은 pqcaton 없이 손으로 쓴 계획으로 가는 길이다">
   <defs>
     <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -359,17 +359,21 @@
     </marker>
   </defs>
 
-  <rect class="box-up" x="16"  y="86" width="140" height="56" rx="5"/>
-  <text class="lbl" x="86" y="110" text-anchor="middle">관측</text>
-  <text class="lbl-sm" x="86" y="130" text-anchor="middle">collector 반입·회수</text>
-
-  <rect class="box-up" x="16"  y="8" width="140" height="52" rx="5"/>
+  <rect class="box-us" x="16" y="8" width="140" height="52" rx="5"/>
   <text class="lbl" x="86" y="32" text-anchor="middle">선언</text>
   <text class="lbl-sm" x="86" y="50" text-anchor="middle">CMDB 반입</text>
 
+  <rect class="box-up" x="16" y="86" width="140" height="56" rx="5"/>
+  <text class="lbl" x="86" y="110" text-anchor="middle">관측</text>
+  <text class="lbl-sm" x="86" y="130" text-anchor="middle">pqcota 3</text>
+
   <rect class="box-up" x="212" y="86" width="130" height="56" rx="5"/>
   <text class="lbl" x="277" y="110" text-anchor="middle">적재</text>
-  <text class="lbl-mono" x="277" y="130" text-anchor="middle">pqcota-ingest</text>
+  <text class="lbl-sm" x="277" y="130" text-anchor="middle">pqcota 4</text>
+
+  <rect class="box-up" x="212" y="184" width="130" height="52" rx="5"/>
+  <text class="lbl" x="277" y="208" text-anchor="middle">조회</text>
+  <text class="lbl-sm" x="277" y="226" text-anchor="middle">pqcota 5</text>
 
   <rect class="box-us" x="398" y="60" width="140" height="82" rx="5"/>
   <text class="lbl" x="468" y="86" text-anchor="middle">대조</text>
@@ -382,26 +386,32 @@
   <text class="lbl-sm" x="664" y="126" text-anchor="middle">승인 서명</text>
 
   <rect class="box-up" x="790" y="60" width="154" height="82" rx="5"/>
-  <text class="lbl" x="867" y="86" text-anchor="middle">적용</text>
-  <text class="lbl-mono" x="867" y="106" text-anchor="middle">pqcota-provision</text>
+  <text class="lbl" x="867" y="86" text-anchor="middle">확정 계획 → 적용</text>
+  <text class="lbl-sm" x="867" y="106" text-anchor="middle">pqcota 6 · 7 · 8</text>
   <text class="lbl-sm" x="867" y="126" text-anchor="middle">before 캡처 · 되돌림</text>
 
-  <path class="flow" d="M156 114 L212 114" marker-end="url(#ar2)"/>
+  <path class="flow" d="M156 114 H212" marker-end="url(#ar2)"/>
   <path class="flow" d="M156 34 Q186 34 186 92 Q186 114 206 114" marker-end="url(#ar2)"/>
-  <path class="flow" d="M342 114 L398 108" marker-end="url(#ar2)"/>
-  <path class="flow-a" d="M538 101 L594 101" marker-end="url(#ar2a)"/>
-  <path class="flow-a" d="M734 101 L790 101" marker-end="url(#ar2a)"/>
+  <path class="flow" d="M342 108 H398" marker-end="url(#ar2)"/>
+  <path class="flow" d="M277 142 V184" marker-end="url(#ar2)"/>
+  <path class="flow-a" d="M538 101 H594" marker-end="url(#ar2a)"/>
+  <path class="flow-a" d="M734 101 H790" marker-end="url(#ar2a)"/>
   <text class="lbl-arrow" x="762" y="92" text-anchor="middle">게이트</text>
 
-  <path class="flow" d="M867 142 L867 196 Q867 214 849 214 L104 214 Q86 214 86 196 L86 142"
-        marker-end="url(#ar2)"/>
-  <text class="lbl-arrow" x="468" y="236" text-anchor="middle">재관측 → 근거가 바뀐 판정만 델타 리뷰</text>
+  <path class="flow" stroke-dasharray="5 4" d="M342 210 H860 Q874 210 874 196 V142" marker-end="url(#ar2)"/>
+  <text class="lbl-arrow" x="600" y="202" text-anchor="middle">pqcaton 없이 — 손으로 쓴 계획</text>
+
+  <path class="flow-a" stroke-dasharray="5 4" d="M900 60 V30 Q900 16 886 16 H678 Q664 16 664 30 V60" marker-end="url(#ar2a)"/>
+  <text class="lbl-arrow" x="782" y="12" text-anchor="middle">근거가 바뀐 판정만 델타 리뷰</text>
+
+  <path class="flow" stroke-dasharray="5 4" d="M834 142 V286 Q834 302 818 302 H102 Q86 302 86 286 V142" marker-end="url(#ar2)"/>
+  <text class="lbl-arrow" x="460" y="322" text-anchor="middle">재관측 · 변화 diff</text>
 </svg>
 </div>
 <figcaption>
-  <strong>그림 2.</strong> 확정 앞의 화살표가 이 제품에서 가장 센 게이트입니다 —
-  <strong>finalized 전에는 적용이 돌지 않습니다.</strong> 되돌아오는 선은 전면 재리뷰가 아니라
-  근거가 바뀐 판정만 다시 거는 길입니다.
+  <strong>그림 2.</strong> 가운데 두 상자만 이 리포입니다. 아래 점선이 <strong>pqcaton 없이 가는 길</strong>
+  — pqcota는 확정 계획을 <em>입력으로만</em> 받고, 손으로 쓴 계획으로도 끝까지 돕니다.
+  확정 앞의 화살표가 이 제품에서 가장 센 게이트입니다: <strong>finalized 전에는 적용이 돌지 않습니다.</strong>
 </figcaption>
 </figure>
 
