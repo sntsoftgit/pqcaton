@@ -27,7 +27,7 @@
 2   UNOBSERVED   0.30   openssl  libssl
 
 ──────── ③ 통신 엣지 + 양자내성 등급 ────────
-  ⚪ pay-db     → pay-app            TLS    (불명)                     UNOBSERVED
+  ⚪ pay-app    → web-gw             TLS    (불명)                     UNOBSERVED
   🟢 web-gw     → pay-app            TLS    X25519MLKEM768           CONFIRMED
   🔴 web-gw     → pay-db             TLS    x25519                   CONFIRMED
   🟢 web-gw     → pay-app            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED

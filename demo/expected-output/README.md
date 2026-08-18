@@ -16,11 +16,13 @@
 - 🟢 `web-gw→pay-app` MLKEM **CONFIRMED** · 🔴 `web-gw→pay-db` 고전 **CONFIRMED**
 - 🟢 `web-gw→pay-app` SSH sntrup761 · 🔴 `web-gw→pay-db` SSH curve25519 — **둘 다 UNDECLARED(shadow)**.
   아무도 선언하지 않은 관리 통신이 실제로 돌고 있습니다
-- ⚪ `pay-db→pay-app` **UNOBSERVED** — 선언했으나 미관측(≠부재)
+- ⚪ `pay-app→web-gw` **UNOBSERVED** — 선언했으나 미관측(≠부재). 대장에는 양방향으로
+  적혀 있는데 트래픽은 한 방향인, 흔한 모양입니다
 
-> **노드 이름은 pqcota 데모의 기본 토폴로지**(`demo/topology/topology.example.yaml`)의 것입니다.
-> 그쪽 `topology.yaml`을 고치면 이름이 달라지므로, `extend.sh`는 이름을 박아 두지 않고
-> 실행 중인 환경의 `/work/nodes.json`을 읽습니다 — 선언이 가리키는 노드가 없으면 멈춥니다.
+> **이 결과는 pqcota 데모의 기본 토폴로지**(`demo/topology/topology.example.yaml`)에서 나온
+> 것입니다. **선언도 그 파일에서 만듭니다**([`declare.py`](../scripts/declare.py)) — 노드를
+> 늘리거나 이름을 바꿔도 우리 쪽은 손대지 않고 그대로 따라갑니다. 실제로 노드를 하나 더해
+> 확인했습니다: 노드 3→4, CONFIRMED 4→6.
 
 ## 실제 실행 시 달라질 수 있는 점 (그리고 이유)
 
@@ -29,7 +31,8 @@
   shadow 엣지가 하나 더 나타날 수 있습니다.
 - **버전·IP**: [core expected-output](../../../pqcota/demo/expected-output/README.md)과 동일 —
   base 이미지 digest 핀으로 버전 문자열 고정, IP만 매 실행 동적(서사 무관).
-- **선언 편집**: `../declaration.json`(고객 선언)을 바꾸면 CONFIRMED/UNDECLARED/UNOBSERVED 분포가 달라집니다.
+- **선언 규칙**: [`../scripts/declare.py`](../scripts/declare.py)의 `DECLARED_PROTOS`를 바꾸면
+  분포가 달라집니다. `ssh`를 넣으면 shadow가 사라집니다 — 대장이 완벽한 조직의 모습입니다.
 
 ## 결정론
 
