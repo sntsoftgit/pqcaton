@@ -145,10 +145,45 @@ pqcota가 **메커니즘**을 갖습니다: `scope.AssetPolicy`(CSV 규칙, glob
 | 인메모리 저장소 | Pg판과 **같은 규칙**입니다. 테스트가 격리 없는 경로를 타면 실제와 어긋납니다 |
 | 식별자 모양 | 소문자·숫자·하이픈. 대소문자를 섞으면 `Acme`와 `acme`가 다른 조직이 되어 데이터가 조용히 갈립니다 |
 
-### 2.2 무엇을 아직 하지 않았나
+### 2.2 행 수준 보안 — DB가 막는 한 겹
+
+질의마다 `org`를 다는 것은 **우리가 안 틀린다는 전제** 위에 서 있습니다. 여러 조직이 한
+데이터베이스를 쓰는 배포에서는 그 전제 하나에 전부를 걸 수 없습니다 — 조건을 빠뜨린 질의가
+언젠가 들어옵니다. 그래서 판정 원장에 Postgres RLS를 겁니다.
+
+```sql
+ALTER TABLE pqcota_judgments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pqcota_judgments FORCE ROW LEVEL SECURITY;
+CREATE POLICY pqcaton_org_isolation ON pqcota_judgments
+    USING      (org = current_setting('pqcaton.org', true))
+    WITH CHECK (org = current_setting('pqcaton.org', true));
+```
+
+조직은 **연결마다 세션 변수로** 심습니다. 핸들 하나가 조직 하나이므로 세션 단위로 충분하고,
+질의마다 기억할 것이 없습니다.
+
+함정이 셋 있어 적어 둡니다.
+
+| 함정 | 어떻게 다뤘나 |
+|---|---|
+| **`FORCE`가 없으면 테이블 소유자는 예외** | 대개 앱이 소유자로 붙으므로, 그 한 줄이 없으면 정책을 걸어 놓고도 아무 일도 일어나지 않습니다 |
+| **슈퍼유저·`BYPASSRLS` 롤은 정책을 통째로 건너뜀** | 열 때 한 번 재서 `RLSActive()`로 들고 다닙니다. `PQCATON_REQUIRE_RLS=1`이면 **열지 않습니다** — 상류의 `PQCOTA_REQUIRE_SIGNATURE`와 같은 모양입니다 |
+| **`WITH CHECK`가 없으면 읽기만 막힘** | 남의 조직 이름으로 쓴 행이 들어가고, 그 행은 정작 우리 눈에는 안 보입니다 — 가장 고약한 형태라 쓰기도 함께 막습니다 |
+
+**앱은 테이블 소유자로 붙지 않는 것이 전제입니다.** 그러면 그 연결에 DDL 권한이 없는 것이
+정상이므로, 저장소는 스키마가 이미 갖춰져 있으면 넘어가고 아니면 **무엇을 소유자로 돌려야
+하는지 말하고 멈춥니다.** 배포에서는 아래를 소유자 권한으로 한 번 돌립니다.
+
+```sql
+CREATE ROLE pqcaton_app LOGIN PASSWORD '...' NOSUPERUSER NOBYPASSRLS;
+GRANT USAGE ON SCHEMA public TO pqcaton_app;
+GRANT SELECT, INSERT ON pqcota_judgments TO pqcaton_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO pqcaton_app;
+```
+
+### 2.3 무엇을 아직 하지 않았나
 
 - **인증·권한** — 누가 어느 조직에 속하는지는 이 계층이 정하지 않습니다. 호출자가 이미
   확인한 조직을 받습니다.
-- **행 수준 보안(RLS)** — Postgres RLS로 한 겹 더 걸 수 있습니다. 핸들 격리가 뚫려도 DB가
-  막는 구조입니다. **여러 조직이 한 데이터베이스를 쓰는 배포에서 값이 큽니다** — 운영
-  복잡도와 견주어 정합니다.
+- **인가(누가 무엇을 승인할 수 있나)** — 조직 안에서 누가 무엇을 확정할 자격이 있는지는
+  이 계층이 정하지 않습니다. 서명은 받아 남기지만 그 사람이 그럴 자격인지는 묻지 않습니다.
