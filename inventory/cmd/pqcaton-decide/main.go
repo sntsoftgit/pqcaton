@@ -485,14 +485,30 @@ func delta(judgmentPath, declPath, node, orgName string) error {
 
 // policyOf - 같은 정책으로 묶는 열쇠. 런타임과 컴포넌트 이름에서 만든다.
 //
-// 컴포넌트에 붙는 버전 해시(`libssl-e2f2d68a`)를 떼어 **같은 라이브러리의 여러 판을 한
-// 묶음**으로 본다. 그것이 정책 단위 리뷰가 뜻하는 것이다(§3.4).
+// 컴포넌트에 붙는 **버전 해시만** 뗀다(`libssl-e2f2d68a` → `libssl`). 같은 라이브러리의 여러
+// 판이 한 묶음이 되는 것이 정책 단위 리뷰가 뜻하는 것이다(§3.4).
+//
+// **해시처럼 생긴 것만 뗀다.** 길이로만 자르면 `jca-provider-chain`의 `-chain`까지 떼어
+// 이름이 다른 컴포넌트가 한 정책으로 묶인다.
 func policyOf(k reconcile.AssetKey) string {
 	c := k.Component
-	if i := strings.LastIndex(c, "-"); i > 0 && len(c)-i > 4 {
+	if i := strings.LastIndex(c, "-"); i > 0 && isHex(c[i+1:]) {
 		c = c[:i]
 	}
 	return k.Runtime + "/" + c
+}
+
+// isHex - 버전 해시로 볼 만한가. 짧은 것은 이름의 일부일 수 있어 8자 이상만 본다.
+func isHex(s string) bool {
+	if len(s) < 8 {
+		return false
+	}
+	for _, r := range s {
+		if !('0' <= r && r <= '9' || 'a' <= r && r <= 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func key(k reconcile.AssetKey) string {
