@@ -43,6 +43,9 @@ func appDSN(t *testing.T, superDSN string) string {
 		   END IF;
 		 END $$`,
 		`ALTER ROLE ` + appRole + ` NOSUPERUSER NOBYPASSRLS`,
+		// 스키마 사용 권한만 준다. **DDL 은 주지 않는다** - 앱이 소유자로 붙지 않는 것이
+		// RLS 가 실제로 무는 전제이고, 케이스도 그 조건에서 재야 한다.
+		`GRANT USAGE ON SCHEMA public TO ` + appRole,
 		`GRANT SELECT, INSERT ON pqcota_judgments TO ` + appRole,
 		`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ` + appRole,
 	}

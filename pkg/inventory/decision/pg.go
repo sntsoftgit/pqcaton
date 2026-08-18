@@ -97,13 +97,9 @@ func NewPgJudgmentStore(ctx context.Context, dsn string, o org.ID) (*PgJudgmentS
 	if err != nil {
 		return nil, err
 	}
-	if _, err := pool.Exec(ctx, judgmentSchemaSQL); err != nil {
+	if err := ensureSchema(ctx, pool); err != nil {
 		pool.Close()
 		return nil, err
-	}
-	if _, err := pool.Exec(ctx, rlsSQL); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("행 수준 보안: %w", err)
 	}
 
 	active, err := rlsBites(ctx, pool)
@@ -116,6 +112,48 @@ func NewPgJudgmentStore(ctx context.Context, dsn string, o org.ID) (*PgJudgmentS
 		return nil, fmt.Errorf("%w — %s=1 이므로 열지 않는다", ErrRLSInert, RequireEnv)
 	}
 	return &PgJudgmentStore{pool: pool, org: o, rls: active}, nil
+}
+
+// ensureSchema — 테이블과 정책을 갖춘다. **DDL 권한이 없어도 열린다.**
+//
+// RLS 가 실제로 물게 하려면 앱이 테이블 소유자로 붙지 않아야 한다 - 그러면 이 연결에는
+// DDL 권한이 없는 것이 정상이다. 그때는 이미 갖춰져 있는지 확인하고 넘어간다. 갖춰지지도
+// 않았다면 **무엇을 소유자로 돌려야 하는지 말하고 멈춘다** - 조용히 빈 테이블을 만들거나
+// 정책 없이 여는 쪽이 훨씬 위험하다.
+func ensureSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	_, ddlErr := pool.Exec(ctx, judgmentSchemaSQL)
+	if ddlErr == nil {
+		if _, err := pool.Exec(ctx, rlsSQL); err != nil {
+			return fmt.Errorf("행 수준 보안: %w", err)
+		}
+		return nil
+	}
+	ready, err := schemaReady(ctx, pool)
+	if err != nil {
+		return err
+	}
+	if !ready {
+		return fmt.Errorf("스키마를 만들 수 없고 갖춰져 있지도 않다: %w\n"+
+			"   소유자 권한으로 아래를 먼저 돌리십시오:\n%s%s", ddlErr, judgmentSchemaSQL, rlsSQL)
+	}
+	return nil
+}
+
+// schemaReady — 테이블이 있고 그 위에 행 수준 보안이 켜져 있는가.
+//
+// 테이블만 보고 넘어가면 **정책 없는 테이블에 조용히 붙는다** - 이 버전이 더하려던 한 겹이
+// 없는 채로 있다는 사실을 아무도 모르게 된다.
+func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
+	var enabled bool
+	err := pool.QueryRow(ctx,
+		`SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('pqcota_judgments')`).Scan(&enabled)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("스키마 확인: %w", err)
+	}
+	return enabled, nil
 }
 
 // RLSActive — 이 연결에서 행 수준 보안이 실제로 무는가.
