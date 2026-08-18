@@ -1,6 +1,6 @@
-// Command pqcota-reconcile — 인벤토리 종단 데모(Phase 1).
+// Command pqcaton-reconcile — 인벤토리 종단 데모(Phase 1).
 // 관측(호스트 Discovery) vs 선언(CSV)을 대조해 3-상태 + 리뷰 큐를 낸다.
-// usage: pqcota-reconcile <declaration.csv> [node]
+// usage: pqcaton-reconcile <declaration.csv> [node]
 package main
 
 import (
@@ -17,7 +17,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: pqcota-reconcile <declaration.csv> [node]")
+		fmt.Fprintln(os.Stderr, "usage: pqcaton-reconcile <declaration.csv> [node]")
 		os.Exit(2)
 	}
 	declPath := os.Args[1]

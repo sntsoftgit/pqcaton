@@ -1,7 +1,7 @@
-// Command pqcota-report — 컨트롤러에서 실행. 각 노드가 낸 CollectionResult JSON들을 모아
+// Command pqcaton-report — 컨트롤러에서 실행. 각 노드가 낸 CollectionResult JSON들을 모아
 // 정규화·대조하고 인벤토리 3-상태 뷰 + 크립토 통신 토폴로지(DOT)를 만든다.
 //
-// usage: pqcota-report <results-dir> <declaration.json> [topology-out.dot]
+// usage: pqcaton-report <results-dir> <declaration.json> [topology-out.dot]
 //
 //	results-dir: *.json (pqcota-nodescan / pqcota-netcap 산출) 모음
 //	declaration.json: 고객 선언(assets·edges·scope) — 대조 기준
@@ -45,7 +45,7 @@ type declEdge struct {
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Fprintln(os.Stderr, "usage: pqcota-report <results-dir> <declaration.json> [topology-out.dot]")
+		fmt.Fprintln(os.Stderr, "usage: pqcaton-report <results-dir> <declaration.json> [topology-out.dot]")
 		os.Exit(2)
 	}
 	dir, declPath := os.Args[1], os.Args[2]

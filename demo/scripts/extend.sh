@@ -10,10 +10,10 @@ REPO_DIR="$(cd "$DEMO_DIR/.." && pwd)"                        # pqcaton
 docker inspect pqcota-ctl >/dev/null 2>&1 || { echo "❌ pqcota-ctl 없음 — 먼저 pqcota/demo/scripts/{up,demo}.sh"; exit 1; }
 docker exec pqcota-ctl bash -lc 'ls /work/results/*.json >/dev/null 2>&1' || { echo "❌ 수집 결과 없음 — 먼저 pqcota/demo/scripts/demo.sh"; exit 1; }
 
-echo "▶ 1/4  리포트 빌드 (pqcota-report)…"
+echo "▶ 1/4  리포트 빌드 (pqcaton-report)…"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-( cd "$REPO_DIR" && CGO_ENABLED=0 go build -o "$TMP/pqcota-report" ./inventory/cmd/pqcota-report )
-docker cp "$TMP/pqcota-report" pqcota-ctl:/usr/local/bin/pqcota-report
+( cd "$REPO_DIR" && CGO_ENABLED=0 go build -o "$TMP/pqcaton-report" ./inventory/cmd/pqcaton-report )
+docker cp "$TMP/pqcaton-report" pqcota-ctl:/usr/local/bin/pqcaton-report
 
 echo "▶ 2/4 선언에 노드↔IP 주입…"
 # **노드 이름을 여기 박지 않는다.** pqcota 데모의 환경은 그쪽 topology.yaml이 정의하므로 이름이
@@ -36,8 +36,8 @@ print("   " + " · ".join("%s=%s" % (n["name"], ",".join(n["ips"])) for n in nod
 PYIN
 docker cp "$DECL" pqcota-ctl:/work/declaration.json
 
-echo "▶ 3/4 인벤토리 대조 + 거버넌스 토폴로지 (pqcota-report)…"
-docker exec pqcota-ctl bash -lc 'pqcota-report /work/results /work/declaration.json /work/topology-governance.dot'
+echo "▶ 3/4 인벤토리 대조 + 거버넌스 토폴로지 (pqcaton-report)…"
+docker exec pqcota-ctl bash -lc 'pqcaton-report /work/results /work/declaration.json /work/topology-governance.dot'
 
 echo "▶ 4/4 토폴로지 SVG 렌더 + 회수…"
 if docker exec pqcota-ctl bash -lc 'command -v dot >/dev/null && dot -Tsvg /work/topology-governance.dot -o /work/topology-governance.svg'; then

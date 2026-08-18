@@ -165,7 +165,7 @@ ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 관측과 선언을 맞대는 자리가 **이 리포**입니다.
 
 ```bash
-pqcota-report <results-dir> <declaration.json> [topology.dot]
+pqcaton-report <results-dir> <declaration.json> [topology.dot]
 ```
 
 | 상태 | 정의 | 등급 | 뜻 |
@@ -259,7 +259,7 @@ stateDiagram-v2
 | 3 · 관측 | pqcota | **끝** — 이 리포 밖입니다 |
 | 4 · 대조 — 3-상태·confidence·리뷰 큐·토폴로지 | [`pkg/inventory/reconcile`](../pkg/inventory/reconcile) | **끝** |
 | 5 · 리뷰-확정 상태기계·판정 영속 | [`pkg/inventory/decision`](../pkg/inventory/decision) | **끝** |
-| 4·5 실행 도구 | [`inventory/cmd`](../inventory/cmd) | **끝** — `pqcota-reconcile` · `pqcota-report` |
+| 4·5 실행 도구 | [`inventory/cmd`](../inventory/cmd) | **끝** — `pqcaton-reconcile` · `pqcaton-report` |
 | 6 · 적용 | pqcota `provisioning` | **끝** — 이 리포 밖입니다 |
 | 2 · 선언 — 스코프 거버넌스(리뷰·감사·정책 상속) | §1.6 | **설계뿐** |
 | 5 · 사람이 쓰는 화면 | — | **없습니다.** 지금은 CLI와 리포트입니다 |

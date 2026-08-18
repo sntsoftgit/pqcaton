@@ -31,7 +31,7 @@
 ../../pqcota/demo/scripts/down.sh
 ```
 
-`extend.sh`는 새 컨테이너를 만들지 않습니다. 실행 중인 `pqcota-ctl`에 이 리포의 `pqcota-report`를 주입하고,
+`extend.sh`는 새 컨테이너를 만들지 않습니다. 실행 중인 `pqcota-ctl`에 이 리포의 `pqcaton-report`를 주입하고,
 core가 이미 수집한 `/work/results`에 **선언(declaration.json)** 을 대조해 3-상태 인벤토리 + 거버넌스
 토폴로지를 만듭니다.
 

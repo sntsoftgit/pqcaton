@@ -40,8 +40,8 @@ pqcota                          pqcaton
 | [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만 = shadow) · UNOBSERVED(선언만) |
 | [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 냅니다 |
-| [`inventory/cmd/pqcota-reconcile`](inventory/cmd/pqcota-reconcile) | 대조 실행 |
-| [`inventory/cmd/pqcota-report`](inventory/cmd/pqcota-report) | 거버넌스 리포트·토폴로지 |
+| [`inventory/cmd/pqcaton-reconcile`](inventory/cmd/pqcaton-reconcile) | 대조 실행 |
+| [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
 **UNDECLARED가 이 도구의 첫 값입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지 — 조직이
 모르는 연결입니다. 보안에서 가장 먼저 봐야 할 것이 거기 있습니다.

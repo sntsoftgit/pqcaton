@@ -5,7 +5,7 @@
 케이스 번호가 곧 테스트 파일 링크입니다. 설계는 [design.md](design.md)에 있습니다.
 
 **문서 성격**: [설계](design.md) §1(인벤토리 엔진)를 **검증 가능한 인수 기준**으로 전개합니다.
-구현은 이 테스트를 통과하는 것을 목표로 합니다 — `pkg/inventory/{reconcile,decision}`, `inventory/cmd/pqcota-reconcile`.
+구현은 이 테스트를 통과하는 것을 목표로 합니다 — `pkg/inventory/{reconcile,decision}`, `inventory/cmd/pqcaton-reconcile`.
 **검증 대상**: 3-상태 reconciliation·confidence·리뷰 큐·리뷰-확정 상태기계·판정 영속화·확정 계획·핸드오프 게이트·엣지 대조.
 **실행 방침**: 대조·상태기계·게이트는 순수 로직(실물 불필요), 판정 영속화는 Postgres 통합.
 
