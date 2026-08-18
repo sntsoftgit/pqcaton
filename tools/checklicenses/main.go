@@ -58,6 +58,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// **빈 목록은 통과가 아니다.** 리포 루트가 아닌 곳에서 돌리면 `go list -deps ./...`가
+	// 그 디렉터리만 보므로 외부 모듈이 하나도 안 나온다 - 그대로 두면 게이트가 초록으로
+	// 통과하고 아무것도 검사하지 않은 것이 된다.
+	if len(mods) == 0 {
+		fmt.Fprintln(os.Stderr, "✗ 링크되는 외부 모듈이 하나도 없다 — 리포 루트에서 돌리십시오")
+		os.Exit(1)
+	}
+
 	known, err := loadAllowlist("licenses.txt")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "✗ licenses.txt를 읽지 못했다:", err)

@@ -120,9 +120,13 @@ func TestMissingAllowlistBlocksEverything(t *testing.T) {
 
 // IC-X7 — **검사 대상은 실제로 링크되는 모듈이다.**
 //
-// 이 리포 자신을 대상으로 돈다. 메인 모듈이 섞이면 자기 자신을 「라이선스 모름」으로 막고,
-// 아무것도 안 나오면 게이트가 빈 목록을 통과시키고 있는 것이다.
+// 이 리포 자신을 대상으로 돈다. 메인 모듈이 섞이면 자기 자신을 「라이선스 모름」으로 막는다.
+//
+// **리포 루트에서 재는 것이 이 케이스의 절반이다.** `go list -deps ./...` 는 지금 디렉터리를
+// 기준으로 도므로, 이 도구가 있는 폴더에서 돌리면 stdlib 뿐이라 외부 모듈이 0개로 나온다 —
+// 그래서 main 은 0개를 통과로 보지 않는다.
 func TestLinkedModulesExcludesMain(t *testing.T) {
+	chdirRepoRoot(t)
 	got, err := linkedModules()
 	if err != nil {
 		t.Skipf("go list 를 돌릴 수 없다: %v", err)
@@ -138,4 +142,28 @@ func TestLinkedModulesExcludesMain(t *testing.T) {
 			t.Error("자기 자신을 의존성으로 셌다")
 		}
 	}
+}
+
+// chdirRepoRoot — go.mod 가 있는 곳까지 올라간다. 테스트가 끝나면 되돌린다.
+func chdirRepoRoot(t *testing.T) {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := cwd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			break
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatalf("go.mod 를 찾지 못했다 (%s 에서 시작)", cwd)
+		}
+		dir = parent
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
 }
