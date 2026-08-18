@@ -6,7 +6,7 @@
 package probe
 
 import (
-	commonv1 "github.com/pqcota/pqcota/gen/pqcota/common/v1"
+	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 )
 
 // RuntimeName — 계약의 CryptoRuntime enum을 사람이 읽는 이름으로.

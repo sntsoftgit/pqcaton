@@ -35,8 +35,8 @@ core가 이미 수집한 `/work/results`에 **선언(declaration.json)** 을 대
 
 ## 요구 사항
 - 실행 중인 pqcota 디스커버리 데모(위 1단계).
-- 빌드 머신에 **Go** + 형제 `pqcota` 체크아웃(gen 생성: `cd ../pqcota && make generate`).
-  `pqcota-report`는 core를 `replace ../pqcota`로 링크해 빌드됩니다.
+- 빌드 머신에 **Go**. 그게 전부입니다 — pqcota v0.5.0부터 모듈 경로가 리포 주소와 같아져
+  `go build`가 계약을 스스로 받아옵니다. 형제 체크아웃도 `replace`도 필요 없습니다.
 
 ## 커스터마이즈
 `declaration.json`(고객 선언)을 편집하면 CONFIRMED/UNDECLARED/UNOBSERVED 분포가 달라집니다.

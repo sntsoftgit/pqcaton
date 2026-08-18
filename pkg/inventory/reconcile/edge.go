@@ -1,10 +1,10 @@
 package reconcile
 
 import (
-	commonv1 "github.com/pqcota/pqcota/gen/pqcota/common/v1"
-	discoveryv1 "github.com/pqcota/pqcota/gen/pqcota/discovery/v1"
-	"github.com/pqcota/pqcota/pkg/discovery/normalize"
-	"github.com/pqcota/pqcota/pkg/kernel/posture"
+	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
+	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
+	"github.com/randyinthedev-hash/pqcota/pkg/kernel/posture"
 )
 
 // EdgeKey — 통신 엣지 동일성(§2 CommunicationEdge.ID: src·dst·port·proto 정준).

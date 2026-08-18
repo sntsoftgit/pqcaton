@@ -3,7 +3,7 @@ package reconcile_test
 import (
 	"testing"
 
-	inventoryv1 "github.com/pqcota/pqcota/gen/pqcota/inventory/v1"
+	inventoryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/inventory/v1"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 )
 

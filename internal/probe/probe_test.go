@@ -3,7 +3,7 @@ package probe_test
 import (
 	"testing"
 
-	commonv1 "github.com/pqcota/pqcota/gen/pqcota/common/v1"
+	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	"github.com/sntsoftgit/pqcaton/internal/probe"
 )
 

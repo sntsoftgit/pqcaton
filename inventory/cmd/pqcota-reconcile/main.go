@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pqcota/pqcota/discovery/collectors/openssl"
-	discoveryv1 "github.com/pqcota/pqcota/gen/pqcota/discovery/v1"
-	"github.com/pqcota/pqcota/pkg/discovery/normalize"
-	"github.com/pqcota/pqcota/pkg/inventory/declaration"
-	"github.com/pqcota/pqcota/pkg/kernel/registry"
+	"github.com/randyinthedev-hash/pqcota/discovery/collectors/openssl"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
+	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
+	"github.com/randyinthedev-hash/pqcota/pkg/inventory/declaration"
+	"github.com/randyinthedev-hash/pqcota/pkg/kernel/registry"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 )
 

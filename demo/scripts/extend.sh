@@ -10,7 +10,7 @@ NODES=(node-web node-app node-db)
 docker inspect pqcota-ctl >/dev/null 2>&1 || { echo "❌ pqcota-ctl 없음 — 먼저 pqcota/demo/scripts/{up,demo}.sh"; exit 1; }
 docker exec pqcota-ctl bash -lc 'ls /work/results/*.json >/dev/null 2>&1' || { echo "❌ 수집 결과 없음 — 먼저 pqcota/demo/scripts/demo.sh"; exit 1; }
 
-echo "▶ 1/4  리포트 빌드 (pqcota-report; core를 replace로 링크)…"
+echo "▶ 1/4  리포트 빌드 (pqcota-report)…"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 ( cd "$ENT_DIR" && CGO_ENABLED=0 go build -o "$TMP/pqcota-report" ./inventory/cmd/pqcota-report )
 docker cp "$TMP/pqcota-report" pqcota-ctl:/usr/local/bin/pqcota-report

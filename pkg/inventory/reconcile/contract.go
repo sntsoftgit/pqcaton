@@ -1,6 +1,6 @@
 package reconcile
 
-import inventoryv1 "github.com/pqcota/pqcota/gen/pqcota/inventory/v1"
+import inventoryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/inventory/v1"
 
 // 계약과의 경계 — 어휘의 SSOT는 pqcota의 contracts다.
 //

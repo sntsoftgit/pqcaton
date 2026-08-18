@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pqcota/pqcota/pkg/org"
+	"github.com/randyinthedev-hash/pqcota/pkg/org"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 )
 
