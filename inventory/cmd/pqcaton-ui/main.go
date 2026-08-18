@@ -31,17 +31,24 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", "127.0.0.1:8765", "들을 주소")
-	judgments := flag.String("judgments", "", "확정 시 판정을 남길 파일(JSONL, append-only)")
-	orgName := flag.String("org", "local", "판정을 묶을 조직")
-	planOut := flag.String("plan", "plan.json", "확정 계획을 쓸 파일")
-	flag.Parse()
+	fs := flag.NewFlagSet("pqcaton-ui", flag.ExitOnError)
+	addr := fs.String("addr", "127.0.0.1:8765", "들을 주소")
+	judgments := fs.String("judgments", "", "확정 시 판정을 남길 파일(JSONL, append-only)")
+	orgName := fs.String("org", "local", "판정을 묶을 조직")
+	planOut := fs.String("plan", "plan.json", "확정 계획을 쓸 파일")
 
-	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름]")
+	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag 는 첫 비플래그에서
+	// 파싱을 멈추므로, 그냥 두면 `pqcaton-ui session.json -addr ...` 의 -addr 이 조용히
+	// 무시되고 기본 주소로 뜬다. 다른 명령들과 같은 규칙이다.
+	pos, flags := splitArgs(os.Args[1:])
+	if err := fs.Parse(flags); err != nil {
 		os.Exit(2)
 	}
-	path := flag.Arg(0)
+	if len(pos) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름] [-plan 파일]")
+		os.Exit(2)
+	}
+	path := pos[0]
 	if _, err := review.Load(path); err != nil {
 		fmt.Fprintln(os.Stderr, "❌ 세션 파일을 읽을 수 없다:", err)
 		os.Exit(1)
@@ -61,6 +68,17 @@ func main() {
 		fmt.Fprintln(os.Stderr, "❌", err)
 		os.Exit(1)
 	}
+}
+
+// splitArgs — 위치 인자와 플래그를 가른다. 첫 플래그부터 뒤는 전부 플래그로 넘긴다.
+func splitArgs(args []string) (pos, flags []string) {
+	for i := 0; i < len(args); i++ {
+		if strings.HasPrefix(args[i], "-") {
+			return pos, args[i:]
+		}
+		pos = append(pos, args[i])
+	}
+	return pos, nil
 }
 
 // loopback — 이 주소가 이 기계 밖에서 닿는가.

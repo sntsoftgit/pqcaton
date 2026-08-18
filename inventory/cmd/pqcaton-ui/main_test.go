@@ -207,6 +207,24 @@ func TestLoopback(t *testing.T) {
 	}
 }
 
+// IC-U8 — **위치 인자 뒤의 플래그도 먹는다.**
+//
+// 표준 flag 는 첫 비플래그에서 파싱을 멈춘다. 그냥 두면 `pqcaton-ui session.json -addr ...`
+// 의 -addr 이 **조용히 무시되고** 기본 주소로 뜬다 — 밖으로 열려고 준 값이 안 먹는 것도,
+// 안쪽으로 좁히려던 값이 안 먹는 것도 같은 자리다.
+func TestSplitArgs(t *testing.T) {
+	pos, flags := splitArgs([]string{"session.json", "-addr", "127.0.0.1:9", "-org", "acme"})
+	if len(pos) != 1 || pos[0] != "session.json" {
+		t.Fatalf("위치 인자 = %v", pos)
+	}
+	if len(flags) != 4 || flags[0] != "-addr" {
+		t.Fatalf("플래그 = %v", flags)
+	}
+	if p, f := splitArgs([]string{"-addr", "x"}); len(p) != 0 || len(f) != 2 {
+		t.Errorf("플래그만 준 경우 = %v / %v", p, f)
+	}
+}
+
 // IC-U7 — GET 만 받는 자리에 POST 를, POST 만 받는 자리에 GET 을 던져도 조용히 넘어가지
 // 않는다. 새로고침으로 확정이 다시 도는 것을 막는 것도 같은 이유다.
 func TestMethodGuards(t *testing.T) {
