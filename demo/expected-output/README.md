@@ -1,7 +1,7 @@
 # 예상 결과 — 확장 샘플
 
 `../scripts/extend.sh`(실행 중인 pqcota 디스커버리 데모 위)를 돌리면 나오는 **대표 결과**입니다.
-관측 등급(core) 위에 **선언 대비 3-상태 대조 + 리뷰 큐 + 거버넌스 토폴로지**가 얹힙니다.
+관측 등급(pqcota) 위에 **선언 대비 3-상태 대조 + 리뷰 큐 + 거버넌스 토폴로지**가 얹힙니다.
 
 | 파일 | 내용 |
 |---|---|
@@ -9,15 +9,20 @@
 | [topology-governance.svg](topology-governance.svg) | 거버넌스 토폴로지 (색=등급, 선형=상태: 실선 CONFIRMED / 굵은선 shadow / 점선 UNOBSERVED) |
 
 핵심 서사(선언 대비):
-- 🟢 `node-web→node-app` MLKEM **CONFIRMED** · 🔴 `node-web→node-db` 고전 **CONFIRMED**
-- 🟢 `node-web→node-db` SSH sntrup761 **UNDECLARED(shadow)** — 선언 안 된 통신
-- ⚪ `node-db→node-app` **UNOBSERVED** — 선언했으나 미관측(≠부재)
+- 🟢 `web-gw→pay-app` MLKEM **CONFIRMED** · 🔴 `web-gw→pay-db` 고전 **CONFIRMED**
+- 🟢 `web-gw→pay-app` SSH sntrup761 · 🔴 `web-gw→pay-db` SSH curve25519 — **둘 다 UNDECLARED(shadow)**.
+  아무도 선언하지 않은 관리 통신이 실제로 돌고 있습니다
+- ⚪ `pay-db→pay-app` **UNOBSERVED** — 선언했으나 미관측(≠부재)
+
+> **노드 이름은 pqcota 데모의 기본 토폴로지**(`demo/topology/topology.example.yaml`)의 것입니다.
+> 그쪽 `topology.yaml`을 고치면 이름이 달라지므로, `extend.sh`는 이름을 박아 두지 않고
+> 실행 중인 환경의 `/work/nodes.json`을 읽습니다 — 선언이 가리키는 노드가 없으면 멈춥니다.
 
 ## 실제 실행 시 달라질 수 있는 점 (그리고 이유)
 
 - **엣지 대조 구성**: core가 관측한 엣지 집합을 그대로 대조합니다. core `demo.sh`가 **retry-until-complete**로
-  목표 엣지까지 재수집하므로(첫 실행도 완전) 확장 결과의 엣지도 일관됩니다. 드물게 `node-app→node-db`가
-  추가로 관측되면 shadow 엣지가 하나 더 나타납니다(관측 구간 의존).
+  목표 엣지까지 재수집하므로(첫 실행도 완전) 확장 결과의 엣지도 일관됩니다. 캡처 구간에 따라
+  shadow 엣지가 하나 더 나타날 수 있습니다.
 - **버전·IP**: [core expected-output](../../../pqcota/demo/expected-output/README.md)과 동일 —
   base 이미지 digest 핀으로 버전 문자열 고정, IP만 매 실행 동적(서사 무관).
 - **선언 편집**: `../declaration.json`(고객 선언)을 바꾸면 CONFIRMED/UNDECLARED/UNOBSERVED 분포가 달라집니다.

@@ -1,21 +1,17 @@
 {
-  "_comment": "고객 선언(스코프 마스터 + 선언 자산·엣지). extend.sh가 __IP_*__ 자리표시자를 실제 컨테이너 IP로 치환한다. 자유롭게 편집해 대조 결과를 바꿔보라.",
-  "scope": ["node-web", "node-app", "node-db"],
-  "nodes": [
-    { "name": "node-web", "ips": ["__IP_node-web__"] },
-    { "name": "node-app", "ips": ["__IP_node-app__"] },
-    { "name": "node-db",  "ips": ["__IP_node-db__"] }
-  ],
+  "_comment": "고객 선언(스코프 마스터 + 선언 자산·엣지). 노드 이름과 IP는 extend.sh가 pqcota 데모의 /work/nodes.json 을 그대로 넣는다 — 여기 적지 않는다. 자산·엣지를 고쳐 대조 결과를 바꿔보라.",
+  "scope": ["web-gw", "pay-app", "pay-db"],
+  "nodes": [],
   "assets": [
-    { "node": "node-web", "runtime": "openssl", "component": "libssl" },
-    { "node": "node-web", "runtime": "openssl", "component": "libcrypto" },
-    { "node": "node-db",  "runtime": "openssl", "component": "libssl" },
-    { "node": "node-db",  "runtime": "openssl", "component": "libcrypto" },
-    { "node": "node-app", "runtime": "jca",     "component": "jca-provider-chain" }
+    { "node": "web-gw", "runtime": "openssl", "component": "libssl" },
+    { "node": "web-gw", "runtime": "openssl", "component": "libcrypto" },
+    { "node": "pay-db", "runtime": "openssl", "component": "libssl" },
+    { "node": "pay-db", "runtime": "openssl", "component": "libcrypto" },
+    { "node": "pay-app", "runtime": "jca", "component": "jca-provider-chain" }
   ],
   "edges": [
-    { "src": "node-web", "dst": "node-app", "port": 8443, "proto": "TLS" },
-    { "src": "node-web", "dst": "node-db",  "port": 4433, "proto": "TLS" },
-    { "src": "node-db",  "dst": "node-app", "port": 8443, "proto": "TLS" }
+    { "src": "web-gw", "dst": "pay-app", "port": 8443, "proto": "TLS" },
+    { "src": "web-gw", "dst": "pay-db", "port": 4433, "proto": "TLS" },
+    { "src": "pay-db", "dst": "pay-app", "port": 8443, "proto": "TLS" }
   ]
 }

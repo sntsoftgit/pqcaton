@@ -2,7 +2,7 @@
 ║  pqcota 디스커버리 → 인벤토리 데모 리포트                  ║
 ╚══════════════════════════════════════════════════════════╝
 
-노드 3 · 관측 자산 5 · 관측 엣지 3 · 선언 자산 5 · 선언 엣지 3
+노드 3 · 관측 자산 5 · 관측 엣지 4 · 선언 자산 5 · 선언 엣지 3
 
 ──────── ① 자산 인벤토리 (3-상태 대조) ────────
 대조: CONFIRMED 4 · UNDECLARED(shadow) 1 · UNOBSERVED 1
@@ -14,9 +14,10 @@
 2   UNOBSERVED   0.30   openssl  libssl
 
 ──────── ② 통신 엣지 + 양자내성 등급 ────────
-  ⚪ node-db    → node-app           TLS    (불명)                     UNOBSERVED
-  🟢 node-web   → node-app           TLS    X25519MLKEM768           CONFIRMED
-  🔴 node-web   → node-db            TLS    x25519                   CONFIRMED
-  🟢 node-web   → node-db            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED
+  ⚪ pay-db     → pay-app            TLS    (불명)                     UNOBSERVED
+  🟢 web-gw     → pay-app            TLS    X25519MLKEM768           CONFIRMED
+  🔴 web-gw     → pay-db             TLS    x25519                   CONFIRMED
+  🟢 web-gw     → pay-app            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED
+  🔴 web-gw     → pay-db             SSH    curve25519-sha256        UNDECLARED
 
-  등급 합계: 🟢 PQC 2 · 🔴 고전 1 · ⚪ 불명 1
+  등급 합계: 🟢 PQC 2 · 🔴 고전 2 · ⚪ 불명 1

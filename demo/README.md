@@ -9,12 +9,12 @@
 리뷰 큐 + 거버넌스 토폴로지** — 를 얹습니다.
 
 ```
-관측 등급 (pqcota)         →   + 선언 대비 reconciliation (pqcaton)
-🟢 web→app MLKEM                    🟢 web→app  CONFIRMED
-🔴 web→db  고전                     🔴 web→db   CONFIRMED
-🟢 web→db  SSH sntrup761            🟢 web→db   SSH  UNDECLARED(shadow)
-                                    🔴 app→db   UNDECLARED(shadow)  ← 선언 안 된 통신!
-                                    ⚪ db→app   UNOBSERVED (선언했으나 미관측 ≠ 부재)
+관측 등급 (pqcota)              →   + 선언 대비 reconciliation (pqcaton)
+🟢 web-gw→pay-app MLKEM                🟢 web-gw→pay-app  TLS  CONFIRMED
+🔴 web-gw→pay-db  고전                 🔴 web-gw→pay-db   TLS  CONFIRMED
+🟢 web-gw→pay-app SSH sntrup761        🟢 web-gw→pay-app  SSH  UNDECLARED(shadow) ← 선언 안 된 통신!
+🔴 web-gw→pay-db  SSH curve25519       🔴 web-gw→pay-db   SSH  UNDECLARED(shadow)
+                                       ⚪ pay-db→pay-app  TLS  UNOBSERVED (선언했으나 미관측 ≠ 부재)
 ```
 
 ## 실행
