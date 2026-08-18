@@ -2,7 +2,11 @@ package decision
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"os"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 )
@@ -26,6 +30,40 @@ ALTER TABLE pqcota_judgments ADD COLUMN IF NOT EXISTS org TEXT NOT NULL DEFAULT 
 CREATE INDEX IF NOT EXISTS idx_pqcota_judg_org_subject ON pqcota_judgments(org, subject, seq);
 `
 
+// rlsSQL — 행 수준 보안. **핸들 격리가 뚫려도 DB가 막는 한 겹**이다.
+//
+// 질의에 org 를 다는 것은 우리가 안 틀린다는 전제 위에 서 있다. 여러 조직이 한 데이터베이스를
+// 쓰는 배포에서는 그 전제 하나에 전부를 걸 수 없다 — 조건 하나를 빠뜨린 질의가 언젠가 들어온다.
+//
+// **FORCE 가 없으면 테이블 소유자는 예외가 된다.** 대개 앱이 소유자로 붙으므로, 그 한 줄이
+// 없으면 정책을 걸어 놓고도 아무 일도 일어나지 않는다.
+const rlsSQL = `
+ALTER TABLE pqcota_judgments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pqcota_judgments FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS pqcaton_org_isolation ON pqcota_judgments;
+CREATE POLICY pqcaton_org_isolation ON pqcota_judgments
+    USING       (org = current_setting('pqcaton.org', true))
+    WITH CHECK  (org = current_setting('pqcaton.org', true));
+`
+
+// OrgSetting — 정책이 읽는 세션 변수 이름. 연결마다 이 값이 조직으로 채워진다.
+const OrgSetting = "pqcaton.org"
+
+// RequireEnv — "1"이면 RLS 가 실제로 물지 않는 연결로는 **저장소를 열지 않는다.**
+//
+// 상류의 `PQCOTA_REQUIRE_SIGNATURE` 와 같은 모양이다 — 조용히 통과하는 경로를 닫아야 하는
+// 배포용이고, 두 리포를 오가는 사람이 같은 것을 같은 자리에서 찾게 한다.
+const RequireEnv = "PQCATON_REQUIRE_RLS"
+
+// RequireRLS — 필수 모드인가.
+func RequireRLS() bool { return os.Getenv(RequireEnv) == "1" }
+
+// ErrRLSInert — 정책은 걸렸지만 이 연결에서는 물지 않는다.
+//
+// 슈퍼유저와 BYPASSRLS 롤은 정책을 통째로 건너뛴다. **그런 롤로 붙으면 RLS 는 걸어 두어도
+// 아무 일도 하지 않는다** — 가장 위험한 종류의 거짓 안심이라, 조용히 넘기지 않는다.
+var ErrRLSInert = errors.New("이 롤에서는 RLS 가 물지 않는다(슈퍼유저 또는 BYPASSRLS)")
+
 // PgJudgmentStore — Postgres append-only 판정 저장소(§3.6, §7, §0.2).
 // INSERT만 한다 — 판정은 갱신/삭제하지 않고 새 레코드를 쌓는다. 파생 플래그(Stale/NeedsReReview)는
 // 저장하지 않고 델타/만료 계산으로 재산출한다.
@@ -35,6 +73,8 @@ CREATE INDEX IF NOT EXISTS idx_pqcota_judg_org_subject ON pqcota_judgments(org, 
 type PgJudgmentStore struct {
 	pool *pgxpool.Pool
 	org  org.ID
+	// rls — 이 연결에서 정책이 실제로 무는가. 열 때 한 번 재고 들고 다닌다.
+	rls bool
 }
 
 // NewPgJudgmentStore — 조직을 지정해 연다. 조직 없이는 열리지 않는다(org.ErrEmpty).
@@ -42,7 +82,18 @@ func NewPgJudgmentStore(ctx context.Context, dsn string, o org.ID) (*PgJudgmentS
 	if o == "" {
 		return nil, org.ErrEmpty
 	}
-	pool, err := pgxpool.New(ctx, dsn)
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+	// **연결마다 조직을 심는다.** 핸들 하나가 조직 하나이므로 세션 단위로 두면 되고,
+	// 질의마다 기억할 것이 없다. 값은 파라미터로 넘긴다 - 문자열을 이어 붙이면 조직
+	// 이름이 SQL 이 되는 길이 열린다.
+	cfg.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
+		_, err := c.Exec(ctx, "SELECT set_config($1, $2, false)", OrgSetting, string(o))
+		return err
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +101,38 @@ func NewPgJudgmentStore(ctx context.Context, dsn string, o org.ID) (*PgJudgmentS
 		pool.Close()
 		return nil, err
 	}
-	return &PgJudgmentStore{pool: pool, org: o}, nil
+	if _, err := pool.Exec(ctx, rlsSQL); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("행 수준 보안: %w", err)
+	}
+
+	active, err := rlsBites(ctx, pool)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	if !active && RequireRLS() {
+		pool.Close()
+		return nil, fmt.Errorf("%w — %s=1 이므로 열지 않는다", ErrRLSInert, RequireEnv)
+	}
+	return &PgJudgmentStore{pool: pool, org: o, rls: active}, nil
+}
+
+// RLSActive — 이 연결에서 행 수준 보안이 실제로 무는가.
+//
+// **false 면 격리는 질의의 org 조건 하나에만 기대고 있다.** 그것도 격리이긴 하지만, 이
+// 버전이 더하려던 한 겹은 없는 것이다 - 부르는 쪽이 그 사실을 말할 수 있어야 한다.
+func (p *PgJudgmentStore) RLSActive() bool { return p.rls }
+
+// rlsBites — 지금 롤이 정책을 건너뛰는가. 슈퍼유저와 BYPASSRLS 가 그렇다.
+func rlsBites(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
+	var bypass bool
+	err := pool.QueryRow(ctx,
+		`SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user`).Scan(&bypass)
+	if err != nil {
+		return false, fmt.Errorf("롤 확인: %w", err)
+	}
+	return !bypass, nil
 }
 
 func (p *PgJudgmentStore) Close() { p.pool.Close() }
