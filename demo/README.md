@@ -56,10 +56,18 @@ core가 이미 수집한 `/work/results`에 **선언(declaration.json)** 을 대
 토폴로지를 만듭니다.
 
 ## 요구 사항
+- **pqcota 리포 체크아웃** - 선언을 그쪽 `topology.yaml`에서 만듭니다. 형제 디렉터리
+  (`../pqcota`)에 두거나 `PQCOTA_DIR=/경로` 로 알려 줍니다.
 - 실행 중인 pqcota 디스커버리 데모(위 1단계).
-- 빌드 머신에 **Go**. 그게 전부입니다 — pqcota v0.5.0부터 모듈 경로가 리포 주소와 같아져
+- 빌드 머신에 **Go**와 **python3**. 그게 전부입니다 — pqcota v0.5.0부터 모듈 경로가 리포 주소와 같아져
   `go build`가 계약을 스스로 받아옵니다. 형제 체크아웃도 `replace`도 필요 없습니다.
 
-## 커스터마이즈
-`declaration.json`(고객 선언)을 편집하면 CONFIRMED/UNDECLARED/UNOBSERVED 분포가 달라집니다.
-`extend.sh`가 `__IP_*__`를 실제 컨테이너 IP로 채웁니다.
+## 바꿔 보기
+
+| 무엇을 바꾸나 | 어디를 고치나 |
+|---|---|
+| **환경** - 노드·망·버전·provider | pqcota의 `demo/topology/topology.yaml`. 고친 뒤 `up.sh`부터 다시 |
+| **선언 규칙** - 무엇을 선언하고 무엇을 뺄지 | [`scripts/declare.py`](scripts/declare.py)의 `ASSETS`·`DECLARED_PROTOS` |
+
+예를 들어 `DECLARED_PROTOS`에 `ssh`를 넣으면 shadow가 사라지고 전부 CONFIRMED가 됩니다 -
+**대장이 완벽한 조직**이 어떻게 보이는지가 그것입니다.
