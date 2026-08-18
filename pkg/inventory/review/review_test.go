@@ -1,4 +1,4 @@
-package main
+package review
 
 import (
 	"testing"
@@ -8,13 +8,16 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 )
 
+// 케이스가 여기 있는 것은 로직이 여기 있기 때문이다. 명령과 화면이 같은 게이트를 쓰므로
+// 게이트를 재는 자리도 하나여야 한다 — 명령 쪽에 두면 화면 쪽이 안 재진다.
+
 // IC-P6 — **스코프가 URI인 노드도 그대로 겨눈다.**
 //
 // v0.1.0 은 항목 id 를 `/` 로 쪼개 노드를 되찾았다. 스코프가 `host://local` 이면 첫 조각이
 // `host:` 가 되어 조치가 있지도 않은 노드를 겨누고, 런타임이 빈 문자열이 되어 기본값
 // openssl 로 조용히 떨어졌다 — 관측이 jca 여도 그랬다. 되찾지 않고 들고 다니게 고쳤다.
 func TestContractKeepsURINodeAndRuntime(t *testing.T) {
-	items := []itemFile{
+	items := []Item{
 		{ID: "host://local/jca/provider", Node: "host://local", Runtime: "jca", Conclusion: "교체한다"},
 	}
 	p := &decision.FinalizedPlan{
@@ -23,7 +26,10 @@ func TestContractKeepsURINodeAndRuntime(t *testing.T) {
 		Items:       []decision.PlanItem{{NodeID: "host://local", DeployAutomationLevel: "L2"}},
 	}
 
-	got := toContract(p, items)
+	got, err := ToContract(p, items)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if n := len(got.GetActions()); n != 1 {
 		t.Fatalf("조치가 1건이어야 하는데 %d건이다", n)
 	}
@@ -41,10 +47,10 @@ func TestContractKeepsURINodeAndRuntime(t *testing.T) {
 // v0.1.0 이 낸 세션 파일에는 node 가 없다. 빈 채로 통과시키면 이름 없는 노드에 조치가
 // 걸리므로, 확정 직전에 끊고 무엇을 해야 하는지 말한다.
 func TestPlanRefusesItemWithoutNode(t *testing.T) {
-	if err := requireNode(itemFile{ID: "host://local/openssl/libssl"}); err == nil {
+	if err := RequireNode(Item{ID: "host://local/openssl/libssl"}); err == nil {
 		t.Fatal("node 가 없는데 통과했다")
 	}
-	if err := requireNode(itemFile{ID: "host://local/openssl/libssl", Node: "host://local"}); err != nil {
+	if err := RequireNode(Item{ID: "host://local/openssl/libssl", Node: "host://local"}); err != nil {
 		t.Fatalf("node 가 있는데 막았다: %v", err)
 	}
 }

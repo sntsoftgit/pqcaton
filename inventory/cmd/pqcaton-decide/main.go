@@ -9,7 +9,9 @@
 //	pqcaton-decide delta <judgments.jsonl> <declaration.csv> [node]
 //
 // **파일이 곧 감사 기록이다.** 대화형으로 물어보면 무엇을 근거로 무엇을 정했는지가 화면에서
-// 사라진다 — 편집한 파일이 그대로 남는 편이 낫다.
+// 사라진다 — 편집한 파일이 그대로 남는 편이 낫다. 화면(`pqcaton-ui`)도 이 파일을 읽고 쓴다.
+//
+// 파일 형식과 확정 게이트는 `pkg/inventory/review` 에 있다 — 명령과 화면이 같은 것을 쓴다.
 package main
 
 import (
@@ -19,14 +21,11 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/randyinthedev-hash/pqcota/discovery/collectors/openssl"
-	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/inventory/declaration"
 	"github.com/randyinthedev-hash/pqcota/pkg/kernel/registry"
@@ -34,6 +33,7 @@ import (
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
 
 const usage = `usage:
@@ -48,7 +48,9 @@ const usage = `usage:
         쌓인 판정을 지금 관측과 대조해 **근거가 바뀐 것만** 골라 낸다
 
   open 이 낸 파일을 편집한 뒤 close 에 넣는다. 결론이 빈 필수 항목이 하나라도 있거나
-  서명이 없으면 close 는 확정하지 않고 왜 안 되는지 말한다.`
+  서명이 없으면 close 는 확정하지 않고 왜 안 되는지 말한다.
+
+  화면으로 채우려면 pqcaton-ui 를 쓴다 — 같은 파일, 같은 게이트다.`
 
 func main() {
 	if len(os.Args) < 3 {
@@ -109,56 +111,6 @@ func main() {
 	}
 }
 
-// ── 파일 형식 ──────────────────────────────────────────────────────────────
-
-// sessionFile — 사람이 편집하는 파일. **라이브러리 타입을 그대로 쓰지 않는다** —
-// 편집하는 사람에게 필요한 것과 상태기계가 필요한 것이 다르다.
-type sessionFile struct {
-	Note      string `json:"_읽는_법"`
-	Scope     string `json:"scope"`
-	Reviewer  string `json:"reviewer"`
-	Signature string `json:"signature"`
-	// PolicyDecisions - 정책 하나에 결론 하나. **이것이 기본 단위다**(§3.4) - 수천 대를
-	// 한 건씩 보는 리뷰는 끝나지 않는다. 개별 항목의 conclusion 은 예외를 위한 자리다.
-	PolicyDecisions map[string]string `json:"정책_판정"`
-	Items           []itemFile        `json:"items"`
-	Autopass        []string          `json:"autopass_후보"`
-}
-
-type itemFile struct {
-	ID string `json:"id"`
-	// Node · Runtime — **id 에서 되찾지 않고 여기 적어 둔다.** 노드가 `host://local` 같은
-	// URI면 `/` 로 쪼개 복원할 수 없다 - 조치가 엉뚱한 노드를 겨누고, 런타임이 비어
-	// 기본값으로 조용히 떨어진다. 대조할 때 이미 알던 값이므로 그대로 들고 간다.
-	Node    string `json:"node"`
-	Runtime string `json:"runtime"`
-	// Policy - 같은 정책의 항목은 한 번에 판정한다(§3.4). 런타임과 컴포넌트에서 만든다 -
-	// 버전 해시가 붙은 것들이 같은 묶음으로 모인다.
-	Policy string  `json:"policy"`
-	State  string  `json:"state"`
-	Conf   float64 `json:"confidence"`
-	// Mandatory — 이 항목은 결론 없이 확정할 수 없다(§3.3②).
-	Mandatory bool `json:"mandatory"`
-	// Rescan — UNOBSERVED인데 커버리지 갭으로 설명된다. **「없다」가 아니라 「못 봤다」**이므로
-	// 재수집이 먼저다(§2.7).
-	Rescan bool `json:"rescan_후보,omitempty"`
-
-	// ── 사람이 채우는 자리 ──
-	Conclusion string `json:"conclusion"`
-	Plan       bool   `json:"확정_계획에_넣는다"`
-	Level      string `json:"deploy_level,omitempty"` // L1 | L2 | L3
-	FIPS       bool   `json:"fips_요구,omitempty"`
-	// Kind — 조치 종류. 계약의 통제 어휘다(`REMEDIATION_KIND_*`). 비우면 PROVIDER_INJECT.
-	Kind string `json:"조치_종류,omitempty"`
-	// Config — provider 설정 조각. **도구가 지어내지 않는다** — 무엇을 넣을지는 계획을
-	// 쓰는 사람이 정한다(상류 프로비저닝 설계와 같은 선).
-	Config string `json:"config_artifact,omitempty"`
-}
-
-const note = "정책_판정 에 정책별 결론을 적으면 같은 정책의 항목이 한 번에 판정됩니다(권장). " +
-	"예외만 항목의 conclusion 으로 따로 적습니다. reviewer 와 signature 를 채운 뒤 " +
-	"`pqcaton-decide close` 에 넣으세요. 확정 계획에 넣을 항목은 `확정_계획에_넣는다`를 true 로."
-
 // ── open ───────────────────────────────────────────────────────────────────
 
 // open - 대조해서 리뷰 세션을 낸다.
@@ -176,8 +128,8 @@ func open(declPath, node, orgName string) error {
 //
 // **open 과 delta 가 같은 함수를 쓴다.** 근거 해시가 이 결과에서 나오므로, 두 곳이 갈리면
 // 델타 리뷰가 "바뀌지 않은 것"을 바뀌었다고 부른다.
-func session(declPath, node, orgName string) (sessionFile, error) {
-	var sf sessionFile
+func session(declPath, node, orgName string) (review.Session, error) {
+	var sf review.Session
 	// **대조도 조직에 묶인다.** 엔진이 조직을 들고, 다른 조직의 자산이 섞이면 대조하지
 	// 않고 끊는다 - 섞인 채로 돌면 오류가 아니라 그럴듯한 결과가 나온다.
 	eng, err := reconcile.For(org.ID(orgName))
@@ -208,13 +160,13 @@ func session(declPath, node, orgName string) (sessionFile, error) {
 	if err != nil {
 		return sf, err
 	}
-	autopass, review := reconcile.BuildReviewQueue(recs)
+	autopass, queue := reconcile.BuildReviewQueue(recs)
 
-	sf = sessionFile{Note: note, Scope: node, PolicyDecisions: map[string]string{}}
-	for _, it := range review {
-		pol := policyOf(it.Rec.Key)
-		sf.Items = append(sf.Items, itemFile{
-			ID: key(it.Rec.Key), Policy: pol,
+	sf = review.Session{Note: review.Note, Scope: node, PolicyDecisions: map[string]string{}}
+	for _, it := range queue {
+		pol := review.PolicyOf(it.Rec.Key)
+		sf.Items = append(sf.Items, review.Item{
+			ID: review.Key(it.Rec.Key), Policy: pol,
 			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
 			State: string(it.Rec.State), Conf: it.Rec.Confidence,
 			Mandatory: it.Mandatory, Rescan: it.Rec.RescanCandidate,
@@ -224,7 +176,7 @@ func session(declPath, node, orgName string) (sessionFile, error) {
 		}
 	}
 	for _, a := range autopass {
-		sf.Autopass = append(sf.Autopass, key(a.Key))
+		sf.Autopass = append(sf.Autopass, review.Key(a.Key))
 	}
 	sort.Strings(sf.Autopass)
 	fmt.Fprintf(os.Stderr, "스캔: 접근가능 %d · 거부 %d\n", st.Accessible, st.Denied)
@@ -234,224 +186,40 @@ func session(declPath, node, orgName string) (sessionFile, error) {
 // ── close ──────────────────────────────────────────────────────────────────
 
 func closeSession(path, judgmentPath, orgName string) error {
-	var sf sessionFile
-	raw, err := os.ReadFile(path)
+	sf, err := review.Load(path)
 	if err != nil {
 		return err
 	}
-	if err := json.Unmarshal(raw, &sf); err != nil {
-		return fmt.Errorf("세션 파일: %w", err)
-	}
-
-	items := make([]decision.Item, 0, len(sf.Items))
-	for _, it := range sf.Items {
-		items = append(items, decision.Item{ID: it.ID, Policy: it.Policy, Mandatory: it.Mandatory})
-	}
-	s := decision.NewSession(sf.Scope, items)
-	if err := s.StartReview(); err != nil {
-		return err
-	}
-	// **정책이 먼저다**(§3.4). 개별 결론은 그 뒤에 얹혀 예외를 만든다.
-	for pol, c := range sf.PolicyDecisions {
-		if strings.TrimSpace(c) != "" {
-			if n := s.DecidePolicy(pol, c); n > 0 {
-				fmt.Fprintf(os.Stderr, "정책 %s: %d개 일괄 판정\n", pol, n)
-			}
-		}
-	}
-	for _, it := range sf.Items {
-		if strings.TrimSpace(it.Conclusion) != "" {
-			s.Decide(it.ID, it.Conclusion)
-		}
-	}
-	if sf.Reviewer != "" || sf.Signature != "" {
-		s.Sign(sf.Reviewer, sf.Signature)
-	}
-
-	// **여기가 이 리포의 최강 게이트다**(§3.7). 왜 안 되는지 말하고 멈춘다 —
-	// 무엇을 더 채워야 하는지 모르면 사람은 파일을 고칠 수 없다.
-	if err := s.Finalize(); err != nil {
-		return fmt.Errorf("%w\n%s", err, pending(sf))
-	}
-
-	plan := make([]decision.PlanItem, 0)
-	picked := make([]itemFile, 0)
-	for _, it := range sf.Items {
-		if !it.Plan {
-			continue
-		}
-		if err := requireNode(it); err != nil {
-			return err
-		}
-		lvl := it.Level
-		if lvl == "" {
-			lvl = "L2"
-		}
-		plan = append(plan, decision.PlanItem{
-			NodeID: it.Node, RemediationClass: it.Conclusion,
-			DeployAutomationLevel: lvl,
-			ProviderChoice:        decision.RouteProvider(it.Runtime, it.FIPS),
-		})
-		picked = append(picked, it)
-	}
-	// **게이트는 여기다.** finalized 아닌 세션에서는 계획 자체가 만들어지지 않는다.
-	p, err := decision.BuildPlan(s, plan)
+	// **게이트는 review.Finalize 하나다.** 화면도 같은 것을 쓴다 — 두 벌이면 언젠가
+	// 한쪽만 고쳐지고, 그날 화면과 명령의 확정이 갈린다.
+	res, err := review.Finalize(sf)
 	if err != nil {
 		return err
 	}
-	if err := decision.AcceptForDeploy(p); err != nil {
-		return err
+	for pol, n := range res.Batched {
+		fmt.Fprintf(os.Stderr, "정책 %s: %d개 일괄 판정\n", pol, n)
 	}
 
-	// **계약 형식으로 낸다.** 내부 타입을 그대로 뱉으면 `pqcota-provision`이 못 읽는다 —
-	// 그러면 「확정 계획이 프로비저닝의 입력」이라는 말이 코드로는 거짓이 된다.
-	out := toContract(p, picked)
-	raw, err2 := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(out)
-	if err2 != nil {
-		return err2
+	raw, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(res.Plan)
+	if err != nil {
+		return err
 	}
 	// **게이트를 지난 뒤에만 남긴다.** 확정되지 않은 것을 판정 이력에 쌓으면 그 기록이
 	// "누가 무엇을 확정했나"를 더는 답하지 못한다.
 	if judgmentPath != "" {
-		n, err := saveJudgments(judgmentPath, orgName, sf, decidedOf(s))
+		n, err := review.SaveJudgments(judgmentPath, orgName, sf, res.Decided)
 		if err != nil {
 			return fmt.Errorf("판정 기록: %w", err)
 		}
 		fmt.Fprintf(os.Stderr, "판정 %d건을 %s 에 남겼습니다 (append-only)\n", n, judgmentPath)
 	}
 	fmt.Fprintf(os.Stderr, "확정: %s · 조치 %d건 — `pqcota-provision plan.json` 의 입력입니다\n",
-		p.Scope, len(out.GetActions()))
+		res.Scope, len(res.Plan.GetActions()))
 	_, err = os.Stdout.Write(append(raw, '\n'))
 	return err
 }
 
-// decidedOf — 세션에서 실제로 판정된 항목의 결론. 정책 일괄로 붙은 것도 여기 들어온다.
-func decidedOf(s *decision.Session) map[string]string {
-	out := map[string]string{}
-	for _, it := range s.Items {
-		if it.Decided {
-			out[it.ID] = it.Conclusion
-		}
-	}
-	return out
-}
-
-// saveJudgments — 판정을 append-only 로 남긴다.
-//
-// **근거 해시를 함께 적는다.** 그것이 없으면 나중에 「근거가 바뀌었나」를 물을 수 없고,
-// 델타 리뷰가 성립하지 않는다(§3.6).
-func saveJudgments(path, orgName string, sf sessionFile, decided map[string]string) (int, error) {
-	store, err := decision.NewFileJudgmentStore(org.ID(orgName), path)
-	if err != nil {
-		return 0, err
-	}
-	now := time.Now().Unix()
-	n := 0
-	for _, it := range sf.Items {
-		c, ok := decided[it.ID]
-		if !ok {
-			continue
-		}
-		j := &decision.Judgment{
-			ID:         fmt.Sprintf("%s@%d", it.ID, now),
-			Subject:    it.ID,
-			Conclusion: c,
-			Reviewer:   sf.Reviewer,
-			Signature:  sf.Signature,
-			BasisHash:  basisOf(it),
-			Confidence: it.Conf,
-			DecidedAt:  now,
-		}
-		if err := store.Save(j); err != nil {
-			return n, err
-		}
-		n++
-	}
-	return n, nil
-}
-
-// basisOf — 이 판정이 무엇을 보고 내려졌나. 대조 상태와 확신도가 근거다.
-//
-// **관측이 바뀌면 이 값이 바뀐다** — 그때 델타 리뷰가 걸린다. 반대로 관측이 그대로면
-// 몇 번을 다시 돌려도 걸리지 않는다(§3.6, IC-D2/D3).
-func basisOf(it itemFile) string {
-	return decision.HashBasis(
-		"state="+it.State,
-		fmt.Sprintf("conf=%.2f", it.Conf),
-		"policy="+it.Policy,
-	)
-}
-
-// pending — 무엇이 남았는지. 「안 된다」만 말하면 사람은 파일을 고칠 수 없다.
-func pending(sf sessionFile) string {
-	var b strings.Builder
-	if sf.Signature == "" {
-		b.WriteString("   · signature 가 비어 있습니다\n")
-	}
-	for _, it := range sf.Items {
-		if it.Mandatory && strings.TrimSpace(it.Conclusion) == "" {
-			fmt.Fprintf(&b, "   · 결론 없음: %s (%s)\n", it.ID, it.State)
-		}
-	}
-	return strings.TrimRight(b.String(), "\n")
-}
-
-// toContract — 확정 계획을 상류 계약(`provisioningv1.Plan`)으로 옮긴다.
-//
-// 어휘의 단일 출처는 계약이다(`pkg/inventory/reconcile/contract.go`와 같은 원칙) —
-// 이 리포는 그 어휘로 말하고, 자기 형식을 새로 만들지 않는다.
-func toContract(p *decision.FinalizedPlan, items []itemFile) *provisioningv1.FinalizedPlan {
-	out := &provisioningv1.FinalizedPlan{
-		Scope:              p.Scope,
-		Status:             provisioningv1.PlanStatus_PLAN_STATUS_FINALIZED,
-		ApprovalSignatures: []string{p.ApprovalSig},
-	}
-	for i, it := range items {
-		out.Actions = append(out.Actions, &provisioningv1.RemediationAction{
-			Id:              fmt.Sprintf("a%d", i+1),
-			TargetNodeId:    p.Items[i].NodeID,
-			CryptoRuntime:   runtimeOf(it.Runtime),
-			Kind:            kindOf(it.Kind),
-			AutomationLevel: levelOf(p.Items[i].DeployAutomationLevel),
-			ProviderChoice:  p.Items[i].ProviderChoice,
-			ConfigArtifact:  it.Config,
-			RollbackNote:    it.Conclusion,
-		})
-	}
-	return out
-}
-
-func runtimeOf(s string) commonv1.CryptoRuntime {
-	if s == "jca" {
-		return commonv1.CryptoRuntime_CRYPTO_RUNTIME_JCA
-	}
-	return commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL
-}
-
-// kindOf — 비우면 `PROVIDER_INJECT`. **모르는 값은 지어내지 않고 끊는다** — 계약의 통제
-// 어휘라 오타가 조용히 UNSPECIFIED로 떨어지면 그 조치는 아무것도 하지 않는다.
-func kindOf(s string) provisioningv1.RemediationKind {
-	if s == "" {
-		return provisioningv1.RemediationKind_REMEDIATION_KIND_PROVIDER_INJECT
-	}
-	if v, ok := provisioningv1.RemediationKind_value[s]; ok && v != 0 {
-		return provisioningv1.RemediationKind(v)
-	}
-	fmt.Fprintf(os.Stderr, "❌ 모르는 조치_종류: %q — 계약의 REMEDIATION_KIND_* 중 하나여야 합니다\n", s)
-	os.Exit(1)
-	return 0
-}
-
-func levelOf(s string) provisioningv1.DeployAutomationLevel {
-	switch strings.ToUpper(s) {
-	case "L1":
-		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L1_STAGE_ONLY
-	case "L3":
-		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L3_FULL_AUTO
-	default:
-		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL
-	}
-}
+// ── delta ──────────────────────────────────────────────────────────────────
 
 // delta - 쌓인 판정을 지금 관측과 대조해 **근거가 바뀐 것만** 고른다.
 //
@@ -482,7 +250,7 @@ func delta(judgmentPath, declPath, node, orgName string) error {
 	}
 	basis := make(map[string]string, len(sf.Items))
 	for _, it := range sf.Items {
-		basis[it.ID] = basisOf(it)
+		basis[it.ID] = review.BasisOf(it)
 	}
 
 	out := decision.DeltaReview(prior, basis)
@@ -500,48 +268,9 @@ func delta(judgmentPath, declPath, node, orgName string) error {
 	return write(need)
 }
 
-// policyOf - 같은 정책으로 묶는 열쇠. 런타임과 컴포넌트 이름에서 만든다.
-//
-// 컴포넌트에 붙는 **버전 해시만** 뗀다(`libssl-e2f2d68a` → `libssl`). 같은 라이브러리의 여러
-// 판이 한 묶음이 되는 것이 정책 단위 리뷰가 뜻하는 것이다(§3.4).
-//
-// **해시처럼 생긴 것만 뗀다.** 길이로만 자르면 `jca-provider-chain`의 `-chain`까지 떼어
-// 이름이 다른 컴포넌트가 한 정책으로 묶인다.
-func policyOf(k reconcile.AssetKey) string {
-	c := k.Component
-	if i := strings.LastIndex(c, "-"); i > 0 && isHex(c[i+1:]) {
-		c = c[:i]
-	}
-	return k.Runtime + "/" + c
-}
+// ── 공통 ───────────────────────────────────────────────────────────────────
 
-// isHex - 버전 해시로 볼 만한가. 짧은 것은 이름의 일부일 수 있어 8자 이상만 본다.
-func isHex(s string) bool {
-	if len(s) < 8 {
-		return false
-	}
-	for _, r := range s {
-		if !('0' <= r && r <= '9' || 'a' <= r && r <= 'f') {
-			return false
-		}
-	}
-	return true
-}
-
-// requireNode — **지어내지 않고 끊는다.** node 가 비면 겨눌 곳을 모르는 것이고, 빈 채로
-// 내보내면 상류가 이름 없는 노드에 조치를 건다. v0.1.0 이 낸 세션 파일이 여기 걸린다.
-func requireNode(it itemFile) error {
-	if it.Node == "" {
-		return fmt.Errorf("항목 %s 에 node 가 없다 - `pqcaton-decide open` 을 다시 돌려 세션을 새로 받아라", it.ID)
-	}
-	return nil
-}
-
-func key(k reconcile.AssetKey) string {
-	return k.NodeID + "/" + k.Runtime + "/" + k.Component
-}
-
-func countMandatory(items []itemFile) int {
+func countMandatory(items []review.Item) int {
 	n := 0
 	for _, it := range items {
 		if it.Mandatory {
