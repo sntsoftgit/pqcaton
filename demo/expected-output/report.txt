@@ -13,10 +13,10 @@
 1   UNDECLARED   0.60   openssl  libcrypto
 2   UNOBSERVED   0.30   openssl  libssl
 
-──────── ② 통신 엣지 + 양자내성 posture ────────
+──────── ② 통신 엣지 + 양자내성 등급 ────────
   ⚪ node-db    → node-app           TLS    (불명)                     UNOBSERVED
   🟢 node-web   → node-app           TLS    X25519MLKEM768           CONFIRMED
   🔴 node-web   → node-db            TLS    x25519                   CONFIRMED
   🟢 node-web   → node-db            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED
 
-  posture 합계: 🟢 PQC 2 · 🔴 고전 1 · ⚪ 불명 1
+  등급 합계: 🟢 PQC 2 · 🔴 고전 1 · ⚪ 불명 1

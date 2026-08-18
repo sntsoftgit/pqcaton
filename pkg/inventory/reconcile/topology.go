@@ -39,7 +39,7 @@ func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool) string
 	// rankdir=TB(위→아래) 세로 배치 + 하단 캡션 범례(옆으로 안 퍼지게). 폭 축소.
 	b.WriteString("  rankdir=TB;\n  ranksep=0.5;\n  nodesep=0.3;\n")
 	b.WriteString(`  labelloc="b"; fontsize=11;` + "\n")
-	b.WriteString(`  label="색=posture: 🟢 PQC · 🔴 고전 · ⚪ 불명\n선형: 실선 CONFIRMED · 굵은선 shadow · 점선 UNOBSERVED";` + "\n")
+	b.WriteString(`  label="색=등급: 🟢 PQC · 🔴 고전 · ⚪ 불명\n선형: 실선 CONFIRMED · 굵은선 shadow · 점선 UNOBSERVED";` + "\n")
 	b.WriteString(`  node [shape=box, style="rounded,filled", fillcolor="#eeeeff", fontname="sans"];` + "\n")
 	b.WriteString(`  edge [fontname="sans", fontsize=10];` + "\n\n")
 

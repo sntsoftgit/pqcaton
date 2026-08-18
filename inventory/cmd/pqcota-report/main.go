@@ -92,7 +92,7 @@ func main() {
 	// 관측 IP → 스코프 노드 해소(§0.4). 해소되면 CONFIRMED로 잡히고, 안 되면 off-scope 등재판정.
 	resolveEdgeDsts(observedEdges, decl.Nodes)
 
-	// ── 엣지 3-상태 대조 + posture ──
+	// ── 엣지 3-상태 대조 + 양자내성 등급 ──
 	declaredEdges := make([]reconcile.EdgeKey, 0, len(decl.Edges))
 	for _, e := range decl.Edges {
 		declaredEdges = append(declaredEdges, reconcile.EdgeKey{Src: e.Src, Dst: e.Dst, Port: e.Port, Proto: e.Proto})
@@ -121,7 +121,7 @@ func main() {
 	fmt.Println("──────── ① 자산 인벤토리 (3-상태 대조) ────────")
 	fmt.Print(reconcile.RenderView(assetRecs))
 
-	fmt.Println("\n──────── ② 통신 엣지 + 양자내성 posture ────────")
+	fmt.Println("\n──────── ② 통신 엣지 + 양자내성 등급 ────────")
 	printEdges(edgeRecs, uncovered)
 
 	dot := reconcile.RenderTopologyDOT(edgeRecs, uncovered)
@@ -159,7 +159,7 @@ func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
 		fmt.Printf("  %s %-10s → %-18s %-6s %-24s %s%s\n",
 			sym, e.Key.Src, e.Key.Dst, e.Key.Proto, grp, e.State, flags)
 	}
-	fmt.Printf("\n  posture 합계: 🟢 PQC %d · 🔴 고전 %d · ⚪ 불명 %d\n", pqc, classical, unknown)
+	fmt.Printf("\n  등급 합계: 🟢 PQC %d · 🔴 고전 %d · ⚪ 불명 %d\n", pqc, classical, unknown)
 	if len(uncovered) > 0 {
 		fmt.Printf("  collector 미설치(반쪽 관측): %v\n", keys(uncovered))
 	}

@@ -7,7 +7,7 @@ import (
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
 )
 
-// IC-E2: 토폴로지 렌더 — 색=posture, 선형=상태, 미관측=점선(≠부재), off-scope=판정요청.
+// IC-E2: 토폴로지 렌더 — 색=등급, 선형=상태, 미관측=점선(≠부재), off-scope=판정요청.
 func TestRenderTopologyDOT(t *testing.T) {
 	edges := []ReconciledEdge{
 		{Key: ek("web", "app", 443, "TLS"), State: Confirmed, Posture: discoveryv1.QuantumPosture_QUANTUM_POSTURE_PQC_HYBRID, Group: "X25519MLKEM768"},
@@ -27,7 +27,7 @@ func TestRenderTopologyDOT(t *testing.T) {
 		{"shadow 굵은선", "penwidth=3"},
 		{"off-scope 판정요청", "판정요청"},
 		{"uncovered 회색노드", "collector 미설치"},
-		{"범례 캡션(posture)", "posture"},
+		{"범례 캡션(등급)", "색=등급"},
 	}
 	for _, c := range checks {
 		if !strings.Contains(dot, c.sub) {

@@ -9,7 +9,7 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 242)">
 <title>crypto_topology</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-242 419.5,-242 419.5,4 -4,4"/>
-<text text-anchor="middle" x="207.75" y="-19.2" font-family="Times,serif" font-size="11.00">색=posture: 🟢 PQC · 🔴 고전 · ⚪ 불명</text>
+<text text-anchor="middle" x="207.75" y="-19.2" font-family="Times,serif" font-size="11.00">색=등급: 🟢 PQC · 🔴 고전 · ⚪ 불명</text>
 <text text-anchor="middle" x="207.75" y="-7.2" font-family="Times,serif" font-size="11.00">선형: 실선 CONFIRMED · 굵은선 shadow · 점선 UNOBSERVED</text>
 <!-- node&#45;app -->
 <g id="node1" class="node">

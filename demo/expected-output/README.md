@@ -17,7 +17,7 @@
 
 - **엣지 대조 구성**: core가 관측한 엣지 집합을 그대로 대조합니다. core `demo.sh`가 **retry-until-complete**로
   목표 엣지까지 재수집하므로(첫 실행도 완전) 확장 결과의 엣지도 일관됩니다. 드물게 `node-app→node-db`가
-  추가로 관측되면 shadow 엣지가 하나 더 나타납니다(관측 창 의존).
+  추가로 관측되면 shadow 엣지가 하나 더 나타납니다(관측 구간 의존).
 - **버전·IP**: [core expected-output](../../../pqcota/demo/expected-output/README.md)과 동일 —
   base 이미지 digest 핀으로 버전 문자열 고정, IP만 매 실행 동적(서사 무관).
 - **선언 편집**: `../declaration.json`(고객 선언)을 바꾸면 CONFIRMED/UNDECLARED/UNOBSERVED 분포가 달라집니다.
