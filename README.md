@@ -39,8 +39,10 @@ pqcota                          pqcaton
 |---|---|
 | [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만 = shadow) · UNOBSERVED(선언만) |
 | [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
+| [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스** — 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 냅니다 |
 | [`inventory/cmd/pqcaton-reconcile`](inventory/cmd/pqcaton-reconcile) | 대조 실행 |
+| [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포** — 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
 **UNDECLARED가 이 도구의 첫 값입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지 — 조직이
@@ -81,6 +83,23 @@ bin/pqcaton-decide close session.json -judgments judgments.jsonl -org acme > pla
 
 # ⑤ 재관측한 뒤 — 근거가 바뀐 판정만 다시 봅니다 (전면 재리뷰가 아닙니다)
 bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
+```
+
+**무엇을 계속 볼지도 승인을 거칩니다.** 「이 자산은 안 본다」는 사고 뒤에 근거를 대야 하는
+결정이라, 같은 왕복으로 다룹니다. 계층은 준 순서대로 이깁니다 — 조직 · 환경 · 노드군 순.
+
+```bash
+# 계층을 겹쳐 바뀐 규칙만 리뷰에 올립니다 (-base 로 지금 쓰는 정책을 주면 델타만)
+bin/pqcaton-scope open corp.csv prod.csv pay.csv -org acme > scope-session.json
+
+# 승인 — exclude 추가는 결론이 없으면 확정되지 않습니다
+bin/pqcaton-scope close scope-session.json -judgments judgments.jsonl -org acme > asset-scope.csv
+
+# 나온 CSV 가 그대로 상류 집행기의 입력입니다
+pqcota-ingest -scope-assets asset-scope.csv results/
+
+# 제외는 영구 면제가 아닙니다 — 승인이 없거나 오래된 것만 다시 올립니다
+bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -org acme
 ```
 
 **③에서 정책 단위로 판정합니다.** 세션 파일의 `정책_판정`에 정책 하나당 결론 하나를 적으면
