@@ -127,6 +127,11 @@ type sessionFile struct {
 
 type itemFile struct {
 	ID string `json:"id"`
+	// Node · Runtime — **id 에서 되찾지 않고 여기 적어 둔다.** 노드가 `host://local` 같은
+	// URI면 `/` 로 쪼개 복원할 수 없다 - 조치가 엉뚱한 노드를 겨누고, 런타임이 비어
+	// 기본값으로 조용히 떨어진다. 대조할 때 이미 알던 값이므로 그대로 들고 간다.
+	Node    string `json:"node"`
+	Runtime string `json:"runtime"`
 	// Policy - 같은 정책의 항목은 한 번에 판정한다(§3.4). 런타임과 컴포넌트에서 만든다 -
 	// 버전 해시가 붙은 것들이 같은 묶음으로 모인다.
 	Policy string  `json:"policy"`
@@ -201,6 +206,7 @@ func session(declPath, node string) (sessionFile, error) {
 		pol := policyOf(it.Rec.Key)
 		sf.Items = append(sf.Items, itemFile{
 			ID: key(it.Rec.Key), Policy: pol,
+			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
 			State: string(it.Rec.State), Conf: it.Rec.Confidence,
 			Mandatory: it.Mandatory, Rescan: it.Rec.RescanCandidate,
 		})
@@ -265,15 +271,17 @@ func closeSession(path, judgmentPath, orgName string) error {
 		if !it.Plan {
 			continue
 		}
-		node, runtime, _ := split(it.ID)
+		if err := requireNode(it); err != nil {
+			return err
+		}
 		lvl := it.Level
 		if lvl == "" {
 			lvl = "L2"
 		}
 		plan = append(plan, decision.PlanItem{
-			NodeID: node, RemediationClass: it.Conclusion,
+			NodeID: it.Node, RemediationClass: it.Conclusion,
 			DeployAutomationLevel: lvl,
-			ProviderChoice:        decision.RouteProvider(runtime, it.FIPS),
+			ProviderChoice:        decision.RouteProvider(it.Runtime, it.FIPS),
 		})
 		picked = append(picked, it)
 	}
@@ -390,11 +398,10 @@ func toContract(p *decision.FinalizedPlan, items []itemFile) *provisioningv1.Fin
 		ApprovalSignatures: []string{p.ApprovalSig},
 	}
 	for i, it := range items {
-		_, runtime, _ := split(it.ID)
 		out.Actions = append(out.Actions, &provisioningv1.RemediationAction{
 			Id:              fmt.Sprintf("a%d", i+1),
 			TargetNodeId:    p.Items[i].NodeID,
-			CryptoRuntime:   runtimeOf(runtime),
+			CryptoRuntime:   runtimeOf(it.Runtime),
 			Kind:            kindOf(it.Kind),
 			AutomationLevel: levelOf(p.Items[i].DeployAutomationLevel),
 			ProviderChoice:  p.Items[i].ProviderChoice,
@@ -470,7 +477,8 @@ func delta(judgmentPath, declPath, node, orgName string) error {
 	}
 
 	out := decision.DeltaReview(prior, basis)
-	var need []decision.Judgment
+	// **빈 결과도 배열이다.** nil 로 두면 `null` 이 찍혀 받는 쪽이 길이를 셀 수 없다.
+	need := make([]decision.Judgment, 0)
 	for _, j := range out {
 		if j.NeedsReReview {
 			need = append(need, j)
@@ -511,16 +519,17 @@ func isHex(s string) bool {
 	return true
 }
 
-func key(k reconcile.AssetKey) string {
-	return k.NodeID + "/" + k.Runtime + "/" + k.Component
+// requireNode — **지어내지 않고 끊는다.** node 가 비면 겨눌 곳을 모르는 것이고, 빈 채로
+// 내보내면 상류가 이름 없는 노드에 조치를 건다. v0.1.0 이 낸 세션 파일이 여기 걸린다.
+func requireNode(it itemFile) error {
+	if it.Node == "" {
+		return fmt.Errorf("항목 %s 에 node 가 없다 - `pqcaton-decide open` 을 다시 돌려 세션을 새로 받아라", it.ID)
+	}
+	return nil
 }
 
-func split(id string) (node, runtime, component string) {
-	p := strings.SplitN(id, "/", 3)
-	for len(p) < 3 {
-		p = append(p, "")
-	}
-	return p[0], p[1], p[2]
+func key(k reconcile.AssetKey) string {
+	return k.NodeID + "/" + k.Runtime + "/" + k.Component
 }
 
 func countMandatory(items []itemFile) int {

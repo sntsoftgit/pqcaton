@@ -67,6 +67,8 @@
 | IC-P3 ✅ | 규제 대상 자산(fips_validation 요구) | **FIPS 검증 provider로 라우팅 강제**(§4.10, Java=BC-FJA) |
 | **IC-P4 ✅** | **finalized 아닌 계획을 Deploy로** | **실행 거부**(§5 최강 게이트) — 핵심 인수 기준 |
 | IC-P5 ✅ | finalized 계획 | 프로비저닝의 **유일** 실행 근거(§3.7) |
+| **IC-C1 ✅** | 스코프가 URI인 노드(`host://local`)를 계약 형식으로 | **겨눈 노드와 런타임이 그대로 간다** — v0.1.0은 id를 쪼개 `host:`를 겨누고 런타임을 기본값으로 떨어뜨렸다 |
+| IC-C2 ✅ | node가 빈 항목을 계획에 | 확정 직전에 거부하고 `open`을 다시 돌리라고 말한다 — 이름 없는 노드에 조치를 걸지 않는다 |
 
 ### E. 통신 엣지 reconciliation & 토폴로지 (§12) 🔶 — 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector(§2.5)가 공급
 | TC | Given → When | Then |
