@@ -62,6 +62,7 @@ func main() {
 	var observedEdges []*discoveryv1.ObservedEdge
 	var assetGaps []string
 	coveredNodes := map[string]bool{} // netcap이 실제로 관측한 노드
+	seenBy := map[string][]string{}   // 노드 → 그 노드를 본 collector들
 	for _, res := range results {
 		if len(res.GetObservedEdges()) > 0 || hasNetworkLayer(res) {
 			// 네트워크 레인. NETWORK 계층을 실제 커버(캡처 성공)했으면 covered — 서버 전용 노드는
@@ -80,6 +81,8 @@ func main() {
 		}
 		observedAssets = append(observedAssets, reconcile.AssetsFromSnapshot(snap)...)
 		assetGaps = append(assetGaps, reconcile.GapLayers(snap)...)
+		seenBy[res.GetEnvelope().GetTargetNodeId()] = append(
+			seenBy[res.GetEnvelope().GetTargetNodeId()], res.GetEnvelope().GetCollectorId())
 	}
 
 	// ── 자산 3-상태 대조 ──
@@ -118,10 +121,15 @@ func main() {
 	fmt.Printf("\n노드 %d · 관측 자산 %d · 관측 엣지 %d · 선언 자산 %d · 선언 엣지 %d\n\n",
 		len(decl.Scope), len(observedAssets), len(observedEdges), len(declaredAssets), len(declaredEdges))
 
-	fmt.Println("──────── ① 자산 인벤토리 (3-상태 대조) ────────")
+	// ① 관측 - **여기서 시작하는 사람이 있다.** pqcota 데모를 거치지 않고 이 리포트만 보는
+	// 사람에게는 대조 앞에 무엇이 있었는지가 안 보인다. 재료는 이미 손에 있으니 보여 준다.
+	fmt.Println("──────── ① 관측 — pqcota가 무엇을 보았나 ────────")
+	printObservation(seenBy, observedAssets, observedEdges, assetGaps, uncovered)
+
+	fmt.Println("\n──────── ② 자산 인벤토리 (3-상태 대조) ────────")
 	fmt.Print(reconcile.RenderView(assetRecs))
 
-	fmt.Println("\n──────── ② 통신 엣지 + 양자내성 등급 ────────")
+	fmt.Println("\n──────── ③ 통신 엣지 + 양자내성 등급 ────────")
 	printEdges(edgeRecs, uncovered)
 
 	dot := reconcile.RenderTopologyDOT(edgeRecs, uncovered)
@@ -130,6 +138,75 @@ func main() {
 	} else {
 		fmt.Printf("\n토폴로지 DOT 저장: %s  (렌더: dot -Tsvg %s -o topology.svg)\n", dotOut, dotOut)
 	}
+}
+
+// printObservation — 대조 앞에 무엇이 있었는지. **여기서 처음 보는 사람을 위한 절이다.**
+//
+// 특히 「못 본 계층」을 보인다 - 그것이 없으면 다음 절의 UNOBSERVED가 「없다」인지
+// 「원리상 못 봤다」인지 읽는 사람이 가를 수 없다(§2.7 갭 != 부재).
+func printObservation(seenBy map[string][]string, assets []reconcile.Observed,
+	edges []*discoveryv1.ObservedEdge, gaps []string, uncovered map[string]bool) {
+
+	byRuntime := map[string]int{}
+	for _, a := range assets {
+		byRuntime[a.Key.Runtime]++
+	}
+	nodes := make([]string, 0, len(seenBy))
+	for n := range seenBy {
+		nodes = append(nodes, n)
+	}
+	sort.Strings(nodes)
+
+	fmt.Println("  대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.")
+	for _, n := range nodes {
+		c := seenBy[n]
+		sort.Strings(c)
+		fmt.Printf("    %-12s %s\n", n, strings.Join(uniq(c), ", "))
+	}
+	fmt.Printf("\n  실제로 쓰이는 것으로 관측된 자산: ")
+	rts := make([]string, 0, len(byRuntime))
+	for r := range byRuntime {
+		rts = append(rts, r)
+	}
+	sort.Strings(rts)
+	parts := make([]string, 0, len(rts))
+	for _, r := range rts {
+		parts = append(parts, fmt.Sprintf("%s %d", r, byRuntime[r]))
+	}
+	fmt.Println(strings.Join(parts, " · "))
+	fmt.Printf("  핸드셰이크에서 협상된 통신: %d건 (다음 절에서 등급을 매깁니다)\n", len(edges))
+
+	fmt.Print("\n  못 본 것: ")
+	if len(gaps) == 0 && len(uncovered) == 0 {
+		fmt.Println("없습니다 — 이 범위에서는 관측이 완전합니다")
+	} else {
+		if len(gaps) > 0 {
+			fmt.Printf("계층 %s ", strings.Join(uniq(gaps), ", "))
+		}
+		if len(uncovered) > 0 {
+			un := make([]string, 0, len(uncovered))
+			for n := range uncovered {
+				un = append(un, n)
+			}
+			sort.Strings(un)
+			fmt.Printf("· 통신 미관측 노드 %s", strings.Join(un, ", "))
+		}
+		fmt.Println()
+	}
+	fmt.Println("  **못 본 것과 없는 것은 다릅니다.** 다음 절의 UNOBSERVED가 어느 쪽인지는")
+	fmt.Println("  이 줄이 가릅니다 — 갭이면 재수집이 먼저이고, 아니면 사람이 판정합니다.")
+}
+
+func uniq(in []string) []string {
+	seen := map[string]bool{}
+	out := in[:0:0]
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {

@@ -4,6 +4,26 @@
 
 📊 **실행 전 예상 결과**: [`expected-output/`](expected-output/) — 확장 리포트·거버넌스 토폴로지 샘플 + 차이점 설명.
 
+## 이 데모가 세우는 환경
+
+pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스를 흉내 낸 3노드**가 도커로 뜨고,
+그 위에서 관측이 돕니다.
+
+| 노드 | 무엇이 도나 | 왜 그렇게 두었나 |
+|---|---|---|
+| `web-gw` | 최신 OpenSSL 3 · 클라이언트 | 트래픽을 내는 쪽. SSH 등급은 클라이언트가 가릅니다 |
+| `pay-app` | JVM(JCA provider를 런타임에 등록) | **정적 스캔으로는 안 보이고** attach로만 잡힙니다 |
+| `pay-db` | 레거시 OpenSSL 1.1.1 · 서버 · 앱 둘이 한 libssl 공유 | 양자취약이 어디까지 번지는지(영향 반경) |
+
+망은 둘로 갈라져 있습니다 — `corp`(웹·앱·DB가 닿는 곳)와 `db`(격리 tier). 그래서 어떤 통신은
+관측되고 어떤 통신은 원리상 안 보입니다. **그 차이가 「없다」와 「못 봤다」를 가릅니다.**
+
+환경 자체는 pqcota의 `demo/topology/topology.yaml` 하나가 정의합니다. 그 파일을 고치면 노드와
+망이 달라지고, 그때는 이 리포의 [`declaration.json`](declaration.json)도 맞춰야 합니다 —
+`extend.sh`가 안 맞으면 멈추고 무엇이 어긋났는지 말합니다.
+
+## 무엇을 얹나
+
 이 데모는 **독립 스택이 아니라 확장**입니다. [pqcota의 디스커버리 데모](https://github.com/randyinthedev-hash/pqcota/tree/main/demo)를
 그대로 띄운 뒤, 그 위에 이 리포의 기능 — **선언 대비 3-상태 대조(CONFIRMED/UNDECLARED shadow/UNOBSERVED) +
 리뷰 큐 + 거버넌스 토폴로지** — 를 얹습니다.
