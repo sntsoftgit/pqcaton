@@ -14,6 +14,7 @@ import (
 var (
 	_ org.Scoped = (*decision.MemJudgmentStore)(nil)
 	_ org.Scoped = (*decision.PgJudgmentStore)(nil)
+	_ org.Scoped = (*decision.FileJudgmentStore)(nil)
 )
 
 // 격리가 있는지가 아니라 **격리를 끌 수 없는지**를 본다.
