@@ -8,7 +8,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 )
 
-// IC-C1 — **스코프가 URI인 노드도 그대로 겨눈다.**
+// IC-P6 — **스코프가 URI인 노드도 그대로 겨눈다.**
 //
 // v0.1.0 은 항목 id 를 `/` 로 쪼개 노드를 되찾았다. 스코프가 `host://local` 이면 첫 조각이
 // `host:` 가 되어 조치가 있지도 않은 노드를 겨누고, 런타임이 빈 문자열이 되어 기본값
@@ -36,7 +36,7 @@ func TestContractKeepsURINodeAndRuntime(t *testing.T) {
 	}
 }
 
-// IC-C2 — **node 가 빈 항목은 계획으로 나가지 않는다.**
+// IC-P7 — **node 가 빈 항목은 계획으로 나가지 않는다.**
 //
 // v0.1.0 이 낸 세션 파일에는 node 가 없다. 빈 채로 통과시키면 이름 없는 노드에 조치가
 // 걸리므로, 확정 직전에 끊고 무엇을 해야 하는지 말한다.

@@ -83,6 +83,9 @@ def main() -> int:
             "pqcota 데모의 topology.yaml 에서 생성했습니다(declare.py). 직접 고치지 마십시오 - "
             "환경을 바꾸려면 그쪽 topology.yaml 을, 선언 규칙을 바꾸려면 declare.py 를 고칩니다."
         ),
+        # org - 이 선언이 어느 조직의 것인가. 대조 엔진이 이 값으로 열리고, 다른 조직의
+        # 자산이 섞이면 대조하지 않고 끊는다. 데모는 조직 하나뿐이라 이름만 보인다.
+        "org": "demo-corp",
         "scope": [n["id"] for n in nodes],
         "nodes": [],  # extend.sh 가 실행 중 환경의 nodes.json 으로 채운다
         "assets": [

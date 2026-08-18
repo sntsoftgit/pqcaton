@@ -20,7 +20,7 @@ func ek(src, dst string, port uint32, proto string) EdgeKey {
 	return EdgeKey{Org: testOrg, Src: src, Dst: dst, Port: port, Proto: proto}
 }
 
-// recEdges — 엣지 대조 결과만 보는 케이스용. 조직 검사는 IC-E4가 따로 본다.
+// recEdges — 엣지 대조 결과만 보는 케이스용. 조직 검사는 IC-O4가 따로 본다.
 func recEdges(t *testing.T, declared []EdgeKey, observed []*discoveryv1.ObservedEdge,
 	scope map[string]bool, gaps []string) []ReconciledEdge {
 	t.Helper()
@@ -111,7 +111,7 @@ func TestReconcileEdges_unobservedNetGap(t *testing.T) {
 	}
 }
 
-// IC-E4 — 엣지도 자산과 같은 규칙이다. 다른 조직의 선언 엣지가 섞이면 대조하지 않는다.
+// IC-O4 — 엣지도 자산과 같은 규칙이다. 다른 조직의 선언 엣지가 섞이면 대조하지 않는다.
 func TestReconcileEdgesRefusesAnotherOrg(t *testing.T) {
 	남 := EdgeKey{Org: "beta", Src: "web-01", Dst: "app-01", Port: 8443, Proto: "TLS"}
 	if _, err := eng(t).ReconcileEdges([]EdgeKey{남}, nil, nil, nil); !errors.Is(err, ErrOrgMismatch) {
@@ -119,7 +119,7 @@ func TestReconcileEdgesRefusesAnotherOrg(t *testing.T) {
 	}
 }
 
-// IC-E5 — 관측 엣지에는 조직이 없다. **엔진이 찍는다** — 찍지 않으면 선언과 영영 안 맞아
+// IC-O5 — 관측 엣지에는 조직이 없다. **엔진이 찍는다** — 찍지 않으면 선언과 영영 안 맞아
 // 모든 관측 엣지가 shadow 로 올라온다.
 func TestObservedEdgeGetsOrg(t *testing.T) {
 	got := recEdges(t, nil, []*discoveryv1.ObservedEdge{

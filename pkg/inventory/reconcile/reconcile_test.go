@@ -23,7 +23,7 @@ func eng(t *testing.T) *Engine {
 	return e
 }
 
-// rec — 대조 결과만 보는 케이스용. 조직이 어긋나는 쪽은 IC-R5·R6이 따로 본다.
+// rec — 대조 결과만 보는 케이스용. 조직이 어긋나는 쪽은 IC-O1·R6이 따로 본다.
 func rec(t *testing.T, declared []AssetKey, observed []Observed, gaps []string) []Reconciled {
 	t.Helper()
 	out, err := eng(t).Reconcile(declared, observed, gaps)
@@ -121,7 +121,7 @@ func TestBuildReviewQueue(t *testing.T) {
 	}
 }
 
-// IC-R5 — **다른 조직의 자산이 섞이면 대조하지 않는다.**
+// IC-O1 — **다른 조직의 자산이 섞이면 대조하지 않는다.**
 //
 // 그냥 두면 오류가 아니라 그럴듯한 결과가 나온다 — 열쇠가 안 맞아 같은 자산이 UNDECLARED와
 // UNOBSERVED 한 쌍으로 갈리고, 리뷰 큐는 그것을 shadow 발견으로 올린다.
@@ -137,7 +137,7 @@ func TestReconcileRefusesAnotherOrg(t *testing.T) {
 	}
 }
 
-// IC-R6 — **조직 없는 열쇠도 끊는다.** 비면 「아무 조직」이 아니라 「모른다」이고, 모르는
+// IC-O2 — **조직 없는 열쇠도 끊는다.** 비면 「아무 조직」이 아니라 「모른다」이고, 모르는
 // 것을 이 엔진의 조직으로 지어내면 검사가 있으나 마나다.
 func TestReconcileRefusesEmptyOrg(t *testing.T) {
 	빈 := AssetKey{NodeID: "n", Runtime: "openssl", Component: "libssl"}
@@ -149,7 +149,7 @@ func TestReconcileRefusesEmptyOrg(t *testing.T) {
 	}
 }
 
-// IC-R7 — **엔진이 조직을 찍는다.** 스냅샷에도 계약에도 조직이 없으니, 찍는 자리가 하나가
+// IC-O3 — **엔진이 조직을 찍는다.** 스냅샷에도 계약에도 조직이 없으니, 찍는 자리가 하나가
 // 아니면 조직 없는 열쇠가 어딘가에서 만들어진다.
 func TestEngineStampsOrg(t *testing.T) {
 	in := []Observed{{Key: AssetKey{NodeID: "n", Runtime: "openssl", Component: "libssl"}}}
