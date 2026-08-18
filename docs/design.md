@@ -1,5 +1,7 @@
 # 설계 — 인벤토리 거버넌스
 
+[개요](../README.md) · [여정](journey.md) · **설계** · [검증 기준](testcases.md) · [데모](../demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+
 pqcota가 **관측**하고, 이 리포가 **그 관측을 판정으로 잇습니다.**
 
 pqcota는 관측한 사실만 냅니다 — 무엇이 위험한지, 무엇을 먼저 바꿀지 판정하지 않습니다.

@@ -1,5 +1,7 @@
 # 테스트케이스 — 인벤토리 거버넌스
 
+[개요](../README.md) · [여정](journey.md) · [설계](design.md) · **검증 기준** · [데모](../demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+
 케이스 번호가 곧 테스트 파일 링크입니다. 설계는 [design.md](design.md)에 있습니다.
 
 **문서 성격**: [설계](design.md) §1(인벤토리 엔진)를 **검증 가능한 인수 기준**으로 전개합니다.
@@ -8,7 +10,7 @@
 **실행 방침**: 대조·상태기계·게이트는 순수 로직(실물 불필요), 판정 영속화는 Postgres 통합.
 
 > 적재·이력·보존·자산 스코프 등 **pqcota가 구현하는 부분**의 인수 기준은
-> [pqcota 인벤토리 테스트케이스](../../pqcota/inventory/인벤토리_테스트케이스.md)에 있습니다.
+> [pqcota 인벤토리 테스트케이스](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/testcases.md)에 있습니다.
 
 ---
 
