@@ -4,7 +4,20 @@
 
 노드 3 · 관측 자산 5 · 관측 엣지 4 · 선언 자산 5 · 선언 엣지 3
 
-──────── ① 자산 인벤토리 (3-상태 대조) ────────
+──────── ① 관측 — pqcota가 무엇을 보았나 ────────
+  대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.
+    pay-app      jvm-collector, openssl-collector
+    pay-db       openssl-collector
+    web-gw       openssl-collector
+
+  실제로 쓰이는 것으로 관측된 자산: jca 1 · openssl 4
+  핸드셰이크에서 협상된 통신: 4건 (다음 절에서 등급을 매깁니다)
+
+  못 본 것: 계층 COLLECTION_LAYER_ARTIFACT
+  **못 본 것과 없는 것은 다릅니다.** 다음 절의 UNOBSERVED가 어느 쪽인지는
+  이 줄이 가릅니다 — 갭이면 재수집이 먼저이고, 아니면 사람이 판정합니다.
+
+──────── ② 자산 인벤토리 (3-상태 대조) ────────
 대조: CONFIRMED 4 · UNDECLARED(shadow) 1 · UNOBSERVED 1
 자동통과 후보(일괄 승인 제안): 4
 
@@ -13,7 +26,7 @@
 1   UNDECLARED   0.60   openssl  libcrypto
 2   UNOBSERVED   0.30   openssl  libssl
 
-──────── ② 통신 엣지 + 양자내성 등급 ────────
+──────── ③ 통신 엣지 + 양자내성 등급 ────────
   ⚪ pay-db     → pay-app            TLS    (불명)                     UNOBSERVED
   🟢 web-gw     → pay-app            TLS    X25519MLKEM768           CONFIRMED
   🔴 web-gw     → pay-db             TLS    x25519                   CONFIRMED

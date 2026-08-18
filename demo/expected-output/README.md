@@ -5,8 +5,12 @@
 
 | 파일 | 내용 |
 |---|---|
-| [report.txt](report.txt) | 콘솔 — 자산 3-상태(CONFIRMED/UNDECLARED shadow/UNOBSERVED) + 리뷰 큐 + 엣지 대조 |
+| [report.txt](report.txt) | 콘솔 — ① 관측(무엇을 보았고 **무엇을 못 봤나**) → ② 자산 3-상태 + 리뷰 큐 → ③ 엣지 대조 |
 | [topology-governance.svg](topology-governance.svg) | 거버넌스 토폴로지 (색=등급, 선형=상태: 실선 CONFIRMED / 굵은선 shadow / 점선 UNOBSERVED) |
+
+**①이 먼저 나오는 이유** — pqcota 데모를 거치지 않고 이 리포트만 보는 사람에게, 대조 앞에
+무엇이 있었는지가 보여야 합니다. 특히 「못 본 계층」이 없으면 ②의 UNOBSERVED가 「없다」인지
+「원리상 못 봤다」인지 읽는 사람이 가를 수 없습니다.
 
 핵심 서사(선언 대비):
 - 🟢 `web-gw→pay-app` MLKEM **CONFIRMED** · 🔴 `web-gw→pay-db` 고전 **CONFIRMED**
