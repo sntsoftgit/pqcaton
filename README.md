@@ -75,9 +75,17 @@ bin/pqcaton-decide open decl.csv local > session.json
 #    필수 항목의 conclusion, 그리고 reviewer · signature 를 채웁니다
 #    확정 계획에 넣을 항목은 `확정_계획에_넣는다`를 true 로
 
-# ④ 확정 — 전 필수 판정과 승인 서명이 있어야 통과합니다
-bin/pqcaton-decide close session.json > plan.json
+# ④ 확정 — 전 필수 판정과 승인 서명이 있어야 통과하고,
+#    판정은 append-only 로 남습니다 (감사 기록)
+bin/pqcaton-decide close session.json -judgments judgments.jsonl -org acme > plan.json
+
+# ⑤ 재관측한 뒤 — 근거가 바뀐 판정만 다시 봅니다 (전면 재리뷰가 아닙니다)
+bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
 ```
+
+**③에서 정책 단위로 판정합니다.** 세션 파일의 `정책_판정`에 정책 하나당 결론 하나를 적으면
+같은 정책의 항목이 한 번에 판정됩니다 — 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
+개별 `conclusion`은 예외를 위한 자리입니다.
 
 **④가 이 리포의 최강 게이트입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 말합니다.**
 

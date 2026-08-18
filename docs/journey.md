@@ -188,8 +188,9 @@ confidence는 관측 빈도·기간·선언 신선도·소스 일치도·`eviden
 
 ```bash
 pqcaton-decide open decl.csv local > session.json   # 리뷰 큐를 파일로
-#  … 사람이 결론 · 승인자 · 서명을 채운다
-pqcaton-decide close session.json > plan.json       # 전 필수 판정 + 서명이 있어야 통과
+#  … 사람이 정책별 결론 · 승인자 · 서명을 채운다
+pqcaton-decide close session.json -judgments j.jsonl -org acme > plan.json
+pqcaton-decide delta j.jsonl decl.csv local -org acme   # 근거가 바뀐 것만
 ```
 
 **파일 왕복인 것이 요점입니다.** 대화형으로 물으면 무엇을 근거로 무엇을 정했는지가 화면에서
@@ -214,7 +215,8 @@ stateDiagram-v2
 엣지 단위로 봅니다. **수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.**
 
 판정은 **엣지 상태가 아니라 사람의 결론**이라, 재수집으로 관측이 바뀌어도 대상에 붙어 남습니다.
-`BasisHash`가 근거를 추적하고, **근거가 실질적으로 바뀌면 그 판정만** 재검토 플래그를 답니다.
+`BasisHash`가 근거를 추적하고, **근거가 실질적으로 바뀌면 그 판정만** 재검토 플래그를 답니다 —
+`delta`가 그것을 냅니다. 관측이 그대로면 몇 번을 돌려도 다시 볼 것이 없다고 답합니다.
 
 ---
 
