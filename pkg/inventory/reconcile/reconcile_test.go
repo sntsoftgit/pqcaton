@@ -1,8 +1,37 @@
 package reconcile
 
-import "testing"
+import (
+	"errors"
+	"testing"
 
-func k(node, rt, comp string) AssetKey { return AssetKey{NodeID: node, Runtime: rt, Component: comp} }
+	"github.com/randyinthedev-hash/pqcota/pkg/org"
+)
+
+// testOrg — 케이스가 쓰는 조직. 대조는 조직에 묶이므로 열쇠에도 엔진에도 같은 값이 든다.
+const testOrg = org.ID("acme")
+
+func k(node, rt, comp string) AssetKey {
+	return AssetKey{Org: testOrg, NodeID: node, Runtime: rt, Component: comp}
+}
+
+func eng(t *testing.T) *Engine {
+	t.Helper()
+	e, err := For(testOrg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return e
+}
+
+// rec — 대조 결과만 보는 케이스용. 조직이 어긋나는 쪽은 IC-R5·R6이 따로 본다.
+func rec(t *testing.T, declared []AssetKey, observed []Observed, gaps []string) []Reconciled {
+	t.Helper()
+	out, err := eng(t).Reconcile(declared, observed, gaps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
 func obs(node, rt, comp, ev string) Observed {
 	return Observed{Key: k(node, rt, comp), Evidence: ev}
 }
@@ -13,7 +42,7 @@ func TestReconcile(t *testing.T) {
 	observed := []Observed{obs("n1", "openssl", "libssl", "confirmed"), obs("n1", "openssl", "libpq-shadow", "confirmed")}
 
 	got := map[AssetKey]State{}
-	for _, r := range Reconcile(declared, observed, nil) {
+	for _, r := range rec(t, declared, observed, nil) {
 		got[r.Key] = r.State
 	}
 	cases := map[AssetKey]State{
@@ -33,7 +62,7 @@ func TestReconcile(t *testing.T) {
 
 // UNDECLARED·UNOBSERVED은 사람 판정 필수(§3.5 MANUAL).
 func TestReconcile_needsReview(t *testing.T) {
-	for _, r := range Reconcile([]AssetKey{k("n", "jca", "only-decl")}, []Observed{obs("n", "jca", "only-obs", "confirmed")}, nil) {
+	for _, r := range rec(t, []AssetKey{k("n", "jca", "only-decl")}, []Observed{obs("n", "jca", "only-obs", "confirmed")}, nil) {
 		if !r.NeedsReview {
 			t.Errorf("%s은 NeedsReview여야: %v", r.State, r.Key)
 		}
@@ -44,7 +73,7 @@ func TestReconcile_needsReview(t *testing.T) {
 func TestReconcile_unobservedGap(t *testing.T) {
 	declared := []AssetKey{k("n", "openssl", "libgone")}
 
-	withGap := Reconcile(declared, nil, []string{"COLLECTION_LAYER_ARTIFACT"})
+	withGap := rec(t, declared, nil, []string{"COLLECTION_LAYER_ARTIFACT"})
 	if len(withGap) != 1 || withGap[0].State != Unobserved {
 		t.Fatalf("want 1 UNOBSERVED, got %+v", withGap)
 	}
@@ -52,7 +81,7 @@ func TestReconcile_unobservedGap(t *testing.T) {
 		t.Error("완전성 갭 있는 UNOBSERVED는 재수집 후보여야")
 	}
 
-	noGap := Reconcile(declared, nil, nil)
+	noGap := rec(t, declared, nil, nil)
 	if noGap[0].RescanCandidate {
 		t.Error("갭 없으면 재수집 후보 아님(실존/stale 사람 판정)")
 	}
@@ -61,8 +90,8 @@ func TestReconcile_unobservedGap(t *testing.T) {
 // IC-C2: 관측 evidence_strength=inferred-low는 confidence 상한을 누른다(불확실 관측은 신뢰 낮춤).
 func TestReconcile_evidenceConfidence(t *testing.T) {
 	decl := []AssetKey{k("n", "openssl", "lib")}
-	hi := Reconcile(decl, []Observed{obs("n", "openssl", "lib", "confirmed")}, nil)[0].Confidence
-	lo := Reconcile(decl, []Observed{obs("n", "openssl", "lib", "inferred-low")}, nil)[0].Confidence
+	hi := rec(t, decl, []Observed{obs("n", "openssl", "lib", "confirmed")}, nil)[0].Confidence
+	lo := rec(t, decl, []Observed{obs("n", "openssl", "lib", "inferred-low")}, nil)[0].Confidence
 	if !(lo < hi) {
 		t.Errorf("inferred-low confidence(%.2f)가 confirmed(%.2f)보다 낮아야", lo, hi)
 	}
@@ -89,5 +118,44 @@ func TestBuildReviewQueue(t *testing.T) {
 	}
 	if !review[0].Mandatory {
 		t.Error("shadow는 필수 리뷰여야")
+	}
+}
+
+// IC-R5 — **다른 조직의 자산이 섞이면 대조하지 않는다.**
+//
+// 그냥 두면 오류가 아니라 그럴듯한 결과가 나온다 — 열쇠가 안 맞아 같은 자산이 UNDECLARED와
+// UNOBSERVED 한 쌍으로 갈리고, 리뷰 큐는 그것을 shadow 발견으로 올린다.
+func TestReconcileRefusesAnotherOrg(t *testing.T) {
+	남 := AssetKey{Org: org.ID("beta"), NodeID: "n", Runtime: "openssl", Component: "libssl"}
+
+	if _, err := eng(t).Reconcile([]AssetKey{남}, nil, nil); !errors.Is(err, ErrOrgMismatch) {
+		t.Fatalf("선언 레인: 남의 조직을 그대로 대조했다: %v", err)
+	}
+	obs := []Observed{{Key: 남, Evidence: "confirmed"}}
+	if _, err := eng(t).Reconcile(nil, obs, nil); !errors.Is(err, ErrOrgMismatch) {
+		t.Fatalf("관측 레인: 남의 조직을 그대로 대조했다: %v", err)
+	}
+}
+
+// IC-R6 — **조직 없는 열쇠도 끊는다.** 비면 「아무 조직」이 아니라 「모른다」이고, 모르는
+// 것을 이 엔진의 조직으로 지어내면 검사가 있으나 마나다.
+func TestReconcileRefusesEmptyOrg(t *testing.T) {
+	빈 := AssetKey{NodeID: "n", Runtime: "openssl", Component: "libssl"}
+	if _, err := eng(t).Reconcile([]AssetKey{빈}, nil, nil); !errors.Is(err, ErrOrgMismatch) {
+		t.Fatalf("조직 없는 열쇠를 그대로 대조했다: %v", err)
+	}
+	if _, err := For(""); err == nil {
+		t.Fatal("빈 조직으로 엔진이 열렸다")
+	}
+}
+
+// IC-R7 — **엔진이 조직을 찍는다.** 스냅샷에도 계약에도 조직이 없으니, 찍는 자리가 하나가
+// 아니면 조직 없는 열쇠가 어딘가에서 만들어진다.
+func TestEngineStampsOrg(t *testing.T) {
+	in := []Observed{{Key: AssetKey{NodeID: "n", Runtime: "openssl", Component: "libssl"}}}
+	for _, o := range stampObserved(testOrg, in) {
+		if o.Key.Org != testOrg {
+			t.Errorf("조직이 %q다, want %q", o.Key.Org, testOrg)
+		}
 	}
 }

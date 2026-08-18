@@ -3,7 +3,7 @@
 // 대조 엔진은 정답을 주지 않는다. 판정 대상을 구조화해 사람에게 넘기고, **확정은 사람이
 // 한다**(규정서 §3.1). 그 「사람이 하는 자리」를 파일 왕복으로 연다.
 //
-//	pqcaton-decide open  <declaration.csv> [node] > session.json
+//	pqcaton-decide open  <declaration.csv> [node] [-org 이름] > session.json
 //	  … 사람이 session.json 을 편집한다 (결론 · 승인자 · 서명)
 //	pqcaton-decide close <session.json> [-judgments 파일] [-org 이름] > plan.json
 //	pqcaton-decide delta <judgments.jsonl> <declaration.csv> [node]
@@ -37,7 +37,7 @@ import (
 )
 
 const usage = `usage:
-  pqcaton-decide open  <declaration.csv> [node]
+  pqcaton-decide open  <declaration.csv> [node] [-org <이름>]
         대조 → 리뷰 세션(초안)을 낸다
 
   pqcaton-decide close <session.json> [-judgments <파일>] [-org <이름>]
@@ -59,7 +59,7 @@ func main() {
 
 	fs := flag.NewFlagSet(sub, flag.ExitOnError)
 	judgments := fs.String("judgments", "", "판정을 남길 파일(JSONL, append-only)")
-	orgName := fs.String("org", "local", "판정을 묶을 조직")
+	orgName := fs.String("org", "local", "대조와 판정을 묶을 조직")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
 	var pos []string
 	var flags []string
@@ -88,7 +88,7 @@ func main() {
 		if len(pos) > 1 {
 			node = pos[1]
 		}
-		err = open(pos[0], node)
+		err = open(pos[0], node, *orgName)
 	case "close":
 		need(1)
 		err = closeSession(pos[0], *judgments, *orgName)
@@ -162,8 +162,8 @@ const note = "정책_판정 에 정책별 결론을 적으면 같은 정책의 �
 // ── open ───────────────────────────────────────────────────────────────────
 
 // open - 대조해서 리뷰 세션을 낸다.
-func open(declPath, node string) error {
-	sf, err := session(declPath, node)
+func open(declPath, node, orgName string) error {
+	sf, err := session(declPath, node, orgName)
 	if err != nil {
 		return err
 	}
@@ -176,13 +176,19 @@ func open(declPath, node string) error {
 //
 // **open 과 delta 가 같은 함수를 쓴다.** 근거 해시가 이 결과에서 나오므로, 두 곳이 갈리면
 // 델타 리뷰가 "바뀌지 않은 것"을 바뀌었다고 부른다.
-func session(declPath, node string) (sessionFile, error) {
+func session(declPath, node, orgName string) (sessionFile, error) {
 	var sf sessionFile
+	// **대조도 조직에 묶인다.** 엔진이 조직을 들고, 다른 조직의 자산이 섞이면 대조하지
+	// 않고 끊는다 - 섞인 채로 돌면 오류가 아니라 그럴듯한 결과가 나온다.
+	eng, err := reconcile.For(org.ID(orgName))
+	if err != nil {
+		return sf, err
+	}
 	dets, st := openssl.ScanHost(registry.DefaultForkSignatures)
 	res := openssl.BuildResult(node, dets)
-	snap, err := normalize.Normalize([]*discoveryv1.CollectionResult{res}, "snap-1", node, "ruleset-1", nil, nil)
-	if err != nil {
-		return sf, fmt.Errorf("정규화: %w", err)
+	snap, err2 := normalize.Normalize([]*discoveryv1.CollectionResult{res}, "snap-1", node, "ruleset-1", nil, nil)
+	if err2 != nil {
+		return sf, fmt.Errorf("정규화: %w", err2)
 	}
 	f, err := os.Open(declPath)
 	if err != nil {
@@ -193,12 +199,15 @@ func session(declPath, node string) (sessionFile, error) {
 	if err != nil {
 		return sf, fmt.Errorf("선언 읽기: %w", err)
 	}
-	declared, err := reconcile.AssetsFromResults(decl)
+	declared, err := eng.AssetsFromResults(decl)
 	if err != nil {
 		return sf, fmt.Errorf("선언 자산: %w", err)
 	}
 
-	recs := reconcile.Reconcile(declared, reconcile.AssetsFromSnapshot(snap), reconcile.GapLayers(snap))
+	recs, err := eng.Reconcile(declared, eng.AssetsFromSnapshot(snap), reconcile.GapLayers(snap))
+	if err != nil {
+		return sf, err
+	}
 	autopass, review := reconcile.BuildReviewQueue(recs)
 
 	sf = sessionFile{Note: note, Scope: node, PolicyDecisions: map[string]string{}}
@@ -467,7 +476,7 @@ func delta(judgmentPath, declPath, node, orgName string) error {
 	prior = decision.LatestPerSubject(prior) // append-only 로그에서 대상별 최신만
 
 	// 지금 관측으로 근거를 다시 만든다. open 이 쓰는 것과 같은 경로여야 값이 맞는다.
-	sf, err := session(declPath, node)
+	sf, err := session(declPath, node, orgName)
 	if err != nil {
 		return err
 	}

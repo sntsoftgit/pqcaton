@@ -9,8 +9,9 @@ import (
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 )
 
-// AssetsFromSnapshot — 디스커버리 스냅샷(관측 레인)의 Finding에서 Observed(자산+증거강도)를 뽑는다.
-func AssetsFromSnapshot(snap *history.Snapshot) []Observed {
+// observedFromSnapshot — 디스커버리 스냅샷(관측 레인)의 Finding에서 Observed(자산+증거강도)를
+// 뽑는다. **조직은 여기서 찍지 않는다** — 찍는 자리는 [Engine.AssetsFromSnapshot] 하나다.
+func observedFromSnapshot(snap *history.Snapshot) []Observed {
 	if snap == nil {
 		return nil
 	}
@@ -29,8 +30,9 @@ func GapLayers(snap *history.Snapshot) []string {
 	return out
 }
 
-// AssetsFromResults — CollectionResult들(선언 레인)을 Finding으로 파생해 선언 AssetKey를 뽑는다.
-func AssetsFromResults(results []*discoveryv1.CollectionResult) ([]AssetKey, error) {
+// declaredFromResults — CollectionResult들(선언 레인)을 Finding으로 파생해 선언 AssetKey를
+// 뽑는다. 조직은 [Engine.AssetsFromResults]가 찍는다.
+func declaredFromResults(results []*discoveryv1.CollectionResult) ([]AssetKey, error) {
 	var out []AssetKey
 	for _, res := range results {
 		fs, err := normalize.DeriveFindings(res, "", "")

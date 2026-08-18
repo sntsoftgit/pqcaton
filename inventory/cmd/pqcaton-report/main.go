@@ -21,11 +21,16 @@ import (
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/kernel/posture"
+	"github.com/randyinthedev-hash/pqcota/pkg/org"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type declaration struct {
+	// Org — 이 선언이 어느 조직의 것인가. **선언 문서가 조직의 것이므로 여기 적힌다** —
+	// 대조 엔진은 이 값으로 열리고, 다른 조직의 자산이 섞이면 대조하지 않고 끊는다.
+	// 비면 `local` 이다(한 조직만 다루는 자리).
+	Org    string      `json:"org,omitempty"`
 	Scope  []string    `json:"scope"`
 	Nodes  []declNode  `json:"nodes"` // 스코프 마스터: 노드↔IP (관측 IP→노드 해소, §0.4)
 	Assets []declAsset `json:"assets"`
@@ -55,6 +60,15 @@ func main() {
 	}
 
 	decl := loadDeclaration(declPath)
+	orgName := decl.Org
+	if orgName == "" {
+		orgName = "local"
+	}
+	eng, err := reconcile.For(org.ID(orgName))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	results := loadResults(dir)
 
 	// 관측 자산(openssl)과 관측 엣지(network)를 레인별로 분리.
@@ -79,7 +93,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "normalize:", err)
 			continue
 		}
-		observedAssets = append(observedAssets, reconcile.AssetsFromSnapshot(snap)...)
+		observedAssets = append(observedAssets, eng.AssetsFromSnapshot(snap)...)
 		assetGaps = append(assetGaps, reconcile.GapLayers(snap)...)
 		seenBy[res.GetEnvelope().GetTargetNodeId()] = append(
 			seenBy[res.GetEnvelope().GetTargetNodeId()], res.GetEnvelope().GetCollectorId())
@@ -88,9 +102,14 @@ func main() {
 	// ── 자산 3-상태 대조 ──
 	declaredAssets := make([]reconcile.AssetKey, 0, len(decl.Assets))
 	for _, a := range decl.Assets {
-		declaredAssets = append(declaredAssets, reconcile.AssetKey{NodeID: a.Node, Runtime: a.Runtime, Component: a.Component})
+		declaredAssets = append(declaredAssets, reconcile.AssetKey{
+			Org: org.ID(orgName), NodeID: a.Node, Runtime: a.Runtime, Component: a.Component})
 	}
-	assetRecs := reconcile.Reconcile(declaredAssets, observedAssets, assetGaps)
+	assetRecs, err := eng.Reconcile(declaredAssets, observedAssets, assetGaps)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	// 관측 IP → 스코프 노드 해소(§0.4). 해소되면 CONFIRMED로 잡히고, 안 되면 off-scope 등재판정.
 	resolveEdgeDsts(observedEdges, decl.Nodes)
@@ -98,13 +117,18 @@ func main() {
 	// ── 엣지 3-상태 대조 + 양자내성 등급 ──
 	declaredEdges := make([]reconcile.EdgeKey, 0, len(decl.Edges))
 	for _, e := range decl.Edges {
-		declaredEdges = append(declaredEdges, reconcile.EdgeKey{Src: e.Src, Dst: e.Dst, Port: e.Port, Proto: e.Proto})
+		declaredEdges = append(declaredEdges, reconcile.EdgeKey{
+			Org: org.ID(orgName), Src: e.Src, Dst: e.Dst, Port: e.Port, Proto: e.Proto})
 	}
 	scope := map[string]bool{}
 	for _, n := range decl.Scope {
 		scope[n] = true
 	}
-	edgeRecs := reconcile.ReconcileEdges(declaredEdges, observedEdges, scope, nil)
+	edgeRecs, err := eng.ReconcileEdges(declaredEdges, observedEdges, scope, nil)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	// coverage: 스코프 노드 중 netcap 미관측 → 회색(반쪽만 보임).
 	uncovered := map[string]bool{}
