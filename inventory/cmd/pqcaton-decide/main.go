@@ -18,8 +18,12 @@ import (
 	"sort"
 	"strings"
 
+	"google.golang.org/protobuf/encoding/protojson"
+
 	"github.com/randyinthedev-hash/pqcota/discovery/collectors/openssl"
+	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
+	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/inventory/declaration"
 	"github.com/randyinthedev-hash/pqcota/pkg/kernel/registry"
@@ -88,6 +92,11 @@ type itemFile struct {
 	Plan       bool   `json:"확정_계획에_넣는다"`
 	Level      string `json:"deploy_level,omitempty"` // L1 | L2 | L3
 	FIPS       bool   `json:"fips_요구,omitempty"`
+	// Kind — 조치 종류. 계약의 통제 어휘다(`REMEDIATION_KIND_*`). 비우면 PROVIDER_INJECT.
+	Kind string `json:"조치_종류,omitempty"`
+	// Config — provider 설정 조각. **도구가 지어내지 않는다** — 무엇을 넣을지는 계획을
+	// 쓰는 사람이 정한다(상류 프로비저닝 설계와 같은 선).
+	Config string `json:"config_artifact,omitempty"`
 }
 
 const note = "필수(mandatory) 항목의 conclusion 을 채우고, reviewer 와 signature 를 적은 뒤 " +
@@ -172,6 +181,7 @@ func closeSession(path string) error {
 	}
 
 	plan := make([]decision.PlanItem, 0)
+	picked := make([]itemFile, 0)
 	for _, it := range sf.Items {
 		if !it.Plan {
 			continue
@@ -186,7 +196,9 @@ func closeSession(path string) error {
 			DeployAutomationLevel: lvl,
 			ProviderChoice:        decision.RouteProvider(runtime, it.FIPS),
 		})
+		picked = append(picked, it)
 	}
+	// **게이트는 여기다.** finalized 아닌 세션에서는 계획 자체가 만들어지지 않는다.
 	p, err := decision.BuildPlan(s, plan)
 	if err != nil {
 		return err
@@ -194,9 +206,18 @@ func closeSession(path string) error {
 	if err := decision.AcceptForDeploy(p); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "확정: %s · 계획 항목 %d개 — pqcota-provision 의 입력이 됩니다\n",
-		p.Scope, len(p.Items))
-	return write(p)
+
+	// **계약 형식으로 낸다.** 내부 타입을 그대로 뱉으면 `pqcota-provision`이 못 읽는다 —
+	// 그러면 「확정 계획이 프로비저닝의 입력」이라는 말이 코드로는 거짓이 된다.
+	out := toContract(p, picked)
+	raw, err2 := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(out)
+	if err2 != nil {
+		return err2
+	}
+	fmt.Fprintf(os.Stderr, "확정: %s · 조치 %d건 — `pqcota-provision plan.json` 의 입력입니다\n",
+		p.Scope, len(out.GetActions()))
+	_, err = os.Stdout.Write(append(raw, '\n'))
+	return err
 }
 
 // pending — 무엇이 남았는지. 「안 된다」만 말하면 사람은 파일을 고칠 수 없다.
@@ -211,6 +232,64 @@ func pending(sf sessionFile) string {
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")
+}
+
+// toContract — 확정 계획을 상류 계약(`provisioningv1.Plan`)으로 옮긴다.
+//
+// 어휘의 단일 출처는 계약이다(`pkg/inventory/reconcile/contract.go`와 같은 원칙) —
+// 이 리포는 그 어휘로 말하고, 자기 형식을 새로 만들지 않는다.
+func toContract(p *decision.FinalizedPlan, items []itemFile) *provisioningv1.FinalizedPlan {
+	out := &provisioningv1.FinalizedPlan{
+		Scope:              p.Scope,
+		Status:             provisioningv1.PlanStatus_PLAN_STATUS_FINALIZED,
+		ApprovalSignatures: []string{p.ApprovalSig},
+	}
+	for i, it := range items {
+		_, runtime, _ := split(it.ID)
+		out.Actions = append(out.Actions, &provisioningv1.RemediationAction{
+			Id:              fmt.Sprintf("a%d", i+1),
+			TargetNodeId:    p.Items[i].NodeID,
+			CryptoRuntime:   runtimeOf(runtime),
+			Kind:            kindOf(it.Kind),
+			AutomationLevel: levelOf(p.Items[i].DeployAutomationLevel),
+			ProviderChoice:  p.Items[i].ProviderChoice,
+			ConfigArtifact:  it.Config,
+			RollbackNote:    it.Conclusion,
+		})
+	}
+	return out
+}
+
+func runtimeOf(s string) commonv1.CryptoRuntime {
+	if s == "jca" {
+		return commonv1.CryptoRuntime_CRYPTO_RUNTIME_JCA
+	}
+	return commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL
+}
+
+// kindOf — 비우면 `PROVIDER_INJECT`. **모르는 값은 지어내지 않고 끊는다** — 계약의 통제
+// 어휘라 오타가 조용히 UNSPECIFIED로 떨어지면 그 조치는 아무것도 하지 않는다.
+func kindOf(s string) provisioningv1.RemediationKind {
+	if s == "" {
+		return provisioningv1.RemediationKind_REMEDIATION_KIND_PROVIDER_INJECT
+	}
+	if v, ok := provisioningv1.RemediationKind_value[s]; ok && v != 0 {
+		return provisioningv1.RemediationKind(v)
+	}
+	fmt.Fprintf(os.Stderr, "❌ 모르는 조치_종류: %q — 계약의 REMEDIATION_KIND_* 중 하나여야 합니다\n", s)
+	os.Exit(1)
+	return 0
+}
+
+func levelOf(s string) provisioningv1.DeployAutomationLevel {
+	switch strings.ToUpper(s) {
+	case "L1":
+		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L1_STAGE_ONLY
+	case "L3":
+		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L3_FULL_AUTO
+	default:
+		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL
+	}
 }
 
 func key(k reconcile.AssetKey) string {
