@@ -15,7 +15,13 @@ import (
 	"github.com/sntsoftgit/pqcaton/saas/runner"
 )
 
-const token = "pqcrt_a3f9k2mq_7x4bn8wr2ejd5vh6tzc9pkm3sq0yfla"
+// token — 테스트 고정값. **실제 토큰이 아니다.**
+//
+// 접두어는 진짜와 같게 둔다 — 「토큰이 URL·오류에 새지 않는다」를 재는 케이스가 그 모양을
+// 그대로 써야 의미가 있다(RUN-5). 대신 몸통을 0으로 채워 진짜가 아님을 눈으로 알게 한다:
+// `pqcrt_`는 **시크릿 스캐너에 걸리라고 붙인 접두어**라(§6.4.1), 공개 리포에서 랜덤처럼
+// 생긴 값을 두면 스캐너와 사람 모두 진짜로 읽는다.
+const token = "pqcrt_00000000_00000000000000000000000000000000"
 
 func quiet() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
