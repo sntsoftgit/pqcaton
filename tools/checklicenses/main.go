@@ -64,24 +64,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var missing, bad []string
-	for _, m := range mods {
-		lic, ok := known[m.Path]
-		if !ok {
-			missing = append(missing, m.Path)
-			continue
-		}
-		if why, no := forbidden[lic]; no {
-			bad = append(bad, fmt.Sprintf("%s = %s — %s", m.Path, lic, why))
-			continue
-		}
-		if !allowed[lic] {
-			bad = append(bad, fmt.Sprintf("%s = %s — 허용 목록에 없다(검토 필요)", m.Path, lic))
-		}
-	}
-
-	sort.Strings(missing)
-	sort.Strings(bad)
+	missing, bad := verdict(mods, known)
 
 	if len(missing) > 0 {
 		fmt.Fprintln(os.Stderr, "✗ 라이선스를 모르는 의존성이 있다 — licenses.txt에 확인해 적을 것:")
@@ -100,6 +83,33 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("✓ 라이선스 검사 통과 (링크되는 모듈 %d개 — 전부 허용적)\n", len(mods))
+}
+
+// verdict — 링크되는 모듈과 허용 목록을 견줘 **무엇이 막는지** 가른다.
+//
+// main 에서 떼어 둔 것은 이 판정이 게이트 그 자체이기 때문이다 — 여기가 조용히 통과하면
+// 빌드는 초록이고 라이선스 약속만 깨진다. 순수 함수라 케이스가 실제 판정을 잰다.
+//
+// **모르는 것은 통과시키지 않는다.** 허용 목록에 없으면 금지 목록에 없어도 막는다 —
+// go get 한 번이면 새 의존성이 들어오는데, 모르는 것을 통과시키면 게이트가 아니다.
+func verdict(mods []mod, known map[string]string) (missing, bad []string) {
+	for _, m := range mods {
+		lic, ok := known[m.Path]
+		if !ok {
+			missing = append(missing, m.Path)
+			continue
+		}
+		if why, no := forbidden[lic]; no {
+			bad = append(bad, fmt.Sprintf("%s = %s — %s", m.Path, lic, why))
+			continue
+		}
+		if !allowed[lic] {
+			bad = append(bad, fmt.Sprintf("%s = %s — 허용 목록에 없다(검토 필요)", m.Path, lic))
+		}
+	}
+	sort.Strings(missing)
+	sort.Strings(bad)
+	return missing, bad
 }
 
 // linkedModules — 실제로 링크되는 모듈만. 테스트 전용 의존성은 제외된다.
