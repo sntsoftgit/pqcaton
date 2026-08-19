@@ -64,12 +64,16 @@ func main() {
 	}
 	path := pos[0]
 	if _, err := review.Load(path); err != nil {
-		fmt.Fprintln(os.Stderr, "❌ 세션 파일을 읽을 수 없다:", err)
+		fmt.Fprintln(os.Stderr, "❌ 리뷰 세션을 읽을 수 없다:", err)
+		fmt.Fprintln(os.Stderr, "   `pqcaton-decide open <declaration.json> -results <results-dir> > "+path+"` 로 먼저 만드십시오")
 		os.Exit(1)
 	}
 	if *declPath != "" {
 		if _, err := decl.Load(*declPath); err != nil {
+			// 선언은 사람이 처음 쓰는 것이라 만들어 줄 명령이 없다 — 빈 파일에서
+			// 시작할 수 있다는 것을 말한다.
 			fmt.Fprintln(os.Stderr, "❌ 선언 파일을 읽을 수 없다:", err)
+			fmt.Fprintln(os.Stderr, `   빈 선언으로 시작하려면: echo '{"scope":[],"nodes":[],"assets":[],"edges":[]}' > `+*declPath)
 			os.Exit(1)
 		}
 	}
@@ -81,7 +85,10 @@ func main() {
 	}
 	if *scopePath != "" {
 		if _, err := scope.LoadSession(*scopePath); err != nil {
+			// **어디서 나는 파일인지 말한다.** 화면은 세션을 열지 못한다 — 여는 일은
+			// 관측·대조가 필요하고, 화면은 그 결과를 채우는 자리다.
 			fmt.Fprintln(os.Stderr, "❌ 스코프 세션을 읽을 수 없다:", err)
+			fmt.Fprintln(os.Stderr, "   `pqcaton-scope open <계층.csv>... -base <현재정책.csv> > "+*scopePath+"` 로 먼저 만드십시오")
 			os.Exit(1)
 		}
 	}
