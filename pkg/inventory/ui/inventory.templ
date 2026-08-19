@@ -46,7 +46,10 @@ templ inventoryPage(v InventoryView) {
 		<fieldset>
 			<legend>
 				{ tSurveyAssets.In(v.Page.Lang) }
-				<span class="n">— @templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalAssets, len(v.Assets)))</span>
+				<span class="n">
+					— 
+					@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalAssets, len(v.Assets)))
+				</span>
 			</legend>
 			<table>
 				<tr>
@@ -84,7 +87,10 @@ templ inventoryPage(v InventoryView) {
 		<fieldset>
 			<legend>
 				{ tSurveyEdges.In(v.Page.Lang) }
-				<span class="n">— @templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalEdges, len(v.Edges)))</span>
+				<span class="n">
+					— 
+					@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalEdges, len(v.Edges)))
+				</span>
 			</legend>
 			<table>
 				<tr>

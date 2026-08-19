@@ -12,6 +12,8 @@ import (
 	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
@@ -466,5 +468,72 @@ func TestScreenRendersInBothLanguages(t *testing.T) {
 		if !strings.Contains(b.String(), tc.want) {
 			t.Errorf("%s 화면에 %q 가 없다", tc.lang, tc.want)
 		}
+	}
+}
+
+// IC-UI24 — **좁혀 놓은 것을 전부로 읽게 하지 않는다.**
+//
+// 「5개 중 2개」의 두 숫자는 한국어와 영어에서 자리가 뒤집힙니다(「전체 중 몇 개」 ↔
+// 「몇 개 of 전체」). 자리를 번호로 고정하지 않으면 **한쪽 말에서만 숫자 둘이 바뀌어**
+// 뜨고, 그 화면을 보는 사람은 좁혀 놓은 것을 전부로 읽습니다.
+func TestShowingCountIsRightInBothLanguages(t *testing.T) {
+	r := &report.Result{
+		Assets: []reconcile.Reconciled{
+			{Key: reconcile.AssetKey{NodeID: "web", Runtime: "openssl", Component: "libssl"}, State: "UNDECLARED"},
+			{Key: reconcile.AssetKey{NodeID: "web", Runtime: "openssl", Component: "libcrypto"}, State: "CONFIRMED"},
+			{Key: reconcile.AssetKey{NodeID: "db", Runtime: "jca", Component: "provider"}, State: "CONFIRMED"},
+		},
+	}
+	for _, lang := range []ui.Lang{ui.KO, ui.EN} {
+		var b strings.Builder
+		v := ui.NewInventoryView(r, ui.Filter{Q: "libssl"}, ui.Page{Title: "t", Lang: lang})
+		if err := ui.RenderInventory(&b, v); err != nil {
+			t.Fatal(err)
+		}
+		if len(v.Assets) != 1 || v.TotalAssets != 3 {
+			t.Fatalf("%s: 좁힌 결과가 %d/%d", lang, len(v.Assets), v.TotalAssets)
+		}
+		body := b.String()
+		// 전체 3, 보이는 것 1 — 두 말 모두 그렇게 읽혀야 한다.
+		want := "3개 중 <b>1개</b>"
+		if lang == ui.EN {
+			want = "<b>1</b> of 3"
+		}
+		if !strings.Contains(body, want) {
+			t.Errorf("%s 화면에 %q 가 없다 — 숫자가 뒤집혔을 수 있다", lang, want)
+		}
+	}
+}
+
+// IC-UI25 — **좁히기는 아무 칸에나 걸린다.** 어느 칸인지 미리 고르게 하면 찾는 사람이
+// 그 칸을 알아야 합니다 — 무엇을 찾는지 모를 때 여는 화면인데.
+func TestInventoryFilterMatchesAnyColumn(t *testing.T) {
+	r := &report.Result{
+		Assets: []reconcile.Reconciled{
+			{Key: reconcile.AssetKey{NodeID: "pay-db", Runtime: "openssl", Component: "libssl"}, State: "CONFIRMED"},
+			{Key: reconcile.AssetKey{NodeID: "web-gw", Runtime: "jca", Component: "provider"}, State: "UNDECLARED"},
+		},
+	}
+	page := ui.Page{Title: "t", Lang: ui.EN}
+	for _, tc := range []struct {
+		q    string
+		want int
+	}{
+		{"pay-db", 1}, // 노드
+		{"jca", 1},    // 런타임
+		{"libssl", 1}, // 컴포넌트
+		{"UNDECL", 1}, // 상태
+		{"", 2},       // 안 좁히면 전부
+		{"없는것", 0},    // 없는 것은 없다고 한다
+	} {
+		got := len(ui.NewInventoryView(r, ui.Filter{Q: tc.q}, page).Assets)
+		if got != tc.want {
+			t.Errorf("q=%q → %d개 (want %d)", tc.q, got, tc.want)
+		}
+	}
+	// 상태로 좁히는 것은 자유 문자열과 따로다 — 둘 다 주면 둘 다 걸린다.
+	v := ui.NewInventoryView(r, ui.Filter{Q: "web", State: "CONFIRMED"}, page)
+	if len(v.Assets) != 0 {
+		t.Errorf("상태와 문자열이 함께 걸리지 않는다: %+v", v.Assets)
 	}
 }

@@ -370,8 +370,10 @@ var (
 	tSearchAll   = T{KO: "전부", EN: "all"}
 	tSearchGo    = T{KO: "좁히기", EN: "Narrow"}
 	tSearchClear = T{KO: "지우기", EN: "Clear"}
-	tShowingOf   = T{KO: "%d개 중 <b>%d개</b>", EN: "<b>%d</b> of %d"}
-	tNoMatch     = T{KO: "걸린 것이 없습니다.", EN: "Nothing matched."}
+	// **자리를 번호로 고정한다.** 한국어는 「전체 중 몇 개」, 영어는 「몇 개 of 전체」로
+	// 어순이 뒤집힌다 — 번호가 없으면 한쪽 말에서 숫자 둘이 자리를 바꿔 뜬다.
+	tShowingOf = T{KO: "%[1]d개 중 <b>%[2]d개</b>", EN: "<b>%[2]d</b> of %[1]d"}
+	tNoMatch   = T{KO: "걸린 것이 없습니다.", EN: "Nothing matched."}
 
 	tUnseen     = T{KO: "안 보고 있는 것", EN: "What is not being looked at"}
 	tUnseenNote = T{
