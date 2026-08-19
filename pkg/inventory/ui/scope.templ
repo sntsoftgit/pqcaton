@@ -1,6 +1,10 @@
 package ui
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
+)
 
 // scopePage — 자산 스코프. **exclude 추가만 근거 필수**라, 그 무게 차이가 화면에 보여야 한다.
 templ scopePage(v ScopeView) {
@@ -10,6 +14,20 @@ templ scopePage(v ScopeView) {
 			계층은 준 순서대로 이기고(조직 · 환경 · 노드군), 바뀐 규칙만 올라옵니다.
 		</p>
 		<form method="post" action="/scope/finalize">
+			if len(v.Editing) > 0 {
+				@ruleLegend()
+				for _, e := range v.Editing {
+					@layerEditor(e)
+				}
+				<div class="actions">
+					<button formaction="/scope/rules" class="primary">규칙 저장</button>
+				</div>
+				<p class="hint">
+					저장하면 계층 파일에 그대로 쓰고, <b>무엇이 달라지는지를 아래에서 다시 셉니다.</b>
+					적어 둔 판정은 그대로 남습니다 — 규칙 자체가 달라진 것만 다시 판정합니다.
+				</p>
+				<h2>이 편집이 만드는 변경</h2>
+			}
 			for _, g := range v.Layers {
 				<fieldset>
 					<legend>
@@ -86,4 +104,109 @@ templ scopePage(v ScopeView) {
 			</p>
 		</form>
 	}
+}
+
+// ruleLegend — 다섯 칸이 무슨 뜻인지. **여기 두는 것이 문서로 미루는 것보다 싸다** —
+// 규칙을 적는 자리에서 읽히고, 화면이 바뀌면 같이 바뀐다.
+templ ruleLegend() {
+	<fieldset>
+		<legend>규칙을 적는 법</legend>
+		<table>
+			<tr><th style="width:7rem">칸</th><th>뜻</th></tr>
+			<tr>
+				<td><code>action</code></td>
+				<td>
+					<b>exclude</b> — 이 자산을 인벤토리에서 뺍니다. <b>사고 뒤에 근거를 대야 하는 결정</b>이라
+					아래에서 결론을 적어야 확정됩니다. <b>include</b> — 다시 넣습니다(앞 계층의 제외를 되돌릴 때).
+				</td>
+			</tr>
+			<tr>
+				<td><code>runtime</code></td>
+				<td>어느 런타임인가. <code>openssl</code> · <code>jca</code> 같은 것. 비우면 <b>전부</b>입니다</td>
+			</tr>
+			<tr>
+				<td><code>lib</code></td>
+				<td>라이브러리 이름. <code>*</code> 를 쓸 수 있습니다 — <code>libcrypto.so.*</code></td>
+			</tr>
+			<tr>
+				<td><code>app_key</code></td>
+				<td>그것을 쓰는 실행 파일. <code>/usr/bin/python*</code> · <code>/usr/sbin/sshd</code></td>
+			</tr>
+			<tr>
+				<td><code>note</code></td>
+				<td>사람이 읽는 설명입니다. <b>판정의 근거가 아닙니다</b> — 근거는 아래 결론 칸에 적습니다</td>
+			</tr>
+		</table>
+		<p class="hint">
+			<b>빈 칸은 「전부」입니다.</b> 그래서 <code>runtime</code>·<code>lib</code>·<code>app_key</code> 가
+			모두 빈 줄은 규칙으로 만들지 않습니다 — 그대로 두면 <code>exclude</code> 하나로
+			<b>인벤토리가 통째로 빕니다.</b> 「전부」를 뜻하려면 <code>*</code> 를 적으십시오.
+		</p>
+		<p class="hint">
+			<b>계층은 아래로 갈수록 이깁니다.</b> 앞 계층이 뺀 것을 뒤 계층이 <code>include</code> 로
+			되돌릴 수 있습니다 — 그것도 승인을 거칩니다.
+		</p>
+	</fieldset>
+}
+
+// layerEditor — 계층 하나의 규칙 표.
+templ layerEditor(e LayerEdit) {
+	<fieldset>
+		<legend>
+			계층 { e.Name }
+			<span class="n">— { e.Path } · 규칙 { strconv.Itoa(len(e.Rules)) }개</span>
+		</legend>
+		<table>
+			<thead>
+				<tr>
+					<th style="width:7rem">action</th><th style="width:7rem">runtime</th>
+					<th>lib</th><th>app_key</th><th>note</th>
+				</tr>
+			</thead>
+			<tbody id={ ruleRowsID(e.Index) }>
+				for i, r := range e.Rules {
+					@ruleRow(e.Index, i, r)
+				}
+				for j := 0; j < e.Blank; j++ {
+					@ruleRow(e.Index, len(e.Rules)+j, scope.Rule{Action: "include"})
+				}
+			</tbody>
+		</table>
+		@addRuleRow(e.Index, len(e.Rules)+e.Blank, false)
+		<p class="hint">줄을 지우려면 <code>runtime</code>·<code>lib</code>·<code>app_key</code> 를 모두 비우십시오.</p>
+	</fieldset>
+}
+
+// ruleRow — 규칙 한 줄. **화면과 「행 추가」가 같은 조각을 쓴다.**
+templ ruleRow(layer, i int, r scope.Rule) {
+	<tr>
+		<td>
+			<select name={ ruleField(layer, i, "action") }>
+				<option value="include" selected?={ r.Action != "exclude" }>include</option>
+				<option value="exclude" selected?={ r.Action == "exclude" }>exclude</option>
+			</select>
+		</td>
+		<td><input type="text" name={ ruleField(layer, i, "runtime") } value={ r.Runtime } placeholder="*"/></td>
+		<td><input type="text" name={ ruleField(layer, i, "lib") } value={ r.Lib } placeholder="*"/></td>
+		<td><input type="text" name={ ruleField(layer, i, "app_key") } value={ r.AppKey } placeholder="*"/></td>
+		<td><input type="text" name={ ruleField(layer, i, "note") } value={ r.Note }/></td>
+	</tr>
+}
+
+// addRuleRow — 계층마다 따로인 「행 추가」. 번호가 끊기면 ApplyLayers 가 거기서 읽기를
+// 멈추므로, 서버가 다음 번호를 쥐고 버튼을 갈아 끼운다.
+templ addRuleRow(layer, next int, oob bool) {
+	<div class="addrow" id={ "add-rule-" + strconv.Itoa(layer) } { oobAttr(oob)... }>
+		<button
+			type="button"
+			hx-get={ ScopeRowPath + "?layer=" + strconv.Itoa(layer) + "&i=" + strconv.Itoa(next) }
+			hx-target={ "#" + ruleRowsID(layer) }
+			hx-swap="beforeend"
+		>행 추가</button>
+	</div>
+}
+
+templ ruleRowFragment(layer, i int) {
+	@ruleRow(layer, i, scope.Rule{Action: "include"})
+	@addRuleRow(layer, i+1, true)
 }

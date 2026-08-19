@@ -26,6 +26,9 @@ var static embed.FS
 const (
 	StaticPath = "/static/"
 	RowPath    = "/decl/row"
+	// ScopeRowPath — 자산 스코프의 규칙 한 줄. 선언의 것과 나눈 것은 계층 번호가
+	// 하나 더 붙기 때문이다 — 한 주소에 둘을 밀어 넣으면 둘 다 읽기 어려워진다.
+	ScopeRowPath = "/scope/row"
 )
 
 // 표의 종류. 「행 추가」가 무엇을 한 줄 더 낼지 고르는 값이다.
@@ -55,6 +58,13 @@ func Static() http.Handler {
 }
 
 func rowsID(kind string) string { return "rows-" + kind }
+
+// ruleRowsID · ruleField — 계층마다 표가 따로 있으므로 번호가 이름에 들어간다.
+func ruleRowsID(layer int) string { return "rows-rule-" + strconv.Itoa(layer) }
+
+func ruleField(layer, i int, field string) string {
+	return "rule." + strconv.Itoa(layer) + "." + strconv.Itoa(i) + "." + field
+}
 
 // portText — 포트를 칸에 넣을 문자열로. 0 도 그대로 보인다 — 「안 적었다」와 「0 이라고
 // 적었다」를 화면이 대신 판단하지 않는다. 그 판정은 decl.Check 가 한다.

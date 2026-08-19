@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 )
 
@@ -20,6 +22,23 @@ type ScopeView struct {
 	Layers  []LayerGroup
 	// Audited — 근거 없이 확정할 수 없는 변경 수. 「안 본다」는 사고 뒤에 근거를 대야 한다.
 	Audited int
+	// Editing — 화면에서 고칠 수 있는 계층들. 계층 파일을 주지 않았으면 비어 있고,
+	// 그때 화면은 **승인만** 하는 자리가 된다(v0.11.0까지의 모습).
+	Editing []LayerEdit
+}
+
+// LayerEdit — 화면에서 고치는 계층 하나.
+//
+// **합본이 아니라 계층을 고친다.** 합본에 쓰면 그 규칙이 조직에서 왔는지 노드군에서
+// 왔는지가 사라지고, 다음 리뷰에서 누구에게 물어야 할지 알 수 없게 된다.
+type LayerEdit struct {
+	// Index — 폼 이름에 들어가는 번호. **순서가 곧 상속이다** — 뒤 계층이 이긴다.
+	Index int
+	Name  string
+	Path  string
+	Rules []scope.Rule
+	// Blank — 미리 열어 두는 빈 줄. 「행 추가」가 더 열어 준다.
+	Blank int
 }
 
 // LayerGroup — 한 계층과 그에 묶인 변경들.
@@ -54,9 +73,71 @@ func NewScopeView(sf scope.Session, page Page) ScopeView {
 	return v
 }
 
+// Editable — 계층 파일을 붙여 **고칠 수 있는 화면**으로 만든다.
+//
+// 이것을 나눠 둔 것은 재료를 주지 않은 자리를 만들지 않기 위해서다 — 계층 파일 없이
+// 편집 표를 그리면 저장할 곳이 없는 칸을 사람이 채우게 된다.
+func (v ScopeView) Editable(files []scope.LayerFile) ScopeView {
+	for i, f := range files {
+		e := LayerEdit{Index: i, Name: f.Layer.Name, Path: f.Path, Blank: DefaultBlank}
+		for _, r := range f.Layer.Rules {
+			e.Rules = append(e.Rules, toRule(r))
+		}
+		v.Editing = append(v.Editing, e)
+	}
+	return v
+}
+
+func toRule(r kscope.AssetRule) scope.Rule {
+	act := "include"
+	if r.Exclude {
+		act = "exclude"
+	}
+	return scope.Rule{Action: act, Runtime: r.Runtime, Lib: r.Lib, AppKey: r.AppKey, Note: r.Note}
+}
+
+// ApplyLayers — 폼에서 온 규칙으로 계층을 **다시 만든다.**
+//
+// 얹지 않고 다시 만드는 이유는 선언 편집과 같다 — 줄을 지우는 방법이 「칸을 비우는 것」
+// 이므로, 기존 것에 얹으면 지운 줄이 되살아난다.
+//
+// **세 칸이 모두 빈 줄은 규칙이 아니라 빈 줄이다.** pqcota 는 빈 칸을 `*`로 읽으므로,
+// 그대로 만들면 `exclude,*,*,*` — **전부 제외**가 된다. 미리 열어 둔 빈 줄에서 action 만
+// 잘못 골라도 인벤토리가 통째로 비는 규칙이 생긴다. 「전부」를 뜻하려면 `*`를 적는다.
+func ApplyLayers(files []scope.LayerFile, f url.Values) []scope.LayerFile {
+	out := make([]scope.LayerFile, 0, len(files))
+	for li, lf := range files {
+		lf.Layer.Rules = nil
+		for i := 0; ; i++ {
+			act, ok := f[ruleField(li, i, "action")]
+			if !ok {
+				break
+			}
+			get := func(name string) string {
+				return strings.TrimSpace(f.Get(ruleField(li, i, name)))
+			}
+			runtime, lib, appKey := get("runtime"), get("lib"), get("app_key")
+			if runtime == "" && lib == "" && appKey == "" {
+				continue
+			}
+			lf.Layer.Rules = append(lf.Layer.Rules, kscope.AssetRule{
+				Exclude: strings.TrimSpace(first(act)) == "exclude",
+				Runtime: runtime, Lib: lib, AppKey: appKey, Note: get("note"),
+			})
+		}
+		out = append(out, lf)
+	}
+	return out
+}
+
 // RenderScope — 자산 스코프 화면을 쓴다.
 func RenderScope(w io.Writer, v ScopeView) error {
 	return scopePage(v).Render(context.Background(), w)
+}
+
+// RenderRuleRow — 「행 추가」가 돌려주는 규칙 한 줄과, 번호가 하나 오른 버튼.
+func RenderRuleRow(w io.Writer, layer, i int) error {
+	return ruleRowFragment(layer, i).Render(context.Background(), w)
 }
 
 // ApplyScope — 폼에서 온 값을 세션에 얹는다. **받은 세션을 고쳐서 돌려준다** — 부르는 쪽이

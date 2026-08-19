@@ -4,8 +4,9 @@
 // 게이트는 `pkg/inventory/review` 에 있다 — 컨트롤 플레인이 같은 화면과 같은 게이트를
 // 쓰고, 다른 것은 「어디서 읽고 누가 들어오나」뿐이다.
 //
-//	pqcaton-ui <session.json> [-decl declaration.json] [-scope scope-session.json]
-//	           [-results 디렉터리] [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름]
+//	pqcaton-ui <session.json> [-decl declaration.json] [-results 디렉터리]
+//	           [-layers corp.csv,prod.csv] [-base asset-scope.csv] [-scope scope-session.json]
+//	           [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름]
 //	           [-plan 파일] [-scope-out 파일]
 //
 // **탭 순서가 절차 순서다** — 선언 → 스코프 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을
@@ -36,6 +37,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
@@ -50,7 +52,9 @@ func main() {
 	addr := fs.String("addr", "127.0.0.1:8765", "들을 주소")
 	declPath := fs.String("decl", "", "선언 파일(declaration.json). 주면 선언 편집 화면이 열린다")
 	resultsDir := fs.String("results", "", "관측 결과 디렉터리. -decl 과 함께 주면 대조 화면이 열린다")
-	scopePath := fs.String("scope", "", "자산 스코프 세션(pqcaton-scope open 산출물). 주면 스코프 화면이 열린다")
+	scopePath := fs.String("scope", "", "자산 스코프 세션 파일. -layers 를 주면 화면이 직접 만든다")
+	layerList := fs.String("layers", "", "자산 스코프 계층 CSV들, 쉼표로 구분. **준 순서대로 이긴다**(조직 · 환경 · 노드군). 주면 화면에서 규칙을 고칠 수 있다")
+	basePath := fs.String("base", "", "지금 쓰는 정책 CSV. 주면 바뀐 규칙만 리뷰에 올린다")
 	scopeOut := fs.String("scope-out", "asset-scope.csv", "확정된 스코프 정책을 쓸 파일")
 	judgments := fs.String("judgments", "", "확정 시 판정을 남길 파일(JSONL, append-only)")
 	orgName := fs.String("org", "local", "판정을 묶을 조직")
@@ -64,7 +68,7 @@ func main() {
 		os.Exit(2)
 	}
 	if len(pos) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> [-decl declaration.json] [-results 디렉터리] [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름] [-plan 파일]")
+		fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> [-decl declaration.json] [-results 디렉터리] [-layers 계층.csv,...] [-base 현재정책.csv] [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름] [-plan 파일]")
 		os.Exit(2)
 	}
 	path := pos[0]
@@ -88,16 +92,27 @@ func main() {
 		fmt.Fprintln(os.Stderr, "❌ -results 는 -decl 과 함께 주십시오 — 대조는 선언과 맞대는 일입니다")
 		os.Exit(2)
 	}
-	if *scopePath != "" {
+	layers := splitPaths(*layerList)
+	if len(layers) > 0 && *scopePath == "" {
+		// **계층을 줬으면 세션은 화면이 만든다.** 사람이 먼저 명령을 돌려야 화면이
+		// 열리는 것은, 화면을 두는 이유와 어긋난다.
+		*scopePath = defaultScopeSession
+	}
+	if *scopePath != "" && len(layers) == 0 {
 		if _, err := scope.LoadSession(*scopePath); err != nil {
-			// **어디서 나는 파일인지 말한다.** 화면은 세션을 열지 못한다 — 여는 일은
-			// 관측·대조가 필요하고, 화면은 그 결과를 채우는 자리다.
+			// 계층을 주지 않았으면 화면은 세션을 만들 재료가 없다 — 어디서 나는지 말한다.
 			fmt.Fprintln(os.Stderr, "❌ 스코프 세션을 읽을 수 없다:", err)
-			fmt.Fprintln(os.Stderr, "   `pqcaton-scope open <계층.csv>... -base <현재정책.csv> > "+*scopePath+"` 로 먼저 만드십시오")
+			fmt.Fprintln(os.Stderr, "   계층 CSV를 주면 화면이 직접 엽니다: -layers corp.csv,prod.csv -base asset-scope.csv")
+			fmt.Fprintln(os.Stderr, "   명령으로 만들려면: `pqcaton-scope open <계층.csv>... -base <현재정책.csv> > "+*scopePath+"`")
 			os.Exit(1)
 		}
 	}
+	if _, err := scope.LoadLayers(layers); err != nil {
+		fmt.Fprintln(os.Stderr, "❌ 계층 CSV를 읽을 수 없다:", err)
+		os.Exit(1)
+	}
 	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath,
+		layers: layers, base: *basePath,
 		judgments: *judgments, org: *orgName, planOut: *planOut, scopeOut: *scopeOut}
 	h := s.handler()
 
@@ -144,11 +159,28 @@ func loopback(addr string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
+// defaultScopeSession — 계층만 주고 세션 파일을 안 줬을 때 쓸 이름.
+const defaultScopeSession = "scope-session.json"
+
+// splitPaths — 쉼표로 준 경로 목록. **순서를 지킨다** — 계층 상속이 그 순서다.
+func splitPaths(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 type server struct {
-	path      string
-	decl      string
-	results   string
-	scope     string
+	path    string
+	decl    string
+	results string
+	scope   string
+	// layers — 자산 스코프 계층 CSV들, 준 순서대로. 있으면 화면에서 규칙을 고친다.
+	layers    []string
+	base      string
 	judgments string
 	org       string
 	planOut   string
@@ -176,6 +208,8 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.RowPath, s.declRow)
 	r.Post("/decl/save", s.declSave)
 	r.Get("/scope", s.scopeEdit)
+	r.Get(ui.ScopeRowPath, s.scopeRow)
+	r.Post("/scope/rules", s.scopeRules)
 	r.Post("/scope/save", s.scopeSave)
 	r.Post("/scope/finalize", s.scopeFinalize)
 	r.Get("/survey", s.survey)
@@ -296,23 +330,124 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 
 // ── 자산 스코프 ────────────────────────────────────────────────────────────
 
+// scopeSession — 스코프 세션을 읽는다. **계층 파일이 있으면 그것이 정답지다.**
+//
+// 세션은 계층에서 파생된 것이라, 파일을 고쳐 놓고 세션을 안 고치면 화면이 옛 변경을
+// 보여 준다. 그래서 읽을 때마다 계층에서 다시 세운다 — 사람이 적은 판정은 [scope.Reopen]
+// 이 들고 간다. 파일에 쓰는 것은 저장·확정할 때뿐이다.
+func (s *server) scopeSession() (scope.Session, []scope.LayerFile, error) {
+	sf, err := scope.LoadSession(s.scope)
+	if err != nil && (len(s.layers) == 0 || !os.IsNotExist(err)) {
+		return sf, nil, err
+	}
+	if len(s.layers) == 0 {
+		return sf, nil, nil
+	}
+	files, err := scope.LoadLayers(s.layers)
+	if err != nil {
+		return sf, nil, err
+	}
+	var base *kscope.AssetPolicy
+	if s.base != "" {
+		if base, err = scope.LoadPolicyFile(s.base); err != nil {
+			return sf, nil, err
+		}
+	}
+	return scope.Reopen(sf, scope.Layers(files), base, s.org), files, nil
+}
+
 func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 	if s.scope == "" {
-		http.Error(w, "스코프 세션을 주지 않았습니다 — -scope 로 지정하십시오", http.StatusNotFound)
+		http.Error(w, "스코프 세션을 주지 않았습니다 — -scope 나 -layers 로 지정하십시오", http.StatusNotFound)
 		return
 	}
-	sf, err := scope.LoadSession(s.scope)
+	sf, files, err := s.scopeSession()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	v := ui.NewScopeView(sf, s.page(r, "자산 스코프", "조직 "+sf.Org+" · "+s.scope, "/scope"))
+	if len(files) > 0 {
+		v = v.Editable(files)
+	}
 	html(w, func() error { return ui.RenderScope(w, v) })
+}
+
+// scopeRules — 화면에서 고친 규칙을 계층 파일에 쓴다.
+//
+// **판정을 먼저 얹고 규칙을 쓴다.** 같은 폼에서 온 값이라, 규칙만 저장하면 그 사이에
+// 적어 둔 결론이 날아간다.
+func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
+	if len(s.layers) == 0 {
+		http.Error(w, "계층 CSV를 주지 않았습니다 — -layers 로 지정하십시오", http.StatusNotFound)
+		return
+	}
+	sf, files, err := s.scopeSession()
+	if err != nil {
+		redirect(w, r, "/scope", "", err.Error())
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		redirect(w, r, "/scope", "", err.Error())
+		return
+	}
+	sf = ui.ApplyScope(sf, r.PostForm)
+
+	edited := ui.ApplyLayers(files, r.PostForm)
+	for _, lf := range edited {
+		if err := scope.SaveLayer(lf); err != nil {
+			redirect(w, r, "/scope", "", err.Error())
+			return
+		}
+	}
+	// 규칙이 달라졌으니 변경을 다시 센다. 적어 둔 판정은 규칙 동일성으로 따라온다.
+	var base *kscope.AssetPolicy
+	if s.base != "" {
+		if base, err = scope.LoadPolicyFile(s.base); err != nil {
+			redirect(w, r, "/scope", "", err.Error())
+			return
+		}
+	}
+	next := scope.Reopen(sf, scope.Layers(edited), base, s.org)
+	if err := scope.SaveSession(s.scope, next); err != nil {
+		redirect(w, r, "/scope", "", err.Error())
+		return
+	}
+	n := 0
+	for _, lf := range edited {
+		n += len(lf.Layer.Rules)
+	}
+	msg := fmt.Sprintf("계층 %d개에 규칙 %d개를 썼습니다 — 변경 %d건(근거 필요 %d)",
+		len(edited), n, len(next.Changes), next.AuditedCount())
+	if next.Signature == "" && sf.Signature != "" {
+		// **말하지 않으면 사람은 서명이 남아 있다고 여긴다.**
+		msg += " · 정책이 달라져 서명을 지웠습니다"
+	}
+	redirect(w, r, "/scope", msg, "")
+}
+
+// scopeRow — 규칙 표의 「행 추가」.
+func (s *server) scopeRow(w http.ResponseWriter, r *http.Request) {
+	if len(s.layers) == 0 {
+		http.Error(w, "계층 CSV를 주지 않았습니다", http.StatusNotFound)
+		return
+	}
+	layer, err := strconv.Atoi(r.URL.Query().Get("layer"))
+	if err != nil || layer < 0 || layer >= len(s.layers) {
+		http.Error(w, "그런 계층이 없습니다", http.StatusBadRequest)
+		return
+	}
+	i, err := strconv.Atoi(r.URL.Query().Get("i"))
+	if err != nil || i < 0 || i > maxRows {
+		http.Error(w, "줄 번호가 범위 밖입니다", http.StatusBadRequest)
+		return
+	}
+	html(w, func() error { return ui.RenderRuleRow(w, layer, i) })
 }
 
 // applyScope — 폼 값을 얹어 파일에 쓴다. 읽고 얹고 쓴다.
 func (s *server) applyScope(r *http.Request) (scope.Session, error) {
-	sf, err := scope.LoadSession(s.scope)
+	sf, _, err := s.scopeSession()
 	if err != nil {
 		return sf, err
 	}
