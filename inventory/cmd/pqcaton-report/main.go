@@ -170,7 +170,7 @@ func loadDeclaration(path string) decl.Declaration {
 	if p := decl.Check(d); len(p) > 0 {
 		fmt.Fprintf(os.Stderr, "\u26a0 %d places where the declaration does not add up - open it with `pqcaton-ui -decl`\n", len(p))
 		for _, x := range p {
-			fmt.Fprintf(os.Stderr, "   %s - %s\n", x.Where, x.What)
+			fmt.Fprintf(os.Stderr, "   %s - %s\n", x.Where, x.What())
 		}
 	}
 	return d

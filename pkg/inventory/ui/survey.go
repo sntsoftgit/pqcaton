@@ -95,15 +95,39 @@ func statePriority(s string) int {
 	}
 }
 
+// posture — 등급 표시와 **등급 코드**.
+//
+// 사람이 읽는 말은 화면이 고른다 — 여기서 문장을 만들면 그 말이 대조를 계산하는 자리에
+// 눌러앉아, 다른 말로 연 화면에서도 그대로 뜬다.
 func posture(p discoveryv1.QuantumPosture) (mark, grade string) {
 	switch p {
 	case discoveryv1.QuantumPosture_QUANTUM_POSTURE_PQC_HYBRID:
-		return "🟢", "PQC"
+		return "🟢", GradePQC
 	case discoveryv1.QuantumPosture_QUANTUM_POSTURE_CLASSICAL:
-		return "🔴", "고전 — 양자 취약"
+		return "🔴", GradeClassical
 	default:
-		return "⚪", "불명"
+		return "⚪", GradeUnknown
 	}
+}
+
+// 양자내성 등급 코드.
+const (
+	GradePQC       = "pqc"
+	GradeClassical = "classical"
+	GradeUnknown   = "unknown"
+)
+
+// gradeLabel — 등급을 그 말로.
+func gradeLabel(l Lang, grade string) string {
+	switch grade {
+	case GradePQC:
+		return "PQC"
+	case GradeClassical:
+		return tGradeClassical.In(l)
+	case GradeUnknown:
+		return tGradeUnknown.In(l)
+	}
+	return grade
 }
 
 // RenderSurvey — 대조 결과 화면을 쓴다.

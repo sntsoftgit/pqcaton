@@ -15,7 +15,7 @@ templ declPage(v DeclView) {
 				<p class="hint">@templ.Raw(tDeclProblemsHint.In(v.Page.Lang))</p>
 				<ul>
 					for _, p := range v.Problems {
-						<li><code>{ p.Where }</code> — { p.What }<br/><span class="hint">{ p.Why }</span></li>
+						<li><code>{ p.Where }</code> — { problemWhat(v.Page.Lang, p) }<br/><span class="hint">{ problemWhy(v.Page.Lang, p) }</span></li>
 					}
 				</ul>
 			</div>

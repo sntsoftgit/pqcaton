@@ -44,7 +44,20 @@ func newServer(t *testing.T) (*server, string) {
 }
 
 func postForm(t *testing.T, s *server, target string, form url.Values) *httptest.ResponseRecorder {
+	return postFormLang(t, s, target, "", form)
+}
+
+// postFormLang — 그 말로 온 요청. **거절문은 화면 글이라 말을 타므로**, 문구를 재는
+// 케이스는 어느 말인지 밝히고 재야 한다.
+func postFormLang(t *testing.T, s *server, target, lang string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
+	if lang != "" {
+		if strings.Contains(target, "?") {
+			target += "&lang=" + lang
+		} else {
+			target += "?lang=" + lang
+		}
+	}
 	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
@@ -302,7 +315,8 @@ func TestDeclHiddenWithoutFile(t *testing.T) {
 // 오류가 아니라 그럴듯한 결과라 눈으로는 안 잡힌다. 화면이 미리 말해 주는 자리다.
 func TestDeclShowsProblems(t *testing.T) {
 	s, _ := withDecl(t)
-	body := get(t, s, "/decl").Body.String()
+	// 화면은 두 말을 쓴다 — 여기서는 한국어로 잰다.
+	body := get(t, s, "/decl?lang=ko").Body.String()
 	// pay-db 는 스코프에 있는데 IP 표에 없다.
 	if !strings.Contains(body, "IP 표에 없습니다") {
 		t.Errorf("해소되지 않을 노드를 짚지 않는다:\n%s", body)
@@ -461,7 +475,7 @@ func TestScopeTabComesBeforeSurvey(t *testing.T) {
 // 무엇이 남았는지 화면에 그대로 보인다.
 func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 	s, _ := withScope(t)
-	q := location(t, postForm(t, s, "/scope/finalize", url.Values{
+	q := location(t, postFormLang(t, s, "/scope/finalize", "ko", url.Values{
 		"reviewer": {"보안팀"}, "signature": {"sig"}, // 결론 없음
 	}))
 	if q.Get("problem") == "" {

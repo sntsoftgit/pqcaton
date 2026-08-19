@@ -39,7 +39,7 @@ func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool) string
 	// rankdir=TB(위→아래) 세로 배치 + 하단 캡션 범례(옆으로 안 퍼지게). 폭 축소.
 	b.WriteString("  rankdir=TB;\n  ranksep=0.5;\n  nodesep=0.3;\n")
 	b.WriteString(`  labelloc="b"; fontsize=11;` + "\n")
-	b.WriteString(`  label="색=등급: 🟢 PQC · 🔴 고전 · ⚪ 불명\n선형: 실선 CONFIRMED · 굵은선 shadow · 점선 UNOBSERVED";` + "\n")
+	b.WriteString(`  label="colour = grade: 🟢 PQC · 🔴 classical · ⚪ unknown\nline: solid CONFIRMED · bold shadow · dashed UNOBSERVED";` + "\n")
 	b.WriteString(`  node [shape=box, style="rounded,filled", fillcolor="#eeeeff", fontname="sans"];` + "\n")
 	b.WriteString(`  edge [fontname="sans", fontsize=10];` + "\n\n")
 
@@ -48,10 +48,10 @@ func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool) string
 		switch {
 		case offScope[n]:
 			attrs = `, fillcolor="#eeeeee", style="rounded,filled,dashed"`
-			b.WriteString(fmt.Sprintf("  %q [label=%q%s];\n", n, n+"\n(미등재→판정요청)", attrs))
+			b.WriteString(fmt.Sprintf("  %q [label=%q%s];\n", n, n+"\n(not enrolled → needs decision)", attrs))
 		case uncovered[n]:
 			attrs = `, fillcolor="#dddddd"` // collector 미설치 → 회색(반쪽만 관측)
-			b.WriteString(fmt.Sprintf("  %q [label=%q%s];\n", n, n+"\n(collector 미설치)", attrs))
+			b.WriteString(fmt.Sprintf("  %q [label=%q%s];\n", n, n+"\n(no collector installed)", attrs))
 		default:
 			b.WriteString(fmt.Sprintf("  %q [label=%q];\n", n, n))
 		}
@@ -86,7 +86,7 @@ func dotEdge(e ReconciledEdge) string {
 
 func edgeLabel(e ReconciledEdge) string {
 	if e.State == Unobserved {
-		return "미관측(UNOBSERVED)"
+		return "UNOBSERVED"
 	}
 	parts := []string{}
 	if e.Key.Proto != "" {
@@ -114,7 +114,7 @@ func postureColor(p discoveryv1.QuantumPosture) string {
 // shortGroup — 라벨 폭을 줄이려고 협상 그룹의 긴 접미사(@openssh.com·-sha512)를 정리한다.
 func shortGroup(g string) string {
 	if g == "" {
-		return "불명"
+		return "unknown"
 	}
 	if i := strings.IndexByte(g, '@'); i > 0 {
 		g = g[:i]

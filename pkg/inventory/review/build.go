@@ -22,14 +22,38 @@ type Built struct {
 	// Warnings — 세션은 나왔지만 사람이 알아야 하는 것.
 	//
 	// **찍지 않고 돌려준다.** 명령은 표준오류로 내고 화면은 알림 상자에 넣는다 — 여기서
-	// 찍어 버리면 화면에서는 아무도 못 본다.
-	Warnings []string
+	// 찍어 버리면 화면에서는 아무도 못 본다. 그리고 **문장이 아니라 값이다** — 명령은
+	// 영어로, 화면은 보는 사람의 말로 낸다.
+	Warnings []Warning
 	// Org — 실제로 쓴 조직. 선언이 말한 것일 수 있다.
 	Org string
 	// Confirmed · Undeclared · Unobserved — 한 줄 요약에 쓴다.
 	Confirmed, Undeclared, Unobserved int
 	// Nodes — 관측된 노드 수.
 	Nodes int
+}
+
+// Warning — 세션은 나왔지만 사람이 알아야 하는 것 하나.
+type Warning struct {
+	Code   string
+	Count  int
+	Detail string
+}
+
+const (
+	WarnDeclProblems     = "declaration_has_problems"
+	WarnUnreadableResult = "result_unreadable"
+)
+
+// English — 명령이 읽는 문장. **여기가 영어의 유일한 자리다.**
+func (w Warning) English() string {
+	switch w.Code {
+	case WarnDeclProblems:
+		return fmt.Sprintf("%d places where the declaration does not add up — open it on the declaration screen", w.Count)
+	case WarnUnreadableResult:
+		return "skipped (unreadable): " + w.Detail
+	}
+	return w.Code
 }
 
 // FromResults — 모아 둔 관측 결과와 선언으로 리뷰 세션을 세운다.
@@ -46,8 +70,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 	out := &Built{Org: orgName}
 	// **앞뒤가 안 맞으면 말한다.** 노드↔IP 가 틀리면 CONFIRMED 여야 할 것이 shadow 로 올라온다.
 	if p := decl.Check(d); len(p) > 0 {
-		out.Warnings = append(out.Warnings,
-			fmt.Sprintf("선언에 맞지 않는 자리 %d곳 — 선언 화면에서 보십시오", len(p)))
+		out.Warnings = append(out.Warnings, Warning{Code: WarnDeclProblems, Count: len(p)})
 	}
 
 	r, err := report.Build(resultsDir, d)
@@ -55,7 +78,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 		return nil, err
 	}
 	for _, sk := range r.Skipped {
-		out.Warnings = append(out.Warnings, "건너뜀(읽을 수 없음): "+sk)
+		out.Warnings = append(out.Warnings, Warning{Code: WarnUnreadableResult, Detail: sk})
 	}
 	autopass, queue := reconcile.BuildReviewQueue(r.Assets)
 

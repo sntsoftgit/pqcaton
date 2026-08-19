@@ -28,7 +28,7 @@ templ scopePage(v ScopeView) {
 			for _, g := range v.Layers {
 				<fieldset>
 					<legend>
-						{ g.Name }
+						{ layerName(v.Page.Lang, g.Name) }
 						<span class="n">
 							— { strconv.Itoa(len(g.Changes)) } { tChanges.In(v.Page.Lang) }
 							if g.Audited > 0 {

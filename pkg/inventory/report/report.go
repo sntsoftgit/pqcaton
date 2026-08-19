@@ -297,15 +297,15 @@ func LayerLabel(name string) string {
 	short := strings.TrimPrefix(name, "COLLECTION_LAYER_")
 	switch short {
 	case "SOURCE":
-		return "소스 코드(SOURCE)"
+		return "source code (SOURCE)"
 	case "ARTIFACT":
-		return "빌드 산출물(바이너리·패키지, ARTIFACT)"
+		return "build artifacts — binaries and packages (ARTIFACT)"
 	case "PROCESS":
-		return "돌고 있는 프로세스(PROCESS)"
+		return "running processes (PROCESS)"
 	case "NETWORK":
-		return "실제 통신(NETWORK)"
+		return "actual traffic (NETWORK)"
 	case "JVM_INTROSPECTION":
-		return "JVM 내부(JCA, JVM_INTROSPECTION)"
+		return "inside the JVM — JCA (JVM_INTROSPECTION)"
 	}
 	return name
 }

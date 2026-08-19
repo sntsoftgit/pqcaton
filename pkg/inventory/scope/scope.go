@@ -115,10 +115,14 @@ func Diff(base *kscope.AssetPolicy, layers []Layer) []Change {
 	}
 	sort.Strings(gone)
 	for _, id := range gone {
-		out = append(out, Change{Layer: "(제거)", Rule: byID[id], Added: false})
+		out = append(out, Change{Layer: LayerRemoved, Rule: byID[id], Added: false})
 	}
 	return out
 }
+
+// LayerRemoved — 사라진 규칙이 묶이는 자리. **계층 이름 자리에 들어가는 값이라 코드다** —
+// 화면이 보는 사람의 말로 옮긴다.
+const LayerRemoved = "(removed)"
 
 // RuleID — 규칙 하나의 동일성. 판정 원장의 대상 키가 된다.
 //

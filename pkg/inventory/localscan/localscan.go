@@ -28,7 +28,7 @@ import (
 // **관측이 0건인 것과 다르다.** 0건은 「아무것도 안 쓰고 있다」일 수 있지만, 이것은
 // 「볼 수가 없었다」다. 그 상태로 대조하면 선언한 자산이 전부 UNOBSERVED 로 나오고,
 // 리포트는 「못 본 것: 없습니다」라고까지 말한다 — **관측을 아예 못 한 기계에서.**
-var ErrNoProc = errors.New("이 기계의 /proc 을 열 수 없다 — 이 OS 에서는 로컬 관측이 되지 않는다")
+var ErrNoProc = errors.New("cannot open /proc on this machine — local observation does not work on this OS")
 
 // DefaultNode — 이름을 주지 않았을 때 붙이는 이름.
 const DefaultNode = "host://local"
@@ -40,14 +40,14 @@ const DefaultNode = "host://local"
 func Check(procUnavailable bool, accessible, denied int) (warn string, err error) {
 	if procUnavailable {
 		return "", fmt.Errorf("%w\n"+
-			"   관측은 Linux 노드에서 pqcota 의 collector 가 합니다.\n"+
-			"   그 결과를 모아 대조하려면 `pqcaton-report <results-dir> <declaration.json>` 을 쓰십시오",
+			"   Observation is done by pqcota's collector on a Linux node.\n"+
+			"   To gather those results and reconcile them, use `pqcaton-report <results-dir> <declaration.json>`",
 			ErrNoProc)
 	}
 	if accessible == 0 {
-		return fmt.Sprintf("접근 가능한 프로세스가 0개입니다(거부 %d) — **관측이 안 된 것이지 "+
-			"자산이 없는 것이 아닙니다.** 권한을 올려 다시 돌리거나, 이 결과를 완전한 관측으로 "+
-			"보지 마십시오", denied), nil
+		return fmt.Sprintf("no process was accessible (%d denied) — **this is a failure to observe, "+
+			"not an absence of assets.** Raise privileges and run again, or do not treat this "+
+			"result as a complete observation", denied), nil
 	}
 	return "", nil
 }
@@ -61,9 +61,9 @@ func LabelWarning(node string) string {
 	if node == "" || node == DefaultNode {
 		return ""
 	}
-	return fmt.Sprintf("결과를 %q 로 기록하지만 **스캔한 것은 이 기계입니다** — "+
-		"%s 를 관측한 것이 아닙니다. 다른 노드를 관측하려면 pqcota 의 collector 를 그 노드에서 "+
-		"돌리고 `pqcaton-report` 로 모으십시오", node, node)
+	return fmt.Sprintf("the result is recorded as %q but **what was scanned is this machine** — "+
+		"%s was not observed. To observe another node, run pqcota's collector there "+
+		"and gather the results with `pqcaton-report`", node, node)
 }
 
 // Result — 이 기계를 관측한 결과.
@@ -91,7 +91,7 @@ func Scan(node string) (*Result, error) {
 	snap, err := normalize.Normalize([]*discoveryv1.CollectionResult{res},
 		"snap-1", node, "ruleset-1", nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("정규화: %w", err)
+		return nil, fmt.Errorf("normalize: %w", err)
 	}
 	out := &Result{Snapshot: snap, Accessible: st.Accessible, Denied: st.Denied}
 	if warn != "" {

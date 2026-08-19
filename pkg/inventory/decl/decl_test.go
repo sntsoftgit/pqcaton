@@ -11,9 +11,21 @@ import (
 func whats(ps []decl.Problem) string {
 	var b strings.Builder
 	for _, p := range ps {
-		b.WriteString(p.Where + ": " + p.What + "\n")
+		b.WriteString(string(p.Code) + " @ " + p.Where + ": " + p.What() + "\n")
 	}
 	return b.String()
+}
+
+// raised — 그 코드가 몇 번 올라왔나. **문구가 아니라 코드를 잰다** — 문구는 명령이
+// 영어로, 화면이 보는 사람의 말로 내므로 케이스가 붙잡을 것이 아니다.
+func raised(ps []decl.Problem, c decl.Code) int {
+	n := 0
+	for _, p := range ps {
+		if p.Code == c {
+			n++
+		}
+	}
+	return n
 }
 
 // IC-D9 — **IP 없는 노드를 짚는다.**
@@ -23,16 +35,16 @@ func whats(ps []decl.Problem) string {
 // 안 잡힌다(IC-N1).
 func TestCheckFlagsNodeWithoutIP(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web", "db"}, Nodes: []decl.Node{{Name: "web"}}}
-	got := whats(decl.Check(d))
-	if !strings.Contains(got, "IP가 없습니다") {
-		t.Errorf("IP 없는 노드를 안 짚는다:\n%s", got)
+	ps := decl.Check(d)
+	if raised(ps, decl.NodeHasNoIP) != 1 {
+		t.Errorf("IP 없는 노드를 안 짚는다:\n%s", whats(ps))
 	}
-	if !strings.Contains(got, "IP 표에 없습니다") {
-		t.Errorf("표에 아예 없는 스코프 노드를 안 짚는다:\n%s", got)
+	if raised(ps, decl.NodeMissingIP) != 1 {
+		t.Errorf("표에 아예 없는 스코프 노드를 안 짚는다:\n%s", whats(ps))
 	}
 	// 왜 문제인지 말해야 한다 — 안 그러면 사람이 고칠 이유를 모른다.
 	for _, p := range decl.Check(d) {
-		if p.Why == "" {
+		if p.Why() == "" {
 			t.Errorf("사유가 비었다: %+v", p)
 		}
 	}
@@ -45,8 +57,8 @@ func TestCheckFlagsDuplicateIP(t *testing.T) {
 		Scope: []string{"a", "b"},
 		Nodes: []decl.Node{{Name: "a", IPs: []string{"10.0.0.1"}}, {Name: "b", IPs: []string{"10.0.0.1"}}},
 	}
-	if got := whats(decl.Check(d)); !strings.Contains(got, "함께 주장합니다") {
-		t.Errorf("겹친 IP를 안 짚는다:\n%s", got)
+	if ps := decl.Check(d); raised(ps, decl.IPClaimedTwice) != 1 {
+		t.Errorf("겹친 IP를 안 짚는다:\n%s", whats(ps))
 	}
 }
 
@@ -57,12 +69,7 @@ func TestCheckFlagsBadIP(t *testing.T) {
 		{Name: "a", IPs: []string{"10.0.0.1:8443", "db.internal"}},
 	}}
 	got := decl.Check(d)
-	n := 0
-	for _, p := range got {
-		if strings.Contains(p.What, "IP 형식이 아닙니다") {
-			n++
-		}
-	}
+	n := raised(got, decl.IPMalformed)
 	if n != 2 {
 		t.Errorf("형식이 아닌 것 %d개를 짚었다, want 2:\n%s", n, whats(got))
 	}
@@ -77,12 +84,12 @@ func TestCheckFlagsOutOfScopeRefs(t *testing.T) {
 		Assets: []decl.Asset{{Node: "없는노드", Runtime: "openssl", Component: "libssl"}},
 		Edges:  []decl.Edge{{Src: "없는노드", Dst: "a", Port: 443, Proto: "TLS"}},
 	}
-	got := whats(decl.Check(d))
-	if !strings.Contains(got, "스코프에 없는 노드를 가리킵니다") {
-		t.Errorf("스코프 밖 자산을 안 짚는다:\n%s", got)
+	ps := decl.Check(d)
+	if raised(ps, decl.AssetOffScope) != 1 {
+		t.Errorf("스코프 밖 자산을 안 짚는다:\n%s", whats(ps))
 	}
-	if !strings.Contains(got, "보내는 쪽이 스코프에 없습니다") {
-		t.Errorf("스코프 밖 엣지를 안 짚는다:\n%s", got)
+	if raised(ps, decl.EdgeSrcOffScope) != 1 {
+		t.Errorf("스코프 밖 엣지를 안 짚는다:\n%s", whats(ps))
 	}
 }
 
@@ -93,8 +100,8 @@ func TestCheckFlagsZeroPort(t *testing.T) {
 		Nodes: []decl.Node{{Name: "a", IPs: []string{"10.0.0.1"}}, {Name: "b", IPs: []string{"10.0.0.2"}}},
 		Edges: []decl.Edge{{Src: "a", Dst: "b", Proto: "TLS"}},
 	}
-	if got := whats(decl.Check(d)); !strings.Contains(got, "포트가 0입니다") {
-		t.Errorf("포트 0을 안 짚는다:\n%s", got)
+	if ps := decl.Check(d); raised(ps, decl.EdgePortZero) != 1 {
+		t.Errorf("포트 0을 안 짚는다:\n%s", whats(ps))
 	}
 }
 

@@ -36,7 +36,7 @@ func TestCheckWarnsWhenNothingReadable(t *testing.T) {
 	if warn == "" {
 		t.Fatal("아무 말도 안 했다")
 	}
-	if !strings.Contains(warn, "자산이 없는 것이 아닙니다") {
+	if !strings.Contains(warn, "not an absence of assets") {
 		t.Errorf("「없다」와 「못 봤다」를 가르지 않는다: %s", warn)
 	}
 }
@@ -57,7 +57,7 @@ func TestCheckQuietWhenFine(t *testing.T) {
 func TestLabelWarning(t *testing.T) {
 	if w := localscan.LabelWarning("web-gw"); w == "" {
 		t.Fatal("다른 이름을 붙였는데 조용하다")
-	} else if !strings.Contains(w, "스캔한 것은 이 기계입니다") {
+	} else if !strings.Contains(w, "what was scanned is this machine") {
 		t.Errorf("무엇이 문제인지 말하지 않는다: %s", w)
 	}
 	// 기본 이름은 이 기계라는 뜻이므로 경고할 것이 없다.

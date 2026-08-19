@@ -141,7 +141,7 @@ func Finalize(sf Session) (*Result, error) {
 		s.Sign(sf.Reviewer, sf.Signature)
 	}
 	if err := s.Finalize(); err != nil {
-		return nil, fmt.Errorf("%w\n%s", err, Pending(sf))
+		return nil, &decision.NotFinalized{Err: err, Missing: Pending(sf)}
 	}
 
 	plan := make([]decision.PlanItem, 0)
@@ -180,18 +180,20 @@ func Finalize(sf Session) (*Result, error) {
 }
 
 // Pending — 무엇이 남았는지. 「안 된다」만 말하면 사람은 고칠 수 없다.
-func Pending(sf Session) string {
-	var b strings.Builder
+func Pending(sf Session) []decision.Missing {
+	var out []decision.Missing
 	if sf.Signature == "" {
-		b.WriteString("   · 서명(signature)이 비어 있습니다\n")
+		out = append(out, decision.Missing{Code: decision.MissingSignature})
 	}
 	for _, it := range sf.Items {
 		if it.Mandatory && strings.TrimSpace(it.Conclusion) == "" &&
 			strings.TrimSpace(sf.PolicyDecisions[it.Policy]) == "" {
-			fmt.Fprintf(&b, "   · 왜 이렇게 정했는지가 없습니다: %s (%s)\n", it.ID, it.State)
+			out = append(out, decision.Missing{
+				Code: decision.MissingConclusion, Subject: it.ID, Detail: it.State,
+			})
 		}
 	}
-	return strings.TrimRight(b.String(), "\n")
+	return out
 }
 
 // RequireNode — **지어내지 않고 끊는다.** node 가 비면 겨눌 곳을 모르는 것이고, 빈 채로

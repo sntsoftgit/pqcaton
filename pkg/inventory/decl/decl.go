@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -73,7 +74,7 @@ func Load(path string) (Declaration, error) {
 		return d, err
 	}
 	if err := json.Unmarshal(raw, &d); err != nil {
-		return d, fmt.Errorf("선언 파일: %w", err)
+		return d, fmt.Errorf("declaration file: %w", err)
 	}
 	return d, nil
 }
@@ -87,14 +88,79 @@ func Save(path string, d Declaration) error {
 	return os.WriteFile(path, append(raw, '\n'), 0o644)
 }
 
+// Code — 무엇이 어긋났나. **문장이 아니라 코드다.**
+//
+// 같은 문제를 명령은 영어로 말하고 화면은 보는 사람의 말로 말해야 한다. 여기에 문장을
+// 담으면 그 둘 중 하나는 반드시 남의 말로 뜬다.
+//
+// 영어 문장은 이 패키지가 갖고(아래 [Problem.What] · [Problem.Why]), 한국어는 화면
+// 카탈로그가 갖는다 — **영어를 두 곳에 두지 않는 것**이 이 갈래의 요점이다.
+type Code string
+
+const (
+	NodeNotInScope  Code = "node_not_in_scope"
+	NodeHasNoIP     Code = "node_has_no_ip"
+	IPMalformed     Code = "ip_malformed"
+	IPClaimedTwice  Code = "ip_claimed_twice"
+	NodeMissingIP   Code = "node_missing_from_ip_table"
+	AssetOffScope   Code = "asset_points_off_scope"
+	EdgeSrcOffScope Code = "edge_source_off_scope"
+	EdgePortZero    Code = "edge_port_zero"
+)
+
 // Problem — 선언 자체가 앞뒤가 안 맞는 자리.
 type Problem struct {
 	// Where — 어디가 문제인가. 화면이 그 자리를 짚는 데 쓴다.
 	Where string
-	// What — 무엇이 잘못됐나.
-	What string
-	// Why — 그대로 두면 무슨 일이 생기나. **이것이 없으면 사람은 고칠 이유를 모른다.**
-	Why string
+	// Code — 무엇이 잘못됐나.
+	Code Code
+	// Detail — 값이 붙는 것만. 형식이 틀린 IP, 그 IP를 함께 주장하는 노드들.
+	Detail string
+}
+
+// 영어 문장. **여기가 영어의 유일한 자리다.**
+var (
+	whatEN = map[Code]string{
+		NodeNotInScope:  "this node is not in scope",
+		NodeHasNoIP:     "this node has no IP",
+		IPMalformed:     "not an IP address: %s",
+		IPClaimedTwice:  "%s is claimed by more than one node",
+		NodeMissingIP:   "missing from the IP table",
+		AssetOffScope:   "points at a node that is not in scope",
+		EdgeSrcOffScope: "the sending side is not in scope",
+		EdgePortZero:    "the port is 0",
+	}
+	whyEN = map[Code]string{
+		NodeNotInScope: "it is not reconciled, so this IP row is never used",
+		NodeHasNoIP: "observed traffic to this node cannot be resolved, so **declared edges " +
+			"show as unobserved and observed edges show as shadow**",
+		IPMalformed: "resolution only works on an exact string match — a port or a hostname will not match",
+		IPClaimedTwice: "resolution flips to whichever node comes last, so **traffic gets " +
+			"attached to the wrong node**",
+		// IP가 비어 있는 것과 **결과가 같다.** 한쪽만 약하게 말하면 고칠 이유의 무게가
+		// 달라 보인다.
+		NodeMissingIP: "observed traffic to this node cannot be resolved, so **declared edges " +
+			"show as unobserved and observed edges show as shadow**",
+		AssetOffScope:   "it is declared but no observation attaches, so it stays **UNOBSERVED** forever",
+		EdgeSrcOffScope: "no observation attaches, so it stays unobserved forever",
+		EdgePortZero:    "the port is part of an edge's identity, so it will not match an observed edge",
+	}
+)
+
+// What — 무엇이 잘못됐나(영어).
+func (p Problem) What() string { return fill(whatEN[p.Code], p.Detail) }
+
+// Why — 그대로 두면 무슨 일이 생기나(영어).
+//
+// **이것이 없으면 사람은 고칠 이유를 모른다.**
+func (p Problem) Why() string { return whyEN[p.Code] }
+
+// fill — 값 자리가 있는 문장에만 값을 넣는다. 없는 문장에 넣으면 %!(EXTRA …) 가 붙는다.
+func fill(tmpl, detail string) string {
+	if !strings.Contains(tmpl, "%s") {
+		return tmpl
+	}
+	return fmt.Sprintf(tmpl, detail)
 }
 
 // Check — 선언이 스스로 앞뒤가 맞는지 본다.
@@ -122,18 +188,10 @@ func Check(d Declaration) []Problem {
 	for _, n := range d.Nodes {
 		named[n.Name] = true
 		if !inScope[n.Name] {
-			out = append(out, Problem{
-				Where: "nodes/" + n.Name,
-				What:  "스코프에 없는 노드입니다",
-				Why:   "대조 대상이 아니라 이 IP 표는 쓰이지 않습니다",
-			})
+			out = append(out, Problem{Where: "nodes/" + n.Name, Code: NodeNotInScope})
 		}
 		if len(n.IPs) == 0 {
-			out = append(out, Problem{
-				Where: "nodes/" + n.Name,
-				What:  "IP가 없습니다",
-				Why:   "이 노드로 오는 관측 통신이 해소되지 않아 **선언한 엣지가 미관측으로, 관측된 엣지가 shadow로** 갈립니다",
-			})
+			out = append(out, Problem{Where: "nodes/" + n.Name, Code: NodeHasNoIP})
 		}
 		for _, ip := range n.IPs {
 			ip = strings.TrimSpace(ip)
@@ -142,9 +200,7 @@ func Check(d Declaration) []Problem {
 			}
 			if net.ParseIP(ip) == nil {
 				out = append(out, Problem{
-					Where: "nodes/" + n.Name,
-					What:  fmt.Sprintf("IP 형식이 아닙니다: %q", ip),
-					Why:   "해소는 문자열이 정확히 맞을 때만 됩니다 — 포트나 호스트명을 적으면 맞지 않습니다",
+					Where: "nodes/" + n.Name, Code: IPMalformed, Detail: strconv.Quote(ip),
 				})
 				continue
 			}
@@ -155,21 +211,13 @@ func Check(d Declaration) []Problem {
 		if len(owners) > 1 {
 			sort.Strings(owners)
 			out = append(out, Problem{
-				Where: "nodes",
-				What:  fmt.Sprintf("%s 를 %s 가 함께 주장합니다", ip, strings.Join(owners, " · ")),
-				Why:   "해소가 뒤에 오는 노드로 뒤집혀 **통신이 엉뚱한 노드에 붙습니다**",
+				Where: "nodes/" + strings.Join(owners, "+"), Code: IPClaimedTwice, Detail: ip,
 			})
 		}
 	}
 	for _, n := range d.Scope {
 		if n != "" && !named[n] {
-			out = append(out, Problem{
-				Where: "scope/" + n,
-				What:  "IP 표에 없습니다",
-				// IP가 비어 있는 것과 **결과가 같다.** 한쪽만 약하게 말하면 고칠 이유의
-				// 무게가 달라 보인다.
-				Why: "이 노드로 오는 관측 통신이 해소되지 않아 **선언한 엣지가 미관측으로, 관측된 엣지가 shadow로** 갈립니다",
-			})
+			out = append(out, Problem{Where: "scope/" + n, Code: NodeMissingIP})
 		}
 	}
 
@@ -177,25 +225,19 @@ func Check(d Declaration) []Problem {
 	for _, a := range d.Assets {
 		if a.Node != "" && !inScope[a.Node] {
 			out = append(out, Problem{
-				Where: "assets/" + a.Node + "/" + a.Component,
-				What:  "스코프에 없는 노드를 가리킵니다",
-				Why:   "선언만 있고 관측이 붙지 않아 **늘 미관측(UNOBSERVED)** 으로 남습니다",
+				Where: "assets/" + a.Node + "/" + a.Component, Code: AssetOffScope,
 			})
 		}
 	}
 	for _, e := range d.Edges {
 		if e.Src != "" && !inScope[e.Src] {
 			out = append(out, Problem{
-				Where: fmt.Sprintf("edges/%s→%s", e.Src, e.Dst),
-				What:  "보내는 쪽이 스코프에 없습니다",
-				Why:   "관측이 붙지 않아 늘 미관측으로 남습니다",
+				Where: fmt.Sprintf("edges/%s→%s", e.Src, e.Dst), Code: EdgeSrcOffScope,
 			})
 		}
 		if e.Port == 0 {
 			out = append(out, Problem{
-				Where: fmt.Sprintf("edges/%s→%s", e.Src, e.Dst),
-				What:  "포트가 0입니다",
-				Why:   "엣지 동일성에 포트가 들어가므로 관측된 엣지와 맞지 않습니다",
+				Where: fmt.Sprintf("edges/%s→%s", e.Src, e.Dst), Code: EdgePortZero,
 			})
 		}
 	}

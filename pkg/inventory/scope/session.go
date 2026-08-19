@@ -188,7 +188,7 @@ func Finalize(sf Session, orgName string) (*FinalizeResult, error) {
 		s.Sign(sf.Reviewer, sf.Signature)
 	}
 	if err := s.Finalize(); err != nil {
-		return nil, fmt.Errorf("%w\n%s", err, Pending(sf))
+		return nil, &decision.NotFinalized{Err: err, Missing: Pending(sf)}
 	}
 	decided := map[string]string{}
 	for _, it := range s.Items {
@@ -200,18 +200,20 @@ func Finalize(sf Session, orgName string) (*FinalizeResult, error) {
 }
 
 // Pending — 무엇이 남았는지. 모르면 사람은 파일도 화면도 고칠 수 없다.
-func Pending(sf Session) string {
-	var b strings.Builder
+func Pending(sf Session) []decision.Missing {
+	var out []decision.Missing
 	if sf.Reviewer == "" || sf.Signature == "" {
-		b.WriteString("   · 승인자(reviewer)와 서명(signature)을 채우십시오\n")
+		out = append(out, decision.Missing{Code: decision.MissingSignature})
 	}
 	for _, c := range sf.Changes {
 		if c.Audited && strings.TrimSpace(c.Conclusion) == "" &&
 			strings.TrimSpace(sf.LayerDecisions[c.Layer]) == "" {
-			fmt.Fprintf(&b, "   · 왜 이렇게 정했는지가 없습니다: %s (계층 %s)\n", c.ID, c.Layer)
+			out = append(out, decision.Missing{
+				Code: decision.MissingConclusion, Subject: c.ID, Detail: "layer " + c.Layer,
+			})
 		}
 	}
-	return strings.TrimRight(b.String(), "\n")
+	return out
 }
 
 // SaveJudgments — 확정된 변경을 원장에 남긴다. **게이트를 지난 뒤에만** 남긴다.

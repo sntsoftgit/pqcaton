@@ -24,6 +24,32 @@ var (
 	tSubSession = T{KO: "세션", EN: "session"}
 	tSubResults = T{KO: "결과", EN: "results"}
 
+	// 저장·확정 뒤에 뜨는 알림. **화면 글이라 말을 탄다.**
+	tSavedNotFinal = T{
+		KO: "세션 파일에 저장했습니다 — 아직 확정하지 않았습니다",
+		EN: "Saved to the session file — not finalized yet"}
+	tFinalizedPlan = T{
+		KO: "확정했습니다 — 조치 %d건을 %s 에 썼습니다",
+		EN: "Finalized — %d actions written to %s"}
+	tFinalizedPolicy = T{
+		KO: "확정했습니다 — 규칙 %d개를 %s 에 썼습니다. 이 파일이 `pqcota-ingest -scope-assets` 의 입력입니다",
+		EN: "Finalized — %d rules written to %s. That file is the input to `pqcota-ingest -scope-assets`"}
+	tJudgmentsSaved = T{
+		KO: " · 판정 %d건을 %s 에 남겼습니다",
+		EN: " · %d judgments appended to %s"}
+	tRulesSaved = T{
+		KO: "계층 %d개에 규칙 %d개를 썼습니다 — 판정할 변경 %d건, 그중 왜 뺐는지를 적어야 하는 것 %d건",
+		EN: "Wrote %d rules across %d layers — %d changes to judge, %d of them needing a recorded reason"}
+	tSignatureCleared = T{
+		KO: " · 정책이 달라져 서명을 지웠습니다",
+		EN: " · the policy changed, so the signature was cleared"}
+	tDeclSaved = T{
+		KO: "선언을 저장했습니다 — 노드 %d · 자산 %d · 엣지 %d",
+		EN: "Declaration saved — %d nodes · %d assets · %d edges"}
+	tDeclStillOff = T{
+		KO: " · 맞지 않는 자리 %d곳이 남아 있습니다",
+		EN: " · %d places still do not add up"}
+
 	tRefused = T{KO: "하지 않았습니다 — 이유는 이렇습니다.",
 		EN: "Not done — here is why."}
 	tAddRow = T{KO: "행 추가", EN: "Add row"}
@@ -292,10 +318,12 @@ var (
 	tSurveyNoEdges = T{KO: "대조할 엣지가 없습니다.", EN: "No edges to reconcile."}
 	tPostures      = T{KO: "🟢 PQC <b>%d</b> · 🔴 고전 <b>%d</b> · ⚪ 불명 <b>%d</b>",
 		EN: "🟢 PQC <b>%d</b> · 🔴 classical <b>%d</b> · ⚪ unknown <b>%d</b>"}
-	tColGroup     = T{KO: "협상 그룹", EN: "Negotiated group"}
-	tColReconcile = T{KO: "대조", EN: "Reconciled"}
-	tUncoveredSrc = T{KO: "관측 안 된 노드", EN: "node not observed"}
-	tOffScope     = T{KO: "등재 판정 요청", EN: "needs enrollment decision"}
+	tColGroup       = T{KO: "협상 그룹", EN: "Negotiated group"}
+	tColReconcile   = T{KO: "대조", EN: "Reconciled"}
+	tGradeClassical = T{KO: "고전 — 양자 취약", EN: "classical — quantum-vulnerable"}
+	tGradeUnknown   = T{KO: "불명", EN: "unknown"}
+	tUncoveredSrc   = T{KO: "관측 안 된 노드", EN: "node not observed"}
+	tOffScope       = T{KO: "등재 판정 요청", EN: "needs enrollment decision"}
 
 	tTopology     = T{KO: "토폴로지", EN: "Topology"}
 	tTopologyNote = T{

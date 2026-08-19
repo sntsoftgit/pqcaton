@@ -23,11 +23,11 @@ func TestRenderTopologyDOT(t *testing.T) {
 		{"PQC 녹색", `color="#22aa22"`},
 		{"고전 적색", `color="#cc2222"`},
 		{"미관측 점선", "style=dashed"},
-		{"UNOBSERVED 라벨", "미관측(UNOBSERVED)"},
+		{"UNOBSERVED 라벨", "UNOBSERVED"},
 		{"shadow 굵은선", "penwidth=3"},
-		{"off-scope 판정요청", "판정요청"},
-		{"uncovered 회색노드", "collector 미설치"},
-		{"범례 캡션(등급)", "색=등급"},
+		{"off-scope 판정요청", "needs decision"},
+		{"uncovered 회색노드", "no collector installed"},
+		{"범례 캡션(등급)", "colour = grade"},
 	}
 	for _, c := range checks {
 		if !strings.Contains(dot, c.sub) {

@@ -49,16 +49,16 @@ import (
 
 func main() {
 	fs := flag.NewFlagSet("pqcaton-ui", flag.ExitOnError)
-	addr := fs.String("addr", "127.0.0.1:8765", "들을 주소")
-	declPath := fs.String("decl", "", "선언 파일(declaration.json). 주면 선언 편집 화면이 열린다")
-	resultsDir := fs.String("results", "", "관측 결과 디렉터리. -decl 과 함께 주면 대조 화면이 열린다")
-	scopePath := fs.String("scope", "", "자산 스코프 세션 파일. -layers 를 주면 화면이 직접 만든다")
-	layerList := fs.String("layers", "", "자산 스코프 계층 CSV들, 쉼표로 구분. 준 순서대로 겹치고(조직 · 환경 · 노드군), 규칙이 겹치면 **뒤 계층의 것이 적용된다**. 주면 화면에서 규칙을 고칠 수 있다")
-	basePath := fs.String("base", "", "지금 쓰는 정책 CSV. 주면 바뀐 규칙만 리뷰에 올린다")
-	scopeOut := fs.String("scope-out", "asset-scope.csv", "확정된 스코프 정책을 쓸 파일")
-	judgments := fs.String("judgments", "", "확정 시 판정을 남길 파일(JSONL, append-only)")
-	orgName := fs.String("org", "local", "판정을 묶을 조직")
-	planOut := fs.String("plan", "plan.json", "확정 계획을 쓸 파일")
+	addr := fs.String("addr", "127.0.0.1:8765", "address to listen on")
+	declPath := fs.String("decl", "", "declaration file (declaration.json). Given this, the declaration screen opens")
+	resultsDir := fs.String("results", "", "directory of collected results. With -decl, the reconciliation screen opens")
+	scopePath := fs.String("scope", "", "asset scope session file. With -layers, the screen raises one itself")
+	layerList := fs.String("layers", "", "asset scope layer CSVs, comma separated. They stack in the order given (org, environment, node group), and **the later layer wins** when rules clash. Given these, rules can be edited on the screen")
+	basePath := fs.String("base", "", "the policy CSV in force. Given this, only changed rules come up for review")
+	scopeOut := fs.String("scope-out", "asset-scope.csv", "file to write the finalized scope policy to")
+	judgments := fs.String("judgments", "", "file to append judgments to on finalize (JSONL, append-only)")
+	orgName := fs.String("org", "local", "organization the judgments are bound to")
+	planOut := fs.String("plan", "plan.json", "file to write the finalized plan to")
 
 	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag 는 첫 비플래그에서
 	// 파싱을 멈추므로, 그냥 두면 `pqcaton-ui session.json -addr ...` 의 -addr 이 조용히
@@ -68,7 +68,7 @@ func main() {
 		os.Exit(2)
 	}
 	if len(pos) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> [-decl declaration.json] [-results 디렉터리] [-layers 계층.csv,...] [-base 현재정책.csv] [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름] [-plan 파일]")
+		fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> [-decl declaration.json] [-results <dir>] [-layers <layer.csv>,...] [-base <in-force.csv>] [-addr 127.0.0.1:8765] [-judgments <file>] [-org <name>] [-plan <file>]")
 		os.Exit(2)
 	}
 	path := pos[0]
@@ -77,9 +77,9 @@ func main() {
 		// 그것을 손에 들고도 명령을 한 번 돌려야 화면이 열리는 것은, 화면을 두는 이유와
 		// 어긋난다.
 		if *declPath == "" || *resultsDir == "" {
-			fmt.Fprintln(os.Stderr, "❌ 리뷰 세션을 읽을 수 없다:", err)
-			fmt.Fprintln(os.Stderr, "   선언과 관측 결과를 주면 화면이 직접 엽니다: -decl declaration.json -results <results-dir>")
-			fmt.Fprintln(os.Stderr, "   명령으로 만들려면: `pqcaton-decide open <declaration.json> -results <results-dir> > "+path+"`")
+			fmt.Fprintln(os.Stderr, "❌ cannot read the review session:", err)
+			fmt.Fprintln(os.Stderr, "   Give it the declaration and the results and the screen raises one itself: -decl declaration.json -results <results-dir>")
+			fmt.Fprintln(os.Stderr, "   To make one with a command: `pqcaton-decide open <declaration.json> -results <results-dir> > "+path+"`")
 			os.Exit(1)
 		}
 	}
@@ -87,7 +87,7 @@ func main() {
 		if _, err := decl.Load(*declPath); err != nil {
 			// 선언은 사람이 처음 쓰는 것이라 만들어 줄 명령이 없다 — 빈 파일에서
 			// 시작할 수 있다는 것을 말한다.
-			fmt.Fprintln(os.Stderr, "❌ 선언 파일을 읽을 수 없다:", err)
+			fmt.Fprintln(os.Stderr, "❌ cannot read the declaration file:", err)
 			fmt.Fprintln(os.Stderr, `   빈 선언으로 시작하려면: echo '{"scope":[],"nodes":[],"assets":[],"edges":[]}' > `+*declPath)
 			os.Exit(1)
 		}
@@ -95,7 +95,7 @@ func main() {
 
 	if *resultsDir != "" && *declPath == "" {
 		// **선언 없이는 대조할 것이 없다.** 조용히 빈 화면을 주면 사람이 무엇이 빠졌는지 모른다.
-		fmt.Fprintln(os.Stderr, "❌ -results 는 -decl 과 함께 주십시오 — 대조는 선언과 맞대는 일입니다")
+		fmt.Fprintln(os.Stderr, "❌ -results needs -decl — reconciliation means matching against a declaration")
 		os.Exit(2)
 	}
 	layers := splitPaths(*layerList)
@@ -107,14 +107,14 @@ func main() {
 	if *scopePath != "" && len(layers) == 0 {
 		if _, err := scope.LoadSession(*scopePath); err != nil {
 			// 계층을 주지 않았으면 화면은 세션을 만들 재료가 없다 — 어디서 나는지 말한다.
-			fmt.Fprintln(os.Stderr, "❌ 스코프 세션을 읽을 수 없다:", err)
-			fmt.Fprintln(os.Stderr, "   계층 CSV를 주면 화면이 직접 엽니다: -layers corp.csv,prod.csv -base asset-scope.csv")
-			fmt.Fprintln(os.Stderr, "   명령으로 만들려면: `pqcaton-scope open <계층.csv>... -base <현재정책.csv> > "+*scopePath+"`")
+			fmt.Fprintln(os.Stderr, "❌ cannot read the scope session:", err)
+			fmt.Fprintln(os.Stderr, "   Give it the layer CSVs and the screen raises one itself: -layers corp.csv,prod.csv -base asset-scope.csv")
+			fmt.Fprintln(os.Stderr, "   To make one with a command: `pqcaton-scope open <layer.csv>... -base <in-force.csv> > "+*scopePath+"`")
 			os.Exit(1)
 		}
 	}
 	if _, err := scope.LoadLayers(layers); err != nil {
-		fmt.Fprintln(os.Stderr, "❌ 계층 CSV를 읽을 수 없다:", err)
+		fmt.Fprintln(os.Stderr, "❌ cannot read the layer CSVs:", err)
 		os.Exit(1)
 	}
 	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath,
@@ -125,11 +125,11 @@ func main() {
 	if !loopback(*addr) {
 		// **조용히 열지 않는다.** 리뷰 큐는 그 조직의 공격면이다.
 		fmt.Fprintf(os.Stderr,
-			"⚠ %s 는 루프백이 아닙니다 — 화면이 네트워크에 열립니다. 앞에 인증을 두십시오.\n", *addr)
+			"⚠ %s is not loopback — the screen is open on the network. Put authentication in front of it.\n", *addr)
 	}
 	fmt.Fprintf(os.Stderr, "화면: http://%s  (세션 %s", *addr, path)
 	if *declPath != "" {
-		fmt.Fprintf(os.Stderr, " · 선언 %s", *declPath)
+		fmt.Fprintf(os.Stderr, " · declaration %s", *declPath)
 	}
 	fmt.Fprintln(os.Stderr, ")")
 	if err := http.ListenAndServe(*addr, h); err != nil {
@@ -273,7 +273,7 @@ func sub(parts ...string) string { return strings.Join(parts, " · ") }
 // 큐는 관측에서 파생된 것이라, 결과가 늘었는데 세션이 그대로면 화면이 옛 큐를 보여
 // 준다 — 방금 나타난 shadow 가 판정 대상에 없는 상태다. 그래서 읽을 때마다 다시 세우고,
 // 사람이 적은 판정은 [review.Carry] 가 들고 간다. 파일에 쓰는 것은 저장·확정할 때뿐이다.
-func (s *server) reviewSession() (review.Session, []string, error) {
+func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	prev, err := review.Load(s.path)
 	if err != nil && (s.results == "" || !os.IsNotExist(err)) {
 		return prev, nil, err
@@ -299,7 +299,7 @@ func (s *server) review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := s.page(r, ui.ScreenReview, sub(sf.Scope, ui.LabelSession(ui.PickLang(r))+" "+s.path))
-	page.Warnings = warn
+	page.Warnings = ui.Warnings(ui.PickLang(r), warn)
 	html(w, func() error { return ui.RenderReview(w, ui.NewReviewView(sf, page)) })
 }
 
@@ -319,43 +319,43 @@ func (s *server) applyReview(r *http.Request) (review.Session, error) {
 
 func (s *server) save(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.applyReview(r); err != nil {
-		redirect(w, r, "/review", "", err.Error())
+		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
-	redirect(w, r, "/review", "세션 파일에 저장했습니다 — 아직 확정하지 않았습니다", "")
+	redirect(w, r, "/review", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
 // finalize — **명령과 같은 게이트를 탄다.** 여기서 따로 판정하지 않는다.
 func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 	sf, err := s.applyReview(r)
 	if err != nil {
-		redirect(w, r, "/review", "", err.Error())
+		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	res, err := review.Finalize(sf)
 	if err != nil {
 		// 확정되지 않은 이유를 그대로 보여 준다 — 무엇이 남았는지가 거기 적혀 있다.
-		redirect(w, r, "/review", "", err.Error())
+		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	raw, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(res.Plan)
 	if err != nil {
-		redirect(w, r, "/review", "", err.Error())
+		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	if err := os.WriteFile(s.planOut, append(raw, '\n'), 0o644); err != nil {
-		redirect(w, r, "/review", "", err.Error())
+		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
-	msg := fmt.Sprintf("확정했습니다 — 조치 %d건을 %s 에 썼습니다", len(res.Plan.GetActions()), s.planOut)
+	msg := ui.MsgFinalizedPlan(ui.PickLang(r), len(res.Plan.GetActions()), s.planOut)
 	// **게이트를 지난 뒤에만 남긴다.**
 	if s.judgments != "" {
 		n, err := review.SaveJudgments(s.judgments, s.org, sf, res.Decided)
 		if err != nil {
-			redirect(w, r, "/review", msg, "판정 기록: "+err.Error())
+			redirect(w, r, "/review", msg, "recording judgments: "+err.Error())
 			return
 		}
-		msg += fmt.Sprintf(" · 판정 %d건을 %s 에 남겼습니다", n, s.judgments)
+		msg += ui.MsgJudgmentsSaved(ui.PickLang(r), n, s.judgments)
 	}
 	redirect(w, r, "/review", msg, "")
 }
@@ -390,7 +390,7 @@ func (s *server) scopeSession() (scope.Session, []scope.LayerFile, error) {
 
 func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 	if s.scope == "" {
-		http.Error(w, "스코프 세션을 주지 않았습니다 — -scope 나 -layers 로 지정하십시오", http.StatusNotFound)
+		http.Error(w, "no scope session was given — pass -scope or -layers", http.StatusNotFound)
 		return
 	}
 	sf, files, err := s.scopeSession()
@@ -412,16 +412,16 @@ func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 // 적어 둔 결론이 날아간다.
 func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 	if len(s.layers) == 0 {
-		http.Error(w, "계층 CSV를 주지 않았습니다 — -layers 로 지정하십시오", http.StatusNotFound)
+		http.Error(w, "no layer CSVs were given — pass -layers", http.StatusNotFound)
 		return
 	}
 	sf, files, err := s.scopeSession()
 	if err != nil {
-		redirect(w, r, "/scope", "", err.Error())
+		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		redirect(w, r, "/scope", "", err.Error())
+		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	sf = ui.ApplyScope(sf, r.PostForm)
@@ -429,7 +429,7 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 	edited := ui.ApplyLayers(files, r.PostForm)
 	for _, lf := range edited {
 		if err := scope.SaveLayer(lf); err != nil {
-			redirect(w, r, "/scope", "", err.Error())
+			redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 			return
 		}
 	}
@@ -437,24 +437,23 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 	var base *kscope.AssetPolicy
 	if s.base != "" {
 		if base, err = scope.LoadPolicyFile(s.base); err != nil {
-			redirect(w, r, "/scope", "", err.Error())
+			redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 			return
 		}
 	}
 	next := scope.Reopen(sf, scope.Layers(edited), base, s.org)
 	if err := scope.SaveSession(s.scope, next); err != nil {
-		redirect(w, r, "/scope", "", err.Error())
+		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	n := 0
 	for _, lf := range edited {
 		n += len(lf.Layer.Rules)
 	}
-	msg := fmt.Sprintf("계층 %d개에 규칙 %d개를 썼습니다 — 판정할 변경 %d건, 그중 왜 뺐는지를 적어야 하는 것 %d건",
-		len(edited), n, len(next.Changes), next.AuditedCount())
+	msg := ui.MsgRulesSaved(ui.PickLang(r), len(edited), n, len(next.Changes), next.AuditedCount())
 	if next.Signature == "" && sf.Signature != "" {
 		// **말하지 않으면 사람은 서명이 남아 있다고 여긴다.**
-		msg += " · 정책이 달라져 서명을 지웠습니다"
+		msg += ui.MsgSignatureCleared(ui.PickLang(r))
 	}
 	redirect(w, r, "/scope", msg, "")
 }
@@ -462,17 +461,17 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 // scopeRow — 규칙 표의 「행 추가」.
 func (s *server) scopeRow(w http.ResponseWriter, r *http.Request) {
 	if len(s.layers) == 0 {
-		http.Error(w, "계층 CSV를 주지 않았습니다", http.StatusNotFound)
+		http.Error(w, "no layer CSVs were given", http.StatusNotFound)
 		return
 	}
 	layer, err := strconv.Atoi(r.URL.Query().Get("layer"))
 	if err != nil || layer < 0 || layer >= len(s.layers) {
-		http.Error(w, "그런 계층이 없습니다", http.StatusBadRequest)
+		http.Error(w, "no such layer", http.StatusBadRequest)
 		return
 	}
 	i, err := strconv.Atoi(r.URL.Query().Get("i"))
 	if err != nil || i < 0 || i > maxRows {
-		http.Error(w, "줄 번호가 범위 밖입니다", http.StatusBadRequest)
+		http.Error(w, "the row number is out of range", http.StatusBadRequest)
 		return
 	}
 	html(w, func() error { return ui.RenderRuleRow(w, ui.PickLang(r), layer, i) })
@@ -493,53 +492,52 @@ func (s *server) applyScope(r *http.Request) (scope.Session, error) {
 
 func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 	if s.scope == "" {
-		http.Error(w, "스코프 세션을 주지 않았습니다", http.StatusNotFound)
+		http.Error(w, "no scope session was given", http.StatusNotFound)
 		return
 	}
 	if _, err := s.applyScope(r); err != nil {
-		redirect(w, r, "/scope", "", err.Error())
+		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
-	redirect(w, r, "/scope", "세션 파일에 저장했습니다 — 아직 확정하지 않았습니다", "")
+	redirect(w, r, "/scope", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
 // scopeFinalize — **명령과 같은 게이트를 탄다.**
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 	if s.scope == "" {
-		http.Error(w, "스코프 세션을 주지 않았습니다", http.StatusNotFound)
+		http.Error(w, "no scope session was given", http.StatusNotFound)
 		return
 	}
 	sf, err := s.applyScope(r)
 	if err != nil {
-		redirect(w, r, "/scope", "", err.Error())
+		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	res, err := scope.Finalize(sf, s.org)
 	if err != nil {
-		redirect(w, r, "/scope", "", err.Error())
+		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	f, err := os.Create(s.scopeOut)
 	if err != nil {
-		redirect(w, r, "/scope", "", err.Error())
+		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	err = scope.WriteCSV(f, res.Policy)
 	f.Close()
 	if err != nil {
-		redirect(w, r, "/scope", "", err.Error())
+		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
-	msg := fmt.Sprintf("확정했습니다 — 규칙 %d개를 %s 에 썼습니다. 이 파일이 `pqcota-ingest -scope-assets` 의 입력입니다",
-		len(res.Policy.Rules), s.scopeOut)
+	msg := ui.MsgFinalizedPolicy(ui.PickLang(r), len(res.Policy.Rules), s.scopeOut)
 	// **게이트를 지난 뒤에만 남긴다.**
 	if s.judgments != "" {
 		n, err := scope.SaveJudgments(s.judgments, s.org, sf, res.Decided)
 		if err != nil {
-			redirect(w, r, "/scope", msg, "판정 기록: "+err.Error())
+			redirect(w, r, "/scope", msg, "recording judgments: "+err.Error())
 			return
 		}
-		msg += fmt.Sprintf(" · 판정 %d건을 %s 에 남겼습니다", n, s.judgments)
+		msg += ui.MsgJudgmentsSaved(ui.PickLang(r), n, s.judgments)
 	}
 	redirect(w, r, "/scope", msg, "")
 }
@@ -550,7 +548,7 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 // 명령(`pqcaton-report`)이 글로 찍는 것과 같은 것을 표로 그린다.
 func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	if s.results == "" {
-		http.Error(w, "관측 결과를 주지 않았습니다 — -results 로 지정하십시오", http.StatusNotFound)
+		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
 		return
 	}
 	d, err := decl.Load(s.decl)
@@ -592,7 +590,7 @@ func renderDOT(dot string) string {
 
 func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 	if s.decl == "" {
-		http.Error(w, "선언 파일을 주지 않았습니다 — -decl 로 지정하십시오", http.StatusNotFound)
+		http.Error(w, "no declaration file was given — pass -decl", http.StatusNotFound)
 		return
 	}
 	d, err := decl.Load(s.decl)
@@ -613,17 +611,17 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 // 번호는 밖에서 오는 값이라 받는 대로 믿지 않는다.
 func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
 	if s.decl == "" {
-		http.Error(w, "선언 파일을 주지 않았습니다", http.StatusNotFound)
+		http.Error(w, "no declaration file was given", http.StatusNotFound)
 		return
 	}
 	kind := r.URL.Query().Get("kind")
 	if !ui.ValidKind(kind) {
-		http.Error(w, "모르는 표 이름입니다: "+kind, http.StatusBadRequest)
+		http.Error(w, "unknown table name: "+kind, http.StatusBadRequest)
 		return
 	}
 	i, err := strconv.Atoi(r.URL.Query().Get("i"))
 	if err != nil || i < 0 || i > maxRows {
-		http.Error(w, "줄 번호가 범위 밖입니다", http.StatusBadRequest)
+		http.Error(w, "the row number is out of range", http.StatusBadRequest)
 		return
 	}
 	html(w, func() error { return ui.RenderRow(w, ui.PickLang(r), kind, i) })
@@ -635,28 +633,27 @@ const maxRows = 10000
 
 func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 	if s.decl == "" {
-		http.Error(w, "선언 파일을 주지 않았습니다", http.StatusNotFound)
+		http.Error(w, "no declaration file was given", http.StatusNotFound)
 		return
 	}
 	prev, err := decl.Load(s.decl)
 	if err != nil {
-		redirect(w, r, "/decl", "", err.Error())
+		redirect(w, r, "/decl", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		redirect(w, r, "/decl", "", err.Error())
+		redirect(w, r, "/decl", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	d := ui.ApplyDecl(prev, r.PostForm)
 	if err := decl.Save(s.decl, d); err != nil {
-		redirect(w, r, "/decl", "", err.Error())
+		redirect(w, r, "/decl", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
-	msg := fmt.Sprintf("선언을 저장했습니다 — 노드 %d · 자산 %d · 엣지 %d",
-		len(d.Nodes), len(d.Assets), len(d.Edges))
+	msg := ui.MsgDeclSaved(ui.PickLang(r), len(d.Nodes), len(d.Assets), len(d.Edges))
 	// **저장은 됐지만 앞뒤가 안 맞으면 그 사실을 함께 말한다.** 막지는 않는다.
 	if p := decl.Check(d); len(p) > 0 {
-		msg += fmt.Sprintf(" · 맞지 않는 자리 %d곳이 남아 있습니다", len(p))
+		msg += ui.MsgDeclStillOff(ui.PickLang(r), len(p))
 	}
 	redirect(w, r, "/decl", msg, "")
 }
