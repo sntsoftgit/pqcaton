@@ -1,10 +1,12 @@
 package scope
 
 import (
+	"fmt"
 	"sort"
 
 	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
+	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
@@ -61,11 +63,40 @@ type ReviewItem struct {
 	Reason string
 }
 
-// 재검토 사유. 문자열이 그대로 화면에 나가므로 여기 하나로 모은다.
+// 재검토 사유. **문장이 아니라 코드다** — 명령은 영어로, 화면은 보는 사람의 말로 낸다.
 const (
-	ReasonNeverJudged = "no judgment ever approved this exclusion"
-	ReasonStale       = "the approval is stale — things may have changed while it was set aside"
+	ReasonNeverJudged = "never_judged"
+	ReasonStale       = "approval_stale"
 )
+
+// EnglishReason — 명령이 읽는 문장. **여기가 영어의 유일한 자리다.**
+func EnglishReason(code string) string {
+	switch code {
+	case ReasonNeverJudged:
+		return "no judgment ever approved this exclusion"
+	case ReasonStale:
+		return "the approval is stale — things may have changed while it was set aside"
+	}
+	return code
+}
+
+// ExcludedFromResults — 관측 결과 전부에서 **정책이 뺀 자산**을 모은다.
+//
+// 명령(`pqcaton-scope review`)과 화면이 같은 계산을 써야 한다 — 두 벌이면 화면에서 본
+// 「안 보고 있는 것」과 명령이 세는 것이 갈린다.
+func ExcludedFromResults(p *kscope.AssetPolicy, results []*discoveryv1.CollectionResult) ([]Excluded, error) {
+	var out []Excluded
+	for _, res := range results {
+		node := res.GetEnvelope().GetTargetNodeId()
+		fs, err := normalize.DeriveFindings(res, "", "")
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", node, err)
+		}
+		out = append(out, ExcludedFrom(p, node, fs)...)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Subject() < out[j].Subject() })
+	return out, nil
+}
 
 // Review — 제외된 자산을 판정 이력과 맞대어 **다시 봐야 할 것만** 낸다.
 //

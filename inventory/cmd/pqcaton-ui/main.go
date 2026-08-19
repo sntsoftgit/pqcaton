@@ -33,13 +33,16 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
 	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota/pkg/org"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
@@ -221,6 +224,7 @@ func (s *server) handler() http.Handler {
 	r.Post("/scope/save", s.scopeSave)
 	r.Post("/scope/finalize", s.scopeFinalize)
 	r.Get("/survey", s.survey)
+	r.Get(ui.ScreenInventory, s.inventory)
 	r.Get("/review", s.review)
 	r.Post("/save", s.save)
 	r.Post("/finalize", s.finalize)
@@ -257,7 +261,11 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 	l := ui.PickLang(r)
 	return ui.Page{
 		Title: ui.ScreenTitle(here, l), Subtitle: subtitle,
-		Nav:  ui.NavFor(l, here, ui.Screens{Decl: s.decl != "", Scope: s.scope != "", Survey: s.results != ""}),
+		Nav: ui.NavFor(l, here, ui.Screens{
+			Decl: s.decl != "", Scope: s.scope != "", Survey: s.results != "",
+			// 조회는 관측 결과가 있어야 볼 것이 있다. 원장과 정책은 있으면 절이 더 열린다.
+			Inventory: s.results != "",
+		}),
 		Lang: l, LangHref: ui.SwitchHref(r, l.Other()),
 		Message: r.URL.Query().Get("msg"), Problem: r.URL.Query().Get("problem"),
 	}
@@ -585,6 +593,112 @@ func renderDOT(dot string) string {
 	// `dot` 이 낸 SVG 다. 우리가 만든 DOT 에서 나온 것이라 밖에서 온 값이 아니다.
 	return string(out)
 }
+
+// ── 인벤토리 조회 ──────────────────────────────────────────────────────────
+
+// inventory — 찾아보는 자리. **절차의 한 걸음이 아니다.**
+//
+// 대조 화면은 지금 대조한 것을 전부 늘어놓는다 — 수천 대에서는 그 자체가 못 쓰는
+// 화면이다. 여기서는 좁혀 보고, 자산 하나의 판정 이력을 열고, 정책이 뺀 것과 근거가
+// 바뀐 판정을 본다. **전부 손에 든 파일에서 나온다.**
+func (s *server) inventory(w http.ResponseWriter, r *http.Request) {
+	if s.results == "" {
+		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
+		return
+	}
+	d, err := decl.Load(s.decl)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res, err := report.Build(s.results, d)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	l := ui.PickLang(r)
+	page := s.page(r, ui.ScreenInventory, sub(ui.LabelOrg(l)+" "+res.Org, ui.LabelResults(l)+" "+s.results))
+	v := ui.NewInventoryView(res, ui.FilterFrom(r.URL.Query()), page)
+
+	if v, err = s.withPolicy(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if v, err = s.withLedger(v, res, r.URL.Query().Get("subject")); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	html(w, func() error { return ui.RenderInventory(w, v) })
+}
+
+// withPolicy — 「안 보고 있는 것」. 확정된 정책 CSV 가 있어야 셀 수 있다.
+func (s *server) withPolicy(v ui.InventoryView) (ui.InventoryView, error) {
+	pol, err := scope.LoadPolicyFile(s.scopeOut)
+	if err != nil {
+		// **없는 것은 오류가 아니다.** 아직 정책을 확정하지 않았을 뿐이고, 화면은 그
+		// 절에서 무엇을 주면 열리는지 말한다.
+		if os.IsNotExist(err) {
+			return v, nil
+		}
+		return v, err
+	}
+	results, _, err := report.LoadResults(s.results)
+	if err != nil {
+		return v, err
+	}
+	// **명령(`pqcaton-scope review`)과 같은 계산이다.**
+	ex, err := scope.ExcludedFromResults(pol, results)
+	if err != nil {
+		return v, err
+	}
+	prior, err := s.ledger()
+	if err != nil {
+		return v, err
+	}
+	return v.WithUnseen(ex, scope.Review(ex, prior, time.Now().Unix(), defaultTTLDays*24*60*60)), nil
+}
+
+// withLedger — 판정 이력과 「근거가 바뀐 판정」.
+func (s *server) withLedger(v ui.InventoryView, res *report.Result, subject string) (ui.InventoryView, error) {
+	if s.judgments == "" {
+		return v, nil
+	}
+	all, err := s.ledger()
+	if err != nil {
+		return v, err
+	}
+	// 지금 관측이 만드는 근거. **명령의 delta 와 같은 계산이라야** 화면과 명령이 같은
+	// 것을 「바뀌었다」고 말한다.
+	basis := map[string]string{}
+	for _, rec := range res.Assets {
+		basis[review.Key(rec.Key)] = decision.HashBasis(string(rec.State), rec.Key.Runtime)
+	}
+	return v.WithLedger(all, basis, subject), nil
+}
+
+// ledger — 원장을 통째로 읽는다. 없으면 빈 목록이다.
+func (s *server) ledger() ([]decision.Judgment, error) {
+	if s.judgments == "" {
+		return nil, nil
+	}
+	store, err := decision.NewFileJudgmentStore(org.ID(s.org), s.judgments)
+	if err != nil {
+		return nil, err
+	}
+	saved, err := store.All()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]decision.Judgment, 0, len(saved))
+	for _, j := range saved {
+		out = append(out, *j)
+	}
+	return out, nil
+}
+
+// defaultTTLDays — 제외 승인의 유효기간. `pqcaton-scope` 와 같은 값이라야 화면과 명령이
+// 같은 것을 「오래됐다」고 말한다.
+const defaultTTLDays = 180
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
 

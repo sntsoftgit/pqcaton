@@ -3,16 +3,17 @@ package ui
 // 화면 주소. **이동 링크와 제목이 같은 값을 본다** — 문자열을 두 곳에 적으면 한쪽만
 // 옮겨지는 날 「지금 여기」 표시가 사라진다.
 const (
-	ScreenDecl   = "/decl"
-	ScreenScope  = "/scope"
-	ScreenSurvey = "/survey"
-	ScreenReview = "/review"
+	ScreenDecl      = "/decl"
+	ScreenScope     = "/scope"
+	ScreenSurvey    = "/survey"
+	ScreenReview    = "/review"
+	ScreenInventory = "/inventory"
 )
 
 // Screens — 재료를 받아 열린 화면들.
 //
 // **재료를 주지 않은 자리는 만들지 않는다** — 없는 것을 눌러 보게 하지 않는다.
-type Screens struct{ Decl, Scope, Survey bool }
+type Screens struct{ Decl, Scope, Survey, Inventory bool }
 
 // NavFor — 위쪽 이동 링크. **절차 순서로 둔다** — 선언 → 자산 스코프 → 대조 → 리뷰 큐.
 // 쓰는 사람이 다음에 무엇을 할지 순서 자체가 말해 준다.
@@ -33,6 +34,11 @@ func NavFor(l Lang, here string, s Screens) []Link {
 		links = append(links, Link{Href: ScreenSurvey, Text: tNavSurvey.In(l), Here: here == ScreenSurvey})
 	}
 	links = append(links, Link{Href: ScreenReview, Text: tNavReview.In(l), Here: here == ScreenReview})
+	// **번호를 붙이지 않는다.** 조회는 절차의 한 걸음이 아니라 아무 때나 들어오는
+	// 자리다 — 번호를 달면 ④ 다음에 해야 하는 일로 읽힌다.
+	if s.Inventory {
+		links = append(links, Link{Href: ScreenInventory, Text: tNavInventory.In(l), Here: here == ScreenInventory})
+	}
 	return links
 }
 
@@ -45,6 +51,8 @@ func ScreenTitle(here string, l Lang) string {
 		return tTitleScope.In(l)
 	case ScreenSurvey:
 		return tTitleSurvey.In(l)
+	case ScreenInventory:
+		return tTitleInventory.In(l)
 	}
 	return tTitleReview.In(l)
 }

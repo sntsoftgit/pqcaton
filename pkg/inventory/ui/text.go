@@ -347,3 +347,78 @@ var (
 			"To draw it without installing, save the source below and run " +
 			"<code>dot -Tsvg topology.dot -o topology.svg</code> anywhere."}
 )
+
+// ── 인벤토리 조회 ──────────────────────────────────────────────────────────
+var (
+	tNavInventory   = T{KO: "인벤토리", EN: "Inventory"}
+	tTitleInventory = T{KO: "인벤토리 조회", EN: "Inventory"}
+
+	tInventoryIntro = T{
+		KO: "지금 인벤토리에 <b>무엇이 있는지 찾아보는 자리</b>입니다. 절차의 한 걸음이 " +
+			"아니라, 아무 때나 들어와 좁혀 보는 곳입니다.",
+		EN: "This is where you <b>look up what is in the inventory right now</b>. " +
+			"Not a step in the procedure — somewhere to come and narrow things down at any time."}
+	tInventoryBounds = T{
+		KO: "<b>손에 든 파일에서만 봅니다</b> — 관측 결과 · 판정 원장 · 정책 CSV. " +
+			"스냅샷을 여러 벌 보관해 시간축으로 견주는 일은 여기서 하지 않습니다.",
+		EN: "<b>Only from the files at hand</b> — collected results, the judgment ledger, " +
+			"the policy CSV. Keeping many snapshots and comparing them over time is not done here."}
+
+	tSearch      = T{KO: "찾기", EN: "Search"}
+	tSearchQ     = T{KO: "아무 칸에나 걸립니다", EN: "matches any column"}
+	tSearchState = T{KO: "상태", EN: "State"}
+	tSearchAll   = T{KO: "전부", EN: "all"}
+	tSearchGo    = T{KO: "좁히기", EN: "Narrow"}
+	tSearchClear = T{KO: "지우기", EN: "Clear"}
+	tShowingOf   = T{KO: "%d개 중 <b>%d개</b>", EN: "<b>%d</b> of %d"}
+	tNoMatch     = T{KO: "걸린 것이 없습니다.", EN: "Nothing matched."}
+
+	tUnseen     = T{KO: "안 보고 있는 것", EN: "What is not being looked at"}
+	tUnseenNote = T{
+		KO: "자산 스코프가 뺀 것입니다", EN: "dropped by the asset scope"}
+	tUnseenHint = T{
+		KO: "<b>뺐다고 없어진 것이 아닙니다.</b> 지금도 관측되는 것에는 표시가 붙습니다 — " +
+			"승인이 없거나 오래된 것은 다시 봐야 합니다.",
+		EN: "<b>Dropped is not gone.</b> Anything still observed is marked — " +
+			"if the approval is missing or stale, it needs looking at again."}
+	tUnseenNone    = T{KO: "정책이 뺀 자산이 없습니다.", EN: "The policy drops nothing."}
+	tColStillSeen  = T{KO: "지금도 관측됨", EN: "Still observed"}
+	tColWhyAgain   = T{KO: "다시 볼 이유", EN: "Why look again"}
+	tReasonSettled = T{KO: "승인이 살아 있습니다", EN: "the approval is still valid"}
+	tReasonNever   = T{KO: "이 제외를 승인한 판정이 없습니다", EN: "no judgment ever approved this exclusion"}
+	tReasonStaleKO = T{KO: "승인한 지 오래됐습니다 — 빼둔 사이 달라졌을 수 있습니다", EN: "the approval is stale — things may have changed while it was set aside"}
+	tColEvidence   = T{KO: "관측 근거", EN: "Evidence"}
+
+	tStale     = T{KO: "근거가 바뀐 판정", EN: "Judgments whose basis changed"}
+	tStaleHint = T{
+		KO: "재관측 뒤 <b>근거가 달라진 판정</b>입니다. 전면 재리뷰가 아니라 이것만 " +
+			"다시 봅니다 — <code>pqcaton-decide delta</code> 와 같은 계산입니다.",
+		EN: "These are <b>judgments resting on a basis that changed</b> after re-collection. " +
+			"Not a full re-review — only these need looking at again, the same computation as " +
+			"<code>pqcaton-decide delta</code>."}
+	tStaleNone = T{KO: "근거가 바뀐 판정이 없습니다 — 관측이 그대로입니다.", EN: "No judgment's basis changed — the observation has not moved."}
+
+	tHistory     = T{KO: "판정 이력", EN: "Judgment history"}
+	tHistoryHint = T{
+		KO: "이 자산이 <b>언제 누구에 의해 무엇으로</b> 정해졌나. 원장은 덧붙이기만 하므로 " +
+			"고쳐 쓴 흔적이 남지 않습니다 — 아래가 그대로 그 기록입니다.",
+		EN: "<b>When, by whom, and as what</b> this asset was decided. The ledger is " +
+			"append-only, so nothing is overwritten — what is below is the record itself."}
+	tHistoryNone   = T{KO: "이 자산에 내려진 판정이 없습니다.", EN: "No judgment was ever recorded for this asset."}
+	tOpenHistory   = T{KO: "이력", EN: "history"}
+	tBackToAll     = T{KO: "전체로 돌아가기", EN: "Back to all"}
+	tColDecided    = T{KO: "판정 시각(UTC)", EN: "Decided at (UTC)"}
+	tColConclusion = T{KO: "결론", EN: "Conclusion"}
+	tColBasis      = T{KO: "근거 해시", EN: "Basis hash"}
+
+	tNoLedger = T{
+		KO: "판정 원장을 주지 않았습니다 — <code>-judgments</code> 로 지정하면 이력과 " +
+			"「근거가 바뀐 판정」이 열립니다.",
+		EN: "No judgment ledger was given — pass <code>-judgments</code> to open the history " +
+			"and the “basis changed” section."}
+	tNoPolicy = T{
+		KO: "정책 CSV를 주지 않았습니다 — <code>-scope-out</code>(확정된 정책)을 주면 " +
+			"「안 보고 있는 것」이 열립니다.",
+		EN: "No policy CSV was given — pass <code>-scope-out</code> (the finalized policy) " +
+			"to open “what is not being looked at”."}
+)

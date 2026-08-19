@@ -26,7 +26,6 @@ import (
 	"time"
 
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -182,16 +181,12 @@ func review(policyPath, dir, judgmentPath, orgName string, ttl int64) error {
 		return err
 	}
 
-	var ex []scope.Excluded
-	for _, res := range results {
-		node := res.GetEnvelope().GetTargetNodeId()
-		fs, err := normalize.DeriveFindings(res, "", "")
-		if err != nil {
-			return fmt.Errorf("%s: %w", node, err)
-		}
-		ex = append(ex, scope.ExcludedFrom(p, node, fs)...)
+	// **화면과 같은 계산이다.** 두 벌이면 화면에서 본 「안 보고 있는 것」과 여기 세는
+	// 것이 갈린다.
+	ex, err := scope.ExcludedFromResults(p, results)
+	if err != nil {
+		return err
 	}
-	sort.Slice(ex, func(i, j int) bool { return ex[i].Subject() < ex[j].Subject() })
 
 	var prior []decision.Judgment
 	if judgmentPath != "" {
@@ -218,6 +213,11 @@ func review(policyPath, dir, judgmentPath, orgName string, ttl int64) error {
 	// **뺀 것을 이름으로 낸다.** pqcota는 수만 세지만, 사고 뒤에 답하려면 이름이 있어야 한다.
 	for _, e := range ex {
 		fmt.Fprintf(os.Stderr, "   dropped: %s (%s)\n", e.Subject(), evidenceOrUnknown(e.Evidence))
+	}
+	// **왜 다시 보라는지 말한다.** JSON 에는 코드가 담기므로(화면이 그 말로 그린다),
+	// 사람이 읽는 줄은 여기서 낸다.
+	for _, n := range need {
+		fmt.Fprintf(os.Stderr, "   look again: %s — %s\n", n.Subject(), scope.EnglishReason(n.Reason))
 	}
 	return write(need)
 }
