@@ -1,4 +1,4 @@
-.PHONY: all check-licenses build test
+.PHONY: all check-licenses build test generate verify-generated
 
 all: check-licenses build test
 
@@ -12,3 +12,20 @@ build:
 
 test:
 	go test ./... -count=1
+
+# ── 화면 템플릿 ────────────────────────────────────────────────────────────
+#
+# templ 이 .templ 을 *_templ.go 로 옮긴다. **생성물을 리포에 함께 둔다** — 그래서
+# 빌드에는 생성기가 필요 없고, 이 리포를 `go get` 하는 쪽도 도구를 깔지 않는다.
+# 화면(.templ)을 고친 사람만 이것을 돌리고 결과를 함께 커밋한다.
+TEMPL := github.com/a-h/templ/cmd/templ@v0.3.1020
+
+generate:
+	go run $(TEMPL) generate
+
+# 고쳐 놓고 안 돌린 날을 잡는다. 그대로 두면 **화면은 예전 것이 뜨는데 소스는 새것**이라,
+# 무엇을 보고 있는지가 어긋난다. all 에 넣지 않은 것은 이것만 망을 타기 때문이다.
+verify-generated:
+	@go run $(TEMPL) generate
+	@git diff --exit-code -- '*_templ.go' \
+		|| { echo "✗ .templ 을 고치고 make generate 를 안 돌렸다 — 생성물을 함께 커밋할 것"; exit 1; }

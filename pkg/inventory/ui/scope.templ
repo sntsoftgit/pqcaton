@@ -1,0 +1,89 @@
+package ui
+
+import "strconv"
+
+// scopePage — 자산 스코프. **exclude 추가만 근거 필수**라, 그 무게 차이가 화면에 보여야 한다.
+templ scopePage(v ScopeView) {
+	@shell(v.Page) {
+		<p class="hint">
+			「이 자산은 안 본다」는 <b>사고 뒤에 근거를 대야 하는 결정</b>입니다.
+			계층은 준 순서대로 이기고(조직 · 환경 · 노드군), 바뀐 규칙만 올라옵니다.
+		</p>
+		<form method="post" action="/scope/finalize">
+			for _, g := range v.Layers {
+				<fieldset>
+					<legend>
+						{ g.Name }
+						<span class="n">
+							— 변경 { strconv.Itoa(len(g.Changes)) }건
+							if g.Audited > 0 {
+								, 근거 필수 { strconv.Itoa(g.Audited) }
+							}
+						</span>
+					</legend>
+					<label>
+						이 계층의 결론 <span class="hint">(적으면 아래 변경이 한 번에 판정됩니다)</span>
+						<input
+							type="text"
+							name={ "layer:" + g.Name }
+							value={ g.Conclusion }
+							placeholder="예: OS 패치로 관리하므로 인벤토리에서 뺀다"
+						/>
+					</label>
+					<table>
+						<tr><th style="width:4rem">변경</th><th>규칙</th><th>설명</th><th>개별 결론(예외)</th></tr>
+						for _, c := range g.Changes {
+							<tr>
+								<td class={ templ.KV("must", c.Audited) }>{ c.Kind }</td>
+								<td><code>{ c.Rule }</code></td>
+								<td class="hint">{ c.Note }</td>
+								<td><input type="text" name={ "change:" + c.ID } value={ c.Conclusion }/></td>
+							</tr>
+						}
+					</table>
+				</fieldset>
+			}
+			if len(v.Layers) == 0 {
+				<p>바뀐 규칙이 없습니다 — 승인할 것이 없습니다.</p>
+			}
+			<fieldset>
+				<legend>승인</legend>
+				<p class="hint">
+					계층마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤,
+					<b>확정</b>하면 정책이 나갑니다. 셋이 다 있어야 통과합니다.
+				</p>
+				<label>승인자 <input type="text" name="reviewer" value={ v.Session.Reviewer }/></label>
+				<label style="display:block;margin-top:.6rem">서명 <input type="text" name="signature" value={ v.Session.Signature }/></label>
+			</fieldset>
+			<fieldset>
+				<legend>확정될 정책 <span class="n">— 전문 { strconv.Itoa(len(v.Session.Merged)) }줄</span></legend>
+				<p class="hint">
+					<b>바뀐 것만 리뷰하되 나가는 것은 전문입니다</b> — pqcota의 집행기는 정책 전체를 받습니다.
+				</p>
+				<table>
+					<tr>
+						<th style="width:6rem">action</th><th style="width:6rem">runtime</th>
+						<th>lib</th><th>app_key</th><th>note</th>
+					</tr>
+					for _, r := range v.Session.Merged {
+						<tr>
+							<td class={ templ.KV("must", r.Action == "exclude") }>{ r.Action }</td>
+							<td>{ r.Runtime }</td>
+							<td><code>{ r.Lib }</code></td>
+							<td><code>{ r.AppKey }</code></td>
+							<td class="hint">{ r.Note }</td>
+						</tr>
+					}
+				</table>
+			</fieldset>
+			<div class="actions">
+				<button formaction="/scope/save">저장만</button>
+				<button formaction="/scope/finalize" class="primary">확정하고 정책 내기</button>
+			</div>
+			<p class="hint">
+				확정은 <code>pqcaton-scope close</code> 와 같은 게이트를 탑니다. 나온 CSV 가
+				<code>pqcota-ingest -scope-assets</code> 의 입력입니다.
+			</p>
+		</form>
+	}
+}

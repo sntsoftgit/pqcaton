@@ -6,12 +6,16 @@
 //
 // 화면을 명령 안에 두면 고칠 곳이 둘이 되고, 고객마다 다른 화면이 생길 길이 열린다.
 //
-// **자바스크립트가 없다.** 폼과 링크만으로 되는 일이라 넣지 않았다. 의존성도 없다 —
-// `html/template` 만 쓴다.
+// 템플릿은 templ 로 쓰고 생성된 `*_templ.go` 를 리포에 함께 둔다 — **빌드에 생성기가
+// 필요하지 않다.** 화면을 고치는 사람만 `make generate` 를 돌린다.
+//
+// 자바스크립트는 htmx 한 파일뿐이고 바이너리에 박혀 나간다. 쓰는 자리는 「행 추가」처럼
+// **페이지를 다시 띄우면 적던 것이 날아가는 자리**로 한정한다 — 화면의 뼈대는 여전히
+// 폼과 링크라, 스크립트가 막힌 환경에서도 읽고 고칠 수 있다.
 package ui
 
 import (
-	"html/template"
+	"context"
 	"io"
 	"net/url"
 	"sort"
@@ -93,7 +97,9 @@ func NewReviewView(sf review.Session, page Page) ReviewView {
 }
 
 // RenderReview — 리뷰 큐 화면을 쓴다.
-func RenderReview(w io.Writer, v ReviewView) error { return reviewPage.Execute(w, v) }
+func RenderReview(w io.Writer, v ReviewView) error {
+	return reviewPage(v).Render(context.Background(), w)
+}
 
 // ApplyReview — 폼에서 온 값을 세션에 얹는다.
 //
@@ -137,7 +143,17 @@ func NewDeclView(d decl.Declaration, page Page) DeclView {
 }
 
 // RenderDecl — 선언 편집 화면을 쓴다.
-func RenderDecl(w io.Writer, v DeclView) error { return declPage.Execute(w, v) }
+func RenderDecl(w io.Writer, v DeclView) error {
+	return declPage(v).Render(context.Background(), w)
+}
+
+// RenderRow — 「행 추가」가 돌려주는 조각: 빈 줄 하나와, 번호가 하나 오른 버튼.
+//
+// **화면과 같은 조각을 쓴다**(decl.templ 의 nodeRow 들). 폼 이름이 곧 저장 경로라, 두
+// 벌이 되면 새로 넣은 줄만 조용히 저장되지 않는다.
+func RenderRow(w io.Writer, kind string, i int) error {
+	return rowFragment(kind, i).Render(context.Background(), w)
+}
 
 // ApplyDecl — 폼에서 온 값으로 선언을 다시 만든다.
 //
@@ -227,14 +243,3 @@ func splitList(s string) []string {
 	}
 	return out
 }
-
-// Seq — 템플릿이 빈 줄을 반복하는 데 쓴다. html/template 에는 반복 구문이 없다.
-func Seq(n int) []int {
-	out := make([]int, n)
-	for i := range out {
-		out[i] = i
-	}
-	return out
-}
-
-var funcs = template.FuncMap{"seq": Seq, "add": func(a, b int) int { return a + b }}

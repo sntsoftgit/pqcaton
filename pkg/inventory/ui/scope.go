@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"io"
 	"net/url"
 	"sort"
@@ -54,7 +55,9 @@ func NewScopeView(sf scope.Session, page Page) ScopeView {
 }
 
 // RenderScope — 자산 스코프 화면을 쓴다.
-func RenderScope(w io.Writer, v ScopeView) error { return scopePage.Execute(w, v) }
+func RenderScope(w io.Writer, v ScopeView) error {
+	return scopePage(v).Render(context.Background(), w)
+}
 
 // ApplyScope — 폼에서 온 값을 세션에 얹는다. **받은 세션을 고쳐서 돌려준다** — 부르는 쪽이
 // 방금 읽어 온 것에 얹으므로 그 사이 파일을 고친 사람의 편집이 사라지지 않는다.

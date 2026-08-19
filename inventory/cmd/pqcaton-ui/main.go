@@ -11,7 +11,9 @@
 // **탭 순서가 절차 순서다** — 선언 → 스코프 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을
 // 할지 화면이 말해 준다. 재료를 주지 않은 자리는 만들지 않는다.
 //
-// **의존성이 없다.** net/http 와 html/template 만 쓴다 — 링크되는 모듈이 늘지 않는다.
+// **라우팅은 chi, 화면은 templ, 부분 갱신은 htmx 다.** 셋 다 허용적 라이선스이고
+// 링크되는 모듈은 둘만 는다(전이 의존이 없다). htmx 는 바이너리에 박혀 나가므로 망이
+// 끊긴 기계에서도 그대로 뜬다 — 그리고 우리 라이선스 게이트가 그 파일까지 본다.
 //
 // **기본은 127.0.0.1 이다.** 리뷰 큐에는 어느 노드가 무엇을 쓰는지가 그대로 있다 — 곧 그
 // 조직의 공격면이다. 밖으로 열려면 -addr 를 명시적으로 바꿔야 하고 그때 경고한다.
@@ -23,13 +25,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	"html/template"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -94,8 +99,7 @@ func main() {
 	}
 	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath,
 		judgments: *judgments, org: *orgName, planOut: *planOut, scopeOut: *scopeOut}
-	mux := http.NewServeMux()
-	s.routes(mux)
+	h := s.handler()
 
 	if !loopback(*addr) {
 		// **조용히 열지 않는다.** 리뷰 큐는 그 조직의 공격면이다.
@@ -107,7 +111,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, " · 선언 %s", *declPath)
 	}
 	fmt.Fprintln(os.Stderr, ")")
-	if err := http.ListenAndServe(*addr, mux); err != nil {
+	if err := http.ListenAndServe(*addr, h); err != nil {
 		fmt.Fprintln(os.Stderr, "❌", err)
 		os.Exit(1)
 	}
@@ -151,26 +155,38 @@ type server struct {
 	scopeOut  string
 }
 
-func (s *server) routes(mux *http.ServeMux) {
+// handler — 주소와 처리기를 잇는다.
+//
+// **메서드를 라우터가 가른다.** 예전에는 처리기마다 `POST 인가`를 손으로 물었고, 그
+// 물음을 빠뜨린 자리는 GET 으로도 확정이 돌 수 있었다 — 새로고침 한 번에 확정이 다시
+// 타는 길이다. 여기서는 `r.Post` 로 등록하지 않은 주소에 POST 가 닿지 않는다.
+//
+// Recoverer 를 두는 이유: 화면 하나가 터져도 나머지 절차는 계속 다뤄야 한다. 리뷰 중에
+// 서버가 죽으면 적던 판정이 통째로 날아간다.
+func (s *server) handler() http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+
+	// 화면이 브라우저로 내보내는 것(스타일 · htmx). 바이너리에 박혀 있다.
+	r.Handle(ui.StaticPath+"*", ui.Static())
+
 	// **첫 화면은 절차의 첫 자리다.** 선언이 있으면 거기서 시작하고, 없으면 리뷰 큐다.
-	mux.HandleFunc("/", s.home)
-	mux.HandleFunc("/decl", s.declEdit)
-	mux.HandleFunc("/decl/save", s.declSave)
-	mux.HandleFunc("/scope", s.scopeEdit)
-	mux.HandleFunc("/scope/save", s.scopeSave)
-	mux.HandleFunc("/scope/finalize", s.scopeFinalize)
-	mux.HandleFunc("/survey", s.survey)
-	mux.HandleFunc("/review", s.review)
-	mux.HandleFunc("/save", s.save)
-	mux.HandleFunc("/finalize", s.finalize)
+	r.Get("/", s.home)
+	r.Get("/decl", s.declEdit)
+	r.Get(ui.RowPath, s.declRow)
+	r.Post("/decl/save", s.declSave)
+	r.Get("/scope", s.scopeEdit)
+	r.Post("/scope/save", s.scopeSave)
+	r.Post("/scope/finalize", s.scopeFinalize)
+	r.Get("/survey", s.survey)
+	r.Get("/review", s.review)
+	r.Post("/save", s.save)
+	r.Post("/finalize", s.finalize)
+	return r
 }
 
 // home — 절차의 첫 자리로 보낸다.
 func (s *server) home(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
 	to := "/review"
 	if s.decl != "" {
 		to = "/decl"
@@ -236,9 +252,6 @@ func (s *server) applyReview(r *http.Request) (review.Session, error) {
 }
 
 func (s *server) save(w http.ResponseWriter, r *http.Request) {
-	if !post(w, r) {
-		return
-	}
 	if _, err := s.applyReview(r); err != nil {
 		redirect(w, r, "/review", "", err.Error())
 		return
@@ -248,9 +261,6 @@ func (s *server) save(w http.ResponseWriter, r *http.Request) {
 
 // finalize — **명령과 같은 게이트를 탄다.** 여기서 따로 판정하지 않는다.
 func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
-	if !post(w, r) {
-		return
-	}
 	sf, err := s.applyReview(r)
 	if err != nil {
 		redirect(w, r, "/review", "", err.Error())
@@ -314,9 +324,6 @@ func (s *server) applyScope(r *http.Request) (scope.Session, error) {
 }
 
 func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
-	if !post(w, r) {
-		return
-	}
 	if s.scope == "" {
 		http.Error(w, "스코프 세션을 주지 않았습니다", http.StatusNotFound)
 		return
@@ -330,9 +337,6 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 
 // scopeFinalize — **명령과 같은 게이트를 탄다.**
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
-	if !post(w, r) {
-		return
-	}
 	if s.scope == "" {
 		http.Error(w, "스코프 세션을 주지 않았습니다", http.StatusNotFound)
 		return
@@ -400,7 +404,7 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 //
 // **의존성이 아니라 있으면 좋은 것이다.** 없다고 화면이 깨지면 표준 라이브러리만 쓴다는
 // 약속이 무의미해진다.
-func renderDOT(dot string) template.HTML {
+func renderDOT(dot string) string {
 	bin, err := exec.LookPath("dot")
 	if err != nil {
 		return ""
@@ -412,7 +416,7 @@ func renderDOT(dot string) template.HTML {
 		return ""
 	}
 	// `dot` 이 낸 SVG 다. 우리가 만든 DOT 에서 나온 것이라 밖에서 온 값이 아니다.
-	return template.HTML(out)
+	return string(out)
 }
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
@@ -431,10 +435,36 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 	html(w, func() error { return ui.RenderDecl(w, v) })
 }
 
-func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
-	if !post(w, r) {
+// declRow — 「행 추가」. 빈 줄 하나와, 번호가 하나 오른 버튼을 돌려준다.
+//
+// **페이지를 다시 띄우지 않는 이유가 전부다** — 다시 띄우면 아직 저장하지 않은 편집이
+// 날아간다. 줄이 몇 개 필요한지는 쓰기 전에는 알 수 없으니, 미리 열어 둔 빈 줄로는
+// 모자란 날이 온다.
+//
+// 번호는 밖에서 오는 값이라 받는 대로 믿지 않는다.
+func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
+	if s.decl == "" {
+		http.Error(w, "선언 파일을 주지 않았습니다", http.StatusNotFound)
 		return
 	}
+	kind := r.URL.Query().Get("kind")
+	if !ui.ValidKind(kind) {
+		http.Error(w, "모르는 표입니다: "+kind, http.StatusBadRequest)
+		return
+	}
+	i, err := strconv.Atoi(r.URL.Query().Get("i"))
+	if err != nil || i < 0 || i > maxRows {
+		http.Error(w, "줄 번호가 범위 밖입니다", http.StatusBadRequest)
+		return
+	}
+	html(w, func() error { return ui.RenderRow(w, kind, i) })
+}
+
+// maxRows — 한 표에 열어 줄 줄 수의 상한. 사람이 화면에서 손으로 넣는 자리라 이보다
+// 많아질 일이 없다. 많다면 파일을 만들어 넣을 일이다.
+const maxRows = 10000
+
+func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 	if s.decl == "" {
 		http.Error(w, "선언 파일을 주지 않았습니다", http.StatusNotFound)
 		return
@@ -463,14 +493,6 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 }
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
-
-func post(w http.ResponseWriter, r *http.Request) bool {
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST 만 받는다", http.StatusMethodNotAllowed)
-		return false
-	}
-	return true
-}
 
 // redirect — POST 뒤에는 GET 으로 보낸다. 새로고침이 같은 확정을 다시 태우지 않게 한다.
 func redirect(w http.ResponseWriter, r *http.Request, to, msg, problem string) {

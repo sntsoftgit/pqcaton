@@ -1,0 +1,149 @@
+package ui
+
+import (
+	"strconv"
+	"strings"
+)
+
+// declPage — 선언 편집. **틀린 자리를 위에 먼저 보여 준다** — 저장은 막지 않되, 그대로
+// 두면 대조가 조용히 틀린다는 것을 사람이 알아야 한다.
+templ declPage(v DeclView) {
+	@shell(v.Page) {
+		if len(v.Problems) > 0 {
+			<div class="warn-list">
+				<strong>선언이 앞뒤가 맞지 않는 자리 { strconv.Itoa(len(v.Problems)) }곳</strong>
+				<p class="hint">저장은 됩니다. 다만 그대로 두면 대조 결과가 <b>오류 없이 틀립니다.</b></p>
+				<ul>
+					for _, p := range v.Problems {
+						<li><code>{ p.Where }</code> — { p.What }<br/><span class="hint">{ p.Why }</span></li>
+					}
+				</ul>
+			</div>
+		}
+		<form method="post" action="/decl/save">
+			<fieldset>
+				<legend>조직</legend>
+				<p class="hint">대조 엔진이 이 값으로 열립니다. 비우면 <code>local</code> 입니다.</p>
+				<input type="text" name="org" value={ v.Decl.Org } placeholder="local"/>
+			</fieldset>
+			<fieldset>
+				<legend>관리 대상 노드 <span class="n">— 어느 노드를 볼 것인가</span></legend>
+				<p class="hint">
+					한 줄에 하나. 여기 없는 상대와의 통신은 「등재 판정 요청」으로 표기됩니다.
+					<b>노드 안에서 무엇을 볼지</b>는 「자산 스코프」 탭에서 정합니다.
+				</p>
+				<textarea name="scope">{ strings.Join(v.Decl.Scope, "\n") }</textarea>
+			</fieldset>
+			<fieldset>
+				<legend>노드 주소 <span class="n">— 관측 IP를 노드 이름으로 잇는 근거</span></legend>
+				<p class="hint">
+					한 노드가 망 둘에 걸치면 IP도 둘입니다. 쉼표나 공백으로 나눠 적으십시오.
+					이름을 비우면 그 줄은 지워집니다.
+				</p>
+				<table>
+					<thead><tr><th style="width:14rem">이름</th><th>IP</th></tr></thead>
+					<tbody id={ rowsID(KindNode) }>
+						for i, n := range v.Decl.Nodes {
+							@nodeRow(i, n.Name, strings.Join(n.IPs, ", "))
+						}
+						for j := 0; j < v.Blank; j++ {
+							@nodeRow(len(v.Decl.Nodes)+j, "", "")
+						}
+					</tbody>
+				</table>
+				@addRow(KindNode, len(v.Decl.Nodes)+v.Blank, false)
+			</fieldset>
+			<fieldset>
+				<legend>자산 <span class="n">— 「이 노드에서 이것을 쓴다」</span></legend>
+				<table>
+					<thead><tr><th style="width:12rem">노드</th><th style="width:8rem">런타임</th><th>컴포넌트</th></tr></thead>
+					<tbody id={ rowsID(KindAsset) }>
+						for i, a := range v.Decl.Assets {
+							@assetRow(i, a.Node, a.Runtime, a.Component)
+						}
+						for j := 0; j < v.Blank; j++ {
+							@assetRow(len(v.Decl.Assets)+j, "", "", "")
+						}
+					</tbody>
+				</table>
+				@addRow(KindAsset, len(v.Decl.Assets)+v.Blank, false)
+			</fieldset>
+			<fieldset>
+				<legend>통신 엣지 <span class="n">— 「이 노드가 저 노드와 이렇게 통신한다」</span></legend>
+				<table>
+					<thead>
+						<tr><th style="width:11rem">보내는 쪽</th><th style="width:11rem">받는 쪽</th><th style="width:6rem">포트</th><th>프로토콜</th></tr>
+					</thead>
+					<tbody id={ rowsID(KindEdge) }>
+						for i, e := range v.Decl.Edges {
+							@edgeRow(i, e.Src, e.Dst, portText(e.Port), e.Proto)
+						}
+						for j := 0; j < v.Blank; j++ {
+							@edgeRow(len(v.Decl.Edges)+j, "", "", "", "")
+						}
+					</tbody>
+				</table>
+				@addRow(KindEdge, len(v.Decl.Edges)+v.Blank, false)
+			</fieldset>
+			<div class="actions"><button class="primary">저장</button></div>
+			<p class="hint">저장하면 <code>pqcaton-report</code> 가 읽는 그 파일에 그대로 씁니다.</p>
+		</form>
+	}
+}
+
+// nodeRow · assetRow · edgeRow — 표의 한 줄.
+//
+// **화면과 「행 추가」가 같은 조각을 쓴다.** 두 벌이면 이름이 어긋나는 날이 오고, 그러면
+// 새로 넣은 줄만 조용히 저장되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
+templ nodeRow(i int, name, ips string) {
+	<tr>
+		<td><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ name }/></td>
+		<td><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ ips }/></td>
+	</tr>
+}
+
+templ assetRow(i int, node, runtime, component string) {
+	<tr>
+		<td><input type="text" name={ "asset.node." + strconv.Itoa(i) } value={ node }/></td>
+		<td><input type="text" name={ "asset.runtime." + strconv.Itoa(i) } value={ runtime } placeholder="openssl | jca"/></td>
+		<td><input type="text" name={ "asset.component." + strconv.Itoa(i) } value={ component }/></td>
+	</tr>
+}
+
+templ edgeRow(i int, src, dst, port, proto string) {
+	<tr>
+		<td><input type="text" name={ "edge.src." + strconv.Itoa(i) } value={ src }/></td>
+		<td><input type="text" name={ "edge.dst." + strconv.Itoa(i) } value={ dst }/></td>
+		<td><input type="text" name={ "edge.port." + strconv.Itoa(i) } value={ port }/></td>
+		<td><input type="text" name={ "edge.proto." + strconv.Itoa(i) } value={ proto } placeholder="TLS | SSH"/></td>
+	</tr>
+}
+
+// addRow — 「행 추가」 버튼. 다음에 쓸 번호를 자기 주소에 들고 있다.
+//
+// 번호가 촘촘해야 한다 — `ApplyDecl` 은 번호가 끊기는 자리에서 읽기를 멈추므로, 건너뛴
+// 줄 뒤의 것은 **오류 없이 저장되지 않는다.** 그래서 서버가 다음 번호를 쥐고, 줄을 하나
+// 내줄 때마다 이 버튼을 자기 자신으로 갈아 끼운다(`hx-swap-oob`).
+templ addRow(kind string, next int, oob bool) {
+	<div class="addrow" id={ "add-" + kind } { oobAttr(oob)... }>
+		<button
+			type="button"
+			hx-get={ RowPath + "?kind=" + kind + "&i=" + strconv.Itoa(next) }
+			hx-target={ "#" + rowsID(kind) }
+			hx-swap="beforeend"
+		>행 추가</button>
+	</div>
+}
+
+// rowFragment — 「행 추가」가 돌려주는 것: 새 줄 하나와, 번호가 하나 오른 버튼.
+templ rowFragment(kind string, i int) {
+	switch kind {
+		case KindNode:
+			@nodeRow(i, "", "")
+		case KindAsset:
+			@assetRow(i, "", "", "")
+		case KindEdge:
+			@edgeRow(i, "", "", "", "")
+	}
+	@addRow(kind, i+1, true)
+}

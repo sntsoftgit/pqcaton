@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"html/template"
+	"context"
 	"io"
 	"sort"
 
@@ -27,8 +27,9 @@ type SurveyView struct {
 
 	// DOT — 토폴로지 원문. `dot` 이 없는 기계에서도 **무엇을 그리려 했는지는 보여 준다.**
 	DOT string
-	// SVG — 그려진 토폴로지. `dot` 이 있으면 채운다.
-	SVG template.HTML
+	// SVG — 그려진 토폴로지. `dot` 이 있으면 채운다. 우리가 만든 DOT 에서 `dot` 이
+	// 낸 것이라 밖에서 온 값이 아니다 — 그래서 그대로 내보낸다.
+	SVG string
 }
 
 // AssetRow — 자산 한 줄.
@@ -106,4 +107,6 @@ func posture(p discoveryv1.QuantumPosture) (mark, grade string) {
 }
 
 // RenderSurvey — 대조 결과 화면을 쓴다.
-func RenderSurvey(w io.Writer, v SurveyView) error { return surveyPage.Execute(w, v) }
+func RenderSurvey(w io.Writer, v SurveyView) error {
+	return surveyPage(v).Render(context.Background(), w)
+}

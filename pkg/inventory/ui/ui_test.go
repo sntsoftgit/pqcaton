@@ -1,6 +1,9 @@
 package ui_test
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -175,5 +178,101 @@ func TestApplyScope(t *testing.T) {
 	}
 	if got.LayerDecisions["corp"] != "뺀다" || got.Changes[0].Conclusion != "예외로 둔다" {
 		t.Errorf("판정이 안 얹혔다: %+v", got)
+	}
+}
+
+// IC-UI9 — **「행 추가」가 내는 줄과 화면이 그리는 줄이 같은 폼 이름을 쓴다.**
+//
+// 폼 이름이 곧 저장 경로입니다. 두 벌이 되어 어긋나면 화면은 멀쩡히 그려지고 새로 넣은
+// 줄만 조용히 저장되지 않습니다 — 오류도 나지 않습니다. 그래서 같은 조각을 쓰는지 잰다.
+func TestAddedRowUsesSameFormNames(t *testing.T) {
+	for _, tc := range []struct {
+		kind string
+		want []string
+	}{
+		{ui.KindNode, []string{`name="node.name.7"`, `name="node.ips.7"`}},
+		{ui.KindAsset, []string{`name="asset.node.7"`, `name="asset.runtime.7"`, `name="asset.component.7"`}},
+		{ui.KindEdge, []string{`name="edge.src.7"`, `name="edge.dst.7"`, `name="edge.port.7"`, `name="edge.proto.7"`}},
+	} {
+		var b strings.Builder
+		if err := ui.RenderRow(&b, tc.kind, 7); err != nil {
+			t.Fatal(err)
+		}
+		for _, w := range tc.want {
+			if !strings.Contains(b.String(), w) {
+				t.Errorf("%s: 새 줄에 %q 가 없다", tc.kind, w)
+			}
+		}
+	}
+}
+
+// IC-UI10 — **새 줄을 내줄 때마다 다음 번호가 하나 오른다.**
+//
+// `ApplyDecl` 은 번호가 끊기는 자리에서 읽기를 멈춥니다. 버튼이 같은 번호를 계속 주면
+// 새 줄이 앞의 것을 덮고, 번호를 건너뛰면 그 뒤가 통째로 저장되지 않습니다 — 둘 다
+// 오류 없이 틀리는 자리입니다.
+func TestAddedRowAdvancesTheButton(t *testing.T) {
+	var b strings.Builder
+	if err := ui.RenderRow(&b, ui.KindNode, 7); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	if !strings.Contains(body, "i=8") {
+		t.Errorf("다음 번호가 8이 아니다:\n%s", body)
+	}
+	if !strings.Contains(body, "hx-swap-oob") {
+		t.Error("버튼이 자기 자신을 갈아 끼우지 않는다 — 다음 줄이 같은 번호로 나온다")
+	}
+}
+
+// IC-UI11 — **모르는 표는 받지 않는다.** 주소는 밖에서 오는 값이다.
+func TestValidKindRefusesUnknown(t *testing.T) {
+	for _, k := range []string{ui.KindNode, ui.KindAsset, ui.KindEdge} {
+		if !ui.ValidKind(k) {
+			t.Errorf("%q 를 막았다", k)
+		}
+	}
+	for _, k := range []string{"", "policy", "node ", "NODE", "../etc"} {
+		if ui.ValidKind(k) {
+			t.Errorf("%q 를 통과시켰다", k)
+		}
+	}
+}
+
+// IC-UI12 — **스타일과 htmx 는 같은 바이너리에서 나온다.**
+//
+// CDN 을 걸면 망이 끊긴 기계에서 화면이 깨지고, 남의 서버에서 오는 스크립트는 우리
+// 라이선스 게이트가 볼 수도 없습니다. 이 리포를 쓰는 곳에서 바깥으로 못 나가는 망은
+// 예외가 아니라 흔한 조건입니다.
+func TestStaticIsServedFromTheBinary(t *testing.T) {
+	srv := httptest.NewServer(ui.Static())
+	defer srv.Close()
+
+	for _, name := range []string{"htmx.min.js", "app.css"} {
+		res, err := http.Get(srv.URL + ui.StaticPath + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("%s: %d", name, res.StatusCode)
+		}
+		if len(body) == 0 {
+			t.Errorf("%s 가 비었다", name)
+		}
+	}
+}
+
+// IC-UI13 — 화면이 그 둘을 실제로 부른다. 박아 두고 부르지 않으면 아무 일도 일어나지 않는다.
+func TestPageLoadsStatic(t *testing.T) {
+	var b strings.Builder
+	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언"})); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{ui.StaticPath + "app.css", ui.StaticPath + "htmx.min.js"} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("화면이 %q 를 부르지 않는다", want)
+		}
 	}
 }

@@ -1,0 +1,68 @@
+package ui
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// reviewPage — 리뷰 큐. 정책으로 묶고, 정책마다 결론 칸 하나를 준다.
+templ reviewPage(v ReviewView) {
+	@shell(v.Page) {
+		<form method="post">
+			for _, g := range v.Policies {
+				<fieldset>
+					<legend>
+						{ g.Name }
+						<span class="n">
+							— 항목 { strconv.Itoa(len(g.Items)) }개
+							if g.Mandatory > 0 {
+								, 필수 { strconv.Itoa(g.Mandatory) }
+							}
+						</span>
+					</legend>
+					<label>
+						이 정책의 결론 <span class="hint">(적으면 아래 항목이 한 번에 판정됩니다)</span>
+						<input type="text" name={ "policy:" + g.Name } value={ g.Conclusion } placeholder="예: PQC 라이브러리로 교체한다"/>
+					</label>
+					<table>
+						<tr><th>대상</th><th>상태</th><th>확신</th><th>계획</th><th>개별 결론(예외)</th></tr>
+						for _, it := range g.Items {
+							<tr>
+								<td>
+									<code>{ it.ID }</code>
+									if it.Rescan {
+										<span class="hint">재수집 후보</span>
+									}
+								</td>
+								<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
+								<td>{ fmt.Sprintf("%.2f", it.Conf) }</td>
+								<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan }/></td>
+								<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
+							</tr>
+						}
+					</table>
+				</fieldset>
+			}
+			if len(v.Policies) == 0 {
+				<p>판정할 것이 없습니다.</p>
+			}
+			if v.Autopass > 0 {
+				<p class="hint">자동통과 후보 { strconv.Itoa(v.Autopass) }개는 판정 대상이 아닙니다.</p>
+			}
+			<fieldset>
+				<legend>승인</legend>
+				<p class="hint">
+					정책마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤,
+					<b>확정</b>하면 계획이 나갑니다. 셋이 다 있어야 통과합니다.
+				</p>
+				<label>승인자 <input type="text" name="reviewer" value={ v.Reviewer }/></label>
+				<label style="display:block;margin-top:.6rem">서명 <input type="text" name="signature" value={ v.Signature }/></label>
+			</fieldset>
+			<div class="actions">
+				<button formaction="/save">저장만</button>
+				<button formaction="/finalize" class="primary">확정하고 계획 내기</button>
+			</div>
+			<p class="hint">확정은 <code>pqcaton-decide close</code> 와 같은 게이트를 탑니다 — 필수 항목의 결론과 서명이 모두 있어야 통과합니다.</p>
+		</form>
+	}
+}

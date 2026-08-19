@@ -1,0 +1,46 @@
+/* pqcaton 화면 — 이 리포가 쓴 것. 라이선스는 리포와 같다(BUSL-1.1).
+   화면 넷이 같은 껍데기를 쓴다. 화면마다 다르게 생기면 쓰는 사람이 다른
+   프로그램으로 여긴다. */
+
+:root { color-scheme: light dark; --line:#8883; --warn:#b3261e; --ok:#146c2e; --dim:#7a7a7a; }
+body { font: 15px/1.6 system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+       max-width: 64rem; margin: 2rem auto; padding: 0 1rem; }
+h1 { font-size: 1.3rem; margin-bottom: .2rem; }
+h2 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+.sub { color: var(--dim); margin-top: 0; }
+nav { display: flex; gap: .8rem; margin: 0 0 1.2rem; padding-bottom: .6rem;
+      border-bottom: 1px solid var(--line); font-size: .9rem; }
+nav a { color: inherit; text-decoration: none; opacity: .65; }
+nav a.here { opacity: 1; font-weight: 600; }
+fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 1rem 0; padding: 1rem; }
+legend { font-weight: 600; padding: 0 .4rem; }
+legend .n { font-weight: 400; color: var(--dim); }
+input[type=text], textarea { width: 100%; padding: .45rem .6rem; border: 1px solid var(--line);
+       border-radius: 6px; background: transparent; color: inherit; font: inherit; }
+textarea { min-height: 5rem; }
+table { border-collapse: collapse; width: 100%; margin-top: .7rem; }
+th, td { text-align: left; padding: .35rem .5rem; border-top: 1px solid var(--line); font-size: .9rem; }
+th { color: var(--dim); font-weight: 500; }
+td input[type=text] { padding: .3rem .45rem; }
+.must { color: var(--warn); font-weight: 600; }
+.msg { padding: .7rem 1rem; border-radius: 8px; border: 1px solid var(--line); }
+.msg.ok { border-color: var(--ok); }
+.msg.bad { border-color: var(--warn); }
+pre { white-space: pre-wrap; margin: .4rem 0 0; font-size: .85rem; }
+.actions { display: flex; gap: .6rem; margin-top: 1.2rem; }
+button { font: inherit; padding: .5rem 1rem; border-radius: 6px; border: 1px solid var(--line);
+         background: transparent; color: inherit; cursor: pointer; }
+button.primary { border-color: var(--ok); font-weight: 600; }
+.hint { color: var(--dim); font-size: .85rem; }
+.warn-list { border: 1px solid var(--warn); border-radius: 8px; padding: .6rem 1rem; margin: 1rem 0; }
+.warn-list li { margin: .35rem 0; font-size: .9rem; }
+.warn-list code { color: var(--dim); }
+
+/* 행 추가 — htmx 가 서버에서 받은 빈 줄을 표 끝에 붙인다. 페이지가 다시 뜨지 않으므로
+   적던 내용이 그대로 남는다. 이 버튼이 없어도(JS 를 못 쓰는 환경) 표는 읽고 고칠 수
+   있어야 한다 — 그래서 기존 행은 폼 그대로다. */
+.addrow { margin-top: .5rem; }
+.addrow button { font-size: .85rem; padding: .3rem .7rem; }
+tr.htmx-added td { animation: settle .5s ease-out; }
+@keyframes settle { from { background: color-mix(in srgb, var(--ok) 12%, transparent); } }
+@media (prefers-reduced-motion: reduce) { tr.htmx-added td { animation: none; } }

@@ -1,0 +1,39 @@
+package ui
+
+// shell — 화면 넷이 쓰는 같은 껍데기.
+//
+// **머리글·이동 링크·알림 상자가 화면마다 달라지면 쓰는 사람이 다른 프로그램으로 여긴다.**
+// 그래서 한 자리에 두고, 화면은 가운데 내용만 채운다.
+//
+// 스타일과 htmx 는 `/static/` 에서 받는다 — 둘 다 바이너리에 박혀 나가므로 망이 없는
+// 기계에서도 그대로 뜬다.
+templ shell(p Page) {
+	<!DOCTYPE html>
+	<html lang="ko">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ p.Title } — pqcaton</title>
+			<link rel="stylesheet" href={ StaticPath + "app.css" }/>
+			<script src={ StaticPath + "htmx.min.js" } defer></script>
+		</head>
+		<body>
+			<h1>{ p.Title }</h1>
+			<p class="sub">{ p.Subtitle }</p>
+			if len(p.Nav) > 0 {
+				<nav>
+					for _, l := range p.Nav {
+						<a href={ templ.SafeURL(l.Href) } class={ templ.KV("here", l.Here) }>{ l.Text }</a>
+					}
+				</nav>
+			}
+			if p.Message != "" {
+				<p class="msg ok">{ p.Message }</p>
+			}
+			if p.Problem != "" {
+				<div class="msg bad"><strong>하지 않았습니다.</strong><pre>{ p.Problem }</pre></div>
+			}
+			{ children... }
+		</body>
+	</html>
+}
