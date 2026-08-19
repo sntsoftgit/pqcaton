@@ -256,3 +256,61 @@ var surveyPage = template.Must(template.New("survey").Funcs(funcs).Parse(shell +
  {{end}}
 </fieldset>
 {{template "foot"}}`))
+
+// scopePage — 자산 스코프. **exclude 추가만 근거 필수**라, 그 무게 차이가 화면에 보여야 한다.
+var scopePage = template.Must(template.New("scope").Funcs(funcs).Parse(shell + `
+{{template "head" .Page}}
+
+<p class="hint">「이 자산은 안 본다」는 <b>사고 뒤에 근거를 대야 하는 결정</b>입니다.
+ 계층은 준 순서대로 이기고(조직 · 환경 · 노드군), 바뀐 규칙만 올라옵니다.</p>
+
+<form method="post" action="/scope/finalize">
+{{range .Layers}}
+ <fieldset>
+  <legend>{{.Name}} <span class="n">— 변경 {{len .Changes}}건{{if .Audited}}, 근거 필수 {{.Audited}}{{end}}</span></legend>
+  <label>이 계층의 결론 <span class="hint">(적으면 아래 변경이 한 번에 판정됩니다)</span>
+   <input type="text" name="layer:{{.Name}}" value="{{.Conclusion}}" placeholder="예: OS 패치로 관리하므로 인벤토리에서 뺀다"></label>
+  <table>
+   <tr><th style="width:4rem">변경</th><th>규칙</th><th>설명</th><th>개별 결론(예외)</th></tr>
+   {{range .Changes}}
+   <tr>
+    <td{{if .Audited}} class="must"{{end}}>{{.Kind}}</td>
+    <td><code>{{.Rule}}</code></td>
+    <td class="hint">{{.Note}}</td>
+    <td><input type="text" name="change:{{.ID}}" value="{{.Conclusion}}"></td>
+   </tr>
+   {{end}}
+  </table>
+ </fieldset>
+{{else}}
+ <p>바뀐 규칙이 없습니다 — 승인할 것이 없습니다.</p>
+{{end}}
+
+<fieldset>
+ <legend>승인</legend>
+ <p class="hint">서명이 없거나 근거 필수 변경에 결론이 없으면 정책이 나가지 않습니다.</p>
+ <label>승인자 <input type="text" name="reviewer" value="{{.Session.Reviewer}}"></label>
+ <label style="display:block;margin-top:.6rem">서명 <input type="text" name="signature" value="{{.Session.Signature}}"></label>
+</fieldset>
+
+<fieldset>
+ <legend>확정될 정책 <span class="n">— 전문 {{len .Session.Merged}}줄</span></legend>
+ <p class="hint"><b>바뀐 것만 리뷰하되 나가는 것은 전문입니다</b> — pqcota의 집행기는 정책 전체를 받습니다.</p>
+ <table>
+  <tr><th style="width:6rem">action</th><th style="width:6rem">runtime</th><th>lib</th><th>app_key</th><th>note</th></tr>
+  {{range .Session.Merged}}
+  <tr><td{{if eq .Action "exclude"}} class="must"{{end}}>{{.Action}}</td>
+      <td>{{.Runtime}}</td><td><code>{{.Lib}}</code></td><td><code>{{.AppKey}}</code></td>
+      <td class="hint">{{.Note}}</td></tr>
+  {{end}}
+ </table>
+</fieldset>
+
+<div class="actions">
+ <button formaction="/scope/save">저장만</button>
+ <button formaction="/scope/finalize" class="primary">확정하고 정책 내기</button>
+</div>
+<p class="hint">확정은 <code>pqcaton-scope close</code> 와 같은 게이트를 탑니다. 나온 CSV 가
+ <code>pqcota-ingest -scope-assets</code> 의 입력입니다.</p>
+</form>
+{{template "foot"}}`))

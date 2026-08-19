@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 )
 
 // 세션을 만들고 사람이 편집한 뒤 확정하는 왕복을 파일로 흉내 낸다. 실제 조작이 파일 왕복이라
@@ -47,20 +49,20 @@ func capture(t *testing.T, fn func() error) (string, error) {
 	return b.String(), runErr
 }
 
-func openSession(t *testing.T, layers []string, base, orgName string) sessionFile {
+func openSession(t *testing.T, layers []string, base, orgName string) scope.Session {
 	t.Helper()
 	out, err := capture(t, func() error { return open(layers, base, orgName) })
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	var sf sessionFile
+	var sf scope.Session
 	if err := json.Unmarshal([]byte(out), &sf); err != nil {
 		t.Fatalf("세션 파일이 JSON 이 아니다: %v\n%s", err, out)
 	}
 	return sf
 }
 
-func saveSession(t *testing.T, dir string, sf sessionFile) string {
+func saveSession(t *testing.T, dir string, sf scope.Session) string {
 	t.Helper()
 	p := filepath.Join(dir, "session.json")
 	raw, err := json.Marshal(sf)

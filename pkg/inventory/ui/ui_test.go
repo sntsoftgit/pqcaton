@@ -7,6 +7,7 @@ import (
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
@@ -129,6 +130,50 @@ func TestApplyReview(t *testing.T) {
 		t.Errorf("승인 정보가 안 얹혔다: %+v", got)
 	}
 	if got.PolicyDecisions["p"] != "교체한다" || got.Items[0].Conclusion != "예외" || !got.Items[0].Plan {
+		t.Errorf("판정이 안 얹혔다: %+v", got)
+	}
+}
+
+// IC-UI7 — 스코프 변경은 **계층으로 묶여** 그려진다(§3.4). 규칙 한 줄씩 승인하는 리뷰는
+// 수천 대에서 끝나지 않는다.
+func TestScopeViewGroupsByLayer(t *testing.T) {
+	sf := scope.Session{
+		Org: "acme", LayerDecisions: map[string]string{"corp": "뺀다", "pay": ""},
+		Changes: []scope.ChangeItem{
+			{ID: "a", Layer: "corp", Kind: "추가", Audited: true},
+			{ID: "b", Layer: "corp", Kind: "제거"},
+			{ID: "c", Layer: "pay", Kind: "추가", Audited: true},
+		},
+	}
+	v := ui.NewScopeView(sf, ui.Page{Title: "자산 스코프"})
+	if len(v.Layers) != 2 {
+		t.Fatalf("계층 %d개", len(v.Layers))
+	}
+	if v.Layers[0].Name != "corp" {
+		t.Errorf("정렬되지 않았다: %s", v.Layers[0].Name)
+	}
+	if v.Layers[0].Audited != 1 || len(v.Layers[0].Changes) != 2 {
+		t.Errorf("묶음이 다르다: %+v", v.Layers[0])
+	}
+	if v.Audited != 2 {
+		t.Errorf("근거 필수 %d건, want 2", v.Audited)
+	}
+}
+
+// IC-UI8 — 스코프 폼을 읽으면 세션에 그대로 얹힌다.
+func TestApplyScope(t *testing.T) {
+	sf := scope.Session{
+		LayerDecisions: map[string]string{"corp": ""},
+		Changes:        []scope.ChangeItem{{ID: "a", Layer: "corp"}},
+	}
+	got := ui.ApplyScope(sf, url.Values{
+		"reviewer": {"보안팀"}, "signature": {"sig"},
+		"layer:corp": {"뺀다"}, "change:a": {"예외로 둔다"},
+	})
+	if got.Reviewer != "보안팀" || got.Signature != "sig" {
+		t.Errorf("승인 정보가 안 얹혔다: %+v", got)
+	}
+	if got.LayerDecisions["corp"] != "뺀다" || got.Changes[0].Conclusion != "예외로 둔다" {
 		t.Errorf("판정이 안 얹혔다: %+v", got)
 	}
 }

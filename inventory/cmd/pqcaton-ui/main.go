@@ -35,6 +35,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
@@ -43,6 +44,8 @@ func main() {
 	addr := fs.String("addr", "127.0.0.1:8765", "들을 주소")
 	declPath := fs.String("decl", "", "선언 파일(declaration.json). 주면 선언 편집 화면이 열린다")
 	resultsDir := fs.String("results", "", "관측 결과 디렉터리. -decl 과 함께 주면 대조 화면이 열린다")
+	scopePath := fs.String("scope", "", "자산 스코프 세션(pqcaton-scope open 산출물). 주면 스코프 화면이 열린다")
+	scopeOut := fs.String("scope-out", "asset-scope.csv", "확정된 스코프 정책을 쓸 파일")
 	judgments := fs.String("judgments", "", "확정 시 판정을 남길 파일(JSONL, append-only)")
 	orgName := fs.String("org", "local", "판정을 묶을 조직")
 	planOut := fs.String("plan", "plan.json", "확정 계획을 쓸 파일")
@@ -75,8 +78,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "❌ -results 는 -decl 과 함께 주십시오 — 대조는 선언과 맞대는 일입니다")
 		os.Exit(2)
 	}
-	s := &server{path: path, decl: *declPath, results: *resultsDir,
-		judgments: *judgments, org: *orgName, planOut: *planOut}
+	if *scopePath != "" {
+		if _, err := scope.LoadSession(*scopePath); err != nil {
+			fmt.Fprintln(os.Stderr, "❌ 스코프 세션을 읽을 수 없다:", err)
+			os.Exit(1)
+		}
+	}
+	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath,
+		judgments: *judgments, org: *orgName, planOut: *planOut, scopeOut: *scopeOut}
 	mux := http.NewServeMux()
 	s.routes(mux)
 
@@ -127,9 +136,11 @@ type server struct {
 	path      string
 	decl      string
 	results   string
+	scope     string
 	judgments string
 	org       string
 	planOut   string
+	scopeOut  string
 }
 
 func (s *server) routes(mux *http.ServeMux) {
@@ -137,6 +148,9 @@ func (s *server) routes(mux *http.ServeMux) {
 	mux.HandleFunc("/", s.home)
 	mux.HandleFunc("/decl", s.declEdit)
 	mux.HandleFunc("/decl/save", s.declSave)
+	mux.HandleFunc("/scope", s.scopeEdit)
+	mux.HandleFunc("/scope/save", s.scopeSave)
+	mux.HandleFunc("/scope/finalize", s.scopeFinalize)
 	mux.HandleFunc("/survey", s.survey)
 	mux.HandleFunc("/review", s.review)
 	mux.HandleFunc("/save", s.save)
@@ -165,10 +179,15 @@ func (s *server) nav(here string) []ui.Link {
 	if s.decl != "" {
 		links = append(links, ui.Link{Href: "/decl", Text: "① 선언", Here: here == "/decl"})
 	}
-	if s.results != "" {
-		links = append(links, ui.Link{Href: "/survey", Text: "② 대조", Here: here == "/survey"})
+	// **스코프는 대조 앞이다.** 무엇을 계속 볼지가 정해져야 관측이 적재되고, 그 뒤에
+	// 대조한다 — 절차가 그 순서다.
+	if s.scope != "" {
+		links = append(links, ui.Link{Href: "/scope", Text: "② 스코프", Here: here == "/scope"})
 	}
-	links = append(links, ui.Link{Href: "/review", Text: "③ 리뷰 큐", Here: here == "/review"})
+	if s.results != "" {
+		links = append(links, ui.Link{Href: "/survey", Text: "③ 대조", Here: here == "/survey"})
+	}
+	links = append(links, ui.Link{Href: "/review", Text: "④ 리뷰 큐", Here: here == "/review"})
 	return links
 }
 
@@ -252,6 +271,94 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		msg += fmt.Sprintf(" · 판정 %d건을 %s 에 남겼습니다", n, s.judgments)
 	}
 	redirect(w, r, "/review", msg, "")
+}
+
+// ── 자산 스코프 ────────────────────────────────────────────────────────────
+
+func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
+	if s.scope == "" {
+		http.Error(w, "스코프 세션을 주지 않았습니다 — -scope 로 지정하십시오", http.StatusNotFound)
+		return
+	}
+	sf, err := scope.LoadSession(s.scope)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	v := ui.NewScopeView(sf, s.page(r, "자산 스코프", "조직 "+sf.Org+" · "+s.scope, "/scope"))
+	html(w, func() error { return ui.RenderScope(w, v) })
+}
+
+// applyScope — 폼 값을 얹어 파일에 쓴다. 읽고 얹고 쓴다.
+func (s *server) applyScope(r *http.Request) (scope.Session, error) {
+	sf, err := scope.LoadSession(s.scope)
+	if err != nil {
+		return sf, err
+	}
+	if err := r.ParseForm(); err != nil {
+		return sf, err
+	}
+	sf = ui.ApplyScope(sf, r.PostForm)
+	return sf, scope.SaveSession(s.scope, sf)
+}
+
+func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
+	if !post(w, r) {
+		return
+	}
+	if s.scope == "" {
+		http.Error(w, "스코프 세션을 주지 않았습니다", http.StatusNotFound)
+		return
+	}
+	if _, err := s.applyScope(r); err != nil {
+		redirect(w, r, "/scope", "", err.Error())
+		return
+	}
+	redirect(w, r, "/scope", "세션 파일에 저장했습니다 — 아직 확정하지 않았습니다", "")
+}
+
+// scopeFinalize — **명령과 같은 게이트를 탄다.**
+func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
+	if !post(w, r) {
+		return
+	}
+	if s.scope == "" {
+		http.Error(w, "스코프 세션을 주지 않았습니다", http.StatusNotFound)
+		return
+	}
+	sf, err := s.applyScope(r)
+	if err != nil {
+		redirect(w, r, "/scope", "", err.Error())
+		return
+	}
+	res, err := scope.Finalize(sf, s.org)
+	if err != nil {
+		redirect(w, r, "/scope", "", err.Error())
+		return
+	}
+	f, err := os.Create(s.scopeOut)
+	if err != nil {
+		redirect(w, r, "/scope", "", err.Error())
+		return
+	}
+	err = scope.WriteCSV(f, res.Policy)
+	f.Close()
+	if err != nil {
+		redirect(w, r, "/scope", "", err.Error())
+		return
+	}
+	msg := fmt.Sprintf("확정했습니다 — 규칙 %d개를 %s 에 썼습니다 (`pqcota-ingest -scope-assets` 의 입력)",
+		len(res.Policy.Rules), s.scopeOut)
+	// **게이트를 지난 뒤에만 남긴다.**
+	if s.judgments != "" {
+		n, err := scope.SaveJudgments(s.judgments, s.org, sf, res.Decided)
+		if err != nil {
+			redirect(w, r, "/scope", msg, "판정 기록: "+err.Error())
+			return
+		}
+		msg += fmt.Sprintf(" · 판정 %d건을 %s 에 남겼습니다", n, s.judgments)
+	}
+	redirect(w, r, "/scope", msg, "")
 }
 
 // ── 대조 ───────────────────────────────────────────────────────────────────

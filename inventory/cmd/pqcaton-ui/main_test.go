@@ -12,8 +12,11 @@ import (
 	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 )
 
 func session() review.Session {
@@ -412,5 +415,91 @@ func TestSurveyNeedsResults(t *testing.T) {
 	}
 	if code := get(t, s, "/survey").Code; code != http.StatusNotFound {
 		t.Errorf("/survey = %d, want 404", code)
+	}
+}
+
+// ── 자산 스코프 화면 ───────────────────────────────────────────────────────
+
+func withScope(t *testing.T) (*server, string) {
+	t.Helper()
+	s, dir := newServer(t)
+	layer := filepath.Join(dir, "corp.csv")
+	if err := os.WriteFile(layer, []byte(
+		"action,runtime,lib,app_key,note\nexclude,openssl,libcrypto.so.*,/usr/bin/python*,python 런타임\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := scope.LoadPolicyFile(layer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sf := scope.NewSession([]scope.Layer{{Name: "corp", Rules: p.Rules}}, nil, "acme")
+	s.scope = filepath.Join(dir, "scope-session.json")
+	s.scopeOut = filepath.Join(dir, "asset-scope.csv")
+	if err := scope.SaveSession(s.scope, sf); err != nil {
+		t.Fatal(err)
+	}
+	return s, dir
+}
+
+// IC-U16 — **스코프는 대조 앞이다.** 무엇을 계속 볼지가 정해져야 관측이 적재되고, 그 뒤에
+// 대조한다 — 탭 순서가 그 절차를 가르친다.
+func TestScopeTabComesBeforeSurvey(t *testing.T) {
+	s, dir := withScope(t)
+	s.decl = filepath.Join(dir, "declaration.json")
+	if err := os.WriteFile(s.decl, []byte(declJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.results = filepath.Join(dir, "results")
+	body := get(t, s, "/review").Body.String()
+
+	i := func(h string) int { return strings.Index(body, `href="`+h+`"`) }
+	if !(i("/decl") < i("/scope") && i("/scope") < i("/survey") && i("/survey") < i("/review")) {
+		t.Errorf("순서가 절차와 다르다: decl=%d scope=%d survey=%d review=%d",
+			i("/decl"), i("/scope"), i("/survey"), i("/review"))
+	}
+}
+
+// IC-U17 — **화면도 같은 게이트를 탄다.** 근거 필수 변경에 결론이 없으면 정책이 안 나가고,
+// 무엇이 남았는지 화면에 그대로 보인다.
+func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
+	s, _ := withScope(t)
+	q := location(t, postForm(t, s, "/scope/finalize", url.Values{
+		"reviewer": {"보안팀"}, "signature": {"sig"}, // 결론 없음
+	}))
+	if q.Get("problem") == "" {
+		t.Fatal("근거 없이 확정됐다")
+	}
+	if !strings.Contains(q.Get("problem"), "결론 없음") {
+		t.Errorf("무엇이 남았는지 말하지 않는다: %s", q.Get("problem"))
+	}
+	if _, err := os.Stat(s.scopeOut); !os.IsNotExist(err) {
+		t.Error("확정되지 않았는데 정책 파일이 생겼다")
+	}
+}
+
+// IC-U18 — 통과하면 **pqcota의 집행기가 읽는 CSV** 가 나온다.
+func TestScopeFinalizeEmitsPolicy(t *testing.T) {
+	s, dir := withScope(t)
+	s.judgments = filepath.Join(dir, "judgments.jsonl")
+	q := location(t, postForm(t, s, "/scope/finalize", url.Values{
+		"reviewer": {"보안팀"}, "signature": {"sig"},
+		"layer:corp": {"OS 패치로 관리한다"},
+	}))
+	if p := q.Get("problem"); p != "" {
+		t.Fatalf("확정되지 않았다: %s", p)
+	}
+	raw, err := os.ReadFile(s.scopeOut)
+	if err != nil {
+		t.Fatalf("정책이 없다: %v", err)
+	}
+	p, err := kscope.LoadAssetPolicy(strings.NewReader(string(raw)))
+	if err != nil {
+		t.Fatalf("pqcota가 우리 CSV 를 읽지 못했다: %v\n%s", err, raw)
+	}
+	if len(p.Rules) != 1 || !p.Rules[0].Exclude {
+		t.Fatalf("규칙이 다르다: %+v", p.Rules)
+	}
+	if led, err := os.ReadFile(s.judgments); err != nil || !strings.Contains(string(led), `"org":"acme"`) {
+		t.Errorf("판정이 조직에 묶여 남지 않았다: %v %s", err, led)
 	}
 }
