@@ -54,10 +54,11 @@ flowchart TB
 | `pqcaton-scope review` | 빼둔 자산을 **이름으로** 다시 올립니다 | 정책 CSV · 관측 결과 | 다시 볼 제외분(승인 없음·만료) |
 | [`pqcaton-report`](../inventory/cmd/pqcaton-report) | 여러 노드의 관측을 선언과 **대조해 보여 줍니다** | 관측 결과 · 선언 | 콘솔 리포트 · 토폴로지 DOT |
 | [`pqcaton-decide open`](../inventory/cmd/pqcaton-decide) | 대조 결과에서 **사람이 판정할 것만** 골라 냅니다 | 선언 · **관측 결과**(`-results`) | 리뷰 세션(판정 대상) |
+| `pqcaton-decide open` *(지름길)* | **명령이 도는 그 기계 자신**을 스캔해 같은 일을 합니다 | 선언 CSV | 리뷰 세션 |
 | `pqcaton-decide close` | **확정 게이트** — 결론과 서명이 다 있어야 계획이 나갑니다 | 사람이 채운 리뷰 세션 | **`plan.json`**(계약 형식) · 판정 원장 |
 | `pqcaton-decide delta` | 재관측 뒤 **근거가 바뀐 판정만** 골라 냅니다 | 판정 원장 · 지금 관측 | 근거가 바뀐 판정만 |
 | [`pqcaton-ui`](../inventory/cmd/pqcaton-ui) | 위 넷을 **화면에서** 다룹니다(선언·스코프·대조·판정) | 위 파일들 | 같은 파일을 편집 — **같은 게이트** |
-| [`pqcaton-reconcile`](../inventory/cmd/pqcaton-reconcile) | **이 기계 한 대**를 스캔해 대조 결과만 보여 줍니다(체험) | 선언 CSV | 콘솔 대조 결과 |
+| [`pqcaton-reconcile`](../inventory/cmd/pqcaton-reconcile) *(지름길)* | **명령이 도는 그 기계 자신**을 스캔해 대조 결과만 보여 줍니다 | 선언 CSV | 콘솔 대조 결과 |
 
 **사람이 하는 자리는 두 곳뿐입니다** — 스코프 세션과 리뷰 세션을 채우는 것. 나머지는 파일이
 다음 명령의 입력이 됩니다. 그 파일들이 곧 감사 기록입니다.
@@ -67,11 +68,16 @@ flowchart TB
 | | 관측을 어디서 | 언제 쓰나 |
 |---|---|---|
 | **주경로** | pqcota 가 여러 노드에서 모은 `results/` | 실제 운영. `pqcaton-decide open -results` |
-| **지름길** | **명령을 돌린 그 기계**(`/proc`) | 체험. `pqcaton-decide open decl.csv` · `pqcaton-reconcile` |
+| **지름길** | **명령이 도는 그 기계 자신**(`/proc`) | 체험. `pqcaton-decide open decl.csv` · `pqcaton-reconcile` |
 
-지름길은 「체크아웃만으로 한 바퀴」를 위한 것이라 **Linux 에서만** 되고, 노드 이름은 결과에
-붙이는 **이름표일 뿐 관측 대상이 아닙니다.** 그 둘을 조용히 넘기면 「못 본 것」이 「없는 것」으로
-읽히므로 명령이 말하고 끊습니다(§1.1).
+**지름길은 대상을 고르지 못합니다.** 원격 접속도 노드 선택도 없이 자기가 도는 기계의 `/proc`
+하나만 읽습니다 — 다른 노드를 관측하려면 pqcota 의 collector 를 그 노드에서 돌려야 합니다.
+그래서 두 가지가 따라옵니다.
+
+- **Linux 에서만** 됩니다. `/proc` 이 없으면 명령이 끊습니다.
+- 노드 이름은 결과에 붙이는 **이름표일 뿐**입니다. `pqcaton-reconcile web-gw` 는 `web-gw` 를
+  관측하지 않고 **이 기계를 관측해 `web-gw` 라고 적습니다** — 이름이 맞으면 선언과 대조까지
+  되어 **다른 기계의 관측으로 CONFIRMED 가 나옵니다.** 그래서 다른 이름을 주면 경고합니다.
 
 ### 되풀이되는 것
 
