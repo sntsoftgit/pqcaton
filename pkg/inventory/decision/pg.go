@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS pqcota_judgments (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE pqcota_judgments ADD COLUMN IF NOT EXISTS org TEXT NOT NULL DEFAULT '';
--- 인덱스 선두가 org다 — 모든 질의가 조직으로 먼저 걸린다.
+-- org leads the index — every query is filtered by organization first.
 CREATE INDEX IF NOT EXISTS idx_pqcota_judg_org_subject ON pqcota_judgments(org, subject, seq);
 `
 

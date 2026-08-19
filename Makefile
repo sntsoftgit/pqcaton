@@ -1,11 +1,16 @@
-.PHONY: all check-licenses build test generate verify-generated
+.PHONY: all check-licenses check-text build test generate verify-generated
 
-all: check-licenses build test
+all: check-licenses check-text build test
 
 # 라이선스 게이트 — 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
 check-licenses:
 	@go run ./tools/checklicenses
+
+# 코드와 그 출력은 영어, 화면만 두 말이다(CONTRIBUTING.md). 문자열 하나를 옮기지
+# 않으면 그 자리만 한국어로 뜨는데 눈으로는 못 찾는다 — 파서로 본다.
+check-text:
+	@go run ./tools/checktext
 
 build:
 	go build ./...

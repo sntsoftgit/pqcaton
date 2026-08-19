@@ -137,6 +137,13 @@ bin/pqcaton-decide open declaration.json -results results/ -org acme > session.j
 bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scope-session.json
 ```
 
+**화면은 한국어와 English 중에 고릅니다.** 이동 링크 오른쪽 끝의 토글을 누르면 보던
+자리 그대로 말만 바뀌고, 고른 것은 기억됩니다. 처음에는 브라우저 설정을 따릅니다.
+
+> **명령의 출력과 로그는 영어 하나입니다.** 붙여 넣어 검색하고 이슈에 올리는 것이라,
+> 말이 갈리면 같은 문제가 두 문장으로 남습니다. 자세한 규칙은
+> [CONTRIBUTING.md](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
+
 `-decl`·`-layers`·`-results` 는 **주는 것만 탭이 열립니다.** 선언 파일만 주면 「선언」과
 「리뷰 큐」 둘만 보입니다 — 없는 것을 눌러 보게 하지 않습니다.
 

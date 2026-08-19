@@ -88,7 +88,7 @@ func main() {
 			// 선언은 사람이 처음 쓰는 것이라 만들어 줄 명령이 없다 — 빈 파일에서
 			// 시작할 수 있다는 것을 말한다.
 			fmt.Fprintln(os.Stderr, "❌ cannot read the declaration file:", err)
-			fmt.Fprintln(os.Stderr, `   빈 선언으로 시작하려면: echo '{"scope":[],"nodes":[],"assets":[],"edges":[]}' > `+*declPath)
+			fmt.Fprintln(os.Stderr, `   To start from an empty declaration: echo '{"scope":[],"nodes":[],"assets":[],"edges":[]}' > `+*declPath)
 			os.Exit(1)
 		}
 	}
@@ -127,7 +127,7 @@ func main() {
 		fmt.Fprintf(os.Stderr,
 			"⚠ %s is not loopback — the screen is open on the network. Put authentication in front of it.\n", *addr)
 	}
-	fmt.Fprintf(os.Stderr, "화면: http://%s  (세션 %s", *addr, path)
+	fmt.Fprintf(os.Stderr, "screen: http://%s  (session %s", *addr, path)
 	if *declPath != "" {
 		fmt.Fprintf(os.Stderr, " · declaration %s", *declPath)
 	}
