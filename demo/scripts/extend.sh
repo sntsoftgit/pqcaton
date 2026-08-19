@@ -80,6 +80,15 @@ PY'
 docker exec pqcota-ctl bash -lc \
   'pqcaton-decide close /work/session.json -org demo-corp -judgments /work/judgments.jsonl > /work/plan.json'
 docker cp pqcota-ctl:/work/plan.json "$DEMO_DIR/expected-output/plan.json" 2>/dev/null || true
+# **공백을 고른다.** protojson 은 콜론 뒤 공백을 일부러 흔들어, 같은 계획을 두 번 내도
+# 파일이 달라진다. 그대로 두면 데모를 돌릴 때마다 기대 파일이 더러워져 **진짜 달라진
+# 날을 알아볼 수 없다.**
+python3 - "$DEMO_DIR/expected-output/plan.json" <<'PYFMT' || true
+import json, sys
+p = sys.argv[1]
+json.dump(json.load(open(p)), open(p, "w"), indent=2, ensure_ascii=False, sort_keys=False)
+open(p, "a").write("\n")
+PYFMT
 
 echo "▶ 5/5 render the topology SVG and collect it…"
 if docker exec pqcota-ctl bash -lc 'command -v dot >/dev/null && dot -Tsvg /work/topology-governance.dot -o /work/topology-governance.svg'; then

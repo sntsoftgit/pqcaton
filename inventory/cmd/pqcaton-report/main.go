@@ -45,7 +45,7 @@ func main() {
 
 	// ── 출력 ──
 	fmt.Println("╔══════════════════════════════════════════════════════════╗")
-	fmt.Println("║  pqcota discovery → inventory demo report                  ║")
+	fmt.Println("║  pqcota discovery → inventory demo report                ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════╝")
 	fmt.Printf("\nnodes %d · observed assets %d · observed edges %d · declared assets %d · declared edges %d\n\n",
 		r.Nodes, r.ObservedAssets, r.ObservedEdges, r.DeclaredAssets, r.DeclaredEdges)
