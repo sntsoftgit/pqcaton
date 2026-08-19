@@ -45,6 +45,10 @@ type Page struct {
 	Warnings []string
 	// Nav — 화면 사이를 오가는 자리. 부르는 쪽이 무엇을 열었는지에 따라 다르다.
 	Nav []Link
+	// Lang — 이 화면을 그릴 말. **화면만 두 말을 쓴다** — 명령의 출력과 로그는 영어다.
+	Lang Lang
+	// LangHref — 지금 자리 그대로 말만 바꾸는 주소.
+	LangHref string
 }
 
 // Link — 위쪽 이동 링크.
@@ -156,8 +160,8 @@ func RenderDecl(w io.Writer, v DeclView) error {
 //
 // **화면과 같은 조각을 쓴다**(decl.templ 의 nodeRow 들). 폼 이름이 곧 저장 경로라, 두
 // 벌이 되면 새로 넣은 줄만 조용히 저장되지 않는다.
-func RenderRow(w io.Writer, kind string, i int) error {
-	return rowFragment(kind, i).Render(context.Background(), w)
+func RenderRow(w io.Writer, l Lang, kind string, i int) error {
+	return rowFragment(l, kind, i).Render(context.Background(), w)
 }
 
 // ApplyDecl — 폼에서 온 값으로 선언을 다시 만든다.

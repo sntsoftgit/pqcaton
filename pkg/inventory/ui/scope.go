@@ -137,9 +137,21 @@ func RenderScope(w io.Writer, v ScopeView) error {
 	return scopePage(v).Render(context.Background(), w)
 }
 
+// kindLabel — 변경의 종류를 그 말로. 파일에는 코드(added · removed)가 담기고, 사람이
+// 읽는 말은 화면이 고른다.
+func kindLabel(l Lang, kind string) string {
+	switch kind {
+	case scope.KindAdded:
+		return tKindAdded.In(l)
+	case scope.KindRemoved:
+		return tKindRemoved.In(l)
+	}
+	return kind
+}
+
 // RenderRuleRow — 「행 추가」가 돌려주는 규칙 한 줄과, 번호가 하나 오른 버튼.
-func RenderRuleRow(w io.Writer, layer, i int) error {
-	return ruleRowFragment(layer, i).Render(context.Background(), w)
+func RenderRuleRow(w io.Writer, l Lang, layer, i int) error {
+	return ruleRowFragment(l, layer, i).Render(context.Background(), w)
 }
 
 // ApplyScope — 폼에서 온 값을 세션에 얹는다. **받은 세션을 고쳐서 돌려준다** — 부르는 쪽이

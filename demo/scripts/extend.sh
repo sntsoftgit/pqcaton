@@ -67,10 +67,10 @@ docker exec pqcota-ctl bash -lc 'python3 - <<PY
 import json
 s = json.load(open("/work/session.json"))
 s["reviewer"], s["signature"] = "데모 승인자", "demo-sig"
-for k in s["정책_판정"]:
-    s["정책_판정"][k] = "PQC 라이브러리로 교체한다"
+for k in s["policy_decisions"]:
+    s["policy_decisions"][k] = "PQC 라이브러리로 교체한다"
 for it in s["items"]:
-    it["확정_계획에_넣는다"] = True
+    it["include_in_plan"] = True
 json.dump(s, open("/work/session.json", "w"), ensure_ascii=False, indent=2)
 PY'
 docker exec pqcota-ctl bash -lc \

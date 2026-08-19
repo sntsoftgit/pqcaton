@@ -13,59 +13,69 @@ import (
 templ surveyPage(v SurveyView) {
 	@shell(v.Page) {
 		<fieldset>
-			<legend>관측 <span class="n">— pqcota가 무엇을 보았나</span></legend>
-			<p class="hint">대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.</p>
+			<legend>
+				{ tSurveyObserved.In(v.Page.Lang) }
+				<span class="n">— { tSurveyObservedNote.In(v.Page.Lang) }</span>
+			</legend>
+			<p class="hint">{ tSurveyObservedHint.In(v.Page.Lang) }</p>
 			<table>
-				<tr><th style="width:14rem">노드</th><th>그 노드에서 돈 collector</th></tr>
+				<tr>
+					<th style="width:14rem">{ tColNode.In(v.Page.Lang) }</th>
+					<th>{ tColCollector.In(v.Page.Lang) }</th>
+				</tr>
 				for _, n := range v.R.SeenNodes() {
 					<tr><td><code>{ n }</code></td><td>{ strings.Join(v.R.SeenBy[n], ", ") }</td></tr>
 				}
 			</table>
 			<p style="margin-top:.8rem">
-				관측 자산 <b>{ strconv.Itoa(v.R.ObservedAssets) }</b> ·
-				협상된 통신 <b>{ strconv.Itoa(v.R.ObservedEdges) }</b>건
+				@templ.Raw(fmt.Sprintf(tObservedCount.In(v.Page.Lang), v.R.ObservedAssets, v.R.ObservedEdges))
 			</p>
 			<div class="warn-list" style="border-color:var(--line)">
-				<strong>못 본 것</strong>
+				<strong>{ tNotSeen.In(v.Page.Lang) }</strong>
 				if len(v.R.GapLayers()) == 0 && len(v.R.UncoveredNodes()) == 0 {
-					<p class="hint">없습니다 — 이 범위에서는 관측이 완전합니다.</p>
+					<p class="hint">{ tNotSeenNone.In(v.Page.Lang) }</p>
 				} else {
 					<ul>
 						for _, l := range v.R.GapLayers() {
-							<li>이 계층을 아예 보지 못했습니다 — { report.LayerLabel(l) }</li>
+							<li>{ tNotSeenLayer.In(v.Page.Lang) } { report.LayerLabel(l) }</li>
 						}
 						for _, n := range v.R.UncoveredNodes() {
-							<li>이 노드의 통신을 보지 못했습니다 — <code>{ n }</code></li>
+							<li>{ tNotSeenEdges.In(v.Page.Lang) } <code>{ n }</code></li>
 						}
 					</ul>
-					<p class="hint">
-						<b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED 가 「쓰지 않는 것」인지
-						「보지 못한 것」인지는 위 목록이 가릅니다 — <b>위에 적힌 것이면 재수집이 먼저</b>이고,
-						아니면 사람이 판정할 차례입니다.
-					</p>
+					<p class="hint">@templ.Raw(tNotSeenHint.In(v.Page.Lang))</p>
 				}
 			</div>
 			if len(v.R.Skipped) > 0 {
 				<div class="warn-list">
-					<strong>읽지 못한 결과 파일</strong>
+					<strong>{ tSkipped.In(v.Page.Lang) }</strong>
 					<ul>
 						for _, s := range v.R.Skipped {
 							<li>{ s }</li>
 						}
 					</ul>
-					<p class="hint">빠진 노드를 모르면 「관측 안 됨」과 「못 읽음」이 뒤섞입니다.</p>
+					<p class="hint">{ tSkippedHint.In(v.Page.Lang) }</p>
 				</div>
 			}
 		</fieldset>
 		<fieldset>
-			<legend>자산 <span class="n">— 선언과 맞댄 3-상태</span></legend>
+			<legend>
+				{ tSurveyAssets.In(v.Page.Lang) }
+				<span class="n">— { tSurveyAssetsNote.In(v.Page.Lang) }</span>
+			</legend>
 			<p>
 				CONFIRMED <b>{ strconv.Itoa(v.Confirmed) }</b> ·
 				UNDECLARED(shadow) <b>{ strconv.Itoa(v.Undeclared) }</b> ·
 				UNOBSERVED <b>{ strconv.Itoa(v.Unobserved) }</b>
 			</p>
 			<table>
-				<tr><th>상태</th><th>확신</th><th>노드</th><th>런타임</th><th>컴포넌트</th></tr>
+				<tr>
+					<th>{ tColState.In(v.Page.Lang) }</th>
+					<th>{ tColConfidence.In(v.Page.Lang) }</th>
+					<th>{ tColNode.In(v.Page.Lang) }</th>
+					<th>{ tColRuntime.In(v.Page.Lang) }</th>
+					<th>{ tColComponent.In(v.Page.Lang) }</th>
+				</tr>
 				for _, a := range v.Assets {
 					<tr>
 						<td class={ templ.KV("must", a.State != "CONFIRMED") }>{ a.State }</td>
@@ -75,32 +85,32 @@ templ surveyPage(v SurveyView) {
 						<td>
 							{ a.Component }
 							if a.Rescan {
-								<span class="hint">재수집 후보</span>
+								<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
 							}
 						</td>
 					</tr>
 				}
 				if len(v.Assets) == 0 {
-					<tr><td colspan="5">대조할 자산이 없습니다.</td></tr>
+					<tr><td colspan="5">{ tSurveyNoAssets.In(v.Page.Lang) }</td></tr>
 				}
 			</table>
-			<p class="hint">
-				<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> —
-				선언에 없는데 실제로 쓰이고 있는 것입니다.
-				판정은 <a href="/review">리뷰 큐</a>에서 합니다.
-			</p>
+			<p class="hint">@templ.Raw(tShadowHint.In(v.Page.Lang))</p>
 		</fieldset>
 		<fieldset>
-			<legend>통신 엣지 <span class="n">— 선언과 맞댄 3-상태 · 양자내성 등급</span></legend>
-			<p>
-				🟢 PQC <b>{ strconv.Itoa(v.PQC) }</b> ·
-				🔴 고전 <b>{ strconv.Itoa(v.Classical) }</b> ·
-				⚪ 불명 <b>{ strconv.Itoa(v.Unknown) }</b>
-			</p>
+			<legend>
+				{ tSurveyEdges.In(v.Page.Lang) }
+				<span class="n">— { tSurveyEdgesNote.In(v.Page.Lang) }</span>
+			</legend>
+			<p>@templ.Raw(fmt.Sprintf(tPostures.In(v.Page.Lang), v.PQC, v.Classical, v.Unknown))</p>
 			<table>
 				<tr>
-					<th style="width:2rem"></th><th>보내는 쪽</th><th>받는 쪽</th><th>포트</th>
-					<th>프로토콜</th><th>협상 그룹</th><th>대조</th>
+					<th style="width:2rem"></th>
+					<th>{ tColSrc.In(v.Page.Lang) }</th>
+					<th>{ tColDst.In(v.Page.Lang) }</th>
+					<th>{ tColPort.In(v.Page.Lang) }</th>
+					<th>{ tColProto.In(v.Page.Lang) }</th>
+					<th>{ tColGroup.In(v.Page.Lang) }</th>
+					<th>{ tColReconcile.In(v.Page.Lang) }</th>
 				</tr>
 				for _, e := range v.Edges {
 					<tr>
@@ -108,13 +118,13 @@ templ surveyPage(v SurveyView) {
 						<td>
 							<code>{ e.Src }</code>
 							if e.Uncovered {
-								<span class="hint">관측 안 된 노드</span>
+								<span class="hint">{ tUncoveredSrc.In(v.Page.Lang) }</span>
 							}
 						</td>
 						<td>
 							<code>{ e.Dst }</code>
 							if e.OffScope {
-								<span class="hint">등재 판정 요청</span>
+								<span class="hint">{ tOffScope.In(v.Page.Lang) }</span>
 							}
 						</td>
 						<td>{ portText(e.Port) }</td>
@@ -130,26 +140,22 @@ templ surveyPage(v SurveyView) {
 					</tr>
 				}
 				if len(v.Edges) == 0 {
-					<tr><td colspan="7">대조할 엣지가 없습니다.</td></tr>
+					<tr><td colspan="7">{ tSurveyNoEdges.In(v.Page.Lang) }</td></tr>
 				}
 			</table>
 		</fieldset>
 		<fieldset>
-			<legend>토폴로지 <span class="n">— 색은 양자내성 등급, 선 모양은 대조 상태</span></legend>
+			<legend>
+				{ tTopology.In(v.Page.Lang) }
+				<span class="n">— { tTopologyNote.In(v.Page.Lang) }</span>
+			</legend>
 			if v.SVG != "" {
 				<div style="overflow-x:auto">
 					@templ.Raw(v.SVG)
 				</div>
-				<p class="hint">색은 양자내성 등급, 선 모양은 대조 상태입니다. <b>보지 못한 것은 점선</b>이라 없는 것과 구분됩니다.</p>
+				<p class="hint">@templ.Raw(tTopologyHint.In(v.Page.Lang))</p>
 			} else {
-				<p class="hint">
-					<code>dot</code>(Graphviz)이 이 기계에 없어 그리지 못했습니다.
-					<b>선택 사항입니다</b> — 설치하지 않아도 나머지는 그대로 돕니다(README 「사전 준비」).
-					<code>apt install graphviz</code> · <code>brew install graphviz</code> ·
-					<code>winget install graphviz</code>.<br/>
-					설치하지 않고 그리려면 아래를 저장해 아무 데서나
-					<code>dot -Tsvg topology.dot -o topology.svg</code> 로 그리십시오.
-				</p>
+				<p class="hint">@templ.Raw(tNoDot.In(v.Page.Lang))</p>
 				<textarea readonly style="min-height:12rem">{ v.DOT }</textarea>
 			}
 		</fieldset>

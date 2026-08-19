@@ -72,7 +72,8 @@ func TestIndexGroupsByPolicy(t *testing.T) {
 	s, _ := newServer(t)
 	mux := s.handler()
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/review", nil))
+	// 화면은 두 말을 쓴다 — 이 케이스는 한국어로 잰다.
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/review?lang=ko", nil))
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("상태 %d", w.Code)

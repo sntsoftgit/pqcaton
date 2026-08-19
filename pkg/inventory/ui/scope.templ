@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
@@ -9,58 +10,52 @@ import (
 // scopePage — 자산 스코프. **exclude 추가만 근거 필수**라, 그 무게 차이가 화면에 보여야 한다.
 templ scopePage(v ScopeView) {
 	@shell(v.Page) {
-		<p class="hint">
-			<b>노드 안에서 무엇을 계속 볼 것인가</b>를 정하는 자리입니다.
-			인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에 답해야 하므로,
-			<b>왜 뺐는지를 적어야 확정됩니다.</b>
-		</p>
-		<p class="hint">
-			판정할 것으로는 <b>지금 쓰는 정책과 달라진 규칙만</b> 올라옵니다.
-			바뀌지 않은 규칙까지 매번 다시 승인하게 하면 아무도 들여다보지 않습니다.
-		</p>
+		<p class="hint">@templ.Raw(tScopeIntro.In(v.Page.Lang))</p>
+		<p class="hint">@templ.Raw(tScopeDelta.In(v.Page.Lang))</p>
 		<form method="post" action="/scope/finalize">
 			if len(v.Editing) > 0 {
-				@ruleLegend()
-				<p class="hint">
-					아래 표의 순서가 곧 계층 순서입니다 — <b>겹치면 아래쪽이 적용됩니다.</b>
-				</p>
+				@ruleLegend(v.Page.Lang)
+				<p class="hint">@templ.Raw(tScopeTableOrder.In(v.Page.Lang))</p>
 				for _, e := range v.Editing {
-					@layerEditor(e)
+					@layerEditor(v.Page.Lang, e)
 				}
 				<div class="actions">
-					<button formaction="/scope/rules" class="primary">규칙 저장</button>
+					<button formaction="/scope/rules" class="primary">{ tSaveRules.In(v.Page.Lang) }</button>
 				</div>
-				<p class="hint">
-					저장하면 계층 파일에 그대로 쓰고, <b>그래서 무엇이 달라지는지를 아래에 다시 보여 줍니다.</b>
-					적어 둔 판정은 그대로 남습니다 — 규칙 자체가 달라진 것만 다시 판정하면 됩니다.
-				</p>
-				<h2>고친 결과 — 승인할 변경</h2>
+				<p class="hint">@templ.Raw(tSaveRulesHint.In(v.Page.Lang))</p>
+				<h2>{ tScopeEditResult.In(v.Page.Lang) }</h2>
 			}
 			for _, g := range v.Layers {
 				<fieldset>
 					<legend>
 						{ g.Name }
 						<span class="n">
-							— 변경 { strconv.Itoa(len(g.Changes)) }건
+							— { strconv.Itoa(len(g.Changes)) } { tChanges.In(v.Page.Lang) }
 							if g.Audited > 0 {
-								, 근거 필수 { strconv.Itoa(g.Audited) }
+								, { strconv.Itoa(g.Audited) } { tReasonNeeded.In(v.Page.Lang) }
 							}
 						</span>
 					</legend>
 					<label>
-						이 계층의 결론 <span class="hint">— 왜 이렇게 정했는지 적습니다. 적으면 아래 변경이 한 번에 판정됩니다</span>
+						{ tLayerConclusion.In(v.Page.Lang) }
+						<span class="hint">{ tReviewConclusionHint.In(v.Page.Lang) }</span>
 						<input
 							type="text"
 							name={ "layer:" + g.Name }
 							value={ g.Conclusion }
-							placeholder="예: OS 패치로 관리하므로 인벤토리에서 뺀다"
+							placeholder={ tLayerPlaceholder.In(v.Page.Lang) }
 						/>
 					</label>
 					<table>
-						<tr><th style="width:4rem">변경</th><th>규칙</th><th>설명</th><th>개별 결론(예외)</th></tr>
+						<tr>
+							<th style="width:4rem">{ tColChange.In(v.Page.Lang) }</th>
+							<th>{ tColRule.In(v.Page.Lang) }</th>
+							<th>{ tColNote.In(v.Page.Lang) }</th>
+							<th>{ tColException.In(v.Page.Lang) }</th>
+						</tr>
 						for _, c := range g.Changes {
 							<tr>
-								<td class={ templ.KV("must", c.Audited) }>{ c.Kind }</td>
+								<td class={ templ.KV("must", c.Audited) }>{ kindLabel(v.Page.Lang, c.Kind) }</td>
 								<td><code>{ c.Rule }</code></td>
 								<td class="hint">{ c.Note }</td>
 								<td><input type="text" name={ "change:" + c.ID } value={ c.Conclusion }/></td>
@@ -70,23 +65,26 @@ templ scopePage(v ScopeView) {
 				</fieldset>
 			}
 			if len(v.Layers) == 0 {
-				<p>바뀐 규칙이 없습니다 — 승인할 것이 없습니다.</p>
+				<p>{ tScopeEmpty.In(v.Page.Lang) }</p>
 			}
 			<fieldset>
-				<legend>승인</legend>
-				<p class="hint">
-					계층마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤,
-					<b>확정</b>하면 정책이 나갑니다. 셋이 다 있어야 통과합니다.
-				</p>
-				<label>승인자 <input type="text" name="reviewer" value={ v.Session.Reviewer }/></label>
-				<label style="display:block;margin-top:.6rem">서명 <input type="text" name="signature" value={ v.Session.Signature }/></label>
+				<legend>{ tApproval.In(v.Page.Lang) }</legend>
+				<p class="hint">@templ.Raw(tScopeApprovalHint.In(v.Page.Lang))</p>
+				<label>
+					{ tReviewer.In(v.Page.Lang) }
+					<input type="text" name="reviewer" value={ v.Session.Reviewer }/>
+				</label>
+				<label style="display:block;margin-top:.6rem">
+					{ tSignature.In(v.Page.Lang) }
+					<input type="text" name="signature" value={ v.Session.Signature }/>
+				</label>
 			</fieldset>
 			<fieldset>
-				<legend>확정될 정책 <span class="n">— 규칙 { strconv.Itoa(len(v.Session.Merged)) }개 전부</span></legend>
-				<p class="hint">
-					<b>판정은 달라진 규칙만 보지만, 확정하면 정책 전체가 나갑니다.</b>
-					pqcota의 집행기가 일부가 아니라 정책 전체를 받기 때문입니다.
-				</p>
+				<legend>
+					{ tPolicyOnFinalize.In(v.Page.Lang) }
+					<span class="n">— { fmt.Sprintf(tPolicyRulesAll.In(v.Page.Lang), len(v.Session.Merged)) }</span>
+				</legend>
+				<p class="hint">@templ.Raw(tPolicyWholeHint.In(v.Page.Lang))</p>
 				<table>
 					<tr>
 						<th style="width:6rem">action</th><th style="width:6rem">runtime</th>
@@ -104,69 +102,38 @@ templ scopePage(v ScopeView) {
 				</table>
 			</fieldset>
 			<div class="actions">
-				<button formaction="/scope/save">저장만</button>
-				<button formaction="/scope/finalize" class="primary">확정하고 정책 내보내기</button>
+				<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
+				<button formaction="/scope/finalize" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
 			</div>
-			<p class="hint">
-				확정은 <code>pqcaton-scope close</code> 와 같은 게이트를 탑니다. 나온 CSV 가
-				<code>pqcota-ingest -scope-assets</code> 의 입력입니다.
-			</p>
+			<p class="hint">@templ.Raw(tScopeGateHint.In(v.Page.Lang))</p>
 		</form>
 	}
 }
 
 // ruleLegend — 다섯 칸이 무슨 뜻인지. **여기 두는 것이 문서로 미루는 것보다 싸다** —
 // 규칙을 적는 자리에서 읽히고, 화면이 바뀌면 같이 바뀐다.
-templ ruleLegend() {
+templ ruleLegend(l Lang) {
 	<fieldset>
-		<legend>규칙을 적는 법</legend>
+		<legend>{ tRuleLegend.In(l) }</legend>
 		<table>
-			<tr><th style="width:7rem">칸</th><th>뜻</th></tr>
-			<tr>
-				<td><code>action</code></td>
-				<td>
-					<b>exclude</b> — 이 자산을 인벤토리에서 뺍니다. 나중에 「왜 이건 안 봤나」에 답해야
-					하므로, 아래에서 <b>왜 뺐는지를 적어야 확정됩니다.</b>
-					<b>include</b> — 다시 넣습니다. 위 계층이 뺀 것을 되돌릴 때 씁니다.
-				</td>
-			</tr>
-			<tr>
-				<td><code>runtime</code></td>
-				<td>어느 런타임인가. <code>openssl</code> · <code>jca</code> 같은 것. 비우면 <b>전부</b>입니다</td>
-			</tr>
-			<tr>
-				<td><code>lib</code></td>
-				<td>라이브러리 이름. <code>*</code> 를 쓸 수 있습니다 — <code>libcrypto.so.*</code></td>
-			</tr>
-			<tr>
-				<td><code>app_key</code></td>
-				<td>그것을 쓰는 실행 파일. <code>/usr/bin/python*</code> · <code>/usr/sbin/sshd</code></td>
-			</tr>
-			<tr>
-				<td><code>note</code></td>
-				<td>사람이 읽는 설명입니다. <b>판정의 근거가 아닙니다</b> — 근거는 아래 결론 칸에 적습니다</td>
-			</tr>
+			<tr><th style="width:7rem">{ tColMeaning.In(l) }</th><th>{ tColMeans.In(l) }</th></tr>
+			<tr><td><code>action</code></td><td>@templ.Raw(tRuleAction.In(l))</td></tr>
+			<tr><td><code>runtime</code></td><td>@templ.Raw(tRuleRuntime.In(l))</td></tr>
+			<tr><td><code>lib</code></td><td>@templ.Raw(tRuleLib.In(l))</td></tr>
+			<tr><td><code>app_key</code></td><td>@templ.Raw(tRuleAppKey.In(l))</td></tr>
+			<tr><td><code>note</code></td><td>@templ.Raw(tRuleNote.In(l))</td></tr>
 		</table>
-		<p class="hint">
-			<b>빈 칸은 「전부」입니다.</b> 그래서 <code>runtime</code>·<code>lib</code>·<code>app_key</code> 가
-			모두 빈 줄은 규칙으로 만들지 않습니다 — 그대로 두면 <code>exclude</code> 하나로
-			<b>인벤토리가 통째로 빕니다.</b> 「전부」를 뜻하려면 <code>*</code> 를 적으십시오.
-		</p>
-		<p class="hint">
-			<b>같은 자산에 규칙이 여럿 걸리면 아래 계층의 것이 적용됩니다.</b>
-			계층은 위에서 아래로 겹치기 때문입니다(조직 → 환경 → 노드군).
-			그래서 위 계층이 뺀 자산을 아래 계층에서 <code>include</code> 로 되돌릴 수 있고,
-			그 되돌림도 승인을 거칩니다.
-		</p>
+		<p class="hint">@templ.Raw(tRuleEmptyWarn.In(l))</p>
+		<p class="hint">@templ.Raw(tRuleLayerOrder.In(l))</p>
 	</fieldset>
 }
 
 // layerEditor — 계층 하나의 규칙 표.
-templ layerEditor(e LayerEdit) {
+templ layerEditor(l Lang, e LayerEdit) {
 	<fieldset>
 		<legend>
-			계층 { e.Name }
-			<span class="n">— { e.Path } · 규칙 { strconv.Itoa(len(e.Rules)) }개</span>
+			{ tLayer.In(l) } { e.Name }
+			<span class="n">— { e.Path } · { strconv.Itoa(len(e.Rules)) } { tLayerRules.In(l) }</span>
 		</legend>
 		<table>
 			<thead>
@@ -184,12 +151,15 @@ templ layerEditor(e LayerEdit) {
 				}
 			</tbody>
 		</table>
-		@addRuleRow(e.Index, len(e.Rules)+e.Blank, false)
-		<p class="hint">줄을 지우려면 <code>runtime</code>·<code>lib</code>·<code>app_key</code> 를 모두 비우십시오.</p>
+		@addRuleRow(l, e.Index, len(e.Rules)+e.Blank, false)
+		<p class="hint">@templ.Raw(tRemoveRuleHint.In(l))</p>
 	</fieldset>
 }
 
 // ruleRow — 규칙 한 줄. **화면과 「행 추가」가 같은 조각을 쓴다.**
+//
+// 칸 이름(action · runtime · lib · app_key · note)은 옮기지 않는다 — pqcota 의 CSV
+// 머리글 그대로라, 말을 바꾸면 화면과 파일이 다른 이름으로 같은 것을 가리키게 된다.
 templ ruleRow(layer, i int, r scope.Rule) {
 	<tr>
 		<td>
@@ -207,18 +177,18 @@ templ ruleRow(layer, i int, r scope.Rule) {
 
 // addRuleRow — 계층마다 따로인 「행 추가」. 번호가 끊기면 ApplyLayers 가 거기서 읽기를
 // 멈추므로, 서버가 다음 번호를 쥐고 버튼을 갈아 끼운다.
-templ addRuleRow(layer, next int, oob bool) {
+templ addRuleRow(l Lang, layer, next int, oob bool) {
 	<div class="addrow" id={ "add-rule-" + strconv.Itoa(layer) } { oobAttr(oob)... }>
 		<button
 			type="button"
-			hx-get={ ScopeRowPath + "?layer=" + strconv.Itoa(layer) + "&i=" + strconv.Itoa(next) }
+			hx-get={ ScopeRowPath + "?layer=" + strconv.Itoa(layer) + "&i=" + strconv.Itoa(next) + "&" + LangParam + "=" + string(l) }
 			hx-target={ "#" + ruleRowsID(layer) }
 			hx-swap="beforeend"
-		>행 추가</button>
+		>{ tAddRow.In(l) }</button>
 	</div>
 }
 
-templ ruleRowFragment(layer, i int) {
+templ ruleRowFragment(l Lang, layer, i int) {
 	@ruleRow(layer, i, scope.Rule{Action: "include"})
-	@addRuleRow(layer, i+1, true)
+	@addRuleRow(l, layer, i+1, true)
 }

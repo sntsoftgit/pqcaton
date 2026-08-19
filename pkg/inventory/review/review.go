@@ -26,15 +26,15 @@ import (
 // Session — 사람이 편집하는 파일. **라이브러리 타입을 그대로 쓰지 않는다** — 편집하는
 // 사람에게 필요한 것과 상태기계가 필요한 것이 다르다.
 type Session struct {
-	Note      string `json:"_읽는_법"`
+	Note      string `json:"_how_to_read"`
 	Scope     string `json:"scope"`
 	Reviewer  string `json:"reviewer"`
 	Signature string `json:"signature"`
 	// PolicyDecisions — 정책 하나에 결론 하나. **이것이 기본 단위다**(§3.4) — 수천 대를
 	// 한 건씩 보는 리뷰는 끝나지 않는다. 개별 항목의 Conclusion 은 예외를 위한 자리다.
-	PolicyDecisions map[string]string `json:"정책_판정"`
+	PolicyDecisions map[string]string `json:"policy_decisions"`
 	Items           []Item            `json:"items"`
-	Autopass        []string          `json:"autopass_후보"`
+	Autopass        []string          `json:"autopass_candidates"`
 }
 
 // Item — 판정 대상 하나.
@@ -53,15 +53,15 @@ type Item struct {
 	Mandatory bool `json:"mandatory"`
 	// Rescan — UNOBSERVED인데 커버리지 갭으로 설명된다. **「없다」가 아니라 「못 봤다」**이므로
 	// 재수집이 먼저다(§2.7).
-	Rescan bool `json:"rescan_후보,omitempty"`
+	Rescan bool `json:"rescan_candidate,omitempty"`
 
 	// ── 사람이 채우는 자리 ──
 	Conclusion string `json:"conclusion"`
-	Plan       bool   `json:"확정_계획에_넣는다"`
+	Plan       bool   `json:"include_in_plan"`
 	Level      string `json:"deploy_level,omitempty"` // L1 | L2 | L3
-	FIPS       bool   `json:"fips_요구,omitempty"`
+	FIPS       bool   `json:"fips_required,omitempty"`
 	// Kind — 조치 종류. 계약의 통제 어휘다(`REMEDIATION_KIND_*`). 비우면 PROVIDER_INJECT.
-	Kind string `json:"조치_종류,omitempty"`
+	Kind string `json:"remediation_kind,omitempty"`
 	// Config — provider 설정 조각. **도구가 지어내지 않는다.**
 	Config string `json:"config_artifact,omitempty"`
 }

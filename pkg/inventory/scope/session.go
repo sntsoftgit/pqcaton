@@ -19,29 +19,32 @@ import (
 // 하나다 — 두 벌이면 언젠가 한쪽만 고쳐지고, 그날 화면으로는 확정되는데 명령으로는 안 되는
 // 정책이 생긴다.
 type Session struct {
-	Note      string `json:"_읽는_법"`
+	Note      string `json:"_how_to_read"`
 	Org       string `json:"org"`
 	Reviewer  string `json:"reviewer"`
 	Signature string `json:"signature"`
 	// LayerDecisions — 계층 하나에 결론 하나가 기본이다(§3.4). 규칙 한 줄씩 승인하는 리뷰는
 	// 수천 대에서 끝나지 않는다. 개별 규칙의 conclusion 은 예외를 위한 자리다.
-	LayerDecisions map[string]string `json:"계층_판정"`
+	LayerDecisions map[string]string `json:"layer_decisions"`
 	Changes        []ChangeItem      `json:"changes"`
 	// Merged — 확정되면 그대로 CSV 로 나갈 정책 전문. **바뀐 것만 리뷰하되 나가는 것은
 	// 전문이다** — pqcota의 집행기는 정책 전체를 받는다.
-	Merged []Rule `json:"확정될_정책"`
+	Merged []Rule `json:"policy_on_finalize"`
 }
 
 // ChangeItem — 사람이 판정하는 변경 하나.
 type ChangeItem struct {
 	ID    string `json:"id"`
 	Layer string `json:"layer"`
-	// Kind — 추가 | 제거. 사람이 읽는 자리라 한글로 둔다.
-	Kind string `json:"변경"`
+	// Kind — [KindAdded] | [KindRemoved].
+	//
+	// **값은 코드다.** 화면이 두 언어라 여기에 사람이 읽는 말을 담으면, 파일에 담긴
+	// 말과 화면에 뜨는 말이 갈린다 — 그리고 그 파일은 다른 언어로 연 화면에서 읽힌다.
+	Kind string `json:"change"`
 	Rule string `json:"rule"`
 	Note string `json:"note,omitempty"`
 	// Audited — 결론 없이 확정할 수 없다. exclude 추가가 그것이다.
-	Audited bool `json:"근거_필수"`
+	Audited bool `json:"reason_required"`
 
 	// ── 사람이 채우는 자리 ──
 	Conclusion string `json:"conclusion"`
@@ -56,6 +59,12 @@ type Rule struct {
 	Note    string `json:"note,omitempty"`
 }
 
+// 변경의 종류. 화면이 이 값을 보고 그 언어의 말을 고른다.
+const (
+	KindAdded   = "added"
+	KindRemoved = "removed"
+)
+
 // SessionNote — 세션 파일 첫 줄에 적히는 사용법.
 const SessionNote = "계층_판정 에 계층별 결론을 적으면 그 계층의 규칙이 한 번에 판정됩니다(권장). " +
 	"예외만 changes 의 conclusion 으로 따로 적습니다. reviewer 와 signature 를 채운 뒤 " +
@@ -66,9 +75,9 @@ func NewSession(layers []Layer, base *kscope.AssetPolicy, orgName string) Sessio
 	merged := Merge(layers...)
 	sf := Session{Note: SessionNote, Org: orgName, LayerDecisions: map[string]string{}}
 	for _, c := range Diff(base, layers) {
-		kind := "추가"
+		kind := KindAdded
 		if !c.Added {
-			kind = "제거"
+			kind = KindRemoved
 		}
 		sf.Changes = append(sf.Changes, ChangeItem{
 			ID: RuleID(c.Rule), Layer: c.Layer, Kind: kind,

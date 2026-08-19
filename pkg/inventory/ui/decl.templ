@@ -11,8 +11,8 @@ templ declPage(v DeclView) {
 	@shell(v.Page) {
 		if len(v.Problems) > 0 {
 			<div class="warn-list">
-				<strong>선언이 앞뒤가 맞지 않는 자리 { strconv.Itoa(len(v.Problems)) }곳</strong>
-				<p class="hint">저장은 됩니다. 다만 그대로 두면 대조 결과가 <b>오류 없이 틀립니다.</b></p>
+				<strong>{ tDeclProblems.In(v.Page.Lang) } { strconv.Itoa(len(v.Problems)) }</strong>
+				<p class="hint">@templ.Raw(tDeclProblemsHint.In(v.Page.Lang))</p>
 				<ul>
 					for _, p := range v.Problems {
 						<li><code>{ p.Where }</code> — { p.What }<br/><span class="hint">{ p.Why }</span></li>
@@ -22,27 +22,31 @@ templ declPage(v DeclView) {
 		}
 		<form method="post" action="/decl/save">
 			<fieldset>
-				<legend>조직</legend>
-				<p class="hint">대조와 판정이 이 조직에 묶입니다. 비우면 <code>local</code> 입니다.</p>
+				<legend>{ tDeclOrg.In(v.Page.Lang) }</legend>
+				<p class="hint">@templ.Raw(tDeclOrgHint.In(v.Page.Lang))</p>
 				<input type="text" name="org" value={ v.Decl.Org } placeholder="local"/>
 			</fieldset>
 			<fieldset>
-				<legend>관리 대상 노드 <span class="n">— 어느 노드를 볼 것인가</span></legend>
-				<p class="hint">
-					한 줄에 하나. 여기 없는 노드와 통신한 것이 관측되면, 대조 화면에
-					「등재 판정 요청」으로 올라옵니다.
-					<b>노드 안에서 무엇을 볼지</b>는 「자산 스코프」 탭에서 정합니다.
-				</p>
+				<legend>
+					{ tDeclScope.In(v.Page.Lang) }
+					<span class="n">— { tDeclScopeNote.In(v.Page.Lang) }</span>
+				</legend>
+				<p class="hint">@templ.Raw(tDeclScopeHint.In(v.Page.Lang))</p>
 				<textarea name="scope">{ strings.Join(v.Decl.Scope, "\n") }</textarea>
 			</fieldset>
 			<fieldset>
-				<legend>노드 주소 <span class="n">— 관측에 찍힌 IP를 노드 이름과 잇는 근거</span></legend>
-				<p class="hint">
-					한 노드가 망 둘에 걸치면 IP도 둘입니다. 쉼표나 공백으로 나눠 적으십시오.
-					이름을 비우면 그 줄은 지워집니다.
-				</p>
+				<legend>
+					{ tDeclNodes.In(v.Page.Lang) }
+					<span class="n">— { tDeclNodesNote.In(v.Page.Lang) }</span>
+				</legend>
+				<p class="hint">@templ.Raw(tDeclNodesHint.In(v.Page.Lang))</p>
 				<table>
-					<thead><tr><th style="width:14rem">이름</th><th>IP</th></tr></thead>
+					<thead>
+						<tr>
+							<th style="width:14rem">{ tColName.In(v.Page.Lang) }</th>
+							<th>{ tColIP.In(v.Page.Lang) }</th>
+						</tr>
+					</thead>
 					<tbody id={ rowsID(KindNode) }>
 						for i, n := range v.Decl.Nodes {
 							@nodeRow(i, n.Name, strings.Join(n.IPs, ", "))
@@ -52,12 +56,21 @@ templ declPage(v DeclView) {
 						}
 					</tbody>
 				</table>
-				@addRow(KindNode, len(v.Decl.Nodes)+v.Blank, false)
+				@addRow(v.Page.Lang, KindNode, len(v.Decl.Nodes)+v.Blank, false)
 			</fieldset>
 			<fieldset>
-				<legend>자산 <span class="n">— 「이 노드에서 이것을 쓴다」</span></legend>
+				<legend>
+					{ tDeclAssets.In(v.Page.Lang) }
+					<span class="n">— { tDeclAssetsNote.In(v.Page.Lang) }</span>
+				</legend>
 				<table>
-					<thead><tr><th style="width:12rem">노드</th><th style="width:8rem">런타임</th><th>컴포넌트</th></tr></thead>
+					<thead>
+						<tr>
+							<th style="width:12rem">{ tColNode.In(v.Page.Lang) }</th>
+							<th style="width:8rem">{ tColRuntime.In(v.Page.Lang) }</th>
+							<th>{ tColComponent.In(v.Page.Lang) }</th>
+						</tr>
+					</thead>
 					<tbody id={ rowsID(KindAsset) }>
 						for i, a := range v.Decl.Assets {
 							@assetRow(i, a.Node, a.Runtime, a.Component)
@@ -67,13 +80,21 @@ templ declPage(v DeclView) {
 						}
 					</tbody>
 				</table>
-				@addRow(KindAsset, len(v.Decl.Assets)+v.Blank, false)
+				@addRow(v.Page.Lang, KindAsset, len(v.Decl.Assets)+v.Blank, false)
 			</fieldset>
 			<fieldset>
-				<legend>통신 엣지 <span class="n">— 「이 노드가 저 노드와 이렇게 통신한다」</span></legend>
+				<legend>
+					{ tDeclEdges.In(v.Page.Lang) }
+					<span class="n">— { tDeclEdgesNote.In(v.Page.Lang) }</span>
+				</legend>
 				<table>
 					<thead>
-						<tr><th style="width:11rem">보내는 쪽</th><th style="width:11rem">받는 쪽</th><th style="width:6rem">포트</th><th>프로토콜</th></tr>
+						<tr>
+							<th style="width:11rem">{ tColSrc.In(v.Page.Lang) }</th>
+							<th style="width:11rem">{ tColDst.In(v.Page.Lang) }</th>
+							<th style="width:6rem">{ tColPort.In(v.Page.Lang) }</th>
+							<th>{ tColProto.In(v.Page.Lang) }</th>
+						</tr>
 					</thead>
 					<tbody id={ rowsID(KindEdge) }>
 						for i, e := range v.Decl.Edges {
@@ -84,10 +105,10 @@ templ declPage(v DeclView) {
 						}
 					</tbody>
 				</table>
-				@addRow(KindEdge, len(v.Decl.Edges)+v.Blank, false)
+				@addRow(v.Page.Lang, KindEdge, len(v.Decl.Edges)+v.Blank, false)
 			</fieldset>
-			<div class="actions"><button class="primary">저장</button></div>
-			<p class="hint">저장하면 <code>pqcaton-report</code> 가 읽는 바로 그 파일에 씁니다 — 화면 위에 경로가 적혀 있습니다.</p>
+			<div class="actions"><button class="primary">{ tDeclSave.In(v.Page.Lang) }</button></div>
+			<p class="hint">@templ.Raw(tDeclSaveHint.In(v.Page.Lang))</p>
 		</form>
 	}
 }
@@ -125,19 +146,21 @@ templ edgeRow(i int, src, dst, port, proto string) {
 // 번호가 촘촘해야 한다 — `ApplyDecl` 은 번호가 끊기는 자리에서 읽기를 멈추므로, 건너뛴
 // 줄 뒤의 것은 **오류 없이 저장되지 않는다.** 그래서 서버가 다음 번호를 쥐고, 줄을 하나
 // 내줄 때마다 이 버튼을 자기 자신으로 갈아 끼운다(`hx-swap-oob`).
-templ addRow(kind string, next int, oob bool) {
+//
+// 말도 주소에 실어 보낸다 — 조각만 받아 오는 요청이라 쿠키에 기대지 않는다.
+templ addRow(l Lang, kind string, next int, oob bool) {
 	<div class="addrow" id={ "add-" + kind } { oobAttr(oob)... }>
 		<button
 			type="button"
-			hx-get={ RowPath + "?kind=" + kind + "&i=" + strconv.Itoa(next) }
+			hx-get={ RowPath + "?kind=" + kind + "&i=" + strconv.Itoa(next) + "&" + LangParam + "=" + string(l) }
 			hx-target={ "#" + rowsID(kind) }
 			hx-swap="beforeend"
-		>행 추가</button>
+		>{ tAddRow.In(l) }</button>
 	</div>
 }
 
 // rowFragment — 「행 추가」가 돌려주는 것: 새 줄 하나와, 번호가 하나 오른 버튼.
-templ rowFragment(kind string, i int) {
+templ rowFragment(l Lang, kind string, i int) {
 	switch kind {
 		case KindNode:
 			@nodeRow(i, "", "")
@@ -146,5 +169,5 @@ templ rowFragment(kind string, i int) {
 		case KindEdge:
 			@edgeRow(i, "", "", "", "")
 	}
-	@addRow(kind, i+1, true)
+	@addRow(l, kind, i+1, true)
 }

@@ -204,6 +204,8 @@ type server struct {
 func (s *server) handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
+	// 고른 말을 기억한다. 화면을 옮길 때마다 다시 고르게 하지 않는다.
+	r.Use(rememberLang)
 
 	// 화면이 브라우저로 내보내는 것(스타일 · htmx). 바이너리에 박혀 있다.
 	r.Handle(ui.StaticPath+"*", ui.Static())
@@ -225,6 +227,21 @@ func (s *server) handler() http.Handler {
 	return r
 }
 
+// rememberLang — 주소로 말을 고르면 쿠키에 남긴다.
+//
+// **주소에 실린 말이 쿠키를 이긴다**(ui.PickLang). 여기서는 그 선택을 기억만 한다 —
+// 「행 추가」처럼 조각만 받아 오는 요청도 같은 말로 오게 하려는 것이다.
+func rememberLang(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if v := r.URL.Query().Get(ui.LangParam); v != "" {
+			if l := ui.PickLang(r); string(l) == strings.ToLower(v) {
+				ui.SetLang(w, l)
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // home — 절차의 첫 자리로 보낸다.
 func (s *server) home(w http.ResponseWriter, r *http.Request) {
 	to := "/review"
@@ -234,36 +251,20 @@ func (s *server) home(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, to+"?"+r.URL.RawQuery, http.StatusSeeOther)
 }
 
-// nav — 위쪽 이동 링크. **절차 순서로 둔다** — 선언 → 대조 → 판정. 쓰는 사람이 다음에
-// 무엇을 할지 순서 자체가 말해 준다.
-//
-// 재료를 주지 않은 자리는 만들지 않는다 — **없는 것을 눌러 보게 하지 않는다.**
-func (s *server) nav(here string) []ui.Link {
-	var links []ui.Link
-	if s.decl != "" {
-		links = append(links, ui.Link{Href: "/decl", Text: "① 선언", Here: here == "/decl"})
-	}
-	// **자산 스코프는 대조 앞이다.** 무엇을 계속 볼지가 정해져야 관측이 적재되고, 그 뒤에
-	// 대조한다 — 절차가 그 순서다.
-	//
-	// 탭 이름은 화면 제목과 같게 둔다. 「스코프」만 쓰면 선언 안의 관리 대상 노드와
-	// 헷갈린다 — 둘 다 「무엇을 볼 것인가」이되 하나는 노드, 하나는 노드 안의 자산이다.
-	if s.scope != "" {
-		links = append(links, ui.Link{Href: "/scope", Text: "② 자산 스코프", Here: here == "/scope"})
-	}
-	if s.results != "" {
-		links = append(links, ui.Link{Href: "/survey", Text: "③ 대조", Here: here == "/survey"})
-	}
-	links = append(links, ui.Link{Href: "/review", Text: "④ 리뷰 큐", Here: here == "/review"})
-	return links
-}
-
-func (s *server) page(r *http.Request, title, subtitle, here string) ui.Page {
+// page — 화면 한 장의 공통 부분. **말은 요청이 정한다** — 화면만 두 말을 쓰고,
+// 이 명령이 표준오류로 찍는 것은 영어 하나다.
+func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
+	l := ui.PickLang(r)
 	return ui.Page{
-		Title: title, Subtitle: subtitle, Nav: s.nav(here),
+		Title: ui.ScreenTitle(here, l), Subtitle: subtitle,
+		Nav:  ui.NavFor(l, here, ui.Screens{Decl: s.decl != "", Scope: s.scope != "", Survey: s.results != ""}),
+		Lang: l, LangHref: ui.SwitchHref(r, l.Other()),
 		Message: r.URL.Query().Get("msg"), Problem: r.URL.Query().Get("problem"),
 	}
 }
+
+// sub — 부제. 「무엇을 보고 있나」라 값은 그대로 두고 이름표만 그 말로 옮긴다.
+func sub(parts ...string) string { return strings.Join(parts, " · ") }
 
 // ── 리뷰 큐 ────────────────────────────────────────────────────────────────
 
@@ -297,7 +298,7 @@ func (s *server) review(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	page := s.page(r, "리뷰 큐", sf.Scope+" · 세션 "+s.path, "/review")
+	page := s.page(r, ui.ScreenReview, sub(sf.Scope, ui.LabelSession(ui.PickLang(r))+" "+s.path))
 	page.Warnings = warn
 	html(w, func() error { return ui.RenderReview(w, ui.NewReviewView(sf, page)) })
 }
@@ -397,7 +398,8 @@ func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	v := ui.NewScopeView(sf, s.page(r, "자산 스코프", "조직 "+sf.Org+" · "+s.scope, "/scope"))
+	page := s.page(r, ui.ScreenScope, sub(ui.LabelOrg(ui.PickLang(r))+" "+sf.Org, s.scope))
+	v := ui.NewScopeView(sf, page)
 	if len(files) > 0 {
 		v = v.Editable(files)
 	}
@@ -473,7 +475,7 @@ func (s *server) scopeRow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "줄 번호가 범위 밖입니다", http.StatusBadRequest)
 		return
 	}
-	html(w, func() error { return ui.RenderRuleRow(w, layer, i) })
+	html(w, func() error { return ui.RenderRuleRow(w, ui.PickLang(r), layer, i) })
 }
 
 // applyScope — 폼 값을 얹어 파일에 쓴다. 읽고 얹고 쓴다.
@@ -561,7 +563,8 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	v := ui.NewSurveyView(res, s.page(r, "대조", "조직 "+res.Org+" · 결과 "+s.results, "/survey"))
+	v := ui.NewSurveyView(res, s.page(r, ui.ScreenSurvey,
+		sub(ui.LabelOrg(ui.PickLang(r))+" "+res.Org, ui.LabelResults(ui.PickLang(r))+" "+s.results)))
 	v.SVG = renderDOT(v.DOT)
 	html(w, func() error { return ui.RenderSurvey(w, v) })
 }
@@ -597,7 +600,7 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	v := ui.NewDeclView(d, s.page(r, "선언", "조직 "+d.OrgOrDefault()+" · "+s.decl, "/decl"))
+	v := ui.NewDeclView(d, s.page(r, ui.ScreenDecl, sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)))
 	html(w, func() error { return ui.RenderDecl(w, v) })
 }
 
@@ -623,7 +626,7 @@ func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "줄 번호가 범위 밖입니다", http.StatusBadRequest)
 		return
 	}
-	html(w, func() error { return ui.RenderRow(w, kind, i) })
+	html(w, func() error { return ui.RenderRow(w, ui.PickLang(r), kind, i) })
 }
 
 // maxRows — 한 표에 열어 줄 줄 수의 상한. 사람이 화면에서 손으로 넣는 자리라 이보다

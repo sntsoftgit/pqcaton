@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -145,9 +146,9 @@ func TestScopeViewGroupsByLayer(t *testing.T) {
 	sf := scope.Session{
 		Org: "acme", LayerDecisions: map[string]string{"corp": "뺀다", "pay": ""},
 		Changes: []scope.ChangeItem{
-			{ID: "a", Layer: "corp", Kind: "추가", Audited: true},
-			{ID: "b", Layer: "corp", Kind: "제거"},
-			{ID: "c", Layer: "pay", Kind: "추가", Audited: true},
+			{ID: "a", Layer: "corp", Kind: scope.KindAdded, Audited: true},
+			{ID: "b", Layer: "corp", Kind: scope.KindRemoved},
+			{ID: "c", Layer: "pay", Kind: scope.KindAdded, Audited: true},
 		},
 	}
 	v := ui.NewScopeView(sf, ui.Page{Title: "자산 스코프"})
@@ -197,7 +198,7 @@ func TestAddedRowUsesSameFormNames(t *testing.T) {
 		{ui.KindEdge, []string{`name="edge.src.7"`, `name="edge.dst.7"`, `name="edge.port.7"`, `name="edge.proto.7"`}},
 	} {
 		var b strings.Builder
-		if err := ui.RenderRow(&b, tc.kind, 7); err != nil {
+		if err := ui.RenderRow(&b, ui.KO, tc.kind, 7); err != nil {
 			t.Fatal(err)
 		}
 		for _, w := range tc.want {
@@ -215,7 +216,7 @@ func TestAddedRowUsesSameFormNames(t *testing.T) {
 // 오류 없이 틀리는 자리입니다.
 func TestAddedRowAdvancesTheButton(t *testing.T) {
 	var b strings.Builder
-	if err := ui.RenderRow(&b, ui.KindNode, 7); err != nil {
+	if err := ui.RenderRow(&b, ui.KO, ui.KindNode, 7); err != nil {
 		t.Fatal(err)
 	}
 	body := b.String()
@@ -283,7 +284,7 @@ func TestPageLoadsStatic(t *testing.T) {
 func layerFiles() []scope.LayerFile {
 	return []scope.LayerFile{{Path: "/tmp/corp.csv", Layer: scope.Layer{Name: "corp",
 		Rules: []kscope.AssetRule{
-			{Exclude: true, Runtime: "openssl", Lib: "libcrypto.so.*", AppKey: "/usr/bin/python*", Note: "python 런타임"},
+			{Exclude: true, Runtime: "openssl", Lib: "libcrypto.so.*", AppKey: "/usr/bin/python*", Note: "python runtime"},
 		}}}}
 }
 
@@ -296,7 +297,7 @@ func TestApplyLayersRoundTrip(t *testing.T) {
 	f := url.Values{
 		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {"openssl"},
 		"rule.0.0.lib": {"libcrypto.so.*"}, "rule.0.0.app_key": {"/usr/bin/python*"},
-		"rule.0.0.note": {"python 런타임"},
+		"rule.0.0.note": {"python runtime"},
 	}
 	got := ui.ApplyLayers(files, f)
 	if len(got) != 1 || len(got[0].Layer.Rules) != 1 {
@@ -339,7 +340,7 @@ func TestApplyLayersDropsEmptyRows(t *testing.T) {
 func TestApplyLayersRemovesRuleWhenCleared(t *testing.T) {
 	f := url.Values{
 		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {""},
-		"rule.0.0.lib": {""}, "rule.0.0.app_key": {""}, "rule.0.0.note": {"python 런타임"},
+		"rule.0.0.lib": {""}, "rule.0.0.app_key": {""}, "rule.0.0.note": {"python runtime"},
 	}
 	if n := len(ui.ApplyLayers(layerFiles(), f)[0].Layer.Rules); n != 0 {
 		t.Fatalf("비운 줄이 남았다: %d개", n)
@@ -349,7 +350,7 @@ func TestApplyLayersRemovesRuleWhenCleared(t *testing.T) {
 // IC-UI17 — 「행 추가」가 낸 규칙 줄이 화면과 같은 폼 이름을 쓰고, 다음 번호가 오른다.
 func TestRuleRowFragment(t *testing.T) {
 	var b strings.Builder
-	if err := ui.RenderRuleRow(&b, 1, 4); err != nil {
+	if err := ui.RenderRuleRow(&b, ui.KO, 1, 4); err != nil {
 		t.Fatal(err)
 	}
 	body := b.String()
@@ -384,5 +385,86 @@ func TestScopeScreenIsReadOnlyWithoutLayers(t *testing.T) {
 	}
 	if !strings.Contains(c.String(), `name="rule.0.0.action"`) {
 		t.Error("계층 파일을 줬는데 편집 표가 없다")
+	}
+}
+
+// langToggle — 말 바꾸기 링크. **여기만 다른 말로 적는 것이 맞다** — 지금 말을 못 읽는
+// 사람도 자기 말은 알아봐야 하므로, 영어 화면의 토글은 「한국어」라고 적힌다.
+var langToggle = regexp.MustCompile(`<a class="lang"[^>]*>[^<]*</a>`)
+
+// hasHangul — 화면에 한글이 남아 있나. 토글은 덜어내고 본다.
+func hasHangul(s string) string {
+	s = langToggle.ReplaceAllString(s, "")
+	for i, r := range s {
+		if r >= 0xAC00 && r <= 0xD7A3 {
+			from := max(0, i-70)
+			return s[from:min(len(s), i+70)]
+		}
+	}
+	return ""
+}
+
+// IC-UI19 — **영어 화면에 한글이 남아 있지 않다.**
+//
+// 문구를 하나 옮기지 않으면 그 자리만 한국어로 뜹니다. 눈으로는 못 찾습니다 — 화면
+// 넷에 문구가 200개 가까이 있고, 새 문구는 계속 늘어납니다. 그래서 **화면을 통째로
+// 영어로 그려 놓고 한글이 한 글자라도 있으면 막습니다.**
+//
+// 재료는 전부 아스키로 둡니다 — 노드 이름 같은 값까지 잡으면 이 케이스가 거짓으로 웁니다.
+func TestEnglishScreensHaveNoKorean(t *testing.T) {
+	page := ui.Page{Title: "t", Subtitle: "s", Lang: ui.EN, LangHref: "/?lang=ko",
+		Nav: ui.NavFor(ui.EN, ui.ScreenScope, ui.Screens{Decl: true, Scope: true, Survey: true})}
+
+	d := decl.Declaration{Org: "acme", Scope: []string{"web"},
+		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}},
+		Assets: []decl.Asset{{Node: "web", Runtime: "openssl", Component: "libssl"}},
+		Edges:  []decl.Edge{{Src: "web", Dst: "web", Port: 443, Proto: "TLS"}}}
+
+	rv := review.Session{Scope: "org://acme", PolicyDecisions: map[string]string{"p": ""},
+		Items:    []review.Item{{ID: "a", Policy: "p", State: "UNDECLARED", Mandatory: true}},
+		Autopass: []string{"b"}}
+
+	sc := scope.Session{Org: "acme", LayerDecisions: map[string]string{"corp": ""},
+		Changes: []scope.ChangeItem{{ID: "r1", Layer: "corp", Kind: scope.KindAdded,
+			Rule: "exclude:openssl/lib/app", Audited: true}},
+		Merged: []scope.Rule{{Action: "exclude", Runtime: "openssl", Lib: "lib", AppKey: "app"}}}
+
+	for name, render := range map[string]func(w io.Writer) error{
+		"decl":   func(w io.Writer) error { return ui.RenderDecl(w, ui.NewDeclView(d, page)) },
+		"review": func(w io.Writer) error { return ui.RenderReview(w, ui.NewReviewView(rv, page)) },
+		"scope": func(w io.Writer) error {
+			return ui.RenderScope(w, ui.NewScopeView(sc, page).Editable(layerFiles()))
+		},
+		"row":     func(w io.Writer) error { return ui.RenderRow(w, ui.EN, ui.KindNode, 0) },
+		"ruleRow": func(w io.Writer) error { return ui.RenderRuleRow(w, ui.EN, 0, 0) },
+	} {
+		var b strings.Builder
+		if err := render(&b); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if around := hasHangul(b.String()); around != "" {
+			t.Errorf("%s 화면을 영어로 그렸는데 한글이 남았다:\n   …%s…", name, around)
+		}
+	}
+}
+
+// IC-UI20 — **같은 화면이 두 말로 뜬다.** 한쪽만 그려지면 토글이 장식이 된다.
+func TestScreenRendersInBothLanguages(t *testing.T) {
+	sc := scope.Session{Org: "acme", LayerDecisions: map[string]string{}}
+	for _, tc := range []struct {
+		lang ui.Lang
+		want string
+	}{
+		{ui.KO, "규칙을 적는 법"},
+		{ui.EN, "How to write a rule"},
+	} {
+		var b strings.Builder
+		page := ui.Page{Title: "t", Lang: tc.lang}
+		if err := ui.RenderScope(&b, ui.NewScopeView(sc, page).Editable(layerFiles())); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(b.String(), tc.want) {
+			t.Errorf("%s 화면에 %q 가 없다", tc.lang, tc.want)
+		}
 	}
 }

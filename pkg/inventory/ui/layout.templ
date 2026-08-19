@@ -9,7 +9,7 @@ package ui
 // 기계에서도 그대로 뜬다.
 templ shell(p Page) {
 	<!DOCTYPE html>
-	<html lang="ko">
+	<html lang={ string(p.Lang) }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -24,6 +24,9 @@ templ shell(p Page) {
 				<nav>
 					for _, l := range p.Nav {
 						<a href={ templ.SafeURL(l.Href) } class={ templ.KV("here", l.Here) }>{ l.Text }</a>
+					}
+					if p.LangHref != "" {
+						<a class="lang" href={ templ.SafeURL(p.LangHref) } rel="nofollow">{ p.Lang.Other().Label() }</a>
 					}
 				</nav>
 			}
@@ -40,7 +43,7 @@ templ shell(p Page) {
 				</div>
 			}
 			if p.Problem != "" {
-				<div class="msg bad"><strong>하지 않았습니다 — 이유는 이렇습니다.</strong><pre>{ p.Problem }</pre></div>
+				<div class="msg bad"><strong>{ tRefused.In(p.Lang) }</strong><pre>{ p.Problem }</pre></div>
 			}
 			{ children... }
 		</body>
