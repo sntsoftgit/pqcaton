@@ -5,8 +5,12 @@ Parameters
 
 Licensor:             (주)에스앤티소프트 (SNT Soft Co., Ltd.)
 
-Licensed Work:        pqcaton
+Licensed Work:        pqcaton Version 0.6.0 or later.
                       The Licensed Work is (c) 2026 SNT Soft Co., Ltd.
+
+                      Versions 0.1.0 through 0.5.0 were published under the
+                      LICENSE distributed with those versions, whose Change Date
+                      is 2030-08-11. That date stands for those versions.
 
 Additional Use Grant: You may make production use of the Licensed Work to manage
                       5 or fewer nodes, counting every node observed or provisioned
@@ -27,7 +31,10 @@ Additional Use Grant: You may make production use of the Licensed Work to manage
                       Your organization includes all affiliates under common
                       control.
 
-Change Date:          2030-08-11
+Change Date:          Four years from the date the Licensed Work is published.
+                      Each released version converts on its own fourth
+                      anniversary; the exact date for each version is recorded
+                      in RELEASE_NOTES.md.
 
 Change License:       Apache License, Version 2.0
 

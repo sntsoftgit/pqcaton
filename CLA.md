@@ -23,7 +23,7 @@ Change Date 이후 Apache-2.0으로 낼 수 있도록 허락하는 것이고, �
 저작물을 만들 수 있다.**
 
 **재라이선스 권리가 이 동의의 핵심이다.** 회사는 이 권리로 pqcaton을 BUSL-1.1로 내고,
-Change Date(2030-08-11)에 Apache-2.0으로 전환한다(→ [LICENSING](LICENSING.md)).
+Change Date(릴리스일로부터 4년)에 Apache-2.0으로 전환한다(→ [LICENSING](LICENSING.md)).
 
 ## 3. 특허 라이선스
 
