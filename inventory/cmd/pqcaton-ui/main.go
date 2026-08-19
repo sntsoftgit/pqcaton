@@ -187,10 +187,13 @@ func (s *server) nav(here string) []ui.Link {
 	if s.decl != "" {
 		links = append(links, ui.Link{Href: "/decl", Text: "① 선언", Here: here == "/decl"})
 	}
-	// **스코프는 대조 앞이다.** 무엇을 계속 볼지가 정해져야 관측이 적재되고, 그 뒤에
+	// **자산 스코프는 대조 앞이다.** 무엇을 계속 볼지가 정해져야 관측이 적재되고, 그 뒤에
 	// 대조한다 — 절차가 그 순서다.
+	//
+	// 탭 이름은 화면 제목과 같게 둔다. 「스코프」만 쓰면 선언 안의 관리 대상 노드와
+	// 헷갈린다 — 둘 다 「무엇을 볼 것인가」이되 하나는 노드, 하나는 노드 안의 자산이다.
 	if s.scope != "" {
-		links = append(links, ui.Link{Href: "/scope", Text: "② 스코프", Here: here == "/scope"})
+		links = append(links, ui.Link{Href: "/scope", Text: "② 자산 스코프", Here: here == "/scope"})
 	}
 	if s.results != "" {
 		links = append(links, ui.Link{Href: "/survey", Text: "③ 대조", Here: here == "/survey"})

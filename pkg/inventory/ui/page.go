@@ -82,7 +82,8 @@ var reviewPage = template.Must(template.New("review").Funcs(funcs).Parse(shell +
 
 <fieldset>
  <legend>승인</legend>
- <p class="hint">서명 없이는 확정되지 않습니다.</p>
+ <p class="hint">정책마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤,
+  <b>확정</b>하면 계획이 나갑니다. 셋이 다 있어야 통과합니다.</p>
  <label>승인자 <input type="text" name="reviewer" value="{{.Reviewer}}"></label>
  <label style="display:block;margin-top:.6rem">서명 <input type="text" name="signature" value="{{.Signature}}"></label>
 </fieldset>
@@ -116,14 +117,15 @@ var declPage = template.Must(template.New("decl").Funcs(funcs).Parse(shell + `
 </fieldset>
 
 <fieldset>
- <legend>스코프 <span class="n">— 등재된 노드</span></legend>
- <p class="hint">한 줄에 하나. 여기 없는 상대와의 통신은 「등재 판정 요청」으로 표기됩니다.</p>
+ <legend>관리 대상 노드 <span class="n">— 어느 노드를 볼 것인가</span></legend>
+ <p class="hint">한 줄에 하나. 여기 없는 상대와의 통신은 「등재 판정 요청」으로 표기됩니다.
+  <b>노드 안에서 무엇을 볼지</b>는 「자산 스코프」 탭에서 정합니다.</p>
  <textarea name="scope">{{range .Decl.Scope}}{{.}}
 {{end}}</textarea>
 </fieldset>
 
 <fieldset>
- <legend>노드 주소 <span class="n">— 관측 IP를 노드로 해소하는 근거</span></legend>
+ <legend>노드 주소 <span class="n">— 관측 IP를 노드 이름으로 잇는 근거</span></legend>
  <p class="hint">한 노드가 망 둘에 걸치면 IP도 둘입니다. 쉼표나 공백으로 나눠 적으십시오.
   이름을 비우면 그 줄은 지워집니다.</p>
  <table>
@@ -186,7 +188,7 @@ var surveyPage = template.Must(template.New("survey").Funcs(funcs).Parse(shell +
 {{template "head" .Page}}
 
 <fieldset>
- <legend>① 관측 <span class="n">— pqcota가 무엇을 보았나</span></legend>
+ <legend>관측 <span class="n">— pqcota가 무엇을 보았나</span></legend>
  <p class="hint">대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.</p>
  <table>
   <tr><th style="width:14rem">노드</th><th>본 collector</th></tr>
@@ -213,7 +215,7 @@ var surveyPage = template.Must(template.New("survey").Funcs(funcs).Parse(shell +
 </fieldset>
 
 <fieldset>
- <legend>② 자산 인벤토리 <span class="n">— 3-상태 대조</span></legend>
+ <legend>자산 <span class="n">— 선언과 맞댄 3-상태</span></legend>
  <p>CONFIRMED <b>{{.Confirmed}}</b> · UNDECLARED(shadow) <b>{{.Undeclared}}</b> · UNOBSERVED <b>{{.Unobserved}}</b></p>
  <table>
   <tr><th>상태</th><th>확신</th><th>노드</th><th>런타임</th><th>컴포넌트</th></tr>
@@ -229,7 +231,7 @@ var surveyPage = template.Must(template.New("survey").Funcs(funcs).Parse(shell +
 </fieldset>
 
 <fieldset>
- <legend>③ 통신 엣지 <span class="n">— 양자내성 등급</span></legend>
+ <legend>통신 엣지 <span class="n">— 선언과 맞댄 3-상태 · 양자내성 등급</span></legend>
  <p>🟢 PQC <b>{{.PQC}}</b> · 🔴 고전 <b>{{.Classical}}</b> · ⚪ 불명 <b>{{.Unknown}}</b></p>
  <table>
   <tr><th style="width:2rem"></th><th>보내는 쪽</th><th>받는 쪽</th><th>포트</th><th>프로토콜</th><th>협상 그룹</th><th>대조</th></tr>
@@ -245,7 +247,7 @@ var surveyPage = template.Must(template.New("survey").Funcs(funcs).Parse(shell +
 </fieldset>
 
 <fieldset>
- <legend>④ 거버넌스 토폴로지</legend>
+ <legend>토폴로지 <span class="n">— 색은 등급, 선형은 대조 상태</span></legend>
  {{if .SVG}}
   <div style="overflow-x:auto">{{.SVG}}</div>
   <p class="hint">색은 양자내성 등급, 선형은 대조 상태입니다. <b>미관측은 점선</b>이라 부재와 구분됩니다.</p>
@@ -292,7 +294,8 @@ var scopePage = template.Must(template.New("scope").Funcs(funcs).Parse(shell + `
 
 <fieldset>
  <legend>승인</legend>
- <p class="hint">서명이 없거나 근거 필수 변경에 결론이 없으면 정책이 나가지 않습니다.</p>
+ <p class="hint">계층마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤,
+  <b>확정</b>하면 정책이 나갑니다. 셋이 다 있어야 통과합니다.</p>
  <label>승인자 <input type="text" name="reviewer" value="{{.Session.Reviewer}}"></label>
  <label style="display:block;margin-top:.6rem">서명 <input type="text" name="signature" value="{{.Session.Signature}}"></label>
 </fieldset>
