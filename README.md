@@ -93,10 +93,11 @@ bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
 **JSON을 눈으로 훑기 싫으면 화면으로 채웁니다.** 같은 파일, 같은 게이트입니다.
 
 ```bash
-bin/pqcaton-ui session.json -decl declaration.json -results results/ \
-  -judgments judgments.jsonl -org acme
+bin/pqcaton-ui session.json -decl declaration.json -scope scope-session.json \
+  -results results/ -judgments judgments.jsonl -org acme
 # → http://127.0.0.1:8765 — 탭이 절차 순서입니다
-#   ① 선언(관측 대상 노드·자산·엣지) → ② 대조(3-상태·등급·토폴로지) → ③ 리뷰 큐(판정·확정)
+#   ① 선언(관측 대상 노드·자산·엣지) → ② 스코프(무엇을 계속 볼지)
+#   → ③ 대조(3-상태·등급·토폴로지) → ④ 리뷰 큐(판정·확정)
 ```
 
 **무엇을 계속 볼지도 승인을 거칩니다.** 「이 자산은 안 본다」는 사고 뒤에 근거를 대야 하는
