@@ -36,3 +36,4 @@ github.com/a-h/templ                        MIT
 #
 # 우리가 쓴 파일이면 BUSL-1.1 이라고 적는다. 목록에 없는 파일은 통과하지 못한다.
 pkg/inventory/ui/static/htmx.min.js         0BSD
+pkg/inventory/ui/static/app.css             BUSL-1.1
