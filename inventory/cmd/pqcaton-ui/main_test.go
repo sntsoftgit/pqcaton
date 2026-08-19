@@ -545,3 +545,116 @@ func TestStaticIsMounted(t *testing.T) {
 		}
 	}
 }
+
+// withLayers — 계층 CSV만 준 서버. **세션 파일은 일부러 만들지 않는다.**
+func withLayers(t *testing.T) (*server, string) {
+	t.Helper()
+	s, dir := newServer(t)
+	corp := filepath.Join(dir, "corp.csv")
+	if err := os.WriteFile(corp, []byte(
+		"action,runtime,lib,app_key,note\n"+
+			"exclude,openssl,libcrypto.so.*,/usr/bin/python*,python 런타임\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.layers = []string{corp}
+	s.scope = filepath.Join(dir, "scope-session.json")
+	s.scopeOut = filepath.Join(dir, "asset-scope.csv")
+	return s, dir
+}
+
+// IC-U21 — **계층 CSV만 주면 화면이 세션을 연다.**
+//
+// 재료를 손에 들고도 명령을 한 번 돌려야 화면이 열리는 것은, 화면을 두는 이유와
+// 어긋납니다. 5노드 사용자가 터미널을 열지 않고 한 바퀴를 도는 것이 목표입니다.
+func TestScopeOpensFromLayersWithoutSessionFile(t *testing.T) {
+	s, _ := withLayers(t)
+	if _, err := os.Stat(s.scope); !os.IsNotExist(err) {
+		t.Fatal("세션 파일이 미리 있다 — 이 케이스가 재는 것이 없다")
+	}
+	mux := s.handler()
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/scope", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /scope = %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "/usr/bin/python*") {
+		t.Error("계층 규칙이 화면에 없다")
+	}
+	if !strings.Contains(body, `name="rule.0.0.action"`) {
+		t.Error("규칙을 고칠 수 없다 — 편집 표가 없다")
+	}
+}
+
+// IC-U22 — **화면에서 고친 규칙이 계층 CSV에 그대로 쓰인다.**
+//
+// 여기가 이 버전의 전부입니다. 규칙을 손으로 CSV에 적으라고 하려면 다섯 칸의 뜻과 glob과
+// 계층 우선순위를 문서로 가르쳐야 하고, 그 문서가 편집 화면보다 비쌉니다.
+func TestScopeRulesWriteBackToLayerFile(t *testing.T) {
+	s, dir := withLayers(t)
+	q := location(t, postForm(t, s, "/scope/rules", url.Values{
+		// 있던 규칙은 그대로, 한 줄을 새로 넣는다
+		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {"openssl"},
+		"rule.0.0.lib": {"libcrypto.so.*"}, "rule.0.0.app_key": {"/usr/bin/python*"},
+		"rule.0.0.note":   {"python 런타임"},
+		"rule.0.1.action": {"exclude"}, "rule.0.1.runtime": {"*"},
+		"rule.0.1.lib": {"*"}, "rule.0.1.app_key": {"/usr/sbin/sshd"},
+		"rule.0.1.note": {"sshd 는 OS 패치로 관리"},
+		// 미리 열린 빈 줄
+		"rule.0.2.action": {"include"}, "rule.0.2.runtime": {""},
+		"rule.0.2.lib": {""}, "rule.0.2.app_key": {""},
+	}))
+	if p := q.Get("problem"); p != "" {
+		t.Fatalf("쓰지 못했다: %s", p)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(dir, "corp.csv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := kscope.LoadAssetPolicy(strings.NewReader(string(raw)))
+	if err != nil {
+		t.Fatalf("pqcota가 우리가 쓴 계층 CSV를 읽지 못했다: %v\n%s", err, raw)
+	}
+	if len(p.Rules) != 2 {
+		t.Fatalf("규칙 %d개 — 빈 줄이 규칙이 됐거나 새 줄이 빠졌다:\n%s", len(p.Rules), raw)
+	}
+	if p.Rules[1].AppKey != "/usr/sbin/sshd" {
+		t.Errorf("새 규칙이 다르다: %+v", p.Rules[1])
+	}
+
+	// 세션도 함께 갱신된다 — 새 exclude 가 판정 대상으로 올라와야 한다.
+	sf, err := scope.LoadSession(s.scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sf.AuditedCount() != 2 {
+		t.Errorf("근거 필요 %d건 — 새로 넣은 exclude 가 판정 대상에 없다", sf.AuditedCount())
+	}
+}
+
+// IC-U23 — **선언과 관측 결과만 주면 화면이 리뷰 세션을 연다.**
+func TestReviewOpensFromResultsWithoutSessionFile(t *testing.T) {
+	s, dir := newServer(t)
+	if err := os.Remove(s.path); err != nil {
+		t.Fatal(err)
+	}
+	s.decl = filepath.Join(dir, "declaration.json")
+	if err := os.WriteFile(s.decl, []byte(declJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.results = filepath.Join(dir, "results")
+	if err := os.MkdirAll(s.results, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mux := s.handler()
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/review", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /review = %d — 세션 파일 없이 열리지 않았다\n%s", w.Code, w.Body.String())
+	}
+	// 선언한 자산이 관측되지 않았으므로 UNOBSERVED 로 올라온다.
+	if !strings.Contains(w.Body.String(), "UNOBSERVED") {
+		t.Errorf("리뷰 큐가 비었다:\n%s", w.Body.String())
+	}
+}

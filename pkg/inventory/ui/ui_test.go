@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
@@ -274,5 +276,113 @@ func TestPageLoadsStatic(t *testing.T) {
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("화면이 %q 를 부르지 않는다", want)
 		}
+	}
+}
+
+// layerFiles — 계층 하나짜리 편집 재료.
+func layerFiles() []scope.LayerFile {
+	return []scope.LayerFile{{Path: "/tmp/corp.csv", Layer: scope.Layer{Name: "corp",
+		Rules: []kscope.AssetRule{
+			{Exclude: true, Runtime: "openssl", Lib: "libcrypto.so.*", AppKey: "/usr/bin/python*", Note: "python 런타임"},
+		}}}}
+}
+
+// IC-UI14 — **규칙 표를 그리고 다시 읽으면 같은 규칙이 나온다.**
+//
+// 그리기와 읽기가 어긋나면 저장할 때마다 규칙이 조용히 달라집니다. 그 규칙은 pqcota 가
+// 집행하는 것이라, 어긋난 만큼 인벤토리에서 무엇이 빠지는지가 달라집니다.
+func TestApplyLayersRoundTrip(t *testing.T) {
+	files := layerFiles()
+	f := url.Values{
+		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {"openssl"},
+		"rule.0.0.lib": {"libcrypto.so.*"}, "rule.0.0.app_key": {"/usr/bin/python*"},
+		"rule.0.0.note": {"python 런타임"},
+	}
+	got := ui.ApplyLayers(files, f)
+	if len(got) != 1 || len(got[0].Layer.Rules) != 1 {
+		t.Fatalf("규칙 수가 다르다: %+v", got)
+	}
+	if got[0].Layer.Rules[0] != files[0].Layer.Rules[0] {
+		t.Errorf("규칙이 달라졌다:\n  got  %+v\n  want %+v", got[0].Layer.Rules[0], files[0].Layer.Rules[0])
+	}
+	if got[0].Path != files[0].Path || got[0].Layer.Name != "corp" {
+		t.Error("어느 파일의 어느 계층인지가 날아갔다 — 저장할 곳을 잃는다")
+	}
+}
+
+// IC-UI15 — **세 칸이 모두 빈 줄은 규칙이 아니다.**
+//
+// pqcota 는 빈 칸을 `*`로 읽습니다. 그대로 만들면 `exclude,*,*,*` — **인벤토리가 통째로
+// 빕니다.** 미리 열어 둔 빈 줄에서 action 만 잘못 골라도 그렇게 됩니다. 「전부」를
+// 뜻하려면 `*`를 적어야 합니다.
+func TestApplyLayersDropsEmptyRows(t *testing.T) {
+	f := url.Values{
+		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {"openssl"},
+		"rule.0.0.lib": {"libssl.so.3"}, "rule.0.0.app_key": {"*"},
+		// 빈 줄인데 action 만 exclude 로 남았다
+		"rule.0.1.action": {"exclude"}, "rule.0.1.runtime": {""},
+		"rule.0.1.lib": {""}, "rule.0.1.app_key": {""}, "rule.0.1.note": {"적다 만 줄"},
+	}
+	got := ui.ApplyLayers(layerFiles(), f)
+	if n := len(got[0].Layer.Rules); n != 1 {
+		t.Fatalf("규칙 %d개 — 빈 줄이 규칙이 됐다: %+v", n, got[0].Layer.Rules)
+	}
+	// 「전부」를 뜻하려면 * 를 적는다. 그건 그대로 규칙이 된다.
+	f.Set("rule.0.1.runtime", "*")
+	if n := len(ui.ApplyLayers(layerFiles(), f)[0].Layer.Rules); n != 2 {
+		t.Fatalf("`*` 를 적었는데 규칙이 되지 않았다: %d개", n)
+	}
+}
+
+// IC-UI16 — 줄을 지우는 방법은 **세 칸을 비우는 것** 하나다. 그 방법이 먹지 않으면
+// 화면에서 규칙을 뺄 길이 없다.
+func TestApplyLayersRemovesRuleWhenCleared(t *testing.T) {
+	f := url.Values{
+		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {""},
+		"rule.0.0.lib": {""}, "rule.0.0.app_key": {""}, "rule.0.0.note": {"python 런타임"},
+	}
+	if n := len(ui.ApplyLayers(layerFiles(), f)[0].Layer.Rules); n != 0 {
+		t.Fatalf("비운 줄이 남았다: %d개", n)
+	}
+}
+
+// IC-UI17 — 「행 추가」가 낸 규칙 줄이 화면과 같은 폼 이름을 쓰고, 다음 번호가 오른다.
+func TestRuleRowFragment(t *testing.T) {
+	var b strings.Builder
+	if err := ui.RenderRuleRow(&b, 1, 4); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	for _, want := range []string{
+		`name="rule.1.4.action"`, `name="rule.1.4.runtime"`, `name="rule.1.4.lib"`,
+		`name="rule.1.4.app_key"`, `name="rule.1.4.note"`, "layer=1&amp;i=5", "hx-swap-oob",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("새 규칙 줄에 %q 가 없다:\n%s", want, body)
+		}
+	}
+	// **빈 줄의 기본은 include 다.** exclude 가 기본이면 실수 한 번이 인벤토리를 지운다.
+	if !strings.Contains(body, `<option value="include" selected`) {
+		t.Error("빈 줄의 기본이 include 가 아니다")
+	}
+}
+
+// IC-UI18 — 계층 파일을 주지 않으면 편집 표를 그리지 않는다. **저장할 곳이 없는 칸을
+// 사람이 채우게 하지 않는다.**
+func TestScopeScreenIsReadOnlyWithoutLayers(t *testing.T) {
+	sf := scope.Session{Org: "acme", LayerDecisions: map[string]string{}}
+	var b strings.Builder
+	if err := ui.RenderScope(&b, ui.NewScopeView(sf, ui.Page{Title: "자산 스코프"})); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), `name="rule.0.0.action"`) {
+		t.Error("계층 파일 없이 편집 표를 그렸다")
+	}
+	var c strings.Builder
+	if err := ui.RenderScope(&c, ui.NewScopeView(sf, ui.Page{Title: "자산 스코프"}).Editable(layerFiles())); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(c.String(), `name="rule.0.0.action"`) {
+		t.Error("계층 파일을 줬는데 편집 표가 없다")
 	}
 }

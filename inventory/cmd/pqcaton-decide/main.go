@@ -32,7 +32,6 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/localscan"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
-	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
 
@@ -223,49 +222,18 @@ func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, [
 	if err != nil {
 		return sf, nil, err
 	}
-	// **선언이 조직을 말한다.** -org 를 따로 주지 않았으면 선언의 것을 쓴다.
-	if orgName == "" || orgName == decl.DefaultOrg {
-		orgName = d.OrgOrDefault()
-	}
-	if d.Org != "" && d.Org != orgName {
-		return sf, nil, fmt.Errorf("선언은 조직 %q의 것인데 %q로 대조하려 한다", d.Org, orgName)
-	}
-	// **앞뒤가 안 맞으면 말한다.** 노드↔IP 가 틀리면 CONFIRMED 여야 할 것이 shadow 로 올라온다.
-	if p := decl.Check(d); len(p) > 0 {
-		fmt.Fprintf(os.Stderr, "⚠ 선언에 맞지 않는 자리 %d곳 — `pqcaton-ui -decl` 로 보십시오\n", len(p))
-	}
-
-	r, err := report.Build(resultsDir, d)
+	// **세우는 일은 review 패키지가 한다.** 화면(`pqcaton-ui`)이 같은 것을 부른다 — 두
+	// 벌이면 화면에서 본 shadow 와 명령이 올린 리뷰 큐가 갈린다.
+	b, err := review.FromResults(resultsDir, d, orgName)
 	if err != nil {
 		return sf, nil, err
 	}
-	for _, sk := range r.Skipped {
-		fmt.Fprintln(os.Stderr, "   건너뜀(읽을 수 없음):", sk)
+	for _, w := range b.Warnings {
+		fmt.Fprintln(os.Stderr, "⚠", w)
 	}
-	autopass, queue := reconcile.BuildReviewQueue(r.Assets)
-
-	sf = review.Session{Note: review.Note, Scope: "org://" + orgName,
-		PolicyDecisions: map[string]string{}}
-	for _, it := range queue {
-		pol := review.PolicyOf(it.Rec.Key)
-		sf.Items = append(sf.Items, review.Item{
-			ID: review.Key(it.Rec.Key), Policy: pol,
-			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
-			State: string(it.Rec.State), Conf: it.Rec.Confidence,
-			Mandatory: it.Mandatory, Rescan: it.Rec.RescanCandidate,
-		})
-		if _, ok := sf.PolicyDecisions[pol]; !ok {
-			sf.PolicyDecisions[pol] = ""
-		}
-	}
-	for _, a := range autopass {
-		sf.Autopass = append(sf.Autopass, review.Key(a.Key))
-	}
-	sort.Strings(sf.Autopass)
-	c, u, un := r.Counts()
 	fmt.Fprintf(os.Stderr, "관측 %d노드 · 대조 CONFIRMED %d · UNDECLARED %d · UNOBSERVED %d\n",
-		len(r.SeenBy), c, u, un)
-	return sf, r.Assets, nil
+		b.Nodes, b.Confirmed, b.Undeclared, b.Unobserved)
+	return b.Session, b.Assets, nil
 }
 
 // ── close ──────────────────────────────────────────────────────────────────

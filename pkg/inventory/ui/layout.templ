@@ -30,6 +30,15 @@ templ shell(p Page) {
 			if p.Message != "" {
 				<p class="msg ok">{ p.Message }</p>
 			}
+			if len(p.Warnings) > 0 {
+				<div class="warn-list">
+					<ul>
+						for _, w := range p.Warnings {
+							<li>{ w }</li>
+						}
+					</ul>
+				</div>
+			}
 			if p.Problem != "" {
 				<div class="msg bad"><strong>하지 않았습니다.</strong><pre>{ p.Problem }</pre></div>
 			}

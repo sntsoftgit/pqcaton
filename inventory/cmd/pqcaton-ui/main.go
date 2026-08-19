@@ -73,9 +73,15 @@ func main() {
 	}
 	path := pos[0]
 	if _, err := review.Load(path); err != nil {
-		fmt.Fprintln(os.Stderr, "❌ 리뷰 세션을 읽을 수 없다:", err)
-		fmt.Fprintln(os.Stderr, "   `pqcaton-decide open <declaration.json> -results <results-dir> > "+path+"` 로 먼저 만드십시오")
-		os.Exit(1)
+		// **재료가 있으면 화면이 직접 연다.** 선언과 관측 결과가 곧 리뷰 큐의 재료다 —
+		// 그것을 손에 들고도 명령을 한 번 돌려야 화면이 열리는 것은, 화면을 두는 이유와
+		// 어긋난다.
+		if *declPath == "" || *resultsDir == "" {
+			fmt.Fprintln(os.Stderr, "❌ 리뷰 세션을 읽을 수 없다:", err)
+			fmt.Fprintln(os.Stderr, "   선언과 관측 결과를 주면 화면이 직접 엽니다: -decl declaration.json -results <results-dir>")
+			fmt.Fprintln(os.Stderr, "   명령으로 만들려면: `pqcaton-decide open <declaration.json> -results <results-dir> > "+path+"`")
+			os.Exit(1)
+		}
 	}
 	if *declPath != "" {
 		if _, err := decl.Load(*declPath); err != nil {
@@ -261,20 +267,45 @@ func (s *server) page(r *http.Request, title, subtitle, here string) ui.Page {
 
 // ── 리뷰 큐 ────────────────────────────────────────────────────────────────
 
+// reviewSession — 리뷰 세션을 읽는다. **관측 결과가 있으면 그것이 정답지다.**
+//
+// 큐는 관측에서 파생된 것이라, 결과가 늘었는데 세션이 그대로면 화면이 옛 큐를 보여
+// 준다 — 방금 나타난 shadow 가 판정 대상에 없는 상태다. 그래서 읽을 때마다 다시 세우고,
+// 사람이 적은 판정은 [review.Carry] 가 들고 간다. 파일에 쓰는 것은 저장·확정할 때뿐이다.
+func (s *server) reviewSession() (review.Session, []string, error) {
+	prev, err := review.Load(s.path)
+	if err != nil && (s.results == "" || !os.IsNotExist(err)) {
+		return prev, nil, err
+	}
+	if s.results == "" {
+		return prev, nil, nil
+	}
+	d, err := decl.Load(s.decl)
+	if err != nil {
+		return prev, nil, err
+	}
+	b, err := review.FromResults(s.results, d, s.org)
+	if err != nil {
+		return prev, nil, err
+	}
+	return review.Carry(prev, b.Session), b.Warnings, nil
+}
+
 func (s *server) review(w http.ResponseWriter, r *http.Request) {
-	sf, err := review.Load(s.path)
+	sf, warn, err := s.reviewSession()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	v := ui.NewReviewView(sf, s.page(r, "리뷰 큐", sf.Scope+" · 세션 "+s.path, "/review"))
-	html(w, func() error { return ui.RenderReview(w, v) })
+	page := s.page(r, "리뷰 큐", sf.Scope+" · 세션 "+s.path, "/review")
+	page.Warnings = warn
+	html(w, func() error { return ui.RenderReview(w, ui.NewReviewView(sf, page)) })
 }
 
 // applyReview — 폼 값을 얹어 파일에 쓴다. **읽고 얹고 쓴다** — 화면이 자기 사본을 들고
 // 있으면 그 사이 파일을 고친 사람의 편집이 사라진다.
 func (s *server) applyReview(r *http.Request) (review.Session, error) {
-	sf, err := review.Load(s.path)
+	sf, _, err := s.reviewSession()
 	if err != nil {
 		return sf, err
 	}

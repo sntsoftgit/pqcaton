@@ -38,6 +38,11 @@ type Page struct {
 	// 말하는 것과 같은 자리다.
 	Message string
 	Problem string
+	// Warnings — 하기는 했는데 사람이 알아야 하는 것.
+	//
+	// **Problem 과 다르다.** Problem 은 하지 않은 것이고, 이것은 한 것이다. 둘을 섞으면
+	// 「선언에 맞지 않는 자리가 있다」가 「저장이 안 됐다」로 읽힌다.
+	Warnings []string
 	// Nav — 화면 사이를 오가는 자리. 부르는 쪽이 무엇을 열었는지에 따라 다르다.
 	Nav []Link
 }
