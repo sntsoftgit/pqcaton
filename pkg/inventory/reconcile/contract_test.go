@@ -7,7 +7,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 )
 
-// 계약에 정의된 상태 전부에 대응이 있어야 한다. 상류가 상태를 하나 더하면 여기서 먼저 깨진다 —
+// 계약에 정의된 상태 전부에 대응이 있어야 한다. pqcota가 상태를 하나 더하면 여기서 먼저 깨진다 —
 // 조용히 UNSPECIFIED로 떨어지면 "모르는 것"이 "확인된 것"처럼 흘러간다.
 func TestEveryContractStateMaps(t *testing.T) {
 	for v, name := range inventoryv1.ReconState_name {

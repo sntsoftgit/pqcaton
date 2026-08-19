@@ -104,7 +104,7 @@ bin/pqcaton-scope open corp.csv prod.csv pay.csv -org acme > scope-session.json
 # 승인 — exclude 추가는 결론이 없으면 확정되지 않습니다
 bin/pqcaton-scope close scope-session.json -judgments judgments.jsonl -org acme > asset-scope.csv
 
-# 나온 CSV 가 그대로 상류 집행기의 입력입니다
+# 나온 CSV 가 그대로 pqcota의 집행기의 입력입니다
 pqcota-ingest -scope-assets asset-scope.csv results/
 
 # 제외는 영구 면제가 아닙니다 — 승인이 없거나 오래된 것만 다시 올립니다
@@ -123,7 +123,7 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
    · 결론 없음: local/openssl/libssl-e2f2d68a (UNDECLARED)
 ```
 
-나온 `plan.json`은 **상류가 그대로 받습니다** — 계약 형식이라 우리 형식이 따로 없습니다.
+나온 `plan.json`은 **pqcota가 그대로 받습니다** — 계약 형식이라 우리 형식이 따로 없습니다.
 
 ```bash
 pqcota-provision --level l2 plan.json > provision.yml   # pqcota 리포의 명령
@@ -146,7 +146,7 @@ pqcota-provision --level l2 plan.json > provision.yml   # pqcota 리포의 명�
 [CONTRIBUTING.md](CONTRIBUTING.md)를 먼저 읽어 주십시오(CLA가 필요합니다).
 보안 취약점은 이슈가 아니라 [SECURITY.md](SECURITY.md)의 경로로 알려 주십시오.
 
-상류 pqcota는 Apache-2.0이고, 귀속 고지는 [NOTICE](NOTICE)에 있습니다.
+기반 프로젝트 pqcota는 Apache-2.0이고, 귀속 고지는 [NOTICE](NOTICE)에 있습니다.
 
 ---
 

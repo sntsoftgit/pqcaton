@@ -29,8 +29,8 @@ func finding(lib, app string) *discoveryv1.Finding {
 	}
 }
 
-// IC-S1 — **상속은 규칙 이어붙이기다.** 상류의 「뒤 규칙이 이긴다」를 그대로 쓰므로 판정
-// 규칙이 세상에 하나만 존재한다. 우리가 잠금을 따로 두면 내려보낸 CSV 를 상류가 집행한
+// IC-S1 — **상속은 규칙 이어붙이기다.** pqcota의 「뒤 규칙이 이긴다」를 그대로 쓰므로 판정
+// 규칙이 세상에 하나만 존재한다. 우리가 잠금을 따로 두면 내려보낸 CSV 를 pqcota가 집행한
 // 결과와 우리 화면이 갈라진다.
 func TestMergeLetsLowerLayerWin(t *testing.T) {
 	조직 := scope.Layer{Name: "corp", Rules: []kscope.AssetRule{ex("openssl", "libcrypto*", "", "전사 제외")}}
@@ -92,8 +92,8 @@ func TestRuleIDIgnoresNote(t *testing.T) {
 	}
 }
 
-// IC-S5 — **나가는 형식은 상류 것 그대로다.** 우리 형식을 만들면 「거버넌스가 확정한 정책을
-// 상류가 집행한다」가 코드로는 거짓이 된다. 써서 다시 읽어 같은 판정이 나오는지로 잰다.
+// IC-S5 — **나가는 형식은 pqcota 것 그대로다.** 우리 형식을 만들면 「거버넌스가 확정한 정책을
+// pqcota가 집행한다」가 코드로는 거짓이 된다. 써서 다시 읽어 같은 판정이 나오는지로 잰다.
 func TestWriteCSVRoundTripsThroughUpstream(t *testing.T) {
 	p := &kscope.AssetPolicy{Rules: []kscope.AssetRule{
 		ex("openssl", "libcrypto*", "/usr/bin/python*", "python 런타임"),
@@ -105,7 +105,7 @@ func TestWriteCSVRoundTripsThroughUpstream(t *testing.T) {
 	}
 	back, err := kscope.LoadAssetPolicy(strings.NewReader(buf.String()))
 	if err != nil {
-		t.Fatalf("상류가 우리 CSV 를 읽지 못했다: %v", err)
+		t.Fatalf("pqcota가 우리 CSV 를 읽지 못했다: %v", err)
 	}
 	if len(back.Rules) != len(p.Rules) {
 		t.Fatalf("규칙 %d개로 돌아왔다, want %d\n%s", len(back.Rules), len(p.Rules), buf.String())
@@ -118,7 +118,7 @@ func TestWriteCSVRoundTripsThroughUpstream(t *testing.T) {
 	}
 }
 
-// IC-S6 — **뺀 것을 이름으로 낸다.** 상류는 수만 센다(`ExcludedByScope`) — 잡음을 거르는
+// IC-S6 — **뺀 것을 이름으로 낸다.** pqcota는 수만 센다(`ExcludedByScope`) — 잡음을 거르는
 // 것이 목적이라 그것으로 충분하다. 사고 뒤에 "왜 이게 인벤토리에 없었나"에 답하려면
 // 무엇이 빠졌는지 말할 수 있어야 한다.
 func TestExcludedFromNamesWhatWasDropped(t *testing.T) {

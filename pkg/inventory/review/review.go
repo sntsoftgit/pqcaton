@@ -194,7 +194,7 @@ func Pending(sf Session) string {
 }
 
 // RequireNode — **지어내지 않고 끊는다.** node 가 비면 겨눌 곳을 모르는 것이고, 빈 채로
-// 내보내면 상류가 이름 없는 노드에 조치를 건다. v0.1.0 이 낸 세션 파일이 여기 걸린다.
+// 내보내면 pqcota가 이름 없는 노드에 조치를 건다. v0.1.0 이 낸 세션 파일이 여기 걸린다.
 func RequireNode(it Item) error {
 	if it.Node == "" {
 		return fmt.Errorf("항목 %s 에 node 가 없다 — `pqcaton-decide open` 을 다시 돌려 세션을 새로 받아라", it.ID)
@@ -243,7 +243,7 @@ func BasisOf(it Item) string {
 	)
 }
 
-// ToContract — 확정 계획을 상류 계약(`provisioningv1.FinalizedPlan`)으로 옮긴다.
+// ToContract — 확정 계획을 pqcota 계약(`provisioningv1.FinalizedPlan`)으로 옮긴다.
 //
 // 어휘의 단일 출처는 계약이다 — 이 리포는 그 어휘로 말하고 자기 형식을 새로 만들지 않는다.
 func ToContract(p *decision.FinalizedPlan, items []Item) (*provisioningv1.FinalizedPlan, error) {

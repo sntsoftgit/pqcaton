@@ -1,6 +1,6 @@
 // Command pqcaton-scope — 자산 스코프 정책을 사람이 승인하고 배포하는 자리(설계 §1.6).
 //
-// **규칙을 다시 만들지 않는다.** 형식과 집행은 상류의 `scope.AssetPolicy`가 갖고, 여기는
+// **규칙을 다시 만들지 않는다.** 형식과 집행은 pqcota의 `scope.AssetPolicy`가 갖고, 여기는
 // 그 위의 거버넌스만 갖는다 — 계층 상속, 변경 승인, 감사 기록, 제외분 재검토.
 //
 //	pqcaton-scope open   <계층.csv>... [-base 현재.csv] [-org 이름] > session.json
@@ -39,7 +39,7 @@ const usage = `usage:
         계층은 준 순서대로 이깁니다 - 조직 · 환경 · 노드군 순으로 주십시오
 
   pqcaton-scope close  <session.json> [-judgments <파일>] [-org <이름>]
-        승인을 확인하고 **상류 집행기가 읽는 CSV**를 낸다.
+        승인을 확인하고 **pqcota의 집행기가 읽는 CSV**를 낸다.
         exclude 추가는 결론이 없으면 확정하지 않는다 - 「안 본다」는 감사 대상입니다
 
   pqcaton-scope review <정책.csv> <results-dir> [-judgments <파일>] [-org <이름>] [-ttl <일>]
@@ -117,7 +117,7 @@ type sessionFile struct {
 	LayerDecisions map[string]string `json:"계층_판정"`
 	Changes        []changeFile      `json:"changes"`
 	// Merged — 확정되면 그대로 CSV 로 나갈 정책 전문. **바뀐 것만 리뷰하되 나가는 것은
-	// 전문이다** - 상류 집행기는 정책 전체를 받는다.
+	// 전문이다** - pqcota의 집행기는 정책 전체를 받는다.
 	Merged []ruleFile `json:"확정될_정책"`
 }
 
@@ -354,7 +354,7 @@ func review(policyPath, dir, judgmentPath, orgName string, ttl int64) error {
 	if len(ex) > 0 && len(need) == 0 {
 		fmt.Fprintln(os.Stderr, "뺀 것은 있으나 전부 승인이 살아 있습니다")
 	}
-	// **뺀 것을 이름으로 낸다.** 상류는 수만 세지만, 사고 뒤에 답하려면 이름이 있어야 한다.
+	// **뺀 것을 이름으로 낸다.** pqcota는 수만 세지만, 사고 뒤에 답하려면 이름이 있어야 한다.
 	for _, e := range ex {
 		fmt.Fprintf(os.Stderr, "   빠짐: %s (%s)\n", e.Subject(), evidenceOrUnknown(e.Evidence))
 	}

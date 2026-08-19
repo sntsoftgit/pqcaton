@@ -114,7 +114,7 @@ func TestCloseRefusesWithoutSignature(t *testing.T) {
 	}
 }
 
-// IC-S10 — **승인하면 상류 집행기가 읽는 CSV 가 나온다.**
+// IC-S10 — **승인하면 pqcota의 집행기가 읽는 CSV 가 나온다.**
 //
 // 계층 판정 하나로 그 계층의 규칙이 한 번에 판정되는 것(§3.4)도 여기서 함께 잰다.
 func TestCloseEmitsPolicyForUpstream(t *testing.T) {
@@ -133,10 +133,10 @@ func TestCloseEmitsPolicyForUpstream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("확정되지 않았다: %v", err)
 	}
-	// 상류가 그대로 읽어야 한다 — 우리 형식을 만들면 「상류가 집행한다」가 거짓이 된다.
+	// pqcota가 그대로 읽어야 한다 — 우리 형식을 만들면 「pqcota가 집행한다」가 거짓이 된다.
 	p, err := kscope.LoadAssetPolicy(strings.NewReader(out))
 	if err != nil {
-		t.Fatalf("상류가 우리 CSV 를 읽지 못했다: %v\n%s", err, out)
+		t.Fatalf("pqcota가 우리 CSV 를 읽지 못했다: %v\n%s", err, out)
 	}
 	if len(p.Rules) != 2 {
 		t.Fatalf("규칙 %d개: %s", len(p.Rules), out)
@@ -181,7 +181,7 @@ func TestOpenWithBaseRaisesOnlyDelta(t *testing.T) {
 	if !strings.Contains(sf.Changes[0].ID, "sshd") {
 		t.Errorf("올라온 것이 새 규칙이 아니다: %s", sf.Changes[0].ID)
 	}
-	// 바뀐 것만 리뷰하되 나가는 것은 전문이다 — 상류 집행기는 정책 전체를 받는다.
+	// 바뀐 것만 리뷰하되 나가는 것은 전문이다 — pqcota의 집행기는 정책 전체를 받는다.
 	if len(sf.Merged) != 2 {
 		t.Errorf("확정될 정책이 %d개 — 전문이 아니다", len(sf.Merged))
 	}

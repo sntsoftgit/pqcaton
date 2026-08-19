@@ -51,7 +51,7 @@ const OrgSetting = "pqcaton.org"
 
 // RequireEnv — "1"이면 RLS 가 실제로 물지 않는 연결로는 **저장소를 열지 않는다.**
 //
-// 상류의 `PQCOTA_REQUIRE_SIGNATURE` 와 같은 모양이다 — 조용히 통과하는 경로를 닫아야 하는
+// pqcota의 `PQCOTA_REQUIRE_SIGNATURE` 와 같은 모양이다 — 조용히 통과하는 경로를 닫아야 하는
 // 배포용이고, 두 리포를 오가는 사람이 같은 것을 같은 자리에서 찾게 한다.
 const RequireEnv = "PQCATON_REQUIRE_RLS"
 

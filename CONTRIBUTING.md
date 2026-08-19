@@ -41,7 +41,7 @@ pqcaton은 **각 릴리스가 공개일로부터 4년 뒤 Apache-2.0으로 전�
 CI가 이것을 검사합니다(`make check-licenses`). 게이트에 걸리면 대안을 찾거나, 별도 프로세스로
 분리해 호출하는 방법을 이슈에서 상의합니다.
 
-## 상류(pqcota)에 관한 것
+## 기반 프로젝트(pqcota)에 관한 것
 
 관측·정규화·전환물 생성은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가 합니다.
 그쪽 문제나 계약(`contracts/`) 변경이 필요하면 **pqcota 리포에 직접 이슈를 열어 주십시오.**

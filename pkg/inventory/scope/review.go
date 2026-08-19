@@ -12,7 +12,7 @@ import (
 
 // Excluded — 정책이 뺀 자산 하나.
 //
-// **상류는 제외분을 세기만 한다**(`Snapshot.ExcludedByScope`) — 잡음을 거르는 것이 목적이라
+// **pqcota는 제외분을 세기만 한다**(`Snapshot.ExcludedByScope`) — 잡음을 거르는 것이 목적이라
 // 그것으로 충분하다. 거버넌스는 셈이 아니라 **이름**이 필요하다. 사고 뒤에 "왜 이게
 // 인벤토리에 없었나"에 답하려면 무엇이 어느 규칙으로 빠졌는지 말할 수 있어야 한다.
 type Excluded struct {
@@ -30,7 +30,7 @@ type Excluded struct {
 
 // ExcludedFrom — 한 노드의 관측 finding 을 정책에 통과시켜 **빠지는 것을 이름으로** 낸다.
 //
-// 판정은 상류의 `Managed` 가 한다 — 여기서 glob 을 다시 구현하면 내려보낸 CSV 를 상류가
+// 판정은 pqcota의 `Managed` 가 한다 — 여기서 glob 을 다시 구현하면 내려보낸 CSV 를 pqcota가
 // 집행한 결과와 우리 화면이 갈라진다.
 func ExcludedFrom(p *kscope.AssetPolicy, node string, findings []*discoveryv1.Finding) []Excluded {
 	var out []Excluded
@@ -80,7 +80,7 @@ func Review(ex []Excluded, prior []decision.Judgment, now, ttlSeconds int64) []R
 	for _, j := range decision.LatestPerSubject(prior) {
 		latest[j.Subject] = j
 	}
-	// 만료 판정은 상류가 아니라 우리 원장의 규칙이다(IC-D4) — 여기서 다시 세지 않는다.
+	// 만료 판정은 pqcota가 아니라 우리 원장의 규칙이다(IC-D4) — 여기서 다시 세지 않는다.
 	stale := map[string]bool{}
 	for _, j := range decision.ExpireStale(decision.LatestPerSubject(prior), now, ttlSeconds, 1) {
 		if j.Stale {

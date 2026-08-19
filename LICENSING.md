@@ -68,7 +68,7 @@ pqcaton은 조직의 암호 자산을 관측하고 전환 결정을 다룹니다
 그래서 코드를 공개합니다. 읽고, 검증하고, 고쳐서 자기 환경에 맞출 수 있습니다. 다만 규모가
 되는 프로덕션에서 쓰시려면 계약이 필요할 뿐입니다.
 
-## 상류 — pqcota
+## 기반 프로젝트 — pqcota
 
 pqcaton은 [pqcota](https://github.com/randyinthedev-hash/pqcota)(Apache-2.0)의 공개 계약을
 소비합니다. pqcota는 **관측하고 전환물을 생성**하고, pqcaton은 그 위에서 **대조·리뷰·확정**을
