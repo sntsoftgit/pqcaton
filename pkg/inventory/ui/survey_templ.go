@@ -430,7 +430,7 @@ func surveyPage(v SurveyView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if e.Uncovered {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<span class=\"hint\">이 노드 미관측</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<span class=\"hint\">관측 안 된 노드</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
