@@ -47,16 +47,17 @@ flowchart TB
 
 ### 입력과 출력
 
-| 명령 | 입력 | 출력 |
-|---|---|---|
-| [`pqcaton-scope open`](../inventory/cmd/pqcaton-scope) | 계층 CSV 여럿 · `-base` 현재 정책 | 스코프 세션(바뀐 규칙만) |
-| `pqcaton-scope close` | 사람이 채운 스코프 세션 | **`asset-scope.csv`** · 판정 원장 |
-| `pqcaton-scope review` | 정책 CSV · 관측 결과 | 다시 볼 제외분(승인 없음·만료) |
-| [`pqcaton-report`](../inventory/cmd/pqcaton-report) | 관측 결과 · 선언 | 콘솔 리포트 · 토폴로지 DOT |
-| [`pqcaton-decide open`](../inventory/cmd/pqcaton-decide) | 선언 · **관측 결과**(`-results`) | 리뷰 세션(판정 대상) |
-| `pqcaton-decide close` | 사람이 채운 리뷰 세션 | **`plan.json`**(계약 형식) · 판정 원장 |
-| `pqcaton-decide delta` | 판정 원장 · 지금 관측 | 근거가 바뀐 판정만 |
-| [`pqcaton-ui`](../inventory/cmd/pqcaton-ui) | 위 파일들 | 같은 파일을 편집 — **같은 게이트** |
+| 명령 | 하는 일 | 입력 | 출력 |
+|---|---|---|---|
+| [`pqcaton-scope open`](../inventory/cmd/pqcaton-scope) | 계층을 겹쳐 **바뀐 규칙만** 승인 대상으로 올립니다 | 계층 CSV 여럿 · `-base` 현재 정책 | 스코프 세션(바뀐 규칙만) |
+| `pqcaton-scope close` | 승인을 확인하고 **정책을 배포 형태로** 냅니다 | 사람이 채운 스코프 세션 | **`asset-scope.csv`** · 판정 원장 |
+| `pqcaton-scope review` | 빼둔 자산을 **이름으로** 다시 올립니다 | 정책 CSV · 관측 결과 | 다시 볼 제외분(승인 없음·만료) |
+| [`pqcaton-report`](../inventory/cmd/pqcaton-report) | 여러 노드의 관측을 선언과 **대조해 보여 줍니다** | 관측 결과 · 선언 | 콘솔 리포트 · 토폴로지 DOT |
+| [`pqcaton-decide open`](../inventory/cmd/pqcaton-decide) | 대조 결과에서 **사람이 판정할 것만** 골라 냅니다 | 선언 · **관측 결과**(`-results`) | 리뷰 세션(판정 대상) |
+| `pqcaton-decide close` | **확정 게이트** — 결론과 서명이 다 있어야 계획이 나갑니다 | 사람이 채운 리뷰 세션 | **`plan.json`**(계약 형식) · 판정 원장 |
+| `pqcaton-decide delta` | 재관측 뒤 **근거가 바뀐 판정만** 골라 냅니다 | 판정 원장 · 지금 관측 | 근거가 바뀐 판정만 |
+| [`pqcaton-ui`](../inventory/cmd/pqcaton-ui) | 위 넷을 **화면에서** 다룹니다(선언·스코프·대조·판정) | 위 파일들 | 같은 파일을 편집 — **같은 게이트** |
+| [`pqcaton-reconcile`](../inventory/cmd/pqcaton-reconcile) | **이 기계 한 대**를 스캔해 대조 결과만 보여 줍니다(체험) | 선언 CSV | 콘솔 대조 결과 |
 
 **사람이 하는 자리는 두 곳뿐입니다** — 스코프 세션과 리뷰 세션을 채우는 것. 나머지는 파일이
 다음 명령의 입력이 됩니다. 그 파일들이 곧 감사 기록입니다.
