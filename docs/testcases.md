@@ -208,6 +208,7 @@
 | IC-R10 ✅ | 한 노드를 collector 둘이 봄 | 중복은 지우되 **처음 순서를 지키고 입력을 덮지 않는다** |
 | IC-R11 ✅ | 깨진 결과 파일 | 나머지는 읽되 **건너뛴 것을 이름으로 낸다** — 모르면 「관측 안 됨」과 「못 읽음」이 뒤섞인다 |
 | IC-R12 ✅ | 관측 결과가 하나도 없음 | 선언만으로 대조가 돌고 **전부 미관측**이 된다 — 그것이 「없다」가 아니라 「아직 못 봤다」다 |
+| **IC-R13 ✅** | 못 본 계층을 화면·콘솔에 냄 | 상류 enum 상수(`COLLECTION_LAYER_ARTIFACT`)를 그대로 내지 않고 **관측이 어디서 오는지**를 적되 원래 이름을 괄호에 남긴다. **모르는 값은 그대로 낸다** — 상류에 계층이 늘었을 때 뭉개면 못 본 것이 화면에서 사라진다 |
 
 > **구현 위치**: 엣지 대조 `reconcile/edge.go`(없음) · 등급 분류 `pkg/kernel/posture/` · 토폴로지 DOT `reconcile/topology.go`(없음) · 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB). 관측 엣지 스키마 `contracts` `ObservedEdge`(CollectionResult.observed_edges). 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
 

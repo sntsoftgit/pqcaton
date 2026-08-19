@@ -283,3 +283,29 @@ func Uniq(in []string) []string {
 	}
 	return out
 }
+
+// LayerLabel — 관측 계층 이름을 **사람이 읽는 말로.**
+//
+// 상류(pqcota)의 enum 상수가 그대로 화면에 뜨면(`COLLECTION_LAYER_ARTIFACT`) 읽는
+// 사람은 무엇을 못 봤다는 것인지 알 수 없다. 계층은 **관측이 어디서 왔나**를 말하므로,
+// 그것을 그대로 적는다.
+//
+// **원래 이름을 괄호에 남긴다.** pqcota 의 문서와 로그는 그 이름을 쓰므로, 옮기기만
+// 하면 두 쪽을 잇지 못한다. 모르는 값은 그대로 낸다 — 상류에 계층이 늘었을 때
+// 조용히 「불명」으로 뭉개지 않는다.
+func LayerLabel(name string) string {
+	short := strings.TrimPrefix(name, "COLLECTION_LAYER_")
+	switch short {
+	case "SOURCE":
+		return "소스 코드 (SOURCE)"
+	case "ARTIFACT":
+		return "빌드 산출물 — 바이너리·패키지 (ARTIFACT)"
+	case "PROCESS":
+		return "돌고 있는 프로세스 (PROCESS)"
+	case "NETWORK":
+		return "실제 통신 (NETWORK)"
+	case "JVM_INTROSPECTION":
+		return "JVM 내부 — JCA (JVM_INTROSPECTION)"
+	}
+	return name
+}

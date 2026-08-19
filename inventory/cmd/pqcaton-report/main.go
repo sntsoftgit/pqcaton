@@ -102,7 +102,11 @@ func printObservation(r *report.Result) {
 		fmt.Println("없습니다 — 이 범위에서는 관측이 완전합니다")
 	} else {
 		if len(gaps) > 0 {
-			fmt.Printf("계층 %s", strings.Join(gaps, ", "))
+			labels := make([]string, 0, len(gaps))
+			for _, g := range gaps {
+				labels = append(labels, report.LayerLabel(g))
+			}
+			fmt.Printf("계층 %s", strings.Join(labels, ", "))
 		}
 		if len(uncovered) > 0 {
 			if len(gaps) > 0 {

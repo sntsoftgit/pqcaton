@@ -3,6 +3,7 @@ package report_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
@@ -118,5 +119,33 @@ func TestBuildWithNoResults(t *testing.T) {
 	}
 	if r.Org != "acme" {
 		t.Errorf("조직 = %q", r.Org)
+	}
+}
+
+// IC-R13 — **상류 enum 상수를 화면에 그대로 내보내지 않는다.**
+//
+// `COLLECTION_LAYER_ARTIFACT` 가 화면에 뜨면 읽는 사람은 무엇을 못 봤다는 것인지 알 수
+// 없습니다. 계층은 「관측이 어디서 왔나」이므로 그것을 적되, **원래 이름을 괄호에 남깁니다** —
+// pqcota의 문서와 로그는 그 이름을 쓰므로 옮기기만 하면 두 쪽을 잇지 못합니다.
+//
+// **모르는 값은 그대로 냅니다.** 상류에 계층이 늘었을 때 조용히 뭉개면, 못 본 계층이
+// 화면에서 사라지는 것보다 나쁜 「본 것처럼 보이는」 상태가 됩니다.
+func TestLayerLabelIsReadableAndKeepsTheRawName(t *testing.T) {
+	for raw, want := range map[string]string{
+		"COLLECTION_LAYER_ARTIFACT": "ARTIFACT",
+		"COLLECTION_LAYER_NETWORK":  "NETWORK",
+		"COLLECTION_LAYER_PROCESS":  "PROCESS",
+	} {
+		got := report.LayerLabel(raw)
+		if !strings.Contains(got, want) {
+			t.Errorf("%s → %q — 원래 이름이 사라졌다", raw, got)
+		}
+		if got == raw {
+			t.Errorf("%s 를 그대로 냈다 — 사람이 읽을 말이 없다", raw)
+		}
+	}
+	const unknown = "COLLECTION_LAYER_SOMETHING_NEW"
+	if got := report.LayerLabel(unknown); got != unknown {
+		t.Errorf("모르는 계층을 %q 로 뭉갰다 — 상류에 계층이 늘면 조용히 틀린다", got)
 	}
 }

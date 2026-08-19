@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 )
 
 // surveyPage — 대조 결과. **관측을 먼저 보인다** — 그것 없이는 UNOBSERVED가 「없다」인지
@@ -30,10 +32,10 @@ templ surveyPage(v SurveyView) {
 				} else {
 					<ul>
 						for _, l := range v.R.GapLayers() {
-							<li>계층 <code>{ l }</code></li>
+							<li>이 계층을 아예 보지 못했습니다 — { report.LayerLabel(l) }</li>
 						}
 						for _, n := range v.R.UncoveredNodes() {
-							<li>통신 미관측 노드 <code>{ n }</code></li>
+							<li>이 노드의 통신을 보지 못했습니다 — <code>{ n }</code></li>
 						}
 					</ul>
 					<p class="hint">
@@ -106,7 +108,7 @@ templ surveyPage(v SurveyView) {
 						<td>
 							<code>{ e.Src }</code>
 							if e.Uncovered {
-								<span class="hint">미관측</span>
+								<span class="hint">이 노드 미관측</span>
 							}
 						</td>
 						<td>
