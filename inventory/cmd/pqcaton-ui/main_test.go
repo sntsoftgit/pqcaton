@@ -466,7 +466,7 @@ func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 	if q.Get("problem") == "" {
 		t.Fatal("근거 없이 확정됐다")
 	}
-	if !strings.Contains(q.Get("problem"), "결론 없음") {
+	if !strings.Contains(q.Get("problem"), "왜 이렇게 정했는지가 없습니다") {
 		t.Errorf("무엇이 남았는지 말하지 않는다: %s", q.Get("problem"))
 	}
 	if _, err := os.Stat(s.scopeOut); !os.IsNotExist(err) {

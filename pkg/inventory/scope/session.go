@@ -193,12 +193,12 @@ func Finalize(sf Session, orgName string) (*FinalizeResult, error) {
 func Pending(sf Session) string {
 	var b strings.Builder
 	if sf.Reviewer == "" || sf.Signature == "" {
-		b.WriteString("   · reviewer 와 signature 를 채우십시오\n")
+		b.WriteString("   · 승인자(reviewer)와 서명(signature)을 채우십시오\n")
 	}
 	for _, c := range sf.Changes {
 		if c.Audited && strings.TrimSpace(c.Conclusion) == "" &&
 			strings.TrimSpace(sf.LayerDecisions[c.Layer]) == "" {
-			fmt.Fprintf(&b, "   · 결론 없음: %s (계층 %s)\n", c.ID, c.Layer)
+			fmt.Fprintf(&b, "   · 왜 이렇게 정했는지가 없습니다: %s (계층 %s)\n", c.ID, c.Layer)
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")

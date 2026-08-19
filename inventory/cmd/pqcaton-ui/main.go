@@ -448,7 +448,7 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 	for _, lf := range edited {
 		n += len(lf.Layer.Rules)
 	}
-	msg := fmt.Sprintf("계층 %d개에 규칙 %d개를 썼습니다 — 변경 %d건(근거 필요 %d)",
+	msg := fmt.Sprintf("계층 %d개에 규칙 %d개를 썼습니다 — 판정할 변경 %d건, 그중 왜 뺐는지를 적어야 하는 것 %d건",
 		len(edited), n, len(next.Changes), next.AuditedCount())
 	if next.Signature == "" && sf.Signature != "" {
 		// **말하지 않으면 사람은 서명이 남아 있다고 여긴다.**
@@ -528,7 +528,7 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/scope", "", err.Error())
 		return
 	}
-	msg := fmt.Sprintf("확정했습니다 — 규칙 %d개를 %s 에 썼습니다 (`pqcota-ingest -scope-assets` 의 입력)",
+	msg := fmt.Sprintf("확정했습니다 — 규칙 %d개를 %s 에 썼습니다. 이 파일이 `pqcota-ingest -scope-assets` 의 입력입니다",
 		len(res.Policy.Rules), s.scopeOut)
 	// **게이트를 지난 뒤에만 남긴다.**
 	if s.judgments != "" {
@@ -615,7 +615,7 @@ func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
 	}
 	kind := r.URL.Query().Get("kind")
 	if !ui.ValidKind(kind) {
-		http.Error(w, "모르는 표입니다: "+kind, http.StatusBadRequest)
+		http.Error(w, "모르는 표 이름입니다: "+kind, http.StatusBadRequest)
 		return
 	}
 	i, err := strconv.Atoi(r.URL.Query().Get("i"))

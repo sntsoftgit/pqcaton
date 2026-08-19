@@ -40,7 +40,7 @@ templ shell(p Page) {
 				</div>
 			}
 			if p.Problem != "" {
-				<div class="msg bad"><strong>하지 않았습니다.</strong><pre>{ p.Problem }</pre></div>
+				<div class="msg bad"><strong>하지 않았습니다 — 이유는 이렇습니다.</strong><pre>{ p.Problem }</pre></div>
 			}
 			{ children... }
 		</body>

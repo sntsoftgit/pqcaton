@@ -23,19 +23,20 @@ templ declPage(v DeclView) {
 		<form method="post" action="/decl/save">
 			<fieldset>
 				<legend>조직</legend>
-				<p class="hint">대조 엔진이 이 값으로 열립니다. 비우면 <code>local</code> 입니다.</p>
+				<p class="hint">대조와 판정이 이 조직에 묶입니다. 비우면 <code>local</code> 입니다.</p>
 				<input type="text" name="org" value={ v.Decl.Org } placeholder="local"/>
 			</fieldset>
 			<fieldset>
 				<legend>관리 대상 노드 <span class="n">— 어느 노드를 볼 것인가</span></legend>
 				<p class="hint">
-					한 줄에 하나. 여기 없는 상대와의 통신은 「등재 판정 요청」으로 표기됩니다.
+					한 줄에 하나. 여기 없는 노드와 통신한 것이 관측되면, 대조 화면에
+					「등재 판정 요청」으로 올라옵니다.
 					<b>노드 안에서 무엇을 볼지</b>는 「자산 스코프」 탭에서 정합니다.
 				</p>
 				<textarea name="scope">{ strings.Join(v.Decl.Scope, "\n") }</textarea>
 			</fieldset>
 			<fieldset>
-				<legend>노드 주소 <span class="n">— 관측 IP를 노드 이름으로 잇는 근거</span></legend>
+				<legend>노드 주소 <span class="n">— 관측에 찍힌 IP를 노드 이름과 잇는 근거</span></legend>
 				<p class="hint">
 					한 노드가 망 둘에 걸치면 IP도 둘입니다. 쉼표나 공백으로 나눠 적으십시오.
 					이름을 비우면 그 줄은 지워집니다.
@@ -86,7 +87,7 @@ templ declPage(v DeclView) {
 				@addRow(KindEdge, len(v.Decl.Edges)+v.Blank, false)
 			</fieldset>
 			<div class="actions"><button class="primary">저장</button></div>
-			<p class="hint">저장하면 <code>pqcaton-report</code> 가 읽는 그 파일에 그대로 씁니다.</p>
+			<p class="hint">저장하면 <code>pqcaton-report</code> 가 읽는 바로 그 파일에 씁니다 — 화면 위에 경로가 적혀 있습니다.</p>
 		</form>
 	}
 }

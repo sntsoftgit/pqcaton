@@ -49,7 +49,7 @@ func surveyPage(v SurveyView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<fieldset><legend>관측 <span class=\"n\">— pqcota가 무엇을 보았나</span></legend><p class=\"hint\">대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.</p><table><tr><th style=\"width:14rem\">노드</th><th>본 collector</th></tr>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<fieldset><legend>관측 <span class=\"n\">— pqcota가 무엇을 보았나</span></legend><p class=\"hint\">대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.</p><table><tr><th style=\"width:14rem\">노드</th><th>그 노드에서 돈 collector</th></tr>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -163,7 +163,7 @@ func surveyPage(v SurveyView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</ul><p class=\"hint\"><b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED가 어느 쪽인지는 이 줄이 가릅니다 — 갭이면 재수집이 먼저이고, 아니면 사람이 판정합니다.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</ul><p class=\"hint\"><b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED 가 「쓰지 않는 것」인지 「보지 못한 것」인지는 위 목록이 가릅니다 — <b>위에 적힌 것이면 재수집이 먼저</b>이고, 아니면 사람이 판정할 차례입니다.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -185,7 +185,7 @@ func surveyPage(v SurveyView) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(s)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 50, Col: 14}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 51, Col: 14}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -208,7 +208,7 @@ func surveyPage(v SurveyView) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Confirmed))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 60, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 61, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -221,7 +221,7 @@ func surveyPage(v SurveyView) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Undeclared))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 61, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 62, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -234,7 +234,7 @@ func surveyPage(v SurveyView) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Unobserved))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 62, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 63, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -274,7 +274,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(a.State)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 68, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 69, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
@@ -287,7 +287,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.2f", a.Conf))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 69, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 70, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -300,7 +300,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(a.Node)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 70, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 71, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -313,7 +313,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(a.Runtime)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 71, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 72, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -326,7 +326,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(a.Component)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 73, Col: 20}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 74, Col: 20}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
@@ -353,14 +353,14 @@ func surveyPage(v SurveyView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</table><p class=\"hint\"><b>UNDECLARED가 이 도구의 첫 값입니다</b> — 선언에 없는데 실제로 쓰이고 있는 것입니다. 판정은 <a href=\"/review\">리뷰 큐</a>에서 합니다.</p></fieldset><fieldset><legend>통신 엣지 <span class=\"n\">— 선언과 맞댄 3-상태 · 양자내성 등급</span></legend><p>🟢 PQC <b>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</table><p class=\"hint\"><b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> — 선언에 없는데 실제로 쓰이고 있는 것입니다. 판정은 <a href=\"/review\">리뷰 큐</a>에서 합니다.</p></fieldset><fieldset><legend>통신 엣지 <span class=\"n\">— 선언과 맞댄 3-상태 · 양자내성 등급</span></legend><p>🟢 PQC <b>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.PQC))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 92, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 94, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -373,7 +373,7 @@ func surveyPage(v SurveyView) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Classical))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 93, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 95, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -386,7 +386,7 @@ func surveyPage(v SurveyView) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Unknown))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 94, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 96, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -404,7 +404,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(e.Mark)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 103, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 105, Col: 18}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
@@ -417,7 +417,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(e.Src)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 105, Col: 20}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 107, Col: 20}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -440,7 +440,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(e.Dst)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 111, Col: 20}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 113, Col: 20}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 				if templ_7745c5c3_Err != nil {
@@ -463,7 +463,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(portText(e.Port))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 116, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 118, Col: 28}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
@@ -476,7 +476,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var27 string
 				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(e.Proto)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 117, Col: 19}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 119, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 				if templ_7745c5c3_Err != nil {
@@ -490,7 +490,7 @@ func surveyPage(v SurveyView) templ.Component {
 					var templ_7745c5c3_Var28 string
 					templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(e.Group)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 120, Col: 17}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 122, Col: 17}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 					if templ_7745c5c3_Err != nil {
@@ -504,7 +504,7 @@ func surveyPage(v SurveyView) templ.Component {
 					var templ_7745c5c3_Var29 string
 					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(e.Grade)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 122, Col: 36}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 124, Col: 36}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 					if templ_7745c5c3_Err != nil {
@@ -544,7 +544,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var32 string
 				templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(e.State)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 125, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 127, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 				if templ_7745c5c3_Err != nil {
@@ -561,7 +561,7 @@ func surveyPage(v SurveyView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</table></fieldset><fieldset><legend>토폴로지 <span class=\"n\">— 색은 등급, 선형은 대조 상태</span></legend> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</table></fieldset><fieldset><legend>토폴로지 <span class=\"n\">— 색은 양자내성 등급, 선 모양은 대조 상태</span></legend> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -574,7 +574,7 @@ func surveyPage(v SurveyView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div><p class=\"hint\">색은 양자내성 등급, 선형은 대조 상태입니다. <b>미관측은 점선</b>이라 부재와 구분됩니다.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div><p class=\"hint\">색은 양자내성 등급, 선 모양은 대조 상태입니다. <b>보지 못한 것은 점선</b>이라 없는 것과 구분됩니다.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -586,7 +586,7 @@ func surveyPage(v SurveyView) templ.Component {
 				var templ_7745c5c3_Var33 string
 				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(v.DOT)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 149, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/survey.templ`, Line: 151, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 				if templ_7745c5c3_Err != nil {

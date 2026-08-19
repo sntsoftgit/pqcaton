@@ -16,10 +16,12 @@ const (
 )
 
 var (
-	ErrNotDraft         = errors.New("start-review: 세션이 draft 상태 아님")
-	ErrNotInReview      = errors.New("finalize: 세션이 in-review 상태 아님")
-	ErrMandatoryPending = errors.New("finalize: 미판정 필수 항목 존재(전 필수 판정 전 불가)")
-	ErrNoSignature      = errors.New("finalize: 승인 서명 없음")
+	ErrNotDraft    = errors.New("리뷰를 시작할 수 없다: 세션이 draft 상태가 아니다")
+	ErrNotInReview = errors.New("확정할 수 없다: 세션이 in-review 상태가 아니다")
+	// **확정이 막힐 때 화면에 그대로 뜨는 문장이다.** 무엇이 남았는지를 사람이 읽고
+	// 고칠 수 있어야 하므로, 줄여 쓰지 않는다.
+	ErrMandatoryPending = errors.New("확정할 수 없다: 아직 판정하지 않은 필수 항목이 남아 있다 — 필수 항목은 하나도 빠짐없이 판정해야 한다")
+	ErrNoSignature      = errors.New("확정할 수 없다: 승인 서명이 없다")
 )
 
 // Item — 리뷰 대상(자산/엣지). 같은 Policy는 정책 단위로 일괄 판정된다(§3.4).

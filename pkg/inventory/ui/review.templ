@@ -25,7 +25,7 @@ templ reviewPage(v ReviewView) {
 						<input type="text" name={ "policy:" + g.Name } value={ g.Conclusion } placeholder="예: PQC 라이브러리로 교체한다"/>
 					</label>
 					<table>
-						<tr><th>대상</th><th>상태</th><th>확신</th><th>계획</th><th>개별 결론(예외)</th></tr>
+						<tr><th>대상</th><th>상태</th><th>확신</th><th>계획에 넣기</th><th>개별 결론(예외)</th></tr>
 						for _, it := range g.Items {
 							<tr>
 								<td>
@@ -47,7 +47,10 @@ templ reviewPage(v ReviewView) {
 				<p>판정할 것이 없습니다.</p>
 			}
 			if v.Autopass > 0 {
-				<p class="hint">자동통과 후보 { strconv.Itoa(v.Autopass) }개는 판정 대상이 아닙니다.</p>
+				<p class="hint">
+					자동통과 후보 { strconv.Itoa(v.Autopass) }개는 이 큐에 올리지 않았습니다 —
+					선언과 맞고 확신도 높은 것들이라, 하나씩 볼 것이 아닙니다.
+				</p>
 			}
 			<fieldset>
 				<legend>승인</legend>

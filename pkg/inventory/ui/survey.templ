@@ -14,7 +14,7 @@ templ surveyPage(v SurveyView) {
 			<legend>관측 <span class="n">— pqcota가 무엇을 보았나</span></legend>
 			<p class="hint">대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.</p>
 			<table>
-				<tr><th style="width:14rem">노드</th><th>본 collector</th></tr>
+				<tr><th style="width:14rem">노드</th><th>그 노드에서 돈 collector</th></tr>
 				for _, n := range v.R.SeenNodes() {
 					<tr><td><code>{ n }</code></td><td>{ strings.Join(v.R.SeenBy[n], ", ") }</td></tr>
 				}
@@ -37,8 +37,9 @@ templ surveyPage(v SurveyView) {
 						}
 					</ul>
 					<p class="hint">
-						<b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED가 어느 쪽인지는 이 줄이 가릅니다 —
-						갭이면 재수집이 먼저이고, 아니면 사람이 판정합니다.
+						<b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED 가 「쓰지 않는 것」인지
+						「보지 못한 것」인지는 위 목록이 가릅니다 — <b>위에 적힌 것이면 재수집이 먼저</b>이고,
+						아니면 사람이 판정할 차례입니다.
 					</p>
 				}
 			</div>
@@ -82,7 +83,8 @@ templ surveyPage(v SurveyView) {
 				}
 			</table>
 			<p class="hint">
-				<b>UNDECLARED가 이 도구의 첫 값입니다</b> — 선언에 없는데 실제로 쓰이고 있는 것입니다.
+				<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> —
+				선언에 없는데 실제로 쓰이고 있는 것입니다.
 				판정은 <a href="/review">리뷰 큐</a>에서 합니다.
 			</p>
 		</fieldset>
@@ -131,12 +133,12 @@ templ surveyPage(v SurveyView) {
 			</table>
 		</fieldset>
 		<fieldset>
-			<legend>토폴로지 <span class="n">— 색은 등급, 선형은 대조 상태</span></legend>
+			<legend>토폴로지 <span class="n">— 색은 양자내성 등급, 선 모양은 대조 상태</span></legend>
 			if v.SVG != "" {
 				<div style="overflow-x:auto">
 					@templ.Raw(v.SVG)
 				</div>
-				<p class="hint">색은 양자내성 등급, 선형은 대조 상태입니다. <b>미관측은 점선</b>이라 부재와 구분됩니다.</p>
+				<p class="hint">색은 양자내성 등급, 선 모양은 대조 상태입니다. <b>보지 못한 것은 점선</b>이라 없는 것과 구분됩니다.</p>
 			} else {
 				<p class="hint">
 					<code>dot</code>(Graphviz)이 이 기계에 없어 그리지 못했습니다.

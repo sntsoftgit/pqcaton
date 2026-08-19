@@ -182,12 +182,12 @@ func Finalize(sf Session) (*Result, error) {
 func Pending(sf Session) string {
 	var b strings.Builder
 	if sf.Signature == "" {
-		b.WriteString("   · signature 가 비어 있습니다\n")
+		b.WriteString("   · 서명(signature)이 비어 있습니다\n")
 	}
 	for _, it := range sf.Items {
 		if it.Mandatory && strings.TrimSpace(it.Conclusion) == "" &&
 			strings.TrimSpace(sf.PolicyDecisions[it.Policy]) == "" {
-			fmt.Fprintf(&b, "   · 결론 없음: %s (%s)\n", it.ID, it.State)
+			fmt.Fprintf(&b, "   · 왜 이렇게 정했는지가 없습니다: %s (%s)\n", it.ID, it.State)
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")
@@ -197,7 +197,8 @@ func Pending(sf Session) string {
 // 내보내면 pqcota가 이름 없는 노드에 조치를 건다. v0.1.0 이 낸 세션 파일이 여기 걸린다.
 func RequireNode(it Item) error {
 	if it.Node == "" {
-		return fmt.Errorf("항목 %s 에 node 가 없다 — `pqcaton-decide open` 을 다시 돌려 세션을 새로 받아라", it.ID)
+		return fmt.Errorf("항목 %s 에 node 가 없다 — v0.1.0 형식의 세션이다. "+
+			"`pqcaton-decide open` 을 다시 돌리거나, 화면에 -results 를 주어 새로 받을 것", it.ID)
 	}
 	return nil
 }

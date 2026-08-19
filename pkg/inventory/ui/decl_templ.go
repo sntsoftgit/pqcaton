@@ -116,7 +116,7 @@ func declPage(v DeclView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, " <form method=\"post\" action=\"/decl/save\"><fieldset><legend>조직</legend><p class=\"hint\">대조 엔진이 이 값으로 열립니다. 비우면 <code>local</code> 입니다.</p><input type=\"text\" name=\"org\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, " <form method=\"post\" action=\"/decl/save\"><fieldset><legend>조직</legend><p class=\"hint\">대조와 판정이 이 조직에 묶입니다. 비우면 <code>local</code> 입니다.</p><input type=\"text\" name=\"org\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -129,27 +129,27 @@ func declPage(v DeclView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" placeholder=\"local\"></fieldset><fieldset><legend>관리 대상 노드 <span class=\"n\">— 어느 노드를 볼 것인가</span></legend><p class=\"hint\">한 줄에 하나. 여기 없는 상대와의 통신은 「등재 판정 요청」으로 표기됩니다. <b>노드 안에서 무엇을 볼지</b>는 「자산 스코프」 탭에서 정합니다.</p><textarea name=\"scope\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" placeholder=\"local\"></fieldset><fieldset><legend>관리 대상 노드 <span class=\"n\">— 어느 노드를 볼 것인가</span></legend><p class=\"hint\">한 줄에 하나. 여기 없는 노드와 통신한 것이 관측되면, 대조 화면에 「등재 판정 요청」으로 올라옵니다. <b>노드 안에서 무엇을 볼지</b>는 「자산 스코프」 탭에서 정합니다.</p><textarea name=\"scope\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(strings.Join(v.Decl.Scope, "\n"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 35, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 36, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</textarea></fieldset><fieldset><legend>노드 주소 <span class=\"n\">— 관측 IP를 노드 이름으로 잇는 근거</span></legend><p class=\"hint\">한 노드가 망 둘에 걸치면 IP도 둘입니다. 쉼표나 공백으로 나눠 적으십시오. 이름을 비우면 그 줄은 지워집니다.</p><table><thead><tr><th style=\"width:14rem\">이름</th><th>IP</th></tr></thead> <tbody id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</textarea></fieldset><fieldset><legend>노드 주소 <span class=\"n\">— 관측에 찍힌 IP를 노드 이름과 잇는 근거</span></legend><p class=\"hint\">한 노드가 망 둘에 걸치면 IP도 둘입니다. 쉼표나 공백으로 나눠 적으십시오. 이름을 비우면 그 줄은 지워집니다.</p><table><thead><tr><th style=\"width:14rem\">이름</th><th>IP</th></tr></thead> <tbody id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(rowsID(KindNode))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 45, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 46, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -186,7 +186,7 @@ func declPage(v DeclView) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(rowsID(KindAsset))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 60, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 61, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -223,7 +223,7 @@ func declPage(v DeclView) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(rowsID(KindEdge))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 77, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 78, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -253,7 +253,7 @@ func declPage(v DeclView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</fieldset><div class=\"actions\"><button class=\"primary\">저장</button></div><p class=\"hint\">저장하면 <code>pqcaton-report</code> 가 읽는 그 파일에 그대로 씁니다.</p></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</fieldset><div class=\"actions\"><button class=\"primary\">저장</button></div><p class=\"hint\">저장하면 <code>pqcaton-report</code> 가 읽는 바로 그 파일에 씁니다 — 화면 위에 경로가 적혀 있습니다.</p></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -299,7 +299,7 @@ func nodeRow(i int, name, ips string) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue("node.name." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 100, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 101, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -312,7 +312,7 @@ func nodeRow(i int, name, ips string) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 100, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 101, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -325,7 +325,7 @@ func nodeRow(i int, name, ips string) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("node.ips." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 101, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 102, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 		if templ_7745c5c3_Err != nil {
@@ -338,7 +338,7 @@ func nodeRow(i int, name, ips string) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(ips)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 101, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 102, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -380,7 +380,7 @@ func assetRow(i int, node, runtime, component string) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue("asset.node." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 107, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 108, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
@@ -393,7 +393,7 @@ func assetRow(i int, node, runtime, component string) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(node)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 107, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 108, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -406,7 +406,7 @@ func assetRow(i int, node, runtime, component string) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue("asset.runtime." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 108, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 109, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 		if templ_7745c5c3_Err != nil {
@@ -419,7 +419,7 @@ func assetRow(i int, node, runtime, component string) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(runtime)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 108, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 109, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 		if templ_7745c5c3_Err != nil {
@@ -432,7 +432,7 @@ func assetRow(i int, node, runtime, component string) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue("asset.component." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 109, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 110, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 		if templ_7745c5c3_Err != nil {
@@ -445,7 +445,7 @@ func assetRow(i int, node, runtime, component string) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(component)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 109, Col: 88}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 110, Col: 88}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 		if templ_7745c5c3_Err != nil {
@@ -487,7 +487,7 @@ func edgeRow(i int, src, dst, port, proto string) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue("edge.src." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 115, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 116, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 		if templ_7745c5c3_Err != nil {
@@ -500,7 +500,7 @@ func edgeRow(i int, src, dst, port, proto string) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(src)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 115, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 116, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
 		if templ_7745c5c3_Err != nil {
@@ -513,7 +513,7 @@ func edgeRow(i int, src, dst, port, proto string) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue("edge.dst." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 116, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 117, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
@@ -526,7 +526,7 @@ func edgeRow(i int, src, dst, port, proto string) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(dst)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 116, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 117, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
@@ -539,7 +539,7 @@ func edgeRow(i int, src, dst, port, proto string) templ.Component {
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue("edge.port." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 117, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 118, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 		if templ_7745c5c3_Err != nil {
@@ -552,7 +552,7 @@ func edgeRow(i int, src, dst, port, proto string) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(port)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 117, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 118, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 		if templ_7745c5c3_Err != nil {
@@ -565,7 +565,7 @@ func edgeRow(i int, src, dst, port, proto string) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue("edge.proto." + strconv.Itoa(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 118, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 119, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 		if templ_7745c5c3_Err != nil {
@@ -578,7 +578,7 @@ func edgeRow(i int, src, dst, port, proto string) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(proto)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 118, Col: 79}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 119, Col: 79}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 		if templ_7745c5c3_Err != nil {
@@ -625,7 +625,7 @@ func addRow(kind string, next int, oob bool) templ.Component {
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue("add-" + kind)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 128, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 129, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 		if templ_7745c5c3_Err != nil {
@@ -646,7 +646,7 @@ func addRow(kind string, next int, oob bool) templ.Component {
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.ResolveAttributeValue(RowPath + "?kind=" + kind + "&i=" + strconv.Itoa(next))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 131, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 132, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var35)
 		if templ_7745c5c3_Err != nil {
@@ -659,7 +659,7 @@ func addRow(kind string, next int, oob bool) templ.Component {
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + rowsID(kind))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 132, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/decl.templ`, Line: 133, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 		if templ_7745c5c3_Err != nil {

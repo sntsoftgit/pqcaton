@@ -123,7 +123,7 @@ func reviewPage(v ReviewView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" placeholder=\"예: PQC 라이브러리로 교체한다\"></label><table><tr><th>대상</th><th>상태</th><th>확신</th><th>계획</th><th>개별 결론(예외)</th></tr>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" placeholder=\"예: PQC 라이브러리로 교체한다\"></label><table><tr><th>대상</th><th>상태</th><th>확신</th><th>계획에 넣기</th><th>개별 결론(예외)</th></tr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -272,13 +272,13 @@ func reviewPage(v ReviewView) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Autopass))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/review.templ`, Line: 50, Col: 66}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/review.templ`, Line: 51, Col: 51}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "개는 판정 대상이 아닙니다.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "개는 이 큐에 올리지 않았습니다 — 선언과 맞고 확신도 높은 것들이라, 하나씩 볼 것이 아닙니다.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -290,7 +290,7 @@ func reviewPage(v ReviewView) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Reviewer)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/review.templ`, Line: 58, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/review.templ`, Line: 61, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 			if templ_7745c5c3_Err != nil {
@@ -303,7 +303,7 @@ func reviewPage(v ReviewView) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Signature)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/review.templ`, Line: 59, Col: 112}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/review.templ`, Line: 62, Col: 112}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 			if templ_7745c5c3_Err != nil {
