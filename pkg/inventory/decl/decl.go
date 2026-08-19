@@ -166,7 +166,9 @@ func Check(d Declaration) []Problem {
 			out = append(out, Problem{
 				Where: "scope/" + n,
 				What:  "IP 표에 없습니다",
-				Why:   "이 노드로 오는 관측 통신이 해소되지 않습니다",
+				// IP가 비어 있는 것과 **결과가 같다.** 한쪽만 약하게 말하면 고칠 이유의
+				// 무게가 달라 보인다.
+				Why: "이 노드로 오는 관측 통신이 해소되지 않아 **선언한 엣지가 미관측으로, 관측된 엣지가 shadow로** 갈립니다",
 			})
 		}
 	}
