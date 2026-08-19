@@ -98,6 +98,9 @@ printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,provider-chain\n
 # ② 대조 — 이 머신을 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 냅니다
 bin/pqcaton-decide open decl.csv local > session.json
 
+#    여러 노드를 다루는 길은 이쪽입니다 — pqcota 가 모은 관측으로 대조합니다
+#    bin/pqcaton-decide open declaration.json -results results/ -org acme > session.json
+
 # ③ 판정 — 사람이 하는 자리. session.json 을 열어
 #    필수 항목의 conclusion, 그리고 reviewer · signature 를 채웁니다
 #    확정 계획에 넣을 항목은 `확정_계획에_넣는다`를 true 로
