@@ -5,6 +5,8 @@ import (
 
 	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 )
 
 func edge(dstNode, dstAddr string) *discoveryv1.ObservedEdge {
@@ -23,7 +25,7 @@ func completeness(covered, missing []commonv1.CollectionLayer) *discoveryv1.Coll
 // 틀린 답이 아니라 그럴듯한 답이라 눈으로는 안 잡힌다. 포트가 붙은 주소와 다중 IP 노드가
 // 그 자리다.
 func TestResolveEdgeDsts(t *testing.T) {
-	nodes := []declNode{
+	nodes := []decl.Node{
 		{Name: "pay-db", IPs: []string{"172.19.0.2", "172.18.0.2"}}, // 망 둘에 걸친 노드
 		{Name: "pay-app", IPs: []string{"172.19.0.4"}},
 	}

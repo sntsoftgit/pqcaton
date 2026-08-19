@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
 
@@ -35,7 +36,7 @@ func newServer(t *testing.T) (*server, string) {
 	return &server{path: path, org: "acme", planOut: filepath.Join(dir, "plan.json")}, dir
 }
 
-func post(t *testing.T, s *server, target string, form url.Values) *httptest.ResponseRecorder {
+func postForm(t *testing.T, s *server, target string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -87,7 +88,7 @@ func TestIndexGroupsByPolicy(t *testing.T) {
 // IC-U2 — **저장은 확정이 아니다.** 채우다 만 것을 확정으로 오해하면 감사 기록이 거짓이 된다.
 func TestSaveDoesNotFinalize(t *testing.T) {
 	s, _ := newServer(t)
-	q := location(t, post(t, s, "/save", url.Values{
+	q := location(t, postForm(t, s, "/save", url.Values{
 		"policy:openssl/libssl": {"교체한다"},
 		"reviewer":              {"보안팀"},
 	}))
@@ -111,7 +112,7 @@ func TestSaveDoesNotFinalize(t *testing.T) {
 // 화면에 그대로 보인다 — 안 보여 주면 사람은 화면에서도 고칠 수 없다.
 func TestFinalizeRefusesWithoutSignature(t *testing.T) {
 	s, _ := newServer(t)
-	q := location(t, post(t, s, "/finalize", url.Values{
+	q := location(t, postForm(t, s, "/finalize", url.Values{
 		"policy:openssl/libssl": {"교체한다"},
 		"reviewer":              {"보안팀"}, // 서명 없음
 	}))
@@ -131,7 +132,7 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 	s, dir := newServer(t)
 	s.judgments = filepath.Join(dir, "judgments.jsonl")
 
-	q := location(t, post(t, s, "/finalize", url.Values{
+	q := location(t, postForm(t, s, "/finalize", url.Values{
 		"policy:openssl/libssl":            {"PQC 라이브러리로 교체한다"},
 		"plan:host://local/openssl/libssl": {"on"},
 		"reviewer":                         {"보안팀"},
@@ -167,7 +168,7 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 // close 가 못 읽는 날이 온다.
 func TestSavedSessionStaysReadable(t *testing.T) {
 	s, _ := newServer(t)
-	location(t, post(t, s, "/save", url.Values{
+	location(t, postForm(t, s, "/save", url.Values{
 		"item:host://local/openssl/libssl": {"예외로 둔다"},
 		"plan:host://local/openssl/libssl": {"on"},
 		"reviewer":                         {"보안팀"},
@@ -237,5 +238,119 @@ func TestMethodGuards(t *testing.T) {
 		if w.Code != http.StatusMethodNotAllowed {
 			t.Errorf("GET %s = %d, want 405", path, w.Code)
 		}
+	}
+}
+
+// ── 선언 편집 화면 ─────────────────────────────────────────────────────────
+
+const declJSON = `{"org":"acme","scope":["web-gw","pay-db"],
+ "nodes":[{"name":"web-gw","ips":["10.0.0.1"]}],
+ "assets":[{"node":"web-gw","runtime":"openssl","component":"libssl"}],
+ "edges":[{"src":"web-gw","dst":"pay-db","port":5432,"proto":"TLS"}]}`
+
+func withDecl(t *testing.T) (*server, string) {
+	t.Helper()
+	s, dir := newServer(t)
+	s.decl = filepath.Join(dir, "declaration.json")
+	if err := os.WriteFile(s.decl, []byte(declJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return s, dir
+}
+
+func get(t *testing.T, s *server, target string) *httptest.ResponseRecorder {
+	t.Helper()
+	mux := http.NewServeMux()
+	s.routes(mux)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, target, nil))
+	return w
+}
+
+// IC-U9 — **선언 파일을 주지 않으면 그 자리를 만들지 않는다.** 없는 것을 눌러 보게 하면
+// 쓰는 사람이 무엇이 되고 무엇이 안 되는지 헷갈린다.
+func TestDeclHiddenWithoutFile(t *testing.T) {
+	s, _ := newServer(t)
+	if body := get(t, s, "/").Body.String(); strings.Contains(body, `href="/decl"`) {
+		t.Error("선언 파일이 없는데 이동 링크가 보인다")
+	}
+	if code := get(t, s, "/decl").Code; code != http.StatusNotFound {
+		t.Errorf("/decl = %d, want 404", code)
+	}
+
+	s2, _ := withDecl(t)
+	if body := get(t, s2, "/").Body.String(); !strings.Contains(body, `href="/decl"`) {
+		t.Error("선언 파일을 줬는데 이동 링크가 없다")
+	}
+}
+
+// IC-U10 — **틀린 자리를 저장 전에 짚는다.**
+//
+// 노드↔IP 가 없으면 관측 IP 가 해소되지 않아 CONFIRMED 여야 할 통신이 shadow 로 올라온다 —
+// 오류가 아니라 그럴듯한 결과라 눈으로는 안 잡힌다. 화면이 미리 말해 주는 자리다.
+func TestDeclShowsProblems(t *testing.T) {
+	s, _ := withDecl(t)
+	body := get(t, s, "/decl").Body.String()
+	// pay-db 는 스코프에 있는데 IP 표에 없다.
+	if !strings.Contains(body, "IP 표에 없습니다") {
+		t.Errorf("해소되지 않을 노드를 짚지 않는다:\n%s", body)
+	}
+	if !strings.Contains(body, "shadow") {
+		t.Error("그대로 두면 무슨 일이 생기는지 말하지 않는다")
+	}
+}
+
+// IC-U11 — **저장한 것을 명령이 그대로 읽는다.** 두 길이 갈리면 화면으로 고친 선언을
+// pqcaton-report 가 못 읽는 날이 온다.
+func TestDeclSaveRoundTrips(t *testing.T) {
+	s, _ := withDecl(t)
+	q := location(t, postForm(t, s, "/decl/save", url.Values{
+		"org":          {"acme"},
+		"scope":        {"web-gw\npay-db"},
+		"node.name.0":  {"web-gw"},
+		"node.ips.0":   {"10.0.0.1, 10.0.1.1"},
+		"node.name.1":  {"pay-db"},
+		"node.ips.1":   {"10.0.0.2"},
+		"asset.node.0": {"web-gw"}, "asset.runtime.0": {"openssl"}, "asset.component.0": {"libssl"},
+		"edge.src.0": {"web-gw"}, "edge.dst.0": {"pay-db"}, "edge.port.0": {"5432"}, "edge.proto.0": {"TLS"},
+	}))
+	if p := q.Get("problem"); p != "" {
+		t.Fatalf("저장이 실패했다: %s", p)
+	}
+
+	d, err := decl.Load(s.decl)
+	if err != nil {
+		t.Fatalf("명령이 읽지 못한다: %v", err)
+	}
+	if len(d.Nodes) != 2 || len(d.Nodes[0].IPs) != 2 {
+		t.Fatalf("노드가 온전하지 않다: %+v", d.Nodes)
+	}
+	if len(d.Scope) != 2 || len(d.Assets) != 1 || len(d.Edges) != 1 {
+		t.Fatalf("선언이 온전하지 않다: %+v", d)
+	}
+	// 다 맞췄으므로 짚을 것이 없어야 한다.
+	if p := decl.Check(d); len(p) != 0 {
+		t.Errorf("맞는 선언인데 %d곳을 짚는다: %+v", len(p), p)
+	}
+}
+
+// IC-U12 — **이름을 비우면 그 줄이 지워진다.** 표에서 줄을 없애는 유일한 방법이라, 얹기만
+// 하면 지운 줄이 되살아난다.
+func TestDeclBlankNameRemovesRow(t *testing.T) {
+	s, _ := withDecl(t)
+	location(t, postForm(t, s, "/decl/save", url.Values{
+		"org": {"acme"}, "scope": {"web-gw"},
+		"node.name.0": {""}, "node.ips.0": {"10.0.0.1"}, // 지운다
+		"asset.node.0": {"web-gw"}, "asset.runtime.0": {"openssl"}, "asset.component.0": {"libssl"},
+	}))
+	d, err := decl.Load(s.decl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Nodes) != 0 {
+		t.Fatalf("지운 줄이 남았다: %+v", d.Nodes)
+	}
+	if len(d.Edges) != 0 {
+		t.Errorf("보내지 않은 엣지가 남았다: %+v", d.Edges)
 	}
 }

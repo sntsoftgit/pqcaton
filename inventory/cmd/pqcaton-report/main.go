@@ -8,7 +8,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -22,31 +21,10 @@ import (
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/kernel/posture"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"google.golang.org/protobuf/encoding/protojson"
 )
-
-type declaration struct {
-	// Org — 이 선언이 어느 조직의 것인가. **선언 문서가 조직의 것이므로 여기 적힌다** —
-	// 대조 엔진은 이 값으로 열리고, 다른 조직의 자산이 섞이면 대조하지 않고 끊는다.
-	// 비면 `local` 이다(한 조직만 다루는 자리).
-	Org    string      `json:"org,omitempty"`
-	Scope  []string    `json:"scope"`
-	Nodes  []declNode  `json:"nodes"` // 스코프 마스터: 노드↔IP (관측 IP→노드 해소, §0.4)
-	Assets []declAsset `json:"assets"`
-	Edges  []declEdge  `json:"edges"`
-}
-type declNode struct {
-	Name string   `json:"name"`
-	IPs  []string `json:"ips"`
-}
-type declAsset struct {
-	Node, Runtime, Component string
-}
-type declEdge struct {
-	Src, Dst, Proto string
-	Port            uint32
-}
 
 func main() {
 	if len(os.Args) < 3 {
@@ -271,7 +249,7 @@ func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
 
 // resolveEdgeDsts — 관측 엣지의 dst_addr(ip:port) IP를 스코프 노드명으로 해소한다(§0.4).
 // 해소되면 dst_node_id를 채워 in-scope CONFIRMED 후보가 되고, 안 되면 off-scope(등재 판정)로 남는다.
-func resolveEdgeDsts(edges []*discoveryv1.ObservedEdge, nodes []declNode) {
+func resolveEdgeDsts(edges []*discoveryv1.ObservedEdge, nodes []decl.Node) {
 	ip2node := map[string]string{}
 	for _, n := range nodes {
 		for _, ip := range n.IPs {
@@ -317,16 +295,20 @@ func hasNetworkLayer(res *discoveryv1.CollectionResult) bool {
 	return false
 }
 
-func loadDeclaration(path string) declaration {
-	b, err := os.ReadFile(path)
+// loadDeclaration - 선언을 읽는다. 형식은 `pkg/inventory/decl` 에 있다 - 화면이 같은
+// 파일을 편집하므로 형식이 한 곳에 있어야 한다.
+func loadDeclaration(path string) decl.Declaration {
+	d, err := decl.Load(path)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "read declaration:", err)
+		fmt.Fprintln(os.Stderr, "선언:", err)
 		os.Exit(1)
 	}
-	var d declaration
-	if err := json.Unmarshal(b, &d); err != nil {
-		fmt.Fprintln(os.Stderr, "parse declaration:", err)
-		os.Exit(1)
+	// **앞뒤가 안 맞으면 말한다.** 막지는 않는다 - 그대로 두면 대조가 조용히 틀린다.
+	if p := decl.Check(d); len(p) > 0 {
+		fmt.Fprintf(os.Stderr, "\u26a0 선언에 맞지 않는 자리 %d곳 - `pqcaton-ui -decl` 로 보십시오\n", len(p))
+		for _, x := range p {
+			fmt.Fprintf(os.Stderr, "   %s - %s\n", x.Where, x.What)
+		}
 	}
 	return d
 }
