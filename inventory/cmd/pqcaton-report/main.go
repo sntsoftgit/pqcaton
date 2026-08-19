@@ -40,32 +40,32 @@ func main() {
 		os.Exit(1)
 	}
 	for _, sk := range r.Skipped {
-		fmt.Fprintln(os.Stderr, "   건너뜀(읽을 수 없음):", sk)
+		fmt.Fprintln(os.Stderr, "   skipped (unreadable):", sk)
 	}
 
 	// ── 출력 ──
 	fmt.Println("╔══════════════════════════════════════════════════════════╗")
-	fmt.Println("║  pqcota 디스커버리 → 인벤토리 데모 리포트                  ║")
+	fmt.Println("║  pqcota discovery → inventory demo report                  ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════╝")
-	fmt.Printf("\n노드 %d · 관측 자산 %d · 관측 엣지 %d · 선언 자산 %d · 선언 엣지 %d\n\n",
+	fmt.Printf("\nnodes %d · observed assets %d · observed edges %d · declared assets %d · declared edges %d\n\n",
 		r.Nodes, r.ObservedAssets, r.ObservedEdges, r.DeclaredAssets, r.DeclaredEdges)
 
 	// ① 관측 - **여기서 시작하는 사람이 있다.** pqcota 데모를 거치지 않고 이 리포트만 보는
 	// 사람에게는 대조 앞에 무엇이 있었는지가 안 보인다. 재료는 이미 손에 있으니 보여 준다.
-	fmt.Println("──────── ① 관측 — pqcota가 무엇을 보았나 ────────")
+	fmt.Println("──────── ① Observation — what pqcota saw ────────")
 	printObservation(r)
 
-	fmt.Println("\n──────── ② 자산 인벤토리 (3-상태 대조) ────────")
+	fmt.Println("\n──────── ② Asset inventory (three-state reconciliation) ────────")
 	fmt.Print(reconcile.RenderView(r.Assets))
 
-	fmt.Println("\n──────── ③ 통신 엣지 + 양자내성 등급 ────────")
+	fmt.Println("\n──────── ③ Communication edges + quantum-resistance grade ────────")
 	printEdges(r.Edges, r.Uncovered)
 
 	dot := reconcile.RenderTopologyDOT(r.Edges, r.Uncovered)
 	if err := os.WriteFile(dotOut, []byte(dot), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "write dot:", err)
 	} else {
-		fmt.Printf("\n토폴로지 DOT 저장: %s\n   그림으로 보려면 Graphviz(선택): dot -Tsvg %s -o topology.svg\n", dotOut, dotOut)
+		fmt.Printf("\ntopology DOT written: %s\n   to see it drawn, Graphviz (optional): dot -Tsvg %s -o topology.svg\n", dotOut, dotOut)
 	}
 }
 
@@ -78,13 +78,13 @@ func printObservation(r *report.Result) {
 	byRuntime := r.ObservedByRuntime()
 	nodes := r.SeenNodes()
 
-	fmt.Println("  대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.")
+	fmt.Println("  The collector was carried to each target node, run, and taken back. Nothing is left behind.")
 	for _, n := range nodes {
 		c := seenBy[n]
 		sort.Strings(c)
 		fmt.Printf("    %-12s %s\n", n, strings.Join(report.Uniq(c), ", "))
 	}
-	fmt.Printf("\n  실제로 쓰이는 것으로 관측된 자산: ")
+	fmt.Printf("\n  assets observed in actual use: ")
 	rts := make([]string, 0, len(byRuntime))
 	for r := range byRuntime {
 		rts = append(rts, r)
@@ -95,18 +95,18 @@ func printObservation(r *report.Result) {
 		parts = append(parts, fmt.Sprintf("%s %d", r, byRuntime[r]))
 	}
 	fmt.Println(strings.Join(parts, " · "))
-	fmt.Printf("  핸드셰이크에서 협상된 통신: %d건 (다음 절에서 등급을 매깁니다)\n", r.ObservedEdges)
+	fmt.Printf("  connections negotiated in a handshake: %d (graded in the next section)\n", r.ObservedEdges)
 
-	fmt.Print("\n  못 본 것: ")
+	fmt.Print("\n  not seen: ")
 	if len(gaps) == 0 && len(uncovered) == 0 {
-		fmt.Println("없습니다 — 이 범위에서는 관측이 완전합니다")
+		fmt.Println("nothing — observation is complete for this scope")
 	} else {
 		if len(gaps) > 0 {
 			labels := make([]string, 0, len(gaps))
 			for _, g := range gaps {
 				labels = append(labels, report.LayerLabel(g))
 			}
-			fmt.Printf("계층 %s", strings.Join(labels, ", "))
+			fmt.Printf("layer %s", strings.Join(labels, ", "))
 		}
 		if len(uncovered) > 0 {
 			if len(gaps) > 0 {
@@ -117,12 +117,12 @@ func printObservation(r *report.Result) {
 				un = append(un, n)
 			}
 			sort.Strings(un)
-			fmt.Printf("· 통신 미관측 노드 %s", strings.Join(un, ", "))
+			fmt.Printf("· nodes whose traffic was not observed: %s", strings.Join(un, ", "))
 		}
 		fmt.Println()
 	}
-	fmt.Println("  **못 본 것과 없는 것은 다릅니다.** 다음 절의 UNOBSERVED가 어느 쪽인지는")
-	fmt.Println("  이 줄이 가릅니다 — 갭이면 재수집이 먼저이고, 아니면 사람이 판정합니다.")
+	fmt.Println("  **Not seen is not the same as not there.** Which one an UNOBSERVED below means")
+	fmt.Println("  is settled by the line above — if listed there, collect again first; otherwise a person judges.")
 }
 
 func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
@@ -140,21 +140,21 @@ func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
 		}
 		grp := e.Group
 		if grp == "" {
-			grp = "(불명)"
+			grp = "(unknown)"
 		}
 		flags := ""
 		if e.OffScopeDst {
-			flags += " [off-scope→등재판정]"
+			flags += " [off-scope → needs enrollment decision]"
 		}
 		if e.RescanCandidate {
-			flags += " [재수집후보]"
+			flags += " [rescan candidate]"
 		}
 		fmt.Printf("  %s %-10s → %-18s %-6s %-24s %s%s\n",
 			sym, e.Key.Src, e.Key.Dst, e.Key.Proto, grp, e.State, flags)
 	}
-	fmt.Printf("\n  등급 합계: 🟢 PQC %d · 🔴 고전 %d · ⚪ 불명 %d\n", pqc, classical, unknown)
+	fmt.Printf("\n  grade totals: 🟢 PQC %d · 🔴 classical %d · ⚪ unknown %d\n", pqc, classical, unknown)
 	if len(uncovered) > 0 {
-		fmt.Printf("  collector 미설치(반쪽 관측): %v\n", keys(uncovered))
+		fmt.Printf("  collectors not installed (partial observation): %v\n", keys(uncovered))
 	}
 }
 
@@ -163,12 +163,12 @@ func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
 func loadDeclaration(path string) decl.Declaration {
 	d, err := decl.Load(path)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "선언:", err)
+		fmt.Fprintln(os.Stderr, "declaration:", err)
 		os.Exit(1)
 	}
 	// **앞뒤가 안 맞으면 말한다.** 막지는 않는다 - 그대로 두면 대조가 조용히 틀린다.
 	if p := decl.Check(d); len(p) > 0 {
-		fmt.Fprintf(os.Stderr, "\u26a0 선언에 맞지 않는 자리 %d곳 - `pqcaton-ui -decl` 로 보십시오\n", len(p))
+		fmt.Fprintf(os.Stderr, "\u26a0 %d places where the declaration does not add up - open it with `pqcaton-ui -decl`\n", len(p))
 		for _, x := range p {
 			fmt.Fprintf(os.Stderr, "   %s - %s\n", x.Where, x.What)
 		}

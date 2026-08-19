@@ -10,7 +10,7 @@ import (
 //
 // **오류지만 고장은 아니다.** 스케줄이 관측 시간보다 촘촘하면 정상적으로 생긴다. 부르는
 // 쪽은 이것을 실패로 세지 않는다 — 다음 스케줄에 어차피 다시 온다.
-var ErrAlreadyRunning = errors.New("이전 실행이 아직 돈다")
+var ErrAlreadyRunning = errors.New("a previous run is still going")
 
 // lockName — 결과 디렉터리에 두는 잠금 파일. `*.json`이 아니라 결과로 읽히지 않는다.
 const lockName = ".lock"

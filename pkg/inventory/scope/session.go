@@ -66,9 +66,10 @@ const (
 )
 
 // SessionNote — 세션 파일 첫 줄에 적히는 사용법.
-const SessionNote = "계층_판정 에 계층별 결론을 적으면 그 계층의 규칙이 한 번에 판정됩니다(권장). " +
-	"예외만 changes 의 conclusion 으로 따로 적습니다. reviewer 와 signature 를 채운 뒤 " +
-	"`pqcaton-scope close` 에 넣으세요. 근거_필수 인 변경은 결론이 없으면 확정되지 않습니다."
+const SessionNote = "Write one conclusion per layer under layer_decisions and every rule in " +
+	"that layer is judged at once (recommended). Use a change's own conclusion only for " +
+	"exceptions. Fill in reviewer and signature, then feed this to `pqcaton-scope close`. " +
+	"A change marked reason_required is not finalized without a conclusion."
 
 // NewSession — 계층을 겹치고 지금 정책과 견줘 리뷰 세션을 만든다.
 func NewSession(layers []Layer, base *kscope.AssetPolicy, orgName string) Session {
@@ -106,7 +107,7 @@ func LoadSession(path string) (Session, error) {
 		return sf, err
 	}
 	if err := json.Unmarshal(raw, &sf); err != nil {
-		return sf, fmt.Errorf("세션 파일: %w", err)
+		return sf, fmt.Errorf("session file: %w", err)
 	}
 	return sf, nil
 }
@@ -159,7 +160,7 @@ func Finalize(sf Session, orgName string) (*FinalizeResult, error) {
 	// **세션에 적힌 조직과 지금 준 조직이 다르면 끊는다.** 남의 조직 정책을 확정하는 것은
 	// 사고다 — 대조 엔진·판정 원장과 같은 규칙이다.
 	if sf.Org != "" && orgName != "" && sf.Org != orgName {
-		return nil, fmt.Errorf("세션은 조직 %q의 것인데 %q로 확정하려 한다", sf.Org, orgName)
+		return nil, fmt.Errorf("the session belongs to organization %q but finalization was asked for %q", sf.Org, orgName)
 	}
 	items := make([]decision.Item, 0, len(sf.Changes))
 	for _, c := range sf.Changes {

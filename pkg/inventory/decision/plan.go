@@ -2,7 +2,7 @@ package decision
 
 import "errors"
 
-var ErrNotFinalized = errors.New("plan: finalized 세션에서만 확정 계획 생성/실행 가능(§5 최강 게이트)")
+var ErrNotFinalized = errors.New("plan: a finalized plan can only be built or run from a finalized session (§5, the strongest gate)")
 
 // PlanItem — 확정 계획의 자산별 실행 항목(인벤토리 설계 §2). 스키마는 contracts 통제 어휘.
 type PlanItem struct {

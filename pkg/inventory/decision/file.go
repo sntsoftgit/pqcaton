@@ -29,7 +29,7 @@ type FileJudgmentStore struct {
 //
 // **읽는 쪽에서 거른다.** 파일은 누구나 이어 쓸 수 있어, 한 파일에 두 조직이 섞이면
 // 격리가 파일 권한에만 기대게 된다.
-var ErrOrgMismatch = errors.New("그 파일에 다른 조직의 판정이 있다")
+var ErrOrgMismatch = errors.New("that file holds judgments from another organization")
 
 // NewFileJudgmentStore — 조직을 지정해 연다. 빈 조직은 열리지 않는다(Mem·Pg판과 같은 규칙).
 func NewFileJudgmentStore(o org.ID, path string) (*FileJudgmentStore, error) {
@@ -37,7 +37,7 @@ func NewFileJudgmentStore(o org.ID, path string) (*FileJudgmentStore, error) {
 		return nil, org.ErrEmpty
 	}
 	if path == "" {
-		return nil, errors.New("판정 파일 경로가 비었다")
+		return nil, errors.New("the judgment file path is empty")
 	}
 	return &FileJudgmentStore{org: o, path: path}, nil
 }
@@ -53,7 +53,7 @@ type record struct {
 
 func (f *FileJudgmentStore) Save(j *Judgment) error {
 	if j == nil {
-		return errors.New("판정이 비었다")
+		return errors.New("the judgment is empty")
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -95,12 +95,12 @@ func (f *FileJudgmentStore) All() ([]*Judgment, error) {
 		}
 		var r record
 		if err := json.Unmarshal(line, &r); err != nil {
-			return nil, fmt.Errorf("%s:%d 읽을 수 없다: %w", f.path, n, err)
+			return nil, fmt.Errorf("%s:%d cannot be read: %w", f.path, n, err)
 		}
 		if r.Org != string(f.org) {
 			// **무엇이 어긋났는지 적는다.** 대개 -org 를 저장할 때와 다르게 준 것인데,
 			// "다른 조직의 판정이 있다"만 보면 파일이 오염된 줄 안다.
-			return nil, fmt.Errorf("%w: %s:%d - 이 핸들은 %q인데 그 줄은 %q이다",
+			return nil, fmt.Errorf("%w: %s:%d - this handle is %q but that line is %q",
 				ErrOrgMismatch, f.path, n, f.org, r.Org)
 		}
 		j := r.J

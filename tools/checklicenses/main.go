@@ -51,13 +51,13 @@ var allowed = map[string]bool{
 // 금지 — 카피레프트. 링크하면 파생물도 같은 조건이 되어 BUSL로 낼 수 없다.
 // (별도 프로세스로 호출하는 것은 링크가 아니라 여기 걸리지 않는다.)
 var forbidden = map[string]string{
-	"GPL-2.0":  "카피레프트 — 링크 시 파생물도 GPL",
-	"GPL-3.0":  "카피레프트 — 링크 시 파생물도 GPL",
-	"LGPL-2.1": "약한 카피레프트지만 정적 링크는 전염된다(Go는 정적 링크가 기본)",
-	"LGPL-3.0": "약한 카피레프트지만 정적 링크는 전염된다(Go는 정적 링크가 기본)",
-	"AGPL-3.0": "카피레프트 — BUSL로 내는 것도 Apache-2.0 전환도 막힌다",
-	"MPL-2.0":  "파일 단위 카피레프트 — 상업 배포 시 조건 검토가 필요하다",
-	"SSPL-1.0": "OSI 미승인 — 서비스 제공 시 요구가 크다",
+	"GPL-2.0":  "copyleft — linking makes the derivative GPL too",
+	"GPL-3.0":  "copyleft — linking makes the derivative GPL too",
+	"LGPL-2.1": "weak copyleft, but static linking still infects (Go links statically by default)",
+	"LGPL-3.0": "weak copyleft, but static linking still infects (Go links statically by default)",
+	"AGPL-3.0": "copyleft — blocks both shipping under BUSL and the Apache-2.0 change",
+	"MPL-2.0":  "file-level copyleft — commercial distribution needs a terms review",
+	"SSPL-1.0": "not OSI-approved — heavy obligations when offering a service",
 }
 
 type mod struct {
@@ -69,7 +69,7 @@ type mod struct {
 func main() {
 	mods, err := linkedModules()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "✗ 의존성 목록을 얻지 못했다:", err)
+		fmt.Fprintln(os.Stderr, "✗ could not list dependencies:", err)
 		os.Exit(1)
 	}
 
@@ -77,41 +77,41 @@ func main() {
 	// 그 디렉터리만 보므로 외부 모듈이 하나도 안 나온다 - 그대로 두면 게이트가 초록으로
 	// 통과하고 아무것도 검사하지 않은 것이 된다.
 	if len(mods) == 0 {
-		fmt.Fprintln(os.Stderr, "✗ 링크되는 외부 모듈이 하나도 없다 — 리포 루트에서 돌리십시오")
+		fmt.Fprintln(os.Stderr, "✗ no external module is linked at all — run this from the repo root")
 		os.Exit(1)
 	}
 
 	assets, err := webAssets(".")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "✗ 웹 자산을 훑지 못했다:", err)
+		fmt.Fprintln(os.Stderr, "✗ could not walk the web assets:", err)
 		os.Exit(1)
 	}
 
 	known, err := loadAllowlist("licenses.txt")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "✗ licenses.txt를 읽지 못했다:", err)
+		fmt.Fprintln(os.Stderr, "✗ could not read licenses.txt:", err)
 		os.Exit(1)
 	}
 
 	missing, bad := verdict(append(mods, assets...), known)
 
 	if len(missing) > 0 {
-		fmt.Fprintln(os.Stderr, "✗ 라이선스를 모르는 의존성이 있다 — licenses.txt에 확인해 적을 것:")
+		fmt.Fprintln(os.Stderr, "✗ dependencies with an unknown license — check and record them in licenses.txt:")
 		for _, p := range missing {
 			fmt.Fprintln(os.Stderr, "   ", p)
 		}
 	}
 	if len(bad) > 0 {
-		fmt.Fprintln(os.Stderr, "✗ 링크할 수 없는 라이선스다 — Apache-2.0 전환 약속을 지킬 수 없게 된다:")
+		fmt.Fprintln(os.Stderr, "✗ this license cannot be linked — it would break the promised Apache-2.0 change:")
 		for _, s := range bad {
 			fmt.Fprintln(os.Stderr, "   ", s)
 		}
 	}
 	if len(missing) > 0 || len(bad) > 0 {
-		fmt.Fprintln(os.Stderr, "\n대안을 찾거나, 별도 프로세스로 분리해 호출할 수 있는지 이슈에서 상의할 것.")
+		fmt.Fprintln(os.Stderr, "\nFind an alternative, or discuss in an issue whether it can be split out into a separate process.")
 		os.Exit(1)
 	}
-	fmt.Printf("✓ 라이선스 검사 통과 (링크되는 모듈 %d개, 실려 나가는 웹 자산 %d개 — 전부 허용적)\n",
+	fmt.Printf("✓ license check passed (%d linked modules, %d shipped web assets — all permissive)\n",
 		len(mods), len(assets))
 }
 
@@ -134,7 +134,7 @@ func verdict(mods []mod, known map[string]string) (missing, bad []string) {
 			continue
 		}
 		if !allowed[lic] {
-			bad = append(bad, fmt.Sprintf("%s = %s — 허용 목록에 없다(검토 필요)", m.Path, lic))
+			bad = append(bad, fmt.Sprintf("%s = %s — not on the allowlist (needs review)", m.Path, lic))
 		}
 	}
 	sort.Strings(missing)
@@ -222,7 +222,7 @@ func loadAllowlist(path string) (map[string]string, error) {
 		}
 		parts := strings.Fields(line)
 		if len(parts) < 2 {
-			return nil, fmt.Errorf("형식이 맞지 않는 줄: %q (모듈경로 SPDX식별자)", line)
+			return nil, fmt.Errorf("malformed line: %q (want: <module path> <SPDX id>)", line)
 		}
 		out[parts[0]] = parts[1]
 	}

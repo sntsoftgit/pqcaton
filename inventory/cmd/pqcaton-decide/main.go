@@ -36,30 +36,31 @@ import (
 )
 
 const usage = `usage:
-  pqcaton-decide open  <declaration.json> -results <results-dir> [-org <이름>]
-        **pqcota 가 모은 관측**으로 선언과 대조하고 리뷰 세션(초안)을 낸다.
-        여러 노드를 다루는 길이고, 대조 화면이 보는 것과 같은 계산이다
+  pqcaton-decide open  <declaration.json> -results <results-dir> [-org <name>]
+        Reconcile **observations pqcota collected** against the declaration and raise a
+        draft review session. This is the path for many nodes, and it is the same
+        computation the reconciliation screen shows
 
-  pqcaton-decide open  <declaration.csv> [이-기계에-붙일-이름] [-org <이름>]
-        **이 기계를 스캔해** 선언과 대조하고 리뷰 세션(초안)을 낸다(체험용 지름길).
+  pqcaton-decide open  <declaration.csv> [label-for-this-machine] [-org <name>]
+        **Scan this machine**, reconcile against the declaration and raise a draft
+        review session (a shortcut, for trying it out).
 
-  두 경로 모두 -view 를 주면 대조 결과를 표로 함께 보여 준다.
-        두 번째 인자는 결과에 붙이는 **이름표**이지 관측 대상이 아니다 -
-        다른 노드를 관측하려면 pqcota 의 collector 를 그 노드에서 돌리고
-        pqcaton-report 로 모은다. /proc 이 없으면(비-리눅스) 끊는다
+  Either path takes -view to also print the reconciliation as a table.
+        The second argument is a **label** put on the result, not the thing observed -
+        to observe another node, run pqcota's collector there and gather the results
+        with pqcaton-report. Without /proc (non-Linux) this refuses
 
-  pqcaton-decide close <session.json> [-judgments <파일>] [-org <이름>]
-        판정을 확인하고 확정 계획을 낸다. -judgments 를 주면 판정을 그 파일에
-        append-only 로 남긴다 (감사 기록)
+  pqcaton-decide close <session.json> [-judgments <file>] [-org <name>]
+        Check the judgments and emit the finalized plan. With -judgments, the judgments
+        are appended to that file (audit record)
 
-  pqcaton-decide delta <judgments.jsonl> <declaration> [node] [-org <이름>] [-results <dir>]
-        쌓인 판정을 지금 관측과 대조해 **근거가 바뀐 것만** 골라 낸다.
-        open 과 같은 입력을 주어야 근거가 맞는다
+  pqcaton-decide delta <judgments.jsonl> <declaration> [node] [-org <name>] [-results <dir>]
+        Compare recorded judgments against the current observation and pick out
+        **only those whose basis changed**. Give it the same input as open, or the
+        basis will not line up
 
-  open 이 낸 파일을 편집한 뒤 close 에 넣는다. 결론이 빈 필수 항목이 하나라도 있거나
-  서명이 없으면 close 는 확정하지 않고 왜 안 되는지 말한다.
-
-  화면으로 채우려면 pqcaton-ui 를 쓴다 — 같은 파일, 같은 게이트다.`
+  Edit what open emits, then feed it to close. If any mandatory item has an empty
+  conclusion, or the signature is missing, close does not finalize and says why.`
 
 func main() {
 	if len(os.Args) < 3 {
@@ -69,10 +70,10 @@ func main() {
 	sub, args := os.Args[1], os.Args[2:]
 
 	fs := flag.NewFlagSet(sub, flag.ExitOnError)
-	judgments := fs.String("judgments", "", "판정을 남길 파일(JSONL, append-only)")
-	results := fs.String("results", "", "관측 결과 디렉터리. 주면 **이 기계를 스캔하지 않고** 그 결과로 대조한다(선언은 JSON)")
-	view := fs.Bool("view", false, "대조 결과를 표로 함께 보여 준다(세션은 그대로 표준출력으로 나간다)")
-	orgName := fs.String("org", "local", "대조와 판정을 묶을 조직")
+	judgments := fs.String("judgments", "", "file to append judgments to (JSONL, append-only)")
+	results := fs.String("results", "", "directory of collected results. Given this, **this machine is not scanned** and those results are reconciled instead (declaration is JSON)")
+	view := fs.Bool("view", false, "also print the reconciliation as a table (the session still goes to stdout)")
+	orgName := fs.String("org", "local", "organization the reconciliation and judgments are bound to")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
 	var pos []string
 	var flags []string
@@ -134,7 +135,7 @@ func open(declPath, node, orgName, resultsDir string, view bool) error {
 	if view {
 		fmt.Fprint(os.Stderr, "\n", reconcile.RenderView(recs), "\n")
 	}
-	fmt.Fprintf(os.Stderr, "리뷰 %d개(필수 %d) · 정책 %d개 · 자동통과 후보 %d개\n",
+	fmt.Fprintf(os.Stderr, "%d to review (%d mandatory) · %d policies · %d auto-pass candidates\n",
 		len(sf.Items), countMandatory(sf.Items), len(sf.PolicyDecisions), len(sf.Autopass))
 	return write(sf)
 }
@@ -175,11 +176,11 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, []reco
 	defer f.Close()
 	decl, err := declaration.ImportCSV(f)
 	if err != nil {
-		return sf, nil, fmt.Errorf("선언 읽기: %w", err)
+		return sf, nil, fmt.Errorf("reading the declaration: %w", err)
 	}
 	declared, err := eng.AssetsFromResults(decl)
 	if err != nil {
-		return sf, nil, fmt.Errorf("선언 자산: %w", err)
+		return sf, nil, fmt.Errorf("declared assets: %w", err)
 	}
 
 	recs, err := eng.Reconcile(declared, eng.AssetsFromSnapshot(snap), reconcile.GapLayers(snap))
@@ -205,7 +206,7 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, []reco
 		sf.Autopass = append(sf.Autopass, review.Key(a.Key))
 	}
 	sort.Strings(sf.Autopass)
-	fmt.Fprintf(os.Stderr, "스캔: 접근가능 %d · 거부 %d (이 기계)\n", scan.Accessible, scan.Denied)
+	fmt.Fprintf(os.Stderr, "scan: %d accessible · %d denied (this machine)\n", scan.Accessible, scan.Denied)
 	return sf, recs, nil
 }
 
@@ -231,7 +232,7 @@ func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, [
 	for _, w := range b.Warnings {
 		fmt.Fprintln(os.Stderr, "⚠", w)
 	}
-	fmt.Fprintf(os.Stderr, "관측 %d노드 · 대조 CONFIRMED %d · UNDECLARED %d · UNOBSERVED %d\n",
+	fmt.Fprintf(os.Stderr, "%d nodes observed · CONFIRMED %d · UNDECLARED %d · UNOBSERVED %d\n",
 		b.Nodes, b.Confirmed, b.Undeclared, b.Unobserved)
 	return b.Session, b.Assets, nil
 }
@@ -250,7 +251,7 @@ func closeSession(path, judgmentPath, orgName string) error {
 		return err
 	}
 	for pol, n := range res.Batched {
-		fmt.Fprintf(os.Stderr, "정책 %s: %d개 일괄 판정\n", pol, n)
+		fmt.Fprintf(os.Stderr, "policy %s: %d judged in one batch\n", pol, n)
 	}
 
 	raw, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(res.Plan)
@@ -262,11 +263,11 @@ func closeSession(path, judgmentPath, orgName string) error {
 	if judgmentPath != "" {
 		n, err := review.SaveJudgments(judgmentPath, orgName, sf, res.Decided)
 		if err != nil {
-			return fmt.Errorf("판정 기록: %w", err)
+			return fmt.Errorf("recording judgments: %w", err)
 		}
-		fmt.Fprintf(os.Stderr, "판정 %d건을 %s 에 남겼습니다 (append-only)\n", n, judgmentPath)
+		fmt.Fprintf(os.Stderr, "%d judgments appended to %s (append-only)\n", n, judgmentPath)
 	}
-	fmt.Fprintf(os.Stderr, "확정: %s · 조치 %d건 — `pqcota-provision plan.json` 의 입력입니다\n",
+	fmt.Fprintf(os.Stderr, "finalized: %s · %d actions — this is the input to `pqcota-provision plan.json`\n",
 		res.Scope, len(res.Plan.GetActions()))
 	_, err = os.Stdout.Write(append(raw, '\n'))
 	return err
@@ -288,7 +289,7 @@ func delta(judgmentPath, declPath, node, orgName, resultsDir string) error {
 		return err
 	}
 	if len(saved) == 0 {
-		return fmt.Errorf("%s 에 판정이 없다 - close 를 -judgments 와 함께 돌렸는가", judgmentPath)
+		return fmt.Errorf("no judgments in %s - was close run with -judgments?", judgmentPath)
 	}
 	prior := make([]decision.Judgment, 0, len(saved))
 	for _, j := range saved {
@@ -314,9 +315,9 @@ func delta(judgmentPath, declPath, node, orgName, resultsDir string) error {
 			need = append(need, j)
 		}
 	}
-	fmt.Fprintf(os.Stderr, "판정 %d건 중 근거가 바뀐 것 %d건\n", len(out), len(need))
+	fmt.Fprintf(os.Stderr, "%d judgments, %d of them resting on a basis that changed\n", len(out), len(need))
 	if len(need) == 0 {
-		fmt.Fprintln(os.Stderr, "다시 볼 것이 없습니다 - 관측이 그대로입니다")
+		fmt.Fprintln(os.Stderr, "nothing to look at again - the observation has not changed")
 	}
 	return write(need)
 }

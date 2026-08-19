@@ -94,9 +94,9 @@ const (
 
 var (
 	// ErrNoToken — 토큰이 없다. 조직을 유도할 수 없으므로 아무것도 못 한다.
-	ErrNoToken = errors.New("토큰이 없다")
+	ErrNoToken = errors.New("no token")
 	// ErrNoAPI — 컨트롤 플레인 주소가 없다.
-	ErrNoAPI = errors.New("컨트롤 플레인 주소가 없다")
+	ErrNoAPI = errors.New("no control plane address")
 )
 
 // LoadConfig — `KEY=value` 파일을 읽는다.
@@ -160,10 +160,10 @@ func LoadConfig(path string) (Config, error) {
 func days(v string) (int, error) {
 	n, err := strconv.Atoi(strings.TrimSpace(v))
 	if err != nil {
-		return 0, fmt.Errorf("일수가 아니다: %q", v)
+		return 0, fmt.Errorf("not a number of days: %q", v)
 	}
 	if n < 0 {
-		return 0, fmt.Errorf("음수다: %d", n)
+		return 0, fmt.Errorf("negative: %d", n)
 	}
 	return n, nil
 }
@@ -178,7 +178,7 @@ func (c *Config) check() error {
 	if c.RunnerID == "" {
 		h, err := os.Hostname()
 		if err != nil {
-			return fmt.Errorf("러너 id를 정할 수 없다: %w", err)
+			return fmt.Errorf("cannot determine the runner id: %w", err)
 		}
 		c.RunnerID = h
 	}
@@ -228,7 +228,7 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 	}
 
 	if err := sendEnrollments(c, cl, &rep, log); err != nil {
-		log.Error("연결확인을 올리지 못했다 — 다음 실행이 다시 올린다", "err", err)
+		log.Error("could not send the connectivity check — the next run will send it again", "err", err)
 	}
 	if err := sendResults(c, cl, &rep, log); err != nil {
 		return rep, err
@@ -240,17 +240,17 @@ func RunOnce(c Config, cl *Client, log *slog.Logger) (Report, error) {
 func sendResults(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 	files, err := jsonFiles(c.ResultsDir)
 	if err != nil {
-		return fmt.Errorf("결과 디렉터리: %w", err)
+		return fmt.Errorf("results directory: %w", err)
 	}
 	payloads, good, bad := read(files)
 	if len(bad) > 0 {
 		// **하나가 깨졌다고 나머지를 버리지 않는다.** 다만 조용히 넘기지도 않는다 —
 		// 그대로 두면 다음 실행마다 같은 파일에 걸려 그 디렉터리가 영영 안 올라간다.
 		rep.Bad += len(bad)
-		log.Warn("읽을 수 없는 결과를 치운다 — 왜 깨졌는지 봐야 한다",
+		log.Warn("setting aside an unreadable result — someone has to look at why it is broken",
 			"files", bad, "moved_to", filepath.Join(c.ResultsDir, badDir))
 		if err := move(c.ResultsDir, badDir, bad); err != nil {
-			log.Error("치우지 못했다 — 다음 실행에서 또 걸린다", "err", err)
+			log.Error("could not set it aside — the next run will trip on it again", "err", err)
 		}
 	}
 	if len(payloads) == 0 {
@@ -260,14 +260,14 @@ func sendResults(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 	res, err := cl.SendResults(c.RunnerID, payloads)
 	if err != nil {
 		// **파일을 그대로 둔다.** 다음 실행이 다시 올린다 — 같은 결과는 멱등이 접는다.
-		return fmt.Errorf("결과 전송: %w", err)
+		return fmt.Errorf("sending results: %w", err)
 	}
 	rep.Files, rep.Accepted = len(good), res.Accepted
 
 	// 올린 것은 옮긴다. 안 옮기면 매번 다시 올리게 되고, 멱등이 접어 주더라도
 	// 그만큼 러너와 경계가 헛일을 한다.
 	if err := move(c.ResultsDir, sentDir, good); err != nil {
-		log.Error("올린 결과를 옮기지 못했다 — 다음 실행에 다시 올라간다", "err", err)
+		log.Error("could not move a sent result — it will be sent again on the next run", "err", err)
 	}
 	// **`off_scope`를 함께 찍는다.** 이 값이 없으면 `accepted:0`만 보이고, 왜 안
 	// 들어왔는지는 컨트롤 플레인 DB를 열어야 안다 — 운영자 눈에는 아무 일도 안 일어난
@@ -275,7 +275,7 @@ func sendResults(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 	//
 	// `unverified`는 찍지 않는다. 서명을 요구하지 않으므로 **전부 미검증으로 세어져**
 	// 늘 결과 수와 같다 — 늘 켜져 있는 경고등은 아무것도 알리지 못한다.
-	log.Info("결과를 올렸다", "files", rep.Files, "accepted", rep.Accepted,
+	log.Info("results sent", "files", rep.Files, "accepted", rep.Accepted,
 		"duplicate", res.Duplicate, "rejected", res.Rejected, "off_scope", res.OffScope)
 	return nil
 }
@@ -284,19 +284,19 @@ func sendResults(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 func sendEnrollments(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 	enr, err := readEnrollments(c.ResultsDir, c.AddrKey)
 	if err != nil {
-		return fmt.Errorf("등재 디렉터리: %w", err)
+		return fmt.Errorf("enrollment directory: %w", err)
 	}
 	if enr.SawAddr && c.AddrKey == "" {
 		// 조용히 넘기면, 영역 간 엣지를 이어 붙일 표가 없다는 것을 **몇 달 뒤에**
 		// 안다. 그때는 전 노드를 다시 등재해야 한다(§6.3.1).
-		log.Warn("주소는 있는데 "+keyAddrKey+"가 없다 — 주소 토큰 없이 등재한다",
+		log.Warn("an address is present but "+keyAddrKey+" is missing — enrolling without an address token",
 			"dir", filepath.Join(c.ResultsDir, enrollDir))
 	}
 	if len(enr.Bad) > 0 {
 		rep.Bad += len(enr.Bad)
-		log.Warn("읽을 수 없는 연결확인을 치운다", "files", enr.Bad)
+		log.Warn("setting aside an unreadable connectivity check", "files", enr.Bad)
 		if err := move(filepath.Join(c.ResultsDir, enrollDir), badDir, enr.Bad); err != nil {
-			log.Error("치우지 못했다 — 다음 실행에서 또 걸린다", "err", err)
+			log.Error("could not set it aside — the next run will trip on it again", "err", err)
 		}
 	}
 	if len(enr.Items) == 0 {
@@ -305,13 +305,13 @@ func sendEnrollments(c Config, cl *Client, rep *Report, log *slog.Logger) error 
 
 	res, err := cl.SendEnrollments(c.RunnerID, enr.Items)
 	if err != nil {
-		return fmt.Errorf("연결확인 전송: %w", err)
+		return fmt.Errorf("sending connectivity checks: %w", err)
 	}
 	rep.Enrollments, rep.Enrolled, rep.Held = len(enr.Items), res.Enrolled, res.Held
 	if err := move(filepath.Join(c.ResultsDir, enrollDir), sentDir, enr.Good); err != nil {
-		log.Error("올린 연결확인을 옮기지 못했다 — 다음 실행에 다시 올라간다", "err", err)
+		log.Error("could not move a sent connectivity check — it will be sent again on the next run", "err", err)
 	}
-	log.Info("연결확인을 올렸다", "sent", rep.Enrollments, "enrolled", res.Enrolled,
+	log.Info("connectivity checks sent", "sent", rep.Enrollments, "enrolled", res.Enrolled,
 		"held", res.Held, "failed", res.FailedNodes,
 		"refused", res.Refused, "refused_reason", res.RefusedReason)
 	return nil
@@ -398,12 +398,12 @@ func sweep(dir string, keepDays int, log *slog.Logger) {
 			continue
 		}
 		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
-			log.Error("지우지 못했다", "file", e.Name(), "err", err)
+			log.Error("could not delete", "file", e.Name(), "err", err)
 			continue
 		}
 		gone++
 	}
 	if gone > 0 {
-		log.Info("보존 기간이 지난 결과를 지웠다", "dir", dir, "files", gone, "keep_days", keepDays)
+		log.Info("deleted results past their retention period", "dir", dir, "files", gone, "keep_days", keepDays)
 	}
 }

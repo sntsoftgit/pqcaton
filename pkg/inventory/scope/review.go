@@ -63,8 +63,8 @@ type ReviewItem struct {
 
 // 재검토 사유. 문자열이 그대로 화면에 나가므로 여기 하나로 모은다.
 const (
-	ReasonNeverJudged = "제외를 승인한 판정이 없다"
-	ReasonStale       = "승인한 지 오래됐다 — 빼둔 사이 달라졌을 수 있다"
+	ReasonNeverJudged = "no judgment ever approved this exclusion"
+	ReasonStale       = "the approval is stale — things may have changed while it was set aside"
 )
 
 // Review — 제외된 자산을 판정 이력과 맞대어 **다시 봐야 할 것만** 낸다.

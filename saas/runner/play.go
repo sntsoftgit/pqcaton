@@ -9,7 +9,7 @@ import (
 )
 
 // ErrNoPlaybook — 플레이북이 설정되지 않았다.
-var ErrNoPlaybook = errors.New("플레이북이 설정되지 않았다")
+var ErrNoPlaybook = errors.New("no playbook is configured")
 
 // DefaultAnsible — 부를 명령. PATH에서 찾는다.
 const DefaultAnsible = "ansible-playbook"
@@ -36,16 +36,16 @@ func runPlaybook(c Config, log *slog.Logger) error {
 	}
 	args = append(args, c.Playbook)
 
-	log.Info("플레이북을 돌린다", "playbook", c.Playbook, "inventory", c.Inventory)
+	log.Info("running the playbook", "playbook", c.Playbook, "inventory", c.Inventory)
 
 	out, err := exec.Command(bin, args...).CombinedOutput()
 	if err != nil {
 		// **출력을 통째로 삼키지 않는다.** 왜 실패했는지는 거기에만 있다. 다만 길 수
 		// 있으므로 꼬리만 남긴다 — 원인은 대개 끝에 있다.
-		log.Error("플레이북이 실패했다", "err", err, "tail", tail(out, 2000))
+		log.Error("the playbook failed", "err", err, "tail", tail(out, 2000))
 		return fmt.Errorf("%s: %w", bin, err)
 	}
-	log.Info("플레이북이 끝났다")
+	log.Info("the playbook finished")
 	return nil
 }
 

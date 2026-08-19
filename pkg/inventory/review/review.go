@@ -67,9 +67,10 @@ type Item struct {
 }
 
 // Note — 세션 파일 첫 줄에 적히는 사용법.
-const Note = "정책_판정 에 정책별 결론을 적으면 같은 정책의 항목이 한 번에 판정됩니다(권장). " +
-	"예외만 항목의 conclusion 으로 따로 적습니다. reviewer 와 signature 를 채운 뒤 " +
-	"`pqcaton-decide close` 에 넣으세요. 확정 계획에 넣을 항목은 `확정_계획에_넣는다`를 true 로."
+const Note = "Write one conclusion per policy under policy_decisions and every item in that " +
+	"policy is judged at once (recommended). Use an item's own conclusion only for exceptions. " +
+	"Fill in reviewer and signature, then feed this to `pqcaton-decide close`. " +
+	"Set include_in_plan to true for items that go into the finalized plan."
 
 // Load — 세션 파일을 읽는다.
 func Load(path string) (Session, error) {
@@ -79,7 +80,7 @@ func Load(path string) (Session, error) {
 		return sf, err
 	}
 	if err := json.Unmarshal(raw, &sf); err != nil {
-		return sf, fmt.Errorf("세션 파일: %w", err)
+		return sf, fmt.Errorf("session file: %w", err)
 	}
 	return sf, nil
 }
@@ -197,8 +198,8 @@ func Pending(sf Session) string {
 // 내보내면 pqcota가 이름 없는 노드에 조치를 건다. v0.1.0 이 낸 세션 파일이 여기 걸린다.
 func RequireNode(it Item) error {
 	if it.Node == "" {
-		return fmt.Errorf("항목 %s 에 node 가 없다 — v0.1.0 형식의 세션이다. "+
-			"`pqcaton-decide open` 을 다시 돌리거나, 화면에 -results 를 주어 새로 받을 것", it.ID)
+		return fmt.Errorf("item %s has no node — this is a v0.1.0 format session. "+
+			"run `pqcaton-decide open` again, or give the screen -results and let it raise a new one", it.ID)
 	}
 	return nil
 }
@@ -330,7 +331,7 @@ func kindOf(s string) (provisioningv1.RemediationKind, error) {
 	if v, ok := provisioningv1.RemediationKind_value[s]; ok && v != 0 {
 		return provisioningv1.RemediationKind(v), nil
 	}
-	return 0, fmt.Errorf("모르는 조치_종류: %q — 계약의 REMEDIATION_KIND_* 중 하나여야 합니다", s)
+	return 0, fmt.Errorf("unknown remediation_kind: %q — must be one of the contract's REMEDIATION_KIND_*", s)
 }
 
 func levelOf(s string) provisioningv1.DeployAutomationLevel {

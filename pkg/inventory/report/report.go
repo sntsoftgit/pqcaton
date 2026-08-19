@@ -88,7 +88,7 @@ func Build(dir string, d decl.Declaration) (*Result, error) {
 		snap, err := normalize.Normalize([]*discoveryv1.CollectionResult{res},
 			"snap", node, "ruleset-demo", history.NewMemStore(), nil)
 		if err != nil {
-			return nil, fmt.Errorf("%s 정규화: %w", node, err)
+			return nil, fmt.Errorf("normalizing %s: %w", node, err)
 		}
 		observedAssets = append(observedAssets, eng.AssetsFromSnapshot(snap)...)
 		out.AssetGaps = append(out.AssetGaps, reconcile.GapLayers(snap)...)

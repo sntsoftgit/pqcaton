@@ -126,7 +126,7 @@ func (c *Client) post(path string, body, out any) error {
 		return statusError(resp)
 	}
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("응답을 읽을 수 없다: %w", err)
+		return fmt.Errorf("cannot read the response: %w", err)
 	}
 	return nil
 }
@@ -146,7 +146,7 @@ func (c *Client) request(method, path string, body io.Reader) (*http.Request, er
 // 그 성질이 유지되는지는 케이스가 지킨다.
 func statusError(resp *http.Response) error {
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-	return fmt.Errorf("컨트롤 플레인이 %d로 답했다: %s", resp.StatusCode, serverMessage(raw))
+	return fmt.Errorf("the control plane answered %d: %s", resp.StatusCode, serverMessage(raw))
 }
 
 // serverMessage — 컨트롤 플레인이 보낸 사유를 **사람이 읽는 문장으로** 꺼낸다.

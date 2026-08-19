@@ -14,7 +14,7 @@ import (
 // **한 프로세스가 여러 조직을 다루는 배포에서 이것이 유일한 방벽이다.** pqcota의 스냅샷에도
 // 계약의 `Envelope`에도 조직 필드가 없어(§1.4는 노드까지다) 엔진이 스스로 알아낼 길이
 // 없다 — 조직은 부르는 쪽이 단언하고, 그 단언이 어긋나는 순간을 여기서 잡는다.
-var ErrOrgMismatch = errors.New("입력에 다른 조직의 것이 있다")
+var ErrOrgMismatch = errors.New("the input contains something from another organization")
 
 // Engine — 조직 하나에 묶인 대조 엔진.
 //
@@ -61,12 +61,12 @@ func (e *Engine) AssetsFromResults(results []*discoveryv1.CollectionResult) ([]A
 // 검사가 먼저다.
 func (e *Engine) Reconcile(declared []AssetKey, observed []Observed, gapLayers []string) ([]Reconciled, error) {
 	for _, k := range declared {
-		if err := e.want(k.Org, "선언", k.NodeID); err != nil {
+		if err := e.want(k.Org, "declared", k.NodeID); err != nil {
 			return nil, err
 		}
 	}
 	for _, o := range observed {
-		if err := e.want(o.Key.Org, "관측", o.Key.NodeID); err != nil {
+		if err := e.want(o.Key.Org, "observed", o.Key.NodeID); err != nil {
 			return nil, err
 		}
 	}
@@ -77,7 +77,7 @@ func (e *Engine) Reconcile(declared []AssetKey, observed []Observed, gapLayers [
 func (e *Engine) ReconcileEdges(declared []EdgeKey, observed []*discoveryv1.ObservedEdge,
 	scope map[string]bool, gapLayers []string) ([]ReconciledEdge, error) {
 	for _, k := range declared {
-		if err := e.want(k.Org, "선언 엣지", k.Src+"→"+k.Dst); err != nil {
+		if err := e.want(k.Org, "declared edge", k.Src+"→"+k.Dst); err != nil {
 			return nil, err
 		}
 	}
@@ -91,9 +91,9 @@ func (e *Engine) want(got org.ID, lane, what string) error {
 	case e.org:
 		return nil
 	case "":
-		return fmt.Errorf("%w: %s %s 에 조직이 없다 - 이 엔진은 %q다", ErrOrgMismatch, lane, what, e.org)
+		return fmt.Errorf("%w: %s %s has no organization - this engine is %q", ErrOrgMismatch, lane, what, e.org)
 	default:
-		return fmt.Errorf("%w: %s %s 는 %q인데 이 엔진은 %q다", ErrOrgMismatch, lane, what, got, e.org)
+		return fmt.Errorf("%w: %s %s is %q but this engine is %q", ErrOrgMismatch, lane, what, got, e.org)
 	}
 }
 

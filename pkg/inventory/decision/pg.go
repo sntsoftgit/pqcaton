@@ -62,7 +62,7 @@ func RequireRLS() bool { return os.Getenv(RequireEnv) == "1" }
 //
 // 슈퍼유저와 BYPASSRLS 롤은 정책을 통째로 건너뛴다. **그런 롤로 붙으면 RLS 는 걸어 두어도
 // 아무 일도 하지 않는다** — 가장 위험한 종류의 거짓 안심이라, 조용히 넘기지 않는다.
-var ErrRLSInert = errors.New("이 롤에서는 RLS 가 물지 않는다(슈퍼유저 또는 BYPASSRLS)")
+var ErrRLSInert = errors.New("RLS does not bite for this role (superuser or BYPASSRLS)")
 
 // PgJudgmentStore — Postgres append-only 판정 저장소(§3.6, §7, §0.2).
 // INSERT만 한다 — 판정은 갱신/삭제하지 않고 새 레코드를 쌓는다. 파생 플래그(Stale/NeedsReReview)는
@@ -109,7 +109,7 @@ func NewPgJudgmentStore(ctx context.Context, dsn string, o org.ID) (*PgJudgmentS
 	}
 	if !active && RequireRLS() {
 		pool.Close()
-		return nil, fmt.Errorf("%w — %s=1 이므로 열지 않는다", ErrRLSInert, RequireEnv)
+		return nil, fmt.Errorf("%w — refusing to open because %s=1", ErrRLSInert, RequireEnv)
 	}
 	return &PgJudgmentStore{pool: pool, org: o, rls: active}, nil
 }
@@ -124,7 +124,7 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	_, ddlErr := pool.Exec(ctx, judgmentSchemaSQL)
 	if ddlErr == nil {
 		if _, err := pool.Exec(ctx, rlsSQL); err != nil {
-			return fmt.Errorf("행 수준 보안: %w", err)
+			return fmt.Errorf("row level security: %w", err)
 		}
 		return nil
 	}
@@ -133,8 +133,8 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		return err
 	}
 	if !ready {
-		return fmt.Errorf("스키마를 만들 수 없고 갖춰져 있지도 않다: %w\n"+
-			"   소유자 권한으로 아래를 먼저 돌리십시오:\n%s%s", ddlErr, judgmentSchemaSQL, rlsSQL)
+		return fmt.Errorf("cannot create the schema and it is not in place either: %w\n"+
+			"   run this first as the owner:\n%s%s", ddlErr, judgmentSchemaSQL, rlsSQL)
 	}
 	return nil
 }
@@ -151,7 +151,7 @@ func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("스키마 확인: %w", err)
+		return false, fmt.Errorf("checking the schema: %w", err)
 	}
 	return enabled, nil
 }
@@ -168,7 +168,7 @@ func rlsBites(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 	err := pool.QueryRow(ctx,
 		`SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user`).Scan(&bypass)
 	if err != nil {
-		return false, fmt.Errorf("롤 확인: %w", err)
+		return false, fmt.Errorf("checking the role: %w", err)
 	}
 	return !bypass, nil
 }

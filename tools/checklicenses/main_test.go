@@ -46,7 +46,7 @@ func TestUnknownLicenseIsBlocked(t *testing.T) {
 	if len(bad) != 1 {
 		t.Fatalf("허용 목록에 없는 라이선스가 통과했다: %v", bad)
 	}
-	if !strings.Contains(bad[0], "검토") {
+	if !strings.Contains(bad[0], "needs review") {
 		t.Errorf("무엇을 하라는지 말하지 않는다: %s", bad[0])
 	}
 }

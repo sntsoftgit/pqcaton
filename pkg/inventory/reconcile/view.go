@@ -15,14 +15,14 @@ func RenderView(recs []Reconciled) string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "대조: CONFIRMED %d · UNDECLARED(shadow) %d · UNOBSERVED %d\n",
+	fmt.Fprintf(&b, "reconciled: CONFIRMED %d · UNDECLARED(shadow) %d · UNOBSERVED %d\n",
 		counts[Confirmed], counts[Undeclared], counts[Unobserved])
-	fmt.Fprintf(&b, "자동통과 후보(일괄 승인 제안): %d\n\n", len(autopass))
+	fmt.Fprintf(&b, "auto-pass candidates (proposed for batch approval): %d\n\n", len(autopass))
 	if len(review) == 0 {
-		fmt.Fprintf(&b, "필수 리뷰 없음.\n")
+		fmt.Fprintf(&b, "no mandatory reviews.\n")
 		return b.String()
 	}
-	fmt.Fprintf(&b, "필수 리뷰 큐 (우선순위 순):\n")
+	fmt.Fprintf(&b, "mandatory review queue (by priority):\n")
 	fmt.Fprintf(&b, "%-3s %-12s %-6s %-8s %s\n", "#", "state", "conf", "runtime", "component")
 	for i, it := range review {
 		r := it.Rec

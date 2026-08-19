@@ -66,7 +66,7 @@ func (f enrollFile) toEnrollment(key string) Enrollment {
 		Err:         f.Err,
 	}
 	if e.Err == "" && e.Fingerprint == "" {
-		e.Err = "붙었다는데 지문이 없다 — 연결확인이 반쯤 끝났다"
+		e.Err = "reported as connected but has no fingerprint — the connectivity check only half finished"
 	}
 	if e.DisplayName == "" {
 		e.DisplayName = f.NodeID

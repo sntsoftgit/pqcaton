@@ -41,7 +41,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 		orgName = d.OrgOrDefault()
 	}
 	if d.Org != "" && d.Org != orgName {
-		return nil, fmt.Errorf("선언은 조직 %q의 것인데 %q로 대조하려 한다", d.Org, orgName)
+		return nil, fmt.Errorf("the declaration belongs to organization %q but reconciliation was asked for %q", d.Org, orgName)
 	}
 	out := &Built{Org: orgName}
 	// **앞뒤가 안 맞으면 말한다.** 노드↔IP 가 틀리면 CONFIRMED 여야 할 것이 shadow 로 올라온다.

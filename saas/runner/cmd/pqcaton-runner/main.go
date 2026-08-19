@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	conf := flag.String("conf", "/etc/pqcaton/runner.conf", "설정 파일")
+	conf := flag.String("conf", "/etc/pqcaton/runner.conf", "configuration file")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -25,7 +25,7 @@ func main() {
 	cfg, err := runner.LoadConfig(*conf)
 	if err != nil {
 		// 무엇이 없는지는 말하되 토큰은 담지 않는다 — 이 줄이 로그에 남는다.
-		log.Error("설정을 읽을 수 없다", "conf", *conf, "err", err)
+		log.Error("cannot read the configuration", "conf", *conf, "err", err)
 		os.Exit(2)
 	}
 
@@ -33,14 +33,14 @@ func main() {
 	if errors.Is(err, runner.ErrAlreadyRunning) {
 		// **고장이 아니다.** 스케줄이 관측 시간보다 촘촘하면 정상적으로 생긴다 —
 		// 다음 스케줄에 다시 온다. 다만 반복되면 간격을 다시 봐야 한다는 신호다.
-		log.Info("이전 실행이 아직 돈다 — 이번 차례는 건너뛴다")
+		log.Info("a previous run is still going — skipping this turn")
 		return
 	}
 	if err != nil {
 		// **실패를 숨기지 않는다.** 조용히 0으로 끝내면 스케줄러가 잘 돈 것으로 읽는다.
-		log.Error("돌지 못했다", "err", err)
+		log.Error("the run failed", "err", err)
 		os.Exit(1)
 	}
-	log.Info("끝", "played", rep.Played, "files", rep.Files, "accepted", rep.Accepted,
+	log.Info("done", "played", rep.Played, "files", rep.Files, "accepted", rep.Accepted,
 		"enrollments", rep.Enrollments, "enrolled", rep.Enrolled, "held", rep.Held)
 }
