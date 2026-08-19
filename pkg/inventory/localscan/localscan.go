@@ -77,8 +77,7 @@ type Result struct {
 
 // Scan — 이 기계를 관측해 스냅샷으로 만든다. `node` 는 결과에 붙일 이름이다.
 //
-// 두 명령(`pqcaton-decide open`·`pqcaton-reconcile`)이 같은 것을 하므로 여기 하나만 둔다 —
-// 두 벌이면 한쪽만 고쳐지는 날이 온다.
+// 스캔하는 자리는 여기 하나다 — 두 벌이면 한쪽만 고쳐지는 날이 온다.
 func Scan(node string) (*Result, error) {
 	if node == "" {
 		node = DefaultNode

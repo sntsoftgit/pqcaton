@@ -43,6 +43,8 @@ const usage = `usage:
 
   pqcaton-decide open  <declaration.csv> [이-기계에-붙일-이름] [-org <이름>]
         **이 기계를 스캔해** 선언과 대조하고 리뷰 세션(초안)을 낸다(체험용 지름길).
+
+  두 경로 모두 -view 를 주면 대조 결과를 표로 함께 보여 준다.
         두 번째 인자는 결과에 붙이는 **이름표**이지 관측 대상이 아니다 -
         다른 노드를 관측하려면 pqcota 의 collector 를 그 노드에서 돌리고
         pqcaton-report 로 모은다. /proc 이 없으면(비-리눅스) 끊는다
@@ -70,6 +72,7 @@ func main() {
 	fs := flag.NewFlagSet(sub, flag.ExitOnError)
 	judgments := fs.String("judgments", "", "판정을 남길 파일(JSONL, append-only)")
 	results := fs.String("results", "", "관측 결과 디렉터리. 주면 **이 기계를 스캔하지 않고** 그 결과로 대조한다(선언은 JSON)")
+	view := fs.Bool("view", false, "대조 결과를 표로 함께 보여 준다(세션은 그대로 표준출력으로 나간다)")
 	orgName := fs.String("org", "local", "대조와 판정을 묶을 조직")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
 	var pos []string
@@ -99,7 +102,7 @@ func main() {
 		if len(pos) > 1 {
 			node = pos[1]
 		}
-		err = open(pos[0], node, *orgName, *results)
+		err = open(pos[0], node, *orgName, *results, *view)
 	case "close":
 		need(1)
 		err = closeSession(pos[0], *judgments, *orgName)
@@ -123,10 +126,14 @@ func main() {
 // ── open ───────────────────────────────────────────────────────────────────
 
 // open - 대조해서 리뷰 세션을 낸다.
-func open(declPath, node, orgName, resultsDir string) error {
-	sf, err := session(declPath, node, orgName, resultsDir)
+func open(declPath, node, orgName, resultsDir string, view bool) error {
+	sf, recs, err := session(declPath, node, orgName, resultsDir)
 	if err != nil {
 		return err
+	}
+	// **표는 표준오류로 낸다.** 세션 JSON 이 표준출력으로 나가므로 섞이면 파이프가 깨진다.
+	if view {
+		fmt.Fprint(os.Stderr, "\n", reconcile.RenderView(recs), "\n")
 	}
 	fmt.Fprintf(os.Stderr, "리뷰 %d개(필수 %d) · 정책 %d개 · 자동통과 후보 %d개\n",
 		len(sf.Items), countMandatory(sf.Items), len(sf.PolicyDecisions), len(sf.Autopass))
@@ -137,7 +144,11 @@ func open(declPath, node, orgName, resultsDir string) error {
 //
 // **open 과 delta 가 같은 함수를 쓴다.** 근거 해시가 이 결과에서 나오므로, 두 곳이 갈리면
 // 델타 리뷰가 "바뀌지 않은 것"을 바뀌었다고 부른다.
-func session(declPath, node, orgName, resultsDir string) (review.Session, error) {
+// session — 리뷰 세션과 **그것을 만든 대조 결과**를 함께 낸다.
+//
+// 세션에는 리뷰 대상만 담기므로(자동통과는 이름만), `-view` 가 대조 전체를 표로 보이려면
+// 원본이 필요하다.
+func session(declPath, node, orgName, resultsDir string) (review.Session, []reconcile.Reconciled, error) {
 	if resultsDir != "" {
 		return sessionFromResults(declPath, orgName, resultsDir)
 	}
@@ -146,13 +157,13 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, error)
 	// 않고 끊는다 - 섞인 채로 돌면 오류가 아니라 그럴듯한 결과가 나온다.
 	eng, err := reconcile.For(org.ID(orgName))
 	if err != nil {
-		return sf, err
+		return sf, nil, err
 	}
 	// **이 기계를 스캔한다.** 노드 이름은 결과에 붙이는 이름표일 뿐이고, /proc 을 못 열면
 	// 끊는다 - 그 상태로 대조하면 「못 본 것」이 「없는 것」으로 읽힌다.
 	scan, err := localscan.Scan(node)
 	if err != nil {
-		return sf, err
+		return sf, nil, err
 	}
 	for _, w := range scan.Warnings {
 		fmt.Fprintln(os.Stderr, "⚠", w)
@@ -160,21 +171,21 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, error)
 	snap := scan.Snapshot
 	f, err := os.Open(declPath)
 	if err != nil {
-		return sf, err
+		return sf, nil, err
 	}
 	defer f.Close()
 	decl, err := declaration.ImportCSV(f)
 	if err != nil {
-		return sf, fmt.Errorf("선언 읽기: %w", err)
+		return sf, nil, fmt.Errorf("선언 읽기: %w", err)
 	}
 	declared, err := eng.AssetsFromResults(decl)
 	if err != nil {
-		return sf, fmt.Errorf("선언 자산: %w", err)
+		return sf, nil, fmt.Errorf("선언 자산: %w", err)
 	}
 
 	recs, err := eng.Reconcile(declared, eng.AssetsFromSnapshot(snap), reconcile.GapLayers(snap))
 	if err != nil {
-		return sf, err
+		return sf, nil, err
 	}
 	autopass, queue := reconcile.BuildReviewQueue(recs)
 
@@ -196,7 +207,7 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, error)
 	}
 	sort.Strings(sf.Autopass)
 	fmt.Fprintf(os.Stderr, "스캔: 접근가능 %d · 거부 %d (이 기계)\n", scan.Accessible, scan.Denied)
-	return sf, nil
+	return sf, recs, nil
 }
 
 // sessionFromResults — **pqcota 가 모은 관측**으로 리뷰 세션을 만든다.
@@ -206,18 +217,18 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, error)
 //
 // **대조는 `report` 가 한다.** 대조 화면(`pqcaton-ui`)이 보는 것과 같은 계산이라, 화면에서
 // 본 shadow 가 리뷰 큐에 그대로 올라온다 — 두 벌이면 사람이 본 것과 판정할 것이 갈린다.
-func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, error) {
+func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, []reconcile.Reconciled, error) {
 	var sf review.Session
 	d, err := decl.Load(declPath)
 	if err != nil {
-		return sf, err
+		return sf, nil, err
 	}
 	// **선언이 조직을 말한다.** -org 를 따로 주지 않았으면 선언의 것을 쓴다.
 	if orgName == "" || orgName == decl.DefaultOrg {
 		orgName = d.OrgOrDefault()
 	}
 	if d.Org != "" && d.Org != orgName {
-		return sf, fmt.Errorf("선언은 조직 %q의 것인데 %q로 대조하려 한다", d.Org, orgName)
+		return sf, nil, fmt.Errorf("선언은 조직 %q의 것인데 %q로 대조하려 한다", d.Org, orgName)
 	}
 	// **앞뒤가 안 맞으면 말한다.** 노드↔IP 가 틀리면 CONFIRMED 여야 할 것이 shadow 로 올라온다.
 	if p := decl.Check(d); len(p) > 0 {
@@ -226,7 +237,7 @@ func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, e
 
 	r, err := report.Build(resultsDir, d)
 	if err != nil {
-		return sf, err
+		return sf, nil, err
 	}
 	for _, sk := range r.Skipped {
 		fmt.Fprintln(os.Stderr, "   건너뜀(읽을 수 없음):", sk)
@@ -254,7 +265,7 @@ func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, e
 	c, u, un := r.Counts()
 	fmt.Fprintf(os.Stderr, "관측 %d노드 · 대조 CONFIRMED %d · UNDECLARED %d · UNOBSERVED %d\n",
 		len(r.SeenBy), c, u, un)
-	return sf, nil
+	return sf, r.Assets, nil
 }
 
 // ── close ──────────────────────────────────────────────────────────────────
@@ -318,7 +329,7 @@ func delta(judgmentPath, declPath, node, orgName, resultsDir string) error {
 	prior = decision.LatestPerSubject(prior) // append-only 로그에서 대상별 최신만
 
 	// 지금 관측으로 근거를 다시 만든다. open 이 쓰는 것과 같은 경로여야 값이 맞는다.
-	sf, err := session(declPath, node, orgName, resultsDir)
+	sf, _, err := session(declPath, node, orgName, resultsDir)
 	if err != nil {
 		return err
 	}

@@ -45,7 +45,6 @@ pqcota                          pqcaton
 | [`pkg/inventory/ui`](pkg/inventory/ui) | **화면** — 그리는 것과 폼을 읽는 것만. 어디서 읽고 누가 들어오는지는 부르는 쪽이 정합니다 |
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스** — 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 냅니다 |
-| [`inventory/cmd/pqcaton-reconcile`](inventory/cmd/pqcaton-reconcile) | 대조 실행 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포** — 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
 | [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **리뷰 큐와 선언을 사람이 다루는 화면** — 표준 라이브러리만 쓰고 기본은 127.0.0.1입니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
@@ -77,7 +76,7 @@ pqcota                          pqcaton
 ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 collector가 대상 노드에서 하고,
 그쪽은 지금 Linux 전용입니다.
 
-> 예외 하나 — `pqcaton-decide open` 과 `pqcaton-reconcile` 은 **명령을 돌린 그 기계를**
+> 예외 하나 — `pqcaton-decide open` 을 `-results` 없이 쓰면 **명령이 도는 그 기계 자신을**
 > 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **Linux에서만** 됩니다.
 > 여러 노드를 제대로 다루는 길은 pqcota가 모은 결과를 읽는 [`pqcaton-report`](inventory/cmd/pqcaton-report)입니다.
 
