@@ -1,0 +1,25 @@
+{
+  "status": "PLAN_STATUS_FINALIZED",
+  "scope": "org://demo-corp",
+  "actions": [
+    {
+      "id": "a1",
+      "targetNodeId": "pay-app",
+      "cryptoRuntime": "CRYPTO_RUNTIME_OPENSSL",
+      "kind": "REMEDIATION_KIND_PROVIDER_INJECT",
+      "automationLevel": "DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL",
+      "providerChoice": "internal-pqc-provider"
+    },
+    {
+      "id": "a2",
+      "targetNodeId": "web-gw",
+      "cryptoRuntime": "CRYPTO_RUNTIME_OPENSSL",
+      "kind": "REMEDIATION_KIND_PROVIDER_INJECT",
+      "automationLevel": "DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL",
+      "providerChoice": "internal-pqc-provider"
+    }
+  ],
+  "approvalSignatures": [
+    "demo-sig"
+  ]
+}
