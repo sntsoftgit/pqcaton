@@ -3,7 +3,7 @@
 // 대조 엔진은 정답을 주지 않는다. 판정 대상을 구조화해 사람에게 넘기고, **확정은 사람이
 // 한다**(규정서 §3.1). 그 「사람이 하는 자리」를 파일 왕복으로 연다.
 //
-//	pqcaton-decide open  <declaration.csv> [node] [-org 이름] > session.json
+//	pqcaton-decide open  <declaration.csv> [이-기계에-붙일-이름] [-org 이름] > session.json
 //	  … 사람이 session.json 을 편집한다 (결론 · 승인자 · 서명)
 //	pqcaton-decide close <session.json> [-judgments 파일] [-org 이름] > plan.json
 //	pqcaton-decide delta <judgments.jsonl> <declaration.csv> [node]
@@ -24,21 +24,21 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/randyinthedev-hash/pqcota/discovery/collectors/openssl"
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/inventory/declaration"
-	"github.com/randyinthedev-hash/pqcota/pkg/kernel/registry"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/localscan"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
 
 const usage = `usage:
-  pqcaton-decide open  <declaration.csv> [node] [-org <이름>]
-        대조 → 리뷰 세션(초안)을 낸다
+  pqcaton-decide open  <declaration.csv> [이-기계에-붙일-이름] [-org <이름>]
+        **이 기계를 스캔해** 선언과 대조하고 리뷰 세션(초안)을 낸다.
+        두 번째 인자는 결과에 붙이는 **이름표**이지 관측 대상이 아니다 -
+        다른 노드를 관측하려면 pqcota 의 collector 를 그 노드에서 돌리고
+        pqcaton-report 로 모은다. /proc 이 없으면(비-리눅스) 끊는다
 
   pqcaton-decide close <session.json> [-judgments <파일>] [-org <이름>]
         판정을 확인하고 확정 계획을 낸다. -judgments 를 주면 판정을 그 파일에
@@ -86,7 +86,7 @@ func main() {
 	switch sub {
 	case "open":
 		need(1)
-		node := "host://local"
+		node := localscan.DefaultNode
 		if len(pos) > 1 {
 			node = pos[1]
 		}
@@ -96,7 +96,7 @@ func main() {
 		err = closeSession(pos[0], *judgments, *orgName)
 	case "delta":
 		need(2)
-		node := "host://local"
+		node := localscan.DefaultNode
 		if len(pos) > 2 {
 			node = pos[2]
 		}
@@ -136,12 +136,16 @@ func session(declPath, node, orgName string) (review.Session, error) {
 	if err != nil {
 		return sf, err
 	}
-	dets, st := openssl.ScanHost(registry.DefaultForkSignatures)
-	res := openssl.BuildResult(node, dets)
-	snap, err2 := normalize.Normalize([]*discoveryv1.CollectionResult{res}, "snap-1", node, "ruleset-1", nil, nil)
-	if err2 != nil {
-		return sf, fmt.Errorf("정규화: %w", err2)
+	// **이 기계를 스캔한다.** 노드 이름은 결과에 붙이는 이름표일 뿐이고, /proc 을 못 열면
+	// 끊는다 - 그 상태로 대조하면 「못 본 것」이 「없는 것」으로 읽힌다.
+	scan, err := localscan.Scan(node)
+	if err != nil {
+		return sf, err
 	}
+	for _, w := range scan.Warnings {
+		fmt.Fprintln(os.Stderr, "⚠", w)
+	}
+	snap := scan.Snapshot
 	f, err := os.Open(declPath)
 	if err != nil {
 		return sf, err
@@ -179,7 +183,7 @@ func session(declPath, node, orgName string) (review.Session, error) {
 		sf.Autopass = append(sf.Autopass, review.Key(a.Key))
 	}
 	sort.Strings(sf.Autopass)
-	fmt.Fprintf(os.Stderr, "스캔: 접근가능 %d · 거부 %d\n", st.Accessible, st.Denied)
+	fmt.Fprintf(os.Stderr, "스캔: 접근가능 %d · 거부 %d (이 기계)\n", scan.Accessible, scan.Denied)
 	return sf, nil
 }
 
