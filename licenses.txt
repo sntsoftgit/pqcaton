@@ -23,3 +23,16 @@ golang.org/x/net                            BSD-3-Clause
 golang.org/x/sync                           BSD-3-Clause
 golang.org/x/sys                            BSD-3-Clause
 golang.org/x/text                           BSD-3-Clause
+
+# 화면(v0.11.0)이 끌어오는 것. 둘 다 전이 의존이 없다 — 링크되는 모듈이 2개만 는다.
+github.com/go-chi/chi/v5                    MIT
+github.com/a-h/templ                        MIT
+
+# ── 함께 실려 나가는 웹 자산 ───────────────────────────────────────────────
+#
+# Go 모듈이 아니라 **브라우저로 나가는 파일**이다. 바이너리에 embed 되므로 배포물의
+# 일부이고, 그래서 같은 게이트를 지난다. 값은 그 파일과 함께 받은 LICENSE 원문에서
+# 확인한다 — htmx 는 pkg/inventory/ui/static/LICENSE.htmx 가 근거다.
+#
+# 우리가 쓴 파일이면 BUSL-1.1 이라고 적는다. 목록에 없는 파일은 통과하지 못한다.
+pkg/inventory/ui/static/htmx.min.js         0BSD

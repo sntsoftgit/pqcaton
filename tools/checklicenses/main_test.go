@@ -167,3 +167,82 @@ func chdirRepoRoot(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(cwd) })
 }
+
+// IC-X8 — **브라우저로 나가는 파일도 훑는다.**
+//
+// 화면이 생긴 뒤로 이 리포는 Go 코드만 배포하지 않습니다. `.js`·`.css`가 바이너리에
+// 박혀 브라우저로 나가고, 그것도 남의 코드일 수 있습니다. 확장자로 훑는지, 그리고
+// 배포물이 아닌 곳(`.git`·`node_modules`·`testdata`)은 빼는지 잰다.
+func TestWebAssetsWalksShippedFilesOnly(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel string) {
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("/* x */"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("ui/static/htmx.min.js")
+	write("ui/static/app.css")
+	write("ui/static/mod.mjs")
+	write("ui/ui.go")             // Go 파일은 모듈 쪽에서 잰다
+	write(".git/hooks/thing.js")  // 배포물이 아니다
+	write("node_modules/dep.js")  // 〃
+	write("pkg/testdata/fake.js") // 〃
+
+	got, err := webAssets(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, m := range got {
+		names = append(names, strings.TrimPrefix(m.Path, filepath.ToSlash(root)+"/"))
+	}
+	want := []string{"ui/static/app.css", "ui/static/htmx.min.js", "ui/static/mod.mjs"}
+	if strings.Join(names, ",") != strings.Join(want, ",") {
+		t.Fatalf("훑은 것이 다르다:\n  got  %v\n  want %v", names, want)
+	}
+}
+
+// IC-X9 — **적히지 않은 웹 자산은 모듈과 똑같이 막힌다.**
+//
+// 게이트를 넓힌 이유가 여기입니다. 프런트 라이브러리를 하나 받아 `static/`에 놓고
+// 목록에 안 적으면, 예전 게이트는 초록이었습니다 — 배포물의 일부를 검사하지 않은 채로.
+func TestUnlistedWebAssetIsBlocked(t *testing.T) {
+	assets := []mod{{Path: "pkg/inventory/ui/static/somelib.min.js"}}
+	missing, bad := verdict(assets, map[string]string{})
+	if len(missing) != 1 || missing[0] != "pkg/inventory/ui/static/somelib.min.js" {
+		t.Fatalf("적히지 않은 웹 자산이 통과했다: missing=%v bad=%v", missing, bad)
+	}
+}
+
+// IC-X10 — **카피레프트 JS도 막힌다.** 프런트에는 GPL 라이브러리가 흔합니다.
+func TestCopyleftWebAssetIsBlocked(t *testing.T) {
+	const p = "pkg/inventory/ui/static/gpl-thing.js"
+	missing, bad := verdict([]mod{{Path: p}}, map[string]string{p: "GPL-3.0"})
+	if len(missing) != 0 || len(bad) != 1 {
+		t.Fatalf("GPL 웹 자산이 통과했다: missing=%v bad=%v", missing, bad)
+	}
+}
+
+// IC-X11 — 이 리포가 실제로 싣고 있는 htmx 가 목록에 있고, 값이 그 옆 LICENSE 원문과
+// 맞는지 잰다. **파일을 갈아 끼우면서 목록을 안 고치는 날**을 여기서 잡는다.
+func TestVendoredHTMXIsRecorded(t *testing.T) {
+	known, err := loadAllowlist("../../licenses.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const p = "pkg/inventory/ui/static/htmx.min.js"
+	if known[p] != "0BSD" {
+		t.Fatalf("licenses.txt 의 %s = %q — LICENSE.htmx 는 Zero-Clause BSD 다", p, known[p])
+	}
+	lic, err := os.ReadFile("../../pkg/inventory/ui/static/LICENSE.htmx")
+	if err != nil {
+		t.Fatalf("근거가 될 LICENSE 원문이 없다: %v", err)
+	}
+	if !strings.Contains(string(lic), "Zero-Clause BSD") {
+		t.Fatal("LICENSE.htmx 가 Zero-Clause BSD 가 아니다 — licenses.txt 값을 다시 볼 것")
+	}
+}

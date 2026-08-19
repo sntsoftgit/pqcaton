@@ -6,8 +6,17 @@
 //
 // 사람 기억에 맡기면 새어 든다 — go get 한 번이면 들어온다. 그래서 빌드에서 막는다.
 //
-// 검사 대상은 `go list -deps ./...`가 내는 **실제 링크되는 모듈**이다. 테스트 전용이나
-// 별도 프로세스로 부르는 도구는 대상이 아니다(링크되지 않으므로 전염되지 않는다).
+// 검사 대상은 **함께 실려 나가는 것 전부**다. 두 갈래다:
+//
+//   - `go list -deps ./...`가 내는 **실제 링크되는 모듈**
+//   - 바이너리에 박히는 **웹 자산**(`.js`·`.css`) — 화면이 브라우저로 내보내는 것
+//
+// 웹 자산을 뒤늦게 넣은 이유: Go 쪽만 보면 게이트가 절반만 지킨다. 화면에 프런트
+// 라이브러리를 하나 받아 넣는 순간, **이 리포가 배포하는 코드의 일부가 목록 밖에**
+// 생긴다 — 「무엇을 쓰는지 모르면 이관도 못 한다」고 말하는 리포에서.
+//
+// 테스트 전용이나 별도 프로세스로 부르는 도구는 대상이 아니다(링크되지 않으므로
+// 전염되지 않고, 실려 나가지도 않는다).
 //
 // usage: go run ./tools/checklicenses
 package main
@@ -16,8 +25,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -31,6 +42,10 @@ var allowed = map[string]bool{
 	"BSD-3-Clause": true,
 	"ISC":          true,
 	"Unlicense":    true,
+	"0BSD":         true, // 고지 의무조차 없다 — BSD 계열 중 가장 느슨하다
+	// BUSL-1.1 은 **이 리포 자신의 라이선스**다. 우리가 쓴 웹 자산을 목록에 적을 때
+	// 쓴다. 남의 코드에 이 값이 붙어 있으면 그건 검토 대상이다 — 그때는 손으로 본다.
+	"BUSL-1.1": true,
 }
 
 // 금지 — 카피레프트. 링크하면 파생물도 같은 조건이 되어 BUSL로 낼 수 없다.
@@ -66,13 +81,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	assets, err := webAssets(".")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "✗ 웹 자산을 훑지 못했다:", err)
+		os.Exit(1)
+	}
+
 	known, err := loadAllowlist("licenses.txt")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "✗ licenses.txt를 읽지 못했다:", err)
 		os.Exit(1)
 	}
 
-	missing, bad := verdict(mods, known)
+	missing, bad := verdict(append(mods, assets...), known)
 
 	if len(missing) > 0 {
 		fmt.Fprintln(os.Stderr, "✗ 라이선스를 모르는 의존성이 있다 — licenses.txt에 확인해 적을 것:")
@@ -90,7 +111,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "\n대안을 찾거나, 별도 프로세스로 분리해 호출할 수 있는지 이슈에서 상의할 것.")
 		os.Exit(1)
 	}
-	fmt.Printf("✓ 라이선스 검사 통과 (링크되는 모듈 %d개 — 전부 허용적)\n", len(mods))
+	fmt.Printf("✓ 라이선스 검사 통과 (링크되는 모듈 %d개, 실려 나가는 웹 자산 %d개 — 전부 허용적)\n",
+		len(mods), len(assets))
 }
 
 // verdict — 링크되는 모듈과 허용 목록을 견줘 **무엇이 막는지** 가른다.
@@ -118,6 +140,40 @@ func verdict(mods []mod, known map[string]string) (missing, bad []string) {
 	sort.Strings(missing)
 	sort.Strings(bad)
 	return missing, bad
+}
+
+// webAssets — 바이너리에 박혀 브라우저로 나가는 자산을 전부 모은다.
+//
+// **확장자로 훑지, 디렉터리 규약을 믿지 않는다.** `vendor/` 아래만 본다면 그 밖에
+// 놓은 파일은 검사되지 않는다 — 규약을 어긴 사람이 아니라 모르고 놓은 사람이 게이트를
+// 지나가게 된다. 우리가 쓴 파일도 목록에 적어야 하지만, 그 값은 BUSL-1.1 한 줄이다.
+//
+// 경로는 리포 상대 경로 그대로 쓴다. 같은 파일을 두 곳에 두면 두 줄이 필요하고,
+// 그건 사본이 있다는 사실이 드러나는 것이니 손해가 아니다.
+func webAssets(root string) ([]mod, error) {
+	var out []mod
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			// `.git`·`node_modules`는 배포물이 아니다.
+			if n := d.Name(); n == ".git" || n == "node_modules" || n == "testdata" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		switch strings.ToLower(filepath.Ext(p)) {
+		case ".js", ".mjs", ".css":
+			out = append(out, mod{Path: filepath.ToSlash(strings.TrimPrefix(p, "./"))})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+	return out, nil
 }
 
 // linkedModules — 실제로 링크되는 모듈만. 테스트 전용 의존성은 제외된다.
