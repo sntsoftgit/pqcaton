@@ -13,6 +13,76 @@ pqcota는 관측한 사실만 냅니다 — 무엇이 위험한지, 무엇을 �
 
 ---
 
+## 0. 명령이 도는 순서
+
+이 리포의 명령들이 **무엇을 먹고 무엇을 내는지**, 어떤 차례로 도는지입니다. 각 단계의 설계
+근거는 아래 §1부터에 있습니다.
+
+```mermaid
+flowchart TB
+  subgraph P["pqcota — 관측"]
+    COL["collector<br/>대상 노드에서 실행"]
+    ING["pqcota-ingest<br/>-scope-assets"]
+    PRV["pqcota-provision"]
+  end
+
+  subgraph C["pqcaton — 대조·판정·확정"]
+    DECL["① 선언<br/>declaration.json"]
+    SCOPE["② 자산 스코프<br/>pqcaton-scope open → close"]
+    REP["③ 대조<br/>pqcaton-report"]
+    DEC["④ 판정<br/>pqcaton-decide open -results"]
+    FIN["⑤ 확정<br/>pqcaton-decide close"]
+  end
+
+  DECL --> SCOPE
+  SCOPE -->|"asset-scope.csv"| ING
+  COL -->|"results/*.json"| ING
+  ING --> REP
+  DECL --> REP
+  REP -->|"같은 계산"| DEC
+  DEC -->|"session.json<br/>사람이 채운다"| FIN
+  FIN -->|"plan.json"| PRV
+  FIN -->|"judgments.jsonl"| LED["판정 원장<br/>append-only"]
+```
+
+### 무엇을 먹고 무엇을 내나
+
+| 명령 | 먹는 것 | 내는 것 |
+|---|---|---|
+| [`pqcaton-scope open`](../inventory/cmd/pqcaton-scope) | 계층 CSV 여럿 · `-base` 현재 정책 | 스코프 세션(바뀐 규칙만) |
+| `pqcaton-scope close` | 사람이 채운 스코프 세션 | **`asset-scope.csv`** · 판정 원장 |
+| `pqcaton-scope review` | 정책 CSV · 관측 결과 | 다시 볼 제외분(승인 없음·만료) |
+| [`pqcaton-report`](../inventory/cmd/pqcaton-report) | 관측 결과 · 선언 | 콘솔 리포트 · 토폴로지 DOT |
+| [`pqcaton-decide open`](../inventory/cmd/pqcaton-decide) | 선언 · **관측 결과**(`-results`) | 리뷰 세션(판정 대상) |
+| `pqcaton-decide close` | 사람이 채운 리뷰 세션 | **`plan.json`**(계약 형식) · 판정 원장 |
+| `pqcaton-decide delta` | 판정 원장 · 지금 관측 | 근거가 바뀐 판정만 |
+| [`pqcaton-ui`](../inventory/cmd/pqcaton-ui) | 위 파일들 | 같은 파일을 편집 — **같은 게이트** |
+
+**사람이 하는 자리는 두 곳뿐입니다** — 스코프 세션과 리뷰 세션을 채우는 것. 나머지는 파일이
+다음 명령의 입력이 됩니다. 그 파일들이 곧 감사 기록입니다.
+
+### 두 갈래 — 주경로와 지름길
+
+| | 관측을 어디서 | 언제 쓰나 |
+|---|---|---|
+| **주경로** | pqcota 가 여러 노드에서 모은 `results/` | 실제 운영. `pqcaton-decide open -results` |
+| **지름길** | **명령을 돌린 그 기계**(`/proc`) | 체험. `pqcaton-decide open decl.csv` · `pqcaton-reconcile` |
+
+지름길은 「체크아웃만으로 한 바퀴」를 위한 것이라 **Linux 에서만** 되고, 노드 이름은 결과에
+붙이는 **이름표일 뿐 관측 대상이 아닙니다.** 그 둘을 조용히 넘기면 「못 본 것」이 「없는 것」으로
+읽히므로 명령이 말하고 끊습니다(§1.1).
+
+### 되풀이되는 것
+
+한 번 돌고 끝나지 않습니다. 재관측한 뒤와 시간이 지난 뒤에 각각 돌아옵니다.
+
+| 언제 | 무엇 | 왜 |
+|---|---|---|
+| 재관측한 뒤 | `pqcaton-decide delta` | **근거가 바뀐 판정만** 다시 봅니다. 전부 다시 보게 하면 아무도 안 봅니다 |
+| 주기적으로 | `pqcaton-scope review` | **제외는 영구 면제가 아닙니다.** 빼둔 사이 위험해진 것을 다시 올립니다 |
+
+---
+
 ## 1. 인벤토리 엔진 — 대조·판정·거버넌스
 
 pqcota는 관측을 모아 **읽기전용 뷰**와 `plan`·`decision` 스키마까지 냅니다.

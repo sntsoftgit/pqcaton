@@ -4,11 +4,12 @@
 // 게이트는 `pkg/inventory/review` 에 있다 — 컨트롤 플레인이 같은 화면과 같은 게이트를
 // 쓰고, 다른 것은 「어디서 읽고 누가 들어오나」뿐이다.
 //
-//	pqcaton-ui <session.json> [-decl declaration.json] [-results 디렉터리]
-//	           [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름] [-plan 파일]
+//	pqcaton-ui <session.json> [-decl declaration.json] [-scope scope-session.json]
+//	           [-results 디렉터리] [-addr 127.0.0.1:8765] [-judgments 파일] [-org 이름]
+//	           [-plan 파일] [-scope-out 파일]
 //
-// **탭 순서가 절차 순서다** — 선언 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을 할지
-// 화면이 말해 준다.
+// **탭 순서가 절차 순서다** — 선언 → 스코프 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을
+// 할지 화면이 말해 준다. 재료를 주지 않은 자리는 만들지 않는다.
 //
 // **의존성이 없다.** net/http 와 html/template 만 쓴다 — 링크되는 모듈이 늘지 않는다.
 //
