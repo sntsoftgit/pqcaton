@@ -179,3 +179,80 @@ var declPage = template.Must(template.New("decl").Funcs(funcs).Parse(shell + `
 <p class="hint">저장하면 <code>pqcaton-report</code> 가 읽는 그 파일에 그대로 씁니다.</p>
 </form>
 {{template "foot"}}`))
+
+// surveyPage — 대조 결과. **관측을 먼저 보인다** — 그것 없이는 UNOBSERVED가 「없다」인지
+// 「못 봤다」인지 읽는 사람이 가를 수 없다(§2.7).
+var surveyPage = template.Must(template.New("survey").Funcs(funcs).Parse(shell + `
+{{template "head" .Page}}
+
+<fieldset>
+ <legend>① 관측 <span class="n">— pqcota가 무엇을 보았나</span></legend>
+ <p class="hint">대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.</p>
+ <table>
+  <tr><th style="width:14rem">노드</th><th>본 collector</th></tr>
+  {{range .R.SeenNodes}}<tr><td><code>{{.}}</code></td><td>{{range $k, $c := index $.R.SeenBy .}}{{if $k}}, {{end}}{{$c}}{{end}}</td></tr>{{end}}
+ </table>
+ <p style="margin-top:.8rem">관측 자산 <b>{{.R.ObservedAssets}}</b> · 협상된 통신 <b>{{.R.ObservedEdges}}</b>건</p>
+
+ <div class="warn-list" style="border-color:var(--line)">
+  <strong>못 본 것</strong>
+  {{if and (not .R.GapLayers) (not .R.UncoveredNodes)}}
+   <p class="hint">없습니다 — 이 범위에서는 관측이 완전합니다.</p>
+  {{else}}
+   <ul>
+   {{range .R.GapLayers}}<li>계층 <code>{{.}}</code></li>{{end}}
+   {{range .R.UncoveredNodes}}<li>통신 미관측 노드 <code>{{.}}</code></li>{{end}}
+   </ul>
+   <p class="hint"><b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED가 어느 쪽인지는 이 줄이 가릅니다 —
+    갭이면 재수집이 먼저이고, 아니면 사람이 판정합니다.</p>
+  {{end}}
+ </div>
+ {{if .R.Skipped}}<div class="warn-list"><strong>읽지 못한 결과 파일</strong>
+  <ul>{{range .R.Skipped}}<li>{{.}}</li>{{end}}</ul>
+  <p class="hint">빠진 노드를 모르면 「관측 안 됨」과 「못 읽음」이 뒤섞입니다.</p></div>{{end}}
+</fieldset>
+
+<fieldset>
+ <legend>② 자산 인벤토리 <span class="n">— 3-상태 대조</span></legend>
+ <p>CONFIRMED <b>{{.Confirmed}}</b> · UNDECLARED(shadow) <b>{{.Undeclared}}</b> · UNOBSERVED <b>{{.Unobserved}}</b></p>
+ <table>
+  <tr><th>상태</th><th>확신</th><th>노드</th><th>런타임</th><th>컴포넌트</th></tr>
+  {{range .Assets}}
+  <tr><td{{if ne .State "CONFIRMED"}} class="must"{{end}}>{{.State}}</td>
+      <td>{{printf "%.2f" .Conf}}</td>
+      <td><code>{{.Node}}</code></td><td>{{.Runtime}}</td>
+      <td>{{.Component}}{{if .Rescan}} <span class="hint">재수집 후보</span>{{end}}</td></tr>
+  {{else}}<tr><td colspan="5">대조할 자산이 없습니다.</td></tr>{{end}}
+ </table>
+ <p class="hint"><b>UNDECLARED가 이 도구의 첫 값입니다</b> — 선언에 없는데 실제로 쓰이고 있는 것입니다.
+  판정은 <a href="/review">리뷰 큐</a>에서 합니다.</p>
+</fieldset>
+
+<fieldset>
+ <legend>③ 통신 엣지 <span class="n">— 양자내성 등급</span></legend>
+ <p>🟢 PQC <b>{{.PQC}}</b> · 🔴 고전 <b>{{.Classical}}</b> · ⚪ 불명 <b>{{.Unknown}}</b></p>
+ <table>
+  <tr><th style="width:2rem"></th><th>보내는 쪽</th><th>받는 쪽</th><th>포트</th><th>프로토콜</th><th>협상 그룹</th><th>대조</th></tr>
+  {{range .Edges}}
+  <tr><td>{{.Mark}}</td>
+      <td><code>{{.Src}}</code>{{if .Uncovered}} <span class="hint">미관측</span>{{end}}</td>
+      <td><code>{{.Dst}}</code>{{if .OffScope}} <span class="hint">등재 판정 요청</span>{{end}}</td>
+      <td>{{.Port}}</td><td>{{.Proto}}</td>
+      <td>{{if .Group}}{{.Group}}{{else}}<span class="hint">{{.Grade}}</span>{{end}}</td>
+      <td{{if ne .State "CONFIRMED"}} class="must"{{end}}>{{.State}}</td></tr>
+  {{else}}<tr><td colspan="7">대조할 엣지가 없습니다.</td></tr>{{end}}
+ </table>
+</fieldset>
+
+<fieldset>
+ <legend>④ 거버넌스 토폴로지</legend>
+ {{if .SVG}}
+  <div style="overflow-x:auto">{{.SVG}}</div>
+  <p class="hint">색은 양자내성 등급, 선형은 대조 상태입니다. <b>미관측은 점선</b>이라 부재와 구분됩니다.</p>
+ {{else}}
+  <p class="hint"><code>dot</code> 이 이 기계에 없어 그리지 못했습니다. 아래를 저장해
+   <code>dot -Tsvg topology.dot -o topology.svg</code> 로 그리십시오.</p>
+  <textarea readonly style="min-height:12rem">{{.DOT}}</textarea>
+ {{end}}
+</fieldset>
+{{template "foot"}}`))

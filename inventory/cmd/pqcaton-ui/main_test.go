@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
+	"google.golang.org/protobuf/encoding/protojson"
+
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
@@ -67,7 +70,7 @@ func TestIndexGroupsByPolicy(t *testing.T) {
 	mux := http.NewServeMux()
 	s.routes(mux)
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/", nil))
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/review", nil))
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("상태 %d", w.Code)
@@ -146,13 +149,21 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 	if err != nil {
 		t.Fatalf("확정 계획이 없다: %v", err)
 	}
-	body := string(raw)
-	if !strings.Contains(body, "PLAN_STATUS_FINALIZED") {
-		t.Errorf("확정 상태가 아니다:\n%s", body)
+	// **바이트로 견주지 않는다.** protojson 은 콜론 뒤 공백을 일부러 흔들어 바이트 비교를
+	// 막는다 — 그렇게 재면 통과 여부가 운에 달린다.
+	var plan provisioningv1.FinalizedPlan
+	if err := protojson.Unmarshal(raw, &plan); err != nil {
+		t.Fatalf("계약 형식이 아니다: %v\n%s", err, raw)
+	}
+	if plan.GetStatus() != provisioningv1.PlanStatus_PLAN_STATUS_FINALIZED {
+		t.Errorf("확정 상태가 아니다: %v", plan.GetStatus())
+	}
+	if len(plan.GetActions()) != 1 {
+		t.Fatalf("조치 %d건", len(plan.GetActions()))
 	}
 	// v0.1.1 에서 고친 자리다 — 겨눈 노드가 쪼개져 사라지면 안 된다.
-	if !strings.Contains(body, `"targetNodeId":  "host://local"`) {
-		t.Errorf("겨눈 노드가 틀렸다:\n%s", body)
+	if got := plan.GetActions()[0].GetTargetNodeId(); got != "host://local" {
+		t.Errorf("겨눈 노드가 %q다", got)
 	}
 
 	led, err := os.ReadFile(s.judgments)
@@ -271,7 +282,7 @@ func get(t *testing.T, s *server, target string) *httptest.ResponseRecorder {
 // 쓰는 사람이 무엇이 되고 무엇이 안 되는지 헷갈린다.
 func TestDeclHiddenWithoutFile(t *testing.T) {
 	s, _ := newServer(t)
-	if body := get(t, s, "/").Body.String(); strings.Contains(body, `href="/decl"`) {
+	if body := get(t, s, "/review").Body.String(); strings.Contains(body, `href="/decl"`) {
 		t.Error("선언 파일이 없는데 이동 링크가 보인다")
 	}
 	if code := get(t, s, "/decl").Code; code != http.StatusNotFound {
@@ -279,7 +290,7 @@ func TestDeclHiddenWithoutFile(t *testing.T) {
 	}
 
 	s2, _ := withDecl(t)
-	if body := get(t, s2, "/").Body.String(); !strings.Contains(body, `href="/decl"`) {
+	if body := get(t, s2, "/review").Body.String(); !strings.Contains(body, `href="/decl"`) {
 		t.Error("선언 파일을 줬는데 이동 링크가 없다")
 	}
 }
@@ -352,5 +363,54 @@ func TestDeclBlankNameRemovesRow(t *testing.T) {
 	}
 	if len(d.Edges) != 0 {
 		t.Errorf("보내지 않은 엣지가 남았다: %+v", d.Edges)
+	}
+}
+
+// ── 절차 순서 ──────────────────────────────────────────────────────────────
+
+// IC-U13 — **탭 순서가 절차 순서다.** 선언 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을
+// 할지 순서 자체가 말해 준다 — 뒤섞이면 화면이 절차를 가르치지 못한다.
+func TestNavFollowsProcedure(t *testing.T) {
+	s, dir := withDecl(t)
+	s.results = filepath.Join(dir, "results")
+	body := get(t, s, "/review").Body.String()
+
+	iDecl := strings.Index(body, `href="/decl"`)
+	iSurvey := strings.Index(body, `href="/survey"`)
+	iReview := strings.Index(body, `href="/review"`)
+	if iDecl < 0 || iSurvey < 0 || iReview < 0 {
+		t.Fatalf("탭이 빠졌다: decl=%d survey=%d review=%d", iDecl, iSurvey, iReview)
+	}
+	if !(iDecl < iSurvey && iSurvey < iReview) {
+		t.Errorf("순서가 절차와 다르다: decl=%d survey=%d review=%d", iDecl, iSurvey, iReview)
+	}
+}
+
+// IC-U14 — **첫 화면은 절차의 첫 자리다.** 선언이 있으면 거기서 시작한다.
+func TestHomeGoesToFirstStep(t *testing.T) {
+	s, _ := withDecl(t)
+	w := get(t, s, "/")
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("상태 %d", w.Code)
+	}
+	if loc := w.Header().Get("Location"); !strings.HasPrefix(loc, "/decl") {
+		t.Errorf("첫 화면이 %q — 선언이 있으면 거기서 시작해야 한다", loc)
+	}
+
+	// 선언이 없으면 판정부터다.
+	s2, _ := newServer(t)
+	if loc := get(t, s2, "/").Header().Get("Location"); !strings.HasPrefix(loc, "/review") {
+		t.Errorf("선언이 없는데 첫 화면이 %q", loc)
+	}
+}
+
+// IC-U15 — **재료를 안 주면 그 자리를 만들지 않는다.** 대조는 관측 결과가 있어야 한다.
+func TestSurveyNeedsResults(t *testing.T) {
+	s, _ := withDecl(t)
+	if body := get(t, s, "/review").Body.String(); strings.Contains(body, `href="/survey"`) {
+		t.Error("결과를 안 줬는데 대조 탭이 보인다")
+	}
+	if code := get(t, s, "/survey").Code; code != http.StatusNotFound {
+		t.Errorf("/survey = %d, want 404", code)
 	}
 }

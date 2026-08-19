@@ -9,21 +9,15 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
-	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/kernel/posture"
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
-	"google.golang.org/protobuf/encoding/protojson"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 )
 
 func main() {
@@ -37,83 +31,16 @@ func main() {
 		dotOut = os.Args[3]
 	}
 
-	decl := loadDeclaration(declPath)
-	orgName := decl.Org
-	if orgName == "" {
-		orgName = "local"
-	}
-	eng, err := reconcile.For(org.ID(orgName))
+	d := loadDeclaration(declPath)
+	// **계산은 공용 패키지가 한다.** 화면(`pqcaton-ui`)이 같은 것을 그리므로, 계산이 두
+	// 벌이면 화면과 글이 다른 답을 내는 날이 온다.
+	r, err := report.Build(dir, d)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, "❌", err)
 		os.Exit(1)
 	}
-	results := loadResults(dir)
-
-	// 관측 자산(openssl)과 관측 엣지(network)를 레인별로 분리.
-	var observedAssets []reconcile.Observed
-	var observedEdges []*discoveryv1.ObservedEdge
-	var assetGaps []string
-	coveredNodes := map[string]bool{} // netcap이 실제로 관측한 노드
-	seenBy := map[string][]string{}   // 노드 → 그 노드를 본 collector들
-	for _, res := range results {
-		if len(res.GetObservedEdges()) > 0 || hasNetworkLayer(res) {
-			// 네트워크 레인. NETWORK 계층을 실제 커버(캡처 성공)했으면 covered — 서버 전용 노드는
-			// client 엣지가 0이어도 관측은 수행됐다(collector 미설치 아님, 강등만 미커버).
-			observedEdges = append(observedEdges, res.GetObservedEdges()...)
-			if networkCovered(res) {
-				coveredNodes[res.GetEnvelope().GetTargetNodeId()] = true
-			}
-			continue
-		}
-		// OpenSSL 자산 레인 → 정규화 → 스냅샷 → 관측 자산.
-		snap, err := normalize.Normalize([]*discoveryv1.CollectionResult{res}, "snap", res.GetEnvelope().GetTargetNodeId(), "ruleset-demo", history.NewMemStore(), nil)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "normalize:", err)
-			continue
-		}
-		observedAssets = append(observedAssets, eng.AssetsFromSnapshot(snap)...)
-		assetGaps = append(assetGaps, reconcile.GapLayers(snap)...)
-		seenBy[res.GetEnvelope().GetTargetNodeId()] = append(
-			seenBy[res.GetEnvelope().GetTargetNodeId()], res.GetEnvelope().GetCollectorId())
-	}
-
-	// ── 자산 3-상태 대조 ──
-	declaredAssets := make([]reconcile.AssetKey, 0, len(decl.Assets))
-	for _, a := range decl.Assets {
-		declaredAssets = append(declaredAssets, reconcile.AssetKey{
-			Org: org.ID(orgName), NodeID: a.Node, Runtime: a.Runtime, Component: a.Component})
-	}
-	assetRecs, err := eng.Reconcile(declaredAssets, observedAssets, assetGaps)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	// 관측 IP → 스코프 노드 해소(§0.4). 해소되면 CONFIRMED로 잡히고, 안 되면 off-scope 등재판정.
-	resolveEdgeDsts(observedEdges, decl.Nodes)
-
-	// ── 엣지 3-상태 대조 + 양자내성 등급 ──
-	declaredEdges := make([]reconcile.EdgeKey, 0, len(decl.Edges))
-	for _, e := range decl.Edges {
-		declaredEdges = append(declaredEdges, reconcile.EdgeKey{
-			Org: org.ID(orgName), Src: e.Src, Dst: e.Dst, Port: e.Port, Proto: e.Proto})
-	}
-	scope := map[string]bool{}
-	for _, n := range decl.Scope {
-		scope[n] = true
-	}
-	edgeRecs, err := eng.ReconcileEdges(declaredEdges, observedEdges, scope, nil)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	// coverage: 스코프 노드 중 netcap 미관측 → 회색(반쪽만 보임).
-	uncovered := map[string]bool{}
-	for _, n := range decl.Scope {
-		if !coveredNodes[n] {
-			uncovered[n] = true
-		}
+	for _, sk := range r.Skipped {
+		fmt.Fprintln(os.Stderr, "   건너뜀(읽을 수 없음):", sk)
 	}
 
 	// ── 출력 ──
@@ -121,20 +48,20 @@ func main() {
 	fmt.Println("║  pqcota 디스커버리 → 인벤토리 데모 리포트                  ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════╝")
 	fmt.Printf("\n노드 %d · 관측 자산 %d · 관측 엣지 %d · 선언 자산 %d · 선언 엣지 %d\n\n",
-		len(decl.Scope), len(observedAssets), len(observedEdges), len(declaredAssets), len(declaredEdges))
+		r.Nodes, r.ObservedAssets, r.ObservedEdges, r.DeclaredAssets, r.DeclaredEdges)
 
 	// ① 관측 - **여기서 시작하는 사람이 있다.** pqcota 데모를 거치지 않고 이 리포트만 보는
 	// 사람에게는 대조 앞에 무엇이 있었는지가 안 보인다. 재료는 이미 손에 있으니 보여 준다.
 	fmt.Println("──────── ① 관측 — pqcota가 무엇을 보았나 ────────")
-	printObservation(seenBy, observedAssets, observedEdges, assetGaps, uncovered)
+	printObservation(r)
 
 	fmt.Println("\n──────── ② 자산 인벤토리 (3-상태 대조) ────────")
-	fmt.Print(reconcile.RenderView(assetRecs))
+	fmt.Print(reconcile.RenderView(r.Assets))
 
 	fmt.Println("\n──────── ③ 통신 엣지 + 양자내성 등급 ────────")
-	printEdges(edgeRecs, uncovered)
+	printEdges(r.Edges, r.Uncovered)
 
-	dot := reconcile.RenderTopologyDOT(edgeRecs, uncovered)
+	dot := reconcile.RenderTopologyDOT(r.Edges, r.Uncovered)
 	if err := os.WriteFile(dotOut, []byte(dot), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "write dot:", err)
 	} else {
@@ -146,24 +73,16 @@ func main() {
 //
 // 특히 「못 본 계층」을 보인다 - 그것이 없으면 다음 절의 UNOBSERVED가 「없다」인지
 // 「원리상 못 봤다」인지 읽는 사람이 가를 수 없다(§2.7 갭 != 부재).
-func printObservation(seenBy map[string][]string, assets []reconcile.Observed,
-	edges []*discoveryv1.ObservedEdge, gaps []string, uncovered map[string]bool) {
-
-	byRuntime := map[string]int{}
-	for _, a := range assets {
-		byRuntime[a.Key.Runtime]++
-	}
-	nodes := make([]string, 0, len(seenBy))
-	for n := range seenBy {
-		nodes = append(nodes, n)
-	}
-	sort.Strings(nodes)
+func printObservation(r *report.Result) {
+	seenBy, gaps, uncovered := r.SeenBy, r.GapLayers(), r.Uncovered
+	byRuntime := r.ObservedByRuntime()
+	nodes := r.SeenNodes()
 
 	fmt.Println("  대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.")
 	for _, n := range nodes {
 		c := seenBy[n]
 		sort.Strings(c)
-		fmt.Printf("    %-12s %s\n", n, strings.Join(uniq(c), ", "))
+		fmt.Printf("    %-12s %s\n", n, strings.Join(report.Uniq(c), ", "))
 	}
 	fmt.Printf("\n  실제로 쓰이는 것으로 관측된 자산: ")
 	rts := make([]string, 0, len(byRuntime))
@@ -176,14 +95,14 @@ func printObservation(seenBy map[string][]string, assets []reconcile.Observed,
 		parts = append(parts, fmt.Sprintf("%s %d", r, byRuntime[r]))
 	}
 	fmt.Println(strings.Join(parts, " · "))
-	fmt.Printf("  핸드셰이크에서 협상된 통신: %d건 (다음 절에서 등급을 매깁니다)\n", len(edges))
+	fmt.Printf("  핸드셰이크에서 협상된 통신: %d건 (다음 절에서 등급을 매깁니다)\n", r.ObservedEdges)
 
 	fmt.Print("\n  못 본 것: ")
 	if len(gaps) == 0 && len(uncovered) == 0 {
 		fmt.Println("없습니다 — 이 범위에서는 관측이 완전합니다")
 	} else {
 		if len(gaps) > 0 {
-			fmt.Printf("계층 %s", strings.Join(uniq(gaps), ", "))
+			fmt.Printf("계층 %s", strings.Join(gaps, ", "))
 		}
 		if len(uncovered) > 0 {
 			if len(gaps) > 0 {
@@ -200,18 +119,6 @@ func printObservation(seenBy map[string][]string, assets []reconcile.Observed,
 	}
 	fmt.Println("  **못 본 것과 없는 것은 다릅니다.** 다음 절의 UNOBSERVED가 어느 쪽인지는")
 	fmt.Println("  이 줄이 가릅니다 — 갭이면 재수집이 먼저이고, 아니면 사람이 판정합니다.")
-}
-
-func uniq(in []string) []string {
-	seen := map[string]bool{}
-	out := in[:0:0]
-	for _, s := range in {
-		if !seen[s] {
-			seen[s] = true
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
@@ -247,54 +154,6 @@ func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
 	}
 }
 
-// resolveEdgeDsts — 관측 엣지의 dst_addr(ip:port) IP를 스코프 노드명으로 해소한다(§0.4).
-// 해소되면 dst_node_id를 채워 in-scope CONFIRMED 후보가 되고, 안 되면 off-scope(등재 판정)로 남는다.
-func resolveEdgeDsts(edges []*discoveryv1.ObservedEdge, nodes []decl.Node) {
-	ip2node := map[string]string{}
-	for _, n := range nodes {
-		for _, ip := range n.IPs {
-			ip2node[ip] = n.Name
-		}
-	}
-	for _, e := range edges {
-		if e.GetDstNodeId() != "" {
-			continue
-		}
-		host := e.GetDstAddr()
-		if h, _, err := net.SplitHostPort(host); err == nil {
-			host = h
-		}
-		host = strings.TrimSpace(host)
-		if node, ok := ip2node[host]; ok {
-			e.DstNodeId = node
-		}
-	}
-}
-
-// networkCovered — NETWORK 계층을 실제로 커버했는지(캡처 성공). 강등(layers_missing)은 false.
-func networkCovered(res *discoveryv1.CollectionResult) bool {
-	for _, l := range res.GetCompleteness().GetLayersCovered() {
-		if l == commonv1.CollectionLayer_COLLECTION_LAYER_NETWORK {
-			return true
-		}
-	}
-	return false
-}
-
-func hasNetworkLayer(res *discoveryv1.CollectionResult) bool {
-	for _, l := range res.GetCompleteness().GetLayersCovered() {
-		if l == commonv1.CollectionLayer_COLLECTION_LAYER_NETWORK {
-			return true
-		}
-	}
-	for _, l := range res.GetCompleteness().GetLayersMissing() {
-		if l == commonv1.CollectionLayer_COLLECTION_LAYER_NETWORK {
-			return true
-		}
-	}
-	return false
-}
-
 // loadDeclaration - 선언을 읽는다. 형식은 `pkg/inventory/decl` 에 있다 - 화면이 같은
 // 파일을 편집하므로 형식이 한 곳에 있어야 한다.
 func loadDeclaration(path string) decl.Declaration {
@@ -311,24 +170,6 @@ func loadDeclaration(path string) decl.Declaration {
 		}
 	}
 	return d
-}
-
-func loadResults(dir string) []*discoveryv1.CollectionResult {
-	paths, _ := filepath.Glob(filepath.Join(dir, "*.json"))
-	var out []*discoveryv1.CollectionResult
-	for _, p := range paths {
-		b, err := os.ReadFile(p)
-		if err != nil {
-			continue
-		}
-		res := &discoveryv1.CollectionResult{}
-		if err := protojson.Unmarshal(b, res); err != nil {
-			fmt.Fprintf(os.Stderr, "skip %s: %v\n", p, err)
-			continue
-		}
-		out = append(out, res)
-	}
-	return out
 }
 
 func keys(m map[string]bool) []string {
