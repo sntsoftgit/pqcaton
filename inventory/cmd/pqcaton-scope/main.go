@@ -8,7 +8,8 @@
 //	pqcaton-scope close  <session.json> [-judgments 파일] [-org 이름] > asset-scope.csv
 //	pqcaton-scope review <정책.csv> <results-dir> [-judgments 파일] [-org 이름]
 //
-// 계층은 준 순서대로 겹친다 — 조직, 환경, 노드군 순으로 주면 뒤가 이긴다.
+// 계층은 준 순서대로 겹친다 — 조직, 환경, 노드군 순으로 준다. 같은 자산에 규칙이 여럿
+// 걸리면 **뒤 계층의 것이 적용된다.**
 //
 // **파일이 곧 감사 기록이다.** `pqcaton-decide` 와 같은 왕복이라 조작을 따로 외울 것이 없다.
 // 파일 형식과 확정 게이트는 `pkg/inventory/scope` 에 있다 — 화면(`pqcaton-ui`)이 같은 것을 쓴다.
@@ -37,7 +38,8 @@ import (
 const usage = `usage:
   pqcaton-scope open   <계층.csv>... [-base <현재.csv>] [-org <이름>]
         계층을 겹쳐 **바뀐 규칙만** 골라 리뷰 세션(초안)을 낸다.
-        계층은 준 순서대로 이깁니다 - 조직 · 환경 · 노드군 순으로 주십시오
+        계층은 준 순서대로 겹칩니다 - 조직 · 환경 · 노드군 순으로 주십시오.
+        같은 자산에 규칙이 여럿 걸리면 뒤 계층의 것이 적용됩니다
 
   pqcaton-scope close  <session.json> [-judgments <파일>] [-org <이름>]
         승인을 확인하고 **pqcota의 집행기가 읽는 CSV**를 낸다.

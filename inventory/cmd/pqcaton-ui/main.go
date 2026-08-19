@@ -53,7 +53,7 @@ func main() {
 	declPath := fs.String("decl", "", "선언 파일(declaration.json). 주면 선언 편집 화면이 열린다")
 	resultsDir := fs.String("results", "", "관측 결과 디렉터리. -decl 과 함께 주면 대조 화면이 열린다")
 	scopePath := fs.String("scope", "", "자산 스코프 세션 파일. -layers 를 주면 화면이 직접 만든다")
-	layerList := fs.String("layers", "", "자산 스코프 계층 CSV들, 쉼표로 구분. **준 순서대로 이긴다**(조직 · 환경 · 노드군). 주면 화면에서 규칙을 고칠 수 있다")
+	layerList := fs.String("layers", "", "자산 스코프 계층 CSV들, 쉼표로 구분. 준 순서대로 겹치고(조직 · 환경 · 노드군), 규칙이 겹치면 **뒤 계층의 것이 적용된다**. 주면 화면에서 규칙을 고칠 수 있다")
 	basePath := fs.String("base", "", "지금 쓰는 정책 CSV. 주면 바뀐 규칙만 리뷰에 올린다")
 	scopeOut := fs.String("scope-out", "asset-scope.csv", "확정된 스코프 정책을 쓸 파일")
 	judgments := fs.String("judgments", "", "확정 시 판정을 남길 파일(JSONL, append-only)")

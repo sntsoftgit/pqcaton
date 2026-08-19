@@ -25,7 +25,8 @@ func LayerName(path string) string {
 	return strings.TrimSuffix(b, filepath.Ext(b))
 }
 
-// LoadLayers — 계층 파일을 **준 순서대로** 읽는다. 순서가 곧 상속이다 — 뒤가 이긴다.
+// LoadLayers — 계층 파일을 **준 순서대로** 읽는다. 순서가 곧 상속이다 — 같은 자산에 규칙이
+// 여럿 걸리면 뒤 계층의 것이 적용된다.
 func LoadLayers(paths []string) ([]LayerFile, error) {
 	var out []LayerFile
 	for _, p := range paths {

@@ -29,7 +29,8 @@ func finding(lib, app string) *discoveryv1.Finding {
 	}
 }
 
-// IC-S1 — **상속은 규칙 이어붙이기다.** pqcota의 「뒤 규칙이 이긴다」를 그대로 쓰므로 판정
+// IC-S1 — **상속은 규칙 이어붙이기다.** pqcota의 「매치되는 마지막 규칙이 결정한다」를
+// 그대로 쓰므로 판정
 // 규칙이 세상에 하나만 존재한다. 우리가 잠금을 따로 두면 내려보낸 CSV 를 pqcota가 집행한
 // 결과와 우리 화면이 갈라진다.
 func TestMergeLetsLowerLayerWin(t *testing.T) {
@@ -40,7 +41,8 @@ func TestMergeLetsLowerLayerWin(t *testing.T) {
 	if !p.Managed(finding("libcrypto.so.3", "/opt/pay")) {
 		t.Error("하위 계층의 include 가 상위 exclude 를 되돌리지 못했다")
 	}
-	// 순서를 뒤집으면 결과도 뒤집힌다 — 「뒤가 이긴다」가 그대로 상속 규칙이라는 증거다.
+	// 순서를 뒤집으면 결과도 뒤집힌다 — 「마지막 규칙이 결정한다」가 그대로 상속 규칙이라는
+	// 증거다.
 	if scope.Merge(노드군, 조직).Managed(finding("libcrypto.so.3", "/opt/pay")) {
 		t.Error("순서를 뒤집었는데도 include 가 이겼다")
 	}

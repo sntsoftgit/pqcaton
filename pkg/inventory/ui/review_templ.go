@@ -97,7 +97,7 @@ func reviewPage(v ReviewView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span></legend> <label>이 정책의 결론 <span class=\"hint\">(적으면 아래 항목이 한 번에 판정됩니다)</span> <input type=\"text\" name=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span></legend> <label>이 정책의 결론 <span class=\"hint\">— 왜 이렇게 정했는지 적습니다. 적으면 아래 항목이 한 번에 판정됩니다</span> <input type=\"text\" name=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -309,7 +309,7 @@ func reviewPage(v ReviewView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\"></label></fieldset><div class=\"actions\"><button formaction=\"/save\">저장만</button> <button formaction=\"/finalize\" class=\"primary\">확정하고 계획 내기</button></div><p class=\"hint\">확정은 <code>pqcaton-decide close</code> 와 같은 게이트를 탑니다 — 필수 항목의 결론과 서명이 모두 있어야 통과합니다.</p></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\"></label></fieldset><div class=\"actions\"><button formaction=\"/save\">저장만</button> <button formaction=\"/finalize\" class=\"primary\">확정하고 계획 내보내기</button></div><p class=\"hint\">확정은 <code>pqcaton-decide close</code> 와 같은 게이트를 탑니다 — 필수 항목의 결론과 서명이 모두 있어야 통과합니다.</p></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

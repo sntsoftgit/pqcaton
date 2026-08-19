@@ -81,7 +81,7 @@ exclude,openssl,libcrypto.so.*,/usr/bin/python*,python 런타임
 
 // IC-S8 — **exclude 추가는 결론 없이 확정되지 않는다.**
 //
-// 「이 자산은 안 본다」는 사고 뒤에 근거를 대야 하는 결정이다. 게이트가 명령에서 실제로
+// 인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에 답해야 한다. 게이트가 명령에서 실제로
 // 닫히는지는 여기서만 잴 수 있다 — 상태기계 케이스는 상태기계가 옳은 것만 말한다.
 func TestCloseRefusesExcludeWithoutConclusion(t *testing.T) {
 	dir := t.TempDir()
@@ -143,7 +143,7 @@ func TestCloseEmitsPolicyForUpstream(t *testing.T) {
 	if len(p.Rules) != 2 {
 		t.Fatalf("규칙 %d개: %s", len(p.Rules), out)
 	}
-	// 계층 순서가 살아 있어야 상속이 성립한다 — 뒤가 이긴다.
+	// 계층 순서가 살아 있어야 상속이 성립한다 — 겹치면 뒤 계층의 것이 적용된다.
 	if !p.Rules[0].Exclude || p.Rules[1].Exclude {
 		t.Errorf("계층 순서가 뒤집혔다: %+v", p.Rules)
 	}

@@ -20,7 +20,8 @@ type ScopeView struct {
 	Page
 	Session scope.Session
 	Layers  []LayerGroup
-	// Audited — 근거 없이 확정할 수 없는 변경 수. 「안 본다」는 사고 뒤에 근거를 대야 한다.
+	// Audited — 근거 없이 확정할 수 없는 변경 수. 인벤토리에서 뺀 자산은 나중에 「왜 이건
+	// 안 봤나」에 답해야 하므로, 왜 뺐는지가 없으면 확정되지 않는다.
 	Audited int
 	// Editing — 화면에서 고칠 수 있는 계층들. 계층 파일을 주지 않았으면 비어 있고,
 	// 그때 화면은 **승인만** 하는 자리가 된다(v0.11.0까지의 모습).
@@ -32,7 +33,8 @@ type ScopeView struct {
 // **합본이 아니라 계층을 고친다.** 합본에 쓰면 그 규칙이 조직에서 왔는지 노드군에서
 // 왔는지가 사라지고, 다음 리뷰에서 누구에게 물어야 할지 알 수 없게 된다.
 type LayerEdit struct {
-	// Index — 폼 이름에 들어가는 번호. **순서가 곧 상속이다** — 뒤 계층이 이긴다.
+	// Index — 폼 이름에 들어가는 번호. **순서가 곧 상속이다** — 같은 자산에 규칙이 여럿
+	// 걸리면 뒤 계층의 것이 적용된다.
 	Index int
 	Name  string
 	Path  string

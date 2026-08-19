@@ -10,12 +10,20 @@ import (
 templ scopePage(v ScopeView) {
 	@shell(v.Page) {
 		<p class="hint">
-			「이 자산은 안 본다」는 <b>사고 뒤에 근거를 대야 하는 결정</b>입니다.
-			계층은 준 순서대로 이기고(조직 · 환경 · 노드군), 바뀐 규칙만 올라옵니다.
+			<b>노드 안에서 무엇을 계속 볼 것인가</b>를 정하는 자리입니다.
+			인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에 답해야 하므로,
+			<b>왜 뺐는지를 적어야 확정됩니다.</b>
+		</p>
+		<p class="hint">
+			판정할 것으로는 <b>지금 쓰는 정책과 달라진 규칙만</b> 올라옵니다.
+			바뀌지 않은 규칙까지 매번 다시 승인하게 하면 아무도 들여다보지 않습니다.
 		</p>
 		<form method="post" action="/scope/finalize">
 			if len(v.Editing) > 0 {
 				@ruleLegend()
+				<p class="hint">
+					아래 표의 순서가 곧 계층 순서입니다 — <b>겹치면 아래쪽이 적용됩니다.</b>
+				</p>
 				for _, e := range v.Editing {
 					@layerEditor(e)
 				}
@@ -23,10 +31,10 @@ templ scopePage(v ScopeView) {
 					<button formaction="/scope/rules" class="primary">규칙 저장</button>
 				</div>
 				<p class="hint">
-					저장하면 계층 파일에 그대로 쓰고, <b>무엇이 달라지는지를 아래에서 다시 셉니다.</b>
-					적어 둔 판정은 그대로 남습니다 — 규칙 자체가 달라진 것만 다시 판정합니다.
+					저장하면 계층 파일에 그대로 쓰고, <b>그래서 무엇이 달라지는지를 아래에 다시 보여 줍니다.</b>
+					적어 둔 판정은 그대로 남습니다 — 규칙 자체가 달라진 것만 다시 판정하면 됩니다.
 				</p>
-				<h2>이 편집이 만드는 변경</h2>
+				<h2>고친 결과 — 승인할 변경</h2>
 			}
 			for _, g := range v.Layers {
 				<fieldset>
@@ -40,7 +48,7 @@ templ scopePage(v ScopeView) {
 						</span>
 					</legend>
 					<label>
-						이 계층의 결론 <span class="hint">(적으면 아래 변경이 한 번에 판정됩니다)</span>
+						이 계층의 결론 <span class="hint">— 왜 이렇게 정했는지 적습니다. 적으면 아래 변경이 한 번에 판정됩니다</span>
 						<input
 							type="text"
 							name={ "layer:" + g.Name }
@@ -74,9 +82,10 @@ templ scopePage(v ScopeView) {
 				<label style="display:block;margin-top:.6rem">서명 <input type="text" name="signature" value={ v.Session.Signature }/></label>
 			</fieldset>
 			<fieldset>
-				<legend>확정될 정책 <span class="n">— 전문 { strconv.Itoa(len(v.Session.Merged)) }줄</span></legend>
+				<legend>확정될 정책 <span class="n">— 규칙 { strconv.Itoa(len(v.Session.Merged)) }개 전부</span></legend>
 				<p class="hint">
-					<b>바뀐 것만 리뷰하되 나가는 것은 전문입니다</b> — pqcota의 집행기는 정책 전체를 받습니다.
+					<b>판정은 달라진 규칙만 보지만, 확정하면 정책 전체가 나갑니다.</b>
+					pqcota의 집행기가 일부가 아니라 정책 전체를 받기 때문입니다.
 				</p>
 				<table>
 					<tr>
@@ -96,7 +105,7 @@ templ scopePage(v ScopeView) {
 			</fieldset>
 			<div class="actions">
 				<button formaction="/scope/save">저장만</button>
-				<button formaction="/scope/finalize" class="primary">확정하고 정책 내기</button>
+				<button formaction="/scope/finalize" class="primary">확정하고 정책 내보내기</button>
 			</div>
 			<p class="hint">
 				확정은 <code>pqcaton-scope close</code> 와 같은 게이트를 탑니다. 나온 CSV 가
@@ -116,8 +125,9 @@ templ ruleLegend() {
 			<tr>
 				<td><code>action</code></td>
 				<td>
-					<b>exclude</b> — 이 자산을 인벤토리에서 뺍니다. <b>사고 뒤에 근거를 대야 하는 결정</b>이라
-					아래에서 결론을 적어야 확정됩니다. <b>include</b> — 다시 넣습니다(앞 계층의 제외를 되돌릴 때).
+					<b>exclude</b> — 이 자산을 인벤토리에서 뺍니다. 나중에 「왜 이건 안 봤나」에 답해야
+					하므로, 아래에서 <b>왜 뺐는지를 적어야 확정됩니다.</b>
+					<b>include</b> — 다시 넣습니다. 위 계층이 뺀 것을 되돌릴 때 씁니다.
 				</td>
 			</tr>
 			<tr>
@@ -143,8 +153,10 @@ templ ruleLegend() {
 			<b>인벤토리가 통째로 빕니다.</b> 「전부」를 뜻하려면 <code>*</code> 를 적으십시오.
 		</p>
 		<p class="hint">
-			<b>계층은 아래로 갈수록 이깁니다.</b> 앞 계층이 뺀 것을 뒤 계층이 <code>include</code> 로
-			되돌릴 수 있습니다 — 그것도 승인을 거칩니다.
+			<b>같은 자산에 규칙이 여럿 걸리면 아래 계층의 것이 적용됩니다.</b>
+			계층은 위에서 아래로 겹치기 때문입니다(조직 → 환경 → 노드군).
+			그래서 위 계층이 뺀 자산을 아래 계층에서 <code>include</code> 로 되돌릴 수 있고,
+			그 되돌림도 승인을 거칩니다.
 		</p>
 	</fieldset>
 }
