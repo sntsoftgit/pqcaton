@@ -548,3 +548,47 @@ func TestEnrollmentWithoutNodeIdIsSetAside(t *testing.T) {
 		t.Fatalf("증거가 안 남았다: %v", err)
 	}
 }
+
+// RUN-23 — **컨트롤 플레인이 보낸 사유가 사람이 읽는 문장으로 나온다.**
+//
+// 응답 본문은 `{"error":"…"}` 입니다. 그대로 찍으면 러너 로그에 JSON 이 한 겹 더 끼어,
+// **제품이 보내는 가장 중요한 말**(무료 기간이 끝났습니다 …)이 잡음처럼 보입니다.
+// 운영자가 그것을 알아보지 못하면, 서비스가 멈춘 이유를 코드에서 찾게 됩니다.
+func TestServerReasonIsReadableInTheRunnerLog(t *testing.T) {
+	const reason = "무료 기간이 끝났습니다 — 계약하시거나, 직접 설치하시면 5노드까지 계속 쓰실 수 있습니다"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusPaymentRequired)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": reason})
+	}))
+	defer srv.Close()
+
+	_, cl := setup(t, srv)
+	_, err := cl.SendEnrollments("r1", []runner.Enrollment{{NodeID: "web-01"}})
+	if err == nil {
+		t.Fatal("402 인데 통과했다")
+	}
+	if !strings.Contains(err.Error(), reason) {
+		t.Errorf("사유가 그대로 나오지 않는다:\n  %v", err)
+	}
+	if strings.Contains(err.Error(), `{"error"`) {
+		t.Errorf("JSON 을 그대로 찍었다 — 운영자가 읽을 문장이 잡음에 묻힌다:\n  %v", err)
+	}
+}
+
+// RUN-24 — 우리 모양이 아닌 본문은 **받은 그대로** 낸다. 앞단 프록시나 게이트웨이가 낸
+// 것일 수 있고, 그 원문 자체가 단서다 — 삼키면 아무 말도 남지 않는다.
+func TestNonJSONBodyIsPassedThrough(t *testing.T) {
+	const raw = "502 Bad Gateway"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(raw))
+	}))
+	defer srv.Close()
+
+	_, cl := setup(t, srv)
+	_, err := cl.SendEnrollments("r1", []runner.Enrollment{{NodeID: "web-01"}})
+	if err == nil || !strings.Contains(err.Error(), raw) {
+		t.Fatalf("원문이 사라졌다: %v", err)
+	}
+}

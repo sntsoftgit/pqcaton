@@ -145,6 +145,25 @@ func (c *Client) request(method, path string, body io.Reader) (*http.Request, er
 // 오류는 로그로 가고 로그는 남는다. 요청 URL에도 토큰이 없다(헤더로만 보낸다) —
 // 그 성질이 유지되는지는 케이스가 지킨다.
 func statusError(resp *http.Response) error {
-	msg, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-	return fmt.Errorf("컨트롤 플레인이 %d로 답했다: %s", resp.StatusCode, strings.TrimSpace(string(msg)))
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+	return fmt.Errorf("컨트롤 플레인이 %d로 답했다: %s", resp.StatusCode, serverMessage(raw))
+}
+
+// serverMessage — 컨트롤 플레인이 보낸 사유를 **사람이 읽는 문장으로** 꺼낸다.
+//
+// 본문은 `{"error":"…"}` 다. 그대로 찍으면 러너 로그에 JSON 이 한 겹 더 끼어,
+// **제품이 보내는 가장 중요한 말**이 잡음처럼 보인다:
+//
+//	컨트롤 플레인이 402로 답했다: {"error":"무료 기간이 끝났습니다 — 계약하시거나 …"}
+//
+// 우리 모양이 아니면 받은 그대로 낸다 — 앞단 프록시나 게이트웨이가 낸 것일 수 있고,
+// 그 원문 자체가 단서다. **삼키지 않는다.**
+func serverMessage(raw []byte) string {
+	var body struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &body); err == nil && strings.TrimSpace(body.Error) != "" {
+		return strings.TrimSpace(body.Error)
+	}
+	return strings.TrimSpace(string(raw))
 }
