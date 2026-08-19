@@ -83,7 +83,7 @@ ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 colle
 ## 써보기
 
 ```bash
-make            # 라이선스 게이트 → 빌드 → 테스트
+make            # 라이선스 · 문구 게이트 → 빌드 → 테스트
 ```
 
 **이 리포만으로 한 바퀴가 돕니다.** 관측할 대상은 이 머신입니다.
@@ -102,7 +102,7 @@ bin/pqcaton-decide open decl.csv local > session.json
 
 # ③ 판정 — 사람이 하는 자리. session.json 을 열어
 #    필수 항목의 conclusion, 그리고 reviewer · signature 를 채웁니다
-#    확정 계획에 넣을 항목은 `확정_계획에_넣는다`를 true 로
+#    확정 계획에 넣을 항목은 `include_in_plan` 을 true 로
 
 # ④ 확정 — 전 필수 판정과 승인 서명이 있어야 통과하고,
 #    판정은 append-only 로 남습니다 (감사 기록)
@@ -167,17 +167,20 @@ pqcota-ingest -scope-assets asset-scope.csv results/
 bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -org acme
 ```
 
-**③에서 정책 단위로 판정합니다.** 세션 파일의 `정책_판정`에 정책 하나당 결론 하나를 적으면
+**③에서 정책 단위로 판정합니다.** 세션 파일의 `policy_decisions` 에 정책 하나당 결론 하나를 적으면
 같은 정책의 항목이 한 번에 판정됩니다 — 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
 개별 `conclusion`은 예외를 위한 자리입니다.
 
 **④가 이 리포의 최강 게이트입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 말합니다.**
 
 ```
-❌ finalize: 미판정 필수 항목 존재(전 필수 판정 전 불가)
-   · signature 가 비어 있습니다
-   · 결론 없음: local/openssl/libssl-e2f2d68a (UNDECLARED)
+❌ cannot finalize: mandatory items are still unjudged — every mandatory item must be judged
+   · the signature is not filled in
+   · no record of why this was decided: local/openssl/libssl-e2f2d68a (UNDECLARED)
 ```
+
+> **명령의 출력은 영어입니다.** 화면은 한국어와 English 중에 고릅니다 —
+> [CONTRIBUTING.md 「어느 말로 쓰나」](CONTRIBUTING.md#어느-말로-쓰나).
 
 나온 `plan.json`은 **pqcota가 그대로 받습니다** — 계약 형식이라 우리 형식이 따로 없습니다.
 

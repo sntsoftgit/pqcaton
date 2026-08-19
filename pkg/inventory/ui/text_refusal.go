@@ -21,6 +21,8 @@ var koGate = []struct {
 func koMissing(m decision.Missing) string {
 	switch m.Code {
 	case decision.MissingSignature:
+		return "서명을 채우십시오"
+	case decision.MissingApproval:
 		return "승인자와 서명을 채우십시오"
 	case decision.MissingConclusion:
 		if m.Detail == "" {

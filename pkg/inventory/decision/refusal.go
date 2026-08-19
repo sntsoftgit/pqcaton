@@ -18,7 +18,12 @@ type Missing struct {
 }
 
 const (
+	// MissingSignature — 서명만 본다(리뷰 큐). MissingApproval — 승인자까지 본다(자산 스코프).
+	//
+	// **거절문은 실제로 검사한 것만 말해야 한다.** 서명만 보면서 「승인자와 서명」이라고
+	// 하면, 승인자를 채운 사람이 왜 여전히 막히는지 알 수 없다.
 	MissingSignature  = "signature"
+	MissingApproval   = "approval"
 	MissingConclusion = "conclusion"
 )
 
@@ -47,6 +52,8 @@ func (e *NotFinalized) Error() string {
 func EnglishMissing(m Missing) string {
 	switch m.Code {
 	case MissingSignature:
+		return "the signature is not filled in"
+	case MissingApproval:
 		return "the approver and signature are not filled in"
 	case MissingConclusion:
 		if m.Detail == "" {

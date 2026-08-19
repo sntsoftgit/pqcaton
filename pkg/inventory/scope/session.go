@@ -203,7 +203,7 @@ func Finalize(sf Session, orgName string) (*FinalizeResult, error) {
 func Pending(sf Session) []decision.Missing {
 	var out []decision.Missing
 	if sf.Reviewer == "" || sf.Signature == "" {
-		out = append(out, decision.Missing{Code: decision.MissingSignature})
+		out = append(out, decision.Missing{Code: decision.MissingApproval})
 	}
 	for _, c := range sf.Changes {
 		if c.Audited && strings.TrimSpace(c.Conclusion) == "" &&
