@@ -17,6 +17,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
 func session() review.Session {
@@ -47,8 +48,7 @@ func postForm(t *testing.T, s *server, target string, form url.Values) *httptest
 	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
-	mux := http.NewServeMux()
-	s.routes(mux)
+	mux := s.handler()
 	mux.ServeHTTP(w, req)
 	return w
 }
@@ -70,8 +70,7 @@ func location(t *testing.T, w *httptest.ResponseRecorder) url.Values {
 // 늘어놓으면 화면이 있어도 수천 대에서 리뷰가 끝나지 않는다.
 func TestIndexGroupsByPolicy(t *testing.T) {
 	s, _ := newServer(t)
-	mux := http.NewServeMux()
-	s.routes(mux)
+	mux := s.handler()
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/review", nil))
 
@@ -244,8 +243,7 @@ func TestSplitArgs(t *testing.T) {
 // 않는다. 새로고침으로 확정이 다시 도는 것을 막는 것도 같은 이유다.
 func TestMethodGuards(t *testing.T) {
 	s, _ := newServer(t)
-	mux := http.NewServeMux()
-	s.routes(mux)
+	mux := s.handler()
 	for _, path := range []string{"/save", "/finalize"} {
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
@@ -274,8 +272,7 @@ func withDecl(t *testing.T) (*server, string) {
 
 func get(t *testing.T, s *server, target string) *httptest.ResponseRecorder {
 	t.Helper()
-	mux := http.NewServeMux()
-	s.routes(mux)
+	mux := s.handler()
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, target, nil))
 	return w
@@ -501,5 +498,50 @@ func TestScopeFinalizeEmitsPolicy(t *testing.T) {
 	}
 	if led, err := os.ReadFile(s.judgments); err != nil || !strings.Contains(string(led), `"org":"acme"`) {
 		t.Errorf("판정이 조직에 묶여 남지 않았다: %v %s", err, led)
+	}
+}
+
+// IC-U20 — **「행 추가」의 번호는 밖에서 오는 값이다.**
+//
+// 주소에 실려 오므로 받는 대로 믿지 않는다. 모르는 표 이름이나 범위 밖 번호를 그대로
+// 그리면, 화면에는 줄이 생기는데 `ApplyDecl` 이 읽지 못하는 자리에 놓인다 — 사람은
+// 적어 넣고 저장했는데 아무 일도 일어나지 않는다.
+func TestDeclRowRefusesBadInput(t *testing.T) {
+	s, _ := newServer(t)
+	s.decl = filepath.Join(t.TempDir(), "declaration.json")
+	if err := os.WriteFile(s.decl, []byte(declJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mux := s.handler()
+
+	for _, q := range []string{"?kind=policy&i=1", "?kind=&i=1", "?kind=node&i=-1", "?kind=node&i=x", "?kind=node&i=99999999"} {
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/decl/row"+q, nil))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("GET /decl/row%s = %d, want 400", q, w.Code)
+		}
+	}
+
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/decl/row?kind=node&i=3", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /decl/row?kind=node&i=3 = %d", w.Code)
+	}
+	if body := w.Body.String(); !strings.Contains(body, `name="node.name.3"`) {
+		t.Errorf("새 줄이 3번이 아니다:\n%s", body)
+	}
+}
+
+// IC-U21 — 화면이 스타일과 htmx 를 같은 서버에서 내준다. 주소가 어긋나면 화면은 뜨는데
+// 모양이 무너지고 「행 추가」가 조용히 안 듣는다.
+func TestStaticIsMounted(t *testing.T) {
+	s, _ := newServer(t)
+	mux := s.handler()
+	for _, name := range []string{"htmx.min.js", "app.css"} {
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, ui.StaticPath+name, nil))
+		if w.Code != http.StatusOK {
+			t.Errorf("GET %s%s = %d", ui.StaticPath, name, w.Code)
+		}
 	}
 }
