@@ -114,23 +114,30 @@ bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
 
 **JSON을 눈으로 훑기 싫으면 화면으로 채웁니다.** 같은 파일, 같은 게이트입니다.
 
-**세션은 명령이 만들고, 화면은 채웁니다.** 화면을 열기 전에 다룰 세션이 있어야 합니다 —
-세션을 여는 일은 관측·대조가 필요하고, 화면은 그 결과를 **채우고 확정하는** 자리입니다.
+**재료만 주면 화면이 세션까지 엽니다.** 명령을 먼저 돌리지 않아도 됩니다.
 
 ```bash
-# ① 화면이 다룰 것을 먼저 만듭니다
-bin/pqcaton-decide open declaration.json -results results/ -org acme > session.json
-bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scope-session.json
-
-# ② 화면을 엽니다
-bin/pqcaton-ui session.json -decl declaration.json -scope scope-session.json \
-  -results results/ -judgments judgments.jsonl -org acme
+bin/pqcaton-ui session.json \
+  -decl declaration.json -results results/ \
+  -layers corp.csv,prod.csv -base asset-scope.csv \
+  -judgments judgments.jsonl -org acme
 # → http://127.0.0.1:8765 — 탭이 절차 순서입니다
-#   ① 선언(관측 대상 노드·자산·엣지) → ② 스코프(무엇을 계속 볼지)
+#   ① 선언(관측 대상 노드·자산·엣지) → ② 자산 스코프(무엇을 계속 볼지)
 #   → ③ 대조(3-상태·등급·토폴로지) → ④ 리뷰 큐(판정·확정)
 ```
 
-`-decl`·`-scope`·`-results` 는 **주는 것만 탭이 열립니다.** 선언 파일만 주면 「선언」과
+`session.json` 이 없으면 **선언과 관측 결과로 화면이 만듭니다.** 자산 스코프도 계층 CSV를
+주면 그렇습니다 — 그리고 **규칙을 화면에서 고칩니다.** 다섯 칸이 무슨 뜻인지는 표 위에
+적혀 있고, `action` 은 고르는 칸이라 오타로 규칙이 죽지 않습니다.
+
+명령으로 세션을 먼저 만드는 길도 그대로입니다 — 같은 파일, 같은 게이트입니다.
+
+```bash
+bin/pqcaton-decide open declaration.json -results results/ -org acme > session.json
+bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scope-session.json
+```
+
+`-decl`·`-layers`·`-results` 는 **주는 것만 탭이 열립니다.** 선언 파일만 주면 「선언」과
 「리뷰 큐」 둘만 보입니다 — 없는 것을 눌러 보게 하지 않습니다.
 
 **무엇을 계속 볼지도 승인을 거칩니다.** 「이 자산은 안 본다」는 사고 뒤에 근거를 대야 하는
