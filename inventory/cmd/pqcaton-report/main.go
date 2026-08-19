@@ -65,7 +65,7 @@ func main() {
 	if err := os.WriteFile(dotOut, []byte(dot), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "write dot:", err)
 	} else {
-		fmt.Printf("\n토폴로지 DOT 저장: %s  (렌더: dot -Tsvg %s -o topology.svg)\n", dotOut, dotOut)
+		fmt.Printf("\n토폴로지 DOT 저장: %s\n   그림으로 보려면 Graphviz(선택): dot -Tsvg %s -o topology.svg\n", dotOut, dotOut)
 	}
 }
 

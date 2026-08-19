@@ -250,7 +250,11 @@ var surveyPage = template.Must(template.New("survey").Funcs(funcs).Parse(shell +
   <div style="overflow-x:auto">{{.SVG}}</div>
   <p class="hint">색은 양자내성 등급, 선형은 대조 상태입니다. <b>미관측은 점선</b>이라 부재와 구분됩니다.</p>
  {{else}}
-  <p class="hint"><code>dot</code> 이 이 기계에 없어 그리지 못했습니다. 아래를 저장해
+  <p class="hint"><code>dot</code>(Graphviz)이 이 기계에 없어 그리지 못했습니다.
+   <b>선택 사항입니다</b> — 설치하지 않아도 나머지는 그대로 돕니다(README 「사전 준비」).
+   <code>apt install graphviz</code> · <code>brew install graphviz</code> ·
+   <code>winget install graphviz</code>.<br>
+   설치하지 않고 그리려면 아래를 저장해 아무 데서나
    <code>dot -Tsvg topology.dot -o topology.svg</code> 로 그리십시오.</p>
   <textarea readonly style="min-height:12rem">{{.DOT}}</textarea>
  {{end}}

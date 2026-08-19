@@ -60,6 +60,9 @@ core가 이미 수집한 `/work/results`에 **선언(declaration.json)** 을 대
 - 실행 중인 pqcota 디스커버리 데모(위 1단계).
 - 빌드 머신에 **Go**와 **python3**. 그게 전부입니다 — pqcota v0.5.0부터 모듈 경로가 리포 주소와 같아져
   `go build`가 계약을 스스로 받아옵니다. 형제 체크아웃도 `replace`도 필요 없습니다.
+- **Graphviz(`dot`)는 이 기계에 없어도 됩니다.** 토폴로지 SVG는 `pqcota-ctl` 컨테이너 안에서
+  그립니다. 없으면 DOT 원문만 회수하고 나머지는 그대로 돕니다
+  ([사전 준비](../README.md)).
 
 ## 바꿔 보기
 

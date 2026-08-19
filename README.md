@@ -61,6 +61,26 @@ pqcota                          pqcaton
 [docs/journey.md](docs/journey.md)에 있습니다. 설계 근거는 [docs/design.md](docs/design.md),
 검증 기준은 [docs/testcases.md](docs/testcases.md)입니다.
 
+## 사전 준비
+
+| | 필요한가 | 왜 |
+|---|---|---|
+| **Go 1.26** 이상 | **필수** | 빌드에 씁니다. 다른 런타임은 필요 없습니다 |
+| **Graphviz**(`dot`) | **선택** | 거버넌스 토폴로지를 그림으로 볼 때만. 없으면 화면과 명령이 **DOT 원문**을 내고, 나중에 아무 데서나 그릴 수 있습니다 |
+| Postgres | 선택 | 판정 원장을 DB에 둘 때만. 기본은 파일(JSONL)이라 없어도 한 바퀴가 돕니다 |
+| Docker · pqcota 리포 | 데모에만 | [demo/README.md](demo/README.md) 참조 |
+
+`dot` 설치는 [graphviz.org/download](https://graphviz.org/download/)에 있습니다 —
+`apt install graphviz` · `brew install graphviz` · `winget install graphviz`.
+
+**어디서 도는가.** 이 리포는 **ctl 노드**(관측 결과를 모아 대조·판정하는 자리)의 일을 합니다.
+ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 collector가 대상 노드에서 하고,
+그쪽은 지금 Linux 전용입니다.
+
+> 예외 하나 — `pqcaton-decide open` 과 `pqcaton-reconcile` 은 **명령을 돌린 그 기계를**
+> 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **Linux에서만** 됩니다.
+> 여러 노드를 제대로 다루는 길은 pqcota가 모은 결과를 읽는 [`pqcaton-report`](inventory/cmd/pqcaton-report)입니다.
+
 ## 써보기
 
 ```bash
