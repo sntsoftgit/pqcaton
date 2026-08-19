@@ -46,7 +46,7 @@ pqcota                          pqcaton
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스** — 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 냅니다 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포** — 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
-| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **리뷰 큐와 선언을 사람이 다루는 화면** — 표준 라이브러리만 쓰고 기본은 127.0.0.1입니다 |
+| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **리뷰 큐와 선언을 사람이 다루는 화면** — 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
 **UNDECLARED가 이 도구의 첫 값입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지 — 조직이

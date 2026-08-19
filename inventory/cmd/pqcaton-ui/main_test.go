@@ -501,7 +501,7 @@ func TestScopeFinalizeEmitsPolicy(t *testing.T) {
 	}
 }
 
-// IC-U20 — **「행 추가」의 번호는 밖에서 오는 값이다.**
+// IC-U19 — **「행 추가」의 번호는 밖에서 오는 값이다.**
 //
 // 주소에 실려 오므로 받는 대로 믿지 않는다. 모르는 표 이름이나 범위 밖 번호를 그대로
 // 그리면, 화면에는 줄이 생기는데 `ApplyDecl` 이 읽지 못하는 자리에 놓인다 — 사람은
@@ -532,7 +532,7 @@ func TestDeclRowRefusesBadInput(t *testing.T) {
 	}
 }
 
-// IC-U21 — 화면이 스타일과 htmx 를 같은 서버에서 내준다. 주소가 어긋나면 화면은 뜨는데
+// IC-U20 — 화면이 스타일과 htmx 를 같은 서버에서 내준다. 주소가 어긋나면 화면은 뜨는데
 // 모양이 무너지고 「행 추가」가 조용히 안 듣는다.
 func TestStaticIsMounted(t *testing.T) {
 	s, _ := newServer(t)
