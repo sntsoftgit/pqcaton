@@ -554,7 +554,8 @@ func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 // 관측이 낸 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 한다.
 func TestObservedComponentsAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
-		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}
+		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}},
+		Assets: []decl.Asset{{Node: "web", Runtime: "openssl", Component: "libssl"}}}
 	v := ui.NewDeclView(d, ui.Page{Title: "선언", Lang: ui.KO}).WithObserved(
 		map[string][]ui.DeclAsset{"web": {
 			{Runtime: "openssl", Component: "libssl"},
