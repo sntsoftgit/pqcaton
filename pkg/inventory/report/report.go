@@ -4,7 +4,7 @@
 // 명령이 다른 답을 내는 날이 오고, 그때 어느 쪽이 맞는지 아무도 모른다.
 //
 // 대조 자체는 `reconcile` 이 한다. 여기가 맡는 것은 **여러 결과를 레인으로 가르고, 관측
-// IP를 노드로 해소하고, 무엇을 못 봤는지 세는 것** — 한 대짜리 경로(`pqcaton-decide`)에는
+// IP를 노드로 잇고, 무엇을 못 봤는지 세는 것** — 한 대짜리 경로(`pqcaton-decide`)에는
 // 없고 여러 노드를 모을 때만 생기는 일이다.
 package report
 
@@ -104,7 +104,7 @@ func Build(dir string, d decl.Declaration) (*Result, error) {
 		return nil, err
 	}
 
-	// 관측 IP → 스코프 노드 해소(§0.4). 해소되면 CONFIRMED 로 잡히고, 안 되면 off-scope 다.
+	// 관측 IP → 스코프 노드 잇기(§0.4). 이어지면 CONFIRMED 로 잡히고, 안 되면 off-scope 다.
 	ResolveEdgeDsts(observedEdges, d.Nodes)
 
 	declaredEdges := make([]reconcile.EdgeKey, 0, len(d.Edges))
@@ -224,8 +224,8 @@ func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []str
 
 // ResolveEdgeDsts — 관측 상대의 IP 를 스코프 노드로 바꾼다(§0.4).
 //
-// **해소가 틀리면 CONFIRMED 여야 할 통신이 shadow 로 올라온다** — 오류가 아니라 그럴듯한
-// 결과라 눈으로는 안 잡힌다(IC-N1). 이미 해소된 것은 덮지 않는다.
+// **잘못 이으면 CONFIRMED 여야 할 통신이 shadow 로 올라온다** — 오류가 아니라 그럴듯한
+// 결과라 눈으로는 안 잡힌다(IC-N1). 이미 이어진 것은 덮지 않는다.
 func ResolveEdgeDsts(edges []*discoveryv1.ObservedEdge, nodes []decl.Node) {
 	ip2node := map[string]string{}
 	for _, n := range nodes {

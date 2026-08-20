@@ -26,7 +26,7 @@ type Declaration struct {
 	Org string `json:"org,omitempty"`
 	// Scope — 등재된 노드 이름. 관측 상대가 여기 없으면 off-scope 로 표기된다(§0.4).
 	Scope []string `json:"scope"`
-	// Nodes — 스코프 마스터: 노드↔IP. **관측 IP를 노드로 해소하는 유일한 근거다.**
+	// Nodes — 스코프 마스터: 노드↔IP. **관측 IP를 노드로 잇는 유일한 근거다.**
 	Nodes []Node `json:"nodes"`
 	// Assets — 「이 노드에서 이것을 쓴다」. 자산 대조의 선언 레인.
 	Assets []Asset `json:"assets"`
@@ -166,7 +166,7 @@ func fill(tmpl, detail string) string {
 // Check — 선언이 스스로 앞뒤가 맞는지 본다.
 //
 // **여기서 잡지 못하면 대조 결과가 조용히 틀린다.** 노드↔IP가 없거나 겹치면 관측 IP가
-// 노드로 해소되지 않고, 그러면 선언 엣지와 영영 맞지 않아 **CONFIRMED여야 할 통신이
+// 노드로 이어지지 않고, 그러면 선언 엣지와 영영 맞지 않아 **CONFIRMED여야 할 통신이
 // shadow(UNDECLARED)로 올라온다**(§0.4, IC-N1) — 오류가 아니라 그럴듯한 결과라 눈으로는
 // 안 잡힌다. 사람이 파일을 저장하기 전에 짚어 주는 것이 이 함수의 일이다.
 //
@@ -182,7 +182,7 @@ func Check(d Declaration) []Problem {
 		inScope[n] = true
 	}
 
-	// 노드↔IP — 해소의 근거다.
+	// 노드↔IP — 잇는 근거다.
 	byIP := map[string][]string{}
 	named := map[string]bool{}
 	for _, n := range d.Nodes {

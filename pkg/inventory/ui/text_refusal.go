@@ -26,9 +26,9 @@ func koMissing(m decision.Missing) string {
 		return "승인자와 서명을 채우십시오"
 	case decision.MissingConclusion:
 		if m.Detail == "" {
-			return "왜 이렇게 정했는지가 없습니다: " + m.Subject
+			return "왜 이렇게 정했는지를 적지 않았습니다: " + m.Subject
 		}
-		return "왜 이렇게 정했는지가 없습니다: " + m.Subject + " (" + m.Detail + ")"
+		return "왜 이렇게 정했는지를 적지 않았습니다: " + m.Subject + " (" + m.Detail + ")"
 	}
 	return decision.EnglishMissing(m)
 }

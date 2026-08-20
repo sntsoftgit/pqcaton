@@ -30,7 +30,7 @@ func raised(ps []decl.Problem, c decl.Code) int {
 
 // IC-D9 — **IP 없는 노드를 짚는다.**
 //
-// 해소의 근거가 그 표뿐이라, 없으면 관측 IP가 노드로 붙지 않는다. 그러면 선언한 엣지는
+// 잇는 근거가 그 표뿐이라, 없으면 관측 IP가 노드로 이어지지 않는다. 그러면 선언한 엣지는
 // 미관측으로, 관측된 엣지는 shadow로 갈린다 — **오류가 아니라 그럴듯한 결과**라 눈으로는
 // 안 잡힌다(IC-N1).
 func TestCheckFlagsNodeWithoutIP(t *testing.T) {
@@ -50,7 +50,7 @@ func TestCheckFlagsNodeWithoutIP(t *testing.T) {
 	}
 }
 
-// IC-D10 — **같은 IP를 둘이 주장하면 짚는다.** 해소가 뒤에 오는 노드로 뒤집혀 통신이
+// IC-D10 — **같은 IP를 둘이 주장하면 짚는다.** IP가 뒤에 오는 노드로 이어져 통신이
 // 엉뚱한 노드에 붙는다.
 func TestCheckFlagsDuplicateIP(t *testing.T) {
 	d := decl.Declaration{
@@ -62,7 +62,7 @@ func TestCheckFlagsDuplicateIP(t *testing.T) {
 	}
 }
 
-// IC-D11 — **IP 자리에 IP가 아닌 것이 오면 짚는다.** 해소는 문자열이 정확히 맞을 때만
+// IC-D11 — **IP 자리에 IP가 아닌 것이 오면 짚는다.** 잇기는 문자열이 정확히 맞을 때만
 // 되므로, 포트가 붙거나 호스트명을 적으면 영영 안 맞는다.
 func TestCheckFlagsBadIP(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"a"}, Nodes: []decl.Node{

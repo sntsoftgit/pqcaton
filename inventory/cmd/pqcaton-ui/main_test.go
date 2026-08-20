@@ -311,7 +311,7 @@ func TestDeclHiddenWithoutFile(t *testing.T) {
 
 // IC-U10 — **틀린 자리를 저장 전에 짚는다.**
 //
-// 노드↔IP 가 없으면 관측 IP 가 해소되지 않아 CONFIRMED 여야 할 통신이 shadow 로 올라온다 —
+// 노드↔IP 가 없으면 관측 IP 가 노드로 이어지지 않아 CONFIRMED 여야 할 통신이 shadow 로 올라온다 —
 // 오류가 아니라 그럴듯한 결과라 눈으로는 안 잡힌다. 화면이 미리 말해 주는 자리다.
 func TestDeclShowsProblems(t *testing.T) {
 	s, _ := withDecl(t)
@@ -319,7 +319,7 @@ func TestDeclShowsProblems(t *testing.T) {
 	body := get(t, s, "/decl?lang=ko").Body.String()
 	// pay-db 는 스코프에 있는데 IP 표에 없다.
 	if !strings.Contains(body, "IP 표에 없습니다") {
-		t.Errorf("해소되지 않을 노드를 짚지 않는다:\n%s", body)
+		t.Errorf("이어지지 않을 노드를 짚지 않는다:\n%s", body)
 	}
 	if !strings.Contains(body, "shadow") {
 		t.Error("그대로 두면 무슨 일이 생기는지 말하지 않는다")
@@ -481,7 +481,7 @@ func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 	if q.Get("problem") == "" {
 		t.Fatal("근거 없이 확정됐다")
 	}
-	if !strings.Contains(q.Get("problem"), "왜 이렇게 정했는지가 없습니다") {
+	if !strings.Contains(q.Get("problem"), "왜 이렇게 정했는지를 적지 않았습니다") {
 		t.Errorf("무엇이 남았는지 말하지 않는다: %s", q.Get("problem"))
 	}
 	if _, err := os.Stat(s.scopeOut); !os.IsNotExist(err) {

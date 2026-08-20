@@ -41,7 +41,7 @@ pqcota                          pqcaton
 | [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
 | [`pkg/inventory/review`](pkg/inventory/review) | **세션 파일 형식과 확정 게이트** — 명령과 화면이 이 하나를 씁니다 |
 | [`pkg/inventory/decl`](pkg/inventory/decl) | **선언 형식과 자체 검사** — 노드↔IP가 틀리면 대조가 **오류 없이** 틀립니다. 저장 전에 짚습니다 |
-| [`pkg/inventory/report`](pkg/inventory/report) | **여러 노드 대조** — 레인 분리·IP 해소·완전성. 명령과 화면이 이 계산 하나를 씁니다 |
+| [`pkg/inventory/report`](pkg/inventory/report) | **여러 노드 대조** — 레인 분리·IP 잇기·완전성. 명령과 화면이 이 계산 하나를 씁니다 |
 | [`pkg/inventory/ui`](pkg/inventory/ui) | **화면** — 그리는 것과 폼을 읽는 것만. 어디서 읽고 누가 들어오는지는 부르는 쪽이 정합니다 |
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스** — 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 만듭니다 |

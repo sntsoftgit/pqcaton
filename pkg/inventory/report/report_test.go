@@ -23,9 +23,9 @@ func completeness(covered, missing []commonv1.CollectionLayer) *discoveryv1.Coll
 	}
 }
 
-// IC-R8 — **관측 IP를 스코프 노드로 해소한다**(§0.4).
+// IC-R8 — **관측 IP를 스코프 노드로 잇는다**(§0.4).
 //
-// 해소되지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 shadow 로 올라온다** —
+// 이어지지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 shadow 로 올라온다** —
 // 틀린 답이 아니라 그럴듯한 답이라 눈으로는 안 잡힌다. 포트가 붙은 주소와 망 둘에 걸친
 // 노드가 그 자리다.
 func TestResolveEdgeDsts(t *testing.T) {
@@ -37,10 +37,10 @@ func TestResolveEdgeDsts(t *testing.T) {
 		edge("", "172.19.0.4:8443"),
 		edge("", "172.18.0.2"),
 		edge("", "10.9.9.9:22"),
-		edge("이미-해소", "172.19.0.4"),
+		edge("이미-이어짐", "172.19.0.4"),
 	}
 	report.ResolveEdgeDsts(edges, nodes)
-	want := []string{"pay-app", "pay-db", "", "이미-해소"}
+	want := []string{"pay-app", "pay-db", "", "이미-이어짐"}
 	for i, w := range want {
 		if got := edges[i].GetDstNodeId(); got != w {
 			t.Errorf("%d번 엣지 = %q, want %q", i, got, w)

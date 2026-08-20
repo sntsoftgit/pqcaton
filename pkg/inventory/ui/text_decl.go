@@ -23,15 +23,15 @@ var (
 		decl.EdgePortZero:    "포트가 0입니다",
 	}
 	koDeclWhy = map[decl.Code]string{
-		decl.NodeNotInScope: "대조 대상이 아니라 이 IP 표는 쓰이지 않습니다",
-		decl.NodeHasNoIP: "이 노드로 오는 관측 통신이 해소되지 않아 " +
+		decl.NodeNotInScope: "대조 대상이 아니므로 이 IP 표는 쓰이지 않습니다",
+		decl.NodeHasNoIP: "이 노드로 오는 관측 통신이 어느 노드인지 이어지지 않아 " +
 			"**선언한 엣지가 미관측으로, 관측된 엣지가 shadow로** 갈립니다",
-		decl.IPMalformed:    "해소는 문자열이 정확히 맞을 때만 됩니다 — 포트나 호스트명을 적으면 맞지 않습니다",
-		decl.IPClaimedTwice: "해소가 뒤에 오는 노드로 뒤집혀 **통신이 엉뚱한 노드에 붙습니다**",
-		decl.NodeMissingIP: "이 노드로 오는 관측 통신이 해소되지 않아 " +
+		decl.IPMalformed:    "잇기는 문자열이 정확히 맞을 때만 됩니다 — 포트나 호스트명을 적으면 맞지 않습니다",
+		decl.IPClaimedTwice: "IP가 뒤에 오는 노드로 이어져 **통신이 엉뚱한 노드에 붙습니다**",
+		decl.NodeMissingIP: "이 노드로 오는 관측 통신이 어느 노드인지 이어지지 않아 " +
 			"**선언한 엣지가 미관측으로, 관측된 엣지가 shadow로** 갈립니다",
-		decl.AssetOffScope:   "선언만 있고 관측이 붙지 않아 **늘 미관측(UNOBSERVED)** 으로 남습니다",
-		decl.EdgeSrcOffScope: "관측이 붙지 않아 늘 미관측으로 남습니다",
+		decl.AssetOffScope:   "선언만 있고 관측이 이어지지 않아 **늘 미관측(UNOBSERVED)** 으로 남습니다",
+		decl.EdgeSrcOffScope: "관측이 이어지지 않아 늘 미관측으로 남습니다",
 		decl.EdgePortZero:    "엣지 동일성에 포트가 들어가므로 관측된 엣지와 맞지 않습니다",
 	}
 )

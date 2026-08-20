@@ -79,17 +79,17 @@ func TestReconcileEdges_posture(t *testing.T) {
 // IC-E3: 스코프 밖 관측 상대 → off-scope 표기(등재 판정 요청).
 func TestReconcileEdges_offScope(t *testing.T) {
 	scope := map[string]bool{"web-01": true}
-	// dst_node_id 미해소(원시 주소만) → off-scope.
+	// dst_node_id 를 잇지 못함(원시 주소만) → off-scope.
 	unresolved := recEdges(t, nil, []*discoveryv1.ObservedEdge{
 		oe("web-01", "", "203.0.113.5:443", 443, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_TLS, "X25519"),
 	}, scope, nil)[0]
 	if !unresolved.OffScopeDst {
-		t.Error("미해소 상대는 off-scope여야(등재 판정 요청)")
+		t.Error("잇지 못한 상대는 off-scope여야(등재 판정 요청)")
 	}
 	if !unresolved.NeedsReview {
 		t.Error("off-scope 상대는 리뷰 필요")
 	}
-	// 해소됐지만 스코프 미등재 → 여전히 off-scope.
+	// 이어졌지만 스코프 미등재 → 여전히 off-scope.
 	notInScope := recEdges(t, nil, []*discoveryv1.ObservedEdge{
 		oe("web-01", "ext-cdn", "", 443, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_TLS, "X25519"),
 	}, scope, nil)[0]

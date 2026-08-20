@@ -13,7 +13,7 @@ type EdgeKey struct {
 	// Org — 자산 열쇠와 같은 이유로 동일성의 일부다([AssetKey]).
 	Org   org.ID
 	Src   string
-	Dst   string // 스코프 노드 ID(해소됨) 또는 원시 주소(미해소=off-scope)
+	Dst   string // 스코프 노드 ID(이어짐) 또는 원시 주소(못 이음=off-scope)
 	Port  uint32
 	Proto string // TLS | SSH | QUIC | ""
 }
@@ -95,15 +95,15 @@ func reconcileEdges(o org.ID, declared []EdgeKey, observed []*discoveryv1.Observ
 }
 
 // observedEdgeKey — ObservedEdge에서 EdgeKey를 만들고 off-scope 여부를 판정한다.
-// dst_node_id가 해소돼 스코프에 등재돼 있으면 in-scope, 아니면(미해소 또는 미등재) off-scope.
+// dst_node_id가 노드로 이어지고 스코프에 등재돼 있으면 in-scope, 아니면(못 이었거나 미등재) off-scope.
 func observedEdgeKey(o org.ID, oe *discoveryv1.ObservedEdge, scope map[string]bool) (EdgeKey, bool) {
 	dst := oe.GetDstNodeId()
 	offScope := false
 	if dst == "" {
-		dst = oe.GetDstAddr() // 미해소 상대 → 원시 주소로 식별
+		dst = oe.GetDstAddr() // 잇지 못한 상대 → 원시 주소로 식별
 		offScope = true
 	} else if scope != nil && !scope[dst] {
-		offScope = true // 해소됐지만 스코프 마스터 미등재
+		offScope = true // 이어졌지만 스코프 마스터 미등재
 	}
 	return EdgeKey{
 		Org:   o,
