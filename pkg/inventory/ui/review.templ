@@ -9,6 +9,7 @@ import (
 templ reviewPage(v ReviewView) {
 	@shell(v.Page) {
 		<form method="post">
+			@tip(v.Page.Lang, tReviewQueueHint.In(v.Page.Lang))
 			for _, g := range v.Policies {
 				<fieldset>
 					<legend>
@@ -22,7 +23,6 @@ templ reviewPage(v ReviewView) {
 					</legend>
 					<label>
 						{ tReviewPolicyConclusion.In(v.Page.Lang) }
-						<span class="hint">{ tReviewConclusionHint.In(v.Page.Lang) }</span>
 						<input
 							type="text"
 							name={ "policy:" + g.Name }
@@ -63,7 +63,7 @@ templ reviewPage(v ReviewView) {
 			}
 			<fieldset>
 				<legend>{ tApproval.In(v.Page.Lang) }</legend>
-				<p class="hint">@templ.Raw(tReviewApprovalHint.In(v.Page.Lang))</p>
+				@tip(v.Page.Lang, tReviewApprovalHint.In(v.Page.Lang))
 				<label>
 					{ tReviewer.In(v.Page.Lang) }
 					<input type="text" name="reviewer" value={ v.Reviewer }/>
@@ -76,8 +76,8 @@ templ reviewPage(v ReviewView) {
 			<div class="actions">
 				<button formaction="/save">{ tSaveOnly.In(v.Page.Lang) }</button>
 				<button formaction="/finalize" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
+				@tip(v.Page.Lang, tReviewGateHint.In(v.Page.Lang))
 			</div>
-			<p class="hint">@templ.Raw(tReviewGateHint.In(v.Page.Lang))</p>
 		</form>
 	}
 }

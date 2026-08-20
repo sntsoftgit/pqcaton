@@ -117,6 +117,13 @@ var (
 	tReviewItems            = T{KO: "항목", EN: "items"}
 	tReviewMandatory        = T{KO: "필수", EN: "mandatory"}
 	tReviewPolicyConclusion = T{KO: "이 정책의 결론", EN: "Conclusion for this policy"}
+	tReviewQueueHint = T{
+		KO: "정책마다 결론을 하나 적으면 그 아래 항목이 한 번에 판정됩니다 — 수천 대를 " +
+			"한 건씩 보는 리뷰는 끝나지 않습니다. 「개별 결론(예외)」은 그 정책에서 " +
+			"어긋나는 것만 따로 적는 자리입니다.",
+		EN: "One conclusion per policy judges every item under it at once — a review that " +
+			"looks at thousands of machines one by one never ends. The per-item column is " +
+			"for the exceptions that do not follow the policy."}
 	tReviewConclusionHint   = T{
 		KO: "— 왜 이렇게 정했는지 적습니다. 적으면 아래 항목이 한 번에 판정됩니다",
 		EN: "— write down why you decided this. One entry judges every item below at once"}
@@ -267,11 +274,11 @@ var (
 // ── 대조 ───────────────────────────────────────────────────────────────────
 var (
 	tSurveyObserved     = T{KO: "관측", EN: "Observation"}
-	tSurveyObservedNote = T{KO: "pqcota가 무엇을 보았나", EN: "what pqcota saw"}
 	tSurveyObservedHint = T{
-		KO: "대상 노드에 collector를 가져가 실행하고 회수했습니다. 노드에는 아무것도 남지 않습니다.",
-		EN: "The collector was carried to the target node, run, and taken back. " +
-			"Nothing is left behind on the node."}
+		KO: "pqcota가 무엇을 보았는지입니다. 대상 노드에 collector를 가져가 실행하고 " +
+			"회수했습니다 — 노드에는 아무것도 남지 않습니다.",
+		EN: "What pqcota saw. The collector was carried to the target node, run, and taken " +
+			"back — nothing is left behind on the node."}
 	tColCollector  = T{KO: "그 노드에서 실행된 collector", EN: "Collectors that ran on it"}
 	tObservedCount = T{
 		KO: "관측 자산 <b>%d</b> · 협상된 통신 <b>%d</b>건",
@@ -299,7 +306,9 @@ var (
 			"“could not read” get mixed up."}
 
 	tSurveyAssets     = T{KO: "자산", EN: "Assets"}
-	tSurveyAssetsNote = T{KO: "선언과 맞댄 3-상태", EN: "three states against the declaration"}
+	tSurveyAssetsHint = T{
+		KO: "선언과 맞댄 3-상태입니다.",
+		EN: "Three states, against the declaration."}
 	tSurveyNoAssets   = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
 	tShadowHint       = T{
 		KO: "<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> — 선언에 없는데 " +
@@ -309,9 +318,10 @@ var (
 			"<a href=\"/review\">review queue</a>."}
 
 	tSurveyEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
-	tSurveyEdgesNote = T{
-		KO: "선언과 맞댄 3-상태 · 양자내성 등급",
-		EN: "three states against the declaration · quantum-resistance grade"}
+	tSurveyEdgesHint = T{
+		KO: "선언과 맞댄 3-상태와, 협상된 통신의 양자내성 등급입니다.",
+		EN: "Three states against the declaration, and the quantum-resistance grade of " +
+			"each negotiated connection."}
 	tSurveyNoEdges = T{KO: "대조할 엣지가 없습니다.", EN: "No edges to reconcile."}
 	tPostures      = T{KO: "🟢 PQC <b>%d</b> · 🔴 고전 <b>%d</b> · ⚪ 불명 <b>%d</b>",
 		EN: "🟢 PQC <b>%d</b> · 🔴 classical <b>%d</b> · ⚪ unknown <b>%d</b>"}
@@ -323,26 +333,25 @@ var (
 	tOffScope       = T{KO: "등재 판정 요청", EN: "needs enrollment decision"}
 
 	tTopology     = T{KO: "토폴로지", EN: "Topology"}
-	tTopologyNote = T{
-		KO: "색은 양자내성 등급, 선 모양은 대조 상태",
-		EN: "colour is the quantum-resistance grade, line style is the reconciliation state"}
 	tTopologyHint = T{
 		KO: "색은 양자내성 등급, 선 모양은 대조 상태입니다. <b>보지 못한 것은 점선</b>이라 " +
 			"없는 것과 구분됩니다.",
 		EN: "Colour is the quantum-resistance grade, line style the reconciliation state. " +
 			"<b>What was not seen is dashed</b>, so it is distinct from what is absent."}
 	tNoDot = T{
-		KO: "<code>dot</code>(Graphviz)이 이 기계에 없어 그리지 못했습니다. " +
-			"<b>선택 사항입니다</b> — 설치하지 않아도 나머지는 그대로 됩니다(README 「사전 준비」). " +
+		KO: "<code>dot</code>(Graphviz)이 이 기계에 없어 그리지 못했습니다 — " +
+			"<b>선택 사항입니다.</b>",
+		EN: "<code>dot</code> (Graphviz) is not on this machine, so the graph was not " +
+			"drawn — <b>it is optional</b>."}
+	tNoDotHelp = T{
+		KO: "설치하지 않아도 나머지는 그대로 됩니다(README 「사전 준비」). " +
 			"<code>apt install graphviz</code> · <code>brew install graphviz</code> · " +
 			"<code>winget install graphviz</code>.<br>설치하지 않고 그리려면 아래를 저장해 " +
 			"아무 데서나 <code>dot -Tsvg topology.dot -o topology.svg</code> 로 그리십시오.",
-		EN: "<code>dot</code> (Graphviz) is not on this machine, so the graph was not drawn. " +
-			"<b>It is optional</b> — everything else works without it (see README, " +
-			"“Prerequisites”). <code>apt install graphviz</code>, " +
-			"<code>brew install graphviz</code>, <code>winget install graphviz</code>.<br>" +
-			"To draw it without installing, save the source below and run " +
-			"<code>dot -Tsvg topology.dot -o topology.svg</code> anywhere."}
+		EN: "Everything else works without it (see README, “Prerequisites”). " +
+			"<code>apt install graphviz</code>, <code>brew install graphviz</code>, " +
+			"<code>winget install graphviz</code>.<br>To draw it without installing, save " +
+			"the source below and run <code>dot -Tsvg topology.dot -o topology.svg</code> anywhere."}
 )
 
 // ── 인벤토리 조회 ──────────────────────────────────────────────────────────
