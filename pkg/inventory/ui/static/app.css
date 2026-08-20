@@ -35,6 +35,13 @@ button { font: inherit; padding: .5rem 1rem; border-radius: 6px; border: 1px sol
          background: transparent; color: inherit; cursor: pointer; }
 button.primary { border-color: var(--ok); font-weight: 600; }
 .hint { color: var(--dim); font-size: .85rem; }
+
+/* 도움말 — 접어 둔 설명. 날마다 쓰는 화면이 설명으로 덮이지 않게, 펴는 사람만 본다. */
+.tip { margin: .2rem 0 .6rem; }
+.tip summary { color: var(--dim); font-size: .8rem; cursor: pointer; width: max-content; }
+.tip summary:hover { color: inherit; }
+.tip .hint { margin: .4rem 0 0; }
+.actions .tip { margin: 0; align-self: center; }
 .warn-list { border: 1px solid var(--warn); border-radius: 8px; padding: .6rem 1rem; margin: 1rem 0; }
 .warn-list li { margin: .35rem 0; font-size: .9rem; }
 .warn-list code { color: var(--dim); }

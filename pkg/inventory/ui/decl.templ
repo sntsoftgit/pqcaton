@@ -1,41 +1,23 @@
 package ui
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 )
 
-// declPage — 선언 편집. **틀린 자리를 위에 먼저 보여 준다** — 저장은 막지 않되, 그대로
-// 두면 대조가 조용히 틀린다는 것을 사람이 알아야 한다.
+// declPage — 선언 편집. 화면은 적는 자리만 내놓는다 — 앞뒤가 맞는지는 저장한 뒤
+// 명령(`pqcaton-report`)과 검토 화면이 짚는다.
 templ declPage(v DeclView) {
 	@shell(v.Page) {
-		if len(v.Problems) > 0 {
-			<div class="warn-list">
-				<strong>{ fmt.Sprintf(tDeclProblems.In(v.Page.Lang), len(v.Problems)) }</strong>
-				<p class="hint">@templ.Raw(tDeclProblemsHint.In(v.Page.Lang))</p>
-				<ul>
-					for _, p := range v.Problems {
-						@problemLine(v.Page.Lang, p)
-					}
-				</ul>
-			</div>
-		}
 		<form method="post" action="/decl/save">
 			<fieldset>
 				<legend>{ tDeclOrg.In(v.Page.Lang) }</legend>
-				<p class="hint">@templ.Raw(tDeclOrgHint.In(v.Page.Lang))</p>
+				@tip(v.Page.Lang, tDeclOrgHint.In(v.Page.Lang))
 				<input type="text" name="org" value={ v.Decl.Org } placeholder="local"/>
 			</fieldset>
 			<fieldset>
-				<legend>
-					{ tDeclScope.In(v.Page.Lang) }
-					<span class="n">— { tDeclScopeNote.In(v.Page.Lang) }</span>
-				</legend>
-				<p class="hint">@templ.Raw(tDeclScopeHint.In(v.Page.Lang))</p>
-				<p class="hint">@templ.Raw(tDeclNodesHint.In(v.Page.Lang))</p>
+				<legend>{ tDeclScope.In(v.Page.Lang) }</legend>
+				@tip(v.Page.Lang, tDeclScopeHint.In(v.Page.Lang)+" "+tDeclNodesHint.In(v.Page.Lang))
 				<table>
 					<thead>
 						<tr>
@@ -55,10 +37,8 @@ templ declPage(v DeclView) {
 				@addRow(v.Page.Lang, KindNode, len(v.Decl.Nodes)+v.Blank, false)
 			</fieldset>
 			<fieldset>
-				<legend>
-					{ tDeclAssets.In(v.Page.Lang) }
-					<span class="n">— { tDeclAssetsNote.In(v.Page.Lang) }</span>
-				</legend>
+				<legend>{ tDeclAssets.In(v.Page.Lang) }</legend>
+				@tip(v.Page.Lang, tDeclAssetsHint.In(v.Page.Lang))
 				<table>
 					<thead>
 						<tr>
@@ -79,10 +59,8 @@ templ declPage(v DeclView) {
 				@addRow(v.Page.Lang, KindAsset, len(v.Decl.Assets)+v.Blank, false)
 			</fieldset>
 			<fieldset>
-				<legend>
-					{ tDeclEdges.In(v.Page.Lang) }
-					<span class="n">— { tDeclEdgesNote.In(v.Page.Lang) }</span>
-				</legend>
+				<legend>{ tDeclEdges.In(v.Page.Lang) }</legend>
+				@tip(v.Page.Lang, tDeclEdgesHint.In(v.Page.Lang))
 				<table>
 					<thead>
 						<tr>
@@ -103,10 +81,21 @@ templ declPage(v DeclView) {
 				</table>
 				@addRow(v.Page.Lang, KindEdge, len(v.Decl.Edges)+v.Blank, false)
 			</fieldset>
-			<div class="actions"><button class="primary">{ tDeclSave.In(v.Page.Lang) }</button></div>
-			<p class="hint">@templ.Raw(tDeclSaveHint.In(v.Page.Lang))</p>
+			<div class="actions">
+				<button class="primary">{ tDeclSave.In(v.Page.Lang) }</button>
+				@tip(v.Page.Lang, tDeclSaveHint.In(v.Page.Lang))
+			</div>
 		</form>
 	}
+}
+
+// tip — 접어 둔 설명. **화면은 적는 자리를 먼저 내준다** — 날마다 쓰는 사람에게 설명은
+// 한 번 읽으면 끝이고, 펼쳐 두면 그만큼 표가 아래로 밀린다. 필요하면 펴서 본다.
+templ tip(l Lang, body string) {
+	<details class="tip">
+		<summary>{ tTip.In(l) }</summary>
+		<p class="hint">@templ.Raw(body)</p>
+	</details>
 }
 
 // nodeRow · assetRow · edgeRow — 표의 한 줄.
@@ -166,19 +155,4 @@ templ rowFragment(l Lang, kind string, i int) {
 			@edgeRow(i, "", "", "", "")
 	}
 	@addRow(l, kind, i+1, true)
-}
-
-// problemLine — 어긋난 자리 한 줄.
-//
-// **어느 절의 무엇인지 먼저 말한다.** 「scope/pay-db」 를 보여 줘 봐야 읽는 사람은 그
-// 자리를 화면에서 찾지 못한다.
-templ problemLine(l Lang, p decl.Problem) {
-	{{ section, id := whereLabel(l, p.Where) }}
-	<li>
-		if section != "" {
-			<b>{ section }</b>
-		}
-		<code>{ id }</code> — { problemWhat(l, p) }<br/>
-		<span class="hint">@templ.Raw(problemWhy(l, p))</span>
-	</li>
 }

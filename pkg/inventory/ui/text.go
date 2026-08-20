@@ -57,21 +57,9 @@ var (
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
 var (
-	// **머리글이 무엇을 몇 개, 그리고 왜 고쳐야 하는지를 말한다.** 개수만 세어 두면
-	// 읽는 사람은 그것이 경고인지 오류인지, 지금 고쳐야 하는지 알 수 없다.
-	tDeclProblems = T{
-		KO: "고치지 않으면 대조가 틀리는 곳 %d군데",
-		EN: "%d places where reconciliation will go wrong unless you fix them"}
-	tDeclProblemsHint = T{
-		KO: "<b>저장은 됩니다.</b> 다만 고치지 않으면 대조 결과가 <b>오류 없이 틀립니다</b> — " +
-			"막히지 않으니 눈으로는 알 수 없습니다.",
-		EN: "<b>Saving still works.</b> But left unfixed, reconciliation comes out " +
-			"<b>wrong without erroring</b> — nothing stops you, so you cannot see it."}
-
-	// 어느 자리인지. 파일 안쪽 표기(`scope/…`)가 아니라 **화면의 어느 절**인지 말한다.
-	tWhereNodes  = T{KO: "관리 대상 노드", EN: "Nodes under management"}
-	tWhereAssets = T{KO: "자산", EN: "Assets"}
-	tWhereEdges  = T{KO: "통신 엣지", EN: "Communication edges"}
+	// **설명은 접어 둔다.** 이 화면은 날마다 쓰는 자리지 읽는 자리가 아니다 — 문장을
+	// 늘어놓으면 적을 칸이 밀린다. 필요한 사람만 「도움말」을 펴서 본다.
+	tTip = T{KO: "도움말", EN: "Help"}
 
 	tDeclOrg     = T{KO: "조직", EN: "Organization"}
 	tDeclOrgHint = T{
@@ -79,7 +67,6 @@ var (
 		EN: "Reconciliation and judgments are bound to this org. Empty means <code>local</code>."}
 
 	tDeclScope     = T{KO: "관리 대상 노드", EN: "Nodes under management"}
-	tDeclScopeNote = T{KO: "어느 노드를, 어느 주소로", EN: "which nodes, at which addresses"}
 	tDeclScopeHint = T{
 		KO: "<b>여기 적은 노드가 대조 대상입니다.</b> 여기 없는 노드와 통신한 것이 관측되면 " +
 			"대조 화면에 「등재 판정 요청」으로 올라옵니다. 노드 <b>안의</b> 무엇을 볼지는 " +
@@ -99,12 +86,13 @@ var (
 			"not be tied to this name. Clearing the name deletes the row."}
 
 	tDeclAssets     = T{KO: "자산", EN: "Assets"}
-	tDeclAssetsNote = T{
-		KO: "「이 노드에서 이것을 쓴다」", EN: "“this node uses this”"}
+	tDeclAssetsHint = T{
+		KO: "이 노드에서 이것을 쓴다 — 노드 <b>안의</b> 무엇을 볼지입니다.",
+		EN: "This node uses this — what to look at <b>inside</b> a node."}
 	tDeclEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
-	tDeclEdgesNote = T{
-		KO: "「이 노드가 저 노드와 이렇게 통신한다」",
-		EN: "“this node talks to that node like this”"}
+	tDeclEdgesHint = T{
+		KO: "이 노드가 저 노드와 이렇게 통신한다 — 포트까지 같아야 관측된 엣지와 맞습니다.",
+		EN: "This node talks to that node like this — the port must match too."}
 
 	tDeclSave     = T{KO: "저장", EN: "Save"}
 	tDeclSaveHint = T{

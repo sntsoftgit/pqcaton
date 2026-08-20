@@ -309,20 +309,22 @@ func TestDeclHiddenWithoutFile(t *testing.T) {
 	}
 }
 
-// IC-U10 — **틀린 자리를 저장 전에 짚는다.**
-//
-// 노드↔IP 가 없으면 관측 IP 가 노드로 이어지지 않아 CONFIRMED 여야 할 통신이 shadow 로 올라온다 —
-// 오류가 아니라 그럴듯한 결과라 눈으로는 안 잡힌다. 화면이 미리 말해 주는 자리다.
-func TestDeclShowsProblems(t *testing.T) {
+// IC-U10 — **선언 화면은 적는 자리다.** 설명을 펼쳐 두지 않는다 — 날마다 쓰는 사람에게
+// 문장이 가득한 화면은 적을 칸을 밀어낼 뿐이다. 필요한 사람만 「도움말」을 편다.
+func TestDeclKeepsExplanationsFolded(t *testing.T) {
 	s, _ := withDecl(t)
 	// 화면은 두 말을 쓴다 — 여기서는 한국어로 잰다.
 	body := get(t, s, "/decl?lang=ko").Body.String()
-	// pay-db 는 관리 대상인데 IP를 안 적었다.
-	if !strings.Contains(body, "IP가 없습니다") {
-		t.Errorf("이어지지 않을 노드를 짚지 않는다:\n%s", body)
+	if strings.Count(body, "<details class=\"tip\">") == 0 {
+		t.Errorf("설명을 접어 둘 자리가 없다:\n%s", body)
 	}
-	if !strings.Contains(body, "shadow") {
-		t.Error("그대로 두면 무슨 일이 생기는지 말하지 않는다")
+	// 표 앞에 펼쳐진 설명 문단이 없어야 한다 — 접힌 것 안에만 있다.
+	for _, s := range []string{"여기 적은 노드가 대조 대상입니다", "관측에 찍힌 주소를 이 이름과 잇는 근거"} {
+		if i := strings.Index(body, s); i >= 0 {
+			if j := strings.LastIndex(body[:i], "<details"); j < 0 || strings.Contains(body[j:i], "</details>") {
+				t.Errorf("설명이 펼쳐진 채로 있다: %s", s)
+			}
+		}
 	}
 }
 

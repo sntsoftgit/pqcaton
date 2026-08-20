@@ -136,9 +136,6 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 type DeclView struct {
 	Page
 	Decl decl.Declaration
-	// Problems — 선언이 스스로 앞뒤가 안 맞는 자리. **저장을 막지 않고 짚기만 한다** —
-	// 아직 IP를 모르는 노드를 적어 두는 것도 정당한 상태다.
-	Problems []decl.Problem
 	// Blank — 빈 줄을 몇 개 더 보여 줄까. 없으면 항목을 새로 못 넣는다.
 	Blank int
 }
@@ -146,11 +143,12 @@ type DeclView struct {
 // DefaultBlank — 표마다 열어 두는 빈 줄 수.
 const DefaultBlank = 3
 
-// NewDeclView — 선언을 화면이 보는 모양으로 옮기고 스스로 검사한다.
+// NewDeclView — 선언을 화면이 보는 모양으로 옮긴다.
+//
+// **앞뒤가 맞는지는 여기서 말하지 않는다.** 선언 화면은 적는 자리다 — 어긋남은
+// `decl.Check` 를 쓰는 검토 화면과 `pqcaton-report` 가 짚는다.
 func NewDeclView(d decl.Declaration, page Page) DeclView {
-	// **문제는 원본으로 잰다.** 아래에서 두 목록을 합쳐 그리므로, 합친 것으로 재면
-	// 「스코프에만 있고 IP 표에 없다」 같은 어긋남이 화면에서 사라져 버린다.
-	v := DeclView{Page: page, Problems: decl.Check(d), Blank: DefaultBlank}
+	v := DeclView{Page: page, Blank: DefaultBlank}
 	v.Decl = d
 	v.Decl.Scope, v.Decl.Nodes = nil, mergeNodes(d)
 	return v
