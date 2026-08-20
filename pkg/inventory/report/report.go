@@ -244,17 +244,25 @@ func ResolveAssetNode(res *discoveryv1.CollectionResult, nodes []decl.Node) stri
 	m := res.GetEnvelope().GetMachine()
 	seen := []string{id, m.GetFqdn(), shortHost(m.GetFqdn()), m.GetMachineId(), m.GetSelfAssignedId()}
 
+	// **이름이 관측 이름을 이긴다.** 그리고 겹친 관측 이름은 먼저 적힌 노드가 가진다 —
+	// 겹친다는 사실 자체는 `decl.Check` 가 짚는다(ObservedAsTwice). 여기서 뒤에 적힌
+	// 것으로 뒤집으면 같은 파일이 순서만 바뀌어도 자산이 다른 노드에 붙는다.
 	byName := map[string]string{}
-	for _, n := range nodes {
-		name := strings.TrimSpace(n.Name)
-		if name == "" {
-			continue
+	claim := func(key, name string) {
+		key = strings.ToLower(strings.TrimSpace(key))
+		if key == "" {
+			return
 		}
-		byName[strings.ToLower(name)] = name
+		if _, taken := byName[key]; !taken {
+			byName[key] = name
+		}
+	}
+	for _, n := range nodes {
+		claim(n.Name, strings.TrimSpace(n.Name))
+	}
+	for _, n := range nodes {
 		for _, a := range n.ObservedAs {
-			if a = strings.TrimSpace(a); a != "" {
-				byName[strings.ToLower(a)] = name
-			}
+			claim(a, strings.TrimSpace(n.Name))
 		}
 	}
 	for _, s := range seen {

@@ -110,6 +110,7 @@ const (
 	NodeHasNoIP     Code = "node_has_no_ip"
 	IPMalformed     Code = "ip_malformed"
 	IPClaimedTwice  Code = "ip_claimed_twice"
+	ObservedAsTwice Code = "observed_name_claimed_twice"
 	NodeMissingIP   Code = "node_missing_from_ip_table"
 	AssetOffScope   Code = "asset_points_off_scope"
 	EdgeSrcOffScope Code = "edge_source_off_scope"
@@ -133,6 +134,7 @@ var (
 		NodeHasNoIP:     "this node has no IP",
 		IPMalformed:     "not an IP address: %s",
 		IPClaimedTwice:  "%s is claimed by more than one node",
+		ObservedAsTwice: "the observed name %s is claimed by more than one node",
 		NodeMissingIP:   "missing from the IP table",
 		AssetOffScope:   "points at a node that is not in scope",
 		EdgeSrcOffScope: "the sending side is not in scope",
@@ -145,6 +147,10 @@ var (
 		IPMalformed: "resolution only works on an exact string match — a port or a hostname will not match",
 		IPClaimedTwice: "resolution flips to whichever node comes last, so **traffic gets " +
 			"attached to the wrong node**",
+		// IP를 겹쳐 주장하는 것과 **같은 사태다** — 이어지는 자리만 엣지에서 자산으로
+		// 옮겨 갔을 뿐이다.
+		ObservedAsTwice: "only one node can win, so **that machine's assets get attached to " +
+			"the wrong node** — and the other node's declared assets stay unobserved",
 		// IP가 비어 있는 것과 **결과가 같다.** 한쪽만 약하게 말하면 고칠 이유의 무게가
 		// 달라 보인다.
 		NodeMissingIP: "observed traffic to this node cannot be resolved, so **declared edges " +
@@ -169,6 +175,47 @@ func fill(tmpl, detail string) string {
 		return tmpl
 	}
 	return fmt.Sprintf(tmpl, detail)
+}
+
+// claimedNames — 관측 이름 하나를 어느 노드들이 주장하는가.
+//
+// 다른 노드의 **이름**과 부딪히는 것도 같은 자리다. `pay-db` 라는 노드가 있는데 다른
+// 노드가 그 이름을 관측 이름으로 적어 두면, 그 기계의 관측이 어느 쪽에 붙을지는 순서가
+// 정한다.
+func claimedNames(nodes []Node) map[string][]string {
+	owners := map[string]map[string]bool{}
+	claim := func(key, by string) {
+		key = strings.ToLower(strings.TrimSpace(key))
+		by = strings.TrimSpace(by)
+		if key == "" || by == "" {
+			return
+		}
+		if owners[key] == nil {
+			owners[key] = map[string]bool{}
+		}
+		owners[key][by] = true
+	}
+	for _, n := range nodes {
+		for _, a := range n.ObservedAs {
+			claim(a, n.Name)
+		}
+	}
+	// 이름은 **관측 이름으로 주장된 것만** 견준다. 이름끼리 겹치는 것은 다른 문제다.
+	for _, n := range nodes {
+		if key := strings.ToLower(strings.TrimSpace(n.Name)); owners[key] != nil {
+			claim(n.Name, n.Name)
+		}
+	}
+	out := map[string][]string{}
+	for key, by := range owners {
+		names := make([]string, 0, len(by))
+		for n := range by {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		out[key] = names
+	}
+	return out
 }
 
 // Check — 선언이 스스로 앞뒤가 맞는지 본다.
@@ -220,6 +267,19 @@ func Check(d Declaration) []Problem {
 			sort.Strings(owners)
 			out = append(out, Problem{
 				Where: "nodes/" + strings.Join(owners, "+"), Code: IPClaimedTwice, Detail: ip,
+			})
+		}
+	}
+
+	// 관측 이름도 겹치면 짚는다. **IP를 겹쳐 주장하는 것과 같은 사태다** — 이어지는
+	// 자리만 엣지에서 자산으로 옮겨 갔을 뿐이라, 한쪽 노드의 자산이 남의 노드에 붙는다.
+	//
+	// 대소문자는 가리지 않는다 — 잇는 쪽이 가리지 않으므로, 여기서 가리면 화면은
+	// 멀쩡하다고 하는데 대조에서는 겹친다.
+	for name, owners := range claimedNames(d.Nodes) {
+		if len(owners) > 1 {
+			out = append(out, Problem{
+				Where: "nodes/" + strings.Join(owners, "+"), Code: ObservedAsTwice, Detail: name,
 			})
 		}
 	}

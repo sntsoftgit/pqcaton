@@ -59,6 +59,28 @@ func TestResolveAssetNode(t *testing.T) {
 	}
 }
 
+// IC-R15 — **이름이 관측 이름을 이기고, 겹친 관측 이름은 먼저 적힌 쪽이 가진다.**
+//
+// 겹친다는 사실은 `decl.Check` 가 짚습니다(IC-D17). 그래도 잇기는 무엇 하나로 정해져야
+// 합니다 — 뒤에 적힌 것으로 뒤집히면 **같은 파일이 순서만 바뀌어도** 자산이 다른 노드에
+// 붙습니다.
+func TestResolveAssetNodePrefersNamesAndFirstClaim(t *testing.T) {
+	nodes := []decl.Node{
+		{Name: "a", ObservedAs: []string{"node:1a2b", "pay-db"}},
+		{Name: "b", ObservedAs: []string{"node:1a2b"}},
+		{Name: "pay-db"},
+	}
+	for _, tc := range []struct{ id, want string }{
+		{"node:1a2b", "a"},  // 먼저 적힌 쪽
+		{"pay-db", "pay-db"}, // 이름이 관측 이름을 이긴다
+	} {
+		res := &discoveryv1.CollectionResult{Envelope: &commonv1.Envelope{TargetNodeId: tc.id}}
+		if got := report.ResolveAssetNode(res, nodes); got != tc.want {
+			t.Errorf("%q → %q, want %q", tc.id, got, tc.want)
+		}
+	}
+}
+
 // IC-R8 — **관측 IP를 스코프 노드로 잇는다**(§0.4).
 //
 // 이어지지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 shadow 로 올라온다** —

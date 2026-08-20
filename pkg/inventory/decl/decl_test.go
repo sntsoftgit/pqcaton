@@ -62,6 +62,48 @@ func TestCheckFlagsDuplicateIP(t *testing.T) {
 	}
 }
 
+// IC-D17 — **같은 관측 이름을 둘이 주장하면 짚는다.**
+//
+// IP를 겹쳐 주장하는 것과 같은 사태입니다 — 이어지는 자리만 엣지에서 자산으로 옮겨
+// 갔을 뿐입니다. 한쪽만 이기므로 그 기계의 자산이 남의 노드에 붙고, 진 노드의 선언한
+// 자산은 미관측으로 남습니다. 대소문자는 가리지 않습니다 — 잇는 쪽이 안 가립니다.
+func TestCheckFlagsDuplicateObservedName(t *testing.T) {
+	d := decl.Declaration{
+		Scope: []string{"a", "b"},
+		Nodes: []decl.Node{
+			{Name: "a", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"node:1a2b"}},
+			{Name: "b", IPs: []string{"10.0.0.2"}, ObservedAs: []string{"NODE:1A2B"}},
+		},
+	}
+	if ps := decl.Check(d); raised(ps, decl.ObservedAsTwice) != 1 {
+		t.Errorf("겹친 관측 이름을 안 짚는다:\n%s", whats(ps))
+	}
+}
+
+// IC-D18 — **다른 노드의 이름을 관측 이름으로 적어도 짚는다.** 그 기계의 관측이 어느
+// 쪽에 붙을지를 적은 순서가 정하게 된다.
+func TestCheckFlagsObservedNameCollidingWithANodeName(t *testing.T) {
+	d := decl.Declaration{
+		Scope: []string{"a", "pay-db"},
+		Nodes: []decl.Node{
+			{Name: "a", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"pay-db"}},
+			{Name: "pay-db", IPs: []string{"10.0.0.2"}},
+		},
+	}
+	if ps := decl.Check(d); raised(ps, decl.ObservedAsTwice) != 1 {
+		t.Errorf("이름과 부딪히는 관측 이름을 안 짚는다:\n%s", whats(ps))
+	}
+	// 겹치지 않으면 짚지 않는다 — 관측 이름을 적었다는 것만으로 무는 검사가 되면 안 된다.
+	ok := decl.Declaration{
+		Scope: []string{"a"},
+		Nodes: []decl.Node{{Name: "a", IPs: []string{"10.0.0.1"},
+			ObservedAs: []string{"node:1a2b", "a.corp.example"}}},
+	}
+	if ps := decl.Check(ok); raised(ps, decl.ObservedAsTwice) != 0 {
+		t.Errorf("겹치지 않는데 짚는다:\n%s", whats(ps))
+	}
+}
+
 // IC-D11 — **IP 자리에 IP가 아닌 것이 오면 짚는다.** 잇기는 문자열이 정확히 맞을 때만
 // 되므로, 포트가 붙거나 호스트명을 적으면 영영 안 맞는다.
 func TestCheckFlagsBadIP(t *testing.T) {
