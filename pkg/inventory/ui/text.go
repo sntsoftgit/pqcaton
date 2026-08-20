@@ -128,14 +128,14 @@ var (
 
 	tColTarget     = T{KO: "대상", EN: "Target"}
 	tColState      = T{KO: "상태", EN: "State"}
-	tColConfidence = T{KO: "확신", EN: "Confidence"}
+	tColConfidence = T{KO: "신뢰도", EN: "Confidence"}
 	tColInPlan     = T{KO: "계획에 넣기", EN: "In plan"}
 	tColException  = T{KO: "개별 결론(예외)", EN: "Per-item conclusion (exception)"}
 	tRescan        = T{KO: "재수집 후보", EN: "rescan candidate"}
 
 	tReviewEmpty    = T{KO: "판정할 것이 없습니다.", EN: "Nothing to judge."}
 	tReviewAutopass = T{
-		KO: "자동통과 후보 %d개는 이 큐에 올리지 않았습니다 — 선언과 맞고 확신도 높은 " +
+		KO: "자동통과 후보 %d개는 이 큐에 올리지 않았습니다 — 선언과 맞고 신뢰도가 높은 " +
 			"것들이라, 하나씩 볼 것이 아닙니다.",
 		EN: "%d auto-pass candidates are not in this queue — they match the declaration " +
 			"with high confidence, so they are not worth looking at one by one."}

@@ -235,7 +235,7 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 	return n, nil
 }
 
-// BasisOf — 이 판정이 무엇을 보고 내려졌나. 대조 상태와 확신도가 근거다.
+// BasisOf — 이 판정이 무엇을 보고 내려졌나. 대조 상태와 신뢰도가 근거다.
 //
 // **관측이 바뀌면 이 값이 바뀐다** — 그때 델타 리뷰가 걸린다. 반대로 관측이 그대로면
 // 몇 번을 다시 돌려도 걸리지 않는다(§3.6, IC-D2/D3).
