@@ -16,7 +16,7 @@
 
 ## 왜 따로 있나
 
-pqcota는 **관측한 사실만 냅니다.** 🔴 표시는 "취약하다"는 판정이 아니라 "고전 알고리즘으로
+pqcota는 **관측한 사실만 알려 줍니다.** 🔴 표시는 "취약하다"는 판정이 아니라 "고전 알고리즘으로
 협상됐다"는 관측이고, 무엇을 언제 바꿀지는 그 도구가 정하지 않습니다. 그 선을 지키려고
 선언 대조·리뷰 큐·확정 거버넌스를 **명시적으로 만들지 않았습니다.**
 
@@ -44,7 +44,7 @@ pqcota                          pqcaton
 | [`pkg/inventory/report`](pkg/inventory/report) | **여러 노드 대조** — 레인 분리·IP 해소·완전성. 명령과 화면이 이 계산 하나를 씁니다 |
 | [`pkg/inventory/ui`](pkg/inventory/ui) | **화면** — 그리는 것과 폼을 읽는 것만. 어디서 읽고 누가 들어오는지는 부르는 쪽이 정합니다 |
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스** — 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
-| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 냅니다 |
+| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 만듭니다 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포** — 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
 | [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **리뷰 큐와 선언을 사람이 다루는 화면** — 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
@@ -65,18 +65,18 @@ pqcota                          pqcaton
 | | 필요한가 | 왜 |
 |---|---|---|
 | **Go 1.26** 이상 | **필수** | 빌드에 씁니다. 다른 런타임은 필요 없습니다 |
-| **Graphviz**(`dot`) | **선택** | 거버넌스 토폴로지를 그림으로 볼 때만. 없으면 화면과 명령이 **DOT 원문**을 내고, 나중에 아무 데서나 그릴 수 있습니다 |
-| Postgres | 선택 | 판정 원장을 DB에 둘 때만. 기본은 파일(JSONL)이라 없어도 한 바퀴가 돕니다 |
+| **Graphviz**(`dot`) | **선택** | 거버넌스 토폴로지를 그림으로 볼 때만. 없으면 화면과 명령이 **DOT 원문**을 보여 주고, 나중에 아무 데서나 그릴 수 있습니다 |
+| Postgres | 선택 | 판정 원장을 DB에 둘 때만. 기본은 파일(JSONL)이라 없어도 전체 과정이 됩니다 |
 | Docker · pqcota 리포 | 데모에만 | [demo/README.md](demo/README.md) 참조 |
 
 `dot` 설치는 [graphviz.org/download](https://graphviz.org/download/)에 있습니다 —
 `apt install graphviz` · `brew install graphviz` · `winget install graphviz`.
 
-**어디서 도는가.** 이 리포는 **ctl 노드**(관측 결과를 모아 대조·판정하는 자리)의 일을 합니다.
+**어디서 실행되는가.** 이 리포는 **ctl 노드**(관측 결과를 모아 대조·판정하는 자리)의 일을 합니다.
 ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 collector가 대상 노드에서 하고,
 그쪽은 지금 Linux 전용입니다.
 
-> 예외 하나 — `pqcaton-decide open` 을 `-results` 없이 쓰면 **명령이 도는 그 기계 자신을**
+> 예외 하나 — `pqcaton-decide open` 을 `-results` 없이 쓰면 **명령을 실행한 그 기계 자신을**
 > 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **Linux에서만** 됩니다.
 > 여러 노드를 제대로 다루는 길은 pqcota가 모은 결과를 읽는 [`pqcaton-report`](inventory/cmd/pqcaton-report)입니다.
 
@@ -86,7 +86,7 @@ ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 colle
 make            # 라이선스 · 문구 게이트 → 빌드 → 테스트
 ```
 
-**이 리포만으로 한 바퀴가 돕니다.** 관측할 대상은 이 머신입니다.
+**이 리포만으로 처음부터 끝까지 해볼 수 있습니다.** 관측할 대상은 이 머신입니다.
 
 ```bash
 go build -o bin/ ./inventory/cmd/...
@@ -94,7 +94,7 @@ go build -o bin/ ./inventory/cmd/...
 # ① 선언 — CMDB가 "있다"고 말하는 것. 직접 씁니다
 printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,provider-chain\n' > decl.csv
 
-# ② 대조 — 이 머신을 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 냅니다
+# ② 대조 — 이 머신을 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 만듭니다
 bin/pqcaton-decide open decl.csv local > session.json
 
 #    여러 노드를 다루는 길은 이쪽입니다 — pqcota 가 모은 관측으로 대조합니다
