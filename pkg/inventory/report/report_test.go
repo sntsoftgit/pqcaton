@@ -49,7 +49,7 @@ func TestResolveAssetNode(t *testing.T) {
 		{"대소문자는 가리지 않는다", "node:1a2b", "PAY-DB.corp", "pay-db"},
 		{"어디에도 안 걸린다", "node:9f9f", "ktydesktop", "node:9f9f"},
 	} {
-		res := &discoveryv1.CollectionResult{Envelope: &commonv1.CollectorEnvelope{
+		res := &discoveryv1.CollectionResult{Envelope: &commonv1.Envelope{
 			TargetNodeId: tc.id,
 			Machine:      &commonv1.MachineIdentity{Fqdn: tc.fqdn},
 		}}
