@@ -89,15 +89,6 @@ templ declPage(v DeclView) {
 	}
 }
 
-// tip — 접어 둔 설명. **화면은 적는 자리를 먼저 내준다** — 날마다 쓰는 사람에게 설명은
-// 한 번 읽으면 끝이고, 펼쳐 두면 그만큼 표가 아래로 밀린다. 필요하면 펴서 본다.
-templ tip(l Lang, body string) {
-	<details class="tip">
-		<summary>{ tTip.In(l) }</summary>
-		<p class="hint">@templ.Raw(body)</p>
-	</details>
-}
-
 // nodeRow · assetRow · edgeRow — 표의 한 줄.
 //
 // **화면과 「행 추가」가 같은 조각을 쓴다.** 두 벌이면 이름이 어긋나는 날이 오고, 그러면

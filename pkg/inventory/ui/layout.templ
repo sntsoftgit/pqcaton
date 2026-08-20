@@ -49,3 +49,19 @@ templ shell(p Page) {
 		</body>
 	</html>
 }
+
+// tip · tipBlock — 접어 둔 설명. **화면은 적는 자리를 먼저 내준다** — 날마다 쓰는
+// 사람에게 설명은 한 번 읽으면 끝이고, 펼쳐 두면 그만큼 표가 아래로 밀린다. 필요하면
+// 펴서 본다. 표처럼 문장 하나로 안 되는 것은 tipBlock 으로 통째로 접는다.
+templ tip(l Lang, body string) {
+	@tipBlock(tTip.In(l)) {
+		<p class="hint">@templ.Raw(body)</p>
+	}
+}
+
+templ tipBlock(label string) {
+	<details class="tip">
+		<summary>{ label }</summary>
+		{ children... }
+	</details>
+}

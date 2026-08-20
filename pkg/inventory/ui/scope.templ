@@ -10,19 +10,17 @@ import (
 // scopePage — 자산 스코프. **exclude 추가만 근거 필수**라, 그 무게 차이가 화면에 보여야 한다.
 templ scopePage(v ScopeView) {
 	@shell(v.Page) {
-		<p class="hint">@templ.Raw(tScopeIntro.In(v.Page.Lang))</p>
-		<p class="hint">@templ.Raw(tScopeDelta.In(v.Page.Lang))</p>
+		@tip(v.Page.Lang, tScopeIntro.In(v.Page.Lang)+" "+tScopeDelta.In(v.Page.Lang)+" "+tScopeConclusionHint.In(v.Page.Lang))
 		<form method="post" action="/scope/finalize">
 			if len(v.Editing) > 0 {
 				@ruleLegend(v.Page.Lang)
-				<p class="hint">@templ.Raw(tScopeTableOrder.In(v.Page.Lang))</p>
 				for _, e := range v.Editing {
 					@layerEditor(v.Page.Lang, e)
 				}
 				<div class="actions">
 					<button formaction="/scope/rules" class="primary">{ tSaveRules.In(v.Page.Lang) }</button>
+					@tip(v.Page.Lang, tSaveRulesHint.In(v.Page.Lang))
 				</div>
-				<p class="hint">@templ.Raw(tSaveRulesHint.In(v.Page.Lang))</p>
 				<h2>{ tScopeEditResult.In(v.Page.Lang) }</h2>
 			}
 			for _, g := range v.Layers {
@@ -38,7 +36,6 @@ templ scopePage(v ScopeView) {
 					</legend>
 					<label>
 						{ tLayerConclusion.In(v.Page.Lang) }
-						<span class="hint">{ tReviewConclusionHint.In(v.Page.Lang) }</span>
 						<input
 							type="text"
 							name={ "layer:" + g.Name }
@@ -69,7 +66,7 @@ templ scopePage(v ScopeView) {
 			}
 			<fieldset>
 				<legend>{ tApproval.In(v.Page.Lang) }</legend>
-				<p class="hint">@templ.Raw(tScopeApprovalHint.In(v.Page.Lang))</p>
+				@tip(v.Page.Lang, tScopeApprovalHint.In(v.Page.Lang))
 				<label>
 					{ tReviewer.In(v.Page.Lang) }
 					<input type="text" name="reviewer" value={ v.Session.Reviewer }/>
@@ -84,7 +81,7 @@ templ scopePage(v ScopeView) {
 					{ tPolicyOnFinalize.In(v.Page.Lang) }
 					<span class="n">— { fmt.Sprintf(tPolicyRulesAll.In(v.Page.Lang), len(v.Session.Merged)) }</span>
 				</legend>
-				<p class="hint">@templ.Raw(tPolicyWholeHint.In(v.Page.Lang))</p>
+				@tip(v.Page.Lang, tPolicyWholeHint.In(v.Page.Lang))
 				<table>
 					<tr>
 						<th style="width:6rem">action</th><th style="width:6rem">runtime</th>
@@ -104,8 +101,8 @@ templ scopePage(v ScopeView) {
 			<div class="actions">
 				<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
 				<button formaction="/scope/finalize" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
+				@tip(v.Page.Lang, tScopeGateHint.In(v.Page.Lang))
 			</div>
-			<p class="hint">@templ.Raw(tScopeGateHint.In(v.Page.Lang))</p>
 		</form>
 	}
 }
@@ -113,8 +110,7 @@ templ scopePage(v ScopeView) {
 // ruleLegend — 다섯 칸이 무슨 뜻인지. **여기 두는 것이 문서로 미루는 것보다 싸다** —
 // 규칙을 적는 자리에서 읽히고, 화면이 바뀌면 같이 바뀐다.
 templ ruleLegend(l Lang) {
-	<fieldset>
-		<legend>{ tRuleLegend.In(l) }</legend>
+	@tipBlock(tRuleLegend.In(l)) {
 		<table>
 			<tr><th style="width:7rem">{ tColMeaning.In(l) }</th><th>{ tColMeans.In(l) }</th></tr>
 			<tr><td><code>action</code></td><td>@templ.Raw(tRuleAction.In(l))</td></tr>
@@ -125,7 +121,9 @@ templ ruleLegend(l Lang) {
 		</table>
 		<p class="hint">@templ.Raw(tRuleEmptyWarn.In(l))</p>
 		<p class="hint">@templ.Raw(tRuleLayerOrder.In(l))</p>
-	</fieldset>
+		<p class="hint">@templ.Raw(tScopeTableOrder.In(l))</p>
+		<p class="hint">@templ.Raw(tRemoveRuleHint.In(l))</p>
+	}
 }
 
 // layerEditor — 계층 하나의 규칙 표.
@@ -152,7 +150,6 @@ templ layerEditor(l Lang, e LayerEdit) {
 			</tbody>
 		</table>
 		@addRuleRow(l, e.Index, len(e.Rules)+e.Blank, false)
-		<p class="hint">@templ.Raw(tRemoveRuleHint.In(l))</p>
 	</fieldset>
 }
 

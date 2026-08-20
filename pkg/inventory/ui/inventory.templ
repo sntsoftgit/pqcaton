@@ -8,8 +8,7 @@ import (
 // inventoryPage — 찾아보는 자리. **절차의 한 걸음이 아니다.**
 templ inventoryPage(v InventoryView) {
 	@shell(v.Page) {
-		<p class="hint">@templ.Raw(tInventoryIntro.In(v.Page.Lang))</p>
-		<p class="hint">@templ.Raw(tInventoryBounds.In(v.Page.Lang))</p>
+		@tip(v.Page.Lang, tInventoryIntro.In(v.Page.Lang)+" "+tInventoryBounds.In(v.Page.Lang))
 		<fieldset>
 			<legend>{ tSearch.In(v.Page.Lang) }</legend>
 			<form method="get" action="/inventory">
@@ -133,7 +132,7 @@ templ inventoryPage(v InventoryView) {
 templ historySection(v InventoryView) {
 	<fieldset>
 		<legend>{ tHistory.In(v.Page.Lang) } <span class="n">— { v.Subject }</span></legend>
-		<p class="hint">@templ.Raw(tHistoryHint.In(v.Page.Lang))</p>
+		@tip(v.Page.Lang, tHistoryHint.In(v.Page.Lang))
 		if len(v.History) == 0 {
 			<p>{ tHistoryNone.In(v.Page.Lang) }</p>
 		} else {
@@ -163,16 +162,13 @@ templ historySection(v InventoryView) {
 // unseenSection — 정책이 뺀 것. **뺐다고 없어진 것이 아니다.**
 templ unseenSection(v InventoryView) {
 	<fieldset>
-		<legend>
-			{ tUnseen.In(v.Page.Lang) }
-			<span class="n">— { tUnseenNote.In(v.Page.Lang) }</span>
-		</legend>
+		<legend>{ tUnseen.In(v.Page.Lang) }</legend>
+		@tip(v.Page.Lang, tUnseenNote.In(v.Page.Lang)+" "+tUnseenHint.In(v.Page.Lang))
 		if !v.HasPolicy {
 			<p class="hint">@templ.Raw(tNoPolicy.In(v.Page.Lang))</p>
 		} else if len(v.Unseen) == 0 {
 			<p class="hint">{ tUnseenNone.In(v.Page.Lang) }</p>
 		} else {
-			<p class="hint">@templ.Raw(tUnseenHint.In(v.Page.Lang))</p>
 			<table>
 				<tr>
 					<th>{ tColTarget.In(v.Page.Lang) }</th>
@@ -201,12 +197,12 @@ templ unseenSection(v InventoryView) {
 templ staleSection(v InventoryView) {
 	<fieldset>
 		<legend>{ tStale.In(v.Page.Lang) } <span class="n">— { strconv.Itoa(len(v.Stale)) }</span></legend>
+		@tip(v.Page.Lang, tStaleHint.In(v.Page.Lang))
 		if !v.HasLedger {
 			<p class="hint">@templ.Raw(tNoLedger.In(v.Page.Lang))</p>
 		} else if len(v.Stale) == 0 {
 			<p class="hint">{ tStaleNone.In(v.Page.Lang) }</p>
 		} else {
-			<p class="hint">@templ.Raw(tStaleHint.In(v.Page.Lang))</p>
 			<table>
 				<tr>
 					<th>{ tColTarget.In(v.Page.Lang) }</th>

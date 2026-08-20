@@ -406,6 +406,37 @@ func hasHangul(s string) string {
 	return ""
 }
 
+// IC-UI29 — **화면마다 설명이 접혀 있다.**
+//
+// 여기는 날마다 여는 자리지 읽는 자리가 아닙니다. 절마다 설명을 펼쳐 두면 그만큼
+// 표가 아래로 밀리고, 그 표를 보러 온 사람은 문장부터 지나쳐야 합니다. 설명을 없애는
+// 대신 「도움말」로 접고, 필요한 사람만 폅니다.
+func TestEveryScreenFoldsItsExplanations(t *testing.T) {
+	page := ui.Page{Title: "t", Lang: ui.KO}
+
+	d := decl.Declaration{Org: "acme", Scope: []string{"web"},
+		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}
+	rv := review.Session{Scope: "org://acme", PolicyDecisions: map[string]string{"p": ""},
+		Items: []review.Item{{ID: "a", Policy: "p", State: "UNDECLARED", Mandatory: true}}}
+	sc := scope.Session{Org: "acme", LayerDecisions: map[string]string{"corp": ""}}
+
+	for name, render := range map[string]func(w io.Writer) error{
+		"decl":   func(w io.Writer) error { return ui.RenderDecl(w, ui.NewDeclView(d, page)) },
+		"review": func(w io.Writer) error { return ui.RenderReview(w, ui.NewReviewView(rv, page)) },
+		"scope": func(w io.Writer) error {
+			return ui.RenderScope(w, ui.NewScopeView(sc, page).Editable(layerFiles()))
+		},
+	} {
+		var b strings.Builder
+		if err := render(&b); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !strings.Contains(b.String(), `<details class="tip">`) {
+			t.Errorf("%s 화면에 접어 둔 설명이 없다", name)
+		}
+	}
+}
+
 // IC-UI19 — **영어 화면에 한글이 남아 있지 않다.**
 //
 // 문구를 하나 옮기지 않으면 그 자리만 한국어로 뜹니다. 눈으로는 못 찾습니다 — 화면

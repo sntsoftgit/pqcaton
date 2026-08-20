@@ -124,9 +124,6 @@ var (
 		EN: "One conclusion per policy judges every item under it at once — a review that " +
 			"looks at thousands of machines one by one never ends. The per-item column is " +
 			"for the exceptions that do not follow the policy."}
-	tReviewConclusionHint   = T{
-		KO: "— 왜 이렇게 정했는지 적습니다. 적으면 아래 항목이 한 번에 판정됩니다",
-		EN: "— write down why you decided this. One entry judges every item below at once"}
 	tReviewPlaceholder = T{
 		KO: "예: PQC 라이브러리로 교체한다", EN: "e.g. replace with a PQC library"}
 
@@ -250,6 +247,12 @@ var (
 	tScopeEmpty = T{
 		KO: "바뀐 규칙이 없습니다 — 승인할 것이 없습니다.",
 		EN: "No rules changed — nothing to approve."}
+
+	tScopeConclusionHint = T{
+		KO: "계층마다 결론을 하나 적으면 그 계층의 변경이 한 번에 판정됩니다. " +
+			"「개별 결론(예외)」은 그 계층에서 어긋나는 것만 따로 적는 자리입니다.",
+		EN: "One conclusion per layer judges every change in it at once. The per-item " +
+			"column is for the exceptions that do not follow the layer's conclusion."}
 
 	tScopeApprovalHint = T{
 		KO: "계층마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤, " +
@@ -385,7 +388,7 @@ var (
 
 	tUnseen     = T{KO: "안 보고 있는 것", EN: "What is not being looked at"}
 	tUnseenNote = T{
-		KO: "자산 스코프가 뺀 것입니다", EN: "dropped by the asset scope"}
+		KO: "자산 스코프가 뺀 것입니다.", EN: "What the asset scope dropped."}
 	tUnseenHint = T{
 		KO: "<b>뺐다고 없어진 것이 아닙니다.</b> 지금도 관측되는 것에는 표시가 붙습니다 — " +
 			"승인이 없거나 오래된 것은 다시 봐야 합니다.",
