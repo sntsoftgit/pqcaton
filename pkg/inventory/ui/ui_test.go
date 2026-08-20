@@ -547,6 +547,47 @@ func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 	}
 }
 
+// IC-UI35 — **관측된 컴포넌트를 후보로 내놓는다.**
+//
+// 컴포넌트는 글자 그대로 같아야 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 옵니다 —
+// 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류 없이 미관측·shadow 로 갈립니다.
+// 관측이 낸 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 한다.
+func TestObservedComponentsAreOffered(t *testing.T) {
+	d := decl.Declaration{Scope: []string{"web"},
+		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}
+	v := ui.NewDeclView(d, ui.Page{Title: "선언", Lang: ui.KO}).WithObserved(
+		map[string][]ui.DeclAsset{"web": {
+			{Runtime: "openssl", Component: "libssl"},
+			{Runtime: "openssl", Component: "libcrypto-fbc9a285"},
+			{Runtime: "openssl", Component: "libssl"}, // 같은 것이 여러 번 관측된다
+		}})
+	if n := len(v.Nodes[0].Seen); n != 2 {
+		t.Fatalf("후보가 %d개 — 같은 것이 겹쳐 있다: %+v", n, v.Nodes[0].Seen)
+	}
+	var b strings.Builder
+	if err := ui.RenderDecl(&b, v); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	for _, want := range []string{`<datalist id="seen-0">`, `value="libcrypto-fbc9a285"`, `list="seen-0"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("컴포넌트 칸이 %q 를 내놓지 않는다:\n%s", want, body)
+		}
+	}
+}
+
+// IC-UI36 — **관측이 없으면 후보도 없다.** 목록을 비워 두고 칸에만 매달면, 브라우저는
+// 아무것도 못 내놓으면서 고르는 칸처럼 보인다.
+func TestNoObservationNoCandidates(t *testing.T) {
+	var b strings.Builder
+	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), "<datalist") {
+		t.Error("관측이 없는데 후보 목록이 있다")
+	}
+}
+
 // IC-UI19 — **영어 화면에 한글이 남아 있지 않다.**
 //
 // 문구를 하나 옮기지 않으면 그 자리만 한국어로 뜹니다. 눈으로는 못 찾습니다 — 화면

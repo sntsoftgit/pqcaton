@@ -112,6 +112,12 @@ func ruleField(layer, i int, field string) string {
 	return "rule." + strconv.Itoa(layer) + "." + strconv.Itoa(i) + "." + field
 }
 
+// seenListID — 그 노드에서 관측된 컴포넌트 후보 목록의 이름.
+//
+// 「행 추가」로 나온 줄도 같은 이름을 부른다 — 목록은 노드 덩어리에 한 번만 있고,
+// 그 안의 줄들이 같이 쓴다. 관측이 없어 목록이 없으면 브라우저는 그냥 무시한다.
+func seenListID(node int) string { return "seen-" + strconv.Itoa(node) }
+
 // runtimeOptions — 런타임 칸에 내놓을 이름들.
 //
 // **관측이 낼 수 있는 이름만 고르게 한다**(reconcile.Runtimes). 손으로 적으면 오타

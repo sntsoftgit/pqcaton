@@ -121,9 +121,10 @@ var (
 			"<code>libcrypto-fbc9a285.so.3</code> 은 <code>libcrypto-fbc9a285</code> 여야 하고, " +
 			"<code>libcrypto</code> 는 다른 자산입니다. <code>jca</code> 의 컴포넌트는 " +
 			"<code>jca-provider-chain</code> 하나입니다.<br>맞지 않아도 막히지 않습니다 — " +
-			"<b>선언한 것은 미관측으로, 관측된 것은 shadow 로</b> 갈립니다. 이미 관측이 " +
-			"있으면 <b>대조 화면의 자산 표에 적힌 이름을 그대로</b> 옮겨 적는 것이 가장 " +
-			"확실합니다.",
+			"<b>선언한 것은 미관측으로, 관측된 것은 shadow 로</b> 갈립니다. 그래서 " +
+			"<b>그 노드에서 관측된 이름을 컴포넌트 칸이 후보로 내놓습니다</b> — 칸을 " +
+			"누르면 뜨고, 거기서 고르면 옮겨 적다 틀릴 일이 없습니다. 관측이 아직 없으면 " +
+			"후보도 없으니 위 규칙대로 적으십시오.",
 		EN: "The <b>crypto assets</b> inside a node are the runtime and component you declare " +
 			"it uses — the modules you expect observation to find. The runtime is " +
 			"<b>picked from a list</b>: only names observation can produce are in it.<br>" +
@@ -134,9 +135,10 @@ var (
 			"<code>libcrypto-fbc9a285.so.3</code> must be <code>libcrypto-fbc9a285</code>, and " +
 			"<code>libcrypto</code> is a different asset. Under <code>jca</code> the component " +
 			"is always <code>jca-provider-chain</code>.<br>A mismatch does not stop you — " +
-			"<b>what you declared goes UNOBSERVED and what was observed goes shadow</b>. If you " +
-			"already have observations, the surest way is to copy the name straight from the " +
-			"asset table on the reconciliation screen."}
+			"<b>what you declared goes UNOBSERVED and what was observed goes shadow</b>. So the " +
+			"component field <b>offers the names observed on that node</b> — click the field and " +
+			"pick one, and there is nothing to copy wrongly. With no observations yet there are " +
+			"no candidates, so write them by the rule above."}
 	tDeclEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
 	tDeclEdgesHint = T{
 		KO: "이 노드가 저 노드와 이렇게 통신한다 — 포트까지 같아야 관측된 엣지와 맞습니다.",

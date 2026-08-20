@@ -75,6 +75,13 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 		</table>
 		<div class="assets">
 			<span class="n">{ tDeclAssets.In(l) }</span>
+			if len(n.Seen) > 0 {
+				<datalist id={ seenListID(i) }>
+					for _, a := range n.Seen {
+						<option value={ a.Component } label={ a.Runtime }></option>
+					}
+				</datalist>
+			}
 			<table>
 				<thead>
 					<tr>
@@ -99,6 +106,7 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 // **화면과 「행 추가」가 같은 조각을 쓴다.** 두 벌이면 이름이 어긋나는 날이 오고, 그러면
 // 새로 넣은 줄만 조용히 저장되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
 templ assetRow(l Lang, node, i int, runtime, component string) {
+	{{ list := seenListID(node) }}
 	<tr>
 		<td>
 			<select name={ assetField(node, i, "runtime") }>
@@ -107,7 +115,7 @@ templ assetRow(l Lang, node, i int, runtime, component string) {
 				}
 			</select>
 		</td>
-		<td><input type="text" name={ assetField(node, i, "component") } value={ component } placeholder="libssl"/></td>
+		<td><input type="text" name={ assetField(node, i, "component") } value={ component } placeholder="libssl" list={ list }/></td>
 		<td>@removeButton(l, "tr", tRemoveAssetAsk.In(l))</td>
 	</tr>
 }

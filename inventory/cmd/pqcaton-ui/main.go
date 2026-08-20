@@ -44,6 +44,7 @@ import (
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
@@ -714,7 +715,33 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := ui.NewDeclView(d, s.page(r, ui.ScreenDecl, sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)))
+	v = v.WithObserved(s.observedAssets(d))
 	html(w, func() error { return ui.RenderDecl(w, v) })
+}
+
+// observedAssets — 노드마다 **관측된** 자산. 컴포넌트 칸의 후보다.
+//
+// **관측이 낸 이름이 곧 맞는 이름이다.** 대조는 글자 그대로 같을 때만 맞는데, 관측 이름은
+// `.so` 뒤가 떼인 채로 온다 — 사람이 대조 화면을 보고 옮겨 적으면 거기서 틀린다.
+//
+// 결과를 읽지 못해도 선언 화면은 열려야 한다. 후보는 거들 뿐이고, 없으면 손으로 적는다.
+func (s *server) observedAssets(d decl.Declaration) map[string][]ui.DeclAsset {
+	if s.results == "" {
+		return nil
+	}
+	res, err := report.Build(s.results, d)
+	if err != nil {
+		return nil
+	}
+	out := map[string][]ui.DeclAsset{}
+	for _, a := range res.Assets {
+		if a.State == reconcile.Unobserved {
+			continue // 선언만 있고 관측되지 않은 것은 후보가 아니다
+		}
+		out[a.Key.NodeID] = append(out[a.Key.NodeID],
+			ui.DeclAsset{Runtime: a.Key.Runtime, Component: a.Key.Component})
+	}
+	return out
 }
 
 // declRow — 「행 추가」. 빈 줄 하나와, 번호가 하나 오른 버튼을 돌려준다.
