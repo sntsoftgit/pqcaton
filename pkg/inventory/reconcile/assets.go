@@ -46,16 +46,31 @@ func declaredFromResults(results []*discoveryv1.CollectionResult) ([]AssetKey, e
 	return out, nil
 }
 
+// 런타임 이름. **대조가 낼 수 있는 이름이 이것뿐이다** — 관측의 `CryptoRuntime` 을
+// 여기서 이 문자열로 옮기고, 선언도 같은 문자열로 적힌다. 다른 이름으로 선언하면 관측과
+// 영원히 맞지 않아 늘 미관측으로 남는다.
+const (
+	RuntimeOpenSSL = "openssl"
+	RuntimeJCA     = "jca"
+)
+
+// Runtimes — 선언에 적을 수 있는 런타임. 화면의 고르는 칸이 이 목록을 쓴다.
+//
+// **아래 switch 에 갈래를 더하면 여기도 더한다.** 목록에 없는 이름은 화면에서 고를 수
+// 없고, switch 에 없는 이름은 관측에서 나오지 않는다 — 둘이 어긋나면 사람이 고를 수 있는
+// 이름으로 선언해도 대조가 되지 않는다.
+func Runtimes() []string { return []string{RuntimeOpenSSL, RuntimeJCA} }
+
 func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 	var out []Observed
 	for _, f := range findings {
 		var rt, comp string
 		switch f.GetCryptoRuntime() {
 		case commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL:
-			rt = "openssl"
+			rt = RuntimeOpenSSL
 			comp = normalizeComponent(f.GetOpenssl().GetLib())
 		case commonv1.CryptoRuntime_CRYPTO_RUNTIME_JCA:
-			rt = "jca"
+			rt = RuntimeJCA
 			comp = "jca-provider-chain"
 		default:
 			continue

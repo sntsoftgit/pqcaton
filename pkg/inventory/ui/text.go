@@ -112,11 +112,31 @@ var (
 	tDeclAssets     = T{KO: "암호 자산", EN: "Crypto assets"}
 	tDeclAssetsHint = T{
 		KO: "노드 안의 <b>암호 자산</b>은 그 노드에서 쓰인다고 선언한 런타임과 " +
-			"컴포넌트입니다 — <code>openssl</code> 의 <code>libssl</code> 처럼. 관측에서 " +
-			"발견되기를 기대하는 모듈이고, 대조가 그것을 관측된 것과 맞댑니다.",
+			"컴포넌트입니다 — 관측에서 발견되기를 기대하는 모듈입니다. 런타임은 " +
+			"<b>목록에서 고릅니다</b> — 관측이 낼 수 있는 이름만 들어 있습니다.<br>" +
+			"<b>컴포넌트는 관측된 이름과 글자 그대로 같아야 맞습니다.</b> 앞부분만 같거나 " +
+			"뒷부분만 같은 것은 맞지 않고, <code>*</code> 같은 자리표도 없습니다. 적을 때는 " +
+			"관측 이름에서 <code>.so</code> 부터 뒤를 뗍니다 — <code>libssl.so.3</code> 은 " +
+			"<code>libssl</code> 로 적습니다. <b>벤더링 해시는 떼지 않습니다</b> — " +
+			"<code>libcrypto-fbc9a285.so.3</code> 은 <code>libcrypto-fbc9a285</code> 여야 하고, " +
+			"<code>libcrypto</code> 는 다른 자산입니다. <code>jca</code> 의 컴포넌트는 " +
+			"<code>jca-provider-chain</code> 하나입니다.<br>맞지 않아도 막히지 않습니다 — " +
+			"<b>선언한 것은 미관측으로, 관측된 것은 shadow 로</b> 갈립니다. 이미 관측이 " +
+			"있으면 <b>대조 화면의 자산 표에 적힌 이름을 그대로</b> 옮겨 적는 것이 가장 " +
+			"확실합니다.",
 		EN: "The <b>crypto assets</b> inside a node are the runtime and component you declare " +
-			"it uses — <code>libssl</code> under <code>openssl</code>, say. They are the modules " +
-			"you expect observation to find, and reconciliation matches them against what was seen."}
+			"it uses — the modules you expect observation to find. The runtime is " +
+			"<b>picked from a list</b>: only names observation can produce are in it.<br>" +
+			"<b>The component must equal the observed name exactly.</b> A shared prefix or " +
+			"suffix does not match, and there are no wildcards. Write the observed name with " +
+			"everything from <code>.so</code> onwards removed — <code>libssl.so.3</code> is " +
+			"written <code>libssl</code>. <b>A vendoring hash stays</b>: " +
+			"<code>libcrypto-fbc9a285.so.3</code> must be <code>libcrypto-fbc9a285</code>, and " +
+			"<code>libcrypto</code> is a different asset. Under <code>jca</code> the component " +
+			"is always <code>jca-provider-chain</code>.<br>A mismatch does not stop you — " +
+			"<b>what you declared goes UNOBSERVED and what was observed goes shadow</b>. If you " +
+			"already have observations, the surest way is to copy the name straight from the " +
+			"asset table on the reconciliation screen."}
 	tDeclEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
 	tDeclEdgesHint = T{
 		KO: "이 노드가 저 노드와 이렇게 통신한다 — 포트까지 같아야 관측된 엣지와 맞습니다.",

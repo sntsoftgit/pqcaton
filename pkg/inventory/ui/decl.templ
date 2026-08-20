@@ -100,8 +100,14 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 // 새로 넣은 줄만 조용히 저장되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
 templ assetRow(l Lang, node, i int, runtime, component string) {
 	<tr>
-		<td><input type="text" name={ assetField(node, i, "runtime") } value={ runtime } placeholder="openssl | jca"/></td>
-		<td><input type="text" name={ assetField(node, i, "component") } value={ component }/></td>
+		<td>
+			<select name={ assetField(node, i, "runtime") }>
+				for _, rt := range runtimeOptions(runtime) {
+					<option value={ rt } selected?={ rt == runtime }>{ rt }</option>
+				}
+			</select>
+		</td>
+		<td><input type="text" name={ assetField(node, i, "component") } value={ component } placeholder="libssl"/></td>
 		<td>@removeButton(l, "tr", tRemoveAssetAsk.In(l))</td>
 	</tr>
 }

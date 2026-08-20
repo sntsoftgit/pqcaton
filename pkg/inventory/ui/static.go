@@ -5,8 +5,11 @@ import (
 	"io/fs"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/a-h/templ"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 )
 
 // static — 화면이 브라우저로 내보내는 것. **바이너리에 박아 나간다.**
@@ -107,6 +110,27 @@ func ruleRowsID(layer int) string { return "rows-rule-" + strconv.Itoa(layer) }
 
 func ruleField(layer, i int, field string) string {
 	return "rule." + strconv.Itoa(layer) + "." + strconv.Itoa(i) + "." + field
+}
+
+// runtimeOptions — 런타임 칸에 내놓을 이름들.
+//
+// **관측이 낼 수 있는 이름만 고르게 한다**(reconcile.Runtimes). 손으로 적으면 오타
+// 하나로 영원히 맞지 않는 선언이 되는데, 대조는 그것을 「선언했는데 관측되지 않았다」로
+// 올린다 — 사람은 그 노드에서 그 모듈이 안 쓰인다고 읽는다.
+//
+// 다만 **파일에 있던 낯선 이름은 지우지 않는다.** 손으로 적었거나 상류에 런타임이 는
+// 것일 수 있고, 화면이 조용히 바꿔 쓰면 선언이 사람 몰래 달라진다.
+func runtimeOptions(current string) []string {
+	out := reconcile.Runtimes()
+	for _, rt := range out {
+		if rt == current {
+			return out
+		}
+	}
+	if strings.TrimSpace(current) == "" {
+		return out
+	}
+	return append(out, current)
 }
 
 // portText — 포트를 칸에 넣을 문자열로. 0 도 그대로 보인다 — 「안 적었다」와 「0 이라고

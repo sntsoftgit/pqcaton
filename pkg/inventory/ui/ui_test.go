@@ -490,6 +490,63 @@ func TestRemoveButtonsAskFirst(t *testing.T) {
 	}
 }
 
+// IC-UI33 — **런타임은 고르고, 낯선 이름은 지우지 않는다.**
+//
+// 손으로 적으면 오타 하나로 영원히 맞지 않는 선언이 됩니다. 대조는 그것을 「선언했는데
+// 관측되지 않았다」로 올리고, 사람은 그 노드에서 그 모듈이 안 쓰인다고 읽습니다.
+//
+// 다만 파일에 있던 이름을 화면이 조용히 바꿔 쓰면 선언이 사람 몰래 달라집니다 — 상류에
+// 런타임이 늘었을 수도 있으므로, 모르는 이름도 고른 채로 남긴다.
+func TestRuntimeIsPickedFromAList(t *testing.T) {
+	d := decl.Declaration{Scope: []string{"web"},
+		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}},
+		Assets: []decl.Asset{{Node: "web", Runtime: "bouncycastle", Component: "bc-fips"}}}
+	var b strings.Builder
+	if err := ui.RenderDecl(&b, ui.NewDeclView(d, ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	if !strings.Contains(body, `<select name="asset.0.0.runtime">`) {
+		t.Errorf("런타임이 고르는 칸이 아니다:\n%s", body)
+	}
+	for _, want := range []string{`value="openssl"`, `value="jca"`, `value="bouncycastle"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("런타임 목록에 %q 가 없다", want)
+		}
+	}
+	// 파일에 있던 이름이 고른 채로 남는다 — 저장해도 달라지지 않는다.
+	got, _ := ui.ApplyDecl(d, url.Values{
+		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},
+		"asset.0.0.runtime": {"bouncycastle"}, "asset.0.0.component": {"bc-fips"},
+	})
+	if len(got.Assets) != 1 || got.Assets[0].Runtime != "bouncycastle" {
+		t.Errorf("낯선 런타임이 사라졌다: %+v", got.Assets)
+	}
+}
+
+// IC-UI34 — **컴포넌트를 어떻게 적는지 화면이 말한다.**
+//
+// 맞대는 방식이 **글자 그대로 같은가**입니다. 앞뒤 일부 일치도, 자리표도 없습니다.
+// 그런데 관측 이름은 `.so` 뒤가 떼인 채로 오므로, 관측에 보이는 대로(`libssl.so.3`)
+// 적으면 맞지 않습니다 — 그리고 그것이 오류 없이 미관측·shadow 로 갈립니다.
+func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
+	var b strings.Builder
+	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	for _, want := range []string{
+		"글자 그대로 같아야",   // 일치 방식
+		"libssl.so.3",     // 관측 이름을 어떻게 옮겨 적는지
+		"libcrypto-fbc9a285", // 벤더링 해시는 떼지 않는다
+		"jca-provider-chain",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("컴포넌트 설명에 %q 가 없다", want)
+		}
+	}
+}
+
 // IC-UI19 — **영어 화면에 한글이 남아 있지 않다.**
 //
 // 문구를 하나 옮기지 않으면 그 자리만 한국어로 뜹니다. 눈으로는 못 찾습니다 — 화면

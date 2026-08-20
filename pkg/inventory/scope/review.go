@@ -10,6 +10,7 @@ import (
 	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 )
 
 // Excluded — 정책이 뺀 자산 하나.
@@ -137,9 +138,9 @@ func Review(ex []Excluded, prior []decision.Judgment, now, ttlSeconds int64) []R
 func name(f *discoveryv1.Finding) (runtime, asset string) {
 	switch f.GetCryptoRuntime() {
 	case commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL:
-		return "openssl", f.GetOpenssl().GetLib()
+		return reconcile.RuntimeOpenSSL, f.GetOpenssl().GetLib()
 	case commonv1.CryptoRuntime_CRYPTO_RUNTIME_JCA:
-		return "jca", "jca-provider-chain"
+		return reconcile.RuntimeJCA, "jca-provider-chain"
 	}
 	return "", ""
 }
