@@ -49,7 +49,9 @@ const (
 func (w Warning) English() string {
 	switch w.Code {
 	case WarnDeclProblems:
-		return fmt.Sprintf("%d places where the declaration does not add up — open it on the declaration screen", w.Count)
+		// **화면은 어느 자리인지 말하지 않는다** — 선언 화면은 적는 자리다. 어느 자리인지는
+		// `pqcaton-report` 가 파일 안쪽 표기로 말한다.
+		return fmt.Sprintf("%d places where the declaration does not add up — `pqcaton-report` names them", w.Count)
 	case WarnUnreadableResult:
 		return "skipped (unreadable): " + w.Detail
 	}
