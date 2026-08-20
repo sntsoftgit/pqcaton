@@ -1,8 +1,11 @@
 package ui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 )
 
 // declPage — 선언 편집. **틀린 자리를 위에 먼저 보여 준다** — 저장은 막지 않되, 그대로
@@ -11,11 +14,11 @@ templ declPage(v DeclView) {
 	@shell(v.Page) {
 		if len(v.Problems) > 0 {
 			<div class="warn-list">
-				<strong>{ tDeclProblems.In(v.Page.Lang) } { strconv.Itoa(len(v.Problems)) }</strong>
+				<strong>{ fmt.Sprintf(tDeclProblems.In(v.Page.Lang), len(v.Problems)) }</strong>
 				<p class="hint">@templ.Raw(tDeclProblemsHint.In(v.Page.Lang))</p>
 				<ul>
 					for _, p := range v.Problems {
-						<li><code>{ p.Where }</code> — { problemWhat(v.Page.Lang, p) }<br/><span class="hint">{ problemWhy(v.Page.Lang, p) }</span></li>
+						@problemLine(v.Page.Lang, p)
 					}
 				</ul>
 			</div>
@@ -163,4 +166,19 @@ templ rowFragment(l Lang, kind string, i int) {
 			@edgeRow(i, "", "", "", "")
 	}
 	@addRow(l, kind, i+1, true)
+}
+
+// problemLine — 어긋난 자리 한 줄.
+//
+// **어느 절의 무엇인지 먼저 말한다.** 「scope/pay-db」 를 보여 줘 봐야 읽는 사람은 그
+// 자리를 화면에서 찾지 못한다.
+templ problemLine(l Lang, p decl.Problem) {
+	{{ section, id := whereLabel(l, p.Where) }}
+	<li>
+		if section != "" {
+			<b>{ section }</b>
+		}
+		<code>{ id }</code> — { problemWhat(l, p) }<br/>
+		<span class="hint">@templ.Raw(problemWhy(l, p))</span>
+	</li>
 }

@@ -317,8 +317,8 @@ func TestDeclShowsProblems(t *testing.T) {
 	s, _ := withDecl(t)
 	// 화면은 두 말을 쓴다 — 여기서는 한국어로 잰다.
 	body := get(t, s, "/decl?lang=ko").Body.String()
-	// pay-db 는 스코프에 있는데 IP 표에 없다.
-	if !strings.Contains(body, "IP 표에 없습니다") {
+	// pay-db 는 관리 대상인데 IP를 안 적었다.
+	if !strings.Contains(body, "IP가 없습니다") {
 		t.Errorf("이어지지 않을 노드를 짚지 않는다:\n%s", body)
 	}
 	if !strings.Contains(body, "shadow") {

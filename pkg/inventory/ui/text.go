@@ -57,12 +57,21 @@ var (
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
 var (
+	// **머리글이 무엇을 몇 개, 그리고 왜 고쳐야 하는지를 말한다.** 개수만 세어 두면
+	// 읽는 사람은 그것이 경고인지 오류인지, 지금 고쳐야 하는지 알 수 없다.
 	tDeclProblems = T{
-		KO: "선언이 앞뒤가 맞지 않는 자리",
-		EN: "places where the declaration contradicts itself"}
+		KO: "고치지 않으면 대조가 틀리는 곳 %d군데",
+		EN: "%d places where reconciliation will go wrong unless you fix them"}
 	tDeclProblemsHint = T{
-		KO: "저장은 됩니다. 다만 그대로 두면 대조 결과가 <b>오류 없이 틀립니다.</b>",
-		EN: "Saving still works. But left as is, reconciliation will be <b>wrong without erroring.</b>"}
+		KO: "<b>저장은 됩니다.</b> 다만 고치지 않으면 대조 결과가 <b>오류 없이 틀립니다</b> — " +
+			"막히지 않으니 눈으로는 알 수 없습니다.",
+		EN: "<b>Saving still works.</b> But left unfixed, reconciliation comes out " +
+			"<b>wrong without erroring</b> — nothing stops you, so you cannot see it."}
+
+	// 어느 자리인지. 파일 안쪽 표기(`scope/…`)가 아니라 **화면의 어느 절**인지 말한다.
+	tWhereNodes  = T{KO: "관리 대상 노드", EN: "Nodes under management"}
+	tWhereAssets = T{KO: "자산", EN: "Assets"}
+	tWhereEdges  = T{KO: "통신 엣지", EN: "Communication edges"}
 
 	tDeclOrg     = T{KO: "조직", EN: "Organization"}
 	tDeclOrgHint = T{

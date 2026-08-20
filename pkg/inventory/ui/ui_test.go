@@ -590,3 +590,37 @@ func TestApplyDeclDerivesScopeFromTheTable(t *testing.T) {
 		t.Fatalf("다시 그리면 달라진다: %+v", back)
 	}
 }
+
+// IC-UI28 — **어긋난 자리를 화면의 절 이름으로 말한다.**
+//
+// 예전에는 `scope/pay-db` 라고 적어 줬습니다. 그건 파일 안쪽 표기라, 읽는 사람이 그
+// 자리를 화면에서 찾지 못합니다. 그리고 머리글이 개수만 세면 그것이 경고인지 오류인지,
+// 지금 고쳐야 하는지 알 수 없습니다.
+func TestProblemBoxTellsWhereAndWhy(t *testing.T) {
+	d := decl.Declaration{
+		Scope: []string{"pay-db"},
+		Edges: []decl.Edge{{Src: "web", Dst: "pay-db", Proto: "TLS"}}, // 포트 0 · 보내는 쪽 스코프 밖
+	}
+	var b strings.Builder
+	if err := ui.RenderDecl(&b, ui.NewDeclView(d, ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	for _, want := range []string{
+		"고치지 않으면 대조가 틀리는 곳", // 무엇이 몇 개이고 왜 고쳐야 하는가
+		"군데",              // 숫자에 단위가 붙는다
+		"<b>관리 대상 노드</b>", // 화면의 절 이름으로
+		"<b>통신 엣지</b>",    //
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("문제 상자에 %q 가 없다", want)
+		}
+	}
+	if strings.Contains(body, "scope/") || strings.Contains(body, "edges/") {
+		t.Error("파일 안쪽 표기가 그대로 나온다 — 읽는 사람은 그 자리를 화면에서 못 찾는다")
+	}
+	// 사유의 강조가 별표로 찍히면 안 된다 — 태그여야 한다.
+	if strings.Contains(body, "**") {
+		t.Error("별표가 그대로 찍힌다")
+	}
+}
