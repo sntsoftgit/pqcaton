@@ -53,8 +53,8 @@ PYIN
 docker cp "$DECL" pqcota-ctl:/work/declaration.json
 
 echo "▶ 3/5 inventory reconciliation + governance topology (pqcaton-report)…"
-# **콘솔 출력을 기대 파일로 그대로 갖고 온다.** 손으로 한 번 떠 놓으면 그 순간부터
-# 드리프트한다 - 실제로 그렇게 낡아 있었고, 명령의 출력이 영어가 된 날에도 한국어인 채
+# **콘솔 출력을 기대 파일로 그대로 갖고 온다.** 손으로 한 번 만들어 두면 그 순간부터
+# 어긋난다 - 실제로 그렇게 낡아 있었고, 명령의 출력이 영어가 된 날에도 한국어인 채
 # 남아 있었다. 스크립트가 뜨면 어긋날 수가 없다.
 docker exec pqcota-ctl bash -lc 'pqcaton-report /work/results /work/declaration.json /work/topology-governance.dot' \
   | tee "$DEMO_DIR/expected-output/report.txt"

@@ -333,7 +333,7 @@ func (s *server) save(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/review", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
-// finalize — **명령과 같은 게이트를 탄다.** 여기서 따로 판정하지 않는다.
+// finalize — **명령과 같은 같은 검사를 거친다.** 여기서 따로 판정하지 않는다.
 func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 	sf, err := s.applyReview(r)
 	if err != nil {
@@ -510,7 +510,7 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/scope", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
-// scopeFinalize — **명령과 같은 게이트를 탄다.**
+// scopeFinalize — **명령과 같은 같은 검사를 거친다.**
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 	if s.scope == "" {
 		http.Error(w, "no scope session was given", http.StatusNotFound)

@@ -24,7 +24,7 @@ var (
 	tSubSession = T{KO: "세션", EN: "session"}
 	tSubResults = T{KO: "결과", EN: "results"}
 
-	// 저장·확정 뒤에 뜨는 알림. **화면 글이라 말을 탄다.**
+	// 저장·확정 뒤에 뜨는 알림. **화면 글이라 보는 사람의 말로 뜬다.**
 	tSavedNotFinal = T{
 		KO: "세션 파일에 저장했습니다 — 아직 확정하지 않았습니다",
 		EN: "Saved to the session file — not finalized yet"}
@@ -143,7 +143,7 @@ var (
 	tApproval           = T{KO: "승인", EN: "Approval"}
 	tReviewApprovalHint = T{
 		KO: "정책마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤, " +
-			"<b>확정</b>하면 계획이 나갑니다. 셋이 다 있어야 통과합니다.",
+			"<b>확정</b>하면 계획이 만들어집니다. 셋이 다 있어야 통과합니다.",
 		EN: "Write a <b>judgment</b> for each policy, fill in the <b>approver</b> and " +
 			"signature here, then <b>finalize</b> to emit the plan. All three are required."}
 	tReviewer  = T{KO: "승인자", EN: "Approver"}
@@ -152,7 +152,7 @@ var (
 	tSaveOnly       = T{KO: "저장만", EN: "Save only"}
 	tFinalizePlan   = T{KO: "확정하고 계획 내보내기", EN: "Finalize and emit the plan"}
 	tReviewGateHint = T{
-		KO: "확정은 <code>pqcaton-decide close</code> 와 같은 게이트를 탑니다 — " +
+		KO: "확정은 <code>pqcaton-decide close</code> 와 같은 검사를 거칩니다 — " +
 			"필수 항목의 결론과 서명이 모두 있어야 통과합니다.",
 		EN: "Finalizing goes through the same gate as <code>pqcaton-decide close</code> — " +
 			"every mandatory item needs a conclusion, and the signature must be present."}
@@ -249,19 +249,19 @@ var (
 
 	tScopeApprovalHint = T{
 		KO: "계층마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤, " +
-			"<b>확정</b>하면 정책이 나갑니다. 셋이 다 있어야 통과합니다.",
+			"<b>확정</b>하면 정책이 만들어집니다. 셋이 다 있어야 통과합니다.",
 		EN: "Write a <b>judgment</b> for each layer, fill in the <b>approver</b> and " +
 			"signature here, then <b>finalize</b> to emit the policy. All three are required."}
 	tPolicyOnFinalize = T{KO: "확정될 정책", EN: "Policy to be finalized"}
 	tPolicyRulesAll   = T{KO: "규칙 %d개 전부", EN: "all %d rules"}
 	tPolicyWholeHint  = T{
-		KO: "<b>판정은 달라진 규칙만 보지만, 확정하면 정책 전체가 나갑니다.</b> " +
+		KO: "<b>판정은 달라진 규칙만 보지만, 확정하면 정책 전체가 만들어집니다.</b> " +
 			"pqcota의 집행기가 일부가 아니라 정책 전체를 받기 때문입니다.",
 		EN: "<b>You judge only what changed, but finalizing emits the whole policy.</b> " +
 			"pqcota's enforcer takes the entire policy, not a fragment."}
 	tFinalizePolicy = T{KO: "확정하고 정책 내보내기", EN: "Finalize and emit the policy"}
 	tScopeGateHint  = T{
-		KO: "확정은 <code>pqcaton-scope close</code> 와 같은 게이트를 탑니다. 나온 CSV 가 " +
+		KO: "확정은 <code>pqcaton-scope close</code> 와 같은 검사를 거칩니다. 나온 CSV 가 " +
 			"<code>pqcota-ingest -scope-assets</code> 의 입력입니다.",
 		EN: "Finalizing goes through the same gate as <code>pqcaton-scope close</code>. " +
 			"The CSV it emits is the input to <code>pqcota-ingest -scope-assets</code>."}
@@ -275,7 +275,7 @@ var (
 		KO: "대상 노드에 collector를 반입·실행·회수했습니다. 노드에는 아무것도 남지 않습니다.",
 		EN: "The collector was carried to the target node, run, and taken back. " +
 			"Nothing is left behind on the node."}
-	tColCollector  = T{KO: "그 노드에서 돈 collector", EN: "Collectors that ran on it"}
+	tColCollector  = T{KO: "그 노드에서 실행된 collector", EN: "Collectors that ran on it"}
 	tObservedCount = T{
 		KO: "관측 자산 <b>%d</b> · 협상된 통신 <b>%d</b>건",
 		EN: "<b>%d</b> assets observed · <b>%d</b> negotiated connections"}
@@ -336,7 +336,7 @@ var (
 			"<b>What was not seen is dashed</b>, so it is distinct from what is absent."}
 	tNoDot = T{
 		KO: "<code>dot</code>(Graphviz)이 이 기계에 없어 그리지 못했습니다. " +
-			"<b>선택 사항입니다</b> — 설치하지 않아도 나머지는 그대로 돕니다(README 「사전 준비」). " +
+			"<b>선택 사항입니다</b> — 설치하지 않아도 나머지는 그대로 됩니다(README 「사전 준비」). " +
 			"<code>apt install graphviz</code> · <code>brew install graphviz</code> · " +
 			"<code>winget install graphviz</code>.<br>설치하지 않고 그리려면 아래를 저장해 " +
 			"아무 데서나 <code>dot -Tsvg topology.dot -o topology.svg</code> 로 그리십시오.",
@@ -360,12 +360,12 @@ var (
 			"Not a step in the procedure — somewhere to come and narrow things down at any time."}
 	tInventoryBounds = T{
 		KO: "<b>손에 든 파일에서만 봅니다</b> — 관측 결과 · 판정 원장 · 정책 CSV. " +
-			"스냅샷을 여러 벌 보관해 시간축으로 견주는 일은 여기서 하지 않습니다.",
+			"스냅샷을 여러 벌 보관해 시간에 걸쳐 견주는 일은 여기서 하지 않습니다.",
 		EN: "<b>Only from the files at hand</b> — collected results, the judgment ledger, " +
 			"the policy CSV. Keeping many snapshots and comparing them over time is not done here."}
 
 	tSearch      = T{KO: "찾기", EN: "Search"}
-	tSearchQ     = T{KO: "아무 칸에나 걸립니다", EN: "matches any column"}
+	tSearchQ     = T{KO: "어느 칸이든 찾습니다", EN: "matches any column"}
 	tSearchState = T{KO: "상태", EN: "State"}
 	tSearchAll   = T{KO: "전부", EN: "all"}
 	tSearchGo    = T{KO: "좁히기", EN: "Narrow"}
@@ -373,7 +373,7 @@ var (
 	// **자리를 번호로 고정한다.** 한국어는 「전체 중 몇 개」, 영어는 「몇 개 of 전체」로
 	// 어순이 뒤집힌다 — 번호가 없으면 한쪽 말에서 숫자 둘이 자리를 바꿔 뜬다.
 	tShowingOf = T{KO: "%[1]d개 중 <b>%[2]d개</b>", EN: "<b>%[2]d</b> of %[1]d"}
-	tNoMatch   = T{KO: "걸린 것이 없습니다.", EN: "Nothing matched."}
+	tNoMatch   = T{KO: "찾은 것이 없습니다.", EN: "Nothing matched."}
 
 	tUnseen     = T{KO: "안 보고 있는 것", EN: "What is not being looked at"}
 	tUnseenNote = T{
@@ -402,7 +402,7 @@ var (
 
 	tHistory     = T{KO: "판정 이력", EN: "Judgment history"}
 	tHistoryHint = T{
-		KO: "이 자산이 <b>언제 누구에 의해 무엇으로</b> 정해졌나. 원장은 덧붙이기만 하므로 " +
+		KO: "<b>누가 언제 무엇으로</b> 정했나. 원장은 덧붙이기만 하므로 " +
 			"고쳐 쓴 흔적이 남지 않습니다 — 아래가 그대로 그 기록입니다.",
 		EN: "<b>When, by whom, and as what</b> this asset was decided. The ledger is " +
 			"append-only, so nothing is overwritten — what is below is the record itself."}

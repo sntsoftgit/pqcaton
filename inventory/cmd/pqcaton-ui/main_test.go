@@ -127,7 +127,7 @@ func TestSaveDoesNotFinalize(t *testing.T) {
 	}
 }
 
-// IC-U3 — **화면도 같은 게이트를 탄다.** 서명이 없으면 확정되지 않고, **무엇이 남았는지**
+// IC-U3 — **화면도 같은 같은 검사를 거친다.** 서명이 없으면 확정되지 않고, **무엇이 남았는지**
 // 화면에 그대로 보인다 — 안 보여 주면 사람은 화면에서도 고칠 수 없다.
 func TestFinalizeRefusesWithoutSignature(t *testing.T) {
 	s, _ := newServer(t)
@@ -471,7 +471,7 @@ func TestScopeTabComesBeforeSurvey(t *testing.T) {
 	}
 }
 
-// IC-U17 — **화면도 같은 게이트를 탄다.** 근거 필수 변경에 결론이 없으면 정책이 안 나가고,
+// IC-U17 — **화면도 같은 같은 검사를 거친다.** 근거 필수 변경에 결론이 없으면 정책이 안 나가고,
 // 무엇이 남았는지 화면에 그대로 보인다.
 func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 	s, _ := withScope(t)
