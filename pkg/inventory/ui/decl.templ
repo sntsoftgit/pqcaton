@@ -1,9 +1,6 @@
 package ui
 
-import (
-	"strconv"
-	"strings"
-)
+import "strconv"
 
 // declPage — 선언 편집. 화면은 적는 자리만 내놓는다 — 앞뒤가 맞는지는 저장한 뒤
 // 명령(`pqcaton-report`)과 검토 화면이 짚는다.
@@ -13,44 +10,17 @@ templ declPage(v DeclView) {
 			<fieldset>
 				<legend>{ tDeclOrg.In(v.Page.Lang) }</legend>
 				@tip(v.Page.Lang, tDeclOrgHint.In(v.Page.Lang))
-				<input type="text" name="org" value={ v.Decl.Org } placeholder="local"/>
+				<input type="text" name="org" value={ v.Org } placeholder="local"/>
 			</fieldset>
 			<fieldset>
 				<legend>{ tDeclScope.In(v.Page.Lang) }</legend>
-				@tip(v.Page.Lang, tDeclScopeHint.In(v.Page.Lang)+" "+tDeclNodesHint.In(v.Page.Lang))
-				<table>
-					<thead>
-						<tr>
-							<th style="width:14rem">{ tColName.In(v.Page.Lang) }</th>
-							<th>{ tColIP.In(v.Page.Lang) }</th>
-						</tr>
-					</thead>
-					<tbody id={ rowsID(KindNode) }>
-						for i, n := range v.Decl.Nodes {
-							@nodeRow(i, n.Name, strings.Join(n.IPs, ", "))
-						}
-					</tbody>
-				</table>
-				@addRow(v.Page.Lang, KindNode, len(v.Decl.Nodes), false)
-			</fieldset>
-			<fieldset>
-				<legend>{ tDeclAssets.In(v.Page.Lang) }</legend>
-				@tip(v.Page.Lang, tDeclAssetsHint.In(v.Page.Lang))
-				<table>
-					<thead>
-						<tr>
-							<th style="width:12rem">{ tColNode.In(v.Page.Lang) }</th>
-							<th style="width:8rem">{ tColRuntime.In(v.Page.Lang) }</th>
-							<th>{ tColComponent.In(v.Page.Lang) }</th>
-						</tr>
-					</thead>
-					<tbody id={ rowsID(KindAsset) }>
-						for i, a := range v.Decl.Assets {
-							@assetRow(i, a.Node, a.Runtime, a.Component)
-						}
-					</tbody>
-				</table>
-				@addRow(v.Page.Lang, KindAsset, len(v.Decl.Assets), false)
+				@tip(v.Page.Lang, tDeclScopeHint.In(v.Page.Lang)+" "+tDeclNodesHint.In(v.Page.Lang)+" "+tDeclAssetsHint.In(v.Page.Lang))
+				<div id={ rowsID(KindNode) }>
+					for i, n := range v.Nodes {
+						@nodeBlock(v.Page.Lang, i, n)
+					}
+				</div>
+				@addRow(v.Page.Lang, KindNode, 0, len(v.Nodes), false)
 			</fieldset>
 			<fieldset>
 				<legend>{ tDeclEdges.In(v.Page.Lang) }</legend>
@@ -65,12 +35,12 @@ templ declPage(v DeclView) {
 						</tr>
 					</thead>
 					<tbody id={ rowsID(KindEdge) }>
-						for i, e := range v.Decl.Edges {
+						for i, e := range v.Edges {
 							@edgeRow(i, e.Src, e.Dst, portText(e.Port), e.Proto)
 						}
 					</tbody>
 				</table>
-				@addRow(v.Page.Lang, KindEdge, len(v.Decl.Edges), false)
+				@addRow(v.Page.Lang, KindEdge, 0, len(v.Edges), false)
 			</fieldset>
 			<div class="actions">
 				<button class="primary">{ tDeclSave.In(v.Page.Lang) }</button>
@@ -80,22 +50,53 @@ templ declPage(v DeclView) {
 	}
 }
 
-// nodeRow · assetRow · edgeRow — 표의 한 줄.
+// nodeBlock — 노드 한 대와 그 안의 자산. **자산을 노드 안에 둔다** — 「이 노드에서 이
+// 모듈이 쓰인다」가 자산이므로, 따로 둔 표에서는 노드 이름을 사람이 다시 적어야 했다.
+// 오타 하나면 선언은 있는데 아무 노드에도 붙지 않는 자산이 된다.
+templ nodeBlock(l Lang, i int, n DeclNode) {
+	<div class="node" id={ nodeBlockID(i) }>
+		<table class="node-head">
+			<thead>
+				<tr>
+					<th style="width:14rem">{ tColName.In(l) }</th>
+					<th>{ tColIP.In(l) }</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ n.Name }/></td>
+					<td><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ n.IPText() }/></td>
+				</tr>
+			</tbody>
+		</table>
+		<div class="assets">
+			<span class="n">{ tDeclAssets.In(l) }</span>
+			<table>
+				<thead>
+					<tr>
+						<th style="width:8rem">{ tColRuntime.In(l) }</th>
+						<th>{ tColComponent.In(l) }</th>
+					</tr>
+				</thead>
+				<tbody id={ assetRowsID(i) }>
+					for j, a := range n.Assets {
+						@assetRow(i, j, a.Runtime, a.Component)
+					}
+				</tbody>
+			</table>
+			@addRow(l, KindAsset, i, len(n.Assets), false)
+		</div>
+	</div>
+}
+
+// assetRow · edgeRow — 표의 한 줄.
 //
 // **화면과 「행 추가」가 같은 조각을 쓴다.** 두 벌이면 이름이 어긋나는 날이 오고, 그러면
 // 새로 넣은 줄만 조용히 저장되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
-templ nodeRow(i int, name, ips string) {
+templ assetRow(node, i int, runtime, component string) {
 	<tr>
-		<td><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ name }/></td>
-		<td><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ ips }/></td>
-	</tr>
-}
-
-templ assetRow(i int, node, runtime, component string) {
-	<tr>
-		<td><input type="text" name={ "asset.node." + strconv.Itoa(i) } value={ node }/></td>
-		<td><input type="text" name={ "asset.runtime." + strconv.Itoa(i) } value={ runtime } placeholder="openssl | jca"/></td>
-		<td><input type="text" name={ "asset.component." + strconv.Itoa(i) } value={ component }/></td>
+		<td><input type="text" name={ assetField(node, i, "runtime") } value={ runtime } placeholder="openssl | jca"/></td>
+		<td><input type="text" name={ assetField(node, i, "component") } value={ component }/></td>
 	</tr>
 }
 
@@ -114,27 +115,29 @@ templ edgeRow(i int, src, dst, port, proto string) {
 // 줄 뒤의 것은 **오류 없이 저장되지 않는다.** 그래서 서버가 다음 번호를 쥐고, 줄을 하나
 // 내줄 때마다 이 버튼을 자기 자신으로 갈아 끼운다(`hx-swap-oob`).
 //
+// 자산은 노드마다 표가 따로라 버튼도 노드마다 따로다 — node 가 그 번호다.
+//
 // 말도 주소에 실어 보낸다 — 조각만 받아 오는 요청이라 쿠키에 기대지 않는다.
-templ addRow(l Lang, kind string, next int, oob bool) {
-	<div class="addrow" id={ "add-" + kind } { oobAttr(oob)... }>
+templ addRow(l Lang, kind string, node, next int, oob bool) {
+	<div class="addrow" id={ addRowID(kind, node) } { oobAttr(oob)... }>
 		<button
 			type="button"
-			hx-get={ RowPath + "?kind=" + kind + "&i=" + strconv.Itoa(next) + "&" + LangParam + "=" + string(l) }
-			hx-target={ "#" + rowsID(kind) }
+			hx-get={ RowPath + "?kind=" + kind + "&node=" + strconv.Itoa(node) + "&i=" + strconv.Itoa(next) + "&" + LangParam + "=" + string(l) }
+			hx-target={ "#" + addTarget(kind, node) }
 			hx-swap="beforeend"
-		>{ tAddRow.In(l) }</button>
+		>{ addLabel(l, kind) }</button>
 	</div>
 }
 
 // rowFragment — 「행 추가」가 돌려주는 것: 새 줄 하나와, 번호가 하나 오른 버튼.
-templ rowFragment(l Lang, kind string, i int) {
+templ rowFragment(l Lang, kind string, node, i int) {
 	switch kind {
 		case KindNode:
-			@nodeRow(i, "", "")
+			@nodeBlock(l, i, DeclNode{})
 		case KindAsset:
-			@assetRow(i, "", "", "")
+			@assetRow(node, i, "", "")
 		case KindEdge:
 			@edgeRow(i, "", "", "", "")
 	}
-	@addRow(l, kind, i+1, true)
+	@addRow(l, kind, node, i+1, true)
 }

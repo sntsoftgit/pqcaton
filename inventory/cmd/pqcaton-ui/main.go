@@ -738,7 +738,15 @@ func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "the row number is out of range", http.StatusBadRequest)
 		return
 	}
-	html(w, func() error { return ui.RenderRow(w, ui.PickLang(r), kind, i) })
+	// 자산은 어느 노드의 것인지가 함께 온다 — 그 번호도 밖에서 오는 값이다.
+	node := 0
+	if v := r.URL.Query().Get("node"); v != "" {
+		if node, err = strconv.Atoi(v); err != nil || node < 0 || node > maxRows {
+			http.Error(w, "the node number is out of range", http.StatusBadRequest)
+			return
+		}
+	}
+	html(w, func() error { return ui.RenderRow(w, ui.PickLang(r), kind, node, i) })
 }
 
 // maxRows — 한 표에 열어 줄 줄 수의 상한. 사람이 화면에서 손으로 넣는 자리라 이보다

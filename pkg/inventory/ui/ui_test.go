@@ -39,7 +39,7 @@ func TestDeclRenderShowsEverything(t *testing.T) {
 	for _, want := range []string{
 		`name="org"`,
 		`name="node.name.0"`, "10.0.0.1, 10.0.1.1", // 여러 IP를 한 칸에
-		`name="asset.component.0"`, "libssl",
+		`name="asset.0.0.component"`, "libssl",
 		`name="edge.port.0"`, "443",
 	} {
 		if !strings.Contains(body, want) {
@@ -63,7 +63,7 @@ func TestApplyDeclRoundTrip(t *testing.T) {
 	f := url.Values{
 		"org":         {in.Org},
 		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1, 10.0.1.1"},
-		"asset.node.0": {"web"}, "asset.runtime.0": {"openssl"}, "asset.component.0": {"libssl"},
+		"asset.0.0.runtime": {"openssl"}, "asset.0.0.component": {"libssl"},
 		"edge.src.0": {"web"}, "edge.dst.0": {"web"}, "edge.port.0": {"443"}, "edge.proto.0": {"TLS"},
 	}
 	got, _ := ui.ApplyDecl(in, f)
@@ -203,11 +203,12 @@ func TestAddedRowUsesSameFormNames(t *testing.T) {
 		want []string
 	}{
 		{ui.KindNode, []string{`name="node.name.7"`, `name="node.ips.7"`}},
-		{ui.KindAsset, []string{`name="asset.node.7"`, `name="asset.runtime.7"`, `name="asset.component.7"`}},
+		// 자산은 어느 노드의 것인지가 폼 이름에 들어간다 — 노드 2의 여덟째 줄이다.
+		{ui.KindAsset, []string{`name="asset.2.7.runtime"`, `name="asset.2.7.component"`}},
 		{ui.KindEdge, []string{`name="edge.src.7"`, `name="edge.dst.7"`, `name="edge.port.7"`, `name="edge.proto.7"`}},
 	} {
 		var b strings.Builder
-		if err := ui.RenderRow(&b, ui.KO, tc.kind, 7); err != nil {
+		if err := ui.RenderRow(&b, ui.KO, tc.kind, 2, 7); err != nil {
 			t.Fatal(err)
 		}
 		for _, w := range tc.want {
@@ -225,7 +226,7 @@ func TestAddedRowUsesSameFormNames(t *testing.T) {
 // 오류 없이 틀리는 자리입니다.
 func TestAddedRowAdvancesTheButton(t *testing.T) {
 	var b strings.Builder
-	if err := ui.RenderRow(&b, ui.KO, ui.KindNode, 7); err != nil {
+	if err := ui.RenderRow(&b, ui.KO, ui.KindNode, 0, 7); err != nil {
 		t.Fatal(err)
 	}
 	body := b.String()
@@ -475,7 +476,7 @@ func TestEnglishScreensHaveNoKorean(t *testing.T) {
 		"scope": func(w io.Writer) error {
 			return ui.RenderScope(w, ui.NewScopeView(sc, page).Editable(layerFiles()))
 		},
-		"row":     func(w io.Writer) error { return ui.RenderRow(w, ui.EN, ui.KindNode, 0) },
+		"row":     func(w io.Writer) error { return ui.RenderRow(w, ui.EN, ui.KindNode, 0, 0) },
 		"ruleRow": func(w io.Writer) error { return ui.RenderRuleRow(w, ui.EN, 0, 0) },
 	} {
 		var b strings.Builder
@@ -595,7 +596,7 @@ func TestDeclMergesScopeAndAddressesIntoOneTable(t *testing.T) {
 	}
 	v := ui.NewDeclView(d, ui.Page{Title: "선언", Lang: ui.KO})
 	var names []string
-	for _, n := range v.Decl.Nodes {
+	for _, n := range v.Nodes {
 		names = append(names, n.Name+"="+strings.Join(n.IPs, ","))
 	}
 	// 스코프 순서가 앞이고, 주소 표에만 있던 것이 뒤에 붙는다.
@@ -626,7 +627,7 @@ func TestApplyDeclDerivesScopeFromTheTable(t *testing.T) {
 		t.Fatalf("뺀 이름을 말하지 않는다: %v", dropped)
 	}
 	// 한 바퀴 돌려도 같은 표가 나온다 — 뺀 이름은 파일에 없으므로 표에도 없다.
-	back := ui.NewDeclView(got, ui.Page{Lang: ui.KO}).Decl.Nodes
+	back := ui.NewDeclView(got, ui.Page{Lang: ui.KO}).Nodes
 	if len(back) != 1 || back[0].Name != "web" {
 		t.Fatalf("다시 그리면 달라진다: %+v", back)
 	}
@@ -638,8 +639,8 @@ func TestApplyDeclDerivesScopeFromTheTable(t *testing.T) {
 func TestScopeOnlyNameStillShowsForFixing(t *testing.T) {
 	v := ui.NewDeclView(decl.Declaration{Scope: []string{"web", "db"},
 		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}, ui.Page{Lang: ui.KO})
-	if len(v.Decl.Nodes) != 2 || v.Decl.Nodes[1].Name != "db" || len(v.Decl.Nodes[1].IPs) != 0 {
-		t.Fatalf("IP 없는 이름이 표에서 사라졌다: %+v", v.Decl.Nodes)
+	if len(v.Nodes) != 2 || v.Nodes[1].Name != "db" || len(v.Nodes[1].IPs) != 0 {
+		t.Fatalf("IP 없는 이름이 표에서 사라졌다: %+v", v.Nodes)
 	}
 }
 

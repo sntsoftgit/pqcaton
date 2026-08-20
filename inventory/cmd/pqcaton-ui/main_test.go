@@ -339,7 +339,7 @@ func TestDeclSaveRoundTrips(t *testing.T) {
 		"node.ips.0":   {"10.0.0.1, 10.0.1.1"},
 		"node.name.1":  {"pay-db"},
 		"node.ips.1":   {"10.0.0.2"},
-		"asset.node.0": {"web-gw"}, "asset.runtime.0": {"openssl"}, "asset.component.0": {"libssl"},
+		"asset.0.0.runtime": {"openssl"}, "asset.0.0.component": {"libssl"},
 		"edge.src.0": {"web-gw"}, "edge.dst.0": {"pay-db"}, "edge.port.0": {"5432"}, "edge.proto.0": {"TLS"},
 	}))
 	if p := q.Get("problem"); p != "" {
@@ -369,7 +369,7 @@ func TestDeclBlankNameRemovesRow(t *testing.T) {
 	location(t, postForm(t, s, "/decl/save", url.Values{
 		"org": {"acme"}, "scope": {"web-gw"},
 		"node.name.0": {""}, "node.ips.0": {"10.0.0.1"}, // 지운다
-		"asset.node.0": {"web-gw"}, "asset.runtime.0": {"openssl"}, "asset.component.0": {"libssl"},
+		"asset.0.0.runtime": {"openssl"}, "asset.0.0.component": {"libssl"},
 	}))
 	d, err := decl.Load(s.decl)
 	if err != nil {
@@ -403,7 +403,7 @@ func TestNavFollowsProcedure(t *testing.T) {
 	}
 }
 
-// IC-U20 — **탭 이름이 화면이 쓰는 말과 이어진다.**
+// IC-U24 — **탭 이름이 화면이 쓰는 말과 이어진다.**
 //
 // 화면은 「판정」이라는 말을 스물몇 번 쓰는데 탭에는 그 말이 없었습니다. 대조 탭은
 // 있으니 대조는 찾아가는데, 판정은 어느 탭인지 알 수 없었습니다 — 「리뷰 큐」가
@@ -551,7 +551,8 @@ func TestDeclRowRefusesBadInput(t *testing.T) {
 	}
 	mux := s.handler()
 
-	for _, q := range []string{"?kind=policy&i=1", "?kind=&i=1", "?kind=node&i=-1", "?kind=node&i=x", "?kind=node&i=99999999"} {
+	for _, q := range []string{"?kind=policy&i=1", "?kind=&i=1", "?kind=node&i=-1", "?kind=node&i=x",
+		"?kind=node&i=99999999", "?kind=asset&node=-1&i=0", "?kind=asset&node=x&i=0"} {
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/decl/row"+q, nil))
 		if w.Code != http.StatusBadRequest {

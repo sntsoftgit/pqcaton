@@ -59,6 +59,46 @@ func Static() http.Handler {
 
 func rowsID(kind string) string { return "rows-" + kind }
 
+// assetRowsID · assetField — 자산은 노드마다 표가 따로 있으므로 노드 번호가 이름에
+// 들어간다. **어느 노드의 것인지를 폼 이름이 들고 있다** — 사람이 노드 이름을 다시
+// 적지 않는다.
+func assetRowsID(node int) string { return "rows-asset-" + strconv.Itoa(node) }
+
+func assetField(node, i int, field string) string {
+	return "asset." + strconv.Itoa(node) + "." + strconv.Itoa(i) + "." + field
+}
+
+// nodeBlockID — 노드 한 덩어리(이름·IP·그 노드의 자산)를 담는 자리.
+func nodeBlockID(node int) string { return "node-" + strconv.Itoa(node) }
+
+// addRowID · addTarget — 「행 추가」 버튼과 그 버튼이 줄을 붙일 자리. **자산은 노드마다
+// 표가 따로라 버튼도 따로다** — 한 이름을 쓰면 어느 노드에 붙일지 브라우저가 고를 수 없다.
+func addRowID(kind string, node int) string {
+	if kind == KindAsset {
+		return "add-asset-" + strconv.Itoa(node)
+	}
+	return "add-" + kind
+}
+
+func addTarget(kind string, node int) string {
+	if kind == KindAsset {
+		return assetRowsID(node)
+	}
+	return rowsID(kind)
+}
+
+// addLabel — 무엇을 하나 더 넣는 버튼인지. 「행 추가」로는 무슨 행인지 알 수 없다 —
+// 노드 안에 자산 표가 들어앉은 뒤로는 버튼이 둘씩 붙어 있다.
+func addLabel(l Lang, kind string) string {
+	switch kind {
+	case KindNode:
+		return tAddNode.In(l)
+	case KindAsset:
+		return tAddAsset.In(l)
+	}
+	return tAddEdge.In(l)
+}
+
 // ruleRowsID · ruleField — 계층마다 표가 따로 있으므로 번호가 이름에 들어간다.
 func ruleRowsID(layer int) string { return "rows-rule-" + strconv.Itoa(layer) }
 

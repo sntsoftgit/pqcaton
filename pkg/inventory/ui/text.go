@@ -11,12 +11,12 @@ package ui
 // ── 이동 · 화면 이름 ────────────────────────────────────────────────────────
 var (
 	tNavDecl   = T{KO: "① 선언", EN: "① Declaration"}
-	tNavScope  = T{KO: "② 자산 스코프", EN: "② Asset scope"}
+	tNavScope  = T{KO: "② 암호 자산 스코프", EN: "② Crypto asset scope"}
 	tNavSurvey = T{KO: "③ 대조", EN: "③ Reconciliation"}
 	tNavReview = T{KO: "④ 판정(리뷰 큐)", EN: "④ Judgment (review queue)"}
 
 	tTitleDecl   = T{KO: "선언", EN: "Declaration"}
-	tTitleScope  = T{KO: "자산 스코프", EN: "Asset scope"}
+	tTitleScope  = T{KO: "암호 자산 스코프", EN: "Crypto asset scope"}
 	tTitleSurvey = T{KO: "대조", EN: "Reconciliation"}
 	tTitleReview = T{KO: "판정(리뷰 큐)", EN: "Judgment (review queue)"}
 
@@ -55,7 +55,10 @@ var (
 
 	tRefused = T{KO: "요청하신 것을 하지 않았습니다. 이유는 이렇습니다.",
 		EN: "Not done — here is why."}
-	tAddRow = T{KO: "행 추가", EN: "Add row"}
+	tAddNode  = T{KO: "노드 추가", EN: "Add node"}
+	tAddAsset = T{KO: "자산 추가", EN: "Add asset"}
+	tAddEdge  = T{KO: "엣지 추가", EN: "Add edge"}
+	tAddRow   = T{KO: "행 추가", EN: "Add row"}
 )
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
@@ -69,7 +72,7 @@ var (
 		KO: "대조와 판정이 이 조직에 묶입니다. 비우면 <code>local</code> 입니다.",
 		EN: "Reconciliation and judgments are bound to this org. Empty means <code>local</code>."}
 
-	tDeclScope     = T{KO: "관리 대상 노드", EN: "Nodes under management"}
+	tDeclScope     = T{KO: "관리 대상 노드와 그 안의 암호 자산", EN: "Nodes under management, and the crypto assets inside them"}
 	tDeclScopeHint = T{
 		KO: "<b>여기 적은 노드가 대조 대상입니다.</b> 여기 없는 노드와 통신한 것이 관측되면 " +
 			"대조 화면에 「등재 판정 요청」으로 올라옵니다. 노드 <b>안의</b> 무엇을 볼지는 " +
@@ -88,10 +91,14 @@ var (
 			"is not under management</b> — without that tie, reconciliation comes out wrong " +
 			"without erroring. Saving drops the row. Clearing the name drops it too."}
 
-	tDeclAssets     = T{KO: "자산", EN: "Assets"}
+	tDeclAssets     = T{KO: "암호 자산", EN: "Crypto assets"}
 	tDeclAssetsHint = T{
-		KO: "이 노드에서 이것을 쓴다 — 노드 <b>안의</b> 무엇을 볼지입니다.",
-		EN: "This node uses this — what to look at <b>inside</b> a node."}
+		KO: "노드 안의 <b>암호 자산</b>은 그 노드에서 쓰인다고 선언한 런타임과 " +
+			"컴포넌트입니다 — <code>openssl</code> 의 <code>libssl</code> 처럼. 관측에서 " +
+			"발견되기를 기대하는 모듈이고, 대조가 그것을 관측된 것과 맞댑니다.",
+		EN: "The <b>crypto assets</b> inside a node are the runtime and component you declare " +
+			"it uses — <code>libssl</code> under <code>openssl</code>, say. They are the modules " +
+			"you expect observation to find, and reconciliation matches them against what was seen."}
 	tDeclEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
 	tDeclEdgesHint = T{
 		KO: "이 노드가 저 노드와 이렇게 통신한다 — 포트까지 같아야 관측된 엣지와 맞습니다.",
@@ -311,10 +318,10 @@ var (
 		EN: "If you do not know which nodes are missing, “not observed” and " +
 			"“could not read” get mixed up."}
 
-	tSurveyAssets     = T{KO: "자산", EN: "Assets"}
+	tSurveyAssets     = T{KO: "암호 자산", EN: "Crypto assets"}
 	tSurveyAssetsHint = T{
-		KO: "선언과 맞댄 3-상태입니다.",
-		EN: "Three states, against the declaration."}
+		KO: "노드 안의 암호 런타임·컴포넌트를 선언과 맞댄 3-상태입니다.",
+		EN: "The crypto runtimes and components inside each node, in three states against the declaration."}
 	tSurveyNoAssets   = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
 	tShadowHint       = T{
 		KO: "<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> — 선언에 없는데 " +
