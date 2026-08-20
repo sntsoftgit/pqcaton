@@ -32,13 +32,6 @@ templ declPage(v DeclView) {
 					<span class="n">— { tDeclScopeNote.In(v.Page.Lang) }</span>
 				</legend>
 				<p class="hint">@templ.Raw(tDeclScopeHint.In(v.Page.Lang))</p>
-				<textarea name="scope">{ strings.Join(v.Decl.Scope, "\n") }</textarea>
-			</fieldset>
-			<fieldset>
-				<legend>
-					{ tDeclNodes.In(v.Page.Lang) }
-					<span class="n">— { tDeclNodesNote.In(v.Page.Lang) }</span>
-				</legend>
 				<p class="hint">@templ.Raw(tDeclNodesHint.In(v.Page.Lang))</p>
 				<table>
 					<thead>

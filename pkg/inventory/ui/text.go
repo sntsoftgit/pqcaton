@@ -70,24 +70,24 @@ var (
 		EN: "Reconciliation and judgments are bound to this org. Empty means <code>local</code>."}
 
 	tDeclScope     = T{KO: "관리 대상 노드", EN: "Nodes under management"}
-	tDeclScopeNote = T{KO: "어느 노드를 볼 것인가", EN: "which nodes to look at"}
+	tDeclScopeNote = T{KO: "어느 노드를, 어느 주소로", EN: "which nodes, at which addresses"}
 	tDeclScopeHint = T{
-		KO: "한 줄에 하나. 여기 없는 노드와 통신한 것이 관측되면, 대조 화면에 " +
-			"「등재 판정 요청」으로 올라옵니다. <b>노드 안에서 무엇을 볼지</b>는 " +
+		KO: "<b>여기 적은 노드가 대조 대상입니다.</b> 여기 없는 노드와 통신한 것이 관측되면 " +
+			"대조 화면에 「등재 판정 요청」으로 올라옵니다. 노드 <b>안의</b> 무엇을 볼지는 " +
 			"「자산 스코프」 탭에서 정합니다.",
-		EN: "One per line. If traffic to a node that is not listed here is observed, it shows " +
-			"up on the reconciliation screen as <b>needs an enrollment decision</b>. " +
-			"<b>What to look at inside a node</b> is decided on the Asset scope tab."}
-
-	tDeclNodes     = T{KO: "노드 주소", EN: "Node addresses"}
-	tDeclNodesNote = T{
-		KO: "관측에 찍힌 IP를 노드 이름과 잇는 근거",
-		EN: "how observed IPs are tied back to node names"}
+		EN: "<b>The nodes listed here are what gets reconciled.</b> If traffic to a node that " +
+			"is not listed here is observed, it shows up on the reconciliation screen as " +
+			"<b>needs an enrollment decision</b>. What to look at <b>inside</b> a node is " +
+			"decided on the Asset scope tab."}
 	tDeclNodesHint = T{
-		KO: "한 노드가 망 둘에 걸치면 IP도 둘입니다. 쉼표나 공백으로 나눠 적으십시오. " +
+		KO: "IP는 <b>관측에 찍힌 주소를 이 이름과 잇는 근거</b>입니다. 한 노드가 망 둘에 " +
+			"걸치면 IP도 둘이니 쉼표나 공백으로 나눠 적으십시오. <b>아직 모르면 비워 둬도 " +
+			"됩니다</b> — 다만 그동안은 그 노드로 오는 통신이 이 이름과 이어지지 않습니다. " +
 			"이름을 비우면 그 줄은 지워집니다.",
-		EN: "A node on two networks has two IPs. Separate them with commas or spaces. " +
-			"Clearing the name deletes that row."}
+		EN: "The IP is <b>what ties an observed address back to this name</b>. A node on two " +
+			"networks has two IPs — separate them with commas or spaces. <b>You may leave it " +
+			"empty if you do not know it yet</b>, but until you do, traffic to that node will " +
+			"not be tied to this name. Clearing the name deletes the row."}
 
 	tDeclAssets     = T{KO: "자산", EN: "Assets"}
 	tDeclAssetsNote = T{

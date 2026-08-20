@@ -37,7 +37,7 @@ func TestDeclRenderShowsEverything(t *testing.T) {
 	}
 	body := b.String()
 	for _, want := range []string{
-		`name="org"`, `name="scope"`,
+		`name="org"`,
 		`name="node.name.0"`, "10.0.0.1, 10.0.1.1", // 여러 IP를 한 칸에
 		`name="asset.component.0"`, "libssl",
 		`name="edge.port.0"`, "443",
@@ -54,7 +54,7 @@ func TestDeclRenderShowsEverything(t *testing.T) {
 func TestApplyDeclRoundTrip(t *testing.T) {
 	in := sample()
 	f := url.Values{
-		"org": {in.Org}, "scope": {"web"},
+		"org":         {in.Org},
 		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1, 10.0.1.1"},
 		"asset.node.0": {"web"}, "asset.runtime.0": {"openssl"}, "asset.component.0": {"libssl"},
 		"edge.src.0": {"web"}, "edge.dst.0": {"web"}, "edge.port.0": {"443"}, "edge.proto.0": {"TLS"},
@@ -535,5 +535,58 @@ func TestInventoryFilterMatchesAnyColumn(t *testing.T) {
 	v := ui.NewInventoryView(r, ui.Filter{Q: "web", State: "CONFIRMED"}, page)
 	if len(v.Assets) != 0 {
 		t.Errorf("상태와 문자열이 함께 걸리지 않는다: %+v", v.Assets)
+	}
+}
+
+// IC-UI26 — **한 표가 두 목록을 대신한다.**
+//
+// 선언 파일에는 「관리 대상 노드」(`scope`)와 「노드 주소」(`nodes`)가 따로 있었고,
+// 화면도 그렇게 둘로 물었습니다. 그래서 **같은 것을 두 번 적게 하고**, 어긋나면 짚어
+// 줬습니다 — 한 곳에 적었으면 애초에 생기지 않을 어긋남입니다.
+//
+// 합친 표에서: 스코프에만 있던 노드는 IP가 빈 줄로, 주소 표에만 있던 노드도 한 줄로
+// 올라옵니다. **아직 IP를 모르는 노드**를 적는 길은 그대로 남습니다 — IP 칸을 비우면
+// 그것이 예전의 「스코프에만 있는 노드」입니다.
+func TestDeclMergesScopeAndAddressesIntoOneTable(t *testing.T) {
+	d := decl.Declaration{
+		Scope: []string{"web", "db"}, // db 는 주소 표에 없다
+		Nodes: []decl.Node{
+			{Name: "web", IPs: []string{"10.0.0.1"}},
+			{Name: "cache", IPs: []string{"10.0.0.9"}}, // 스코프에 없다
+		},
+	}
+	v := ui.NewDeclView(d, ui.Page{Title: "선언", Lang: ui.KO})
+	var names []string
+	for _, n := range v.Decl.Nodes {
+		names = append(names, n.Name+"="+strings.Join(n.IPs, ","))
+	}
+	// 스코프 순서가 앞이고, 주소 표에만 있던 것이 뒤에 붙는다.
+	if got := strings.Join(names, " "); got != "web=10.0.0.1 db= cache=10.0.0.9" {
+		t.Fatalf("합쳐진 표가 다르다: %s", got)
+	}
+	// **어긋남은 원본으로 잰다.** 합친 것으로 재면 화면에서 그 사실이 사라진다.
+	if len(v.Problems) == 0 {
+		t.Error("원본의 어긋남을 짚지 않는다")
+	}
+}
+
+// IC-UI27 — **저장하면 이름이 곧 관리 대상이 된다.** IP를 채운 줄만 주소 표에 들어간다 —
+// IP 없는 주소 줄은 파일에 아무 뜻도 더하지 않는다.
+func TestApplyDeclDerivesScopeFromTheTable(t *testing.T) {
+	got := ui.ApplyDecl(decl.Declaration{}, url.Values{
+		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},
+		"node.name.1": {"db"}, "node.ips.1": {""}, // IP는 아직 모른다
+		"node.name.2": {""}, "node.ips.2": {"10.0.0.9"}, // 이름이 없으면 지운 줄이다
+	})
+	if strings.Join(got.Scope, ",") != "web,db" {
+		t.Fatalf("관리 대상이 다르다: %v", got.Scope)
+	}
+	if len(got.Nodes) != 1 || got.Nodes[0].Name != "web" {
+		t.Fatalf("주소 표에 IP 없는 줄이 들어갔다: %+v", got.Nodes)
+	}
+	// 한 바퀴 돌려도 같은 표가 나온다.
+	back := ui.NewDeclView(got, ui.Page{Lang: ui.KO}).Decl.Nodes
+	if len(back) != 2 || back[0].Name != "web" || back[1].Name != "db" || len(back[1].IPs) != 0 {
+		t.Fatalf("다시 그리면 달라진다: %+v", back)
 	}
 }
