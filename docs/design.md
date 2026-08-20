@@ -103,7 +103,7 @@ flowchart TB
 | ① 선언 | 사람이 처음 씁니다(데모는 `declare.py`) | `-decl declaration.json` |
 | ② 자산 스코프 | **계층 CSV** 를 `-base` 와 견줘 **바뀐 규칙만** | `-layers corp.csv,prod.csv -base asset-scope.csv` |
 | ③ 대조 | 만들 것이 없습니다 — 결과 디렉터리를 읽습니다 | `-results <디렉터리>` |
-| ④ 리뷰 큐 | **선언 + 관측 결과** | `-decl` 과 `-results` |
+| ④ 판정(리뷰 큐) | **선언 + 관측 결과** | `-decl` 과 `-results` |
 
 **세션 파일은 사람이 적은 것을 담습니다** — 판정·승인·서명. 재료가 바뀌면 세션은 다시
 세워지고, 적어 둔 판정은 동일성(규칙은 `RuleID`, 항목은 `ID`)을 열쇠로 따라옵니다.

@@ -123,7 +123,7 @@ bin/pqcaton-ui session.json \
   -judgments judgments.jsonl -org acme
 # → http://127.0.0.1:8765 — 탭이 절차 순서입니다
 #   ① 선언(관측 대상 노드·자산·엣지) → ② 자산 스코프(무엇을 계속 볼지)
-#   → ③ 대조(3-상태·등급·토폴로지) → ④ 리뷰 큐(판정·확정)
+#   → ③ 대조(3-상태·등급·토폴로지) → ④ 판정(리뷰 큐 — 판정·확정)
 ```
 
 `session.json` 이 없으면 **선언과 관측 결과로 화면이 만듭니다.** 자산 스코프도 계층 CSV를
@@ -145,7 +145,7 @@ bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scop
 > [CONTRIBUTING.md](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
 
 `-decl`·`-layers`·`-results` 는 **주는 것만 탭이 열립니다.** 선언 파일만 주면 「선언」과
-「리뷰 큐」 둘만 보입니다 — 없는 것을 눌러 보게 하지 않습니다.
+「판정」 둘만 보입니다 — 없는 것을 눌러 보게 하지 않습니다.
 
 **무엇을 계속 볼지도 승인을 거칩니다.** 인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에
 답해야 하므로, 판정과 확정을 같은 왕복으로 다룹니다.

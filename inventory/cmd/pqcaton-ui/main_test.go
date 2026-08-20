@@ -403,6 +403,26 @@ func TestNavFollowsProcedure(t *testing.T) {
 	}
 }
 
+// IC-U20 — **탭 이름이 화면이 쓰는 말과 이어진다.**
+//
+// 화면은 「판정」이라는 말을 스물몇 번 쓰는데 탭에는 그 말이 없었습니다. 대조 탭은
+// 있으니 대조는 찾아가는데, 판정은 어느 탭인지 알 수 없었습니다 — 「리뷰 큐」가
+// 그 자리라는 것을 아는 사람만 압니다. 지난 판정을 보는 자리도 마찬가지입니다.
+func TestTabsNameWhatTheScreensCall(t *testing.T) {
+	s, dir := withDecl(t)
+	s.results = filepath.Join(dir, "results")
+	body := get(t, s, "/review?lang=ko").Body.String()
+
+	for _, want := range []string{
+		`>④ 판정(리뷰 큐)<`,      // 판정을 하는 자리
+		`>인벤토리·판정 이력<`, // 지난 판정을 보는 자리
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("탭에 %q 가 없다:\n%s", want, body)
+		}
+	}
+}
+
 // IC-U14 — **첫 화면은 절차의 첫 자리다.** 선언이 있으면 거기서 시작한다.
 func TestHomeGoesToFirstStep(t *testing.T) {
 	s, _ := withDecl(t)

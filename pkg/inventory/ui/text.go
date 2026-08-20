@@ -13,12 +13,12 @@ var (
 	tNavDecl   = T{KO: "① 선언", EN: "① Declaration"}
 	tNavScope  = T{KO: "② 자산 스코프", EN: "② Asset scope"}
 	tNavSurvey = T{KO: "③ 대조", EN: "③ Reconciliation"}
-	tNavReview = T{KO: "④ 리뷰 큐", EN: "④ Review queue"}
+	tNavReview = T{KO: "④ 판정(리뷰 큐)", EN: "④ Judgment (review queue)"}
 
 	tTitleDecl   = T{KO: "선언", EN: "Declaration"}
 	tTitleScope  = T{KO: "자산 스코프", EN: "Asset scope"}
 	tTitleSurvey = T{KO: "대조", EN: "Reconciliation"}
-	tTitleReview = T{KO: "리뷰 큐", EN: "Review queue"}
+	tTitleReview = T{KO: "판정(리뷰 큐)", EN: "Judgment (review queue)"}
 
 	tSubOrg     = T{KO: "조직", EN: "org"}
 	tSubSession = T{KO: "세션", EN: "session"}
@@ -315,10 +315,10 @@ var (
 	tSurveyNoAssets   = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
 	tShadowHint       = T{
 		KO: "<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> — 선언에 없는데 " +
-			"실제로 쓰이고 있는 것입니다. 판정은 <a href=\"/review\">리뷰 큐</a>에서 합니다.",
+			"실제로 쓰이고 있는 것입니다. 판정은 <a href=\"/review\">판정(리뷰 큐)</a> 탭에서 합니다.",
 		EN: "<b>Finding UNDECLARED is the first thing this tool is good for</b> — things in " +
 			"actual use that nobody declared. Judge them in the " +
-			"<a href=\"/review\">review queue</a>."}
+			"<a href=\"/review\">judgment (review queue)</a> tab."}
 
 	tSurveyEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
 	tSurveyEdgesHint = T{
@@ -359,15 +359,17 @@ var (
 
 // ── 인벤토리 조회 ──────────────────────────────────────────────────────────
 var (
-	tNavInventory   = T{KO: "인벤토리", EN: "Inventory"}
-	tTitleInventory = T{KO: "인벤토리 조회", EN: "Inventory"}
+	tNavInventory   = T{KO: "인벤토리·판정 이력", EN: "Inventory & judgment history"}
+	tTitleInventory = T{KO: "인벤토리·판정 이력", EN: "Inventory & judgment history"}
 
 	tInventoryIntro = T{
 		KO: "인벤토리에 지금 무엇이 있는지 <b>검색하는 화면</b>입니다. 선언 → 자산 스코프 → " +
-			"대조 → 리뷰 순서를 거쳐 올 필요는 없습니다. 언제든 열어서 조건을 걸어 찾으면 됩니다.",
+			"대조 → 판정 순서를 거쳐 올 필요는 없습니다. 언제든 열어서 조건을 걸어 찾으면 됩니다. " +
+			"<b>지난 판정과 그 근거도 여기서 봅니다</b> — 아래 「판정 이력」과 「근거가 바뀐 판정」입니다.",
 		EN: "This screen <b>searches what is in the inventory right now</b>. You do not have to " +
-			"arrive through the declaration → asset scope → reconciliation → review sequence — " +
-			"open it whenever you like and narrow things down."}
+			"arrive through the declaration → asset scope → reconciliation → judgment sequence — " +
+			"open it whenever you like and narrow things down. <b>Past judgments and their basis " +
+			"are here too</b> — see “judgment history” and “judgments whose basis changed” below."}
 	tInventoryBounds = T{
 		KO: "이 화면이 읽는 것은 <b>지금 가지고 있는 파일뿐입니다</b> — 관측 결과, 판정 원장, " +
 			"정책 CSV. 여러 시점의 스냅샷을 쌓아 두고 시간에 따라 비교하는 기능은 없습니다.",
