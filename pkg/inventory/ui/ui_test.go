@@ -561,7 +561,7 @@ func TestObservedComponentsAreOffered(t *testing.T) {
 			{Runtime: "openssl", Component: "libssl"},
 			{Runtime: "openssl", Component: "libcrypto-fbc9a285"},
 			{Runtime: "openssl", Component: "libssl"}, // 같은 것이 여러 번 관측된다
-		}})
+		}}, nil)
 	if n := len(v.Nodes[0].Seen); n != 2 {
 		t.Fatalf("후보가 %d개 — 같은 것이 겹쳐 있다: %+v", n, v.Nodes[0].Seen)
 	}
@@ -586,6 +586,45 @@ func TestNoObservationNoCandidates(t *testing.T) {
 	}
 	if strings.Contains(b.String(), "<datalist") {
 		t.Error("관측이 없는데 후보 목록이 있다")
+	}
+}
+
+// IC-UI37 — **관측 이름을 적으면 그 노드에 붙는다.**
+//
+// 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. collector 가 자기가 붙인
+// id 로 보내면 선언한 자산은 전부 미관측으로, 관측된 자산은 전부 shadow 로 오릅니다 —
+// 선언이 틀려서가 아니라 이름이 갈려서입니다. 그 이름을 한 번 적어 두는 자리다.
+func TestObservedNameRoundTrips(t *testing.T) {
+	got, _ := ui.ApplyDecl(decl.Declaration{}, url.Values{
+		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},
+		"node.seen.0": {"node:1a2b, web.corp.example"},
+	})
+	if len(got.Nodes) != 1 || strings.Join(got.Nodes[0].ObservedAs, ",") != "node:1a2b,web.corp.example" {
+		t.Fatalf("관측 이름이 저장되지 않았다: %+v", got.Nodes)
+	}
+	// 한 바퀴 돌려도 칸에 그대로 있다.
+	v := ui.NewDeclView(got, ui.Page{Lang: ui.KO})
+	if v.Nodes[0].ObservedAsText() != "node:1a2b, web.corp.example" {
+		t.Fatalf("다시 그리면 달라진다: %q", v.Nodes[0].ObservedAsText())
+	}
+}
+
+// IC-UI38 — **붙지 않은 관측 이름을 후보로 내놓는다.** 어디에도 안 붙었다는 것은 그
+// 노드의 자산이 통째로 shadow 로 오른다는 뜻이라, 사람이 가장 먼저 볼 이름이다.
+func TestUnmatchedNodeNamesAreOffered(t *testing.T) {
+	d := decl.Declaration{Scope: []string{"web"},
+		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}
+	v := ui.NewDeclView(d, ui.Page{Title: "선언", Lang: ui.KO}).
+		WithObserved(nil, []string{"node:48596282fd2faf23"})
+	var b strings.Builder
+	if err := ui.RenderDecl(&b, v); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	for _, want := range []string{`<datalist id="seen-nodes">`, `value="node:48596282fd2faf23"`, `list="seen-nodes"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("관측 이름 칸이 %q 를 내놓지 않는다:\n%s", want, body)
+		}
 	}
 }
 

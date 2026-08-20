@@ -146,6 +146,11 @@ type DeclView struct {
 	Edges []decl.Edge
 	// Comment — 생성 도구가 남긴 머리말. 화면에 칸은 없지만 저장에서 사라지면 안 된다.
 	Comment string
+	// Unmatched — 관측에는 있는데 **어느 선언 노드에도 붙지 않은** 노드 이름.
+	//
+	// 「관측 이름」 칸의 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 shadow 로
+	// 오른다는 뜻이고, 그것은 선언이 틀려서가 아니라 이름이 갈려서다.
+	Unmatched []string
 }
 
 // DeclNode — 노드 한 대와 그 안의 자산.
@@ -154,6 +159,8 @@ type DeclNode struct {
 	IPs  []string
 	// Assets — 그 노드에서 쓰인다고 선언한 암호 런타임과 컴포넌트.
 	Assets []DeclAsset
+	// ObservedAs — 관측이 이 노드를 부르는 이름. 호스트명이 이름과 같으면 비워 둔다.
+	ObservedAs []string
 	// Seen — 그 노드에서 **관측된** 자산. 컴포넌트 칸의 후보로 내놓는다.
 	//
 	// **옮겨 적다 틀리는 자리를 없앤다.** 대조는 컴포넌트가 글자 그대로 같을 때만
@@ -168,12 +175,15 @@ type DeclAsset struct {
 	Component string
 }
 
-// IPText — IP 칸에 넣을 문자열. 한 노드가 망 둘에 걸치면 IP도 둘이다.
-func (n DeclNode) IPText() string { return strings.Join(n.IPs, ", ") }
+// IPText · ObservedAsText — 여러 값을 한 칸에 넣을 문자열.
+func (n DeclNode) IPText() string         { return strings.Join(n.IPs, ", ") }
+func (n DeclNode) ObservedAsText() string { return strings.Join(n.ObservedAs, ", ") }
 
 // WithObserved — 관측된 자산을 노드마다 후보로 붙인다. 관측이 없으면(결과 디렉터리를
 // 주지 않았으면) 붙일 것이 없고, 화면은 그대로 손으로 적는 자리가 된다.
-func (v DeclView) WithObserved(seen map[string][]DeclAsset) DeclView {
+func (v DeclView) WithObserved(seen map[string][]DeclAsset, unmatched []string) DeclView {
+	sort.Strings(unmatched)
+	v.Unmatched = unmatched
 	for i := range v.Nodes {
 		got := seen[v.Nodes[i].Name]
 		if len(got) == 0 {
@@ -236,6 +246,7 @@ func groupByNode(d decl.Declaration) []DeclNode {
 	for _, n := range d.Nodes {
 		if i := add(n.Name); i >= 0 {
 			out[i].IPs = append(out[i].IPs, n.IPs...)
+			out[i].ObservedAs = append(out[i].ObservedAs, n.ObservedAs...)
 		}
 	}
 	for _, a := range d.Assets {
@@ -289,7 +300,8 @@ func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped
 			continue
 		}
 		d.Scope = append(d.Scope, nm)
-		d.Nodes = append(d.Nodes, decl.Node{Name: nm, IPs: ips})
+		d.Nodes = append(d.Nodes, decl.Node{Name: nm, IPs: ips,
+			ObservedAs: splitList(f.Get("node.seen." + strconv.Itoa(ni)))})
 		for _, i := range formRows(f, "asset."+strconv.Itoa(ni)+".", ".component") {
 			c := strings.TrimSpace(f.Get(assetField(ni, i, "component")))
 			if c == "" {

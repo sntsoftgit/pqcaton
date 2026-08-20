@@ -14,6 +14,13 @@ templ declPage(v DeclView) {
 			</fieldset>
 			<fieldset>
 				<legend>{ tDeclScope.In(v.Page.Lang) }</legend>
+				if len(v.Unmatched) > 0 {
+					<datalist id={ unmatchedListID }>
+						for _, id := range v.Unmatched {
+							<option value={ id }></option>
+						}
+					</datalist>
+				}
 				@tip(v.Page.Lang, tDeclScopeHint.In(v.Page.Lang)+" "+tDeclNodesHint.In(v.Page.Lang)+" "+tDeclAssetsHint.In(v.Page.Lang))
 				<div id={ rowsID(KindNode) }>
 					for i, n := range v.Nodes {
@@ -60,8 +67,9 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 		<table class="node-head">
 			<thead>
 				<tr>
-					<th style="width:14rem">{ tColName.In(l) }</th>
-					<th>{ tColIP.In(l) }</th>
+					<th style="width:12rem">{ tColName.In(l) }</th>
+					<th style="width:14rem">{ tColIP.In(l) }</th>
+					<th>{ tColObservedAs.In(l) }</th>
 					<th style="width:5rem"></th>
 				</tr>
 			</thead>
@@ -69,6 +77,15 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 				<tr>
 					<td><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ n.Name }/></td>
 					<td><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ n.IPText() }/></td>
+					<td>
+						<input
+							type="text"
+							name={ "node.seen." + strconv.Itoa(i) }
+							value={ n.ObservedAsText() }
+							list={ unmatchedListID }
+							placeholder={ tColObservedAsHolder.In(l) }
+						/>
+					</td>
 					<td>@removeButton(l, ".node", tRemoveNodeAsk.In(l))</td>
 				</tr>
 			</tbody>

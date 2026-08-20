@@ -112,6 +112,11 @@ func ruleField(layer, i int, field string) string {
 	return "rule." + strconv.Itoa(layer) + "." + strconv.Itoa(i) + "." + field
 }
 
+// unmatchedListID — 어느 선언 노드에도 붙지 않은 관측 노드 이름의 목록. 노드마다 표가
+// 따로인 자산과 달리, 이 후보는 화면에 하나면 된다 — 어느 노드의 것인지 아직 모르는
+// 이름들이라 노드에 매어 둘 수 없다.
+const unmatchedListID = "seen-nodes"
+
 // seenListID — 그 노드에서 관측된 컴포넌트 후보 목록의 이름.
 //
 // 「행 추가」로 나온 줄도 같은 이름을 부른다 — 목록은 노드 덩어리에 한 번만 있고,

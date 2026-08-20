@@ -715,7 +715,8 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := ui.NewDeclView(d, s.page(r, ui.ScreenDecl, sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)))
-	v = v.WithObserved(s.observedAssets(d))
+	seen, unmatched := s.observedAssets(d)
+	v = v.WithObserved(seen, unmatched)
 	html(w, func() error { return ui.RenderDecl(w, v) })
 }
 
@@ -725,23 +726,43 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 // `.so` 뒤가 떼인 채로 온다 — 사람이 대조 화면을 보고 옮겨 적으면 거기서 틀린다.
 //
 // 결과를 읽지 못해도 선언 화면은 열려야 한다. 후보는 거들 뿐이고, 없으면 손으로 적는다.
-func (s *server) observedAssets(d decl.Declaration) map[string][]ui.DeclAsset {
+// unmatched — 관측에는 있는데 어느 선언 노드에도 붙지 않은 노드 이름. 「관측 이름」 칸의
+// 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 shadow 로 오른다는 뜻이고, 그것은
+// 선언이 틀려서가 아니라 이름이 갈려서다.
+func (s *server) observedAssets(d decl.Declaration) (map[string][]ui.DeclAsset, []string) {
 	if s.results == "" {
-		return nil
+		return nil, nil
 	}
 	res, err := report.Build(s.results, d)
 	if err != nil {
-		return nil
+		return nil, nil
+	}
+	declared := map[string]bool{}
+	for _, n := range d.Nodes {
+		declared[n.Name] = true
 	}
 	out := map[string][]ui.DeclAsset{}
+	odd := map[string]bool{}
 	for _, a := range res.Assets {
 		if a.State == reconcile.Unobserved {
 			continue // 선언만 있고 관측되지 않은 것은 후보가 아니다
 		}
 		out[a.Key.NodeID] = append(out[a.Key.NodeID],
 			ui.DeclAsset{Runtime: a.Key.Runtime, Component: a.Key.Component})
+		if !declared[a.Key.NodeID] {
+			odd[a.Key.NodeID] = true
+		}
 	}
-	return out
+	for node := range res.SeenBy {
+		if !declared[node] {
+			odd[node] = true
+		}
+	}
+	names := make([]string, 0, len(odd))
+	for n := range odd {
+		names = append(names, n)
+	}
+	return out, names
 }
 
 // declRow — 「행 추가」. 빈 줄 하나와, 번호가 하나 오른 버튼을 돌려준다.

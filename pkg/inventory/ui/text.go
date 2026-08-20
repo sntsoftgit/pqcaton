@@ -103,11 +103,25 @@ var (
 		KO: "IP는 <b>관측에 찍힌 주소를 이 이름과 잇는 근거</b>입니다. 한 노드가 망 둘에 " +
 			"걸치면 IP도 둘이니 쉼표나 공백으로 나눠 적으십시오. <b>IP를 적지 않은 줄은 " +
 			"관리 대상이 되지 않습니다</b> — 이을 근거가 없으면 대조가 막히지 않은 채로 " +
-			"틀리기 때문입니다. 저장하면 그 줄은 표에서 사라집니다. 이름을 비워도 지워집니다.",
+			"틀리기 때문입니다. 저장하면 그 줄은 표에서 사라집니다. 이름을 비워도 지워집니다.<br>" +
+			"<b>「관측 이름」은 관측이 이 노드를 부르는 이름입니다.</b> 자산 대조는 노드 " +
+			"이름이 글자 그대로 같아야 맞는데, collector 는 자기가 붙인 " +
+			"id(<code>node:1a2b…</code>)나 호스트명으로 보내는 일이 흔합니다. 이름이 갈리면 " +
+			"<b>그 노드의 자산이 통째로 shadow 로</b> 오릅니다 — 선언이 틀려서가 아니라 " +
+			"이름이 갈려서입니다. 호스트명(짧은 이름 포함)이 위 이름과 같으면 비워 두십시오 " +
+			"— 그때는 알아서 이어집니다. 아직 어느 노드에도 붙지 않은 관측 이름이 있으면 " +
+			"이 칸이 후보로 내놓습니다.",
 		EN: "The IP is <b>what ties an observed address back to this name</b>. A node on two " +
 			"networks has two IPs — separate them with commas or spaces. <b>A row with no IP " +
 			"is not under management</b> — without that tie, reconciliation comes out wrong " +
-			"without erroring. Saving drops the row. Clearing the name drops it too."}
+			"without erroring. Saving drops the row. Clearing the name drops it too.<br>" +
+			"<b>“Observed as” is what observation calls this node.</b> Asset reconciliation " +
+			"matches node names literally, but a collector often reports its own " +
+			"id (<code>node:1a2b…</code>) or a hostname. When the names diverge, <b>every asset " +
+			"on that node comes up as shadow</b> — not because the declaration is wrong but " +
+			"because the names differ. Leave it empty when the hostname (or its short form) " +
+			"equals the name above; those tie themselves. Names observed but not yet tied to " +
+			"any node are offered here as candidates."}
 
 	tDeclAssets     = T{KO: "암호 자산", EN: "Crypto assets"}
 	tDeclAssetsHint = T{
@@ -153,6 +167,10 @@ var (
 
 	tColName      = T{KO: "이름", EN: "Name"}
 	tColIP        = T{KO: "IP", EN: "IP"}
+	// **관측이 이 노드를 뭐라고 부르는가.** 자산 대조는 노드 이름이 글자 그대로 같아야
+	// 맞는데, collector 는 자기가 붙인 id 나 호스트명으로 보낸다.
+	tColObservedAs       = T{KO: "관측 이름", EN: "Observed as"}
+	tColObservedAsHolder = T{KO: "호스트명이 이름과 같으면 비워 둡니다", EN: "leave empty if the hostname matches the name"}
 	tColNode      = T{KO: "노드", EN: "Node"}
 	tColRuntime   = T{KO: "런타임", EN: "Runtime"}
 	tColComponent = T{KO: "컴포넌트", EN: "Component"}

@@ -38,6 +38,14 @@ type Declaration struct {
 type Node struct {
 	Name string   `json:"name"`
 	IPs  []string `json:"ips"`
+	// ObservedAs — 관측이 이 노드를 부르는 이름. **자산 대조는 노드 이름이 글자 그대로
+	// 같아야 맞는다** — 그런데 collector 는 자기가 붙인 id(`node:<해시>`)나 호스트명으로
+	// 보내는 일이 흔하다. 이름이 갈리면 선언한 자산은 전부 미관측으로, 관측된 자산은
+	// 전부 shadow 로 올라온다 — 막히지 않고 그럴듯하게 틀린다.
+	//
+	// 호스트명이 이름과 같으면 적지 않아도 이어진다. 여기는 **그것으로 안 될 때** 사람이
+	// 한 번 적어 두는 자리다.
+	ObservedAs []string `json:"observed_as,omitempty"`
 }
 
 // Asset — 선언된 자산 하나.

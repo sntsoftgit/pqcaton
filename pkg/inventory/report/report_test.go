@@ -23,6 +23,42 @@ func completeness(covered, missing []commonv1.CollectionLayer) *discoveryv1.Coll
 	}
 }
 
+// IC-R14 — **관측 노드를 선언 노드로 잇는다.**
+//
+// 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. 그런데 collector 는 자기가 붙인
+// id(`node:<해시>`)나 fqdn 으로 보냅니다 — 이름이 갈리면 선언한 자산은 전부 미관측으로,
+// 관측된 자산은 전부 shadow 로 오릅니다. **막히지 않고 그럴듯하게 틀리는 자리입니다.**
+//
+// 호스트명이 이름과 같으면 알아서 잇고, 그것으로 안 되면 사람이 적어 둔 「관측 이름」으로
+// 잇는다. 어디에도 안 걸리면 **관측이 부른 이름을 그대로 둔다** — 억지로 하나를 고르면
+// 남의 노드 자산이 붙고, 그 이름으로 shadow 가 올라야 사람이 보고 적어 넣을 수 있다.
+func TestResolveAssetNode(t *testing.T) {
+	nodes := []decl.Node{
+		{Name: "web-gw", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"node:48596282fd2faf23"}},
+		{Name: "pay-db", IPs: []string{"10.0.0.2"}},
+	}
+	for _, tc := range []struct {
+		name     string
+		id, fqdn string
+		want     string
+	}{
+		{"이름이 그대로 온다", "web-gw", "", "web-gw"},
+		{"적어 둔 관측 이름", "node:48596282fd2faf23", "ktydesktop", "web-gw"},
+		{"fqdn 의 짧은 이름", "node:1a2b", "pay-db.corp.example", "pay-db"},
+		{"fqdn 그대로", "node:1a2b", "pay-db", "pay-db"},
+		{"대소문자는 가리지 않는다", "node:1a2b", "PAY-DB.corp", "pay-db"},
+		{"어디에도 안 걸린다", "node:9f9f", "ktydesktop", "node:9f9f"},
+	} {
+		res := &discoveryv1.CollectionResult{Envelope: &commonv1.CollectorEnvelope{
+			TargetNodeId: tc.id,
+			Machine:      &commonv1.MachineIdentity{Fqdn: tc.fqdn},
+		}}
+		if got := report.ResolveAssetNode(res, nodes); got != tc.want {
+			t.Errorf("%s: %q(fqdn %q) → %q, want %q", tc.name, tc.id, tc.fqdn, got, tc.want)
+		}
+	}
+}
+
 // IC-R8 — **관측 IP를 스코프 노드로 잇는다**(§0.4).
 //
 // 이어지지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 shadow 로 올라온다** —
