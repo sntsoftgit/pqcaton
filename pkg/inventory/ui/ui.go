@@ -246,12 +246,8 @@ func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped
 	//
 	// **자산은 그 노드에 묶여 있다.** 노드가 빠지면 그 노드의 자산도 함께 빠진다 —
 	// 어느 노드의 것인지 없는 자산은 대조할 자리가 없다.
-	for ni := 0; ; ni++ {
-		name, ok := f["node.name."+strconv.Itoa(ni)]
-		if !ok {
-			break
-		}
-		nm := strings.TrimSpace(first(name))
+	for _, ni := range formRows(f, "node.name.", "") {
+		nm := strings.TrimSpace(f.Get("node.name." + strconv.Itoa(ni)))
 		if nm == "" {
 			continue // 이름을 비우면 지운 것이다
 		}
@@ -262,12 +258,8 @@ func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped
 		}
 		d.Scope = append(d.Scope, nm)
 		d.Nodes = append(d.Nodes, decl.Node{Name: nm, IPs: ips})
-		for i := 0; ; i++ {
-			comp, ok := f[assetField(ni, i, "component")]
-			if !ok {
-				break
-			}
-			c := strings.TrimSpace(first(comp))
+		for _, i := range formRows(f, "asset."+strconv.Itoa(ni)+".", ".component") {
+			c := strings.TrimSpace(f.Get(assetField(ni, i, "component")))
 			if c == "" {
 				continue // 컴포넌트를 비우면 지운 줄이다
 			}
@@ -276,23 +268,40 @@ func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped
 				Component: c})
 		}
 	}
-	for i := 0; ; i++ {
-		src, ok := f["edge.src."+strconv.Itoa(i)]
-		if !ok {
-			break
-		}
-		s := strings.TrimSpace(first(src))
+	for _, i := range formRows(f, "edge.src.", "") {
+		src := strings.TrimSpace(f.Get("edge.src." + strconv.Itoa(i)))
 		dst := strings.TrimSpace(f.Get("edge.dst." + strconv.Itoa(i)))
-		if s == "" || dst == "" {
+		if src == "" || dst == "" {
 			continue
 		}
 		port, _ := strconv.ParseUint(strings.TrimSpace(f.Get("edge.port."+strconv.Itoa(i))), 10, 32)
 		d.Edges = append(d.Edges, decl.Edge{
-			Src: s, Dst: dst, Port: uint32(port),
+			Src: src, Dst: dst, Port: uint32(port),
 			Proto: strings.TrimSpace(f.Get("edge.proto." + strconv.Itoa(i))),
 		})
 	}
 	return d, dropped
+}
+
+// formRows — 폼에 실제로 온 줄 번호를 차례대로.
+//
+// **번호가 끊겨도 읽는다.** 화면에서 「제거」로 가운데 줄을 지우면 그 번호가 빈 채로
+// 남는다. 예전처럼 끊기는 자리에서 읽기를 멈추면, 지운 줄 뒤의 것이 **오류 없이 저장되지
+// 않는다** — 사람은 지운 줄 하나만 사라졌다고 읽는다.
+func formRows(f url.Values, prefix, suffix string) []int {
+	var rows []int
+	for k := range f {
+		if len(k) <= len(prefix)+len(suffix) || !strings.HasPrefix(k, prefix) || !strings.HasSuffix(k, suffix) {
+			continue
+		}
+		n, err := strconv.Atoi(k[len(prefix) : len(k)-len(suffix)])
+		if err != nil || n < 0 {
+			continue
+		}
+		rows = append(rows, n)
+	}
+	sort.Ints(rows)
+	return rows
 }
 
 func first(v []string) string {

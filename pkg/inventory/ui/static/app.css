@@ -54,6 +54,14 @@ button.primary { border-color: var(--ok); font-weight: 600; }
 .node .assets > .n { color: var(--dim); font-size: .85rem; }
 .node .assets table { margin-top: .2rem; }
 
+/* 제거 — 묻고 지운다. 줄 끝에 조용히 서 있게 두되, 누를 자리는 분명해야 한다. */
+button.rm { font-size: .8rem; padding: .2rem .5rem; color: var(--dim); }
+button.rm:hover { color: var(--warn); border-color: var(--warn); }
+
+/* 링크로 만든 버튼 — 다시 불러오기. htmx 가 막혀도 링크로 동작한다. */
+a.button { font: inherit; padding: .5rem 1rem; border-radius: 6px; border: 1px solid var(--line);
+           color: inherit; text-decoration: none; cursor: pointer; }
+
 /* 행 추가 — htmx 가 서버에서 받은 빈 줄을 표 끝에 붙인다. 페이지가 다시 뜨지 않으므로
    적던 내용이 그대로 남는다. 이 버튼이 없어도(JS 를 못 쓰는 환경) 표는 읽고 고칠 수
    있어야 한다 — 그래서 기존 행은 폼 그대로다. */

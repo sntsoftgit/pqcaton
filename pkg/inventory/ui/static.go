@@ -26,6 +26,9 @@ var static embed.FS
 const (
 	StaticPath = "/static/"
 	RowPath    = "/decl/row"
+	// RemovePath — 「제거」가 부르는 자리. **서버는 아무것도 하지 않는다** — 빈 응답을
+	// 돌려주면 htmx 가 그 줄을 화면에서 지운다. 파일이 달라지는 것은 저장할 때뿐이다.
+	RemovePath = "/decl/remove"
 	// ScopeRowPath — 자산 스코프의 규칙 한 줄. 선언의 것과 나눈 것은 계층 번호가
 	// 하나 더 붙기 때문이다 — 한 주소에 둘을 밀어 넣으면 둘 다 읽기 어려워진다.
 	ScopeRowPath = "/scope/row"

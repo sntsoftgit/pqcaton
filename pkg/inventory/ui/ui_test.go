@@ -445,6 +445,51 @@ func TestEveryScreenFoldsItsExplanations(t *testing.T) {
 	}
 }
 
+// IC-UI31 — **가운데 줄을 지워도 뒤의 줄이 살아 남는다.**
+//
+// 「제거」는 그 줄을 화면에서 지웁니다. 번호는 빈 채로 남습니다 — 예전처럼 끊기는
+// 자리에서 읽기를 멈추면 지운 줄 **뒤의 것이 통째로 저장되지 않습니다.** 오류도 나지
+// 않고, 사람은 지운 줄 하나만 사라졌다고 읽습니다.
+func TestApplyDeclReadsPastRemovedRows(t *testing.T) {
+	got, _ := ui.ApplyDecl(decl.Declaration{}, url.Values{
+		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},
+		// 1번 노드는 「제거」로 지워져 폼에 오지 않는다
+		"node.name.2": {"db"}, "node.ips.2": {"10.0.0.2"},
+		"asset.2.0.runtime": {"openssl"}, "asset.2.0.component": {"libssl"},
+		// 자산도 가운데가 빈다
+		"asset.2.2.runtime": {"jca"}, "asset.2.2.component": {"sunjce"},
+		"edge.src.0": {"web"}, "edge.dst.0": {"db"}, "edge.port.0": {"5432"}, "edge.proto.0": {"TLS"},
+		"edge.src.3": {"db"}, "edge.dst.3": {"web"}, "edge.port.3": {"443"}, "edge.proto.3": {"TLS"},
+	})
+	if strings.Join(got.Scope, ",") != "web,db" {
+		t.Fatalf("지운 줄 뒤의 노드가 사라졌다: %v", got.Scope)
+	}
+	if len(got.Assets) != 2 || got.Assets[1].Component != "sunjce" {
+		t.Fatalf("지운 줄 뒤의 자산이 사라졌다: %+v", got.Assets)
+	}
+	if len(got.Edges) != 2 || got.Edges[1].Port != 443 {
+		t.Fatalf("지운 줄 뒤의 엣지가 사라졌다: %+v", got.Edges)
+	}
+}
+
+// IC-UI32 — **제거는 묻고 지운다.** 잘못 누르면 적어 둔 것이 한 번에 사라지는 자리다.
+// 그리고 지우는 것은 화면일 뿐이라, 파일에 닿으려면 저장해야 한다는 것도 물음이 말한다.
+func TestRemoveButtonsAskFirst(t *testing.T) {
+	var b strings.Builder
+	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	if n := strings.Count(body, `hx-confirm=`); n < 4 {
+		t.Errorf("묻지 않고 지우는 자리가 있다 — hx-confirm %d개:\n%s", n, body)
+	}
+	for _, want := range []string{"저장해야 파일에 반영됩니다", "다시 불러오기", "저장하지 않은 편집을 버리고"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("화면에 %q 가 없다", want)
+		}
+	}
+}
+
 // IC-UI19 — **영어 화면에 한글이 남아 있지 않다.**
 //
 // 문구를 하나 옮기지 않으면 그 자리만 한국어로 뜹니다. 눈으로는 못 찾습니다 — 화면

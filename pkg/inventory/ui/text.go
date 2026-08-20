@@ -55,6 +55,24 @@ var (
 
 	tRefused = T{KO: "요청하신 것을 하지 않았습니다. 이유는 이렇습니다.",
 		EN: "Not done — here is why."}
+	// 제거는 **묻고 지운다.** 잘못 누르면 적어 둔 것이 한 번에 사라지는 자리다.
+	tRemove         = T{KO: "제거", EN: "Remove"}
+	tRemoveNodeAsk  = T{
+		KO: "이 노드와 그 안의 암호 자산을 표에서 지웁니다. 저장해야 파일에 반영됩니다. 지울까요?",
+		EN: "This removes the node and the crypto assets inside it from the table. It reaches the file only when you save. Remove?"}
+	tRemoveAssetAsk = T{
+		KO: "이 암호 자산을 표에서 지웁니다. 저장해야 파일에 반영됩니다. 지울까요?",
+		EN: "This removes the crypto asset from the table. It reaches the file only when you save. Remove?"}
+	tRemoveEdgeAsk = T{
+		KO: "이 통신 엣지를 표에서 지웁니다. 저장해야 파일에 반영됩니다. 지울까요?",
+		EN: "This removes the communication edge from the table. It reaches the file only when you save. Remove?"}
+
+	// 다시 불러오기 — 편집을 버리고 파일에 있는 것으로 되돌린다.
+	tReload    = T{KO: "다시 불러오기", EN: "Reload"}
+	tReloadAsk = T{
+		KO: "저장하지 않은 편집을 버리고, 마지막으로 저장된 선언을 다시 불러옵니다. 계속할까요?",
+		EN: "This discards edits you have not saved and loads the declaration as it was last saved. Continue?"}
+
 	tAddNode  = T{KO: "노드 추가", EN: "Add node"}
 	tAddAsset = T{KO: "자산 추가", EN: "Add asset"}
 	tAddEdge  = T{KO: "엣지 추가", EN: "Add edge"}

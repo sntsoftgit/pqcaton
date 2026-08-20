@@ -217,6 +217,7 @@ func (s *server) handler() http.Handler {
 	r.Get("/", s.home)
 	r.Get("/decl", s.declEdit)
 	r.Get(ui.RowPath, s.declRow)
+	r.Get(ui.RemovePath, s.declRemove)
 	r.Post("/decl/save", s.declSave)
 	r.Get("/scope", s.scopeEdit)
 	r.Get(ui.ScopeRowPath, s.scopeRow)
@@ -747,6 +748,19 @@ func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	html(w, func() error { return ui.RenderRow(w, ui.PickLang(r), kind, node, i) })
+}
+
+// declRemove — 「제거」. **빈 응답을 돌려준다** — 지우는 것은 브라우저가 하고(htmx 가
+// 그 줄을 빈 것으로 갈아 끼운다), 파일이 달라지는 것은 저장할 때뿐이다.
+//
+// 서버가 아무것도 바꾸지 않으므로 GET 이다. 새로고침으로 무엇이 다시 일어나지 않는다.
+func (s *server) declRemove(w http.ResponseWriter, r *http.Request) {
+	if s.decl == "" {
+		http.Error(w, "no declaration file was given", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
 }
 
 // maxRows — 한 표에 열어 줄 줄 수의 상한. 사람이 화면에서 손으로 넣는 자리라 이보다
