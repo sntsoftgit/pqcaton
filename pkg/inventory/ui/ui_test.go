@@ -41,11 +41,18 @@ func TestDeclRenderShowsEverything(t *testing.T) {
 		`name="node.name.0"`, "10.0.0.1, 10.0.1.1", // 여러 IP를 한 칸에
 		`name="asset.component.0"`, "libssl",
 		`name="edge.port.0"`, "443",
-		`name="node.name.1"`, // 빈 줄이 열려 있어야 새로 넣을 수 있다
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("화면에 %q 가 없다", want)
 		}
+	}
+	// **빈 줄은 미리 열지 않는다.** 적을 것이 있는 사람만 「행 추가」로 연다 — 아무도
+	// 안 적을 줄 셋이 표마다 서 있으면, 있는 것을 보러 온 사람이 그만큼 밀린다.
+	if strings.Contains(body, `name="node.name.1"`) {
+		t.Error("누르지도 않았는데 빈 줄이 열려 있다")
+	}
+	if !strings.Contains(body, "kind=node") {
+		t.Error("「행 추가」가 없어 새 줄을 넣을 길이 없다")
 	}
 }
 
@@ -59,7 +66,7 @@ func TestApplyDeclRoundTrip(t *testing.T) {
 		"asset.node.0": {"web"}, "asset.runtime.0": {"openssl"}, "asset.component.0": {"libssl"},
 		"edge.src.0": {"web"}, "edge.dst.0": {"web"}, "edge.port.0": {"443"}, "edge.proto.0": {"TLS"},
 	}
-	got := ui.ApplyDecl(in, f)
+	got, _ := ui.ApplyDecl(in, f)
 	if got.Org != "acme" || len(got.Scope) != 1 {
 		t.Fatalf("머리 부분이 다르다: %+v", got)
 	}
@@ -77,7 +84,7 @@ func TestApplyDeclRoundTrip(t *testing.T) {
 // IC-UI3 — **IP는 쉼표로도 공백으로도 받는다.** 사람이 어느 쪽으로 적는지 외우게 하지 않는다.
 func TestApplyDeclSplitsIPsEitherWay(t *testing.T) {
 	for _, in := range []string{"10.0.0.1, 10.0.1.1", "10.0.0.1 10.0.1.1", "10.0.0.1,10.0.1.1"} {
-		got := ui.ApplyDecl(decl.Declaration{}, url.Values{
+		got, _ := ui.ApplyDecl(decl.Declaration{}, url.Values{
 			"node.name.0": {"web"}, "node.ips.0": {in},
 		})
 		if len(got.Nodes) != 1 || len(got.Nodes[0].IPs) != 2 {
@@ -90,7 +97,7 @@ func TestApplyDeclSplitsIPsEitherWay(t *testing.T) {
 // 폼에 없다 — 그래도 저장에서 사라지면 안 된다.
 func TestApplyDeclKeepsComment(t *testing.T) {
 	prev := decl.Declaration{Comment: "declare.py 가 생성했습니다"}
-	got := ui.ApplyDecl(prev, url.Values{"org": {"acme"}})
+	got, _ := ui.ApplyDecl(prev, url.Values{"org": {"acme"}})
 	if got.Comment != prev.Comment {
 		t.Errorf("머리말이 사라졌다: %q", got.Comment)
 	}
@@ -597,24 +604,42 @@ func TestDeclMergesScopeAndAddressesIntoOneTable(t *testing.T) {
 	}
 }
 
-// IC-UI27 — **저장하면 이름이 곧 관리 대상이 된다.** IP를 채운 줄만 주소 표에 들어간다 —
-// IP 없는 주소 줄은 파일에 아무 뜻도 더하지 않는다.
+// IC-UI27 — **IP를 적은 줄만 관리 대상이 된다.**
+//
+// IP가 없으면 관측에 찍힌 주소를 이 이름과 이을 근거가 없습니다. 그런 이름을 관리
+// 대상에 넣어 두면 선언한 엣지는 미관측으로, 관측된 엣지는 shadow 로 갈립니다 —
+// 막히지 않으니 눈으로는 알 수 없습니다. 그래서 저장에서 뺍니다. 다만 **뺀 것은
+// 말해야 합니다** — 표에서 사라진 것만 보이면 지워진 것으로 읽힙니다.
 func TestApplyDeclDerivesScopeFromTheTable(t *testing.T) {
-	got := ui.ApplyDecl(decl.Declaration{}, url.Values{
+	got, dropped := ui.ApplyDecl(decl.Declaration{}, url.Values{
 		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},
-		"node.name.1": {"db"}, "node.ips.1": {""}, // IP는 아직 모른다
+		"node.name.1": {"db"}, "node.ips.1": {""}, // IP를 모르면 관리 대상이 아니다
 		"node.name.2": {""}, "node.ips.2": {"10.0.0.9"}, // 이름이 없으면 지운 줄이다
 	})
-	if strings.Join(got.Scope, ",") != "web,db" {
+	if strings.Join(got.Scope, ",") != "web" {
 		t.Fatalf("관리 대상이 다르다: %v", got.Scope)
 	}
 	if len(got.Nodes) != 1 || got.Nodes[0].Name != "web" {
 		t.Fatalf("주소 표에 IP 없는 줄이 들어갔다: %+v", got.Nodes)
 	}
-	// 한 바퀴 돌려도 같은 표가 나온다.
+	if strings.Join(dropped, ",") != "db" {
+		t.Fatalf("뺀 이름을 말하지 않는다: %v", dropped)
+	}
+	// 한 바퀴 돌려도 같은 표가 나온다 — 뺀 이름은 파일에 없으므로 표에도 없다.
 	back := ui.NewDeclView(got, ui.Page{Lang: ui.KO}).Decl.Nodes
-	if len(back) != 2 || back[0].Name != "web" || back[1].Name != "db" || len(back[1].IPs) != 0 {
+	if len(back) != 1 || back[0].Name != "web" {
 		t.Fatalf("다시 그리면 달라진다: %+v", back)
+	}
+}
+
+// IC-UI30 — **손으로 고친 파일의 IP 없는 이름은 표에 올린다.**
+//
+// 저장하면 빠지지만, 화면에서 지워 버리면 IP를 채워 넣을 자리조차 없어집니다.
+func TestScopeOnlyNameStillShowsForFixing(t *testing.T) {
+	v := ui.NewDeclView(decl.Declaration{Scope: []string{"web", "db"},
+		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}, ui.Page{Lang: ui.KO})
+	if len(v.Decl.Nodes) != 2 || v.Decl.Nodes[1].Name != "db" || len(v.Decl.Nodes[1].IPs) != 0 {
+		t.Fatalf("IP 없는 이름이 표에서 사라졌다: %+v", v.Decl.Nodes)
 	}
 }
 

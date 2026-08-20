@@ -637,7 +637,7 @@ func TestScopeRulesWriteBackToLayerFile(t *testing.T) {
 		"rule.0.1.action": {"exclude"}, "rule.0.1.runtime": {"*"},
 		"rule.0.1.lib": {"*"}, "rule.0.1.app_key": {"/usr/sbin/sshd"},
 		"rule.0.1.note": {"sshd 는 OS 패치로 관리"},
-		// 미리 열린 빈 줄
+		// 「행 추가」로 연 빈 줄
 		"rule.0.2.action": {"include"}, "rule.0.2.runtime": {""},
 		"rule.0.2.lib": {""}, "rule.0.2.app_key": {""},
 	}))

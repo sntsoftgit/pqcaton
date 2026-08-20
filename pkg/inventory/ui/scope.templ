@@ -144,12 +144,9 @@ templ layerEditor(l Lang, e LayerEdit) {
 				for i, r := range e.Rules {
 					@ruleRow(e.Index, i, r)
 				}
-				for j := 0; j < e.Blank; j++ {
-					@ruleRow(e.Index, len(e.Rules)+j, scope.Rule{Action: "include"})
-				}
 			</tbody>
 		</table>
-		@addRuleRow(l, e.Index, len(e.Rules)+e.Blank, false)
+		@addRuleRow(l, e.Index, len(e.Rules), false)
 	</fieldset>
 }
 

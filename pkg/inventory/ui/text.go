@@ -46,6 +46,9 @@ var (
 	tDeclSaved = T{
 		KO: "선언을 저장했습니다 — 노드 %d · 자산 %d · 엣지 %d",
 		EN: "Declaration saved — %d nodes · %d assets · %d edges"}
+	tDeclDroppedNoIP = T{
+		KO: " · IP를 적지 않은 노드 %d개는 관리 대상에서 뺐습니다",
+		EN: " · %d nodes with no IP were left out of management"}
 	tDeclStillOff = T{
 		KO: " · 맞지 않는 자리 %d곳이 남아 있습니다",
 		EN: " · %d places still do not add up"}
@@ -77,13 +80,13 @@ var (
 			"decided on the Asset scope tab."}
 	tDeclNodesHint = T{
 		KO: "IP는 <b>관측에 찍힌 주소를 이 이름과 잇는 근거</b>입니다. 한 노드가 망 둘에 " +
-			"걸치면 IP도 둘이니 쉼표나 공백으로 나눠 적으십시오. <b>아직 모르면 비워 둬도 " +
-			"됩니다</b> — 다만 그동안은 그 노드로 오는 통신이 이 이름과 이어지지 않습니다. " +
-			"이름을 비우면 그 줄은 지워집니다.",
+			"걸치면 IP도 둘이니 쉼표나 공백으로 나눠 적으십시오. <b>IP를 적지 않은 줄은 " +
+			"관리 대상이 되지 않습니다</b> — 이을 근거가 없으면 대조가 막히지 않은 채로 " +
+			"틀리기 때문입니다. 저장하면 그 줄은 표에서 사라집니다. 이름을 비워도 지워집니다.",
 		EN: "The IP is <b>what ties an observed address back to this name</b>. A node on two " +
-			"networks has two IPs — separate them with commas or spaces. <b>You may leave it " +
-			"empty if you do not know it yet</b>, but until you do, traffic to that node will " +
-			"not be tied to this name. Clearing the name deletes the row."}
+			"networks has two IPs — separate them with commas or spaces. <b>A row with no IP " +
+			"is not under management</b> — without that tie, reconciliation comes out wrong " +
+			"without erroring. Saving drops the row. Clearing the name drops it too."}
 
 	tDeclAssets     = T{KO: "자산", EN: "Assets"}
 	tDeclAssetsHint = T{

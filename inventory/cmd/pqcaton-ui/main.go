@@ -759,12 +759,17 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/decl", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
-	d := ui.ApplyDecl(prev, r.PostForm)
+	d, dropped := ui.ApplyDecl(prev, r.PostForm)
 	if err := decl.Save(s.decl, d); err != nil {
 		redirect(w, r, "/decl", "", ui.Refusal(ui.PickLang(r), err))
 		return
 	}
 	msg := ui.MsgDeclSaved(ui.PickLang(r), len(d.Nodes), len(d.Assets), len(d.Edges))
+	// **뺀 줄은 말한다.** IP 없는 줄은 관리 대상이 아니라 저장에서 빠지는데, 표에서
+	// 사라진 것만 보이면 지워진 것으로 읽힌다.
+	if len(dropped) > 0 {
+		msg += ui.MsgDeclDroppedNoIP(ui.PickLang(r), len(dropped))
+	}
 	// **저장은 됐지만 앞뒤가 안 맞으면 그 사실을 함께 말한다.** 막지는 않는다.
 	if p := decl.Check(d); len(p) > 0 {
 		msg += ui.MsgDeclStillOff(ui.PickLang(r), len(p))

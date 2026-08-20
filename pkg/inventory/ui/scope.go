@@ -39,8 +39,6 @@ type LayerEdit struct {
 	Name  string
 	Path  string
 	Rules []scope.Rule
-	// Blank — 미리 열어 두는 빈 줄. 「행 추가」가 더 열어 준다.
-	Blank int
 }
 
 // LayerGroup — 한 계층과 그에 묶인 변경들.
@@ -81,7 +79,7 @@ func NewScopeView(sf scope.Session, page Page) ScopeView {
 // 편집 표를 그리면 저장할 곳이 없는 칸을 사람이 채우게 된다.
 func (v ScopeView) Editable(files []scope.LayerFile) ScopeView {
 	for i, f := range files {
-		e := LayerEdit{Index: i, Name: f.Layer.Name, Path: f.Path, Blank: DefaultBlank}
+		e := LayerEdit{Index: i, Name: f.Layer.Name, Path: f.Path}
 		for _, r := range f.Layer.Rules {
 			e.Rules = append(e.Rules, toRule(r))
 		}

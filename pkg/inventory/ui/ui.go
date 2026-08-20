@@ -136,19 +136,14 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 type DeclView struct {
 	Page
 	Decl decl.Declaration
-	// Blank — 빈 줄을 몇 개 더 보여 줄까. 없으면 항목을 새로 못 넣는다.
-	Blank int
 }
-
-// DefaultBlank — 표마다 열어 두는 빈 줄 수.
-const DefaultBlank = 3
 
 // NewDeclView — 선언을 화면이 보는 모양으로 옮긴다.
 //
 // **앞뒤가 맞는지는 여기서 말하지 않는다.** 선언 화면은 적는 자리다 — 어긋남은
 // `decl.Check` 를 쓰는 검토 화면과 `pqcaton-report` 가 짚는다.
 func NewDeclView(d decl.Declaration, page Page) DeclView {
-	v := DeclView{Page: page, Blank: DefaultBlank}
+	v := DeclView{Page: page}
 	v.Decl = d
 	v.Decl.Scope, v.Decl.Nodes = nil, mergeNodes(d)
 	return v
@@ -160,8 +155,8 @@ func NewDeclView(d decl.Declaration, page Page) DeclView {
 // IP 표에만 있으면 「스코프에 없어 쓰이지 않는다」고 짚어 왔는데 — 둘 다 사람이 한 곳에
 // 적었으면 애초에 생기지 않을 어긋남이다. 실제로 두 사유의 설명이 같은 문장이었다.
 //
-// 합친 뒤에도 **IP를 아직 모르는 노드**는 적을 수 있다. 이름만 적고 IP 칸을 비우면
-// 된다 — 그것이 예전의 「스코프에만 있는 노드」다.
+// 손으로 고친 파일에 **IP 없는 스코프 이름**이 있으면 그것도 표에 올린다. 저장하면
+// 관리 대상에서 빠지지만, 화면에서 지워 버리면 IP를 채워 넣을 자리조차 없어진다.
 func mergeNodes(d decl.Declaration) []decl.Node {
 	byName := map[string][]string{}
 	var order []string
@@ -211,11 +206,15 @@ func RenderRow(w io.Writer, l Lang, kind string, i int) error {
 // **얹는 것이 아니라 다시 만든다.** 표에서 줄을 지우는 방법이 「이름을 비우는 것」이므로,
 // 기존 것에 얹으면 지운 줄이 되살아난다. `_comment` 는 생성 도구가 남긴 머리말이라 그대로
 // 들고 간다 — 사람이 편집할 자리가 아니다.
-func ApplyDecl(prev decl.Declaration, f url.Values) decl.Declaration {
-	d := decl.Declaration{Comment: prev.Comment, Org: strings.TrimSpace(f.Get("org"))}
+//
+// dropped — IP를 적지 않아 관리 대상에서 뺀 이름. 화면이 그 사실을 말해야 한다 —
+// 저장하면 그 줄이 표에서 사라지므로, 말하지 않으면 지워진 것으로 보인다.
+func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped []string) {
+	d = decl.Declaration{Comment: prev.Comment, Org: strings.TrimSpace(f.Get("org"))}
 
-	// **한 표에서 두 목록이 나온다.** 적힌 이름이 곧 관리 대상이고, IP 칸을 채운 것만
-	// 주소 표에 들어간다 — IP 없는 주소 줄은 파일에 아무 뜻도 더하지 않는다.
+	// **IP를 적은 줄만 관리 대상이 된다.** IP가 없으면 관측에 찍힌 주소를 이 이름과
+	// 이을 근거가 없어, 선언한 엣지는 미관측으로 관측된 엣지는 shadow 로 갈린다 —
+	// 대조가 막히지 않은 채로 틀린다. 이름만 적어 두는 것은 관리가 아니다.
 	for i := 0; ; i++ {
 		name, ok := f["node.name."+strconv.Itoa(i)]
 		if !ok {
@@ -225,10 +224,13 @@ func ApplyDecl(prev decl.Declaration, f url.Values) decl.Declaration {
 		if nm == "" {
 			continue // 이름을 비우면 지운 것이다
 		}
-		d.Scope = append(d.Scope, nm)
-		if ips := splitList(f.Get("node.ips." + strconv.Itoa(i))); len(ips) > 0 {
-			d.Nodes = append(d.Nodes, decl.Node{Name: nm, IPs: ips})
+		ips := splitList(f.Get("node.ips." + strconv.Itoa(i)))
+		if len(ips) == 0 {
+			dropped = append(dropped, nm)
+			continue
 		}
+		d.Scope = append(d.Scope, nm)
+		d.Nodes = append(d.Nodes, decl.Node{Name: nm, IPs: ips})
 	}
 	for i := 0; ; i++ {
 		node, ok := f["asset.node."+strconv.Itoa(i)]
@@ -261,7 +263,7 @@ func ApplyDecl(prev decl.Declaration, f url.Values) decl.Declaration {
 			Proto: strings.TrimSpace(f.Get("edge.proto." + strconv.Itoa(i))),
 		})
 	}
-	return d
+	return d, dropped
 }
 
 func first(v []string) string {

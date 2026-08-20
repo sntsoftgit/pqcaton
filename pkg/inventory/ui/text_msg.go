@@ -28,4 +28,6 @@ func MsgDeclSaved(l Lang, nodes, assets, edges int) string {
 	return fmt.Sprintf(tDeclSaved.In(l), nodes, assets, edges)
 }
 
+func MsgDeclDroppedNoIP(l Lang, n int) string { return fmt.Sprintf(tDeclDroppedNoIP.In(l), n) }
+
 func MsgDeclStillOff(l Lang, n int) string { return fmt.Sprintf(tDeclStillOff.In(l), n) }
