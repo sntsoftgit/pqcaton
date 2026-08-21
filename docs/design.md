@@ -226,7 +226,7 @@ draft ──▶ in-review ──▶ finalized
 
 ---
 
-### 1.6 자산 스코프 거버넌스 (2026-07-21)
+### 1.6 자산 스코프 거버넌스
 
 pqcota가 **메커니즘**을 갖습니다: `scope.AssetPolicy`(CSV 규칙, glob) — 노드를 등재해도 그 안에서
 **무엇을 계속 관리할지**를 사용자가 선언하고, `pqcota-ingest -scope-assets`가 적재 전에 집행합니다.
