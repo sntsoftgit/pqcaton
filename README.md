@@ -16,8 +16,8 @@
 
 ## 왜 따로 있나
 
-pqcota는 **관측한 사실만 알려 줍니다.** 🔴 표시는 "취약하다"는 판정이 아니라 "고전 알고리즘으로
-협상됐다"는 관측이고, 무엇을 언제 바꿀지는 그 도구가 정하지 않습니다. 그 선을 지키려고
+pqcota는 **관측한 사실만 알려 줍니다.** 🔴 표시는 「취약하다」는 판정이 아니라 「고전 알고리즘으로
+협상됐다」는 관측이고, 무엇을 언제 바꿀지는 그 도구가 정하지 않습니다. 그 선을 지키려고
 선언 대조·리뷰 큐·확정 거버넌스를 **명시적으로 만들지 않았습니다.**
 
 그런데 조직에서는 누군가 그 판단을 해야 합니다. 그리고 그 판단은 **남아야 합니다** — 누가
@@ -40,21 +40,22 @@ pqcota                          pqcaton
 | [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만) · UNOBSERVED(선언만) |
 | [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
 | [`pkg/inventory/review`](pkg/inventory/review) | **세션 파일 형식과 확정 관문** — 명령과 화면이 이 하나를 씁니다 |
-| [`pkg/inventory/decl`](pkg/inventory/decl) | **선언 형식과 자체 검사** — 노드↔IP가 틀리면 대조가 **오류 없이** 틀립니다. 저장 전에 짚습니다 |
+| [`pkg/inventory/decl`](pkg/inventory/decl) | **선언 형식과 자체 검사** — 노드↔IP가 틀리면 대조 결과가 **오류 없이** 틀립니다. 저장 전에 짚습니다 |
 | [`pkg/inventory/report`](pkg/inventory/report) | **여러 노드 대조** — 레인 분리·IP 잇기·완전성. 명령과 화면이 이 계산 하나를 씁니다 |
 | [`pkg/inventory/ui`](pkg/inventory/ui) | **화면** — 그리는 것과 폼을 읽는 것만. 어디서 읽고 누가 들어오는지는 부르는 쪽이 정합니다 |
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스** — 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
+| [`pkg/inventory/localscan`](pkg/inventory/localscan) | **이 기계를 스캔하는 지름길** — 관측 없이 한 바퀴 돌아 보는 자리. 못 본 것은 「없다」로 내지 않습니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 만듭니다 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포** — 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
-| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **리뷰 큐와 선언을 사람이 다루는 화면** — 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
+| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 다섯** — 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회. 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
 **UNDECLARED 가 이 도구가 주는 첫 번째 쓸모입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지 — 조직이
 모르는 연결입니다. 보안에서 가장 먼저 봐야 할 것이 거기 있습니다.
 
 **UNOBSERVED는 기계가 확정하지 않습니다.** 선언에는 있는데 관측되지 않은 것이 *실재하는데 못
-본 것*인지 *이미 없어진 것*인지는 사람만 압니다. pqcota의 완전성 맵이 "원리상 관측 불가"인지
-"실제 없음"인지를 갈라 주고, 그 위에서 사람이 정합니다.
+본 것*인지 *이미 없어진 것*인지는 사람만 압니다. pqcota의 완전성 맵이 「원리상 관측 불가」인지
+「실제 없음」인지를 갈라 주고, 그 위에서 사람이 정합니다.
 
 **구조 그림**은 [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/)([소스](site/index.html)), **처음부터 끝까지 따라가는 여정**은
 [docs/journey.md](docs/journey.md)에 있습니다. 설계 근거는 [docs/design.md](docs/design.md),
@@ -77,7 +78,7 @@ ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota 의 coll
 하고, 리눅스와 Windows 를 다룹니다(상류 v0.6.3).
 
 > 예외 하나 — `pqcaton-decide open` 을 `-results` 없이 쓰면 **명령을 실행한 그 기계 자신을**
-> 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **Linux에서만** 됩니다.
+> 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **리눅스에서만** 됩니다.
 > 여러 노드를 제대로 다루는 길은 pqcota가 모은 결과를 읽는 [`pqcaton-report`](inventory/cmd/pqcaton-report)입니다.
 
 ## 써보기
@@ -91,7 +92,7 @@ make            # 라이선스 · 문구 관문 → 빌드 → 테스트
 ```bash
 go build -o bin/ ./inventory/cmd/...
 
-# ① 선언 — CMDB가 "있다"고 말하는 것. 직접 씁니다
+# ① 선언 — 「우리는 이렇게 알고 있다」를 적습니다. CMDB에서 뽑아도, 손으로 적어도 됩니다
 printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-chain\n' > decl.csv
 
 # ② 대조 — 이 머신을 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 만듭니다
