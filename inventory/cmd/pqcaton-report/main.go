@@ -33,7 +33,7 @@ func main() {
 
 	d := loadDeclaration(declPath)
 	// **계산은 공용 패키지가 한다.** 화면(`pqcaton-ui`)이 같은 것을 그리므로, 계산이 두
-	// 벌이면 화면과 글이 다른 답을 내는 날이 온다.
+	// 곳에 있으면 화면과 글이 다른 답을 내는 날이 온다.
 	r, err := report.Build(dir, d)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "❌", err)

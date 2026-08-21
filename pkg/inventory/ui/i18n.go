@@ -114,7 +114,7 @@ func SwitchHref(r *http.Request, to Lang) string {
 	return u.RequestURI()
 }
 
-// T — 한 문구의 두 벌.
+// T — 한 문구를 두 말로.
 //
 // **두 말을 한 자리에 나란히 둔다.** 파일을 갈라 두면 한쪽만 고쳐지는 날이 오고,
 // 그날 어느 쪽이 최신인지 아무도 모른다. 이름 있는 변수라 빠뜨리면 컴파일이 막는다.

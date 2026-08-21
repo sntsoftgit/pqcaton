@@ -116,7 +116,7 @@ flowchart TB
 
 명령으로 세우는 길(`pqcaton-scope open` · `pqcaton-decide open`)은 그대로입니다. 세우는
 코드가 공용 패키지 한 곳이라(`review.FromResults` · `scope.NewSession`), 명령과 화면이 같은
-큐를 봅니다 — 두 벌이면 화면에서 본 shadow 와 판정할 것이 갈립니다.
+큐를 봅니다 — 따로 계산하면 화면에서 본 shadow 와 판정할 것이 달라집니다.
 
 확정되면 남는 것은 산출물(`asset-scope.csv`·`plan.json`)과 판정 원장입니다.
 

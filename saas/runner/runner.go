@@ -78,7 +78,7 @@ type Config struct {
 	AddrKey string
 }
 
-// 설정 파일의 키. 이름은 설치 문서와 같은 것을 쓴다 — 두 벌이 되면 어긋난다.
+// 설정 파일의 키. 이름은 설치 문서와 같은 것을 쓴다 — 두 곳에 두면 어긋난다.
 const (
 	keyAPI        = "PQCATON_API"
 	keyToken      = "PQCATON_TOKEN"

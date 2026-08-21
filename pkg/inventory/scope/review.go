@@ -83,7 +83,7 @@ func EnglishReason(code string) string {
 
 // ExcludedFromResults — 관측 결과 전부에서 **정책이 뺀 자산**을 모은다.
 //
-// 명령(`pqcaton-scope review`)과 화면이 같은 계산을 써야 한다 — 두 벌이면 화면에서 본
+// 명령(`pqcaton-scope review`)과 화면이 같은 계산을 써야 한다 — 따로 계산하면 화면에서 본
 // 「안 보고 있는 것」과 명령이 세는 것이 갈린다.
 func ExcludedFromResults(p *kscope.AssetPolicy, results []*discoveryv1.CollectionResult) ([]Excluded, error) {
 	var out []Excluded

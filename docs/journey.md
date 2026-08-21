@@ -150,7 +150,7 @@ ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 
 | 상자 | 무엇 | 어디에 |
 |---|---|---|
-| **접근 준비**(pqcota 2) | 접속 정보 CSV 한 벌에서 Ansible 인벤토리와 노드 표가 갈려 나옵니다. **여러 노드를 훑을 때만** 필요합니다 | pqcota 여정 §2 |
+| **접근 준비**(pqcota 2) | 접속 정보 CSV 하나에서 Ansible 인벤토리와 노드 표가 갈려 나옵니다. **여러 노드를 훑을 때만** 필요합니다 | pqcota 여정 §2 |
 | **위임 수신**(pqcota 3′) | CI가 만든 CycloneDX를 관측 대신 받습니다 — 빌드 시점의 자산은 런타임에서 안 보이는 것이 있습니다 | pqcota 여정 §3′ |
 | **적재**(pqcota 4) | `pqcota-ingest`가 결과를 히스토리에 쌓습니다. **이 리포가 읽는 것이 이 저장소입니다** | pqcota 여정 §4 |
 | **조회**(pqcota 5) | `pqcota-inventory`가 최신·이력·diff를 보여 줍니다. 사람이 눈으로 보는 자리이고 **대조와는 다른 일**입니다 | pqcota 여정 §5 |
