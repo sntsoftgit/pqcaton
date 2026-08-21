@@ -483,7 +483,7 @@ func TestRemoveButtonsAskFirst(t *testing.T) {
 	if n := strings.Count(body, `hx-confirm=`); n < 4 {
 		t.Errorf("묻지 않고 지우는 자리가 있다 — hx-confirm %d개:\n%s", n, body)
 	}
-	for _, want := range []string{"저장해야 파일에 반영됩니다", "다시 불러오기", "저장하지 않은 편집을 버리고"} {
+	for _, want := range []string{"저장해야 파일에 반영됩니다", "다시 불러오기", "저장하지 않고 고친 것을 버리고"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("화면에 %q 가 없다", want)
 		}
