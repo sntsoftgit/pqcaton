@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "strconv"
 
-// declPage — 선언 편집. 화면은 적는 자리만 내놓는다 — 앞뒤가 맞는지는 저장한 뒤
+// declPage — 선언 편집. 화면은 적는 자리만 보여 준다 — 앞뒤가 맞는지는 저장한 뒤
 // 명령(`pqcaton-report`)과 검토 화면이 짚는다.
 func declPage(v DeclView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
