@@ -166,7 +166,7 @@ func loadDeclaration(path string) decl.Declaration {
 		fmt.Fprintln(os.Stderr, "declaration:", err)
 		os.Exit(1)
 	}
-	// **앞뒤가 안 맞으면 말한다.** 막지는 않는다 - 그대로 두면 대조가 조용히 틀린다.
+	// **앞뒤가 안 맞으면 말한다.** 막지는 않는다 - 그대로 두면 대조 결과가 오류 없이 틀린다.
 	if p := decl.Check(d); len(p) > 0 {
 		fmt.Fprintf(os.Stderr, "\u26a0 %d places where the declaration does not add up - open it with `pqcaton-ui -decl`\n", len(p))
 		for _, x := range p {

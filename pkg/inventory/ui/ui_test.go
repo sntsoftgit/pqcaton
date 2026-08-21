@@ -593,7 +593,7 @@ func TestNoObservationNoCandidates(t *testing.T) {
 //
 // 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. collector 가 자기가 붙인
 // id 로 보내면 선언한 자산은 전부 미관측으로, 관측된 자산은 전부 shadow 로 오릅니다 —
-// 선언이 틀려서가 아니라 이름이 갈려서입니다. 그 이름을 한 번 적어 두는 자리다.
+// 선언이 틀려서가 아니라 이름이 서로 달라서입니다. 그 이름을 한 번 적어 두는 자리다.
 func TestObservedNameRoundTrips(t *testing.T) {
 	got, _ := ui.ApplyDecl(decl.Declaration{}, url.Values{
 		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},

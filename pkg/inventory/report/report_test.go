@@ -26,7 +26,7 @@ func completeness(covered, missing []commonv1.CollectionLayer) *discoveryv1.Coll
 // IC-R14 — **관측 노드를 선언 노드로 잇는다.**
 //
 // 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. 그런데 collector 는 자기가 붙인
-// id(`node:<해시>`)나 fqdn 으로 보냅니다 — 이름이 갈리면 선언한 자산은 전부 미관측으로,
+// id(`node:<해시>`)나 fqdn 으로 보냅니다 — 이름이 서로 다르면 선언한 자산은 전부 미관측으로,
 // 관측된 자산은 전부 shadow 로 오릅니다. **막히지 않고 그럴듯하게 틀리는 자리입니다.**
 //
 // 호스트명이 이름과 같으면 알아서 잇고, 그것으로 안 되면 사람이 적어 둔 「관측 이름」으로
@@ -206,6 +206,6 @@ func TestLayerLabelIsReadableAndKeepsTheRawName(t *testing.T) {
 	}
 	const unknown = "COLLECTION_LAYER_SOMETHING_NEW"
 	if got := report.LayerLabel(unknown); got != unknown {
-		t.Errorf("모르는 계층을 %q 로 뭉갰다 — 상류에 계층이 늘면 조용히 틀린다", got)
+		t.Errorf("모르는 계층을 %q 로 뭉갰다 — 상류에 계층이 늘면 오류 없이 틀린다", got)
 	}
 }

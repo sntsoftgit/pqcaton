@@ -229,7 +229,7 @@ func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []str
 // ResolveAssetNode — 관측 한 벌이 **선언의 어느 노드**인가.
 //
 // 자산 대조는 노드 이름이 글자 그대로 같아야 맞는다. 그런데 collector 는 자기가 붙인
-// id(`node:<해시>`)나 호스트명으로 보낸다 — 이름이 갈리면 선언한 자산은 전부 미관측으로,
+// id(`node:<해시>`)나 호스트명으로 보낸다 — 이름이 서로 다르면 선언한 자산은 전부 미관측으로,
 // 관측된 자산은 전부 shadow 로 올라온다. **막히지 않고 그럴듯하게 틀린다.**
 //
 // 그래서 봉투가 들고 온 이름들(대상 노드 id · fqdn · 짧은 호스트명 · machine-id)을 선언의
