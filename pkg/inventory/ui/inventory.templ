@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// inventoryPage — 찾아보는 자리. **절차의 한 걸음이 아니다.**
+// inventoryPage — 찾아보는 자리. **절차의 한 단계가 아니다.**
 templ inventoryPage(v InventoryView) {
 	@shell(v.Page) {
 		@tip(v.Page.Lang, tInventoryIntro.In(v.Page.Lang)+" "+tInventoryBounds.In(v.Page.Lang))

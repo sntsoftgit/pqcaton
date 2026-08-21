@@ -34,7 +34,7 @@ func NavFor(l Lang, here string, s Screens) []Link {
 		links = append(links, Link{Href: ScreenSurvey, Text: tNavSurvey.In(l), Here: here == ScreenSurvey})
 	}
 	links = append(links, Link{Href: ScreenReview, Text: tNavReview.In(l), Here: here == ScreenReview})
-	// **번호를 붙이지 않는다.** 조회는 절차의 한 걸음이 아니라 아무 때나 들어오는
+	// **번호를 붙이지 않는다.** 조회는 절차의 한 단계가 아니라 아무 때나 들어오는
 	// 자리다 — 번호를 달면 ④ 다음에 해야 하는 일로 읽힌다.
 	if s.Inventory {
 		links = append(links, Link{Href: ScreenInventory, Text: tNavInventory.In(l), Here: here == ScreenInventory})

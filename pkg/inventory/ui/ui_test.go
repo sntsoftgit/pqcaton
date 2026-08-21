@@ -713,11 +713,11 @@ func TestScreenRendersInBothLanguages(t *testing.T) {
 	}
 }
 
-// IC-UI24 — **좁혀 놓은 것을 전부로 읽게 하지 않는다.**
+// IC-UI24 — **걸러 낸 것을 전부로 읽게 하지 않는다.**
 //
 // 「5개 중 2개」의 두 숫자는 한국어와 영어에서 자리가 뒤집힙니다(「전체 중 몇 개」 ↔
 // 「몇 개 of 전체」). 자리를 번호로 고정하지 않으면 **한쪽 말에서만 숫자 둘이 바뀌어**
-// 뜨고, 그 화면을 보는 사람은 좁혀 놓은 것을 전부로 읽습니다.
+// 뜨고, 그 화면을 보는 사람은 걸러 낸 것을 전부로 읽습니다.
 func TestShowingCountIsRightInBothLanguages(t *testing.T) {
 	r := &report.Result{
 		Assets: []reconcile.Reconciled{
