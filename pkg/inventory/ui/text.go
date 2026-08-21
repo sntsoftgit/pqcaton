@@ -192,10 +192,17 @@ var (
 	tReviewQueueHint = T{
 		KO: "정책마다 결론을 하나 적으면 그 아래 항목이 한 번에 판정됩니다 — 수천 대를 " +
 			"한 건씩 보는 리뷰는 끝나지 않습니다. 「개별 결론(예외)」은 그 정책에서 " +
-			"어긋나는 것만 따로 적는 자리입니다.",
+			"어긋나는 것만 따로 적는 자리입니다.<br><b>「플랫폼 조치」가 붙은 항목</b>은 " +
+			"provider 를 갈아 끼우는 자리가 아닙니다 — <code>cng</code> 가 그렇습니다. " +
+			"쓸 수 있는 알고리즘은 Windows 빌드가, FIPS 는 OS 정책이 정하므로 계획의 " +
+			"provider 칸이 빕니다. 무엇을 할지는 여기 적는 결론이 담습니다.",
 		EN: "One conclusion per policy judges every item under it at once — a review that " +
 			"looks at thousands of machines one by one never ends. The per-item column is " +
-			"for the exceptions that do not follow the policy."}
+			"for the exceptions that do not follow the policy.<br><b>Items marked “platform " +
+			"action”</b> are not answered by swapping a provider — <code>cng</code> is one. " +
+			"Which algorithms are available is set by the Windows build and FIPS by OS " +
+			"policy, so the plan's provider field stays empty. What to do goes in the " +
+			"conclusion here."}
 	tReviewPlaceholder = T{
 		KO: "예: PQC 라이브러리로 교체한다", EN: "e.g. replace with a PQC library"}
 
@@ -205,6 +212,9 @@ var (
 	tColInPlan     = T{KO: "계획에 넣기", EN: "In plan"}
 	tColException  = T{KO: "개별 결론(예외)", EN: "Per-item conclusion (exception)"}
 	tRescan        = T{KO: "재수집 후보", EN: "rescan candidate"}
+	// **provider 를 갈아 끼우는 조치가 아닌 자리.** 계획의 provider 칸이 비는데, 화면이
+	// 말하지 않으면 빠뜨린 것으로 읽힌다.
+	tPlatformFix = T{KO: "플랫폼 조치", EN: "platform action"}
 
 	tReviewEmpty    = T{KO: "판정할 것이 없습니다.", EN: "Nothing to judge."}
 	tReviewAutopass = T{

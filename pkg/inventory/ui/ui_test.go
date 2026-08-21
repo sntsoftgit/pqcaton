@@ -628,6 +628,26 @@ func TestUnmatchedNodeNamesAreOffered(t *testing.T) {
 	}
 }
 
+// IC-UI39 — **플랫폼 조치는 그렇다고 말한다.**
+//
+// CNG 항목은 계획의 provider 칸이 빕니다 — 갈아 끼울 대상이 없고, FIPS 여부는 알 수
+// 없기 때문입니다(§2.5). 화면이 말하지 않으면 **빠뜨린 것으로 읽힙니다.**
+func TestPlatformActionIsMarkedInTheQueue(t *testing.T) {
+	sf := review.Session{Scope: "org://acme", PolicyDecisions: map[string]string{"p": ""},
+		Items: []review.Item{
+			{ID: "win-01|cng|cng-providers", Policy: "p", Runtime: "cng", State: "UNDECLARED"},
+			{ID: "web|openssl|libssl", Policy: "p", Runtime: "openssl", State: "UNDECLARED"},
+		}}
+	var b strings.Builder
+	if err := ui.RenderReview(&b, ui.NewReviewView(sf, ui.Page{Title: "판정", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	if n := strings.Count(body, "플랫폼 조치"); n != 2 { // 항목 하나 + 도움말 하나
+		t.Errorf("「플랫폼 조치」가 %d번 — CNG 항목에만 붙어야 한다:\n%s", n, body)
+	}
+}
+
 // IC-UI19 — **영어 화면에 한글이 남아 있지 않다.**
 //
 // 문구를 하나 옮기지 않으면 그 자리만 한국어로 뜹니다. 눈으로는 못 찾습니다 — 화면

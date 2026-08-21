@@ -45,6 +45,9 @@ templ reviewPage(v ReviewView) {
 									if it.Rescan {
 										<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
 									}
+									if platformFix(it.Runtime) {
+										<span class="hint">{ tPlatformFix.In(v.Page.Lang) }</span>
+									}
 								</td>
 								<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
 								<td>{ fmt.Sprintf("%.2f", it.Conf) }</td>

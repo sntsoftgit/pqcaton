@@ -72,4 +72,12 @@ func TestRouteProvider(t *testing.T) {
 	if got := RouteProvider("openssl", true); got != "openssl-fips-provider" {
 		t.Errorf("규제 OpenSSL = %q", got)
 	}
+	// **CNG 는 provider 라우팅으로 답하지 않는다.** 갈아 끼울 대상이 관측에 없고,
+	// FIPS 여부는 알 수 없다(§2.5) — 이름을 지어내면 계획을 받는 쪽이 그것을 검증된
+	// 선택으로 읽는다. 무엇을 할지는 사람이 적은 결론이 담는다.
+	for _, fips := range []bool{true, false} {
+		if got := RouteProvider("cng", fips); got != "" {
+			t.Errorf("CNG(fips=%v) = %q — provider 이름을 지어냈다", fips, got)
+		}
+	}
 }

@@ -123,6 +123,13 @@ const unmatchedListID = "seen-nodes"
 // 그 안의 줄들이 같이 쓴다. 관측이 없어 목록이 없으면 브라우저는 그냥 무시한다.
 func seenListID(node int) string { return "seen-" + strconv.Itoa(node) }
 
+// platformFix — 이 런타임의 조치가 **provider 를 갈아 끼우는 일이 아닌가.**
+//
+// CNG 가 그렇다. 갈아 끼울 대상이 관측에 없고, 쓸 수 있는 알고리즘은 Windows 빌드가,
+// FIPS 는 OS 정책이 정한다 — 그래서 계획의 provider 칸이 빈다(`decision.RouteProvider`).
+// 화면이 그것을 말하지 않으면 **빠뜨린 것으로 읽힌다.**
+func platformFix(runtime string) bool { return runtime == reconcile.RuntimeCNG }
+
 // runtimeOptions — 런타임 칸에 내놓을 이름들.
 //
 // **관측이 낼 수 있는 이름만 고르게 한다**(reconcile.Runtimes). 손으로 적으면 오타
