@@ -52,6 +52,15 @@ func declaredFromResults(results []*discoveryv1.CollectionResult) ([]AssetKey, e
 const (
 	RuntimeOpenSSL = "openssl"
 	RuntimeJCA     = "jca"
+	// RuntimeCNG — Windows 의 CNG(pqcota v0.6.0). 이름은 상류가 쓰는 것을 그대로 쓴다.
+	RuntimeCNG = "cng"
+)
+
+// 컴포넌트 이름. openssl 은 라이브러리 파일마다 하나지만, **JCA·CNG 는 머신에 하나뿐이라**
+// 관측이 고정된 이름으로 낸다 — 사람이 선언에 적을 이름도 그것이다.
+const (
+	ComponentJCA = "jca-provider-chain"
+	ComponentCNG = "cng-providers"
 )
 
 // Runtimes — 선언에 적을 수 있는 런타임. 화면의 고르는 칸이 이 목록을 쓴다.
@@ -59,7 +68,7 @@ const (
 // **아래 switch 에 갈래를 더하면 여기도 더한다.** 목록에 없는 이름은 화면에서 고를 수
 // 없고, switch 에 없는 이름은 관측에서 나오지 않는다 — 둘이 어긋나면 사람이 고를 수 있는
 // 이름으로 선언해도 대조가 되지 않는다.
-func Runtimes() []string { return []string{RuntimeOpenSSL, RuntimeJCA} }
+func Runtimes() []string { return []string{RuntimeOpenSSL, RuntimeJCA, RuntimeCNG} }
 
 func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 	var out []Observed
@@ -71,7 +80,12 @@ func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 			comp = normalizeComponent(f.GetOpenssl().GetLib())
 		case commonv1.CryptoRuntime_CRYPTO_RUNTIME_JCA:
 			rt = RuntimeJCA
-			comp = "jca-provider-chain"
+			comp = ComponentJCA
+		// **CNG 도 자산이다**(pqcota v0.6.0). 여기서 걸러 내면 Windows 노드의 암호 자산이
+		// 인벤토리에서 통째로 사라진다 — 없는 것과 못 본 것이 같은 얼굴이 되는 자리다.
+		case commonv1.CryptoRuntime_CRYPTO_RUNTIME_WIN_CNG:
+			rt = RuntimeCNG
+			comp = ComponentCNG
 		default:
 			continue
 		}

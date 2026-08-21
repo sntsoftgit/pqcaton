@@ -8,7 +8,7 @@ go 1.26.4
 // **이 리포를 가져다 쓰는 쪽도 우회를 들고 있지 않아도 된다.**
 require (
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/randyinthedev-hash/pqcota v0.5.0
+	github.com/randyinthedev-hash/pqcota v0.6.3
 	google.golang.org/protobuf v1.36.11
 )
 

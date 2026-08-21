@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 )
 
@@ -157,5 +159,43 @@ func TestEngineStampsOrg(t *testing.T) {
 		if o.Key.Org != testOrg {
 			t.Errorf("조직이 %q다, want %q", o.Key.Org, testOrg)
 		}
+	}
+}
+
+// IC-R16 — **CNG 관측도 자산이 된다**(상류 v0.6.0).
+//
+// 런타임 갈래를 안 더하면 그 관측은 조용히 버려집니다. Windows 노드의 암호 자산이
+// 인벤토리에서 통째로 사라지고, 화면은 「없다」와 같은 얼굴로 그것을 보여 줍니다 —
+// 이 도구가 막으려는 바로 그 자리입니다(§2.6).
+//
+// **모르는 런타임은 그대로 버린다.** 이름을 지어내면 선언과 영영 맞지 않는 자산이
+// 인벤토리에 생긴다 — 상류가 새 런타임을 내면 여기에 갈래를 더하는 것이 그 답이다.
+func TestObservedFromTakesCNG(t *testing.T) {
+	findings := []*discoveryv1.Finding{
+		{CryptoRuntime: commonv1.CryptoRuntime_CRYPTO_RUNTIME_WIN_CNG,
+			EvidenceStrength: commonv1.EvidenceStrength_EVIDENCE_STRENGTH_CONFIRMED,
+			RuntimeAxes: &discoveryv1.Finding_Cng{Cng: &discoveryv1.CngAxes{
+				ProviderSet: []string{"Microsoft Primitive Provider"}}}},
+		{CryptoRuntime: commonv1.CryptoRuntime_CRYPTO_RUNTIME_UNSPECIFIED},
+	}
+	got := observedFrom("win-01", findings)
+	if len(got) != 1 {
+		t.Fatalf("관측 %d개 — CNG 를 버렸거나 모르는 런타임을 주웠다: %+v", len(got), got)
+	}
+	if got[0].Key.Runtime != RuntimeCNG || got[0].Key.Component != ComponentCNG {
+		t.Errorf("CNG 자산의 이름이 다르다: %+v", got[0].Key)
+	}
+	if got[0].Evidence != "confirmed" {
+		t.Errorf("증거 강도가 안 붙었다: %q", got[0].Evidence)
+	}
+	// 화면이 고르게 하는 이름과 관측이 내는 이름은 한 목록이어야 한다.
+	var hasCNG bool
+	for _, rt := range Runtimes() {
+		if rt == RuntimeCNG {
+			hasCNG = true
+		}
+	}
+	if !hasCNG {
+		t.Errorf("관측은 %q 를 내는데 고를 수 있는 이름에 없다: %v", RuntimeCNG, Runtimes())
 	}
 }

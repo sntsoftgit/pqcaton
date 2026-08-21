@@ -193,6 +193,8 @@ func TestLayerLabelIsReadableAndKeepsTheRawName(t *testing.T) {
 		"COLLECTION_LAYER_ARTIFACT": "ARTIFACT",
 		"COLLECTION_LAYER_NETWORK":  "NETWORK",
 		"COLLECTION_LAYER_PROCESS":  "PROCESS",
+		// 상류 v0.6.0 이 더한 계층. 이름이 없으면 화면이 enum 상수를 그대로 낸다.
+		"COLLECTION_LAYER_CNG_INTROSPECTION": "CNG_INTROSPECTION",
 	} {
 		got := report.LayerLabel(raw)
 		if !strings.Contains(got, want) {

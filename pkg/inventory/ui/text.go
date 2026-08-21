@@ -134,7 +134,9 @@ var (
 			"<code>libssl</code> 로 적습니다. <b>벤더링 해시는 떼지 않습니다</b> — " +
 			"<code>libcrypto-fbc9a285.so.3</code> 은 <code>libcrypto-fbc9a285</code> 여야 하고, " +
 			"<code>libcrypto</code> 는 다른 자산입니다. <code>jca</code> 의 컴포넌트는 " +
-			"<code>jca-provider-chain</code> 하나입니다.<br>맞지 않아도 막히지 않습니다 — " +
+			"<code>jca-provider-chain</code> 하나, <code>cng</code> 는 " +
+			"<code>cng-providers</code> 하나입니다 — 머신에 하나뿐이라 관측이 그 이름으로 " +
+			"냅니다.<br>맞지 않아도 막히지 않습니다 — " +
 			"<b>선언한 것은 미관측으로, 관측된 것은 shadow 로</b> 갈립니다. 그래서 " +
 			"<b>그 노드에서 관측된 이름을 컴포넌트 칸이 후보로 내놓습니다</b> — 칸을 " +
 			"누르면 뜨고, 거기서 고르면 옮겨 적다 틀릴 일이 없습니다. 관측이 아직 없으면 " +
@@ -148,7 +150,9 @@ var (
 			"written <code>libssl</code>. <b>A vendoring hash stays</b>: " +
 			"<code>libcrypto-fbc9a285.so.3</code> must be <code>libcrypto-fbc9a285</code>, and " +
 			"<code>libcrypto</code> is a different asset. Under <code>jca</code> the component " +
-			"is always <code>jca-provider-chain</code>.<br>A mismatch does not stop you — " +
+			"is always <code>jca-provider-chain</code>, and under <code>cng</code> always " +
+			"<code>cng-providers</code> — one per machine, so observation reports that " +
+			"name.<br>A mismatch does not stop you — " +
 			"<b>what you declared goes UNOBSERVED and what was observed goes shadow</b>. So the " +
 			"component field <b>offers the names observed on that node</b> — click the field and " +
 			"pick one, and there is nothing to copy wrongly. With no observations yet there are " +

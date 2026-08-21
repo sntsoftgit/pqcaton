@@ -365,6 +365,8 @@ func LayerLabel(name string) string {
 		return "actual traffic (NETWORK)"
 	case "JVM_INTROSPECTION":
 		return "inside the JVM — JCA (JVM_INTROSPECTION)"
+	case "CNG_INTROSPECTION":
+		return "registered CNG providers on the machine (CNG_INTROSPECTION)"
 	}
 	return name
 }

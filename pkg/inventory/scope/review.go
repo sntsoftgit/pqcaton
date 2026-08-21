@@ -140,7 +140,9 @@ func name(f *discoveryv1.Finding) (runtime, asset string) {
 	case commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL:
 		return reconcile.RuntimeOpenSSL, f.GetOpenssl().GetLib()
 	case commonv1.CryptoRuntime_CRYPTO_RUNTIME_JCA:
-		return reconcile.RuntimeJCA, "jca-provider-chain"
+		return reconcile.RuntimeJCA, reconcile.ComponentJCA
+	case commonv1.CryptoRuntime_CRYPTO_RUNTIME_WIN_CNG:
+		return reconcile.RuntimeCNG, reconcile.ComponentCNG
 	}
 	return "", ""
 }
