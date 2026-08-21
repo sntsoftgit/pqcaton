@@ -92,7 +92,7 @@ make            # 라이선스 · 문구 게이트 → 빌드 → 테스트
 go build -o bin/ ./inventory/cmd/...
 
 # ① 선언 — CMDB가 "있다"고 말하는 것. 직접 씁니다
-printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,provider-chain\n' > decl.csv
+printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-chain\n' > decl.csv
 
 # ② 대조 — 이 머신을 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 만듭니다
 bin/pqcaton-decide open decl.csv local > session.json
