@@ -138,6 +138,7 @@ ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 |---|---|
 | **openssl** | 어떤 암호 라이브러리·알고리즘이 실제로 쓰이는가 |
 | **jvm** | JCA provider 구성 |
+| **cng** | Windows CNG 에 등록된 provider 와 알고리즘 (상류 v0.6.0) |
 | **network** | 핸드셰이크에서 **협상된 키교환 그룹** — 여기서 양자내성 등급이 나옵니다 |
 
 산출은 `results/*.json`(`CollectionResult`)입니다. **관측하지 못한 것도 함께 나옵니다** —
@@ -150,7 +151,7 @@ ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 
 | 상자 | 무엇 | 어디에 |
 |---|---|---|
-| **접근 준비**(pqcota 2) | 접속 정보 CSV 하나에서 Ansible 인벤토리와 노드 표가 갈려 나옵니다. **여러 노드를 훑을 때만** 필요합니다 | pqcota 여정 §2 |
+| **접근 준비**(pqcota 2) | 접속 정보 CSV 하나에서 Ansible 인벤토리와 노드 표가 나옵니다. **여러 노드를 훑을 때만** 필요합니다 | pqcota 여정 §2 |
 | **위임 수신**(pqcota 3′) | CI가 만든 CycloneDX를 관측 대신 받습니다 — 빌드 시점의 자산은 런타임에서 안 보이는 것이 있습니다 | pqcota 여정 §3′ |
 | **적재**(pqcota 4) | `pqcota-ingest`가 결과를 히스토리에 쌓습니다. **이 리포가 읽는 것이 이 저장소입니다** | pqcota 여정 §4 |
 | **조회**(pqcota 5) | `pqcota-inventory`가 최신·이력·diff를 보여 줍니다. 사람이 눈으로 보는 자리이고 **대조와는 다른 일**입니다 | pqcota 여정 §5 |
@@ -171,7 +172,7 @@ pqcaton-report <results-dir> <declaration.json> [topology.dot]
 | 상태 | 정의 | 등급 | 뜻 |
 |---|---|---|---|
 | **CONFIRMED** | 선언 ∩ 관측 | AUTO | 신뢰도 최상 |
-| **UNDECLARED** | 관측만 | AUTO | **shadow** — 조직이 모르는 통신. **이 도구의 첫 값입니다** |
+| **UNDECLARED** | 관측만 | AUTO | **shadow** — 조직이 모르는 통신. **이 도구가 주는 첫 번째 쓸모입니다** |
 | **UNOBSERVED** | 선언만 | **MANUAL** | 실재하는데 못 본 것인지, 이미 없어진 것인지 — **기계가 확정하지 않습니다** |
 
 confidence는 관측 빈도·기간·선언 신선도·소스 일치도·`evidence_strength`로 정해집니다(§3.5).
@@ -263,10 +264,10 @@ stateDiagram-v2
 | 5 · 리뷰-확정 상태기계·판정 영속 | [`pkg/inventory/decision`](../pkg/inventory/decision) | **끝** |
 | 4·5 실행 도구 | [`inventory/cmd`](../inventory/cmd) | **끝** — `pqcaton-report` · `pqcaton-decide` · `pqcaton-scope` · `pqcaton-ui` |
 | 6 · 적용 | pqcota `provisioning` | **끝** — 이 리포 밖입니다 |
-| 2 · 선언 — 스코프 거버넌스(리뷰·감사·정책 상속) | §1.6 | **설계뿐** |
-| 5 · 사람이 쓰는 화면 | — | **없습니다.** 지금은 CLI와 리포트입니다 |
+| 2 · 선언 — 스코프 거버넌스(리뷰·감사·정책 상속) | [`pkg/inventory/scope`](../pkg/inventory/scope) · `pqcaton-scope` | **끝** |
+| 5 · 사람이 쓰는 화면 | [`pkg/inventory/ui`](../pkg/inventory/ui) · `pqcaton-ui` | **끝** — 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회 |
 
-**엔진은 됩니다.** [데모](../demo/README.md)가 pqcota의 디스커버리 데모 위에 그대로 얹혀
+**엔진도 화면도 됩니다.** [데모](../demo/README.md)가 pqcota의 디스커버리 데모 위에 그대로 얹혀
 3-상태 대조와 거버넌스 토폴로지를 보여 줍니다.
 
 ---
@@ -275,7 +276,7 @@ stateDiagram-v2
 
 | | 어디에 |
 |---|---|
-| 화면 설계 | 없습니다 |
+| 화면의 구조와 문구 | 이 문서에 없습니다 — [설계](design.md)와 릴리스 노트에 있습니다 |
 | 관측의 내부 | pqcota의 [디스커버리 설계](https://github.com/randyinthedev-hash/pqcota/tree/main/discovery) |
 | 호스팅으로 쓸 때의 여정 | 이 리포에 없습니다 — [saas/README.md](../saas/README.md) |
 | 무엇을 어떤 순서로 바꿀지 | **이 도구가 정하지 않습니다.** 판정 대상을 구조화할 뿐, 확정은 사람이 합니다 |

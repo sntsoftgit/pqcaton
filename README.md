@@ -49,7 +49,7 @@ pqcota                          pqcaton
 | [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **리뷰 큐와 선언을 사람이 다루는 화면** — 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
-**UNDECLARED가 이 도구의 첫 값입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지 — 조직이
+**UNDECLARED 가 이 도구가 주는 첫 번째 쓸모입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지 — 조직이
 모르는 연결입니다. 보안에서 가장 먼저 봐야 할 것이 거기 있습니다.
 
 **UNOBSERVED는 기계가 확정하지 않습니다.** 선언에는 있는데 관측되지 않은 것이 *실재하는데 못
@@ -73,8 +73,8 @@ pqcota                          pqcaton
 `apt install graphviz` · `brew install graphviz` · `winget install graphviz`.
 
 **어디서 실행되는가.** 이 리포는 **ctl 노드**(관측 결과를 모아 대조·판정하는 자리)의 일을 합니다.
-ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 collector가 대상 노드에서 하고,
-그쪽은 지금 Linux 전용입니다.
+ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota 의 collector 가 대상 노드에서
+하고, 리눅스와 Windows 를 다룹니다(상류 v0.6.3).
 
 > 예외 하나 — `pqcaton-decide open` 을 `-results` 없이 쓰면 **명령을 실행한 그 기계 자신을**
 > 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **Linux에서만** 됩니다.
@@ -112,7 +112,7 @@ bin/pqcaton-decide close session.json -judgments judgments.jsonl -org acme > pla
 bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
 ```
 
-**JSON을 눈으로 훑기 싫으면 화면으로 채웁니다.** 같은 파일, 같은 게이트입니다.
+**JSON 을 손으로 채우기 번거로우면 화면에서 합니다.** 같은 파일, 같은 게이트입니다.
 
 **재료만 주면 화면이 세션까지 엽니다.** 명령을 먼저 돌리지 않아도 됩니다.
 
@@ -122,13 +122,13 @@ bin/pqcaton-ui session.json \
   -layers corp.csv,prod.csv -base asset-scope.csv \
   -judgments judgments.jsonl -org acme
 # → http://127.0.0.1:8765 — 탭이 절차 순서입니다
-#   ① 선언(관측 대상 노드·자산·엣지) → ② 자산 스코프(무엇을 계속 볼지)
+#   ① 선언(관리 대상 노드와 그 안의 암호 자산·통신 엣지) → ② 암호 자산 스코프
 #   → ③ 대조(3-상태·등급·토폴로지) → ④ 판정(리뷰 큐 — 판정·확정)
 ```
 
 `session.json` 이 없으면 **선언과 관측 결과로 화면이 만듭니다.** 자산 스코프도 계층 CSV를
-주면 그렇습니다 — 그리고 **규칙을 화면에서 고칩니다.** 다섯 칸이 무슨 뜻인지는 표 위에
-적혀 있고, `action` 은 고르는 칸이라 오타로 규칙이 죽지 않습니다.
+주면 그렇습니다 — 그리고 **규칙을 화면에서 고칩니다.** 다섯 칸이 무슨 뜻인지는 「규칙을
+적는 법」 도움말에 있고, `action` 은 고르는 칸이라 오타로 규칙이 어긋나지 않습니다.
 
 명령으로 세션을 먼저 만드는 길도 그대로입니다 — 같은 파일, 같은 게이트입니다.
 
@@ -160,7 +160,7 @@ bin/pqcaton-scope open corp.csv prod.csv pay.csv -org acme > scope-session.json
 # 승인 — exclude 추가는 결론이 없으면 확정되지 않습니다
 bin/pqcaton-scope close scope-session.json -judgments judgments.jsonl -org acme > asset-scope.csv
 
-# 나온 CSV 가 그대로 pqcota의 집행기의 입력입니다
+# 나온 CSV 가 그대로 pqcota 집행기의 입력입니다
 pqcota-ingest -scope-assets asset-scope.csv results/
 
 # 제외는 영구 면제가 아닙니다 — 승인이 없거나 오래된 것만 다시 올립니다
