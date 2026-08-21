@@ -1,6 +1,6 @@
-.PHONY: all check-licenses check-text build test generate verify-generated
+.PHONY: all check-licenses check-text check-fmt build test generate verify-generated
 
-all: check-licenses check-text build test
+all: check-licenses check-text check-fmt build test
 
 # 라이선스 게이트 — 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
@@ -11,6 +11,18 @@ check-licenses:
 # 않으면 그 자리만 한국어로 뜨는데 눈으로는 못 찾는다 — 파서로 본다.
 check-text:
 	@go run ./tools/checktext
+
+# 서식 게이트 — `gofmt` 가 고칠 것이 남아 있으면 멈춘다.
+#
+# **문구만 고치는 날에 조용히 어긋난다.** var 블록의 정렬은 이름 하나가 길어지면 옆 줄까지
+# 함께 움직이는데, 빌드도 테스트도 그것을 보지 않는다. 며칠 쌓이면 그 다음 diff 에서 진짜
+# 바뀐 줄이 정렬 줄에 묻힌다.
+check-fmt:
+	@out=$$(gofmt -l .); \
+	if [ -n "$$out" ]; then \
+		echo "✗ gofmt 가 고칠 것이 남았다 — gofmt -w . 로 맞출 것:"; echo "$$out"; exit 1; \
+	fi; \
+	echo "✓ gofmt check passed"
 
 build:
 	go build ./...
