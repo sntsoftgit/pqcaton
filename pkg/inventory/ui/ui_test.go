@@ -526,7 +526,7 @@ func TestRuntimeIsPickedFromAList(t *testing.T) {
 
 // IC-UI34 — **컴포넌트를 어떻게 적는지 화면이 말한다.**
 //
-// 맞대는 방식이 **글자 그대로 같은가**입니다. 앞뒤 일부 일치도, 자리표도 없습니다.
+// 맞대는 방식이 **글자 그대로 같은가**입니다. 앞뒤 일부 일치도, <code>*</code> 같은 것도 없습니다.
 // 그런데 관측 이름은 `.so` 뒤가 떼인 채로 오므로, 관측에 보이는 대로(`libssl.so.3`)
 // 적으면 맞지 않습니다 — 그리고 그것이 오류 없이 미관측·shadow 로 구분됩니다.
 func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
@@ -747,7 +747,7 @@ func TestShowingCountIsRightInBothLanguages(t *testing.T) {
 	}
 }
 
-// IC-UI25 — **좁히기는 아무 칸에나 걸린다.** 어느 칸인지 미리 고르게 하면 찾는 사람이
+// IC-UI25 — **찾기는 아무 칸에나 걸린다.** 어느 칸인지 미리 고르게 하면 찾는 사람이
 // 그 칸을 알아야 합니다 — 무엇을 찾는지 모를 때 여는 화면인데.
 func TestInventoryFilterMatchesAnyColumn(t *testing.T) {
 	r := &report.Result{

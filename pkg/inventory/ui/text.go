@@ -70,7 +70,7 @@ var (
 	// 다시 불러오기 — 편집을 버리고 파일에 있는 것으로 되돌린다.
 	tReload    = T{KO: "다시 불러오기", EN: "Reload"}
 	tReloadAsk = T{
-		KO: "저장하지 않은 편집을 버리고, 마지막으로 저장된 선언을 다시 불러옵니다. 계속할까요?",
+		KO: "저장하지 않고 고친 것을 버리고, 마지막으로 저장된 선언을 다시 불러옵니다. 계속할까요?",
 		EN: "This discards edits you have not saved and loads the declaration as it was last saved. Continue?"}
 
 	tAddNode  = T{KO: "노드 추가", EN: "Add node"}
@@ -94,7 +94,7 @@ var (
 	tDeclScopeHint = T{
 		KO: "<b>여기 적은 노드가 대조 대상입니다.</b> 여기 없는 노드와 통신한 것이 관측되면 " +
 			"대조 화면에 「등재 판정 요청」으로 올라옵니다. 노드 <b>안의</b> 무엇을 볼지는 " +
-			"「자산 스코프」 탭에서 정합니다.",
+			"「암호 자산 스코프」 탭에서 정합니다.",
 		EN: "<b>The nodes listed here are what gets reconciled.</b> If traffic to a node that " +
 			"is not listed here is observed, it shows up on the reconciliation screen as " +
 			"<b>needs an enrollment decision</b>. What to look at <b>inside</b> a node is " +
@@ -102,15 +102,15 @@ var (
 	tDeclNodesHint = T{
 		KO: "IP는 <b>관측에 찍힌 주소를 이 이름과 잇는 근거</b>입니다. 한 노드가 망 둘에 " +
 			"걸치면 IP도 둘이니 쉼표나 공백으로 나눠 적으십시오. <b>IP를 적지 않은 줄은 " +
-			"관리 대상이 되지 않습니다</b> — 이을 근거가 없으면 대조가 막히지 않은 채로 " +
+			"관리 대상이 되지 않습니다</b> — 이을 근거가 없으면 대조 결과가 오류 없이 " +
 			"틀리기 때문입니다. 저장하면 그 줄은 표에서 사라집니다. 이름을 비워도 지워집니다.<br>" +
 			"<b>「관측 이름」은 관측이 이 노드를 부르는 이름입니다.</b> 자산 대조는 노드 " +
 			"이름이 글자 그대로 같아야 맞는데, collector 는 자기가 붙인 " +
 			"id(<code>node:1a2b…</code>)나 호스트명으로 보내는 일이 흔합니다. 이름이 서로 다르면 " +
-			"<b>그 노드의 자산이 통째로 shadow 로</b> 오릅니다 — 선언이 틀려서가 아니라 " +
+			"<b>그 노드의 자산이 통째로 shadow 로</b> 올라옵니다 — 선언이 틀려서가 아니라 " +
 			"이름이 서로 달라서입니다. 호스트명(짧은 이름 포함)이 위 이름과 같으면 비워 두십시오 " +
-			"— 그때는 알아서 이어집니다. 아직 어느 노드에도 붙지 않은 관측 이름이 있으면 " +
-			"이 칸이 후보로 내놓습니다.",
+			"— 그때는 저절로 이어집니다. 아직 어느 노드에도 붙지 않은 관측 이름은 " +
+			"이 칸에서 고를 수 있습니다.",
 		EN: "The IP is <b>what ties an observed address back to this name</b>. A node on two " +
 			"networks has two IPs — separate them with commas or spaces. <b>A row with no IP " +
 			"is not under management</b> — without that tie, reconciliation comes out wrong " +
@@ -126,19 +126,19 @@ var (
 	tDeclAssets     = T{KO: "암호 자산", EN: "Crypto assets"}
 	tDeclAssetsHint = T{
 		KO: "노드 안의 <b>암호 자산</b>은 그 노드에서 쓰인다고 선언한 런타임과 " +
-			"컴포넌트입니다 — 관측에서 발견되기를 기대하는 모듈입니다. 런타임은 " +
-			"<b>목록에서 고릅니다</b> — 관측이 낼 수 있는 이름만 들어 있습니다.<br>" +
+			"컴포넌트입니다 — 관측에 나와야 할 모듈입니다. 런타임은 " +
+			"<b>목록에서 고릅니다</b> — 관측 결과에 나올 수 있는 이름만 들어 있습니다.<br>" +
 			"<b>컴포넌트는 관측된 이름과 글자 그대로 같아야 맞습니다.</b> 앞부분만 같거나 " +
-			"뒷부분만 같은 것은 맞지 않고, <code>*</code> 같은 자리표도 없습니다. 적을 때는 " +
+			"뒷부분만 같은 것은 맞지 않고, <code>*</code> 같은 것도 쓸 수 없습니다. 적을 때는 " +
 			"관측 이름에서 <code>.so</code> 부터 뒤를 뗍니다 — <code>libssl.so.3</code> 은 " +
 			"<code>libssl</code> 로 적습니다. <b>벤더링 해시는 떼지 않습니다</b> — " +
 			"<code>libcrypto-fbc9a285.so.3</code> 은 <code>libcrypto-fbc9a285</code> 여야 하고, " +
 			"<code>libcrypto</code> 는 다른 자산입니다. <code>jca</code> 의 컴포넌트는 " +
 			"<code>jca-provider-chain</code> 하나, <code>cng</code> 는 " +
-			"<code>cng-providers</code> 하나입니다 — 머신에 하나뿐이라 관측이 그 이름으로 " +
-			"냅니다.<br>맞지 않아도 막히지 않습니다 — " +
+			"<code>cng-providers</code> 하나입니다 — 머신에 하나뿐이라 관측 결과에 늘 그 " +
+			"이름으로 적힙니다.<br>맞지 않아도 막히지 않습니다 — " +
 			"<b>선언한 것은 미관측으로, 관측된 것은 shadow 로</b> 구분됩니다. 그래서 " +
-			"<b>그 노드에서 관측된 이름을 컴포넌트 칸이 후보로 내놓습니다</b> — 칸을 " +
+			"<b>그 노드에서 관측된 이름이 컴포넌트 칸에 후보로 뜹니다</b> — 칸을 " +
 			"누르면 뜨고, 거기서 고르면 옮겨 적다 틀릴 일이 없습니다. 관측이 아직 없으면 " +
 			"후보도 없으니 위 규칙대로 적으십시오.",
 		EN: "The <b>crypto assets</b> inside a node are the runtime and component you declare " +
@@ -159,7 +159,7 @@ var (
 			"no candidates, so write them by the rule above."}
 	tDeclEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
 	tDeclEdgesHint = T{
-		KO: "이 노드가 저 노드와 이렇게 통신한다 — 포트까지 같아야 관측된 엣지와 맞습니다.",
+		KO: "<b>이 노드가 저 노드와 이렇게 통신한다</b>는 선언입니다. 포트까지 같아야 관측된 엣지와 맞습니다.",
 		EN: "This node talks to that node like this — the port must match too."}
 
 	tDeclSave     = T{KO: "저장", EN: "Save"}
@@ -268,8 +268,8 @@ var (
 			"for it later, so <b>you must record below why you dropped it</b> before it can " +
 			"be finalized. <b>include</b> — put it back, to undo an exclusion from a layer above."}
 	tRuleRuntime = T{
-		KO: "런타임 이름. <code>openssl</code> · <code>jca</code> 같은 것. 비우면 <b>전부</b>입니다",
-		EN: "Which runtime — <code>openssl</code>, <code>jca</code> and the like. Empty means <b>all</b>"}
+		KO: "런타임 이름. <code>openssl</code> · <code>jca</code> · <code>cng</code> 같은 것. 비우면 <b>전부</b>입니다",
+		EN: "Which runtime — <code>openssl</code>, <code>jca</code>, <code>cng</code>. Empty means <b>all</b>"}
 	tRuleLib = T{
 		KO: "라이브러리 이름. <code>*</code> 를 쓸 수 있습니다 — <code>libcrypto.so.*</code>",
 		EN: "Library name. <code>*</code> is allowed — <code>libcrypto.so.*</code>"}
@@ -360,7 +360,7 @@ var (
 var (
 	tSurveyObserved     = T{KO: "관측", EN: "Observation"}
 	tSurveyObservedHint = T{
-		KO: "pqcota가 무엇을 보았는지입니다. 대상 노드에 collector를 가져가 실행하고 " +
+		KO: "pqcota 가 무엇을 보았는지 보여 줍니다. 대상 노드에 collector를 가져가 실행하고 " +
 			"회수했습니다 — 노드에는 아무것도 남지 않습니다.",
 		EN: "What pqcota saw. The collector was carried to the target node, run, and taken " +
 			"back — nothing is left behind on the node."}
@@ -404,7 +404,7 @@ var (
 
 	tSurveyEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
 	tSurveyEdgesHint = T{
-		KO: "선언과 맞댄 3-상태와, 협상된 통신의 양자내성 등급입니다.",
+		KO: "선언과 맞댄 3-상태, 그리고 협상된 통신의 양자내성 등급입니다.",
 		EN: "Three states against the declaration, and the quantum-resistance grade of " +
 			"each negotiated connection."}
 	tSurveyNoEdges = T{KO: "대조할 엣지가 없습니다.", EN: "No edges to reconcile."}
@@ -463,7 +463,7 @@ var (
 	tSearchQ     = T{KO: "노드 · 런타임 · 컴포넌트 · 상태로 찾습니다", EN: "node, runtime, component, state — any of them"}
 	tSearchState = T{KO: "상태", EN: "State"}
 	tSearchAll   = T{KO: "전부", EN: "all"}
-	tSearchGo    = T{KO: "좁히기", EN: "Narrow"}
+	tSearchGo    = T{KO: "이 조건으로 찾기", EN: "Search"}
 	tSearchClear = T{KO: "지우기", EN: "Clear"}
 	// **자리를 번호로 고정한다.** 한국어는 「전체 중 몇 개」, 영어는 「몇 개 of 전체」로
 	// 어순이 뒤집힌다 — 번호가 없으면 한쪽 말에서 숫자 둘이 자리를 바꿔 뜬다.
@@ -472,7 +472,7 @@ var (
 
 	tUnseen     = T{KO: "안 보고 있는 것", EN: "What is not being looked at"}
 	tUnseenNote = T{
-		KO: "자산 스코프가 뺀 것입니다.", EN: "What the asset scope dropped."}
+		KO: "암호 자산 스코프가 뺀 것입니다.", EN: "What the crypto asset scope dropped."}
 	tUnseenHint = T{
 		KO: "<b>뺐다고 없어진 것이 아닙니다.</b> 지금도 관측되는 것에는 표시가 붙습니다 — " +
 			"승인이 없거나 오래된 것은 다시 봐야 합니다.",
