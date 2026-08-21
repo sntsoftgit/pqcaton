@@ -202,7 +202,7 @@
   <!-- ── 왼쪽: pqcota ── -->
   <rect class="box-up" x="24" y="52" width="300" height="88" rx="5"/>
   <text class="lbl" x="40" y="78">수집기 — 대상 노드에서 돈다</text>
-  <text class="lbl-mono" x="40" y="100">collectors/{openssl, jvm, network}</text>
+  <text class="lbl-mono" x="40" y="100">collectors/{openssl, jvm, cng, network}</text>
   <text class="lbl-sm" x="40" y="122">ansible/discover.yml 이 반입·실행·회수</text>
 
   <rect class="box-up" x="24" y="168" width="300" height="104" rx="5"/>
@@ -220,7 +220,7 @@
   <rect class="box-up" x="24" y="428" width="300" height="72" rx="5"/>
   <text class="lbl" x="40" y="454">선언 반입</text>
   <text class="lbl-mono" x="40" y="476">inventory/declaration</text>
-  <text class="lbl-sm" x="40" y="494">CMDB가 「있다」고 말한 것</text>
+  <text class="lbl-sm" x="40" y="494">조직이 「이렇게 알고 있다」고 적은 것</text>
 
   <rect class="box-up" x="24" y="528" width="300" height="72" rx="5"/>
   <text class="lbl" x="40" y="554">전환물 생성 · 적용</text>
@@ -242,8 +242,8 @@
   <text class="lbl-sm" x="530" y="534">근거가 바뀌면 그 판정만 델타 리뷰</text>
 
   <rect class="box-us" x="512" y="568" width="424" height="48" rx="5"/>
-  <text class="lbl-mono" x="530" y="590">inventory/cmd/{pqcota-reconcile, pqcota-report}</text>
-  <text class="lbl-sm" x="530" y="608">사람이 돌리는 자리 — 리포트 · 거버넌스 토폴로지</text>
+  <text class="lbl-mono" x="530" y="590">inventory/cmd/{pqcaton-report, decide, scope, ui}</text>
+  <text class="lbl-sm" x="530" y="608">사람이 돌리고 채우는 자리 — 화면 · 리포트 · 토폴로지</text>
 
   <!-- 왼쪽 내부 파이프라인 -->
   <path class="flow" d="M174 140 V168" marker-end="url(#ar)"/>
@@ -299,6 +299,9 @@
     <tr><td><code>pkg/inventory/declaration</code></td><td>선언(CMDB) 반입</td></tr>
     <tr><td><code>pkg/kernel/posture</code></td><td>양자내성 등급 — 우리가 다시 판단하지 않는다</td></tr>
     <tr><td><code>pkg/kernel/registry</code></td><td>결정론적 서명 매칭 데이터</td></tr>
+    <tr><td><code>pkg/kernel/scope</code></td><td>자산 스코프 규칙 — 형식과 집행을 그대로 쓴다</td></tr>
+    <tr><td><code>discovery/collectors/openssl</code></td><td>이 기계를 스캔하는 지름길이 부른다</td></tr>
+    <tr><td><code>gen/…/provisioning/v1</code></td><td>확정 계획(<code>FinalizedPlan</code>)의 형식</td></tr>
     <tr><td><code>pkg/org</code></td><td>조직 격리 축</td></tr>
   </tbody>
 </table>
@@ -326,14 +329,14 @@
       <td>판정은 조직의 책임이고 <strong>감사 대상</strong>입니다 — 혼자 쓰면 필요 없습니다</td>
     </tr>
     <tr>
-      <td><code>inventory/cmd/*</code></td>
-      <td>대조 실행 · 리포트와 토폴로지 렌더</td>
-      <td>사람이 돌리는 자리</td>
+      <td><code>inventory/cmd/*</code> · <code>pkg/inventory/ui</code></td>
+      <td>대조 실행 · 리포트와 토폴로지 렌더 · <strong>사람이 쓰는 화면</strong>(선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회)</td>
+      <td>사람이 돌리고 사람이 채우는 자리</td>
     </tr>
     <tr>
       <td><code>saas/runner</code></td>
-      <td>호스팅으로 쓸 때만 필요한 <strong>올리는 입</strong></td>
-      <td>자기 서버에 설치해 쓰면 필요 없습니다 — <a href="#saas">04</a></td>
+      <td>호스팅으로 쓸 때만 필요한 <strong>밖으로 올리는 자리</strong></td>
+      <td>고객 인프라 안에서만 돌 때는 필요 없습니다 — <a href="#saas">05</a></td>
     </tr>
   </tbody>
 </table>
@@ -346,7 +349,7 @@
   <thead><tr><th>상태</th><th>정의</th><th>등급</th><th>무엇을 뜻하나</th></tr></thead>
   <tbody>
     <tr><td><span class="swatch s-ok"></span>CONFIRMED</td><td>선언 ∩ 관측</td><td>AUTO</td><td>신뢰도 최상</td></tr>
-    <tr><td><span class="swatch s-stop"></span>UNDECLARED</td><td>관측만</td><td>AUTO</td><td><strong>shadow</strong> — 조직이 모르는 통신. 이 도구의 첫 값입니다</td></tr>
+    <tr><td><span class="swatch s-stop"></span>UNDECLARED</td><td>관측만</td><td>AUTO</td><td><strong>shadow</strong> — 조직이 모르는 통신. 이 도구가 주는 첫 번째 쓸모입니다</td></tr>
     <tr><td><span class="swatch s-warn"></span>UNOBSERVED</td><td>선언만</td><td><strong>MANUAL</strong></td><td>실재하는데 못 본 것인지 이미 없어진 것인지는 <strong>사람만 압니다</strong></td></tr>
   </tbody>
 </table>
@@ -360,7 +363,7 @@
 <h2><span class="num">04</span>한 바퀴가 도는 길</h2>
 
 <p>
-  자기 서버에 설치해 쓰는 경우입니다. <strong>밖으로 나가는 것이 하나도 없습니다</strong> —
+  <strong>밖으로 나가는 것이 하나도 없습니다</strong> —
   모든 단계가 고객 인프라 안에서 끝납니다.
 </p>
 
@@ -441,7 +444,7 @@
 </p>
 
 <p>
-  우리가 대신 돌려 주는 호스팅에서는 관측 결과가 고객망을 나와야 하고, 그 <strong>올리는 입</strong>이
+  우리가 대신 돌려 주는 호스팅에서는 관측 결과가 고객망을 나와야 하고, 그 <strong>밖으로 올리는 자리</strong>가
   <code>saas/runner</code>입니다. 그 코드만 이 리포에 있는 이유는 하나입니다 —
   <strong>고객 서버에서 고객 권한으로 도니 무엇을 밖으로 보내는지 읽어서 확인할 수 있어야</strong> 합니다.
   컨트롤 플레인 쪽 코드와 설계는 이 리포에 없습니다.
@@ -449,7 +452,7 @@
 
 <footer>
   설계 근거는 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/design.md">docs/design.md</a>, 검증 기준은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/testcases.md">docs/testcases.md</a>,
-  자기 서버에 설치해 쓰는 여정은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/journey.md">docs/journey.md</a>에 있습니다.
+  여정은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/journey.md">docs/journey.md</a>에 있습니다.
 </footer>
 
 </div>
