@@ -61,7 +61,7 @@ CI가 이것을 검사합니다(`make check-licenses`). 게이트에 걸리면 �
 | **화면** | **한국어 · English** | 쓰는 사람이 고릅니다 |
 | **테스트 안의 글** | 한국어 | 케이스가 무엇을 재는지는 이 리포를 만드는 사람이 읽습니다 |
 
-`make check-text` 가 이것을 막습니다 — 코드 문자열에 한글이 있으면 빌드가 붉어집니다.
+`make check-text` 가 이것을 막습니다 — 코드 문자열에 한글이 있으면 빌드가 멈춥니다.
 **정규식이 아니라 파서로 봅니다.** 즉석 스크립트로 훑었을 때 URL 안의 `//` 에서 줄이
 잘려 `"화면: http://%s"` 하나를, 여러 줄 백틱 문자열에서 둘을 놓쳤습니다.
 
@@ -75,10 +75,12 @@ CI가 이것을 검사합니다(`make check-licenses`). 게이트에 걸리면 �
 > **영어는 그 사실을 가진 패키지가 갖고, 한국어는 화면 카탈로그(`pkg/inventory/ui/text*.go`)가 갖는다.**
 
 영어를 두 곳에 두면 한쪽만 고쳐지는 날이 오고, 그날 명령과 화면이 같은 문제를 다르게
-설명합니다. 한국어가 없는 코드는 영어로 떨어집니다 — 빈 칸보다 낫습니다.
+설명합니다. 한국어가 없는 코드는 영어로 나갑니다 — 빈 칸보다 낫습니다.
 
-예시는 [`decl.Problem`](pkg/inventory/decl/decl.go)(코드 + 영어 문장)과
-[`ui/text_decl.go`](pkg/inventory/ui/text_decl.go)(그 코드의 한국어)입니다.
+예시는 [`review.Warning`](pkg/inventory/review/build.go)(코드 + 영어 문장)과
+[`ui/text_more.go`](pkg/inventory/ui/text_more.go)(그 코드의 한국어)입니다. 선언의 문제
+목록([`decl.Problem`](pkg/inventory/decl/decl.go))은 영어만 갖습니다 — 어느 자리인지는
+명령이 말하고, 화면은 개수만 전하기 때문입니다.
 
 ### 화면 문구를 더할 때
 
