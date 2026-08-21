@@ -1,7 +1,7 @@
-// Package review — 사람이 판정하는 세션의 파일 형식과 **확정 게이트**.
+// Package review — 사람이 판정하는 세션의 파일 형식과 **확정 관문**.
 //
-// 명령에서 떼어 둔 것은 게이트가 둘이 되면 안 되기 때문이다. `pqcaton-decide close`와
-// 화면의 확정 버튼이 각자 게이트를 들고 있으면 언젠가 한쪽만 고쳐지고, 그날 화면으로는
+// 명령에서 떼어 둔 것은 관문이 둘이 되면 안 되기 때문이다. `pqcaton-decide close`와
+// 화면의 확정 버튼이 각자 관문을 들고 있으면 언젠가 한쪽만 고쳐지고, 그날 화면으로는
 // 확정되는데 명령으로는 안 되는(또는 그 반대의) 계획이 생긴다.
 //
 // **파일 형식이 곧 감사 기록이다.** 화면이 생겨도 산출물은 파일이다 — 무엇을 근거로 무엇을
@@ -107,12 +107,12 @@ type Result struct {
 	Scope   string
 }
 
-// Finalize — **이 리포에서 우회할 수 없는 게이트**(§3.7).
+// Finalize — **이 리포에서 반드시 거쳐야 하는 관문**(§3.7).
 //
 // 필수 항목의 결론과 승인 서명이 모두 있어야 통과한다. 통과하지 못하면 왜 안 되는지
 // [Pending]이 말한다 — 무엇을 더 채워야 하는지 모르면 사람은 파일도 화면도 고칠 수 없다.
 //
-// **명령과 화면이 이 함수 하나를 쓴다.** 게이트가 둘이면 언젠가 한쪽만 고쳐진다.
+// **명령과 화면이 이 함수 하나를 쓴다.** 관문이 둘이면 언젠가 한쪽만 고쳐진다.
 func Finalize(sf Session) (*Result, error) {
 	items := make([]decision.Item, 0, len(sf.Items))
 	for _, it := range sf.Items {
@@ -164,7 +164,7 @@ func Finalize(sf Session) (*Result, error) {
 		})
 		picked = append(picked, it)
 	}
-	// **게이트는 여기다.** finalized 아닌 세션에서는 계획 자체가 만들어지지 않는다.
+	// **관문은 여기다.** finalized 아닌 세션에서는 계획 자체가 만들어지지 않는다.
 	p, err := decision.BuildPlan(s, plan)
 	if err != nil {
 		return nil, err

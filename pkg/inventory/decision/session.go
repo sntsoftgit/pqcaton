@@ -1,7 +1,7 @@
 // Package decision implements the Inventory 리뷰-확정 상태기계 (규정서 §3.3③, §6).
 //
 // pqcota가 만들지 않기로 한 계층이다 — 확정된 계획만 그쪽 프로비저닝의 입력이 된다.
-// draft → in-review → finalized. finalized 전에는 프로비저닝 실행 불가(§5 — 우회할 수 없는 게이트).
+// draft → in-review → finalized. finalized 전에는 프로비저닝 실행 불가(§5 — 반드시 거쳐야 하는 관문).
 // "인벤토리 확정은 기계적 머지가 아니라 리뷰-계획-확정"(§3.1).
 package decision
 
@@ -91,7 +91,7 @@ func (s *Session) Sign(reviewer, signature string) {
 }
 
 // Finalize — in-review → finalized. 전 필수 항목 판정 + 승인 서명이 있어야만 성공한다(§3.3③).
-// 이 게이트는 우회할 수 없다 — 확정되지 않은 계획으로는 프로비저닝이 돌지 않는다.
+// 이 관문은 우회할 수 없다 — 확정되지 않은 계획으로는 프로비저닝이 돌지 않는다.
 func (s *Session) Finalize() error {
 	if s.Status != InReview {
 		return ErrNotInReview

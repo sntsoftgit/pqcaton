@@ -1,7 +1,7 @@
 // Command pqcaton-ui — 리뷰 큐와 선언을 사람이 다루는 화면.
 //
 // **파일에서 읽고 파일에 쓰는 껍데기다.** 화면 자체는 `pkg/inventory/ui` 에 있고, 확정
-// 게이트는 `pkg/inventory/review` 에 있다 — 컨트롤 플레인이 같은 화면과 같은 게이트를
+// 관문은 `pkg/inventory/review` 에 있다 — 컨트롤 플레인이 같은 화면과 같은 관문을
 // 쓰고, 다른 것은 「어디서 읽고 누가 들어오나」뿐이다.
 //
 //	pqcaton-ui <session.json> [-decl declaration.json] [-results 디렉터리]
@@ -14,7 +14,7 @@
 //
 // **라우팅은 chi, 화면은 templ, 부분 갱신은 htmx 다.** 셋 다 허용적 라이선스이고
 // 링크되는 모듈은 둘만 는다(전이 의존이 없다). htmx 는 바이너리에 박혀 나가므로 망이
-// 끊긴 기계에서도 그대로 뜬다 — 그리고 우리 라이선스 게이트가 그 파일까지 본다.
+// 끊긴 기계에서도 그대로 뜬다 — 그리고 우리 라이선스 관문이 그 파일까지 본다.
 //
 // **기본은 127.0.0.1 이다.** 리뷰 큐에는 어느 노드가 무엇을 쓰는지가 그대로 있다 — 곧 그
 // 조직의 공격면이다. 밖으로 열려면 -addr 를 명시적으로 바꿔야 하고 그때 경고한다.
@@ -358,7 +358,7 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	msg := ui.MsgFinalizedPlan(ui.PickLang(r), len(res.Plan.GetActions()), s.planOut)
-	// **게이트를 지난 뒤에만 남긴다.**
+	// **관문을 지난 뒤에만 남긴다.**
 	if s.judgments != "" {
 		n, err := review.SaveJudgments(s.judgments, s.org, sf, res.Decided)
 		if err != nil {
@@ -540,7 +540,7 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	msg := ui.MsgFinalizedPolicy(ui.PickLang(r), len(res.Policy.Rules), s.scopeOut)
-	// **게이트를 지난 뒤에만 남긴다.**
+	// **관문을 지난 뒤에만 남긴다.**
 	if s.judgments != "" {
 		n, err := scope.SaveJudgments(s.judgments, s.org, sf, res.Decided)
 		if err != nil {

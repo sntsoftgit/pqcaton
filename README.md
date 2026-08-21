@@ -39,7 +39,7 @@ pqcota                          pqcaton
 |---|---|
 | [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만) · UNOBSERVED(선언만) |
 | [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
-| [`pkg/inventory/review`](pkg/inventory/review) | **세션 파일 형식과 확정 게이트** — 명령과 화면이 이 하나를 씁니다 |
+| [`pkg/inventory/review`](pkg/inventory/review) | **세션 파일 형식과 확정 관문** — 명령과 화면이 이 하나를 씁니다 |
 | [`pkg/inventory/decl`](pkg/inventory/decl) | **선언 형식과 자체 검사** — 노드↔IP가 틀리면 대조가 **오류 없이** 틀립니다. 저장 전에 짚습니다 |
 | [`pkg/inventory/report`](pkg/inventory/report) | **여러 노드 대조** — 레인 분리·IP 잇기·완전성. 명령과 화면이 이 계산 하나를 씁니다 |
 | [`pkg/inventory/ui`](pkg/inventory/ui) | **화면** — 그리는 것과 폼을 읽는 것만. 어디서 읽고 누가 들어오는지는 부르는 쪽이 정합니다 |
@@ -83,7 +83,7 @@ ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota 의 coll
 ## 써보기
 
 ```bash
-make            # 라이선스 · 문구 게이트 → 빌드 → 테스트
+make            # 라이선스 · 문구 관문 → 빌드 → 테스트
 ```
 
 **이 리포만으로 처음부터 끝까지 해볼 수 있습니다.** 관측할 대상은 이 머신입니다.
@@ -112,7 +112,7 @@ bin/pqcaton-decide close session.json -judgments judgments.jsonl -org acme > pla
 bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
 ```
 
-**JSON 을 손으로 채우기 번거로우면 화면에서 합니다.** 같은 파일, 같은 게이트입니다.
+**JSON 을 손으로 채우기 번거로우면 화면에서 합니다.** 같은 파일, 같은 관문입니다.
 
 **재료만 주면 화면이 세션까지 엽니다.** 명령을 먼저 돌리지 않아도 됩니다.
 
@@ -130,7 +130,7 @@ bin/pqcaton-ui session.json \
 주면 그렇습니다 — 그리고 **규칙을 화면에서 고칩니다.** 다섯 칸이 무슨 뜻인지는 「규칙을
 적는 법」 도움말에 있고, `action` 은 고르는 칸이라 오타로 규칙이 어긋나지 않습니다.
 
-명령으로 세션을 먼저 만드는 길도 그대로입니다 — 같은 파일, 같은 게이트입니다.
+명령으로 세션을 먼저 만드는 길도 그대로입니다 — 같은 파일, 같은 관문입니다.
 
 ```bash
 bin/pqcaton-decide open declaration.json -results results/ -org acme > session.json
@@ -171,7 +171,7 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
 같은 정책의 항목이 한 번에 판정됩니다 — 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
 개별 `conclusion`은 예외를 위한 자리입니다.
 
-**④가 이 리포에서 우회할 수 없는 게이트입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 말합니다.**
+**④가 이 리포에서 반드시 거쳐야 하는 관문입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 말합니다.**
 
 ```
 ❌ cannot finalize: mandatory items are still unjudged — every mandatory item must be judged

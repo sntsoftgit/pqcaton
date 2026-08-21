@@ -15,8 +15,8 @@ import (
 
 // Session — 스코프 변경을 사람이 승인하는 파일.
 //
-// 명령과 화면이 같은 파일을 읽고 쓰므로 형식이 한 곳에 있어야 한다. 확정 게이트도 여기
-// 하나다 — 게이트가 둘이면 언젠가 한쪽만 고쳐지고, 그날 화면으로는 확정되는데 명령으로는 안 되는
+// 명령과 화면이 같은 파일을 읽고 쓰므로 형식이 한 곳에 있어야 한다. 확정 관문도 여기
+// 하나다 — 관문이 둘이면 언젠가 한쪽만 고쳐지고, 그날 화면으로는 확정되는데 명령으로는 안 되는
 // 정책이 생긴다.
 type Session struct {
 	Note      string `json:"_how_to_read"`
@@ -153,7 +153,7 @@ type FinalizeResult struct {
 	Policy  *kscope.AssetPolicy
 }
 
-// Finalize — **게이트다.** 근거 필수인 변경에 결론이 없거나 서명이 없으면 정책이 나가지 않는다.
+// Finalize — **관문다.** 근거 필수인 변경에 결론이 없거나 서명이 없으면 정책이 나가지 않는다.
 //
 // 명령과 화면이 이 함수 하나를 쓴다.
 func Finalize(sf Session, orgName string) (*FinalizeResult, error) {
@@ -216,7 +216,7 @@ func Pending(sf Session) []decision.Missing {
 	return out
 }
 
-// SaveJudgments — 확정된 변경을 원장에 남긴다. **게이트를 지난 뒤에만** 남긴다.
+// SaveJudgments — 확정된 변경을 원장에 남긴다. **관문을 지난 뒤에만** 남긴다.
 func SaveJudgments(path, orgName string, sf Session, decided map[string]string) (int, error) {
 	store, err := decision.NewFileJudgmentStore(org.ID(orgName), path)
 	if err != nil {

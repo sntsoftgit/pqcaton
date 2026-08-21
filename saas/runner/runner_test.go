@@ -508,7 +508,7 @@ func TestConnectedWithoutFingerprintIsReportedAsFailure(t *testing.T) {
 
 // RUN-21 — 관측 결과가 없어도 **연결확인만으로 올린다.**
 //
-// 등재가 관측의 게이트라, 첫 연결확인은 결과 파일이 하나도 없는 상태에서 일어납니다.
+// 등재가 관측의 관문이라, 첫 연결확인은 결과 파일이 하나도 없는 상태에서 일어납니다.
 // 결과가 있어야만 올린다면 **아무도 등재되지 못합니다.**
 func TestEnrollmentsGoUpWithoutAnyResults(t *testing.T) {
 	p := &plane{}

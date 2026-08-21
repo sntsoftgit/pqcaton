@@ -42,7 +42,7 @@ type Layer struct {
 // 우리 화면이 갈라진다.
 //
 // 하위가 상위의 제외를 include로 되돌릴 수 있다는 뜻이기도 하다. **그것을 막는 자리는
-// 여기가 아니라 리뷰-확정 게이트다** — 하위 정책 변경도 승인을 거친다.
+// 여기가 아니라 리뷰-확정 관문다** — 하위 정책 변경도 승인을 거친다.
 func Merge(layers ...Layer) *kscope.AssetPolicy {
 	p := &kscope.AssetPolicy{}
 	for _, l := range layers {

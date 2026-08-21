@@ -2,7 +2,7 @@
 
 all: check-licenses check-text check-fmt build test
 
-# 라이선스 게이트 — 듀얼 라이선스를 실제로 지키는 장치.
+# 라이선스 관문 — 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
 check-licenses:
 	@go run ./tools/checklicenses
@@ -12,7 +12,7 @@ check-licenses:
 check-text:
 	@go run ./tools/checktext
 
-# 서식 게이트 — `gofmt` 가 고칠 것이 남아 있으면 멈춘다.
+# 서식 관문 — `gofmt` 가 고칠 것이 남아 있으면 멈춘다.
 #
 # **문구만 고치는 날에 조용히 어긋난다.** var 블록의 정렬은 이름 하나가 길어지면 옆 줄까지
 # 함께 움직이는데, 빌드도 테스트도 그것을 보지 않는다. 며칠 쌓이면 그 다음 diff 에서 진짜

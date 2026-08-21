@@ -12,7 +12,7 @@
 // **파일이 곧 감사 기록이다.** 대화형으로 물어보면 무엇을 근거로 무엇을 정했는지가 화면에서
 // 사라진다 — 편집한 파일이 그대로 남는 편이 낫다. 화면(`pqcaton-ui`)도 이 파일을 읽고 쓴다.
 //
-// 파일 형식과 확정 게이트는 `pkg/inventory/review` 에 있다 — 명령과 화면이 같은 것을 쓴다.
+// 파일 형식과 확정 관문은 `pkg/inventory/review` 에 있다 — 명령과 화면이 같은 것을 쓴다.
 package main
 
 import (
@@ -244,7 +244,7 @@ func closeSession(path, judgmentPath, orgName string) error {
 	if err != nil {
 		return err
 	}
-	// **게이트는 review.Finalize 하나다.** 화면도 같은 것을 쓴다 — 게이트가 둘이면 언젠가
+	// **관문은 review.Finalize 하나다.** 화면도 같은 것을 쓴다 — 관문이 둘이면 언젠가
 	// 한쪽만 고쳐지고, 그날 화면과 명령의 확정이 갈린다.
 	res, err := review.Finalize(sf)
 	if err != nil {
@@ -258,7 +258,7 @@ func closeSession(path, judgmentPath, orgName string) error {
 	if err != nil {
 		return err
 	}
-	// **게이트를 지난 뒤에만 남긴다.** 확정되지 않은 것을 판정 이력에 쌓으면 그 기록이
+	// **관문을 지난 뒤에만 남긴다.** 확정되지 않은 것을 판정 이력에 쌓으면 그 기록이
 	// "누가 무엇을 확정했나"를 더는 답하지 못한다.
 	if judgmentPath != "" {
 		n, err := review.SaveJudgments(judgmentPath, orgName, sf, res.Decided)

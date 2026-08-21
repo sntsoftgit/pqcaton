@@ -39,7 +39,7 @@ func TestForbiddenLicensesAllBlocked(t *testing.T) {
 
 // IC-X2 — **모르는 라이선스도 막는다.**
 //
-// 금지 목록에 없다고 통과시키면 게이트가 아니라 블랙리스트가 된다 — 새 라이선스가 나오면
+// 금지 목록에 없다고 통과시키면 관문이 아니라 블랙리스트가 된다 — 새 라이선스가 나오면
 // 그때마다 목록을 고쳐야 하고, 고치기 전까지는 조용히 통과한다.
 func TestUnknownLicenseIsBlocked(t *testing.T) {
 	_, bad := verdict(mods("example.com/dep"), map[string]string{"example.com/dep": "WTFPL"})
@@ -53,7 +53,7 @@ func TestUnknownLicenseIsBlocked(t *testing.T) {
 
 // IC-X3 — **licenses.txt에 없는 모듈은 막힌다.**
 //
-// `go get` 한 번이면 새 의존성이 들어온다. 적히지 않은 것을 통과시키면 그 순간 게이트가
+// `go get` 한 번이면 새 의존성이 들어온다. 적히지 않은 것을 통과시키면 그 순간 관문이
 // 뚫린다 — 이것이 이 도구를 빌드에 둔 이유다.
 func TestUnlistedModuleIsBlocked(t *testing.T) {
 	missing, bad := verdict(mods("example.com/new-dep"), map[string]string{})
@@ -106,7 +106,7 @@ func TestLoadAllowlist(t *testing.T) {
 // IC-X6 — **파일이 없어도 열리되, 그래서 통과하지는 않는다.**
 //
 // 빈 목록을 돌려주는 것이 위험해 보이지만 그 반대다 — 모든 모듈이 「모름」이 되어 전부
-// 막힌다. 파일이 없다고 게이트가 열리는 일은 없다.
+// 막힌다. 파일이 없다고 관문이 열리는 일은 없다.
 func TestMissingAllowlistBlocksEverything(t *testing.T) {
 	known, err := loadAllowlist(filepath.Join(t.TempDir(), "없는파일.txt"))
 	if err != nil {
@@ -132,7 +132,7 @@ func TestLinkedModulesExcludesMain(t *testing.T) {
 		t.Skipf("go list 를 돌릴 수 없다: %v", err)
 	}
 	if len(got) == 0 {
-		t.Fatal("링크되는 모듈이 하나도 없다 — 게이트가 빈 목록을 보고 있다")
+		t.Fatal("링크되는 모듈이 하나도 없다 — 관문이 빈 목록을 보고 있다")
 	}
 	for _, m := range got {
 		if m.Main {
@@ -208,8 +208,8 @@ func TestWebAssetsWalksShippedFilesOnly(t *testing.T) {
 
 // IC-X9 — **적히지 않은 웹 자산은 모듈과 똑같이 막힌다.**
 //
-// 게이트를 넓힌 이유가 여기입니다. 프런트 라이브러리를 하나 받아 `static/`에 놓고
-// 목록에 안 적으면, 예전 게이트는 초록이었습니다 — 배포물의 일부를 검사하지 않은 채로.
+// 관문을 넓힌 이유가 여기입니다. 프런트 라이브러리를 하나 받아 `static/`에 놓고
+// 목록에 안 적으면, 예전 관문은 초록이었습니다 — 배포물의 일부를 검사하지 않은 채로.
 func TestUnlistedWebAssetIsBlocked(t *testing.T) {
 	assets := []mod{{Path: "pkg/inventory/ui/static/somelib.min.js"}}
 	missing, bad := verdict(assets, map[string]string{})

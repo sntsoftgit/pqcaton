@@ -255,7 +255,7 @@ func TestValidKindRefusesUnknown(t *testing.T) {
 // IC-UI12 — **스타일과 htmx 는 같은 바이너리에서 나온다.**
 //
 // CDN 을 걸면 망이 끊긴 기계에서 화면이 깨지고, 남의 서버에서 오는 스크립트는 우리
-// 라이선스 게이트가 볼 수도 없습니다. 이 리포를 쓰는 곳에서 바깥으로 못 나가는 망은
+// 라이선스 관문이 볼 수도 없습니다. 이 리포를 쓰는 곳에서 바깥으로 못 나가는 망은
 // 예외가 아니라 흔한 조건입니다.
 func TestStaticIsServedFromTheBinary(t *testing.T) {
 	srv := httptest.NewServer(ui.Static())

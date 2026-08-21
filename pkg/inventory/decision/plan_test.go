@@ -45,7 +45,7 @@ func TestBuildPlan_notFinalized(t *testing.T) {
 	}
 }
 
-// IC-P4: Deploy 게이트 — finalized 계획만 통과.
+// IC-P4: Deploy 관문 — finalized 계획만 통과.
 func TestAcceptForDeploy(t *testing.T) {
 	s := finalizedSession(t)
 	p, _ := BuildPlan(s, []PlanItem{{NodeID: "n"}})

@@ -81,7 +81,7 @@ exclude,openssl,libcrypto.so.*,/usr/bin/python*,python 런타임
 
 // IC-S8 — **exclude 추가는 결론 없이 확정되지 않는다.**
 //
-// 인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에 답해야 한다. 게이트가 명령에서 실제로
+// 인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에 답해야 한다. 관문이 명령에서 실제로
 // 닫히는지는 여기서만 잴 수 있다 — 상태기계 케이스는 상태기계가 옳은 것만 말한다.
 func TestCloseRefusesExcludeWithoutConclusion(t *testing.T) {
 	dir := t.TempDir()
@@ -95,7 +95,7 @@ func TestCloseRefusesExcludeWithoutConclusion(t *testing.T) {
 
 	_, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "acme") })
 	if err == nil {
-		t.Fatal("결론 없이 확정됐다 — 게이트가 열려 있다")
+		t.Fatal("결론 없이 확정됐다 — 관문이 열려 있다")
 	}
 	// **무엇이 남았는지 말해야 한다.** 모르면 사람은 파일을 고칠 수 없다.
 	if !strings.Contains(err.Error(), sf.Changes[0].ID) {

@@ -27,7 +27,7 @@ const (
 	MissingConclusion = "conclusion"
 )
 
-// NotFinalized — 확정이 게이트를 지나지 못했다. **무엇이 남았는지를 들고 있다.**
+// NotFinalized — 확정이 관문을 지나지 못했다. **무엇이 남았는지를 들고 있다.**
 //
 // 문장으로 감싸 버리면 화면이 그것을 다시 말로 옮길 수 없다 — 그래서 사유를 값으로
 // 들고 다니고, 영어 문장은 [NotFinalized.Error] 가 만든다.

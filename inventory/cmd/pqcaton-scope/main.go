@@ -12,7 +12,7 @@
 // 걸리면 **뒤 계층의 것이 적용된다.**
 //
 // **파일이 곧 감사 기록이다.** `pqcaton-decide` 와 같은 왕복이라 조작을 따로 외울 것이 없다.
-// 파일 형식과 확정 게이트는 `pkg/inventory/scope` 에 있다 — 화면(`pqcaton-ui`)이 같은 것을 쓴다.
+// 파일 형식과 확정 관문은 `pkg/inventory/scope` 에 있다 — 화면(`pqcaton-ui`)이 같은 것을 쓴다.
 package main
 
 import (
@@ -147,7 +147,7 @@ func closeSession(path, judgmentPath, orgName string) error {
 	if err != nil {
 		return err
 	}
-	// **게이트는 scope.Finalize 하나다.** 화면도 같은 것을 쓴다 — 게이트가 둘이면 언젠가 한쪽만
+	// **관문은 scope.Finalize 하나다.** 화면도 같은 것을 쓴다 — 관문이 둘이면 언젠가 한쪽만
 	// 고쳐지고, 그날 화면과 명령의 확정이 갈린다.
 	res, err := scope.Finalize(sf, orgName)
 	if err != nil {
@@ -156,7 +156,7 @@ func closeSession(path, judgmentPath, orgName string) error {
 	for layer, n := range res.Batched {
 		fmt.Fprintf(os.Stderr, "layer %s: %d judged in one batch\n", layer, n)
 	}
-	// **게이트를 지난 뒤에만 남긴다.**
+	// **관문을 지난 뒤에만 남긴다.**
 	if judgmentPath != "" {
 		n, err := scope.SaveJudgments(judgmentPath, orgName, sf, res.Decided)
 		if err != nil {
