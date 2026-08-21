@@ -15,9 +15,9 @@
 
 ## 한눈에
 
-**pqcota의 여정 그대로입니다.** 번호도 상자도 그쪽
-[여정](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/journey.md)의 것이고,
-**이 리포가 더하는 것은 굵은 상자 하나**입니다.
+**pqcota의 여정 그대로입니다.** 그림의 번호와 상자는 그쪽
+[여정](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/journey.md)의 것이라
+**아래 이 문서의 절 번호와 다릅니다.** 이 리포가 더하는 것은 **굵은 상자 하나**입니다.
 
 ```mermaid
 flowchart TB
@@ -87,7 +87,7 @@ Grant이고, 평가·개발·테스트는 규모 제한도 없습니다([라이�
 | | |
 |---|---|
 | **pqcota** | 관측 도구. [pqcota 리포](https://github.com/randyinthedev-hash/pqcota)를 체크아웃합니다 — 이 리포는 그 계약만 소비합니다 |
-| **Go** | 두 리포를 빌드합니다. `make`가 라이선스 · 문구 게이트 → 빌드 → 테스트를 차례로 실행합니다 |
+| **Go** | 두 리포를 빌드합니다. `make`가 라이선스 · 문구 · 서식 게이트 → 빌드 → 테스트를 차례로 실행합니다 |
 | **Ansible** | collector 반입·실행·회수를 pqcota의 참조 플레이북이 합니다. **자체 원격 실행 엔진을 두지 않습니다** |
 
 > **이 리포만으로는 아무것도 못 합니다.** 관측이 없으면 대조할 것이 없기 때문입니다.
@@ -101,7 +101,8 @@ Grant이고, 평가·개발·테스트는 규모 제한도 없습니다([라이�
 선언이고, 그것은 조직이 적습니다 — CMDB에서 뽑아도 되고, 없으면 손으로 적어도 됩니다.
 
 맞대면 두 가지가 드러납니다. **선언에 없는데 관측된 것**(`UNDECLARED`)과 **선언에 있는데
-관측되지 않은 것**(`UNOBSERVED`)입니다. 그 둘을 사람이 판정하는 것이 이 리포가 하는 일입니다 — 세 상태는 [4절](#4-대조--3-상태)에 있습니다.
+관측되지 않은 것**(`UNOBSERVED`)입니다. 그 둘을 사람이 판정하는 것이 이
+리포가 하는 일입니다 — 세 상태는 [4절](#4-대조--3-상태)에 있습니다.
 
 선언은 파일 하나입니다.
 
@@ -119,10 +120,6 @@ declaration.json     scope · nodes · assets · edges
 **선언이 비어 있어도 됩니다.** 그러면 전부 `UNDECLARED` 로 나옵니다 — 「우리가 아는 것이 하나도
 없었다」가 첫 리포트입니다.
 
-> **선언이 낡으면 `UNOBSERVED` 가 늘어납니다.** 선언에는 있는데 관측되지 않은 것이 쌓이기
-> 때문입니다. 그 대부분은 **못 본 것이 아니라 이미 없어진 것**이고, 선언만 아직 그것을 들고
-> 있습니다. 어느 쪽인지는 사람이 가릅니다([5절](#5-리뷰--확정)).
-
 ---
 
 ## 3. 관측 · 적재 — pqcota 2·3·3′·4·5
@@ -133,7 +130,7 @@ pqcota의 참조 플레이북이 대상 노드에 collector를 반입·실행·�
 ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 ```
 
-| 무엇을 보나 | |
+| collector | 무엇을 보나 |
 |---|---|
 | **openssl** | 어떤 암호 라이브러리·알고리즘이 실제로 쓰이는가 |
 | **jvm** | JCA provider 구성 |
@@ -145,7 +142,7 @@ ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 
 ### 그림의 나머지 상자들
 
-한눈에 그림의 상자는 굵은 것 하나만 빼고 전부 pqcota 여정의 것입니다. **이 문서는 그것을 다시
+「한눈에」 그림의 상자는 굵은 것 하나만 빼고 전부 pqcota 여정의 것입니다. **이 문서는 그것을 다시
 설명하지 않습니다** — 어디로 가서 읽을지만 적어 둡니다.
 
 | 상자 | 무엇 | 어디에 |
@@ -174,8 +171,9 @@ pqcaton-report <results-dir> <declaration.json> [topology.dot]
 | **UNDECLARED** | 관측만 | AUTO | **조직이 모르는 통신** — 이 도구가 주는 첫 번째 쓸모입니다 |
 | **UNOBSERVED** | 선언만 | **MANUAL** | 실재하는데 못 본 것인지, 이미 없어진 것인지 — **기계가 확정하지 않습니다** |
 
-confidence는 관측 빈도·기간·선언 신선도·소스 일치도·`evidence_strength`로 정해집니다(§3.5).
-`inferred-low`는 상한을 누릅니다 — **약한 근거가 높은 신뢰도로 올라가지 못하게** 하는 자리입니다.
+신뢰도(`confidence`)는 관측 빈도·기간·선언 신선도·소스 일치도·`evidence_strength`로
+정해집니다(§3.5). `inferred-low`는 상한을 누릅니다 — **약한 근거가 높은 신뢰도로 올라가지
+못하게** 하는 자리입니다.
 
 산출은 둘입니다: **3-상태 뷰**와 **거버넌스 토폴로지**(DOT). 토폴로지는 색으로 양자내성
 등급을, 선으로 대조 상태를 나타냅니다 — 정직성 규정을 그래프 문법으로 강제합니다(§12.2).
@@ -187,10 +185,10 @@ confidence는 관측 빈도·기간·선언 신선도·소스 일치도·`eviden
 **대조 엔진은 정답을 주지 않습니다.** 판정 대상을 구조화해 사람에게 넘깁니다(§3.1).
 
 ```bash
-pqcaton-decide open decl.csv local > session.json   # 리뷰 큐를 파일로
+pqcaton-decide open declaration.json -results results/ -org acme > session.json
 #  … 사람이 정책별 결론 · 승인자 · 서명을 채운다
 pqcaton-decide close session.json -judgments j.jsonl -org acme > plan.json
-pqcaton-decide delta j.jsonl decl.csv local -org acme   # 근거가 바뀐 것만
+pqcaton-decide delta j.jsonl declaration.json -results results/ -org acme   # 근거가 바뀐 것만
 ```
 
 **파일 왕복인 것이 요점입니다.** 대화형으로 물으면 무엇을 근거로 무엇을 정했는지가 화면에서
@@ -199,7 +197,7 @@ pqcaton-decide delta j.jsonl decl.csv local -org acme   # 근거가 바뀐 것�
 | 리뷰 큐 | |
 |---|---|
 | **자동통과 후보** | CONFIRMED + 고신뢰 + 저위험 → 일괄 승인 묶음. **승인은 사람이 합니다** |
-| **필수 개별 리뷰** | UNDECLARED(최우선) · 저신뢰 UNOBSERVED · 레거시 터치 · 컷오버가 상대를 깨는 엣지 |
+| **필수 개별 리뷰** | UNDECLARED(최우선) · 신뢰도 낮은 UNOBSERVED · 레거시를 건드려야 하는 것 · 바꾸면 상대가 깨지는 엣지 |
 | 우선순위 | 위험도 × 블라스트반경 × 데이터민감도 |
 
 ```mermaid
@@ -236,7 +234,7 @@ stateDiagram-v2
 거기 있습니다.
 
 > **적용은 두 번 돌리면 안 되는 유일한 단계입니다.** 관측과 대조는 몇 번을 돌려도 대상이
-> 바뀌지 않지만, 적용은 씁니다 — 두 번째 `before` 캡처는 **이미 바뀐 상태**를 찍어 되돌릴
+> 바뀌지 않지만, 적용은 대상을 바꿉니다 — 두 번째 `before` 캡처는 **이미 바뀐 상태**를 찍어 되돌릴
 > 근거가 망가집니다.
 
 ---
@@ -248,23 +246,23 @@ stateDiagram-v2
 | | |
 |---|---|
 | **재관측 → 델타 리뷰** | 근거가 바뀐 판정만 다시 봅니다. **전면 재리뷰가 아닙니다** |
-| **stale 판정 만료** | 오래된 판정은 신뢰도가 감쇠하고 주기적으로 재확인합니다 |
+| **오래된 판정 만료** | 오래된 판정은 신뢰도가 깎이고 주기적으로 다시 확인합니다 |
 | **제외분 재검토** | "이 자산은 안 본다"는 제외는 영구 면제가 아닙니다. 주기적으로 다시 훑어 **빼둔 사이 위험해진 것**을 리뷰 큐로 올립니다(§1.6) |
-| **판단 이력** | 누가·언제·무엇을 근거로 정했는지가 append-only로 남습니다 — 사고 뒤에 답해야 하는 것이 이것입니다 |
+| **판정 이력** | 누가·언제·무엇을 근거로 정했는지가 append-only로 남습니다 — 사고 뒤에 답해야 하는 것이 이것입니다 |
 
 ---
 
 ## 지금 어디까지 됐나
 
-| 여정 | 어디에 | 상태 |
+| 무엇 | 어디에 | 상태 |
 |---|---|---|
-| 3 · 관측 | pqcota | **끝** — 이 리포 밖입니다 |
-| 4 · 대조 — 3-상태·confidence·리뷰 큐·토폴로지 | [`pkg/inventory/reconcile`](../pkg/inventory/reconcile) | **끝** |
-| 5 · 리뷰-확정 상태기계·판정 영속 | [`pkg/inventory/decision`](../pkg/inventory/decision) | **끝** |
-| 4·5 실행 도구 | [`inventory/cmd`](../inventory/cmd) | **끝** — `pqcaton-report` · `pqcaton-decide` · `pqcaton-scope` · `pqcaton-ui` |
-| 6 · 적용 | pqcota `provisioning` | **끝** — 이 리포 밖입니다 |
-| 2 · 선언 — 스코프 거버넌스(리뷰·감사·정책 상속) | [`pkg/inventory/scope`](../pkg/inventory/scope) · `pqcaton-scope` | **끝** |
-| 5 · 사람이 쓰는 화면 | [`pkg/inventory/ui`](../pkg/inventory/ui) · `pqcaton-ui` | **끝** — 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회 |
+| 관측 | pqcota | **끝** — 이 리포 밖입니다 |
+| 대조 — 3-상태 · 신뢰도 · 리뷰 큐 · 토폴로지 | [`pkg/inventory/reconcile`](../pkg/inventory/reconcile) | **끝** |
+| 리뷰-확정 상태기계 · 판정 영속 | [`pkg/inventory/decision`](../pkg/inventory/decision) | **끝** |
+| 실행 도구 | [`inventory/cmd`](../inventory/cmd) | **끝** — `pqcaton-report` · `pqcaton-decide` · `pqcaton-scope` · `pqcaton-ui` |
+| 적용 | pqcota `provisioning` | **끝** — 이 리포 밖입니다 |
+| 자산 스코프 거버넌스 — 리뷰 · 감사 · 정책 상속 | [`pkg/inventory/scope`](../pkg/inventory/scope) · `pqcaton-scope` | **끝** |
+| 사람이 쓰는 화면 | [`pkg/inventory/ui`](../pkg/inventory/ui) · `pqcaton-ui` | **끝** — 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회 |
 
 **엔진도 화면도 됩니다.** [데모](../demo/README.md)가 pqcota의 디스커버리 데모 위에 그대로 얹혀
 3-상태 대조와 거버넌스 토폴로지를 보여 줍니다.
