@@ -55,10 +55,10 @@ templ surveyPage(v SurveyView) {
 		</fieldset>
 		<fieldset>
 			<legend>{ tSurveyAssets.In(v.Page.Lang) }</legend>
-			@tip(v.Page.Lang, tSurveyAssetsHint.In(v.Page.Lang)+" "+tShadowHint.In(v.Page.Lang))
+			@tip(v.Page.Lang, tSurveyAssetsHint.In(v.Page.Lang)+" "+tUndeclaredHint.In(v.Page.Lang))
 			<p>
 				CONFIRMED <b>{ strconv.Itoa(v.Confirmed) }</b> ·
-				UNDECLARED(shadow) <b>{ strconv.Itoa(v.Undeclared) }</b> ·
+				UNDECLARED <b>{ strconv.Itoa(v.Undeclared) }</b> ·
 				UNOBSERVED <b>{ strconv.Itoa(v.Unobserved) }</b>
 			</p>
 			<table>

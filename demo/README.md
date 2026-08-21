@@ -24,15 +24,15 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 ## 무엇을 얹나
 
 이 데모는 **독립 스택이 아니라 확장**입니다. [pqcota의 디스커버리 데모](https://github.com/randyinthedev-hash/pqcota/tree/main/demo)를
-그대로 띄운 뒤, 그 위에 이 리포의 기능 — **선언 대비 3-상태 대조(CONFIRMED/UNDECLARED shadow/UNOBSERVED) +
+그대로 띄운 뒤, 그 위에 이 리포의 기능 — **선언 대비 3-상태 대조(CONFIRMED/UNDECLARED/UNOBSERVED) +
 리뷰 큐 + 거버넌스 토폴로지** — 를 얹습니다.
 
 ```
 관측 등급 (pqcota)              →   + 선언 대비 reconciliation (pqcaton)
 🟢 web-gw→pay-app MLKEM                🟢 web-gw→pay-app  TLS  CONFIRMED
 🔴 web-gw→pay-db  고전                 🔴 web-gw→pay-db   TLS  CONFIRMED
-🟢 web-gw→pay-app SSH sntrup761        🟢 web-gw→pay-app  SSH  UNDECLARED(shadow) ← 선언 안 된 통신!
-🔴 web-gw→pay-db  SSH curve25519       🔴 web-gw→pay-db   SSH  UNDECLARED(shadow)
+🟢 web-gw→pay-app SSH sntrup761        🟢 web-gw→pay-app  SSH  UNDECLARED ← 선언 안 된 통신!
+🔴 web-gw→pay-db  SSH curve25519       🔴 web-gw→pay-db   SSH  UNDECLARED
                                        ⚪ pay-db→pay-app  TLS  UNOBSERVED (선언했으나 미관측 ≠ 부재)
 ```
 
@@ -75,5 +75,5 @@ core가 이미 수집한 `/work/results`에 **선언(declaration.json)** 을 대
 | **환경** — 노드·망·버전·provider | pqcota의 `demo/topology/topology.yaml`. 고친 뒤 `up.sh`부터 다시 |
 | **선언 규칙** — 무엇을 선언하고 무엇을 뺄지 | [`scripts/declare.py`](scripts/declare.py)의 `ASSETS`·`DECLARED_PROTOS` |
 
-예를 들어 `DECLARED_PROTOS`에 `ssh`를 넣으면 shadow가 사라지고 전부 CONFIRMED가 됩니다 —
+예를 들어 `DECLARED_PROTOS`에 `ssh`를 넣으면 UNDECLARED 가 사라지고 전부 CONFIRMED가 됩니다 —
 **선언이 완벽한 조직**이 어떻게 보이는지가 그것입니다.

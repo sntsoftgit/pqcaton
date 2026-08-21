@@ -232,7 +232,7 @@
   <text class="lbl" x="530" y="326">대조 엔진 — 선언과 관측을 맞댄다</text>
   <text class="lbl-mono" x="530" y="348">pkg/inventory/reconcile</text>
   <text class="lbl-sm" x="530" y="370">3-상태 · confidence 스코어링 · 리뷰 큐 · 토폴로지</text>
-  <text class="lbl-sm" x="530" y="392">CONFIRMED · UNDECLARED(shadow) · UNOBSERVED</text>
+  <text class="lbl-sm" x="530" y="392">CONFIRMED · UNDECLARED · UNOBSERVED</text>
   <text class="lbl-sm" x="530" y="410">UNOBSERVED는 기계가 확정하지 않는다</text>
 
   <rect class="box-us" x="512" y="444" width="424" height="104" rx="5"/>
@@ -349,7 +349,7 @@
   <thead><tr><th>상태</th><th>정의</th><th>등급</th><th>무엇을 뜻하나</th></tr></thead>
   <tbody>
     <tr><td><span class="swatch s-ok"></span>CONFIRMED</td><td>선언 ∩ 관측</td><td>AUTO</td><td>신뢰도 최상</td></tr>
-    <tr><td><span class="swatch s-stop"></span>UNDECLARED</td><td>관측만</td><td>AUTO</td><td><strong>shadow</strong> — 조직이 모르는 통신. 이 도구가 주는 첫 번째 쓸모입니다</td></tr>
+    <tr><td><span class="swatch s-stop"></span>UNDECLARED</td><td>관측만</td><td>AUTO</td><td><strong>조직이 모르는 통신</strong> — 이 도구가 주는 첫 번째 쓸모입니다</td></tr>
     <tr><td><span class="swatch s-warn"></span>UNOBSERVED</td><td>선언만</td><td><strong>MANUAL</strong></td><td>실재하는데 못 본 것인지 이미 없어진 것인지는 <strong>사람만 압니다</strong></td></tr>
   </tbody>
 </table>

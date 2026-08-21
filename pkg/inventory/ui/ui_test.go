@@ -528,7 +528,7 @@ func TestRuntimeIsPickedFromAList(t *testing.T) {
 //
 // 맞대는 방식이 **글자 그대로 같은가**입니다. 앞뒤 일부 일치도, <code>*</code> 같은 것도 없습니다.
 // 그런데 관측 이름은 `.so` 뒤가 떼인 채로 오므로, 관측에 보이는 대로(`libssl.so.3`)
-// 적으면 맞지 않습니다 — 그리고 그것이 오류 없이 미관측·shadow 로 구분됩니다.
+// 적으면 맞지 않습니다 — 그리고 그것이 오류 없이 미관측·UNDECLARED 로 구분됩니다.
 func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 	var b strings.Builder
 	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
@@ -550,7 +550,7 @@ func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 // IC-UI35 — **관측된 컴포넌트가 후보로 뜬다.**
 //
 // 컴포넌트는 글자 그대로 같아야 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 옵니다 —
-// 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류 없이 미관측·shadow 로 구분됩니다.
+// 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류 없이 미관측·UNDECLARED 로 구분됩니다.
 // 관측 결과에 적힌 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 한다.
 func TestObservedComponentsAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
@@ -592,7 +592,7 @@ func TestNoObservationNoCandidates(t *testing.T) {
 // IC-UI37 — **관측 이름을 적으면 그 노드에 붙는다.**
 //
 // 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. collector 가 자기가 붙인
-// id 로 보내면 선언한 자산은 전부 미관측으로, 관측된 자산은 전부 shadow 로 오릅니다 —
+// id 로 보내면 선언한 자산은 전부 미관측으로, 관측된 자산은 전부 UNDECLARED 로 오릅니다 —
 // 선언이 틀려서가 아니라 이름이 서로 달라서입니다. 그 이름을 한 번 적어 두는 자리다.
 func TestObservedNameRoundTrips(t *testing.T) {
 	got, _ := ui.ApplyDecl(decl.Declaration{}, url.Values{
@@ -610,7 +610,7 @@ func TestObservedNameRoundTrips(t *testing.T) {
 }
 
 // IC-UI38 — **붙지 않은 관측 이름이 후보로 뜬다.** 어디에도 안 붙었다는 것은 그
-// 노드의 자산이 통째로 shadow 로 오른다는 뜻이라, 사람이 가장 먼저 볼 이름이다.
+// 노드의 자산이 통째로 UNDECLARED 로 오른다는 뜻이라, 사람이 가장 먼저 볼 이름이다.
 func TestUnmatchedNodeNamesAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
 		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}
@@ -811,7 +811,7 @@ func TestDeclMergesScopeAndAddressesIntoOneTable(t *testing.T) {
 // IC-UI27 — **IP를 적은 줄만 관리 대상이 된다.**
 //
 // IP가 없으면 관측에 찍힌 주소를 이 이름과 이을 근거가 없습니다. 그런 이름을 관리
-// 대상에 넣어 두면 선언한 엣지는 미관측으로, 관측된 엣지는 shadow 로 구분됩니다 —
+// 대상에 넣어 두면 선언한 엣지는 미관측으로, 관측된 엣지는 UNDECLARED 로 구분됩니다 —
 // 막히지 않으니 눈으로는 알 수 없습니다. 그래서 저장에서 뺍니다. 다만 **뺀 것은
 // 말해야 합니다** — 표에서 사라진 것만 보이면 지워진 것으로 읽힙니다.
 func TestApplyDeclDerivesScopeFromTheTable(t *testing.T) {

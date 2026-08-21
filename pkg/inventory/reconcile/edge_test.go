@@ -31,7 +31,7 @@ func recEdges(t *testing.T, declared []EdgeKey, observed []*discoveryv1.Observed
 	return out
 }
 
-// IC-E1: 관측 엣지 vs 선언 엣지 → 3-상태(CONFIRMED / UNDECLARED shadow / UNOBSERVED).
+// IC-E1: 관측 엣지 vs 선언 엣지 → 3-상태(CONFIRMED / UNDECLARED / UNOBSERVED).
 func TestReconcileEdges_threeState(t *testing.T) {
 	declared := []EdgeKey{
 		ek("web-01", "app-01", 8443, "TLS"), // 관측될 것 → CONFIRMED
@@ -40,7 +40,7 @@ func TestReconcileEdges_threeState(t *testing.T) {
 	scope := map[string]bool{"web-01": true, "app-01": true, "db-01": true}
 	observed := []*discoveryv1.ObservedEdge{
 		oe("web-01", "app-01", "", 8443, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_TLS, "X25519MLKEM768"),
-		oe("app-01", "app-99-shadow", "", 22, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_SSH, "ecdh-sha2"), // 관측 only, 스코프 내 → UNDECLARED
+		oe("app-01", "app-99-undeclared", "", 22, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_SSH, "ecdh-sha2"), // 관측 only, 스코프 내 → UNDECLARED
 	}
 
 	got := map[EdgeKey]ReconciledEdge{}
@@ -50,8 +50,8 @@ func TestReconcileEdges_threeState(t *testing.T) {
 	if s := got[ek("web-01", "app-01", 8443, "TLS")].State; s != Confirmed {
 		t.Errorf("web→app = %s, want CONFIRMED", s)
 	}
-	if s := got[ek("app-01", "app-99-shadow", 22, "SSH")].State; s != Undeclared {
-		t.Errorf("shadow SSH = %s, want UNDECLARED", s)
+	if s := got[ek("app-01", "app-99-undeclared", 22, "SSH")].State; s != Undeclared {
+		t.Errorf("UNDECLARED SSH = %s, want UNDECLARED", s)
 	}
 	if s := got[ek("app-01", "db-01", 5432, "TLS")].State; s != Unobserved {
 		t.Errorf("db 선언-only = %s, want UNOBSERVED", s)
@@ -120,7 +120,7 @@ func TestReconcileEdgesRefusesAnotherOrg(t *testing.T) {
 }
 
 // IC-O5 — 관측 엣지에는 조직이 없다. **엔진이 찍는다** — 찍지 않으면 선언과 영영 안 맞아
-// 모든 관측 엣지가 shadow 로 올라온다.
+// 모든 관측 엣지가 UNDECLARED 로 올라온다.
 func TestObservedEdgeGetsOrg(t *testing.T) {
 	got := recEdges(t, nil, []*discoveryv1.ObservedEdge{
 		oe("web-01", "app-01", "", 8443, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_TLS, "X25519MLKEM768"),

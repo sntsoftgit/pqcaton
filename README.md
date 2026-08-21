@@ -37,7 +37,7 @@ pqcota                          pqcaton
 
 | 모듈 | 하는 일 |
 |---|---|
-| [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만 = shadow) · UNOBSERVED(선언만) |
+| [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만) · UNOBSERVED(선언만) |
 | [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
 | [`pkg/inventory/review`](pkg/inventory/review) | **세션 파일 형식과 확정 게이트** — 명령과 화면이 이 하나를 씁니다 |
 | [`pkg/inventory/decl`](pkg/inventory/decl) | **선언 형식과 자체 검사** — 노드↔IP가 틀리면 대조가 **오류 없이** 틀립니다. 저장 전에 짚습니다 |

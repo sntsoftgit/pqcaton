@@ -107,7 +107,7 @@ var (
 			"<b>「관측 이름」은 관측이 이 노드를 부르는 이름입니다.</b> 자산 대조는 노드 " +
 			"이름이 글자 그대로 같아야 맞는데, collector 는 자기가 붙인 " +
 			"id(<code>node:1a2b…</code>)나 호스트명으로 보내는 일이 흔합니다. 이름이 서로 다르면 " +
-			"<b>그 노드의 자산이 통째로 shadow 로</b> 올라옵니다 — 선언이 틀려서가 아니라 " +
+			"<b>그 노드의 자산이 통째로 UNDECLARED 로</b> 올라옵니다 — 선언이 틀려서가 아니라 " +
 			"이름이 서로 달라서입니다. 호스트명(짧은 이름 포함)이 위 이름과 같으면 비워 두십시오 " +
 			"— 그때는 저절로 이어집니다. 아직 어느 노드에도 붙지 않은 관측 이름은 " +
 			"이 칸에서 고를 수 있습니다.",
@@ -118,7 +118,7 @@ var (
 			"<b>“Observed as” is what observation calls this node.</b> Asset reconciliation " +
 			"matches node names literally, but a collector often reports its own " +
 			"id (<code>node:1a2b…</code>) or a hostname. When the names diverge, <b>every asset " +
-			"on that node comes up as shadow</b> — not because the declaration is wrong but " +
+			"on that node comes up as UNDECLARED</b> — not because the declaration is wrong but " +
 			"because the names differ. Leave it empty when the hostname (or its short form) " +
 			"equals the name above; those tie themselves. Names observed but not yet tied to " +
 			"any node are offered here as candidates."}
@@ -137,7 +137,7 @@ var (
 			"<code>jca-provider-chain</code> 하나, <code>cng</code> 는 " +
 			"<code>cng-providers</code> 하나입니다 — 머신에 하나뿐이라 관측 결과에 늘 그 " +
 			"이름으로 적힙니다.<br>맞지 않아도 막히지 않습니다 — " +
-			"<b>선언한 것은 미관측으로, 관측된 것은 shadow 로</b> 구분됩니다. 그래서 " +
+			"<b>선언한 것은 미관측으로, 관측된 것은 UNDECLARED 로</b> 구분됩니다. 그래서 " +
 			"<b>그 노드에서 관측된 이름이 컴포넌트 칸에 후보로 뜹니다</b> — 칸을 " +
 			"누르면 뜨고, 거기서 고르면 옮겨 적다 틀릴 일이 없습니다. 관측이 아직 없으면 " +
 			"후보도 없으니 위 규칙대로 적으십시오.",
@@ -153,7 +153,7 @@ var (
 			"is always <code>jca-provider-chain</code>, and under <code>cng</code> always " +
 			"<code>cng-providers</code> — one per machine, so observation reports that " +
 			"name.<br>A mismatch does not stop you — " +
-			"<b>what you declared goes UNOBSERVED and what was observed goes shadow</b>. So the " +
+			"<b>what you declared goes UNOBSERVED and what was observed goes UNDECLARED</b>. So the " +
 			"component field <b>offers the names observed on that node</b> — click the field and " +
 			"pick one, and there is nothing to copy wrongly. With no observations yet there are " +
 			"no candidates, so write them by the rule above."}
@@ -395,7 +395,7 @@ var (
 		KO: "노드 안의 암호 런타임·컴포넌트를 선언과 맞댄 3-상태입니다.",
 		EN: "The crypto runtimes and components inside each node, in three states against the declaration."}
 	tSurveyNoAssets   = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
-	tShadowHint       = T{
+	tUndeclaredHint   = T{
 		KO: "<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> — 선언에 없는데 " +
 			"실제로 쓰이고 있는 것입니다. 판정은 <a href=\"/review\">판정(리뷰 큐)</a> 탭에서 합니다.",
 		EN: "<b>Finding UNDECLARED is the first thing this tool is good for</b> — things in " +

@@ -281,7 +281,7 @@ func sub(parts ...string) string { return strings.Join(parts, " · ") }
 // reviewSession — 리뷰 세션을 읽는다. **관측 결과가 있으면 그것이 정답지다.**
 //
 // 큐는 관측에서 파생된 것이라, 결과가 늘었는데 세션이 그대로면 화면이 옛 큐를 보여
-// 준다 — 방금 나타난 shadow 가 판정 대상에 없는 상태다. 그래서 읽을 때마다 다시 세우고,
+// 준다 — 방금 나타난 UNDECLARED 가 판정 대상에 없는 상태다. 그래서 읽을 때마다 다시 세우고,
 // 사람이 적은 판정은 [review.Carry] 가 들고 간다. 파일에 쓰는 것은 저장·확정할 때뿐이다.
 func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	prev, err := review.Load(s.path)
@@ -727,7 +727,7 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 //
 // 결과를 읽지 못해도 선언 화면은 열려야 한다. 후보는 거들 뿐이고, 없으면 손으로 적는다.
 // unmatched — 관측에는 있는데 어느 선언 노드에도 붙지 않은 노드 이름. 「관측 이름」 칸의
-// 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 shadow 로 오른다는 뜻이고, 그것은
+// 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 UNDECLARED 로 오른다는 뜻이고, 그것은
 // 선언이 틀려서가 아니라 이름이 서로 달라서다.
 func (s *server) observedAssets(d decl.Declaration) (map[string][]ui.DeclAsset, []string) {
 	if s.results == "" {

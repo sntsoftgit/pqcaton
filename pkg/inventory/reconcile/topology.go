@@ -13,7 +13,7 @@ import (
 //
 // 정직성 규정(§12.2)을 그래프 문법으로 강제한다:
 //   - 색  = 양자내성 posture: 🟢 green(PQC) / 🔴 red(고전) / ⚪ gray(불명·미관측)
-//   - 선형 = reconciliation 상태: 실선=CONFIRMED, 굵은선=UNDECLARED(shadow 경고), 점선=UNOBSERVED
+//   - 선형 = reconciliation 상태: 실선=CONFIRMED, 굵은선=UNDECLARED(UNDECLARED 경고), 점선=UNOBSERVED
 //   - 미관측 엣지는 "연결 없음"이 아니라 점선으로 그린다(미관측≠부재).
 //   - off-scope 상대(스코프 미등재)는 점선 박스 + "판정요청" 표기(§0.4).
 //   - uncovered(collector 미설치) 노드는 회색 처리 — 그 노드의 엣지는 반쪽만 보임(§12.2).
@@ -39,7 +39,7 @@ func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool) string
 	// rankdir=TB(위→아래) 세로 배치 + 하단 캡션 범례(옆으로 안 퍼지게). 폭 축소.
 	b.WriteString("  rankdir=TB;\n  ranksep=0.5;\n  nodesep=0.3;\n")
 	b.WriteString(`  labelloc="b"; fontsize=11;` + "\n")
-	b.WriteString(`  label="colour = grade: 🟢 PQC · 🔴 classical · ⚪ unknown\nline: solid CONFIRMED · bold shadow · dashed UNOBSERVED";` + "\n")
+	b.WriteString(`  label="colour = grade: 🟢 PQC · 🔴 classical · ⚪ unknown\nline: solid CONFIRMED · bold UNDECLARED · dashed UNOBSERVED";` + "\n")
 	b.WriteString(`  node [shape=box, style="rounded,filled", fillcolor="#eeeeff", fontname="sans"];` + "\n")
 	b.WriteString(`  edge [fontname="sans", fontsize=10];` + "\n\n")
 
@@ -75,7 +75,7 @@ func dotEdge(e ReconciledEdge) string {
 	case Confirmed:
 		style = fmt.Sprintf(`color=%q, penwidth=2`, color)
 	case Undeclared:
-		// shadow 통신 — 굵은 경고선. posture 색 유지하되 강조.
+		// UNDECLARED 통신 — 굵은 경고선. posture 색 유지하되 강조.
 		style = fmt.Sprintf(`color=%q, penwidth=3`, color)
 	case Unobserved:
 		// 미관측 — 점선(≠부재). posture는 불명이므로 회색.

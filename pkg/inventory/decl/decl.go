@@ -41,7 +41,7 @@ type Node struct {
 	// ObservedAs — 관측이 이 노드를 부르는 이름. **자산 대조는 노드 이름이 글자 그대로
 	// 같아야 맞는다** — 그런데 collector 는 자기가 붙인 id(`node:<해시>`)나 호스트명으로
 	// 보내는 일이 흔하다. 이름이 서로 다르면 선언한 자산은 전부 미관측으로, 관측된 자산은
-	// 전부 shadow 로 올라온다 — 막히지 않고 그럴듯하게 틀린다.
+	// 전부 UNDECLARED 로 올라온다 — 막히지 않고 그럴듯하게 틀린다.
 	//
 	// 호스트명이 이름과 같으면 적지 않아도 이어진다. 여기는 **그것으로 안 될 때** 사람이
 	// 한 번 적어 두는 자리다.
@@ -143,7 +143,7 @@ var (
 	whyEN = map[Code]string{
 		NodeNotInScope: "it is not reconciled, so this IP row is never used",
 		NodeHasNoIP: "observed traffic to this node cannot be resolved, so **declared edges " +
-			"show as unobserved and observed edges show as shadow**",
+			"show as unobserved and observed edges show as UNDECLARED**",
 		IPMalformed: "resolution only works on an exact string match — a port or a hostname will not match",
 		IPClaimedTwice: "resolution flips to whichever node comes last, so **traffic gets " +
 			"attached to the wrong node**",
@@ -154,7 +154,7 @@ var (
 		// IP가 비어 있는 것과 **결과가 같다.** 한쪽만 약하게 말하면 고칠 이유의 무게가
 		// 달라 보인다.
 		NodeMissingIP: "observed traffic to this node cannot be resolved, so **declared edges " +
-			"show as unobserved and observed edges show as shadow**",
+			"show as unobserved and observed edges show as UNDECLARED**",
 		AssetOffScope:   "it is declared but no observation attaches, so it stays **UNOBSERVED** forever",
 		EdgeSrcOffScope: "no observation attaches, so it stays unobserved forever",
 		EdgePortZero:    "the port is part of an edge's identity, so it will not match an observed edge",
@@ -222,7 +222,7 @@ func claimedNames(nodes []Node) map[string][]string {
 //
 // **여기서 잡지 못하면 대조 결과가 오류 없이 틀린다.** 노드↔IP가 없거나 겹치면 관측 IP가
 // 노드로 이어지지 않고, 그러면 선언 엣지와 영영 맞지 않아 **CONFIRMED여야 할 통신이
-// shadow(UNDECLARED)로 올라온다**(§0.4, IC-N1) — 오류가 아니라 그럴듯한 결과라 눈으로는
+// UNDECLARED로 올라온다**(§0.4, IC-N1) — 오류가 아니라 그럴듯한 결과라 눈으로는
 // 안 잡힌다. 사람이 파일을 저장하기 전에 짚어 주는 것이 이 함수의 일이다.
 //
 // **막지는 않는다.** 선언은 고객의 문서이고, 아직 IP를 모르는 노드를 적어 두는 것도 정당한

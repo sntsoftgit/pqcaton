@@ -11,7 +11,7 @@ type ReviewItem struct {
 
 // BuildReviewQueue — 대조 결과를 (자동통과 후보, 필수 리뷰 큐)로 나눈다(§3.3②, §3.5 PROPOSE).
 //   - 자동통과 후보: CONFIRMED + 고신뢰 → 일괄 승인 제안(승인은 사람).
-//   - 필수 개별 리뷰: UNDECLARED(shadow, 최우선), UNOBSERVED, 저신뢰 CONFIRMED.
+//   - 필수 개별 리뷰: UNDECLARED(최우선), UNOBSERVED, 저신뢰 CONFIRMED.
 //
 // 반환 큐는 우선순위 내림차순 정렬. 확정(finalize)은 여기서 하지 않는다 — Decision 서비스 소관.
 func BuildReviewQueue(recs []Reconciled) (autopass []Reconciled, review []ReviewItem) {
@@ -24,7 +24,7 @@ func BuildReviewQueue(recs []Reconciled) (autopass []Reconciled, review []Review
 				review = append(review, ReviewItem{Rec: r, Priority: 1, Mandatory: false})
 			}
 		case Undeclared:
-			review = append(review, ReviewItem{Rec: r, Priority: 3, Mandatory: true}) // shadow = 최우선
+			review = append(review, ReviewItem{Rec: r, Priority: 3, Mandatory: true}) // UNDECLARED = 최우선
 		case Unobserved:
 			review = append(review, ReviewItem{Rec: r, Priority: 2, Mandatory: true})
 		}

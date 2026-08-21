@@ -15,7 +15,7 @@ func RenderView(recs []Reconciled) string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "reconciled: CONFIRMED %d · UNDECLARED(shadow) %d · UNOBSERVED %d\n",
+	fmt.Fprintf(&b, "reconciled: CONFIRMED %d · UNDECLARED %d · UNOBSERVED %d\n",
 		counts[Confirmed], counts[Undeclared], counts[Unobserved])
 	fmt.Fprintf(&b, "auto-pass candidates (proposed for batch approval): %d\n\n", len(autopass))
 	if len(review) == 0 {

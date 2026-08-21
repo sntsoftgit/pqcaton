@@ -1,7 +1,7 @@
 // 이 파일은 **관측 결과에서 리뷰 세션을 세우는 일** 하나를 갖는다.
 //
 // 명령(`pqcaton-decide open -results`)과 화면(`pqcaton-ui`)이 같은 세션을 만들어야 한다.
-// 따로 계산하면 화면에서 본 shadow 와 명령이 올린 리뷰 큐가 달라지고, 사람이 본 것과
+// 따로 계산하면 화면에서 본 UNDECLARED 와 명령이 올린 리뷰 큐가 달라지고, 사람이 본 것과
 // 판정하는 것이 어긋난다 — 오류가 아니라 그럴듯한 결과가 나오는 자리다.
 package review
 
@@ -70,7 +70,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 		return nil, fmt.Errorf("the declaration belongs to organization %q but reconciliation was asked for %q", d.Org, orgName)
 	}
 	out := &Built{Org: orgName}
-	// **앞뒤가 안 맞으면 말한다.** 노드↔IP 가 틀리면 CONFIRMED 여야 할 것이 shadow 로 올라온다.
+	// **앞뒤가 안 맞으면 말한다.** 노드↔IP 가 틀리면 CONFIRMED 여야 할 것이 UNDECLARED 로 올라온다.
 	if p := decl.Check(d); len(p) > 0 {
 		out.Warnings = append(out.Warnings, Warning{Code: WarnDeclProblems, Count: len(p)})
 	}
@@ -114,7 +114,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 //
 // **정책에 못 보던 항목이 생겼으면 그 정책의 일괄 결론을 지운다.** 일괄 판정은 「이 정책의
 // 항목들을 보고 내린 결론」인데, 새 항목은 사람이 본 적이 없다 — 그대로 두면 방금 나타난
-// shadow 가 누가 승인한 적 없는 근거를 달고 확정을 통과한다. 서명도 지운다: 서명은 그
+// UNDECLARED 가 누가 승인한 적 없는 근거를 달고 확정을 통과한다. 서명도 지운다: 서명은 그
 // 큐에 대한 것이다.
 func Carry(prev, next Session) Session {
 	was := map[string]Item{}

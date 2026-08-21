@@ -41,7 +41,7 @@ func obs(node, rt, comp, ev string) Observed {
 // 3-상태 대조(§3.3): 선언∩관측=CONFIRMED, 관측only=UNDECLARED, 선언only=UNOBSERVED.
 func TestReconcile(t *testing.T) {
 	declared := []AssetKey{k("n1", "openssl", "libssl"), k("n1", "openssl", "libcrypto")}
-	observed := []Observed{obs("n1", "openssl", "libssl", "confirmed"), obs("n1", "openssl", "libpq-shadow", "confirmed")}
+	observed := []Observed{obs("n1", "openssl", "libssl", "confirmed"), obs("n1", "openssl", "libpq-undeclared", "confirmed")}
 
 	got := map[AssetKey]State{}
 	for _, r := range rec(t, declared, observed, nil) {
@@ -49,7 +49,7 @@ func TestReconcile(t *testing.T) {
 	}
 	cases := map[AssetKey]State{
 		k("n1", "openssl", "libssl"):       Confirmed,  // 양쪽
-		k("n1", "openssl", "libpq-shadow"): Undeclared, // 관측 only = shadow
+		k("n1", "openssl", "libpq-undeclared"): Undeclared, // 관측 only = UNDECLARED
 		k("n1", "openssl", "libcrypto"):    Unobserved, // 선언 only
 	}
 	if len(got) != len(cases) {
@@ -99,11 +99,11 @@ func TestReconcile_evidenceConfidence(t *testing.T) {
 	}
 }
 
-// 리뷰 큐(§3.3②): CONFIRMED 고신뢰=자동통과, shadow=최우선 필수리뷰.
+// 리뷰 큐(§3.3②): CONFIRMED 고신뢰=자동통과, UNDECLARED=최우선 필수리뷰.
 func TestBuildReviewQueue(t *testing.T) {
 	recs := []Reconciled{
 		{Key: k("n", "openssl", "sys"), State: Confirmed, Confidence: 0.9},
-		{Key: k("n", "openssl", "shadow"), State: Undeclared, Confidence: 0.6, NeedsReview: true},
+		{Key: k("n", "openssl", "undeclared"), State: Undeclared, Confidence: 0.6, NeedsReview: true},
 		{Key: k("n", "openssl", "gone"), State: Unobserved, Confidence: 0.3, NeedsReview: true},
 	}
 	autopass, review := BuildReviewQueue(recs)
@@ -114,19 +114,19 @@ func TestBuildReviewQueue(t *testing.T) {
 	if len(review) != 2 {
 		t.Fatalf("review 큐 = %d, want 2", len(review))
 	}
-	// shadow(UNDECLARED)가 우선순위 최상단.
+	// UNDECLARED가 우선순위 최상단.
 	if review[0].Rec.State != Undeclared {
-		t.Errorf("리뷰 큐 최상단 = %s, want UNDECLARED(shadow 최우선)", review[0].Rec.State)
+		t.Errorf("리뷰 큐 최상단 = %s, want UNDECLARED(최우선)", review[0].Rec.State)
 	}
 	if !review[0].Mandatory {
-		t.Error("shadow는 필수 리뷰여야")
+		t.Error("UNDECLARED 는 필수 리뷰여야")
 	}
 }
 
 // IC-O1 — **다른 조직의 자산이 섞이면 대조하지 않는다.**
 //
 // 그냥 두면 오류가 아니라 그럴듯한 결과가 나온다 — 열쇠가 안 맞아 같은 자산이 UNDECLARED와
-// UNOBSERVED 한 쌍으로 갈리고, 리뷰 큐는 그것을 shadow 발견으로 올린다.
+// UNOBSERVED 한 쌍으로 갈리고, 리뷰 큐는 그것을 UNDECLARED 발견으로 올린다.
 func TestReconcileRefusesAnotherOrg(t *testing.T) {
 	남 := AssetKey{Org: org.ID("beta"), NodeID: "n", Runtime: "openssl", Component: "libssl"}
 

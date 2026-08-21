@@ -27,11 +27,11 @@ func completeness(covered, missing []commonv1.CollectionLayer) *discoveryv1.Coll
 //
 // 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. 그런데 collector 는 자기가 붙인
 // id(`node:<해시>`)나 fqdn 으로 보냅니다 — 이름이 서로 다르면 선언한 자산은 전부 미관측으로,
-// 관측된 자산은 전부 shadow 로 오릅니다. **막히지 않고 그럴듯하게 틀리는 자리입니다.**
+// 관측된 자산은 전부 UNDECLARED 로 오릅니다. **막히지 않고 그럴듯하게 틀리는 자리입니다.**
 //
 // 호스트명이 이름과 같으면 알아서 잇고, 그것으로 안 되면 사람이 적어 둔 「관측 이름」으로
 // 잇는다. 어디에도 안 걸리면 **관측이 부른 이름을 그대로 둔다** — 억지로 하나를 고르면
-// 남의 노드 자산이 붙고, 그 이름으로 shadow 가 올라야 사람이 보고 적어 넣을 수 있다.
+// 남의 노드 자산이 붙고, 그 이름으로 UNDECLARED 가 올라야 사람이 보고 적어 넣을 수 있다.
 func TestResolveAssetNode(t *testing.T) {
 	nodes := []decl.Node{
 		{Name: "web-gw", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"node:48596282fd2faf23"}},
@@ -83,7 +83,7 @@ func TestResolveAssetNodePrefersNamesAndFirstClaim(t *testing.T) {
 
 // IC-R8 — **관측 IP를 스코프 노드로 잇는다**(§0.4).
 //
-// 이어지지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 shadow 로 올라온다** —
+// 이어지지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 UNDECLARED 로 올라온다** —
 // 틀린 답이 아니라 그럴듯한 답이라 눈으로는 안 잡힌다. 포트가 붙은 주소와 망 둘에 걸친
 // 노드가 그 자리다.
 func TestResolveEdgeDsts(t *testing.T) {

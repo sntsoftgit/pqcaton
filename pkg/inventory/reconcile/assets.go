@@ -111,7 +111,7 @@ func evidenceStr(e commonv1.EvidenceStrength) string {
 }
 
 // normalizeComponent — 파일명에서 버전 접미사를 떼어 동일성을 맞춘다(선언 "libssl" ↔ 관측 "libssl.so.3").
-// 단 벤더링 해시는 유지 → "libcrypto-fbc9a285.so.3" → "libcrypto-fbc9a285"(선언 "libcrypto"와 불일치=shadow).
+// 단 벤더링 해시는 유지 → "libcrypto-fbc9a285.so.3" → "libcrypto-fbc9a285"(선언 "libcrypto"와 불일치=UNDECLARED).
 func normalizeComponent(name string) string {
 	if i := strings.Index(name, ".so"); i > 0 {
 		return name[:i]

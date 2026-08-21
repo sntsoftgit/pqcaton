@@ -16,7 +16,7 @@ type State string
 const (
 	// Confirmed — 선언 ∩ 관측. 신뢰도 최상.
 	Confirmed State = "CONFIRMED"
-	// Undeclared — 관측 only. shadow(선언 안 된 실재) — 보안 최우선 발견.
+	// Undeclared — 관측 only. 선언에 없는데 실재하는 것 — 보안 최우선 발견.
 	Undeclared State = "UNDECLARED"
 	// Unobserved — 선언 only. 실존(DR/배치) vs stale vs 커버리지 갭 — 기계 확정 불가(MANUAL).
 	Unobserved State = "UNOBSERVED"
@@ -64,7 +64,7 @@ func reconcileAssets(declared []AssetKey, observed []Observed, gapLayers []strin
 	seen := map[AssetKey]bool{}
 	var out []Reconciled
 
-	// 관측 기준: 선언에도 있으면 CONFIRMED, 없으면 UNDECLARED(shadow).
+	// 관측 기준: 선언에도 있으면 CONFIRMED, 없으면 UNDECLARED.
 	for _, o := range observed {
 		if seen[o.Key] {
 			continue

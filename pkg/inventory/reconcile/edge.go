@@ -35,7 +35,7 @@ type ReconciledEdge struct {
 // **조직 검사를 지난 뒤에만 불린다**([Engine.ReconcileEdges]). 관측 엣지에는 조직이 없어
 // 여기서 찍는다 — 관측은 늘 그 엔진의 조직에서 온 것이다.
 //   - 관측 ∩ 선언  → CONFIRMED
-//   - 관측 only    → UNDECLARED(shadow 통신 — 보안 최우선)
+//   - 관측 only    → UNDECLARED(UNDECLARED 통신 — 보안 최우선)
 //   - 선언 only    → UNOBSERVED (네트워크 갭이면 재수집 후보; §12.2 미관측≠부재)
 //
 // scope: 스코프 마스터 등재 노드 집합. 관측 상대(dst)가 여기 없으면 off-scope로 표기한다(IC-E3).
@@ -49,7 +49,7 @@ func reconcileEdges(o org.ID, declared []EdgeKey, observed []*discoveryv1.Observ
 	seen := map[EdgeKey]bool{}
 	var out []ReconciledEdge
 
-	// 관측 기준: 선언에도 있으면 CONFIRMED, 없으면 UNDECLARED(shadow).
+	// 관측 기준: 선언에도 있으면 CONFIRMED, 없으면 UNDECLARED.
 	for _, oe := range observed {
 		key, offScope := observedEdgeKey(o, oe, scope)
 		if seen[key] {
@@ -70,7 +70,7 @@ func reconcileEdges(o org.ID, declared []EdgeKey, observed []*discoveryv1.Observ
 			re.Confidence = confidence(Confirmed, ev)
 			re.NeedsReview = offScope // 정상 CONFIRMED는 자동통과 후보, off-scope면 리뷰
 		} else {
-			re.State = Undeclared // 관측 only = shadow 통신
+			re.State = Undeclared // 관측 only = UNDECLARED 통신
 			re.Confidence = confidence(Undeclared, ev)
 			re.NeedsReview = true
 		}

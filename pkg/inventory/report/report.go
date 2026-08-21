@@ -224,19 +224,19 @@ func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []str
 
 // ResolveEdgeDsts — 관측 상대의 IP 를 스코프 노드로 바꾼다(§0.4).
 //
-// **잘못 이으면 CONFIRMED 여야 할 통신이 shadow 로 올라온다** — 오류가 아니라 그럴듯한
+// **잘못 이으면 CONFIRMED 여야 할 통신이 UNDECLARED 로 올라온다** — 오류가 아니라 그럴듯한
 // 결과라 눈으로는 안 잡힌다(IC-N1). 이미 이어진 것은 덮지 않는다.
 // ResolveAssetNode — 관측 결과 하나가 **선언의 어느 노드**의 것인가.
 //
 // 자산 대조는 노드 이름이 글자 그대로 같아야 맞는다. 그런데 collector 는 자기가 붙인
 // id(`node:<해시>`)나 호스트명으로 보낸다 — 이름이 서로 다르면 선언한 자산은 전부 미관측으로,
-// 관측된 자산은 전부 shadow 로 올라온다. **막히지 않고 그럴듯하게 틀린다.**
+// 관측된 자산은 전부 UNDECLARED 로 올라온다. **막히지 않고 그럴듯하게 틀린다.**
 //
 // 그래서 봉투가 들고 온 이름들(대상 노드 id · fqdn · 짧은 호스트명 · machine-id)을 선언의
 // 이름 및 「관측 이름」(`observed_as`)과 맞대 본다. 대소문자는 가리지 않는다 — 호스트명은
 // 오는 길에 대소문자가 곧잘 바뀐다.
 //
-// **어디에도 안 걸리면 관측이 부른 이름을 그대로 쓴다.** 화면이 그 이름으로 shadow 를
+// **어디에도 안 걸리면 관측이 부른 이름을 그대로 쓴다.** 화면이 그 이름으로 UNDECLARED 를
 // 올리므로, 사람이 그것을 보고 「관측 이름」에 적어 넣을 수 있다. 여기서 억지로 하나를
 // 고르면 남의 노드 자산이 붙는다.
 func ResolveAssetNode(res *discoveryv1.CollectionResult, nodes []decl.Node) string {

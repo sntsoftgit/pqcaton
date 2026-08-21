@@ -45,7 +45,7 @@ func TestCarryKeepsJudgments(t *testing.T) {
 
 // IC-Q6 — **정책에 못 보던 항목이 생기면 그 정책의 일괄 결론을 지운다.**
 //
-// 일괄 판정은 「이 정책의 항목들을 보고 내린 결론」입니다. 새로 관측된 shadow 는 사람이
+// 일괄 판정은 「이 정책의 항목들을 보고 내린 결론」입니다. 새로 관측된 UNDECLARED 는 사람이
 // 본 적이 없는데, 그대로 두면 **누가 승인한 적 없는 근거를 달고** 확정을 통과합니다.
 func TestCarryClearsPolicyDecisionOnNewItem(t *testing.T) {
 	prev := queued()

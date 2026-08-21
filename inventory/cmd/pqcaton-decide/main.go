@@ -216,7 +216,7 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, []reco
 // 코드로는 거짓이 된다 — 확정 계획을 낼 수 있는 것이 명령을 돌린 그 기계 하나뿐이었다.
 //
 // **대조는 `report` 가 한다.** 대조 화면(`pqcaton-ui`)이 보는 것과 같은 계산이라, 화면에서
-// 본 shadow 가 리뷰 큐에 그대로 올라온다 — 따로 계산하면 사람이 본 것과 판정할 것이 달라진다.
+// 본 UNDECLARED 가 리뷰 큐에 그대로 올라온다 — 따로 계산하면 사람이 본 것과 판정할 것이 달라진다.
 func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, []reconcile.Reconciled, error) {
 	var sf review.Session
 	d, err := decl.Load(declPath)
@@ -224,7 +224,7 @@ func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, [
 		return sf, nil, err
 	}
 	// **세우는 일은 review 패키지가 한다.** 화면(`pqcaton-ui`)이 같은 것을 부른다 — 두
-	// 곳에서 따로 계산하면 화면에서 본 shadow 와 명령이 올린 리뷰 큐가 달라진다.
+	// 곳에서 따로 계산하면 화면에서 본 UNDECLARED 와 명령이 올린 리뷰 큐가 달라진다.
 	b, err := review.FromResults(resultsDir, d, orgName)
 	if err != nil {
 		return sf, nil, err

@@ -63,7 +63,7 @@ func NewSurveyView(r *report.Result, page Page) SurveyView {
 			State: string(rec.State), Conf: rec.Confidence, Rescan: rec.RescanCandidate,
 		})
 	}
-	// **필수 리뷰가 위로.** shadow 가 이 도구의 첫 값이라 맨 앞에 있어야 한다(§3.3②).
+	// **필수 리뷰가 위로.** UNDECLARED 가 이 도구가 주는 첫 번째 쓸모라 맨 앞에 있어야 한다(§3.3②).
 	sort.SliceStable(v.Assets, func(i, j int) bool {
 		return statePriority(v.Assets[i].State) < statePriority(v.Assets[j].State)
 	})
