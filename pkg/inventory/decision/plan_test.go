@@ -45,7 +45,8 @@ func TestBuildPlan_notFinalized(t *testing.T) {
 	}
 }
 
-// IC-P4: Deploy 관문 — finalized 계획만 통과.
+// IC-P4·P5: Deploy 관문 — finalized 계획만 통과한다. 확정된 계획이 프로비저닝의 유일한
+// 실행 근거다(§3.7).
 func TestAcceptForDeploy(t *testing.T) {
 	s := finalizedSession(t)
 	p, _ := BuildPlan(s, []PlanItem{{NodeID: "n"}})

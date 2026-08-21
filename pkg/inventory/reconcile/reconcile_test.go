@@ -25,7 +25,7 @@ func eng(t *testing.T) *Engine {
 	return e
 }
 
-// rec — 대조 결과만 보는 케이스용. 조직이 어긋나는 쪽은 IC-O1·R6이 따로 본다.
+// rec — 대조 결과만 보는 케이스용. 조직이 어긋나는 쪽은 IC-O1~O5 가 따로 본다.
 func rec(t *testing.T, declared []AssetKey, observed []Observed, gaps []string) []Reconciled {
 	t.Helper()
 	out, err := eng(t).Reconcile(declared, observed, gaps)
@@ -38,7 +38,8 @@ func obs(node, rt, comp, ev string) Observed {
 	return Observed{Key: k(node, rt, comp), Evidence: ev}
 }
 
-// 3-상태 대조(§3.3): 선언∩관측=CONFIRMED, 관측only=UNDECLARED, 선언only=UNOBSERVED.
+// IC-R1·R2·R3 — 3-상태 대조(§3.3): 선언∩관측=CONFIRMED, 관측only=UNDECLARED,
+// 선언only=UNOBSERVED.
 func TestReconcile(t *testing.T) {
 	declared := []AssetKey{k("n1", "openssl", "libssl"), k("n1", "openssl", "libcrypto")}
 	observed := []Observed{obs("n1", "openssl", "libssl", "confirmed"), obs("n1", "openssl", "libpq-undeclared", "confirmed")}
@@ -89,6 +90,20 @@ func TestReconcile_unobservedGap(t *testing.T) {
 	}
 }
 
+// IC-C1 — **신뢰도는 상태를 따른다**(§3.5): CONFIRMED > UNDECLARED > UNOBSERVED.
+//
+// 이 순서가 리뷰 큐의 우선순위와 자동통과 후보 선별의 입력이다 — 뒤집히면 사람이 먼저
+// 볼 것이 뒤로 밀린다.
+func TestConfidenceFollowsState(t *testing.T) {
+	c, u, n := ConfidenceFor(Confirmed), ConfidenceFor(Undeclared), ConfidenceFor(Unobserved)
+	if !(c > u && u > n) {
+		t.Errorf("신뢰도 순서가 다르다: CONFIRMED %.2f · UNDECLARED %.2f · UNOBSERVED %.2f", c, u, n)
+	}
+	if ConfidenceFor(State("모르는 상태")) != 0 {
+		t.Error("모르는 상태에 신뢰도를 매겼다")
+	}
+}
+
 // IC-C2: 관측 evidence_strength=inferred-low는 confidence 상한을 누른다(불확실 관측은 신뢰 낮춤).
 func TestReconcile_evidenceConfidence(t *testing.T) {
 	decl := []AssetKey{k("n", "openssl", "lib")}
@@ -99,7 +114,8 @@ func TestReconcile_evidenceConfidence(t *testing.T) {
 	}
 }
 
-// 리뷰 큐(§3.3②): CONFIRMED 고신뢰=자동통과, UNDECLARED=최우선 필수리뷰.
+// IC-Q1·Q2·Q3 — 리뷰 큐(§3.3②): CONFIRMED 고신뢰=자동통과, UNDECLARED=최우선 필수리뷰,
+// 신뢰도 낮은 CONFIRMED=필수 개별 리뷰.
 func TestBuildReviewQueue(t *testing.T) {
 	recs := []Reconciled{
 		{Key: k("n", "openssl", "sys"), State: Confirmed, Confidence: 0.9},

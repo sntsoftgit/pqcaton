@@ -32,7 +32,7 @@ func raised(ps []decl.Problem, c decl.Code) int {
 //
 // 잇는 근거가 그 표뿐이라, 없으면 관측 IP가 노드로 이어지지 않는다. 그러면 선언한 엣지는
 // 미관측으로, 관측된 엣지는 UNDECLARED 로 구분된다 — **오류가 아니라 그럴듯한 결과**라 눈으로는
-// 안 잡힌다(IC-N1).
+// 안 잡힌다(IC-R8).
 func TestCheckFlagsNodeWithoutIP(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web", "db"}, Nodes: []decl.Node{{Name: "web"}}}
 	ps := decl.Check(d)

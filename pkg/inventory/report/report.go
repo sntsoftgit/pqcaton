@@ -225,7 +225,7 @@ func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []str
 // ResolveEdgeDsts — 관측 상대의 IP 를 스코프 노드로 바꾼다(§0.4).
 //
 // **잘못 이으면 CONFIRMED 여야 할 통신이 UNDECLARED 로 올라온다** — 오류가 아니라 그럴듯한
-// 결과라 눈으로는 안 잡힌다(IC-N1). 이미 이어진 것은 덮지 않는다.
+// 결과라 눈으로는 안 잡힌다(IC-R8). 이미 이어진 것은 덮지 않는다.
 // ResolveAssetNode — 관측 결과 하나가 **선언의 어느 노드**의 것인가.
 //
 // 자산 대조는 노드 이름이 글자 그대로 같아야 맞는다. 그런데 collector 는 자기가 붙인
