@@ -188,7 +188,7 @@ func TestObservedFromTakesCNG(t *testing.T) {
 	if got[0].Evidence != "confirmed" {
 		t.Errorf("증거 강도가 안 붙었다: %q", got[0].Evidence)
 	}
-	// 화면이 고르게 하는 이름과 관측이 내는 이름은 한 목록이어야 한다.
+	// 화면이 고르게 하는 이름과 관측 결과에 나오는 이름은 한 목록이어야 한다.
 	var hasCNG bool
 	for _, rt := range Runtimes() {
 		if rt == RuntimeCNG {

@@ -130,9 +130,9 @@ func seenListID(node int) string { return "seen-" + strconv.Itoa(node) }
 // 화면이 그것을 말하지 않으면 **빠뜨린 것으로 읽힌다.**
 func platformFix(runtime string) bool { return runtime == reconcile.RuntimeCNG }
 
-// runtimeOptions — 런타임 칸에 내놓을 이름들.
+// runtimeOptions — 런타임 칸에 뜰 이름들.
 //
-// **관측이 낼 수 있는 이름만 고르게 한다**(reconcile.Runtimes). 손으로 적으면 오타
+// **관측 결과에 나올 수 있는 이름만 고르게 한다**(reconcile.Runtimes). 손으로 적으면 오타
 // 하나로 영원히 맞지 않는 선언이 되는데, 대조는 그것을 「선언했는데 관측되지 않았다」로
 // 올린다 — 사람은 그 노드에서 그 모듈이 안 쓰인다고 읽는다.
 //

@@ -547,11 +547,11 @@ func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 	}
 }
 
-// IC-UI35 — **관측된 컴포넌트를 후보로 내놓는다.**
+// IC-UI35 — **관측된 컴포넌트가 후보로 뜬다.**
 //
 // 컴포넌트는 글자 그대로 같아야 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 옵니다 —
 // 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류 없이 미관측·shadow 로 구분됩니다.
-// 관측이 낸 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 한다.
+// 관측 결과에 적힌 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 한다.
 func TestObservedComponentsAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
 		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}},
@@ -572,13 +572,13 @@ func TestObservedComponentsAreOffered(t *testing.T) {
 	body := b.String()
 	for _, want := range []string{`<datalist id="seen-0">`, `value="libcrypto-fbc9a285"`, `list="seen-0"`} {
 		if !strings.Contains(body, want) {
-			t.Errorf("컴포넌트 칸이 %q 를 내놓지 않는다:\n%s", want, body)
+			t.Errorf("컴포넌트 칸에 %q 가 뜨지 않는다:\n%s", want, body)
 		}
 	}
 }
 
 // IC-UI36 — **관측이 없으면 후보도 없다.** 목록을 비워 두고 칸에만 매달면, 브라우저는
-// 아무것도 못 내놓으면서 고르는 칸처럼 보인다.
+// 아무것도 뜨지 않으면서 고르는 칸처럼 보인다.
 func TestNoObservationNoCandidates(t *testing.T) {
 	var b strings.Builder
 	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
@@ -609,7 +609,7 @@ func TestObservedNameRoundTrips(t *testing.T) {
 	}
 }
 
-// IC-UI38 — **붙지 않은 관측 이름을 후보로 내놓는다.** 어디에도 안 붙었다는 것은 그
+// IC-UI38 — **붙지 않은 관측 이름이 후보로 뜬다.** 어디에도 안 붙었다는 것은 그
 // 노드의 자산이 통째로 shadow 로 오른다는 뜻이라, 사람이 가장 먼저 볼 이름이다.
 func TestUnmatchedNodeNamesAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
@@ -623,7 +623,7 @@ func TestUnmatchedNodeNamesAreOffered(t *testing.T) {
 	body := b.String()
 	for _, want := range []string{`<datalist id="seen-nodes">`, `value="node:48596282fd2faf23"`, `list="seen-nodes"`} {
 		if !strings.Contains(body, want) {
-			t.Errorf("관측 이름 칸이 %q 를 내놓지 않는다:\n%s", want, body)
+			t.Errorf("관측 이름 칸에 %q 가 뜨지 않는다:\n%s", want, body)
 		}
 	}
 }
