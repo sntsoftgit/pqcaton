@@ -28,7 +28,7 @@ func BuildPlan(s *Session, items []PlanItem) (*FinalizedPlan, error) {
 	return &FinalizedPlan{Scope: s.Scope, Items: items, ApprovalSig: s.Signature}, nil
 }
 
-// AcceptForDeploy — Inventory→Deploy 최강 게이트(§5). finalized(서명 있는) 계획만 실행 허용(IC-P4).
+// AcceptForDeploy — Inventory→Deploy 에서 우회할 수 없는 게이트(§5). finalized(서명 있는) 계획만 실행 허용(IC-P4).
 // 프로비저닝은 반드시 이 게이트를 통과한 계획만 받는다 — 우회 불가.
 func AcceptForDeploy(p *FinalizedPlan) error {
 	if p == nil || p.ApprovalSig == "" {

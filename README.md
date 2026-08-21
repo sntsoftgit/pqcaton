@@ -171,7 +171,7 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
 같은 정책의 항목이 한 번에 판정됩니다 — 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
 개별 `conclusion`은 예외를 위한 자리입니다.
 
-**④가 이 리포의 최강 게이트입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 말합니다.**
+**④가 이 리포에서 우회할 수 없는 게이트입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 말합니다.**
 
 ```
 ❌ cannot finalize: mandatory items are still unjudged — every mandatory item must be judged

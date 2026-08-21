@@ -878,7 +878,7 @@ pqcota가 갖습니다. 이 버전은 그 위의 거버넌스만 얹습니다.
 - **리뷰 큐** — 자동통과 후보와 필수 개별 리뷰로 가르고 `위험도 × 블라스트반경 × 데이터민감도`로
   줄을 세웁니다. **승인은 사람이 합니다.**
 - **리뷰–확정 상태기계**([`pkg/inventory/decision`](pkg/inventory/decision)) —
-  `draft → in-review → finalized`. **finalized 아니면 적용이 거부됩니다**(최강 게이트).
+  `draft → in-review → finalized`. **finalized 아니면 적용이 거부됩니다**(우회할 수 없는 게이트).
   링·도메인 단위 부분 확정은 허용합니다.
 - **판정 영속화** — append-only. 판정은 엣지 상태가 아니라 **사람의 결론**이라 재수집으로
   관측이 바뀌어도 대상에 붙어 남습니다. `BasisHash`가 근거를 추적하고, 근거가 실질적으로
