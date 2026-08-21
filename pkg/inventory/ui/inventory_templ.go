@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-// inventoryPage — 찾아보는 자리. **절차의 한 걸음이 아니다.**
+// inventoryPage — 찾아보는 자리. **절차의 한 단계가 아니다.**
 func inventoryPage(v InventoryView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
