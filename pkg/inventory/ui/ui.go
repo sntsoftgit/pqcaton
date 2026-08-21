@@ -165,7 +165,7 @@ type DeclNode struct {
 	//
 	// **옮겨 적다 틀리는 자리를 없앤다.** 대조는 컴포넌트가 글자 그대로 같을 때만
 	// 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 온다 — 화면에 보이는 대로 적으면 맞지
-	// 않고, 그것이 오류 없이 미관측·shadow 로 갈린다. 여기 있는 이름이 맞는 이름이다.
+	// 않고, 그것이 오류 없이 미관측·shadow 로 구분된다. 여기 있는 이름이 맞는 이름이다.
 	Seen []DeclAsset
 }
 
@@ -284,7 +284,7 @@ func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped
 	d = decl.Declaration{Comment: prev.Comment, Org: strings.TrimSpace(f.Get("org"))}
 
 	// **IP를 적은 줄만 관리 대상이 된다.** IP가 없으면 관측에 찍힌 주소를 이 이름과
-	// 이을 근거가 없어, 선언한 엣지는 미관측으로 관측된 엣지는 shadow 로 갈린다 —
+	// 이을 근거가 없어, 선언한 엣지는 미관측으로 관측된 엣지는 shadow 로 구분된다 —
 	// 대조가 막히지 않은 채로 틀린다. 이름만 적어 두는 것은 관리가 아니다.
 	//
 	// **자산은 그 노드에 묶여 있다.** 노드가 빠지면 그 노드의 자산도 함께 빠진다 —

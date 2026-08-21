@@ -57,7 +57,7 @@ func (e *Engine) AssetsFromResults(results []*discoveryv1.CollectionResult) ([]A
 // Reconcile — 3-상태 대조(§3.3①). **다른 조직이 섞였으면 대조하지 않고 끊는다.**
 //
 // 열쇠에 조직이 들어 있으므로 섞인 입력은 그냥 두면 서로 안 맞아 CONFIRMED가 UNDECLARED와
-// UNOBSERVED 한 쌍으로 갈린다 — 오류가 아니라 **그럴듯한 결과**로 나온다. 그래서 대조보다
+// UNOBSERVED 한 쌍으로 구분된다 — 오류가 아니라 **그럴듯한 결과**로 나온다. 그래서 대조보다
 // 검사가 먼저다.
 func (e *Engine) Reconcile(declared []AssetKey, observed []Observed, gapLayers []string) ([]Reconciled, error) {
 	for _, k := range declared {
