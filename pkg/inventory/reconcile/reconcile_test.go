@@ -48,9 +48,9 @@ func TestReconcile(t *testing.T) {
 		got[r.Key] = r.State
 	}
 	cases := map[AssetKey]State{
-		k("n1", "openssl", "libssl"):       Confirmed,  // 양쪽
+		k("n1", "openssl", "libssl"):           Confirmed,  // 양쪽
 		k("n1", "openssl", "libpq-undeclared"): Undeclared, // 관측 only = UNDECLARED
-		k("n1", "openssl", "libcrypto"):    Unobserved, // 선언 only
+		k("n1", "openssl", "libcrypto"):        Unobserved, // 선언 only
 	}
 	if len(got) != len(cases) {
 		t.Fatalf("결과 %d개, want %d: %+v", len(got), len(cases), got)

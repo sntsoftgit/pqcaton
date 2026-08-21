@@ -536,8 +536,8 @@ func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 	}
 	body := b.String()
 	for _, want := range []string{
-		"글자 그대로 같아야",   // 일치 방식
-		"libssl.so.3",     // 관측 이름을 어떻게 옮겨 적는지
+		"글자 그대로 같아야",         // 일치 방식
+		"libssl.so.3",        // 관측 이름을 어떻게 옮겨 적는지
 		"libcrypto-fbc9a285", // 벤더링 해시는 떼지 않는다
 		"jca-provider-chain",
 	} {
@@ -846,4 +846,3 @@ func TestScopeOnlyNameStillShowsForFixing(t *testing.T) {
 		t.Fatalf("IP 없는 이름이 표에서 사라졌다: %+v", v.Nodes)
 	}
 }
-

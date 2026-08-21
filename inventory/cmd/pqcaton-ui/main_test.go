@@ -333,12 +333,12 @@ func TestDeclKeepsExplanationsFolded(t *testing.T) {
 func TestDeclSaveRoundTrips(t *testing.T) {
 	s, _ := withDecl(t)
 	q := location(t, postForm(t, s, "/decl/save", url.Values{
-		"org":          {"acme"},
-		"scope":        {"web-gw\npay-db"},
-		"node.name.0":  {"web-gw"},
-		"node.ips.0":   {"10.0.0.1, 10.0.1.1"},
-		"node.name.1":  {"pay-db"},
-		"node.ips.1":   {"10.0.0.2"},
+		"org":               {"acme"},
+		"scope":             {"web-gw\npay-db"},
+		"node.name.0":       {"web-gw"},
+		"node.ips.0":        {"10.0.0.1, 10.0.1.1"},
+		"node.name.1":       {"pay-db"},
+		"node.ips.1":        {"10.0.0.2"},
 		"asset.0.0.runtime": {"openssl"}, "asset.0.0.component": {"libssl"},
 		"edge.src.0": {"web-gw"}, "edge.dst.0": {"pay-db"}, "edge.port.0": {"5432"}, "edge.proto.0": {"TLS"},
 	}))
@@ -414,7 +414,7 @@ func TestTabsNameWhatTheScreensCall(t *testing.T) {
 	body := get(t, s, "/review?lang=ko").Body.String()
 
 	for _, want := range []string{
-		`>④ 판정(리뷰 큐)<`,      // 판정을 하는 자리
+		`>④ 판정(리뷰 큐)<`, // 판정을 하는 자리
 		`>인벤토리·판정 이력<`, // 지난 판정을 보는 자리
 	} {
 		if !strings.Contains(body, want) {

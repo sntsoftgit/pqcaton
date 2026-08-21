@@ -56,8 +56,8 @@ var (
 	tRefused = T{KO: "요청하신 것을 하지 않았습니다. 이유는 이렇습니다.",
 		EN: "Not done — here is why."}
 	// 제거는 **묻고 지운다.** 잘못 누르면 적어 둔 것이 한 번에 사라지는 자리다.
-	tRemove         = T{KO: "제거", EN: "Remove"}
-	tRemoveNodeAsk  = T{
+	tRemove        = T{KO: "제거", EN: "Remove"}
+	tRemoveNodeAsk = T{
 		KO: "이 노드와 그 안의 암호 자산을 표에서 지웁니다. 저장해야 파일에 반영됩니다. 지울까요?",
 		EN: "This removes the node and the crypto assets inside it from the table. It reaches the file only when you save. Remove?"}
 	tRemoveAssetAsk = T{
@@ -169,19 +169,19 @@ var (
 		EN: "Saving writes to the very file <code>pqcaton-report</code> reads — " +
 			"its path is shown at the top of this page."}
 
-	tColName      = T{KO: "이름", EN: "Name"}
-	tColIP        = T{KO: "IP", EN: "IP"}
+	tColName = T{KO: "이름", EN: "Name"}
+	tColIP   = T{KO: "IP", EN: "IP"}
 	// **관측이 이 노드를 뭐라고 부르는가.** 자산 대조는 노드 이름이 글자 그대로 같아야
 	// 맞는데, collector 는 자기가 붙인 id 나 호스트명으로 보낸다.
 	tColObservedAs       = T{KO: "관측 이름", EN: "Observed as"}
 	tColObservedAsHolder = T{KO: "호스트명이 이름과 같으면 비워 둡니다", EN: "leave empty if the hostname matches the name"}
-	tColNode      = T{KO: "노드", EN: "Node"}
-	tColRuntime   = T{KO: "런타임", EN: "Runtime"}
-	tColComponent = T{KO: "컴포넌트", EN: "Component"}
-	tColSrc       = T{KO: "보내는 쪽", EN: "From"}
-	tColDst       = T{KO: "받는 쪽", EN: "To"}
-	tColPort      = T{KO: "포트", EN: "Port"}
-	tColProto     = T{KO: "프로토콜", EN: "Protocol"}
+	tColNode             = T{KO: "노드", EN: "Node"}
+	tColRuntime          = T{KO: "런타임", EN: "Runtime"}
+	tColComponent        = T{KO: "컴포넌트", EN: "Component"}
+	tColSrc              = T{KO: "보내는 쪽", EN: "From"}
+	tColDst              = T{KO: "받는 쪽", EN: "To"}
+	tColPort             = T{KO: "포트", EN: "Port"}
+	tColProto            = T{KO: "프로토콜", EN: "Protocol"}
 )
 
 // ── 리뷰 큐 ────────────────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ var (
 	tReviewItems            = T{KO: "항목", EN: "items"}
 	tReviewMandatory        = T{KO: "필수", EN: "mandatory"}
 	tReviewPolicyConclusion = T{KO: "이 정책의 결론", EN: "Conclusion for this policy"}
-	tReviewQueueHint = T{
+	tReviewQueueHint        = T{
 		KO: "정책마다 결론을 하나 적으면 그 아래 항목이 한 번에 판정됩니다 — 수천 대를 " +
 			"한 건씩 보는 리뷰는 끝나지 않습니다. 「개별 결론(예외)」은 그 정책에서 " +
 			"어긋나는 것만 따로 적는 자리입니다.<br><b>「플랫폼 조치」가 붙은 항목</b>은 " +
@@ -394,8 +394,8 @@ var (
 	tSurveyAssetsHint = T{
 		KO: "노드 안의 암호 런타임·컴포넌트를 선언과 맞댄 3-상태입니다.",
 		EN: "The crypto runtimes and components inside each node, in three states against the declaration."}
-	tSurveyNoAssets   = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
-	tUndeclaredHint   = T{
+	tSurveyNoAssets = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
+	tUndeclaredHint = T{
 		KO: "<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> — 선언에 없는데 " +
 			"실제로 쓰이고 있는 것입니다. 판정은 <a href=\"/review\">판정(리뷰 큐)</a> 탭에서 합니다.",
 		EN: "<b>Finding UNDECLARED is the first thing this tool is good for</b> — things in " +

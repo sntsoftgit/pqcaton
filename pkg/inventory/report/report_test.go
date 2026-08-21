@@ -71,7 +71,7 @@ func TestResolveAssetNodePrefersNamesAndFirstClaim(t *testing.T) {
 		{Name: "pay-db"},
 	}
 	for _, tc := range []struct{ id, want string }{
-		{"node:1a2b", "a"},  // 먼저 적힌 쪽
+		{"node:1a2b", "a"},   // 먼저 적힌 쪽
 		{"pay-db", "pay-db"}, // 이름이 관측 이름을 이긴다
 	} {
 		res := &discoveryv1.CollectionResult{Envelope: &commonv1.Envelope{TargetNodeId: tc.id}}
