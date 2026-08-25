@@ -153,7 +153,7 @@ type FinalizeResult struct {
 	Policy  *kscope.AssetPolicy
 }
 
-// Finalize — **관문다.** 근거 필수인 변경에 결론이 없거나 서명이 없으면 정책이 나가지 않는다.
+// Finalize — **관문이다.** 근거 필수인 변경에 결론이 없거나 서명이 없으면 정책이 나가지 않는다.
 //
 // 명령과 화면이 이 함수 하나를 쓴다.
 func Finalize(sf Session, orgName string) (*FinalizeResult, error) {

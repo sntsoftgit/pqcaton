@@ -662,7 +662,7 @@ v0.1.0이 내건 *"관측을 판정으로 잇는다"* 가 코드로는 거짓이
 ### 만든 것
 
 - **리뷰 화면**([`pqcaton-ui`](inventory/cmd/pqcaton-ui)): 세션 파일을 열어 **정책 단위로**
-  결론을 채우고, 확정 버튼이 `pqcaton-decide close` 와 **같은 관문**를 탑니다. 확정되지
+  결론을 채우고, 확정 버튼이 `pqcaton-decide close` 와 **같은 관문**을 탑니다. 확정되지
   않으면 무엇이 남았는지 화면에 그대로 보입니다.
 - **확정 관문을 공용 패키지로**([`pkg/inventory/review`](pkg/inventory/review)): 파일
   형식과 `Finalize` 를 명령에서 떼어 명령과 화면이 그 하나를 씁니다.
