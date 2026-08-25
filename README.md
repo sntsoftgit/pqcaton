@@ -5,12 +5,12 @@
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** 관측은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가
 하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.**
 
-**이름** — *pqcaton*(발음 **P-caton**) = **PQC** + **baton**(지휘봉). pqcota가 교향악의 *단원*이라면
-이것은 지휘자가 쥐는 막대입니다. **지휘자는 운영자이고, pqcaton은 그가 사용하는 도구입니다 —
-판단은 도구가 아니라 그 손에 있습니다.**
+**이름**: *pqcaton*(발음 **P-caton**) = **PQC** + **baton**(지휘봉). pqcota가 교향악의 *단원*이라면
+이것은 지휘자가 쥐는 막대입니다. **지휘자는 운영자이고, pqcaton은 그가 사용하는 도구입니다.
+판단은 도구가 아니라 사람이 합니다.**
 
-> **소스 공개(source-available)이지 오픈소스가 아닙니다.** [BUSL-1.1](LICENSE) — 관리 노드 5대까지
-> 무료, 그 이상은 계약. **각 릴리스가 4년 뒤 Apache-2.0으로 전환됩니다.** → [라이선스 안내](LICENSING.md)
+> **소스 공개(source-available)이지 오픈소스가 아닙니다.** [BUSL-1.1](LICENSE)입니다. 관리 노드 5대까지
+> 무료이고, 그 이상은 계약입니다. **각 릴리스가 4년 뒤 Apache-2.0으로 전환됩니다.** → [라이선스 안내](LICENSING.md)
 
 ---
 
@@ -20,7 +20,7 @@ pqcota는 **관측한 사실만 알려 줍니다.** 🔴 표시는 「취약하�
 협상됐다」는 관측이고, 무엇을 언제 바꿀지는 그 도구가 정하지 않습니다. 그 선을 지키려고
 선언 대조·리뷰 큐·확정 거버넌스를 **명시적으로 만들지 않았습니다.**
 
-그런데 조직에서는 누군가 그 판단을 해야 합니다. 그리고 그 판단은 **남아야 합니다** — 누가
+그런데 조직에서는 누군가 그 판단을 해야 합니다. 그리고 그 판단은 **남아야 합니다.** 누가
 언제 무엇을 근거로 정했는지가 감사 대상이기 때문입니다. 이 리포가 그 자리를 맡습니다.
 
 ```
@@ -30,32 +30,32 @@ pqcota                          pqcaton
   전환물 생성 ◄───── 확정 계획 ◄── 리뷰 큐 → 확정
 ```
 
-두 리포는 **계약으로만 이어집니다.** pqcota는 이 리포 없이도 혼자 완결되고, 실제로 그렇게
+두 리포는 **계약으로만 이어집니다.** pqcota는 이 리포 없이도 그 자체로 완결되고, 실제로 그렇게
 쓸 수 있습니다.
 
 ## 무엇이 들어 있나
 
 | 모듈 | 하는 일 |
 |---|---|
-| [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조** — CONFIRMED(선언∩관측) · UNDECLARED(관측만) · UNOBSERVED(선언만) |
-| [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계** — draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
-| [`pkg/inventory/review`](pkg/inventory/review) | **세션 파일 형식과 확정 관문** — 명령과 화면이 이 하나를 씁니다 |
-| [`pkg/inventory/decl`](pkg/inventory/decl) | **선언 형식과 자체 검사** — 노드↔IP가 틀리면 대조 결과가 **오류 없이** 틀립니다. 저장 전에 짚습니다 |
-| [`pkg/inventory/report`](pkg/inventory/report) | **여러 노드 대조** — 레인 분리·IP 잇기·완전성. 명령과 화면이 이 계산 하나를 씁니다 |
-| [`pkg/inventory/ui`](pkg/inventory/ui) | **화면** — 그리는 것과 폼을 읽는 것만. 어디서 읽고 누가 들어오는지는 부르는 쪽이 정합니다 |
-| [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스** — 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
-| [`pkg/inventory/localscan`](pkg/inventory/localscan) | **이 기계를 스캔하는 지름길** — 관측 없이 한 바퀴 돌아 보는 자리. 못 본 것은 「없다」로 내지 않습니다 |
-| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정** — 확정 계획을 계약 형식으로 만듭니다 |
-| [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포** — 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
-| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 다섯** — 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회. 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
+| [`pkg/inventory/reconcile`](pkg/inventory/reconcile) | **3-상태 대조**: CONFIRMED(선언∩관측) · UNDECLARED(관측만) · UNOBSERVED(선언만) |
+| [`pkg/inventory/decision`](pkg/inventory/decision) | **리뷰-확정 상태기계**: draft → in-review → finalized. 확정 전에는 프로비저닝이 돌지 않습니다 |
+| [`pkg/inventory/review`](pkg/inventory/review) | **세션 파일 형식과 확정 관문**: 명령과 화면이 이 형식 하나를 함께 씁니다 |
+| [`pkg/inventory/decl`](pkg/inventory/decl) | **선언 형식과 자체 검사**: 노드↔IP가 틀리면 대조 결과가 **오류 없이** 틀립니다. 저장 전에 짚습니다 |
+| [`pkg/inventory/report`](pkg/inventory/report) | **여러 노드 대조**: 레인 분리·IP 잇기·완전성. 명령과 화면이 이 계산 하나를 씁니다 |
+| [`pkg/inventory/ui`](pkg/inventory/ui) | **화면**: 그리는 것과 폼을 읽는 것만 합니다. 어디서 읽고 누가 접속하는지는 부르는 쪽이 정합니다 |
+| [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스**: 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
+| [`pkg/inventory/localscan`](pkg/inventory/localscan) | **이 기계를 스캔하는 지름길**: 관측 없이 전체 절차를 한 번 돌려 보는 자리입니다. 못 본 것은 「없다」로 보고하지 않습니다 |
+| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정**: 확정 계획을 계약 형식으로 만듭니다 |
+| [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포**: 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
+| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 다섯**: 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회. 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
-**UNDECLARED 가 이 도구가 주는 첫 번째 쓸모입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지 — 조직이
+**UNDECLARED 가 이 도구가 주는 첫 번째 쓸모입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지, 곧 조직이
 모르는 연결입니다. 보안에서 가장 먼저 봐야 할 것이 거기 있습니다.
 
 **UNOBSERVED는 기계가 확정하지 않습니다.** 선언에는 있는데 관측되지 않은 것이 *실재하는데 못
 본 것*인지 *이미 없어진 것*인지는 사람만 압니다. pqcota의 완전성 맵이 「원리상 관측 불가」인지
-「실제 없음」인지를 갈라 주고, 그 위에서 사람이 정합니다.
+「실제 없음」인지를 구분해 주고, 그 위에서 사람이 정합니다.
 
 **구조 그림**은 [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/)([소스](site/index.html)), **처음부터 끝까지 따라가는 여정**은
 [docs/journey.md](docs/journey.md)에 있습니다. 설계 근거는 [docs/design.md](docs/design.md),
@@ -70,14 +70,14 @@ pqcota                          pqcaton
 | Postgres | 선택 | 판정 원장을 DB에 둘 때만. 기본은 파일(JSONL)이라 없어도 전체 과정이 됩니다 |
 | Docker · pqcota 리포 | 데모에만 | [demo/README.md](demo/README.md) 참조 |
 
-`dot` 설치는 [graphviz.org/download](https://graphviz.org/download/)에 있습니다 —
+`dot` 설치는 [graphviz.org/download](https://graphviz.org/download/)에 있습니다:
 `apt install graphviz` · `brew install graphviz` · `winget install graphviz`.
 
 **어디서 실행되는가.** 이 리포는 **ctl 노드**(관측 결과를 모아 대조·판정하는 자리)의 일을 합니다.
 ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota 의 collector 가 대상 노드에서
 하고, 리눅스와 Windows 를 다룹니다(상류 v0.6.3).
 
-> 예외 하나 — `pqcaton-decide open` 을 `-results` 없이 쓰면 **명령을 실행한 그 기계 자신을**
+> 예외가 하나 있습니다. `pqcaton-decide open` 을 `-results` 없이 쓰면 **명령을 실행한 그 기계 자신을**
 > 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **리눅스에서만** 됩니다.
 > 여러 노드를 제대로 다루는 길은 pqcota가 모은 결과를 읽는 [`pqcaton-report`](inventory/cmd/pqcaton-report)입니다.
 
@@ -87,7 +87,7 @@ ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota 의 coll
 make            # 라이선스 · 문구 관문 → 빌드 → 테스트
 ```
 
-**이 리포만으로 처음부터 끝까지 해볼 수 있습니다.** 관측할 대상은 이 머신입니다.
+**이 리포만으로 처음부터 끝까지 해볼 수 있습니다.** 관측할 대상은 이 기계입니다.
 
 ```bash
 go build -o bin/ ./inventory/cmd/...
@@ -95,7 +95,7 @@ go build -o bin/ ./inventory/cmd/...
 # ① 선언 — 「우리는 이렇게 알고 있다」를 적습니다. CMDB에서 뽑아도, 손으로 적어도 됩니다
 printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-chain\n' > decl.csv
 
-# ② 대조 — 이 머신을 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 만듭니다
+# ② 대조 — 이 기계를 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 만듭니다
 bin/pqcaton-decide open decl.csv local > session.json
 
 #    여러 노드를 다루는 길은 이쪽입니다 — pqcota 가 모은 관측으로 대조합니다
@@ -113,9 +113,9 @@ bin/pqcaton-decide close session.json -judgments judgments.jsonl -org acme > pla
 bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
 ```
 
-**JSON 을 손으로 채우기 번거로우면 화면에서 합니다.** 같은 파일, 같은 관문입니다.
+**JSON 을 손으로 채우기 번거로우면 화면에서 채웁니다.** 같은 파일, 같은 관문입니다.
 
-**재료만 주면 화면이 세션까지 엽니다.** 명령을 먼저 돌리지 않아도 됩니다.
+**필요한 파일만 주면 화면이 세션까지 만듭니다.** 명령을 먼저 돌리지 않아도 됩니다.
 
 ```bash
 bin/pqcaton-ui session.json \
@@ -127,31 +127,31 @@ bin/pqcaton-ui session.json \
 #   → ③ 대조(3-상태·등급·토폴로지) → ④ 판정(리뷰 큐 — 판정·확정)
 ```
 
-`session.json` 이 없으면 **선언과 관측 결과로 화면이 만듭니다.** 자산 스코프도 계층 CSV를
-주면 그렇습니다 — 그리고 **규칙을 화면에서 고칩니다.** 다섯 칸이 무슨 뜻인지는 「규칙을
+`session.json` 이 없으면 **선언과 관측 결과로 화면이 세션을 만듭니다.** 자산 스코프도 계층 CSV를
+주면 그렇습니다. 그리고 **규칙을 화면에서 고칩니다.** 다섯 칸이 무슨 뜻인지는 「규칙을
 적는 법」 도움말에 있고, `action` 은 고르는 칸이라 오타로 규칙이 어긋나지 않습니다.
 
-명령으로 세션을 먼저 만드는 길도 그대로입니다 — 같은 파일, 같은 관문입니다.
+명령으로 세션을 먼저 만드는 길도 그대로입니다. 같은 파일이고 같은 관문입니다.
 
 ```bash
 bin/pqcaton-decide open declaration.json -results results/ -org acme > session.json
 bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scope-session.json
 ```
 
-**화면은 한국어와 English 중에 고릅니다.** 이동 링크 오른쪽 끝의 토글을 누르면 보던
+**화면에 쓸 말은 한국어와 English 중에서 고릅니다.** 이동 링크 오른쪽 끝의 토글을 누르면 보던
 자리 그대로 말만 바뀌고, 고른 것은 기억됩니다. 처음에는 브라우저 설정을 따릅니다.
 
 > **명령의 출력과 로그는 영어 하나입니다.** 붙여 넣어 검색하고 이슈에 올리는 것이라,
-> 말이 갈리면 같은 문제가 두 문장으로 남습니다. 자세한 규칙은
+> 말이 서로 다르면 같은 문제가 두 문장으로 남습니다. 자세한 규칙은
 > [CONTRIBUTING.md](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
 
 `-decl`·`-layers`·`-results` 는 **주는 것만 탭이 열립니다.** 선언 파일만 주면 「선언」과
-「판정」 둘만 보입니다 — 없는 것을 눌러 보게 하지 않습니다.
+「판정」 둘만 보입니다. 없는 것을 눌러 보게 하지 않습니다.
 
-**무엇을 계속 볼지도 승인을 거칩니다.** 인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에
-답해야 하므로, 판정과 확정을 같은 왕복으로 다룹니다.
+**무엇을 계속 볼지도 승인을 거칩니다.** 인벤토리에서 뺀 자산은 나중에 「왜 이것은 안 봤나」에
+답해야 하므로, 판정과 확정을 같은 절차에서 함께 다룹니다.
 
-계층은 준 순서대로 겹칩니다 — 조직 · 환경 · 노드군 순. **같은 자산에 규칙이 여럿 걸리면 뒤
+계층은 준 순서대로 겹칩니다. 조직 · 환경 · 노드군 순입니다. **같은 자산에 규칙이 여럿 걸리면 뒤
 계층의 것이 적용됩니다.**
 
 ```bash
@@ -169,10 +169,10 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
 ```
 
 **③에서 정책 단위로 판정합니다.** 세션 파일의 `policy_decisions` 에 정책 하나당 결론 하나를 적으면
-같은 정책의 항목이 한 번에 판정됩니다 — 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
+같은 정책의 항목이 한 번에 판정됩니다. 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
 개별 `conclusion`은 예외를 위한 자리입니다.
 
-**④가 이 리포에서 반드시 거쳐야 하는 관문입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 말합니다.**
+**④가 이 리포에서 반드시 거쳐야 하는 관문입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 알려 줍니다.**
 
 ```
 ❌ cannot finalize: mandatory items are still unjudged — every mandatory item must be judged
@@ -180,10 +180,10 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
    · no record of why this was decided: local/openssl/libssl-e2f2d68a (UNDECLARED)
 ```
 
-> **명령의 출력은 영어입니다.** 화면은 한국어와 English 중에 고릅니다 —
-> [CONTRIBUTING.md 「어느 말로 쓰나」](CONTRIBUTING.md#어느-말로-쓰나).
+> **명령의 출력은 영어입니다.** 화면에 쓸 말은 한국어와 English 중에서 고릅니다.
+> 자세한 것은 [CONTRIBUTING.md 「어느 말로 쓰나」](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
 
-나온 `plan.json`은 **pqcota가 그대로 받습니다** — 계약 형식이라 우리 형식이 따로 없습니다.
+나온 `plan.json`은 **pqcota가 그대로 받습니다.** 계약 형식이라 우리 형식이 따로 없습니다.
 
 ```bash
 pqcota-provision --level l2 plan.json > provision.yml   # pqcota 리포의 명령
@@ -191,7 +191,7 @@ pqcota-provision --level l2 plan.json > provision.yml   # pqcota 리포의 명�
 
 여러 노드를 훑는 길과 거버넌스 토폴로지는 [여정](docs/journey.md)에 있습니다.
 
-데모는 pqcota의 디스커버리 데모 위에 얹습니다 — [demo/README.md](demo/README.md).
+데모는 pqcota의 디스커버리 데모 위에 얹습니다. [demo/README.md](demo/README.md) 를 보십시오.
 
 ## 라이선스
 
@@ -200,7 +200,7 @@ pqcota-provision --level l2 plan.json > provision.yml   # pqcota 리포의 명�
 
 - 평가·개발·테스트는 규모 제한 없이 무료
 - 프로덕션은 관리 노드 5대까지 무료
-- 그 이상은 계약 — **kty@sntsoft.co.kr**
+- 그 이상은 계약: **kty@sntsoft.co.kr**
 
 자세한 것은 [LICENSING.md](LICENSING.md)에 있습니다. 기여하실 때는
 [CONTRIBUTING.md](CONTRIBUTING.md)를 먼저 읽어 주십시오(CLA가 필요합니다).
