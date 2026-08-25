@@ -11,6 +11,9 @@
 // 않는다. 그래서 파일마다 지금 개수를 적어 두고 **늘면 막는다.** 줄여도 막고 새 기준선을
 // 찍어 준다: 고쳐 놓고 기준선을 안 내리면 그 자리가 도로 채워져도 알 수 없다.
 //
+// **한국어가 없는 줄도 보지 않는다.** 지침은 한국어를 명확하게 쓰라는 것이지 외국어를
+// 고치라는 것이 아니다. 화면 카탈로그는 KO 와 EN 을 나란히 적는 자리다.
+//
 // **코드는 보지 않는다.** 변수명·주석·커밋·로그처럼 코드에 속하는 텍스트는 프로젝트
 // 관례를 따르는 자리다. 그래서 마크다운은 코드 블록과 인라인 코드를 덮고 나서 보며,
 // Go 는 go/ast 로 **문자열 리터럴만** 본다(주석은 한국어다). HTML 은 code·pre·script·
@@ -269,6 +272,12 @@ func match(rel string, orig, masked []byte, rules []rule) []hit {
 	var out []hit
 	for _, r := range rules {
 		for _, loc := range r.re.FindAllStringIndex(s, -1) {
+			// **한국어가 없는 줄은 보지 않는다.** 지침은 한국어를 명확하게 쓰라는 것이지
+			// 외국어를 고치라는 것이 아니다(「동작 범위」 1항). 화면 카탈로그는 한 줄
+			// 걸러 영어라, 이 선이 없으면 EN 문장의 엠대시까지 세게 된다.
+			if !hasHangul(lineAt(s, loc[0])) {
+				continue
+			}
 			out = append(out, hit{
 				rule: r.name,
 				file: rel,
@@ -278,6 +287,25 @@ func match(rel string, orig, masked []byte, rules []rule) []hit {
 		}
 	}
 	return out
+}
+
+// lineAt — 그 자리가 든 한 줄.
+func lineAt(s string, off int) string {
+	start := strings.LastIndexByte(s[:off], '\n') + 1
+	end := strings.IndexByte(s[off:], '\n')
+	if end < 0 {
+		return s[start:]
+	}
+	return s[start : off+end]
+}
+
+func hasHangul(s string) bool {
+	for _, r := range s {
+		if r >= 0xAC00 && r <= 0xD7A3 {
+			return true
+		}
+	}
+	return false
 }
 
 // hideOverlap — 잘못 잡는 말을 **같은 바이트 수로** 덮는다. 자리가 밀리면 줄 번호가

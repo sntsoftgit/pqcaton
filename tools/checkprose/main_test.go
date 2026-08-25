@@ -249,3 +249,20 @@ func TestHideOverlapKeepsLength(t *testing.T) {
 		t.Error("헷갈리는을 덮지 못했다")
 	}
 }
+
+// IC-K12 — **한국어가 없는 줄은 보지 않는다.**
+//
+// 지침은 한국어를 명확하게 쓰라는 것이지 외국어를 고치라는 것이 아니다(「동작 범위」 1항).
+// 화면 카탈로그가 KO 와 EN 을 나란히 적는 자리라, 이 선이 없으면 영어 문장의 엠대시까지
+// 세어 고칠 수 없는 것을 요구하게 된다.
+func TestLinesWithoutKoreanAreNotCounted(t *testing.T) {
+	rs := mustRules(t, "엠대시\t—\t콜론으로")
+	src := []byte("Saved to the session file — not finalized yet\n세션 파일에 저장했습니다 — 아직입니다\n")
+	got := hitsOf("a.md", src, src, rs)
+	if len(got) != 1 {
+		t.Fatalf("영어 줄까지 셌다: %d건 %v", len(got), got)
+	}
+	if got[0].line != 2 {
+		t.Errorf("줄 번호가 어긋났다: %d", got[0].line)
+	}
+}
