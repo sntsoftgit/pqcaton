@@ -288,8 +288,18 @@ func excerpt(s string, off int) string {
 var (
 	fence     = regexp.MustCompile("(?m)^\\s*(```|~~~)")
 	inlineMD  = regexp.MustCompile("`[^`\n]*`")
-	htmlBlock = regexp.MustCompile(`(?is)<(code|pre|script|style)\b[^>]*>.*?</\s*\1\s*>`)
+	htmlBlock = regexp.MustCompile(htmlBlockPattern())
 )
+
+// htmlBlockPattern — 여는 태그와 닫는 태그를 짝지어야 하는데 RE2 에는 역참조가 없다.
+// 그래서 태그마다 따로 적어 이어 붙인다.
+func htmlBlockPattern() string {
+	parts := make([]string, 0, 4)
+	for _, t := range []string{"code", "pre", "script", "style"} {
+		parts = append(parts, `<`+t+`\b[^>]*>.*?</\s*`+t+`\s*>`)
+	}
+	return `(?is)` + strings.Join(parts, "|")
+}
 
 func maskMarkdown(b []byte) []byte {
 	lines := strings.Split(string(b), "\n")
