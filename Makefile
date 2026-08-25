@@ -1,6 +1,6 @@
 .PHONY: all check-licenses check-text check-prose check-fmt build test generate verify-generated
 
-all: check-licenses check-text check-fmt build test
+all: check-licenses check-text check-prose check-fmt build test
 
 # 라이선스 관문 — 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
@@ -17,8 +17,9 @@ check-text:
 # 눈으로 지킨 규칙은 남지 않는다. 폼에 넣는 문서는 check-form-text.py 가 막고 있어 엠대시가
 # 하나도 없는데, 그 관문이 보지 않는 문서에는 천 개가 넘게 쌓여 있었다.
 #
-# **아직 all 에 걸지 않았다.** 기준선(tools/checkprose/baseline.tsv)이 있어야 도는데, 그것을
-# 먼저 찍어 커밋한 다음에 all 로 옮긴다. 그때까지는 손으로 돌린다.
+# **지금 있는 것은 기준선에 적어 두고 늘어나는 것만 막는다**(tools/checkprose/baseline.tsv).
+# 고쳐서 줄었으면 `go run ./tools/checkprose -baseline` 으로 기준선을 내리고 함께 커밋한다.
+# 그러지 않으면 관문이 「낡았다」고 막는다. 걷어낸 자리가 도로 채워지는 것을 그렇게 잡는다.
 check-prose:
 	@go run ./tools/checkprose
 
