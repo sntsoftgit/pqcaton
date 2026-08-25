@@ -1,4 +1,4 @@
-.PHONY: all check-licenses check-text check-fmt build test generate verify-generated
+.PHONY: all check-licenses check-text check-prose check-fmt build test generate verify-generated
 
 all: check-licenses check-text check-fmt build test
 
@@ -11,6 +11,16 @@ check-licenses:
 # 않으면 그 자리만 한국어로 뜨는데 눈으로는 못 찾는다 — 파서로 본다.
 check-text:
 	@go run ./tools/checktext
+
+# 문체 관문 — 문서와 화면 문구의 한국어. **한 번 걷어낸 말이 다시 들어오지 않게** 막는다.
+#
+# 눈으로 지킨 규칙은 남지 않는다. 폼에 넣는 문서는 check-form-text.py 가 막고 있어 엠대시가
+# 하나도 없는데, 그 관문이 보지 않는 문서에는 천 개가 넘게 쌓여 있었다.
+#
+# **아직 all 에 걸지 않았다.** 기준선(tools/checkprose/baseline.tsv)이 있어야 도는데, 그것을
+# 먼저 찍어 커밋한 다음에 all 로 옮긴다. 그때까지는 손으로 돌린다.
+check-prose:
+	@go run ./tools/checkprose
 
 # 서식 관문 — `gofmt` 가 고칠 것이 남아 있으면 멈춘다.
 #
