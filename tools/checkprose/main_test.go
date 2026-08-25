@@ -26,6 +26,22 @@ func hitsOf(rel string, orig []byte, masked []byte, rs []rule) []hit {
 	return match(rel, orig, masked, rs)
 }
 
+// useShippedOverlap — 실제로 함께 나가는 overlap.txt 를 쓴다. 테스트에만 목록을 적어 두면
+// 파일이 비어도 케이스가 통과한다.
+func useShippedOverlap(t *testing.T) {
+	t.Helper()
+	w, err := loadWords(filepath.Join("..", "..", overlapFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(w) == 0 {
+		t.Fatal("overlap.txt 가 비어 있다")
+	}
+	old := overlap
+	overlap = w
+	t.Cleanup(func() { overlap = old })
+}
+
 // IC-K1 — **코드 블록 안은 보지 않는다.**
 //
 // 지침이 「인용, 코드, 코드 주석에는 적용하지 않는다」고 못 박아 두었다. 코드 블록의
@@ -60,6 +76,7 @@ func TestInlineCodeIsNotCounted(t *testing.T) {
 // 그 자리가 여섯 곳 있었다. 잘못 잡는 관문은 목록에 예외를 쌓게 만들고, 예외가 쌓이면
 // 진짜 위반도 함께 묻힌다.
 func TestHetgalliDoesNotTripGalli(t *testing.T) {
+	useShippedOverlap(t)
 	rs := mustRules(t, "갈리다\t갈립니|갈리면|갈리는|갈려\t서로 다르다")
 	src := []byte("헷갈리는 자리가 남습니다.\n말이 갈리면 곤란합니다.\n")
 	got := hitsOf("a.md", src, maskMarkdown(src), rs)
@@ -222,6 +239,7 @@ func TestListedScreenFilesExist(t *testing.T) {
 // IC-K11 — **잘못 잡는 말을 덮어도 바이트 수가 그대로다.** 여기가 어긋나면 그 뒤의 모든
 // 줄 번호가 밀린다.
 func TestHideOverlapKeepsLength(t *testing.T) {
+	useShippedOverlap(t)
 	for _, s := range []string{"헷갈리는", "헛갈리기 쉽다", "갈리면"} {
 		if got := len(hideOverlap(s)); got != len(s) {
 			t.Errorf("%q: 바이트 수가 달라졌다 %d → %d", s, len(s), got)

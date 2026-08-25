@@ -16,8 +16,9 @@
 // Go 는 go/ast 로 **문자열 리터럴만** 본다(주석은 한국어다). HTML 은 code·pre·script·
 // style 안을 덮는다.
 //
-// **규칙은 rules.tsv 에 있다.** 코드에 적으면 tools/checktext 가 막는다(Go 문자열의
-// 한글). 그리고 이 표는 지적받을 때마다 늘어나므로 코드 밖에 있어야 한다.
+// **규칙은 rules.tsv 에, 잘못 잡는 말은 overlap.txt 에 있다.** 코드에 적으면 tools/checktext
+// 가 막는다(Go 문자열의 한글). 그리고 두 목록 모두 지적받을 때마다 늘어나므로 코드 밖에
+// 있어야 한다.
 //
 // usage:
 //
@@ -60,11 +61,14 @@ var extraHTML = []string{"site/index.html"}
 const (
 	rulesFile    = "tools/checkprose/rules.tsv"
 	baselineFile = "tools/checkprose/baseline.tsv"
+	overlapFile  = "tools/checkprose/overlap.txt"
 )
 
 // overlap — 규칙이 잘못 잡는 말. 재기 전에 같은 길이로 덮는다. 「헷갈리다」의 "갈리"가
 // 「갈리다」 규칙에 걸리는 것이 실제로 나온 자리라, 뒤보기 없는 RE2 에서는 이 편이 낫다.
-var overlap = []string{"헷갈", "헛갈"}
+//
+// 말 자체는 overlap.txt 에 있다. 여기 적으면 tools/checktext 가 막는다(Go 문자열의 한글).
+var overlap []string
 
 type rule struct {
 	name string
@@ -85,6 +89,10 @@ func main() {
 	flag.Parse()
 
 	rules, err := loadRules(rulesFile)
+	if err != nil {
+		fail(err)
+	}
+	overlap, err = loadWords(overlapFile)
 	if err != nil {
 		fail(err)
 	}
@@ -162,6 +170,23 @@ func loadRules(path string) ([]rule, error) {
 	}
 	if len(out) == 0 {
 		return nil, fmt.Errorf("%s: no rules", path)
+	}
+	return out, nil
+}
+
+// loadWords — 한 줄에 하나씩 적은 말 목록. 빈 줄과 # 로 시작하는 줄은 넘긴다.
+func loadWords(path string) ([]string, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, line := range strings.Split(string(b), "\n") {
+		s := strings.TrimSpace(line)
+		if s == "" || strings.HasPrefix(s, "#") {
+			continue
+		}
+		out = append(out, s)
 	}
 	return out, nil
 }
