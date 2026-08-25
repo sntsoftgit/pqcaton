@@ -266,3 +266,25 @@ func TestLinesWithoutKoreanAreNotCounted(t *testing.T) {
 		t.Errorf("줄 번호가 어긋났다: %d", got[0].line)
 	}
 }
+
+// IC-K13 — **한 줄에 KO 와 EN 이 나란히 있어도 한국어만 잰다.**
+//
+// 화면 카탈로그가 `T{KO: …, EN: …}` 로 두 말을 한 줄에 적는다. 줄 단위로만 보면 영어
+// 문장의 엠대시까지 세는데, 영어에서 그것은 맞는 문장부호다. 그래서 **문자열 하나 단위로**
+// 한국어가 들었는지 본다.
+func TestEnglishStringOnTheSameLineIsNotCounted(t *testing.T) {
+	rs := mustRules(t, "엠대시\t—\t콜론으로")
+	dir := t.TempDir()
+	p := filepath.Join(dir, "text.go")
+	src := "package ui\n\nvar t = T{KO: \"고전(양자 취약)\", EN: \"classical — quantum-vulnerable\"}\n"
+	if err := os.WriteFile(p, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	orig, masked, err := maskGo(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := hitsOf("text.go", orig, masked, rs); len(got) != 0 {
+		t.Fatalf("영어 문자열까지 셌다: %v", got)
+	}
+}

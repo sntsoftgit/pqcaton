@@ -223,7 +223,7 @@ draft ──▶ in-review ──▶ finalized
   chain(§0.3)에서 **사람이 판단한 갈래**입니다.
 
 > 스키마(`Decision`·`FinalizedPlan`·`ReconState`)는 [pqcota의 계약](https://github.com/randyinthedev-hash/pqcota/tree/main/contracts)이 SSOT입니다.
-> 이 리포는 그 어휘로 말하고, 위 엔진만 여기서 만듭니다.
+> 이 리포는 그 어휘를 그대로 쓰고, 위 엔진만 여기서 만듭니다.
 
 ---
 

@@ -41,8 +41,8 @@ func warningText(l Lang, w review.Warning) string {
 	}
 	switch w.Code {
 	case review.WarnDeclProblems:
-		return fmt.Sprintf("선언에 맞지 않는 자리 %d곳 — 그대로 두면 대조 결과가 오류 없이 "+
-			"틀립니다. 어느 자리인지는 `pqcaton-report` 가 말합니다", w.Count)
+		return fmt.Sprintf("선언에 맞지 않는 자리가 %d곳 있습니다. 그대로 두면 대조 결과가 오류 없이 "+
+			"틀립니다. 어느 자리인지는 `pqcaton-report` 가 알려 줍니다", w.Count)
 	case review.WarnUnreadableResult:
 		return "건너뜀(읽을 수 없음): " + w.Detail
 	}

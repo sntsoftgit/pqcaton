@@ -164,7 +164,7 @@
   <h1>관측 위에 판정을 얹는 구조</h1>
   <p class="lede">
     pqcota가 관측하고, pqcaton이 그 관측을 선언과 대조해 리뷰에 올리고 확정합니다.
-    두 리포는 <strong>계약(<code>contracts/</code>)으로만</strong> 이어집니다 — 코드가 서로를 부르지 않습니다.
+    두 리포는 <strong>계약(<code>contracts/</code>)으로만</strong> 이어집니다. 코드가 서로를 부르지 않습니다.
   </p>
 </header>
 
@@ -172,7 +172,7 @@
 
 <p>
   왼쪽이 기반(pqcota), 오른쪽이 이 리포(pqcaton)입니다. 가운데 띠가 둘 사이를 잇는 유일한 통로이고,
-  <strong>화살표는 그 띠를 두 번 건넙니다</strong> — 관측이 오른쪽으로 가고, 확정된 계획이 왼쪽으로 돌아갑니다.
+  <strong>화살표는 그 띠를 두 번 건넙니다.</strong> 관측이 오른쪽으로 가고, 확정된 계획이 왼쪽으로 돌아갑니다.
 </p>
 
 <figure>
@@ -188,9 +188,9 @@
     </marker>
   </defs>
 
-  <text class="lbl-cap" x="24" y="26">PQCOTA — 관측 · 정규화 · 전환</text>
+  <text class="lbl-cap" x="24" y="26">PQCOTA: 관측 · 정규화 · 전환</text>
   <text class="lbl-cap" x="418" y="26" text-anchor="middle">CONTRACTS</text>
-  <text class="lbl-cap" x="936" y="26" text-anchor="end">PQCATON — 대조 · 판정 · 거버넌스</text>
+  <text class="lbl-cap" x="936" y="26" text-anchor="end">PQCATON: 대조 · 판정 · 거버넌스</text>
 
   <!-- 계약 띠 -->
   <rect class="band" x="358" y="52" width="120" height="564" rx="6"/>
@@ -201,18 +201,18 @@
 
   <!-- ── 왼쪽: pqcota ── -->
   <rect class="box-up" x="24" y="52" width="300" height="88" rx="5"/>
-  <text class="lbl" x="40" y="78">수집기 — 대상 노드에서 돈다</text>
+  <text class="lbl" x="40" y="78">수집기: 대상 노드에서 돈다</text>
   <text class="lbl-mono" x="40" y="100">collectors/{openssl, jvm, cng, network}</text>
   <text class="lbl-sm" x="40" y="122">ansible/discover.yml 이 반입·실행·회수</text>
 
   <rect class="box-up" x="24" y="168" width="300" height="104" rx="5"/>
-  <text class="lbl" x="40" y="194">커널 — 관측을 사실로 바꾼다</text>
+  <text class="lbl" x="40" y="194">커널: 관측을 사실로 바꾼다</text>
   <text class="lbl-mono" x="40" y="216">kernel/posture · registry</text>
   <text class="lbl-sm" x="40" y="236">협상된 그룹 → 양자내성 등급</text>
   <text class="lbl-mono" x="40" y="256">kernel/machineid · scope · sign</text>
 
   <rect class="box-up" x="24" y="300" width="300" height="100" rx="5"/>
-  <text class="lbl" x="40" y="326">적재 — 인벤토리가 되는 자리</text>
+  <text class="lbl" x="40" y="326">적재: 인벤토리가 되는 자리</text>
   <text class="lbl-mono" x="40" y="348">discovery/{normalize, history}</text>
   <text class="lbl-mono" x="40" y="368">inventory/{ingest, profile, render}</text>
   <text class="lbl-sm" x="40" y="390">완전성 맵 · 거절 이력 · 조직 축</text>
@@ -229,21 +229,21 @@
 
   <!-- ── 오른쪽: pqcaton ── -->
   <rect class="box-us" x="512" y="300" width="424" height="120" rx="5"/>
-  <text class="lbl" x="530" y="326">대조 엔진 — 선언과 관측을 맞댄다</text>
+  <text class="lbl" x="530" y="326">대조 엔진: 선언과 관측을 맞댄다</text>
   <text class="lbl-mono" x="530" y="348">pkg/inventory/reconcile</text>
   <text class="lbl-sm" x="530" y="370">3-상태 · confidence 스코어링 · 리뷰 큐 · 토폴로지</text>
   <text class="lbl-sm" x="530" y="392">CONFIRMED · UNDECLARED · UNOBSERVED</text>
   <text class="lbl-sm" x="530" y="410">UNOBSERVED는 기계가 확정하지 않는다</text>
 
   <rect class="box-us" x="512" y="444" width="424" height="104" rx="5"/>
-  <text class="lbl" x="530" y="470">판정 — 사람의 결론을 붙들어 둔다</text>
+  <text class="lbl" x="530" y="470">판정: 사람의 결론을 붙들어 둔다</text>
   <text class="lbl-mono" x="530" y="492">pkg/inventory/decision</text>
   <text class="lbl-sm" x="530" y="514">draft → in-review → finalized · append-only</text>
   <text class="lbl-sm" x="530" y="534">근거가 바뀌면 그 판정만 델타 리뷰</text>
 
   <rect class="box-us" x="512" y="568" width="424" height="48" rx="5"/>
   <text class="lbl-mono" x="530" y="590">inventory/cmd/{pqcaton-report, decide, scope, ui}</text>
-  <text class="lbl-sm" x="530" y="608">사람이 돌리고 채우는 자리 — 화면 · 리포트 · 토폴로지</text>
+  <text class="lbl-sm" x="530" y="608">사람이 돌리고 채우는 자리: 화면 · 리포트 · 토폴로지</text>
 
   <!-- 왼쪽 내부 파이프라인 -->
   <path class="flow" d="M174 140 V168" marker-end="url(#ar)"/>
@@ -269,15 +269,15 @@
 </svg>
 </div>
 <figcaption>
-  <strong>그림 1.</strong> 계약 띠를 두 번 건넙니다 — 관측이 오른쪽으로, 확정된 계획이 왼쪽으로.
+  <strong>그림 1.</strong> 계약 띠를 두 번 건넙니다. 관측이 오른쪽으로, 확정된 계획이 왼쪽으로.
   왼쪽 상자들은 pqcaton 없이도 그대로 돕니다. 오른쪽이 없으면 <em>판정이 없을</em> 뿐 관측은 끝까지 됩니다.
 </figcaption>
 </figure>
 
 <div class="note">
-  <p><strong>이 그림이 말하는 것 하나</strong> — pqcaton은 pqcota를 감싸지 않습니다. 나란히 서서
-  계약으로만 말합니다. 그래서 pqcota를 갈아 끼워도 이 리포가 깨지지 않고, 이 리포를 지워도
-  pqcota는 혼자 완결됩니다.</p>
+  <p><strong>이 그림이 알려 주는 것 하나</strong>. pqcaton은 pqcota를 감싸지 않습니다. 나란히 서서
+  계약으로만 주고받습니다. 그래서 pqcota를 갈아 끼워도 이 리포가 깨지지 않고, 이 리포를 지워도
+  pqcota는 그 자체로 완결됩니다.</p>
 </div>
 
 <h2><span class="num">02</span>계약이 유일한 연결선입니다</h2>
@@ -293,13 +293,13 @@
   <tbody>
     <tr><td><code>gen/…/common/v1</code></td><td><code>Envelope</code>·<code>CryptoRuntime</code> 등 공통 어휘</td></tr>
     <tr><td><code>gen/…/discovery/v1</code></td><td>관측 결과(<code>CollectionResult</code>)를 읽는다</td></tr>
-    <tr><td><code>gen/…/inventory/v1</code></td><td><code>ReconState</code>·<code>Decision</code> — 3-상태와 판정의 SSOT</td></tr>
+    <tr><td><code>gen/…/inventory/v1</code></td><td><code>ReconState</code>·<code>Decision</code>. 3-상태와 판정의 SSOT</td></tr>
     <tr><td><code>pkg/discovery/history</code></td><td>관측 이력 저장소를 그대로 쓴다</td></tr>
     <tr><td><code>pkg/discovery/normalize</code></td><td>정규화된 관측을 받는다</td></tr>
     <tr><td><code>pkg/inventory/declaration</code></td><td>선언(CMDB) 반입</td></tr>
-    <tr><td><code>pkg/kernel/posture</code></td><td>양자내성 등급 — 우리가 다시 판단하지 않는다</td></tr>
+    <tr><td><code>pkg/kernel/posture</code></td><td>양자내성 등급. 우리가 다시 판단하지 않는다</td></tr>
     <tr><td><code>pkg/kernel/registry</code></td><td>결정론적 서명 매칭 데이터</td></tr>
-    <tr><td><code>pkg/kernel/scope</code></td><td>자산 스코프 규칙 — 형식과 집행을 그대로 쓴다</td></tr>
+    <tr><td><code>pkg/kernel/scope</code></td><td>자산 스코프 규칙. 형식과 집행을 그대로 쓴다</td></tr>
     <tr><td><code>discovery/collectors/openssl</code></td><td>이 기계를 스캔하는 지름길이 부른다</td></tr>
     <tr><td><code>gen/…/provisioning/v1</code></td><td>확정 계획(<code>FinalizedPlan</code>)의 형식</td></tr>
     <tr><td><code>pkg/org</code></td><td>조직 격리 축</td></tr>
@@ -308,8 +308,8 @@
 </div>
 
 <p>
-  <code>internal/probe</code>는 그 연결을 붙들어 두는 최소 코드입니다 — 지워도 빌드는 되지만,
-  그러면 <code>go.mod</code>의 <code>require</code>가 조용히 미사용이 됩니다.
+  <code>internal/probe</code>는 그 연결을 붙들어 두는 최소 코드입니다. 지워도 빌드는 되지만,
+  그러면 <code>go.mod</code>의 <code>require</code>가 아무 표시 없이 미사용이 됩니다.
 </p>
 
 <h2><span class="num">03</span>이 리포가 더하는 것</h2>
@@ -326,7 +326,7 @@
     <tr>
       <td><code>pkg/inventory/decision</code></td>
       <td>리뷰-확정 상태기계 · 판정 영속(append-only) · 확정 계획</td>
-      <td>판정은 조직의 책임이고 <strong>감사 대상</strong>입니다 — 혼자 쓰면 필요 없습니다</td>
+      <td>판정은 조직의 책임이고 <strong>감사 대상</strong>입니다. 혼자 쓰면 필요 없습니다</td>
     </tr>
     <tr>
       <td><code>inventory/cmd/*</code> · <code>pkg/inventory/ui</code></td>
@@ -336,7 +336,7 @@
     <tr>
       <td><code>saas/runner</code></td>
       <td>호스팅으로 쓸 때만 필요한 <strong>밖으로 올리는 자리</strong></td>
-      <td>고객 인프라 안에서만 돌 때는 필요 없습니다 — <a href="#saas">05</a></td>
+      <td>고객 인프라 안에서만 돌 때는 필요 없습니다. <a href="#saas">05</a></td>
     </tr>
   </tbody>
 </table>
@@ -349,7 +349,7 @@
   <thead><tr><th>상태</th><th>정의</th><th>등급</th><th>무엇을 뜻하나</th></tr></thead>
   <tbody>
     <tr><td><span class="swatch s-ok"></span>CONFIRMED</td><td>선언 ∩ 관측</td><td>AUTO</td><td>신뢰도 최상</td></tr>
-    <tr><td><span class="swatch s-stop"></span>UNDECLARED</td><td>관측만</td><td>AUTO</td><td><strong>조직이 모르는 통신</strong> — 이 도구가 주는 첫 번째 쓸모입니다</td></tr>
+    <tr><td><span class="swatch s-stop"></span>UNDECLARED</td><td>관측만</td><td>AUTO</td><td><strong>조직이 모르는 통신</strong>입니다. 이 도구가 주는 첫 번째 쓸모입니다</td></tr>
     <tr><td><span class="swatch s-warn"></span>UNOBSERVED</td><td>선언만</td><td><strong>MANUAL</strong></td><td>실재하는데 못 본 것인지 이미 없어진 것인지는 <strong>사람만 압니다</strong></td></tr>
   </tbody>
 </table>
@@ -357,13 +357,13 @@
 
 <p>
   UNOBSERVED를 기계가 확정하지 않는 것이 설계의 축입니다. pqcota의 <strong>완전성 맵</strong>이
-  “원리상 관측 불가”와 “실제 없음”을 갈라 주고, 그 위에서 사람이 정합니다.
+  “원리상 관측 불가”와 “실제 없음”을 구분해 주고, 그 위에서 사람이 정합니다.
 </p>
 
 <h2><span class="num">04</span>한 바퀴가 도는 길</h2>
 
 <p>
-  <strong>밖으로 나가는 것이 하나도 없습니다</strong> —
+  <strong>밖으로 나가는 것이 하나도 없습니다.</strong>
   모든 단계가 고객 인프라 안에서 끝납니다.
 </p>
 
@@ -420,7 +420,7 @@
   <text class="lbl-arrow" x="762" y="92" text-anchor="middle">관문</text>
 
   <path class="flow" stroke-dasharray="5 4" d="M342 210 H860 Q874 210 874 196 V142" marker-end="url(#ar2)"/>
-  <text class="lbl-arrow" x="600" y="202" text-anchor="middle">pqcaton 없이 — 손으로 쓴 계획</text>
+  <text class="lbl-arrow" x="600" y="202" text-anchor="middle">pqcaton 없이: 손으로 쓴 계획</text>
 
   <path class="flow-a" stroke-dasharray="5 4" d="M900 60 V30 Q900 16 886 16 H678 Q664 16 664 30 V60" marker-end="url(#ar2a)"/>
   <text class="lbl-arrow" x="782" y="12" text-anchor="middle">근거가 바뀐 판정만 델타 리뷰</text>
@@ -430,8 +430,8 @@
 </svg>
 </div>
 <figcaption>
-  <strong>그림 2.</strong> 가운데 두 상자만 이 리포입니다. 아래 점선이 <strong>pqcaton 없이 가는 길</strong>
-  — pqcota는 확정 계획을 <em>입력으로만</em> 받고, 손으로 쓴 계획으로도 끝까지 돕니다.
+  <strong>그림 2.</strong> 가운데 두 상자만 이 리포입니다. 아래 점선이 <strong>pqcaton 없이 가는 길</strong>입니다.
+  pqcota는 확정 계획을 <em>입력으로만</em> 받고, 손으로 쓴 계획으로도 끝까지 돕니다.
   확정 앞의 화살표가 이 제품에서 반드시 거쳐야 하는 관문입니다: <strong>finalized 전에는 적용이 돌지 않습니다.</strong>
 </figcaption>
 </figure>
@@ -439,13 +439,13 @@
 <h2 id="saas"><span class="num">05</span>호스팅으로 쓸 때만 붙는 것</h2>
 
 <p>
-  위 그림에는 러너가 없습니다. 자기 서버에서 돌릴 때는 <strong>필요 없기 때문</strong>입니다 —
-  <code>pqcota-ingest</code>가 결과를 바로 읽고, 대조와 판정이 같은 머신에서 끝납니다.
+  위 그림에는 러너가 없습니다. 자기 서버에서 돌릴 때는 <strong>필요 없기 때문</strong>입니다.
+  <code>pqcota-ingest</code>가 결과를 바로 읽고, 대조와 판정이 같은 기계에서 끝납니다.
 </p>
 
 <p>
   우리가 대신 돌려 주는 호스팅에서는 관측 결과가 고객망을 나와야 하고, 그 <strong>밖으로 올리는 자리</strong>가
-  <code>saas/runner</code>입니다. 그 코드만 이 리포에 있는 이유는 하나입니다 —
+  <code>saas/runner</code>입니다. 그 코드만 이 리포에 있는 이유는 하나입니다.
   <strong>고객 서버에서 고객 권한으로 도니 무엇을 밖으로 보내는지 읽어서 확인할 수 있어야</strong> 합니다.
   컨트롤 플레인 쪽 코드와 설계는 이 리포에 없습니다.
 </p>

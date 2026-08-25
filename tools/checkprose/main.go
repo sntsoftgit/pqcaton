@@ -394,6 +394,11 @@ func maskGo(path string) (orig, masked []byte, err error) {
 		if !ok || lit.Kind != token.STRING {
 			return true
 		}
+		// **한국어가 든 문자열만 남긴다.** 카탈로그는 KO 와 EN 을 나란히 적으므로, 줄 단위로
+		// 보면 같은 줄의 영어 문장까지 재게 된다. 영어의 엠대시는 영어에서 맞는 문장부호다.
+		if !hasHangul(lit.Value) {
+			return true
+		}
 		from := fset.Position(lit.Pos()).Offset
 		to := fset.Position(lit.End()).Offset
 		if from < 0 || to > len(out) {

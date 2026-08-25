@@ -701,7 +701,7 @@ v0.1.0이 내건 *"관측을 판정으로 잇는다"* 가 코드로는 거짓이
 
 ### 만든 것
 
-- **판정 원장에 Postgres RLS**: 정책이 `org = current_setting('pqcaton.org')`로 행을 가릅니다.
+- **판정 원장에 Postgres RLS**: 정책이 `org = current_setting('pqcaton.org')`로 행을 걸러냅니다.
   **읽기와 쓰기를 함께 막습니다**(`USING` + `WITH CHECK`).
 - **`FORCE ROW LEVEL SECURITY`**: 없으면 테이블 소유자가 예외가 됩니다. 대개 앱이 소유자로
   붙으므로, 그 한 줄이 없으면 **정책을 걸어 놓고도 아무 일도 일어나지 않습니다.**
@@ -870,7 +870,7 @@ pqcota가 갖습니다. 이 버전은 그 위의 거버넌스만 얹습니다.
 
 - **3-상태 대조 엔진**([`pkg/inventory/reconcile`](pkg/inventory/reconcile)): 선언과 관측을
   맞대어 `CONFIRMED`(선언∩관측) · `UNDECLARED`(관측만) · `UNOBSERVED`(선언만)로
-  가릅니다. **`UNDECLARED`가 이 도구의 첫 값입니다**. CMDB에 없는데 실제로 통신하고 있는
+  구분합니다. **`UNDECLARED`를 찾아내는 것이 이 도구가 주는 첫 번째 쓸모입니다**. CMDB에 없는데 실제로 통신하고 있는
   엣지가 거기 있습니다.
 - **confidence 스코어링**: 관측 빈도·기간·선언 신선도·소스 일치도·`evidence_strength`로
   정합니다. `inferred-low`는 상한을 낮춥니다. **약한 근거가 높은 신뢰도로 올라가지 못하게**

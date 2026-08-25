@@ -26,13 +26,13 @@ var (
 
 	// 저장·확정 뒤에 뜨는 알림. **화면 글이라 보는 사람의 말로 뜬다.**
 	tSavedNotFinal = T{
-		KO: "세션 파일에 저장했습니다 — 아직 확정하지 않았습니다",
+		KO: "세션 파일에 저장했습니다. 아직 확정하지 않았습니다",
 		EN: "Saved to the session file — not finalized yet"}
 	tFinalizedPlan = T{
-		KO: "확정했습니다 — 조치 %d건을 %s 에 썼습니다",
+		KO: "확정했습니다. 조치 %d건을 %s 에 썼습니다",
 		EN: "Finalized — %d actions written to %s"}
 	tFinalizedPolicy = T{
-		KO: "확정했습니다 — 규칙 %d개를 %s 에 썼습니다. 이 파일이 `pqcota-ingest -scope-assets` 의 입력입니다",
+		KO: "확정했습니다. 규칙 %d개를 %s 에 썼습니다. 이 파일이 `pqcota-ingest -scope-assets` 의 입력입니다",
 		EN: "Finalized — %d rules written to %s. That file is the input to `pqcota-ingest -scope-assets`"}
 	tJudgmentsSaved = T{
 		KO: " · 판정 %d건을 %s 에 남겼습니다",
@@ -44,7 +44,7 @@ var (
 		KO: " · 정책이 달라져 서명을 지웠습니다",
 		EN: " · the policy changed, so the signature was cleared"}
 	tDeclSaved = T{
-		KO: "선언을 저장했습니다 — 노드 %d · 자산 %d · 엣지 %d",
+		KO: "선언을 저장했습니다. 노드 %d · 자산 %d · 엣지 %d",
 		EN: "Declaration saved — %d nodes · %d assets · %d edges"}
 	tDeclDroppedNoIP = T{
 		KO: " · IP를 적지 않은 노드 %d개는 관리 대상에서 뺐습니다",
@@ -102,14 +102,14 @@ var (
 	tDeclNodesHint = T{
 		KO: "IP는 <b>관측에 찍힌 주소를 이 이름과 잇는 근거</b>입니다. 한 노드가 망 둘에 " +
 			"걸치면 IP도 둘이니 쉼표나 공백으로 나눠 적으십시오. <b>IP를 적지 않은 줄은 " +
-			"관리 대상이 되지 않습니다</b> — 이을 근거가 없으면 대조 결과가 오류 없이 " +
+			"관리 대상이 되지 않습니다</b>. 이을 근거가 없으면 대조 결과가 오류 없이 " +
 			"틀리기 때문입니다. 저장하면 그 줄은 표에서 사라집니다. 이름을 비워도 지워집니다.<br>" +
 			"<b>「관측 이름」은 관측이 이 노드를 부르는 이름입니다.</b> 자산 대조는 노드 " +
 			"이름이 글자 그대로 같아야 맞는데, collector 는 자기가 붙인 " +
 			"id(<code>node:1a2b…</code>)나 호스트명으로 보내는 일이 흔합니다. 이름이 서로 다르면 " +
-			"<b>그 노드의 자산이 통째로 UNDECLARED 로</b> 올라옵니다 — 선언이 틀려서가 아니라 " +
-			"이름이 서로 달라서입니다. 호스트명(짧은 이름 포함)이 위 이름과 같으면 비워 두십시오 " +
-			"— 그때는 저절로 이어집니다. 아직 어느 노드에도 붙지 않은 관측 이름은 " +
+			"<b>그 노드의 자산이 통째로 UNDECLARED 로</b> 올라옵니다. 선언이 틀려서가 아니라 " +
+			"이름이 서로 달라서입니다. 호스트명(짧은 이름 포함)이 위 이름과 같으면 비워 두십시오. " +
+			"그때는 저절로 이어집니다. 아직 어느 노드에도 붙지 않은 관측 이름은 " +
 			"이 칸에서 고를 수 있습니다.",
 		EN: "The IP is <b>what ties an observed address back to this name</b>. A node on two " +
 			"networks has two IPs — separate them with commas or spaces. <b>A row with no IP " +
@@ -126,19 +126,19 @@ var (
 	tDeclAssets     = T{KO: "암호 자산", EN: "Crypto assets"}
 	tDeclAssetsHint = T{
 		KO: "노드 안의 <b>암호 자산</b>은 그 노드에서 쓰인다고 선언한 런타임과 " +
-			"컴포넌트입니다 — 관측에 나와야 할 모듈입니다. 런타임은 " +
-			"<b>목록에서 고릅니다</b> — 관측 결과에 나올 수 있는 이름만 들어 있습니다.<br>" +
+			"컴포넌트입니다. 관측에 나와야 할 모듈입니다. 런타임은 " +
+			"<b>목록에서 고릅니다</b>. 관측 결과에 나올 수 있는 이름만 들어 있습니다.<br>" +
 			"<b>컴포넌트는 관측된 이름과 글자 그대로 같아야 맞습니다.</b> 앞부분만 같거나 " +
 			"뒷부분만 같은 것은 맞지 않고, <code>*</code> 같은 것도 쓸 수 없습니다. 적을 때는 " +
-			"관측 이름에서 <code>.so</code> 부터 뒤를 뗍니다 — <code>libssl.so.3</code> 은 " +
-			"<code>libssl</code> 로 적습니다. <b>벤더링 해시는 떼지 않습니다</b> — " +
+			"관측 이름에서 <code>.so</code> 부터 뒤를 뗍니다. <code>libssl.so.3</code> 은 " +
+			"<code>libssl</code> 로 적습니다. <b>벤더링 해시는 떼지 않습니다</b>. " +
 			"<code>libcrypto-fbc9a285.so.3</code> 은 <code>libcrypto-fbc9a285</code> 여야 하고, " +
 			"<code>libcrypto</code> 는 다른 자산입니다. <code>jca</code> 의 컴포넌트는 " +
 			"<code>jca-provider-chain</code> 하나, <code>cng</code> 는 " +
-			"<code>cng-providers</code> 하나입니다 — 머신에 하나뿐이라 관측 결과에 늘 그 " +
-			"이름으로 적힙니다.<br>맞지 않아도 막히지 않습니다 — " +
+			"<code>cng-providers</code> 하나입니다. 기계에 하나뿐이라 관측 결과에 늘 그 " +
+			"이름으로 적힙니다.<br>맞지 않아도 막히지 않습니다. " +
 			"<b>선언한 것은 미관측으로, 관측된 것은 UNDECLARED 로</b> 구분됩니다. 그래서 " +
-			"<b>그 노드에서 관측된 이름이 컴포넌트 칸에 후보로 뜹니다</b> — 칸을 " +
+			"<b>그 노드에서 관측된 이름이 컴포넌트 칸에 후보로 뜹니다</b>. 칸을 " +
 			"누르면 뜨고, 거기서 고르면 옮겨 적다 틀릴 일이 없습니다. 관측이 아직 없으면 " +
 			"후보도 없으니 위 규칙대로 적으십시오.",
 		EN: "The <b>crypto assets</b> inside a node are the runtime and component you declare " +
@@ -164,7 +164,7 @@ var (
 
 	tDeclSave     = T{KO: "저장", EN: "Save"}
 	tDeclSaveHint = T{
-		KO: "저장하면 <code>pqcaton-report</code> 가 읽는 바로 그 파일에 씁니다 — " +
+		KO: "저장하면 <code>pqcaton-report</code> 가 읽는 바로 그 파일에 씁니다. " +
 			"화면 위에 경로가 적혀 있습니다.",
 		EN: "Saving writes to the very file <code>pqcaton-report</code> reads — " +
 			"its path is shown at the top of this page."}
@@ -190,10 +190,10 @@ var (
 	tReviewMandatory        = T{KO: "필수", EN: "mandatory"}
 	tReviewPolicyConclusion = T{KO: "이 정책의 결론", EN: "Conclusion for this policy"}
 	tReviewQueueHint        = T{
-		KO: "정책마다 결론을 하나 적으면 그 아래 항목이 한 번에 판정됩니다 — 수천 대를 " +
+		KO: "정책마다 결론을 하나 적으면 그 아래 항목이 한 번에 판정됩니다. 수천 대를 " +
 			"한 건씩 보는 리뷰는 끝나지 않습니다. 「개별 결론(예외)」은 그 정책에서 " +
 			"어긋나는 것만 따로 적는 자리입니다.<br><b>「플랫폼 조치」가 붙은 항목</b>은 " +
-			"provider 를 갈아 끼우는 자리가 아닙니다 — <code>cng</code> 가 그렇습니다. " +
+			"provider 를 갈아 끼우는 자리가 아닙니다. <code>cng</code> 가 그렇습니다. " +
 			"쓸 수 있는 알고리즘은 Windows 빌드가, FIPS 는 OS 정책이 정하므로 계획의 " +
 			"provider 칸이 빕니다. 무엇을 할지는 여기 적는 결론이 담습니다.",
 		EN: "One conclusion per policy judges every item under it at once — a review that " +
@@ -218,7 +218,7 @@ var (
 
 	tReviewEmpty    = T{KO: "판정할 것이 없습니다.", EN: "Nothing to judge."}
 	tReviewAutopass = T{
-		KO: "자동통과 후보 %d개는 이 큐에 올리지 않았습니다 — 선언과 맞고 신뢰도가 높은 " +
+		KO: "자동통과 후보 %d개는 이 큐에 올리지 않았습니다. 선언과 맞고 신뢰도가 높은 " +
 			"것들이라 하나씩 볼 필요가 없습니다.",
 		EN: "%d auto-pass candidates are not in this queue — they match the declaration " +
 			"with high confidence, so they are not worth looking at one by one."}
@@ -235,7 +235,7 @@ var (
 	tSaveOnly       = T{KO: "저장만", EN: "Save only"}
 	tFinalizePlan   = T{KO: "확정하고 계획 내보내기", EN: "Finalize and emit the plan"}
 	tReviewGateHint = T{
-		KO: "확정은 <code>pqcaton-decide close</code> 와 같은 검사를 거칩니다 — " +
+		KO: "확정은 <code>pqcaton-decide close</code> 와 같은 검사를 거칩니다. " +
 			"필수 항목의 결론과 서명이 모두 있어야 통과합니다.",
 		EN: "Finalizing goes through the same gate as <code>pqcaton-decide close</code> — " +
 			"every mandatory item needs a conclusion, and the signature must be present."}
@@ -245,7 +245,7 @@ var (
 var (
 	tScopeIntro = T{
 		KO: "이 화면에서는 <b>노드 안의 무엇을 계속 볼지</b>를 정합니다. " +
-			"인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에 답해야 하므로, " +
+			"인벤토리에서 뺀 자산은 나중에 「왜 이것은 안 봤나」에 답해야 하므로, " +
 			"<b>왜 뺐는지를 적어야 확정됩니다.</b>",
 		EN: "This is where you decide <b>what to keep looking at inside a node</b>. " +
 			"An asset you drop from the inventory is something you will have to account " +
@@ -261,9 +261,9 @@ var (
 	tColMeans   = T{KO: "뜻", EN: "Meaning"}
 
 	tRuleAction = T{
-		KO: "<b>exclude</b> — 이 자산을 인벤토리에서 뺍니다. 나중에 「왜 이건 안 봤나」에 " +
+		KO: "<b>exclude</b>: 이 자산을 인벤토리에서 뺍니다. 나중에 「왜 이것은 안 봤나」에 " +
 			"답해야 하므로, 아래에서 <b>왜 뺐는지를 적어야 확정됩니다.</b> " +
-			"<b>include</b> — 다시 넣습니다. 위 계층이 뺀 것을 되돌릴 때 씁니다.",
+			"<b>include</b>: 다시 넣습니다. 위 계층이 뺀 것을 되돌릴 때 씁니다.",
 		EN: "<b>exclude</b> — drop this asset from the inventory. You will have to account " +
 			"for it later, so <b>you must record below why you dropped it</b> before it can " +
 			"be finalized. <b>include</b> — put it back, to undo an exclusion from a layer above."}
@@ -271,18 +271,18 @@ var (
 		KO: "런타임 이름. <code>openssl</code> · <code>jca</code> · <code>cng</code> 같은 것. 비우면 <b>전부</b>입니다",
 		EN: "Which runtime — <code>openssl</code>, <code>jca</code>, <code>cng</code>. Empty means <b>all</b>"}
 	tRuleLib = T{
-		KO: "라이브러리 이름. <code>*</code> 를 쓸 수 있습니다 — <code>libcrypto.so.*</code>",
+		KO: "라이브러리 이름. <code>*</code> 를 쓸 수 있습니다. <code>libcrypto.so.*</code>",
 		EN: "Library name. <code>*</code> is allowed — <code>libcrypto.so.*</code>"}
 	tRuleAppKey = T{
 		KO: "그 라이브러리를 쓰는 실행 파일. <code>/usr/bin/python*</code> · <code>/usr/sbin/sshd</code>",
 		EN: "The executable using it. <code>/usr/bin/python*</code>, <code>/usr/sbin/sshd</code>"}
 	tRuleNote = T{
-		KO: "사람이 읽는 설명입니다. <b>판정의 근거가 아닙니다</b> — 근거는 아래 결론 칸에 적습니다",
+		KO: "사람이 읽는 설명입니다. <b>판정의 근거가 아닙니다.</b> 근거는 아래 결론 칸에 적습니다",
 		EN: "A note for people to read. <b>Not the reason for a judgment</b> — that goes in the conclusion field below"}
 
 	tRuleEmptyWarn = T{
 		KO: "<b>빈 칸은 「전부」입니다.</b> 그래서 <code>runtime</code>·<code>lib</code>·" +
-			"<code>app_key</code> 세 칸이 모두 빈 줄은 규칙으로 만들지 않습니다 — 그대로 두면 " +
+			"<code>app_key</code> 세 칸이 모두 빈 줄은 규칙으로 만들지 않습니다. 그대로 두면 " +
 			"<code>exclude</code> 하나로 <b>인벤토리가 통째로 빕니다.</b> 「전부」를 뜻하려면 " +
 			"<code>*</code> 를 적으십시오.",
 		EN: "<b>An empty cell means “all”.</b> That is why a row with " +
@@ -297,7 +297,7 @@ var (
 			"top to bottom (org → environment → node group). So a lower layer can put back " +
 			"an asset an upper layer excluded, and that reversal goes through approval too."}
 	tScopeTableOrder = T{
-		KO: "아래 표의 순서가 곧 계층 순서입니다 — <b>겹치면 아래쪽이 적용됩니다.</b>",
+		KO: "아래 표의 순서가 곧 계층 순서입니다. <b>겹치면 아래쪽이 적용됩니다.</b>",
 		EN: "The order of the tables below is the layer order — <b>on a clash, the lower one wins.</b>"}
 
 	tLayer         = T{KO: "계층", EN: "Layer"}
@@ -305,12 +305,12 @@ var (
 	tSaveRules     = T{KO: "규칙 저장", EN: "Save rules"}
 	tSaveRulesHint = T{
 		KO: "저장하면 계층 파일에 그대로 쓰고, <b>그 결과 무엇이 달라지는지를 아래에 다시 " +
-			"보여 줍니다.</b> 적어 둔 판정은 그대로 남습니다 — 규칙 자체가 달라진 것만 " +
+			"보여 줍니다.</b> 적어 둔 판정은 그대로 남습니다. 규칙 자체가 달라진 것만 " +
 			"다시 판정하면 됩니다.",
 		EN: "Saving writes straight to the layer files and then <b>shows below what that " +
 			"changes.</b> Judgments you already wrote stay — only rules that actually " +
 			"changed need judging again."}
-	tScopeEditResult = T{KO: "고친 결과 — 승인할 변경", EN: "What your edits change — for approval"}
+	tScopeEditResult = T{KO: "고친 결과: 승인할 변경", EN: "What your edits change — for approval"}
 	tRemoveRuleHint  = T{
 		KO: "줄을 지우려면 <code>runtime</code>·<code>lib</code>·<code>app_key</code> 를 모두 비우십시오.",
 		EN: "To delete a row, clear <code>runtime</code>, <code>lib</code> and <code>app_key</code>."}
@@ -327,7 +327,7 @@ var (
 		KO: "예: OS 패치로 관리하므로 인벤토리에서 뺀다",
 		EN: "e.g. managed by OS patching, so kept out of the inventory"}
 	tScopeEmpty = T{
-		KO: "바뀐 규칙이 없습니다 — 승인할 것이 없습니다.",
+		KO: "바뀐 규칙이 없습니다. 승인할 것이 없습니다.",
 		EN: "No rules changed — nothing to approve."}
 
 	tScopeConclusionHint = T{
@@ -361,7 +361,7 @@ var (
 	tSurveyObserved     = T{KO: "관측", EN: "Observation"}
 	tSurveyObservedHint = T{
 		KO: "pqcota 가 무엇을 보았는지 보여 줍니다. 대상 노드에 collector를 가져가 실행하고 " +
-			"회수했습니다 — 노드에는 아무것도 남지 않습니다.",
+			"회수했습니다. 노드에는 아무것도 남지 않습니다.",
 		EN: "What pqcota saw. The collector was carried to the target node, run, and taken " +
 			"back — nothing is left behind on the node."}
 	tColCollector  = T{KO: "그 노드에서 실행된 collector", EN: "Collectors that ran on it"}
@@ -371,15 +371,15 @@ var (
 
 	tNotSeen     = T{KO: "못 본 것", EN: "What was not seen"}
 	tNotSeenNone = T{
-		KO: "없습니다 — 이 범위에서는 관측이 완전합니다.",
+		KO: "없습니다. 이 범위에서는 관측이 완전합니다.",
 		EN: "Nothing — observation is complete for this scope."}
 	tNotSeenLayer = T{
-		KO: "이 계층을 아예 보지 못했습니다 —", EN: "This layer was never observed —"}
+		KO: "이 계층을 아예 보지 못했습니다: ", EN: "This layer was never observed —"}
 	tNotSeenEdges = T{
-		KO: "이 노드의 통신을 보지 못했습니다 —", EN: "This node's traffic was not observed —"}
+		KO: "이 노드의 통신을 보지 못했습니다: ", EN: "This node's traffic was not observed —"}
 	tNotSeenHint = T{
 		KO: "<b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED 가 「쓰지 않는 것」인지 " +
-			"「보지 못한 것」인지는 위 목록이 가릅니다 — <b>위에 적힌 것이면 재수집이 먼저</b>이고, " +
+			"「보지 못한 것」인지는 위 목록에서 구분합니다. <b>위에 적힌 것이면 재수집이 먼저</b>이고, " +
 			"아니면 사람이 판정할 차례입니다.",
 		EN: "<b>Not seen is not the same as not there.</b> Whether an UNOBSERVED below means " +
 			"“not used” or “not looked at” is settled by the list above — " +
@@ -396,7 +396,7 @@ var (
 		EN: "The crypto runtimes and components inside each node, in three states against the declaration."}
 	tSurveyNoAssets = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
 	tUndeclaredHint = T{
-		KO: "<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b> — 선언에 없는데 " +
+		KO: "<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b>. 선언에 없는데 " +
 			"실제로 쓰이고 있는 것입니다. 판정은 <a href=\"/review\">판정(리뷰 큐)</a> 탭에서 합니다.",
 		EN: "<b>Finding UNDECLARED is the first thing this tool is good for</b> — things in " +
 			"actual use that nobody declared. Judge them in the " +
@@ -412,7 +412,7 @@ var (
 		EN: "🟢 PQC <b>%d</b> · 🔴 classical <b>%d</b> · ⚪ unknown <b>%d</b>"}
 	tColGroup       = T{KO: "협상 그룹", EN: "Negotiated group"}
 	tColReconcile   = T{KO: "대조", EN: "Reconciled"}
-	tGradeClassical = T{KO: "고전 — 양자 취약", EN: "classical — quantum-vulnerable"}
+	tGradeClassical = T{KO: "고전(양자 취약)", EN: "classical — quantum-vulnerable"}
 	tGradeUnknown   = T{KO: "불명", EN: "unknown"}
 	tUncoveredSrc   = T{KO: "관측 안 된 노드", EN: "node not observed"}
 	tOffScope       = T{KO: "등재 판정 요청", EN: "needs enrollment decision"}
@@ -424,7 +424,7 @@ var (
 		EN: "Colour is the quantum-resistance grade, line style the reconciliation state. " +
 			"<b>What was not seen is dashed</b>, so it is distinct from what is absent."}
 	tNoDot = T{
-		KO: "<code>dot</code>(Graphviz)이 이 기계에 없어 그리지 못했습니다 — " +
+		KO: "<code>dot</code>(Graphviz)이 이 기계에 없어 그리지 못했습니다. " +
 			"<b>선택 사항입니다.</b>",
 		EN: "<code>dot</code> (Graphviz) is not on this machine, so the graph was not " +
 			"drawn — <b>it is optional</b>."}
@@ -447,13 +447,13 @@ var (
 	tInventoryIntro = T{
 		KO: "인벤토리에 지금 무엇이 있는지 <b>검색하는 화면</b>입니다. 선언 → 자산 스코프 → " +
 			"대조 → 판정 순서를 거쳐 올 필요는 없습니다. 언제든 열어서 조건을 걸어 찾으면 됩니다. " +
-			"<b>지난 판정과 그 근거도 여기서 봅니다</b> — 아래 「판정 이력」과 「근거가 바뀐 판정」입니다.",
+			"<b>지난 판정과 그 근거도 여기서 봅니다</b>. 아래 「판정 이력」과 「근거가 바뀐 판정」입니다.",
 		EN: "This screen <b>searches what is in the inventory right now</b>. You do not have to " +
 			"arrive through the declaration → asset scope → reconciliation → judgment sequence — " +
 			"open it whenever you like and narrow things down. <b>Past judgments and their basis " +
 			"are here too</b> — see “judgment history” and “judgments whose basis changed” below."}
 	tInventoryBounds = T{
-		KO: "이 화면이 읽는 것은 <b>지금 가지고 있는 파일뿐입니다</b> — 관측 결과, 판정 원장, " +
+		KO: "이 화면이 읽는 것은 <b>지금 가지고 있는 파일뿐입니다</b>. 관측 결과, 판정 원장, " +
 			"정책 CSV. 여러 시점의 스냅샷을 쌓아 두고 시간에 따라 비교하는 기능은 없습니다.",
 		EN: "This screen reads <b>only the files you have right now</b> — collected results, " +
 			"the judgment ledger, the policy CSV. It does not keep snapshots from many points " +
@@ -474,7 +474,7 @@ var (
 	tUnseenNote = T{
 		KO: "암호 자산 스코프가 뺀 것입니다.", EN: "What the crypto asset scope dropped."}
 	tUnseenHint = T{
-		KO: "<b>뺐다고 없어진 것이 아닙니다.</b> 지금도 관측되는 것에는 표시가 붙습니다 — " +
+		KO: "<b>뺐다고 없어진 것이 아닙니다.</b> 지금도 관측되는 것에는 표시가 붙습니다. " +
 			"승인이 없거나 오래된 것은 다시 봐야 합니다.",
 		EN: "<b>Dropped is not gone.</b> Anything still observed is marked — " +
 			"if the approval is missing or stale, it needs looking at again."}
@@ -483,22 +483,22 @@ var (
 	tColWhyAgain   = T{KO: "다시 볼 이유", EN: "Why look again"}
 	tReasonSettled = T{KO: "승인이 아직 유효합니다", EN: "the approval is still valid"}
 	tReasonNever   = T{KO: "이 제외를 승인한 판정이 없습니다", EN: "no judgment ever approved this exclusion"}
-	tReasonStaleKO = T{KO: "승인한 지 오래됐습니다 — 빼둔 사이 달라졌을 수 있습니다", EN: "the approval is stale — things may have changed while it was set aside"}
+	tReasonStaleKO = T{KO: "승인한 지 오래됐습니다. 빼둔 사이 달라졌을 수 있습니다", EN: "the approval is stale — things may have changed while it was set aside"}
 	tColEvidence   = T{KO: "관측 근거", EN: "Evidence"}
 
 	tStale     = T{KO: "근거가 바뀐 판정", EN: "Judgments whose basis changed"}
 	tStaleHint = T{
 		KO: "재관측 뒤 <b>근거가 달라진 판정</b>입니다. 전면 재리뷰가 아니라 이것만 " +
-			"다시 봅니다 — <code>pqcaton-decide delta</code> 와 같은 계산입니다.",
+			"다시 봅니다. <code>pqcaton-decide delta</code> 와 같은 계산입니다.",
 		EN: "These are <b>judgments resting on a basis that changed</b> after re-collection. " +
 			"Not a full re-review — only these need looking at again, the same computation as " +
 			"<code>pqcaton-decide delta</code>."}
-	tStaleNone = T{KO: "근거가 바뀐 판정이 없습니다 — 관측이 그대로입니다.", EN: "No judgment's basis changed — the observation has not moved."}
+	tStaleNone = T{KO: "근거가 바뀐 판정이 없습니다. 관측이 그대로입니다.", EN: "No judgment's basis changed — the observation has not moved."}
 
 	tHistory     = T{KO: "판정 이력", EN: "Judgment history"}
 	tHistoryHint = T{
 		KO: "이 자산을 <b>누가 언제 무엇으로 정했는지</b> 봅니다. 원장에는 덧붙이기만 하므로 " +
-			"한 번 남긴 판정은 고쳐 쓸 수 없습니다 — 아래가 그 기록 그대로입니다.",
+			"한 번 남긴 판정은 고쳐 쓸 수 없습니다. 아래가 그 기록 그대로입니다.",
 		EN: "<b>When, by whom, and as what</b> this asset was decided. The ledger is " +
 			"append-only, so nothing is overwritten — what is below is the record itself."}
 	tHistoryNone   = T{KO: "이 자산에 내려진 판정이 없습니다.", EN: "No judgment was ever recorded for this asset."}
@@ -509,12 +509,12 @@ var (
 	tColBasis      = T{KO: "근거 해시", EN: "Basis hash"}
 
 	tNoLedger = T{
-		KO: "판정 원장을 주지 않았습니다 — <code>-judgments</code> 로 지정하면 이력과 " +
+		KO: "판정 원장을 주지 않았습니다. <code>-judgments</code> 로 지정하면 이력과 " +
 			"「근거가 바뀐 판정」이 열립니다.",
 		EN: "No judgment ledger was given — pass <code>-judgments</code> to open the history " +
 			"and the “basis changed” section."}
 	tNoPolicy = T{
-		KO: "정책 CSV를 주지 않았습니다 — <code>-scope-out</code>(확정된 정책)을 주면 " +
+		KO: "정책 CSV를 주지 않았습니다. <code>-scope-out</code>(확정된 정책)을 주면 " +
 			"「안 보고 있는 것」이 열립니다.",
 		EN: "No policy CSV was given — pass <code>-scope-out</code> (the finalized policy) " +
 			"to open “what is not being looked at”."}

@@ -12,7 +12,7 @@ var koGate = []struct {
 	err error
 	ko  string
 }{
-	{decision.ErrMandatoryPending, "확정할 수 없습니다: 아직 판정하지 않은 필수 항목이 남아 있습니다 — 필수 항목은 하나도 빠짐없이 판정해야 합니다"},
+	{decision.ErrMandatoryPending, "확정할 수 없습니다: 아직 판정하지 않은 필수 항목이 남아 있습니다. 필수 항목은 하나도 빠짐없이 판정해야 합니다"},
 	{decision.ErrNoSignature, "확정할 수 없습니다: 승인 서명이 없습니다"},
 	{decision.ErrNotInReview, "확정할 수 없습니다: 세션이 in-review 상태가 아닙니다"},
 	{decision.ErrNotDraft, "리뷰를 시작할 수 없습니다: 세션이 draft 상태가 아닙니다"},
