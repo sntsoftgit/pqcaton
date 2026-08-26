@@ -195,7 +195,7 @@
 | **[IC-K6](../tools/checkprose/main_test.go) ✅** | 기준선보다 늘어남 | 막고 **무엇이 얼마나 늘었는지 알려 준다** |
 | **[IC-K7](../tools/checkprose/main_test.go) ✅** | 기준선보다 줄어듦 | 이것도 막고 새로 찍으라고 알려 준다. 고쳐 놓고 기준선을 안 내리면 그 자리가 도로 채워져도 알 수 없다 |
 | [IC-K8](../tools/checkprose/main_test.go) ✅ | 기준선을 찍고 다시 읽음 | 같다. 찍는 쪽과 읽는 쪽이 어긋나면 관문이 매번 붉어지고, 그러면 기준선을 지우는 것으로 끝난다 |
-| [IC-K9](../tools/checkcases/main_test.go) ✅ | 함께 나가는 `rules.tsv` | 읽힌다. 이름이 겹치지 않고 **무엇으로 바꿀지가 규칙마다 적혀 있다**. 막기만 하고 대안을 주지 않으면 고칠 수 없다 |
+| [IC-K9](../tools/checkprose/main_test.go) ✅ | 함께 나가는 `rules.tsv` | 읽힌다. 이름이 겹치지 않고 **무엇으로 바꿀지가 규칙마다 적혀 있다**. 막기만 하고 대안을 주지 않으면 고칠 수 없다 |
 | [IC-K10](../tools/checkprose/main_test.go) ✅ | 목록에 적힌 화면 문구 파일 | 실제로 있다. 화면 문구가 네 파일에 나뉘어 있어(`text*.go`) 규약으로 두면 새 파일이 관문 밖이 된다 |
 | [IC-K11](../tools/checkprose/main_test.go) ✅ | 함께 나가는 `overlap.txt` | 읽히고, 덮어도 바이트 수가 그대로다 |
 | [IC-K12](../tools/checkprose/main_test.go) ✅ | 한국어가 없는 줄의 엠대시 | 세지 않는다. 지침은 한국어를 명확하게 쓰라는 것이지 외국어를 고치라는 것이 아니다(「동작 범위」 1항). 화면 카탈로그가 KO 와 EN 을 나란히 적는 자리라 이 선이 없으면 영어 문장까지 세게 된다 |
