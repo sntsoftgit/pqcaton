@@ -11,6 +11,17 @@
 [`saas/runner`](saas/runner/README.md)입니다. 무엇을 보내고 무엇을 보내지 않는지가 그
 문서에 표로 있습니다.
 
+**어디부터 읽을지.**
+
+| 무엇을 하려는가 | 어디부터 |
+|---|---|
+| 한 바퀴 돌려 본다 | 아래 [사전 준비](#사전-준비) → [써보기](#써보기) |
+| 절차를 처음부터 끝까지 따라간다 | [여정](docs/journey.md) |
+| 왜 이렇게 만들었는지 본다 | [설계](docs/design.md) · [검증 기준](docs/testcases.md) |
+| 호스팅에서 무엇이 밖으로 나가는지 본다 | [`saas/runner`](saas/runner/README.md) |
+| 고친 것을 보낸다 | [CONTRIBUTING](CONTRIBUTING.md) · [CLA](CLA.md)([English](CLA.en.md)) |
+| 취약점을 알린다 | [SECURITY](SECURITY.md) |
+
 **이름**: *pqcaton*(발음 **P-caton**) = **PQC** + **baton**(지휘봉). pqcota가 교향악의 *단원*이라면
 이것은 지휘자가 쥐는 막대입니다. **지휘자는 운영자이고, pqcaton은 그가 사용하는 도구입니다.
 판단은 도구가 아니라 사람이 합니다.**
@@ -63,9 +74,7 @@ pqcota                          pqcaton
 본 것*인지 *이미 없어진 것*인지는 사람만 압니다. pqcota의 완전성 맵이 「원리상 관측 불가」인지
 「실제 없음」인지를 구분해 주고, 그 위에서 사람이 정합니다.
 
-**구조 그림**은 [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/)([소스](site/index.html)), **처음부터 끝까지 따라가는 여정**은
-[docs/journey.md](docs/journey.md)에 있습니다. 설계 근거는 [docs/design.md](docs/design.md),
-검증 기준은 [docs/testcases.md](docs/testcases.md)입니다.
+**구조 그림**은 [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/)에 있습니다([소스](site/index.html)).
 
 ## 사전 준비
 
