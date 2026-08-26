@@ -58,8 +58,12 @@ var extraGo = []string{
 	"pkg/inventory/ui/text_refusal.go",
 }
 
-// extraHTML — 같은 이유로 적어 두는 HTML. 리포 소개 페이지다.
-var extraHTML = []string{"site/index.html"}
+// extraHTML — 같은 이유로 적어 두는 HTML. 리포 소개 페이지와 화면 프로토타입이다.
+//
+// **새 파일이 생기면 여기에 더한다.** ui-next.html 을 만들고 이 목록에 안 넣었더니 한국어
+// 화면 문구가 든 파일이 관문 밖에 놓였고, 그 사이 엠대시가 셋 들어갔다. 목록이라야 빠진
+// 것이 보인다.
+var extraHTML = []string{"site/index.html", "site/ui-next.html"}
 
 const (
 	rulesFile    = "tools/checkprose/rules.tsv"

@@ -584,8 +584,10 @@ func TestStaticIsMounted(t *testing.T) {
 	}
 }
 
-// 비교 화면은 자료를 건드리지 않는 별도 주소다. 배포본에도 들어 있어야 하므로 site/의
-// 단일 원본을 바이너리에서 그대로 내보낸다.
+// IC-U25 — **비교 화면은 자료를 건드리지 않는 별도 주소다.**
+//
+// 배포본에도 들어 있어야 하므로 site/ 의 단일 원본을 바이너리에서 그대로 내보낸다.
+// ServeFile 로 소스 트리를 읽으면 설치된 바이너리에서 404 가 된다.
 func TestUINextIsMounted(t *testing.T) {
 	s, _ := newServer(t)
 	w := httptest.NewRecorder()

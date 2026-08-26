@@ -172,6 +172,7 @@
 | **[IC-U21](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | 계층 CSV만 주고 **세션 파일 없음** | 화면이 세션을 연다. 입력 파일을 이미 가지고도 명령을 한 번 돌려야 열리는 것은 화면을 두는 이유와 어긋난다 |
 | **[IC-U22](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | 화면에서 고친 규칙 | **계층 CSV에 그대로 쓰이고 pqcota가 읽는다.** 새 exclude 가 판정 대상으로 올라온다. 빈 줄은 규칙이 되지 않는다 |
 | **[IC-U23](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | 선언과 관측 결과만 주고 **세션 파일 없음** | 리뷰 큐가 열린다 |
+| [IC-U25](../inventory/cmd/pqcaton-ui/main_test.go) ✅ | `/ui-next.html` | **바이너리에서 그대로 나온다**(`site.UINext`). `ServeFile` 로 소스 트리를 읽으면 설치된 바이너리에서 404 가 된다. 현행 절차 화면과 헷갈리지 않게 **별도 주소로만** 열고 이동 링크에 넣지 않는다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |
