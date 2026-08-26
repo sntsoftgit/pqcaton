@@ -50,6 +50,40 @@ pqcota의 참조 플레이북으로 collector를 반입·실행·회수하고, �
 일이 날지 이 코드가 모르기 때문입니다. 나중에 새 종류가 생겨도 **옛 러너가 아무 표시 없이 엉뚱한
 일을 하지 않습니다.** 적용(`provision`)을 넣을 때는 이 파일에 그 사실이 먼저 보입니다.
 
+## 케이스
+
+**러너가 무엇을 지키는지는 이 표가 정하고, 그 옆의 테스트가 잽니다.** 번호는 테스트 주석에
+그대로 적혀 있고, `make check-cases` 가 표와 테스트를 맞대 어긋나면 막습니다.
+
+컨트롤 플레인 명세(`pqcaton-saas`)에도 같은 표가 있습니다. **원본은 여기입니다.** 코드가
+여기 있으니 케이스도 여기 있어야 합니다.
+
+> **번호가 비어 있습니다**(`RUN-1`·`11`·`14`·`16`·`17`). 작업 큐를 걷어내며 지운 케이스들입니다.
+> 작업 id를 결과에 실어 닫기 · `--limit`으로 대상 좁히기 · 점유 만료 데드라인 · 작업 종류 분기.
+> **번호를 당기지 않습니다.** 커밋과 이력이 그 번호로 그 케이스를 가리키고 있습니다.
+
+| 케이스 | Given → When | Then | 목적 |
+|---|---|---|---|
+| [RUN-2](runner_test.go) | `TestNothingIsAskedOfTheControlPlane`: 컨트롤 플레인에 할 일을 묻지 않는다 | 스케줄만으로 돈다 | **스케줄이 곧 관측 주기입니다.** 물어야 돈다면 그 자리가 비어 있는 동안 관측이 통째로 멈춥니다 |
+| [RUN-3](runner_test.go) | `TestSentResultsAreNotResent`: 두 번 실행 | 같은 결과가 다시 안 올라간다 | 매번 다시 올리면 멱등이 접어 주더라도 러너와 경계가 헛일을 합니다 |
+| **[RUN-4](runner_test.go)** | `TestFailedUploadKeepsTheFiles`: 업로드 실패 | 파일을 **그대로 둔다** | 옮겨 버리면 그 관측은 영영 못 올라갑니다 |
+| **[RUN-5](runner_test.go)** | `TestTokenNeverLeaksIntoUrlOrError`: 실패 시 오류와 요청 URL | 토큰이 **어디에도 없다** | 질의 문자열은 프록시 로그에, 오류는 러너 로그에 남습니다 |
+| [RUN-6](runner_test.go) | `TestNothingToDoSendsNothing`: 올릴 것이 없음 | 아무것도 안 보낸다 | 빈 요청은 경계에 비용만 줍니다 |
+| [RUN-7](runner_test.go) | `TestConfigNeedsTokenAndApi`: 토큰·주소 없는 설정 | 열리지 않는다 | 토큰에서 조직과 영역이 유도됩니다. 없으면 할 수 있는 일이 없습니다 |
+| **[RUN-8](runner_test.go)** | `TestBrokenFileIsSetAsideNotDropped`: 깨진 JSON이 섞임 | 나머지는 올리고 깨진 것은 `bad/`로 | 그대로 두면 다음 실행마다 걸려 **그 디렉터리가 영영 안 올라갑니다.** 지우지는 않습니다. 유일한 증거입니다 |
+| [RUN-9](runner_test.go) | `TestOldResultsAreSweptByAge`: 오래된 결과 | `sent`는 지워지고 `bad`는 남는다 | 디스크가 차면 관측이 멈춥니다. 그렇다고 증거까지 같은 기간에 지우면 원인을 못 봅니다 |
+| [RUN-10](runner_test.go) | `TestKeepDaysConfig`: 0 · 음수 · 오타 | 0은 안 지움, 나머지는 거절 | 오타를 「지우지 않음」으로 삼키면 디스크가 아무 표시 없이 찹니다 |
+| **[RUN-12](runner_test.go)** | `TestFailedPlaybookStillUploadsWhatExists`: 플레이북 실패 | 생긴 결과는 **올린다.** 다만 오류로 끝난다 | 반쯤 나온 것을 버리면 그 관측은 사라집니다. 아무 표시 없이 0으로 끝내면 스케줄러가 잘 돈 것으로 읽습니다 |
+| [RUN-13](runner_test.go) | `TestNoPlaybookStillUploads`: 플레이북 미설정 | 올리기만 한다 | 러너의 값은 「올리는 입」이지 「돌리는 손」이 아닙니다 |
+| **[RUN-15](lock_unix_test.go)** | `TestSecondRunDoesNothingWhileFirstHoldsTheLock`: 이전 실행이 아직 끝나지 않음 | 아무것도 안 한다. 풀리면 다음이 실행된다 | cron은 이전 실행을 보지 않습니다. 겹치면 **같은 노드에 두 플레이북이 붙습니다** |
+| **[RUN-18](runner_test.go)** | `TestEnrollmentsGoToTheirOwnEndpoint`: 연결확인이 막히고 관측은 정상 | 관측은 올라가고, 못 올린 연결확인은 **그대로 남는다** | 둘은 같은 때에 올라오지 않습니다. 한 본문에 묶으면 하나가 막힐 때 나머지도 묵힙니다 |
+| **[RUN-19](runner_test.go)** | `TestAddrBecomesATokenAndNeverLeaves`: 주소가 적힌 연결확인 | 토큰만 나가고 **원본은 본문 어디에도 없다.** 같은 주소는 늘 같은 토큰 | 이 제품이 파는 성질입니다. 우리 DB가 털려도 **내부 주소 지도가 나오지 않습니다.** 토큰이 매번 달라지면 영역 간에 같은 상대를 이어 붙일 수 없습니다(§6.3.1) |
+| **[RUN-20](runner_test.go)** | `TestConnectedWithoutFingerprintIsReportedAsFailure`: 붙었다는데 지문이 없음 | 사유를 붙여 올린다 | 그대로 올리면 지문 없는 노드가 등재되어 **클론 검출을 통째로 빠져나갑니다.** 버리면 운영자는 등재된 줄 압니다 |
+| **[RUN-21](runner_test.go)** | `TestEnrollmentsGoUpWithoutAnyResults`: 관측 결과가 하나도 없음 | 연결확인만으로 올린다 | 첫 등재는 결과가 없을 때 일어납니다. 결과가 있어야만 올린다면 **아무도 등재되지 못합니다** |
+| [RUN-22](runner_test.go) | `TestEnrollmentWithoutNodeIdIsSetAside`: `node_id` 없는 파일이 섞임 | 나머지는 올리고 그것만 `bad/`로 | 컨트롤 플레인이 쓸 수 없는 파일입니다. 그대로 두면 다음 실행마다 걸립니다. 지우지는 않습니다 |
+| **[RUN-23](runner_test.go)** | `TestServerReasonIsReadableInTheRunnerLog`: 402와 사유를 받음 | 사유가 **사람이 읽는 문장으로** 로그에 나온다 | `{"error":…}` 를 그대로 찍으면 **제품이 보내는 가장 중요한 말**(무료 기간이 끝났다는 안내)이 잡음에 묻힙니다. 운영자가 알아보지 못하면 멈춘 이유를 코드에서 찾습니다 |
+| [RUN-24](runner_test.go) | `TestNonJSONBodyIsPassedThrough`: 앞단 프록시의 502 등 | **받은 그대로** 낸다 | 원문 자체가 단서입니다. 우리 모양이 아니라고 삼키면 아무 말도 남지 않습니다 |
+
 ## 무엇이 무엇으로 막는지: 뭉뚱그리지 않습니다
 
 둘은 강도가 다릅니다. 같은 것처럼 적으면 약한 쪽이 실제보다 강하게 들립니다.
