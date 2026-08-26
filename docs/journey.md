@@ -62,6 +62,58 @@ flowchart TB
 
 굵은 상자 안은 이 문서의 [2](#2-선언-조직이-이렇게-알고-있다고-적은-것)·[4](#4-대조-3-상태)·[5](#5-리뷰--확정)절입니다.
 
+### 명령과 화면이 하는 일
+
+이 리포의 명령들이 **어떤 차례로 돌고, 무엇을 넣으면 무엇이 나오는지**입니다. 각 단계를
+왜 그렇게 만들었는지는 [설계](design.md)에 있습니다.
+
+```mermaid
+flowchart TB
+  subgraph P["pqcota — 관측"]
+    COL["collector<br/>대상 노드에서 실행"]
+    ING["pqcota-ingest<br/>-scope-assets"]
+    PRV["pqcota-provision"]
+  end
+
+  subgraph C["pqcaton — 대조·판정·확정"]
+    DECL["① 선언<br/>declaration.json"]
+    SCOPE["② 자산 스코프<br/>pqcaton-scope open → close"]
+    REP["③ 대조<br/>pqcaton-report"]
+    DEC["④ 판정<br/>pqcaton-decide open -results"]
+    FIN["⑤ 확정<br/>pqcaton-decide close"]
+  end
+
+  DECL --> SCOPE
+  SCOPE -->|"asset-scope.csv"| ING
+  COL -->|"results/*.json"| ING
+  ING --> REP
+  DECL --> REP
+  REP -->|"같은 계산"| DEC
+  DEC -->|"session.json<br/>사람이 채운다"| FIN
+  FIN -->|"plan.json"| PRV
+  FIN -->|"judgments.jsonl"| LED["판정 원장<br/>append-only"]
+```
+
+| 명령 | 하는 일 | 입력 | 출력 |
+|---|---|---|---|
+| [`pqcaton-scope open`](../inventory/cmd/pqcaton-scope) | 계층을 겹쳐 **바뀐 규칙만** 승인 대상으로 올립니다 | 계층 CSV 여럿 · `-base` 현재 정책 | 스코프 세션(바뀐 규칙만) |
+| `pqcaton-scope close` | 승인을 확인하고 **정책을 배포 형태로** 만듭니다 | 사람이 채운 스코프 세션 | **`asset-scope.csv`** · 판정 원장 |
+| `pqcaton-scope review` | 빼둔 자산을 **이름으로** 다시 올립니다 | 정책 CSV · 관측 결과 | 다시 볼 제외분(승인 없음·만료) |
+| [`pqcaton-report`](../inventory/cmd/pqcaton-report) | 여러 노드의 관측을 선언과 **대조해 보여 줍니다** | 관측 결과 · 선언 | 콘솔 리포트 · 토폴로지 DOT |
+| [`pqcaton-decide open`](../inventory/cmd/pqcaton-decide) | 대조 결과에서 **사람이 판정할 것만** 골라 냅니다 | 선언 · **관측 결과**(`-results`) | 리뷰 세션(판정 대상) |
+| `pqcaton-decide open` *(지름길)* | **명령을 실행한 그 기계 자신**을 스캔해 같은 일을 합니다 | 선언 CSV | 리뷰 세션 |
+| `pqcaton-decide close` | **확정 관문**입니다. 결론과 서명이 다 있어야 계획이 나갑니다 | 사람이 채운 리뷰 세션 | **`plan.json`**(계약 형식) · 판정 원장 |
+| `pqcaton-decide delta` | 재관측 뒤 **근거가 바뀐 판정만** 골라 냅니다 | 판정 원장 · 지금 관측 | 근거가 바뀐 판정만 |
+| [`pqcaton-ui`](../inventory/cmd/pqcaton-ui) | 위 전부를 **화면에서** 다룹니다. 선언과 스코프 규칙을 고치고, 대조를 보고, 판정·확정하고, 인벤토리를 찾아봅니다. **세션도 화면이 엽니다** | 선언 · 관측 결과 · 계층 CSV · 판정 원장 | 같은 파일에 씁니다. **같은 관문입니다** |
+
+**사람이 하는 자리는 두 곳뿐입니다.** 스코프 세션과 리뷰 세션을 채우는 일입니다. 나머지는 파일이
+다음 명령의 입력이 됩니다. 그 파일들이 곧 감사 기록입니다.
+
+> 위 그림은 **명령으로 하는 길**입니다. 화면(`pqcaton-ui`)은 같은 다섯 단계를 같은 파일과
+> 같은 관문으로 지납니다. 입력 파일만 주면 세션까지 화면이 만듭니다. 왜 그렇게 했는지는
+> [설계 「세션은 입력 파일에서 나옵니다」](design.md)에 있습니다. **명령의 출력은 영어이고,
+> 화면은 한국어와 English 중에 고릅니다**([CONTRIBUTING 「어느 말로 쓰나」](../CONTRIBUTING.md#어느-말로-쓰나)).
+
 ---
 
 ## 0. 시작하기 전에
@@ -124,6 +176,22 @@ declaration.json     scope · nodes · assets · edges
 **선언이 비어 있어도 됩니다.** 그러면 전부 `UNDECLARED` 로 나옵니다. 「우리가 아는 것이 하나도
 없었다」가 첫 리포트입니다.
 
+### 「무엇을 볼 것인가」가 두 층입니다
+
+말이 겹치기 쉬운 자리라 적어 둡니다. 둘 다 관측 범위를 정하지만 **층이 다릅니다.**
+
+| | 무엇을 정하나 | 어디에 | 화면에서 |
+|---|---|---|---|
+| **관리 대상 노드** | **어느 노드**를 볼 것인가 | 선언의 `scope`(노드 이름 목록) | ① 선언 탭 안 |
+| **자산 스코프** | 그 노드 **안에서 무엇**을 계속 볼 것인가 | 정책 CSV(glob 규칙) | ② 암호 자산 스코프 탭 |
+
+노드를 등재해도 그 안에서 관측되는 것이 전부 관리 대상은 아닙니다. 시스템 기본 라이브러리나
+패키지 매니저가 딸려 넣은 런타임이 섞이면 인벤토리가 잡음에 묻힙니다(§1.6). 그래서 층이 둘입니다.
+
+> 코드와 이 문서는 pqcota 의 `scope.AssetPolicy` 를 따라 **「자산 스코프」** 라고 씁니다.
+> 화면은 무엇의 스코프인지가 드러나게 **「암호 자산 스코프」** 로 적고, 선언 안의 노드
+> 목록은 **「관리 대상 노드」** 로 불러 겹치지 않게 합니다.
+
 ---
 
 ## 3. 관측 · 적재: pqcota 2·3·3′·4·5
@@ -159,6 +227,22 @@ ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 **한 노드만 보려면 접근 준비와 적재를 건너뜁니다**(그림의 `관측 → 조회` 점선). 그때는 이 리포도
 필요 없습니다. 대조할 선언이 없고, 화면 출력에서 끝납니다.
 
+### 두 갈래: 주경로와 지름길
+
+| | 관측을 어디서 | 언제 쓰나 |
+|---|---|---|
+| **주경로** | pqcota 가 여러 노드에서 모은 `results/` | 실제 운영. `pqcaton-decide open -results` |
+| **지름길** | **명령을 실행한 그 기계 자신**(`/proc`) | 체험. `pqcaton-decide open decl.csv` |
+
+**지름길은 대상을 고르지 못합니다.** 원격 접속도 노드 선택도 없이 자기가 실행된 기계의 `/proc`
+하나만 읽습니다. 다른 노드를 관측하려면 pqcota 의 collector 를 그 노드에서 돌려야 합니다.
+그래서 두 가지가 따라옵니다.
+
+- **Linux 에서만** 됩니다. `/proc` 이 없으면 명령이 중단됩니다.
+- 노드 이름은 결과에 붙이는 **이름표일 뿐**입니다. `pqcaton-decide open decl.csv web-gw` 는
+  `web-gw` 를 관측하지 않고 **이 기계를 관측해 `web-gw` 라고 적습니다.** 이름이 맞으면 선언과 대조까지
+  되어 **다른 기계의 관측으로 CONFIRMED 가 나옵니다.** 그래서 다른 이름을 주면 경고합니다.
+
 ---
 
 ## 4. 대조: 3-상태
@@ -187,6 +271,16 @@ pqcaton-report <results-dir> <declaration.json> [topology.dot]
 ## 5. 리뷰 · 확정
 
 **대조 엔진은 정답을 주지 않습니다.** 판정 대상을 구조화해 사람에게 넘깁니다(§3.1).
+
+### 사람이 하는 일: 판정 · 승인 · 확정
+
+셋이 다른 일입니다. 화면과 명령이 같은 말을 씁니다.
+
+| | 무엇 | 없으면 |
+|---|---|---|
+| **판정** | 대상 하나(또는 정책·계층 하나)에 **결론**을 다는 것 | 필수 항목이 남아 확정되지 않습니다 |
+| **승인** | **승인자와 서명**을 채우는 것. 누가 책임지는가 | 서명이 없어 확정되지 않습니다 |
+| **확정** | 관문을 지나 **산출물이 나가는 것**(계획·정책) | 판정과 승인이 다 있어도 이 단계를 밟아야 나갑니다 |
 
 ```bash
 pqcaton-decide open declaration.json -results results/ -org acme > session.json
