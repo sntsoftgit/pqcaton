@@ -1,6 +1,6 @@
-.PHONY: all check-licenses check-text check-prose check-fmt build test generate verify-generated
+.PHONY: all check-licenses check-text check-prose check-cases check-fmt build test generate verify-generated
 
-all: check-licenses check-text check-prose check-fmt build test
+all: check-licenses check-text check-prose check-cases check-fmt build test
 
 # 라이선스 관문: 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
@@ -22,6 +22,16 @@ check-text:
 # 그러지 않으면 관문이 「낡았다」고 막는다. 걷어낸 자리가 도로 채워지는 것을 그렇게 잡는다.
 check-prose:
 	@go run ./tools/checkprose
+
+# 케이스 관문: docs/testcases.md 의 번호와 실제 테스트를 맞댄다.
+#
+# 문서가 「케이스 번호가 곧 테스트 파일 링크입니다」라고 약속해 놓고 백일흔넷 가운데 링크가
+# 하나도 없었다. 약속을 사람이 지키게 두면 이렇게 된다.
+#
+# 링크는 손으로 붙이지 않는다. `go run ./tools/checkcases -write` 가 찍는다. 손으로 붙이면
+# 파일을 옮기는 날 백일흔넷이 한꺼번에 썩는다.
+check-cases:
+	@go run ./tools/checkcases
 
 # 서식 관문: `gofmt` 가 고칠 것이 남아 있으면 멈춘다.
 #
