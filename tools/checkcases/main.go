@@ -64,7 +64,9 @@ var shapes = []*regexp.Regexp{
 var part = regexp.MustCompile(`^([A-Z]*)(\d+)$`)
 var sep = regexp.MustCompile(`\s*[·,]\s*`)
 
-const idAlt = `IC-[A-Z]+\d+|CP-[A-Z]+-\d+|RUN-\d+`
+// idAlt — 표의 번호 칸. **문서도 테스트처럼 축약해 적는다**(`CP-TOKEN-4·5·6`). 축약을 못
+// 읽으면 그 행이 통째로 안 보이고, 그러면 셋 다 「표에 없다」로 막힌다.
+const idAlt = `IC-[A-Z]+\d+(?:\s*[·,]\s*[A-Z]*\d+)*|CP-[A-Z]+-\d+(?:\s*[·,]\s*\d+)*|RUN-\d+(?:\s*[·,]\s*\d+)*`
 
 // row — 케이스 표의 첫 칸. 굵게가 대괄호 밖일 수도 안일 수도 있고, 상태 표시는 없을 수도
 // 있다(컨트롤 플레인 명세가 그렇다). 이미 링크가 붙은 것도 같은 자리에서 읽는다.
@@ -73,6 +75,7 @@ var row = regexp.MustCompile(
 
 type docCase struct {
 	id      string
+	covers  []string // 축약으로 한 행이 여러 번호를 맡는다. 링크는 첫 번호로 건다.
 	status  string
 	link    string
 	doc     string
@@ -111,8 +114,10 @@ func main() {
 	var problems []string
 	seen := map[string]bool{}
 	for _, c := range all {
-		seen[c.id] = true
-		files := tests[c.id]
+		for _, id := range c.covers {
+			seen[id] = true
+		}
+		files := tests[c.covers[0]]
 		want := ""
 		if len(files) > 0 {
 			want = linkTo(c.doc, files[0])
@@ -155,7 +160,7 @@ func main() {
 	}
 	missing := 0
 	for _, c := range all {
-		if c.link == "" && len(tests[c.id]) > 0 {
+		if c.link == "" && len(tests[c.covers[0]]) > 0 {
 			missing++
 		}
 	}
@@ -269,15 +274,16 @@ func scanDoc(d docSpec) ([]docCase, []string, error) {
 		if m == nil {
 			continue
 		}
-		id, link := m[5], ""
+		raw, link := m[5], ""
 		if m[3] != "" {
-			id, link = m[3], m[4]
+			raw, link = m[3], m[4]
 		}
-		if !containsStr(d.kinds, kindOf(id)) {
+		covers := ids(raw)
+		if len(covers) == 0 || !containsStr(d.kinds, kindOf(covers[0])) {
 			continue
 		}
 		out = append(out, docCase{
-			id: id, status: m[6], link: link, doc: d.path, line: i + 1,
+			id: raw, covers: covers, status: m[6], link: link, doc: d.path, line: i + 1,
 			boldOut: m[1] == "**", boldIn: m[2] == "**",
 		})
 	}

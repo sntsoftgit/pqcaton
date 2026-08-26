@@ -172,8 +172,10 @@ func TestShippedDocsAndTestsAgree(t *testing.T) {
 		}
 		total += len(cs)
 		for _, c := range cs {
-			seen[c.id] = true
-			if c.status != "🔜" && c.status != "⏳" && len(tests[c.id]) == 0 {
+			for _, id := range c.covers {
+				seen[id] = true
+			}
+			if c.status != "🔜" && c.status != "⏳" && len(tests[c.covers[0]]) == 0 {
 				t.Errorf("%s: %s 가 테스트를 주장하는데 그 번호를 단 테스트가 없다", d.path, c.id)
 			}
 		}
