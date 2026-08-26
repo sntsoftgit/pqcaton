@@ -81,5 +81,5 @@ I have read the CLA Document and I hereby sign the CLA
 > v2.0을 이 프로젝트에 맞춰 옮긴 것이며, 실제 분쟁에서의 해석은 준거법과 법원의 판단을
 > 따른다. 회사는 이 문안을 변호사 검토를 거쳐 갱신할 수 있고, 갱신 시 버전 번호가 오른다.
 >
-> **English version**: an English translation will be provided before this repository is
-> made public. Until then, contributions are accepted from Korean-reading contributors only.
+> **English version**: [CLA.en.md](CLA.en.md). 두 문안이 다르면 **한국어 원문을 따른다.**
+> 영문본은 같은 동의를 옮긴 것이지 별개의 동의가 아니다.
