@@ -49,6 +49,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
+	publicsite "github.com/sntsoftgit/pqcaton/site"
 )
 
 func main() {
@@ -216,6 +217,9 @@ func (s *server) handler() http.Handler {
 
 	// **첫 화면은 절차의 첫 자리다.** 선언이 있으면 거기서 시작하고, 없으면 리뷰 큐다.
 	r.Get("/", s.home)
+	// 비교 화면은 제품의 파일을 읽거나 쓰지 않는다. 같은 정적 원본을 Pages와 이 바이너리에
+	// 함께 싣는다. 현행 절차 화면과 헷갈리지 않게 별도 주소로만 연다.
+	r.Get("/ui-next.html", uiNext)
 	r.Get("/decl", s.declEdit)
 	r.Get(ui.RowPath, s.declRow)
 	r.Get(ui.RemovePath, s.declRemove)
@@ -231,6 +235,15 @@ func (s *server) handler() http.Handler {
 	r.Post("/save", s.save)
 	r.Post("/finalize", s.finalize)
 	return r
+}
+
+// uiNext — 현재 UI와 나란히 검토할 읽기 전용 정적 프로토타입.
+//
+// ServeFile로 소스 트리를 읽으면 설치된 바이너리에서는 404가 된다. site.UINext를 쓰면
+// Pages의 원본과 같은 바이트를 망이 끊긴 기계에서도 낸다.
+func uiNext(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(publicsite.UINext)
 }
 
 // rememberLang — 주소로 말을 고르면 쿠키에 남긴다.

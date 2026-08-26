@@ -584,6 +584,23 @@ func TestStaticIsMounted(t *testing.T) {
 	}
 }
 
+// 비교 화면은 자료를 건드리지 않는 별도 주소다. 배포본에도 들어 있어야 하므로 site/의
+// 단일 원본을 바이너리에서 그대로 내보낸다.
+func TestUINextIsMounted(t *testing.T) {
+	s, _ := newServer(t)
+	w := httptest.NewRecorder()
+	s.handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ui-next.html", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /ui-next.html = %d", w.Code)
+	}
+	if got := w.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type = %q", got)
+	}
+	if !strings.Contains(w.Body.String(), "pqcaton UI next") {
+		t.Error("비교 화면을 내보내지 않는다")
+	}
+}
+
 // withLayers — 계층 CSV만 준 서버. **세션 파일은 일부러 만들지 않는다.**
 func withLayers(t *testing.T) (*server, string) {
 	t.Helper()
