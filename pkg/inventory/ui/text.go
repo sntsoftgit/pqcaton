@@ -453,7 +453,7 @@ var (
 			"open it whenever you like and narrow things down. <b>Past judgments and their basis " +
 			"are here too</b> — see “judgment history” and “judgments whose basis changed” below."}
 	tInventoryBounds = T{
-		KO: "이 화면이 읽는 것은 <b>지금 가지고 있는 파일뿐입니다</b>. 관측 결과, 판정 원장, " +
+		KO: "이 화면이 읽는 것은 <b>지금 있는 파일뿐입니다</b>. 관측 결과, 판정 원장, " +
 			"정책 CSV. 여러 시점의 스냅샷을 쌓아 두고 시간에 따라 비교하는 기능은 없습니다.",
 		EN: "This screen reads <b>only the files you have right now</b> — collected results, " +
 			"the judgment ledger, the policy CSV. It does not keep snapshots from many points " +
