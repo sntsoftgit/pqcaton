@@ -142,7 +142,7 @@ func TestBuildReviewQueue(t *testing.T) {
 // IC-O1 — **다른 조직의 자산이 섞이면 대조하지 않는다.**
 //
 // 그냥 두면 오류가 아니라 그럴듯한 결과가 나온다 — 열쇠가 안 맞아 같은 자산이 UNDECLARED와
-// UNOBSERVED 한 쌍으로 갈리고, 리뷰 큐는 그것을 UNDECLARED 발견으로 올린다.
+// UNOBSERVED 한 쌍으로 갈리고, 리뷰 큐에는 UNDECLARED 발견으로 오른다.
 func TestReconcileRefusesAnotherOrg(t *testing.T) {
 	남 := AssetKey{Org: org.ID("beta"), NodeID: "n", Runtime: "openssl", Component: "libssl"}
 
