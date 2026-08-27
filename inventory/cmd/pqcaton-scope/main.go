@@ -50,7 +50,7 @@ const usage = `usage:
 
   To work through a screen instead, use pqcaton-ui - same files, same gate.`
 
-// 제외 승인의 기본 유효기간. 넘으면 「빼둔 사이 달라졌을 수 있다」로 다시 올린다.
+// 제외 승인의 기본 유효기간. 넘으면 「빼 둔 사이 달라졌을 수 있다」로 다시 올린다.
 const defaultTTLDays = 180
 
 func main() {

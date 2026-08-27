@@ -483,7 +483,7 @@ var (
 	tColWhyAgain   = T{KO: "다시 볼 이유", EN: "Why look again"}
 	tReasonSettled = T{KO: "승인이 아직 유효합니다", EN: "the approval is still valid"}
 	tReasonNever   = T{KO: "이 제외를 승인한 판정이 없습니다", EN: "no judgment ever approved this exclusion"}
-	tReasonStaleKO = T{KO: "승인한 지 오래됐습니다. 빼둔 사이 달라졌을 수 있습니다", EN: "the approval is stale — things may have changed while it was set aside"}
+	tReasonStaleKO = T{KO: "승인한 지 오래됐습니다. 빼 둔 사이 달라졌을 수 있습니다", EN: "the approval is stale — things may have changed while it was set aside"}
 	tColEvidence   = T{KO: "관측 근거", EN: "Evidence"}
 
 	tStale     = T{KO: "근거가 바뀐 판정", EN: "Judgments whose basis changed"}
