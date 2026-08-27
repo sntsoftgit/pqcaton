@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -147,38 +147,62 @@
   .flow   { stroke: currentColor; stroke-width: 1.4; fill: none; }
   .flow-a { stroke: var(--accent); stroke-width: 1.8; fill: none; }
   .hair   { stroke: var(--rule); stroke-width: 1; fill: none; }
+
+  /* 두 말을 한 파일에 담는다. 보이는 쪽만 남기고 나머지를 숨긴다.
+     파일을 갈라 두면 한쪽만 고쳐지는 날이 오고, 그날 어느 쪽이 최신인지 아무도 모른다.
+     스크립트가 막혀도 data-lang 의 초깃값 덕분에 한국어가 그대로 보인다. */
+  html[data-lang="ko"] [lang="en"] { display: none; }
+  html[data-lang="en"] [lang="ko"] { display: none; }
+
+  .langbtn {
+    font: inherit; font-size: 13px; color: var(--ink-2);
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 3px 10px; margin-left: 14px; cursor: pointer;
+  }
+  .langbtn:hover { color: var(--accent); border-color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<nav aria-label="사이트">
+<nav data-label-ko="사이트" data-label-en="Site" aria-label="사이트">
   <a class="brand" href="./">pqcaton</a>
   <span class="navsep">/</span>
-  <span class="navhere">아키텍처</span>
+  <span class="navhere"><span lang="ko">아키텍처</span>
+  <span lang="en">Architecture</span></span>
   <a class="navout" href="https://github.com/sntsoftgit/pqcaton">GitHub</a>
+  <button class="langbtn" id="langtoggle" type="button"><span lang="ko">English</span>
+  <span lang="en">한국어</span></button>
 </nav>
 
 <header>
   <p class="eyebrow">pqcaton · architecture</p>
-  <h1>관측 위에 판정을 얹는 구조</h1>
+  <h1><span lang="ko">관측 위에 판정을 얹는 구조</span>
+  <span lang="en">Judgment laid on top of observation</span></h1>
   <p class="lede">
-    pqcota가 관측하고, pqcaton이 그 관측을 선언과 대조해 리뷰에 올리고 확정합니다.
-    두 리포는 <strong>계약(<code>contracts/</code>)으로만</strong> 이어집니다. 코드가 서로를 부르지 않습니다.
+    <span lang="ko">pqcota가 관측하고, pqcaton이 그 관측을 선언과 대조해 리뷰에 올리고 확정합니다.
+    두 리포는 <strong>계약(<code>contracts/</code>)으로만</strong> 이어집니다. 코드가 서로를 부르지 않습니다.</span>
+    <span lang="en">pqcota observes; pqcaton reconciles those observations against the declaration, puts them
+    in a review queue and finalizes them. The two repositories are joined <strong>only by contracts
+    (<code>contracts/</code>)</strong> — neither calls the other's code.</span>
   </p>
 </header>
 
-<h2><span class="num">01</span>한눈에</h2>
+<h2><span class="num">01</span><span lang="ko">한눈에</span>
+<span lang="en">At a glance</span></h2>
 
 <p>
-  왼쪽이 기반(pqcota), 오른쪽이 이 리포(pqcaton)입니다. 가운데 띠가 둘 사이를 잇는 유일한 통로이고,
-  <strong>화살표는 그 띠를 두 번 건넙니다.</strong> 관측이 오른쪽으로 가고, 확정된 계획이 왼쪽으로 돌아갑니다.
+  <span lang="ko">왼쪽이 기반(pqcota), 오른쪽이 이 리포(pqcaton)입니다. 가운데 띠가 둘 사이를 잇는 유일한 통로이고,
+  <strong>화살표는 그 띠를 두 번 건넙니다.</strong> 관측이 오른쪽으로 가고, 확정된 계획이 왼쪽으로 돌아갑니다.</span>
+  <span lang="en">The base (pqcota) is on the left, this repository (pqcaton) on the right. The band in the
+  middle is the only passage between them, and <strong>the arrows cross it twice</strong>: observations
+  travel right, finalized plans come back left.</span>
 </p>
 
 <figure>
 <div class="scroll">
 <svg viewBox="0 0 960 648" role="img"
-     aria-label="pqcota의 수집·커널·적재·선언·전환 계층과 pqcaton의 대조·판정 계층이 contracts 계약 띠를 사이에 두고 마주보며, 관측과 선언이 오른쪽으로 건너가고 확정된 계획이 왼쪽으로 돌아오는 블록 다이어그램">
+     data-label-ko="pqcota의 수집·커널·적재·선언·전환 계층과 pqcaton의 대조·판정 계층이 contracts 계약 띠를 사이에 두고 마주보며, 관측과 선언이 오른쪽으로 건너가고 확정된 계획이 왼쪽으로 돌아오는 블록 다이어그램" data-label-en="A block diagram in which pqcota's collector, kernel, ingest, declaration and conversion layers face pqcaton's reconciliation and judgment layers across the contracts band, with observations and declarations crossing to the right and finalized plans returning to the left" aria-label="pqcota의 수집·커널·적재·선언·전환 계층과 pqcaton의 대조·판정 계층이 contracts 계약 띠를 사이에 두고 마주보며, 관측과 선언이 오른쪽으로 건너가고 확정된 계획이 왼쪽으로 돌아오는 블록 다이어그램">
   <defs>
     <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -188,62 +212,82 @@
     </marker>
   </defs>
 
-  <text class="lbl-cap" x="24" y="26">PQCOTA: 관측 · 정규화 · 전환</text>
+  <text class="lbl-cap" x="24" y="26" lang="ko">PQCOTA: 관측 · 정규화 · 전환</text>
+  <text class="lbl-cap" x="24" y="26" lang="en">PQCOTA: OBSERVE · NORMALIZE · CONVERT</text>
   <text class="lbl-cap" x="418" y="26" text-anchor="middle">CONTRACTS</text>
-  <text class="lbl-cap" x="936" y="26" text-anchor="end">PQCATON: 대조 · 판정 · 거버넌스</text>
+  <text class="lbl-cap" x="936" y="26" text-anchor="end" lang="ko">PQCATON: 대조 · 판정 · 거버넌스</text>
+  <text class="lbl-cap" x="936" y="26" text-anchor="end" lang="en">PQCATON: RECONCILE · JUDGE · GOVERN</text>
 
   <!-- 계약 띠 -->
   <rect class="band" x="358" y="52" width="120" height="564" rx="6"/>
   <text class="lbl-mono" x="418" y="78" text-anchor="middle">proto → gen/</text>
   <line class="hair" x1="374" y1="92" x2="462" y2="92"/>
-  <text class="lbl-sm" x="418" y="116" text-anchor="middle">어휘의</text>
-  <text class="lbl-sm" x="418" y="134" text-anchor="middle">단일 출처</text>
+  <text class="lbl-sm" x="418" y="116" text-anchor="middle" lang="ko">어휘의</text>
+  <text class="lbl-sm" x="418" y="116" text-anchor="middle" lang="en">single source</text>
+  <text class="lbl-sm" x="418" y="134" text-anchor="middle" lang="ko">단일 출처</text>
+  <text class="lbl-sm" x="418" y="134" text-anchor="middle" lang="en">of vocabulary</text>
 
   <!-- ── 왼쪽: pqcota ── -->
   <rect class="box-up" x="24" y="52" width="300" height="88" rx="5"/>
-  <text class="lbl" x="40" y="78">수집기: 대상 노드에서 돈다</text>
+  <text class="lbl" x="40" y="78" lang="ko">수집기: 대상 노드에서 돈다</text>
+  <text class="lbl" x="40" y="78" lang="en">Collectors: run on the target node</text>
   <text class="lbl-mono" x="40" y="100">collectors/{openssl, jvm, cng, network}</text>
-  <text class="lbl-sm" x="40" y="122">ansible/discover.yml 이 반입·실행·회수</text>
+  <text class="lbl-sm" x="40" y="122" lang="ko">ansible/discover.yml 이 반입·실행·회수</text>
+  <text class="lbl-sm" x="40" y="122" lang="en">ansible/discover.yml ships, runs and collects them</text>
 
   <rect class="box-up" x="24" y="168" width="300" height="104" rx="5"/>
-  <text class="lbl" x="40" y="194">커널: 관측을 사실로 바꾼다</text>
+  <text class="lbl" x="40" y="194" lang="ko">커널: 관측을 사실로 바꾼다</text>
+  <text class="lbl" x="40" y="194" lang="en">Kernel: turns observation into fact</text>
   <text class="lbl-mono" x="40" y="216">kernel/posture · registry</text>
-  <text class="lbl-sm" x="40" y="236">협상된 그룹 → 양자내성 등급</text>
+  <text class="lbl-sm" x="40" y="236" lang="ko">협상된 그룹 → 양자내성 등급</text>
+  <text class="lbl-sm" x="40" y="236" lang="en">negotiated group → quantum-resistance grade</text>
   <text class="lbl-mono" x="40" y="256">kernel/machineid · scope · sign</text>
 
   <rect class="box-up" x="24" y="300" width="300" height="100" rx="5"/>
-  <text class="lbl" x="40" y="326">적재: 인벤토리가 되는 자리</text>
+  <text class="lbl" x="40" y="326" lang="ko">적재: 인벤토리가 되는 자리</text>
+  <text class="lbl" x="40" y="326" lang="en">Ingest: where it becomes an inventory</text>
   <text class="lbl-mono" x="40" y="348">discovery/{normalize, history}</text>
   <text class="lbl-mono" x="40" y="368">inventory/{ingest, profile, render}</text>
-  <text class="lbl-sm" x="40" y="390">완전성 맵 · 거절 이력 · 조직 축</text>
+  <text class="lbl-sm" x="40" y="390" lang="ko">완전성 맵 · 거절 이력 · 조직 축</text>
+  <text class="lbl-sm" x="40" y="390" lang="en">completeness map · rejection history · org axis</text>
 
   <rect class="box-up" x="24" y="428" width="300" height="72" rx="5"/>
-  <text class="lbl" x="40" y="454">선언 반입</text>
+  <text class="lbl" x="40" y="454" lang="ko">선언 반입</text>
+  <text class="lbl" x="40" y="454" lang="en">Declaration import</text>
   <text class="lbl-mono" x="40" y="476">inventory/declaration</text>
-  <text class="lbl-sm" x="40" y="494">조직이 「이렇게 알고 있다」고 적은 것</text>
+  <text class="lbl-sm" x="40" y="494" lang="ko">조직이 「이렇게 알고 있다」고 적은 것</text>
+  <text class="lbl-sm" x="40" y="494" lang="en">what the organization wrote down as “this is what we know”</text>
 
   <rect class="box-up" x="24" y="528" width="300" height="72" rx="5"/>
-  <text class="lbl" x="40" y="554">전환물 생성 · 적용</text>
+  <text class="lbl" x="40" y="554" lang="ko">전환물 생성 · 적용</text>
+  <text class="lbl" x="40" y="554" lang="en">Generate and apply the conversion</text>
   <text class="lbl-mono" x="40" y="576">provisioning · pqcota-provision</text>
-  <text class="lbl-sm" x="40" y="594">before 캡처 · 되돌림</text>
+  <text class="lbl-sm" x="40" y="594" lang="ko">before 캡처 · 되돌림</text>
+  <text class="lbl-sm" x="40" y="594" lang="en">before-capture · rollback</text>
 
   <!-- ── 오른쪽: pqcaton ── -->
   <rect class="box-us" x="512" y="300" width="424" height="120" rx="5"/>
-  <text class="lbl" x="530" y="326">대조 엔진: 선언과 관측을 맞댄다</text>
+  <text class="lbl" x="530" y="326" lang="ko">대조 엔진: 선언과 관측을 맞댄다</text>
+  <text class="lbl" x="530" y="326" lang="en">Reconciliation engine: declaration against observation</text>
   <text class="lbl-mono" x="530" y="348">pkg/inventory/reconcile</text>
-  <text class="lbl-sm" x="530" y="370">3-상태 · confidence 스코어링 · 리뷰 큐 · 토폴로지</text>
+  <text class="lbl-sm" x="530" y="370" lang="ko">3-상태 · confidence 스코어링 · 리뷰 큐 · 토폴로지</text>
+  <text class="lbl-sm" x="530" y="370" lang="en">three states · confidence scoring · review queue · topology</text>
   <text class="lbl-sm" x="530" y="392">CONFIRMED · UNDECLARED · UNOBSERVED</text>
-  <text class="lbl-sm" x="530" y="410">UNOBSERVED는 기계가 확정하지 않는다</text>
+  <text class="lbl-sm" x="530" y="410" lang="ko">UNOBSERVED는 기계가 확정하지 않는다</text>
+  <text class="lbl-sm" x="530" y="410" lang="en">no machine finalizes an UNOBSERVED item</text>
 
   <rect class="box-us" x="512" y="444" width="424" height="104" rx="5"/>
-  <text class="lbl" x="530" y="470">판정: 사람의 결론을 붙들어 둔다</text>
+  <text class="lbl" x="530" y="470" lang="ko">판정: 사람의 결론을 붙들어 둔다</text>
+  <text class="lbl" x="530" y="470" lang="en">Judgment: holds the human conclusion</text>
   <text class="lbl-mono" x="530" y="492">pkg/inventory/decision</text>
   <text class="lbl-sm" x="530" y="514">draft → in-review → finalized · append-only</text>
-  <text class="lbl-sm" x="530" y="534">근거가 바뀌면 그 판정만 델타 리뷰</text>
+  <text class="lbl-sm" x="530" y="534" lang="ko">근거가 바뀌면 그 판정만 델타 리뷰</text>
+  <text class="lbl-sm" x="530" y="534" lang="en">when the basis changes, only that judgment goes to delta review</text>
 
   <rect class="box-us" x="512" y="568" width="424" height="48" rx="5"/>
   <text class="lbl-mono" x="530" y="590">inventory/cmd/{pqcaton-report, decide, scope, ui}</text>
-  <text class="lbl-sm" x="530" y="608">사람이 돌리고 채우는 자리: 화면 · 리포트 · 토폴로지</text>
+  <text class="lbl-sm" x="530" y="608" lang="ko">사람이 돌리고 채우는 자리: 화면 · 리포트 · 토폴로지</text>
+  <text class="lbl-sm" x="530" y="608" lang="en">where a person runs and fills in: screens · reports · topology</text>
 
   <!-- 왼쪽 내부 파이프라인 -->
   <path class="flow" d="M174 140 V168" marker-end="url(#ar)"/>
@@ -252,126 +296,186 @@
   <!-- 관측 레인: 적재 → 대조 -->
   <path class="flow" d="M324 350 H512" marker-end="url(#ar)"/>
   <text class="lbl-arrow" x="418" y="340" text-anchor="middle">CollectionResult</text>
-  <text class="lbl-arrow" x="418" y="372" text-anchor="middle">관측 레인</text>
+  <text class="lbl-arrow" x="418" y="372" text-anchor="middle" lang="ko">관측 레인</text>
+  <text class="lbl-arrow" x="418" y="372" text-anchor="middle" lang="en">observation lane</text>
 
   <!-- 선언 레인: 선언 반입 → 대조 -->
   <path class="flow" d="M324 464 H338 Q350 464 350 452 V412 Q350 400 362 400 H512" marker-end="url(#ar)"/>
-  <text class="lbl-arrow" x="418" y="392" text-anchor="middle">선언 레인</text>
+  <text class="lbl-arrow" x="418" y="392" text-anchor="middle" lang="ko">선언 레인</text>
+  <text class="lbl-arrow" x="418" y="392" text-anchor="middle" lang="en">declaration lane</text>
 
   <!-- 대조 → 판정 -->
   <path class="flow-a" d="M724 420 V444" marker-end="url(#ar-a)"/>
-  <text class="lbl-arrow" x="736" y="438">리뷰 큐</text>
+  <text class="lbl-arrow" x="736" y="438" lang="ko">리뷰 큐</text>
+  <text class="lbl-arrow" x="736" y="438" lang="en">review queue</text>
 
   <!-- 확정 → 전환물 -->
   <path class="flow-a" d="M512 520 H500 Q488 520 488 532 V552 Q488 564 476 564 H324" marker-end="url(#ar-a)"/>
   <text class="lbl-arrow" x="418" y="556" text-anchor="middle">FinalizedPlan</text>
-  <text class="lbl-arrow" x="418" y="584" text-anchor="middle">확정된 것만 내려간다</text>
+  <text class="lbl-arrow" x="418" y="584" text-anchor="middle" lang="ko">확정된 것만 내려간다</text>
+  <text class="lbl-arrow" x="418" y="584" text-anchor="middle" lang="en">only what is finalized goes down</text>
 </svg>
 </div>
 <figcaption>
-  <strong>그림 1.</strong> 계약 띠를 두 번 건넙니다. 관측이 오른쪽으로, 확정된 계획이 왼쪽으로.
-  왼쪽 상자들은 pqcaton 없이도 그대로 돕니다. 오른쪽이 없으면 <em>판정이 없을</em> 뿐 관측은 끝까지 됩니다.
+  <span lang="ko"><strong>그림 1.</strong> 계약 띠를 두 번 건넙니다. 관측이 오른쪽으로, 확정된 계획이 왼쪽으로.
+  왼쪽 상자들은 pqcaton 없이도 그대로 돕니다. 오른쪽이 없으면 <em>판정이 없을</em> 뿐 관측은 끝까지 됩니다.</span>
+  <span lang="en"><strong>Figure 1.</strong> The contract band is crossed twice: observations to the right,
+  finalized plans to the left. The boxes on the left run just as they are without pqcaton. Take the right
+  side away and you lose <em>the judgment</em>, not the observation.</span>
 </figcaption>
 </figure>
 
 <div class="note">
-  <p><strong>이 그림이 알려 주는 것 하나</strong>. pqcaton은 pqcota를 감싸지 않습니다. 나란히 서서
+  <p><span lang="ko"><strong>이 그림이 알려 주는 것 하나</strong>. pqcaton은 pqcota를 감싸지 않습니다. 나란히 서서
   계약으로만 주고받습니다. 그래서 pqcota를 갈아 끼워도 이 리포가 깨지지 않고, 이 리포를 지워도
-  pqcota는 그 자체로 완결됩니다.</p>
+  pqcota는 그 자체로 완결됩니다.</span>
+  <span lang="en"><strong>One thing this diagram tells you.</strong> pqcaton does not wrap pqcota. They
+  stand side by side and exchange only what the contracts define. Swap pqcota out and this repository does
+  not break; delete this repository and pqcota is still complete on its own.</span></p>
 </div>
 
-<h2><span class="num">02</span>계약이 유일한 연결선입니다</h2>
+<h2><span class="num">02</span><span lang="ko">계약이 유일한 연결선입니다</span>
+<span lang="en">Contracts are the only link</span></h2>
 
 <p>
-  이 리포는 pqcota의 <strong>생성된 타입만</strong> import합니다. 관측 로직도, 저장소 스키마도
-  재구현하지 않습니다.
+  <span lang="ko">이 리포는 pqcota의 <strong>생성된 타입만</strong> import합니다. 관측 로직도, 저장소 스키마도
+  재구현하지 않습니다.</span>
+  <span lang="en">This repository imports <strong>only the generated types</strong> from pqcota. It
+  reimplements neither the observation logic nor the storage schema.</span>
 </p>
 
 <div class="tbl">
 <table>
-  <thead><tr><th>이 리포가 쓰는 상류</th><th>무엇을 위해</th></tr></thead>
+  <thead><tr><th><span lang="ko">이 리포가 쓰는 상류</span>
+  <span lang="en">Upstream this repository uses</span></th><th><span lang="ko">무엇을 위해
+  <span lang="en">What for</span></th></tr></thead>
   <tbody>
-    <tr><td><code>gen/…/common/v1</code></td><td><code>Envelope</code>·<code>CryptoRuntime</code> 등 공통 어휘</td></tr>
-    <tr><td><code>gen/…/discovery/v1</code></td><td>관측 결과(<code>CollectionResult</code>)를 읽는다</td></tr>
-    <tr><td><code>gen/…/inventory/v1</code></td><td><code>ReconState</code>·<code>Decision</code>. 3-상태와 판정의 SSOT</td></tr>
-    <tr><td><code>pkg/discovery/history</code></td><td>관측 이력 저장소를 그대로 쓴다</td></tr>
-    <tr><td><code>pkg/discovery/normalize</code></td><td>정규화된 관측을 받는다</td></tr>
-    <tr><td><code>pkg/inventory/declaration</code></td><td>선언(CMDB) 반입</td></tr>
-    <tr><td><code>pkg/kernel/posture</code></td><td>양자내성 등급. 우리가 다시 판단하지 않는다</td></tr>
-    <tr><td><code>pkg/kernel/registry</code></td><td>결정론적 서명 매칭 데이터</td></tr>
-    <tr><td><code>pkg/kernel/scope</code></td><td>자산 스코프 규칙. 형식과 집행을 그대로 쓴다</td></tr>
-    <tr><td><code>discovery/collectors/openssl</code></td><td>이 기계를 스캔하는 지름길이 부른다</td></tr>
-    <tr><td><code>gen/…/provisioning/v1</code></td><td>확정 계획(<code>FinalizedPlan</code>)의 형식</td></tr>
-    <tr><td><code>pkg/org</code></td><td>조직 격리 축</td></tr>
+    <tr><td><code>gen/…/common/v1</code></td><td><span lang="ko"><code>Envelope</code>·<code>CryptoRuntime</code> 등 공통 어휘</span>
+    <span lang="en">Shared vocabulary such as <code>Envelope</code> and <code>CryptoRuntime</code></span></td></tr>
+    <tr><td><code>gen/…/discovery/v1</code></td><td><span lang="ko">관측 결과(<code>CollectionResult</code>)를 읽는다</span>
+    <span lang="en">Reads observation results (<code>CollectionResult</code>)</span></td></tr>
+    <tr><td><code>gen/…/inventory/v1</code></td><td><span lang="ko"><code>ReconState</code>·<code>Decision</code>. 3-상태와 판정의 SSOT</span>
+    <span lang="en"><code>ReconState</code> and <code>Decision</code> — the SSOT for the three states and for judgments</span></td></tr>
+    <tr><td><code>pkg/discovery/history</code></td><td><span lang="ko">관측 이력 저장소를 그대로 쓴다</span>
+    <span lang="en">Uses the observation history store as it is</span></td></tr>
+    <tr><td><code>pkg/discovery/normalize</code></td><td><span lang="ko">정규화된 관측을 받는다</span>
+    <span lang="en">Takes normalized observations</span></td></tr>
+    <tr><td><code>pkg/inventory/declaration</code></td><td><span lang="ko">선언(CMDB) 반입</span>
+    <span lang="en">Imports the declaration (CMDB)</span></td></tr>
+    <tr><td><code>pkg/kernel/posture</code></td><td><span lang="ko">양자내성 등급. 우리가 다시 판단하지 않는다</span>
+    <span lang="en">Quantum-resistance grading — we do not judge it again</span></td></tr>
+    <tr><td><code>pkg/kernel/registry</code></td><td><span lang="ko">결정론적 서명 매칭 데이터</span>
+    <span lang="en">Deterministic signature-matching data</span></td></tr>
+    <tr><td><code>pkg/kernel/scope</code></td><td><span lang="ko">자산 스코프 규칙. 형식과 집행을 그대로 쓴다</span>
+    <span lang="en">Asset scope rules — both the format and the enforcement are used as they are</span></td></tr>
+    <tr><td><code>discovery/collectors/openssl</code></td><td><span lang="ko">이 기계를 스캔하는 지름길이 부른다</span>
+    <span lang="en">Called by the shortcut that scans this machine</span></td></tr>
+    <tr><td><code>gen/…/provisioning/v1</code></td><td><span lang="ko">확정 계획(<code>FinalizedPlan</code>)의 형식</span>
+    <span lang="en">The shape of a finalized plan (<code>FinalizedPlan</code>)</span></td></tr>
+    <tr><td><code>pkg/org</code></td><td><span lang="ko">조직 격리 축</span>
+    <span lang="en">The organization isolation axis</span></td></tr>
   </tbody>
 </table>
 </div>
 
 <p>
-  <code>internal/probe</code>는 그 연결을 붙들어 두는 최소 코드입니다. 지워도 빌드는 되지만,
-  그러면 <code>go.mod</code>의 <code>require</code>가 아무 표시 없이 미사용이 됩니다.
+  <span lang="ko"><code>internal/probe</code>는 그 연결을 붙들어 두는 최소 코드입니다. 지워도 빌드는 되지만,
+  그러면 <code>go.mod</code>의 <code>require</code>가 아무 표시 없이 미사용이 됩니다.</span>
+  <span lang="en"><code>internal/probe</code> is the smallest amount of code that holds that link in place.
+  Delete it and the build still passes, but the <code>require</code> lines in <code>go.mod</code> quietly
+  go unused.</span>
 </p>
 
-<h2><span class="num">03</span>이 리포가 더하는 것</h2>
+<h2><span class="num">03</span><span lang="ko">이 리포가 더하는 것</span>
+<span lang="en">What this repository adds</span></h2>
 
 <div class="tbl">
 <table>
-  <thead><tr><th>모듈</th><th>하는 일</th><th>왜 상류가 안 만들었나</th></tr></thead>
+  <thead><tr><th><span lang="ko">모듈</span>
+  <span lang="en">Module</span></th><th><span lang="ko">하는 일
+  <span lang="en">What it does</span></th><th><span lang="ko">왜 상류가 안 만들었나
+  <span lang="en">Why upstream did not build it</span></th></tr></thead>
   <tbody>
     <tr>
       <td><code>pkg/inventory/reconcile</code></td>
-      <td>3-상태 대조 · confidence 스코어링 · 리뷰 큐 · 거버넌스 토폴로지</td>
-      <td>관측 도구가 “무엇이 위험한가”를 판정하기 시작하면 관측의 정직성이 무너집니다</td>
+      <td><span lang="ko">3-상태 대조 · confidence 스코어링 · 리뷰 큐 · 거버넌스 토폴로지</span>
+      <span lang="en">Three-state reconciliation, confidence scoring, the review queue, the governance topology</span></td>
+      <td><span lang="ko">관측 도구가 “무엇이 위험한가”를 판정하기 시작하면 관측의 정직성이 무너집니다</span>
+      <span lang="en">Once an observation tool starts judging “what is risky”, the honesty of the observation is gone</span></td>
     </tr>
     <tr>
       <td><code>pkg/inventory/decision</code></td>
-      <td>리뷰-확정 상태기계 · 판정 영속(append-only) · 확정 계획</td>
-      <td>판정은 조직의 책임이고 <strong>감사 대상</strong>입니다. 혼자 쓰면 필요 없습니다</td>
+      <td><span lang="ko">리뷰-확정 상태기계 · 판정 영속(append-only) · 확정 계획</span>
+      <span lang="en">The review-to-finalize state machine, append-only judgment persistence, the finalized plan</span></td>
+      <td><span lang="ko">판정은 조직의 책임이고 <strong>감사 대상</strong>입니다. 혼자 쓰면 필요 없습니다</span>
+      <span lang="en">A judgment is the organization's responsibility and <strong>subject to audit</strong>. Working alone, you do not need it</span></td>
     </tr>
     <tr>
       <td><code>inventory/cmd/*</code> · <code>pkg/inventory/ui</code></td>
-      <td>대조 실행 · 리포트와 토폴로지 렌더 · <strong>사람이 쓰는 화면</strong>(선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회)</td>
-      <td>사람이 돌리고 사람이 채우는 자리</td>
+      <td><span lang="ko">대조 실행 · 리포트와 토폴로지 렌더 · <strong>사람이 쓰는 화면</strong>(선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회)</span>
+      <span lang="en">Runs the reconciliation, renders reports and the topology, and serves <strong>the screens people use</strong> — declaration, crypto asset scope, reconciliation, judgment, inventory lookup</span></td>
+      <td><span lang="ko">사람이 돌리고 사람이 채우는 자리</span>
+      <span lang="en">The place a person runs and a person fills in</span></td>
     </tr>
     <tr>
       <td><code>saas/runner</code></td>
-      <td>호스팅으로 쓸 때만 필요한 <strong>밖으로 올리는 자리</strong></td>
-      <td>고객 인프라 안에서만 돌 때는 필요 없습니다. <a href="#saas">05</a></td>
+      <td><span lang="ko">호스팅으로 쓸 때만 필요한 <strong>밖으로 올리는 자리</strong></span>
+      <span lang="en"><strong>The place that sends results out</strong>, needed only when we host it</span></td>
+      <td><span lang="ko">고객 인프라 안에서만 돌 때는 필요 없습니다. <a href="#saas">05</a></span>
+      <span lang="en">Not needed when everything runs inside the customer's infrastructure. <a href="#saas">05</a></span></td>
     </tr>
   </tbody>
 </table>
 </div>
 
-<h3>3-상태가 이 도구의 어휘입니다</h3>
+<h3><span lang="ko">3-상태가 이 도구의 어휘입니다</span>
+<span lang="en">The three states are this tool's vocabulary</span></h3>
 
 <div class="tbl">
 <table>
-  <thead><tr><th>상태</th><th>정의</th><th>등급</th><th>무엇을 뜻하나</th></tr></thead>
+  <thead><tr><th><span lang="ko">상태</span>
+  <span lang="en">State</span></th><th><span lang="ko">정의
+  <span lang="en">Definition</span></th><th><span lang="ko">등급
+  <span lang="en">Grade</span></th><th><span lang="ko">무엇을 뜻하나
+  <span lang="en">What it means</span></th></tr></thead>
   <tbody>
-    <tr><td><span class="swatch s-ok"></span>CONFIRMED</td><td>선언 ∩ 관측</td><td>AUTO</td><td>신뢰도 최상</td></tr>
-    <tr><td><span class="swatch s-stop"></span>UNDECLARED</td><td>관측만</td><td>AUTO</td><td><strong>조직이 모르는 통신</strong>입니다. 이 도구가 주는 첫 번째 쓸모입니다</td></tr>
-    <tr><td><span class="swatch s-warn"></span>UNOBSERVED</td><td>선언만</td><td><strong>MANUAL</strong></td><td>실재하는데 못 본 것인지 이미 없어진 것인지는 <strong>사람만 압니다</strong></td></tr>
+    <tr><td><span class="swatch s-ok"></span>CONFIRMED</td><td><span lang="ko">선언 ∩ 관측</span>
+    <span lang="en">declared ∩ observed</span></td><td>AUTO</td><td><span lang="ko">신뢰도 최상
+    <span lang="en">The highest confidence</span></td></tr>
+    <tr><td><span class="swatch s-stop"></span>UNDECLARED</td><td><span lang="ko">관측만</span>
+    <span lang="en">observed only</span></td><td>AUTO</td><td><span lang="ko"><strong>조직이 모르는 통신</strong>입니다. 이 도구가 주는 첫 번째 쓸모입니다
+    <span lang="en"><strong>Traffic the organization does not know about.</strong> This is the first thing the tool is good for</span></td></tr>
+    <tr><td><span class="swatch s-warn"></span>UNOBSERVED</td><td><span lang="ko">선언만</span>
+    <span lang="en">declared only</span></td><td><strong>MANUAL</strong></td><td><span lang="ko">실재하는데 못 본 것인지 이미 없어진 것인지는 <strong>사람만 압니다</strong>
+    <span lang="en">Whether it exists and was missed or is already gone — <strong>only a person knows</strong></span></td></tr>
   </tbody>
 </table>
 </div>
 
 <p>
-  UNOBSERVED를 기계가 확정하지 않는 것이 설계의 축입니다. pqcota의 <strong>완전성 맵</strong>이
-  “원리상 관측 불가”와 “실제 없음”을 구분해 주고, 그 위에서 사람이 정합니다.
+  <span lang="ko">UNOBSERVED를 기계가 확정하지 않는 것이 설계의 축입니다. pqcota의 <strong>완전성 맵</strong>이
+  “원리상 관측 불가”와 “실제 없음”을 구분해 주고, 그 위에서 사람이 정합니다.</span>
+  <span lang="en">The axis of the design is that no machine finalizes an UNOBSERVED item. pqcota's
+  <strong>completeness map</strong> separates “cannot be observed in principle” from “really absent”, and a
+  person decides on top of that.</span>
 </p>
 
-<h2><span class="num">04</span>한 바퀴가 도는 길</h2>
+<h2><span class="num">04</span><span lang="ko">한 바퀴가 도는 길</span>
+<span lang="en">How one full turn runs</span></h2>
 
 <p>
-  <strong>직접 설치에서는 밖으로 나가는 것이 하나도 없습니다.</strong>
+  <span lang="ko"><strong>직접 설치에서는 밖으로 나가는 것이 하나도 없습니다.</strong>
   모든 단계가 고객 인프라 안에서 끝납니다.
-  호스팅으로 쓸 때 무엇이 달라지는지는 <a href="#saas">05절</a>에 있습니다.
+  호스팅으로 쓸 때 무엇이 달라지는지는 <a href="#saas">05절</a>에 있습니다.</span>
+  <span lang="en"><strong>In a self-hosted install nothing leaves the network.</strong> Every step finishes
+  inside the customer's own infrastructure. What changes when we host it for you is in
+  <a href="#saas">section 05</a>.</span>
 </p>
 
 <figure>
 <div class="scroll">
 <svg viewBox="0 0 960 330" role="img"
-     aria-label="pqcota의 관측·적재·조회와 확정 계획·생성·적용 사이에 pqcaton의 선언·대조·리뷰 확정이 끼어드는 흐름도. 조회에서 확정 계획으로 가는 점선은 pqcaton 없이 손으로 쓴 계획으로 가는 길이다">
+     data-label-ko="pqcota의 관측·적재·조회와 확정 계획·생성·적용 사이에 pqcaton의 선언·대조·리뷰 확정이 끼어드는 흐름도. 조회에서 확정 계획으로 가는 점선은 pqcaton 없이 손으로 쓴 계획으로 가는 길이다" data-label-en="A flow diagram in which pqcaton's declaration, reconciliation and review-and-finalize step sits between pqcota's observe, ingest and look-up stages and its finalized plan, generation and apply stages. The dashed line from look-up to the finalized plan is the path taken with a hand-written plan, without pqcaton" aria-label="pqcota의 관측·적재·조회와 확정 계획·생성·적용 사이에 pqcaton의 선언·대조·리뷰 확정이 끼어드는 흐름도. 조회에서 확정 계획으로 가는 점선은 pqcaton 없이 손으로 쓴 계획으로 가는 길이다">
   <defs>
     <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -382,35 +486,48 @@
   </defs>
 
   <rect class="box-us" x="16" y="8" width="140" height="52" rx="5"/>
-  <text class="lbl" x="86" y="32" text-anchor="middle">선언</text>
-  <text class="lbl-sm" x="86" y="50" text-anchor="middle">CMDB 반입</text>
+  <text class="lbl" x="86" y="32" text-anchor="middle" lang="ko">선언</text>
+  <text class="lbl" x="86" y="32" text-anchor="middle" lang="en">Declaration</text>
+  <text class="lbl-sm" x="86" y="50" text-anchor="middle" lang="ko">CMDB 반입</text>
+  <text class="lbl-sm" x="86" y="50" text-anchor="middle" lang="en">CMDB import</text>
 
   <rect class="box-up" x="16" y="86" width="140" height="56" rx="5"/>
-  <text class="lbl" x="86" y="110" text-anchor="middle">관측</text>
+  <text class="lbl" x="86" y="110" text-anchor="middle" lang="ko">관측</text>
+  <text class="lbl" x="86" y="110" text-anchor="middle" lang="en">Observe</text>
   <text class="lbl-sm" x="86" y="130" text-anchor="middle">pqcota 3</text>
 
   <rect class="box-up" x="212" y="86" width="130" height="56" rx="5"/>
-  <text class="lbl" x="277" y="110" text-anchor="middle">적재</text>
+  <text class="lbl" x="277" y="110" text-anchor="middle" lang="ko">적재</text>
+  <text class="lbl" x="277" y="110" text-anchor="middle" lang="en">Ingest</text>
   <text class="lbl-sm" x="277" y="130" text-anchor="middle">pqcota 4</text>
 
   <rect class="box-up" x="212" y="184" width="130" height="52" rx="5"/>
-  <text class="lbl" x="277" y="208" text-anchor="middle">조회</text>
+  <text class="lbl" x="277" y="208" text-anchor="middle" lang="ko">조회</text>
+  <text class="lbl" x="277" y="208" text-anchor="middle" lang="en">Look up</text>
   <text class="lbl-sm" x="277" y="226" text-anchor="middle">pqcota 5</text>
 
   <rect class="box-us" x="398" y="60" width="140" height="82" rx="5"/>
-  <text class="lbl" x="468" y="86" text-anchor="middle">대조</text>
-  <text class="lbl-sm" x="468" y="106" text-anchor="middle">3-상태 · confidence</text>
-  <text class="lbl-sm" x="468" y="126" text-anchor="middle">리뷰 큐 구성</text>
+  <text class="lbl" x="468" y="86" text-anchor="middle" lang="ko">대조</text>
+  <text class="lbl" x="468" y="86" text-anchor="middle" lang="en">Reconcile</text>
+  <text class="lbl-sm" x="468" y="106" text-anchor="middle" lang="ko">3-상태 · confidence</text>
+  <text class="lbl-sm" x="468" y="106" text-anchor="middle" lang="en">three states · confidence</text>
+  <text class="lbl-sm" x="468" y="126" text-anchor="middle" lang="ko">리뷰 큐 구성</text>
+  <text class="lbl-sm" x="468" y="126" text-anchor="middle" lang="en">build the review queue</text>
 
   <rect class="box-us" x="594" y="60" width="140" height="82" rx="5"/>
-  <text class="lbl" x="664" y="86" text-anchor="middle">리뷰 · 확정</text>
-  <text class="lbl-sm" x="664" y="106" text-anchor="middle">사람이 판정</text>
-  <text class="lbl-sm" x="664" y="126" text-anchor="middle">승인 서명</text>
+  <text class="lbl" x="664" y="86" text-anchor="middle" lang="ko">리뷰 · 확정</text>
+  <text class="lbl" x="664" y="86" text-anchor="middle" lang="en">Review · finalize</text>
+  <text class="lbl-sm" x="664" y="106" text-anchor="middle" lang="ko">사람이 판정</text>
+  <text class="lbl-sm" x="664" y="106" text-anchor="middle" lang="en">a person judges</text>
+  <text class="lbl-sm" x="664" y="126" text-anchor="middle" lang="ko">승인 서명</text>
+  <text class="lbl-sm" x="664" y="126" text-anchor="middle" lang="en">approval signature</text>
 
   <rect class="box-up" x="790" y="60" width="154" height="82" rx="5"/>
-  <text class="lbl" x="867" y="86" text-anchor="middle">확정 계획 → 적용</text>
+  <text class="lbl" x="867" y="86" text-anchor="middle" lang="ko">확정 계획 → 적용</text>
+  <text class="lbl" x="867" y="86" text-anchor="middle" lang="en">Finalized plan → apply</text>
   <text class="lbl-sm" x="867" y="106" text-anchor="middle">pqcota 6 · 7 · 8</text>
-  <text class="lbl-sm" x="867" y="126" text-anchor="middle">before 캡처 · 되돌림</text>
+  <text class="lbl-sm" x="867" y="126" text-anchor="middle" lang="ko">before 캡처 · 되돌림</text>
+  <text class="lbl-sm" x="867" y="126" text-anchor="middle" lang="en">before-capture · rollback</text>
 
   <path class="flow" d="M156 114 H212" marker-end="url(#ar2)"/>
   <path class="flow" d="M156 34 Q186 34 186 92 Q186 114 206 114" marker-end="url(#ar2)"/>
@@ -418,44 +535,92 @@
   <path class="flow" d="M277 142 V184" marker-end="url(#ar2)"/>
   <path class="flow-a" d="M538 101 H594" marker-end="url(#ar2a)"/>
   <path class="flow-a" d="M734 101 H790" marker-end="url(#ar2a)"/>
-  <text class="lbl-arrow" x="762" y="92" text-anchor="middle">관문</text>
+  <text class="lbl-arrow" x="762" y="92" text-anchor="middle" lang="ko">관문</text>
+  <text class="lbl-arrow" x="762" y="92" text-anchor="middle" lang="en">gate</text>
 
   <path class="flow" stroke-dasharray="5 4" d="M342 210 H860 Q874 210 874 196 V142" marker-end="url(#ar2)"/>
-  <text class="lbl-arrow" x="600" y="202" text-anchor="middle">pqcaton 없이: 손으로 쓴 계획</text>
+  <text class="lbl-arrow" x="600" y="202" text-anchor="middle" lang="ko">pqcaton 없이: 손으로 쓴 계획</text>
+  <text class="lbl-arrow" x="600" y="202" text-anchor="middle" lang="en">without pqcaton: a hand-written plan</text>
 
   <path class="flow-a" stroke-dasharray="5 4" d="M900 60 V30 Q900 16 886 16 H678 Q664 16 664 30 V60" marker-end="url(#ar2a)"/>
-  <text class="lbl-arrow" x="782" y="12" text-anchor="middle">근거가 바뀐 판정만 델타 리뷰</text>
+  <text class="lbl-arrow" x="782" y="12" text-anchor="middle" lang="ko">근거가 바뀐 판정만 델타 리뷰</text>
+  <text class="lbl-arrow" x="782" y="12" text-anchor="middle" lang="en">delta review for judgments whose basis changed</text>
 
   <path class="flow" stroke-dasharray="5 4" d="M834 142 V286 Q834 302 818 302 H102 Q86 302 86 286 V142" marker-end="url(#ar2)"/>
-  <text class="lbl-arrow" x="460" y="322" text-anchor="middle">재관측 · 변화 diff</text>
+  <text class="lbl-arrow" x="460" y="322" text-anchor="middle" lang="ko">재관측 · 변화 diff</text>
+  <text class="lbl-arrow" x="460" y="322" text-anchor="middle" lang="en">re-observe · diff the change</text>
 </svg>
 </div>
 <figcaption>
-  <strong>그림 2.</strong> 가운데 두 상자만 이 리포입니다. 아래 점선이 <strong>pqcaton 없이 가는 길</strong>입니다.
+  <span lang="ko"><strong>그림 2.</strong> 가운데 두 상자만 이 리포입니다. 아래 점선이 <strong>pqcaton 없이 가는 길</strong>입니다.
   pqcota는 확정 계획을 <em>입력으로만</em> 받고, 손으로 쓴 계획으로도 끝까지 돕니다.
-  확정 앞의 화살표가 이 제품에서 반드시 거쳐야 하는 관문입니다: <strong>finalized 전에는 적용이 돌지 않습니다.</strong>
+  확정 앞의 화살표가 이 제품에서 반드시 거쳐야 하는 관문입니다: <strong>finalized 전에는 적용이 돌지 않습니다.</strong></span>
+  <span lang="en"><strong>Figure 2.</strong> Only the two middle boxes are this repository. The dashed line
+  below is <strong>the path without pqcaton</strong>: pqcota takes a finalized plan <em>as input only</em>,
+  and a hand-written plan carries it through just as well. The arrow before finalization is the gate this
+  product insists on — <strong>nothing is applied before it is finalized.</strong></span>
 </figcaption>
 </figure>
 
-<h2 id="saas"><span class="num">05</span>호스팅으로 쓸 때만 붙는 것</h2>
+<h2 id="saas"><span class="num">05</span><span lang="ko">호스팅으로 쓸 때만 붙는 것</span>
+<span lang="en">What is added only when we host it</span></h2>
 
 <p>
-  위 그림에는 러너가 없습니다. 자기 서버에서 돌릴 때는 <strong>필요 없기 때문</strong>입니다.
-  <code>pqcota-ingest</code>가 결과를 바로 읽고, 대조와 판정이 같은 기계에서 끝납니다.
+  <span lang="ko">위 그림에는 러너가 없습니다. 자기 서버에서 돌릴 때는 <strong>필요 없기 때문</strong>입니다.
+  <code>pqcota-ingest</code>가 결과를 바로 읽고, 대조와 판정이 같은 기계에서 끝납니다.</span>
+  <span lang="en">There is no runner in the diagram above, because on your own servers you
+  <strong>do not need one</strong>. <code>pqcota-ingest</code> reads the results directly, and
+  reconciliation and judgment finish on the same machine.</span>
 </p>
 
 <p>
-  우리가 대신 돌려 주는 호스팅에서는 관측 결과가 고객망을 나와야 하고, 그 <strong>밖으로 올리는 자리</strong>가
+  <span lang="ko">우리가 대신 돌려 주는 호스팅에서는 관측 결과가 고객망을 나와야 하고, 그 <strong>밖으로 올리는 자리</strong>가
   <code>saas/runner</code>입니다. 그 코드만 이 리포에 있는 이유는 하나입니다.
   <strong>고객 서버에서 고객 권한으로 도니 무엇을 밖으로 보내는지 읽어서 확인할 수 있어야</strong> 합니다.
-  컨트롤 플레인 쪽 코드와 설계는 이 리포에 없습니다.
+  컨트롤 플레인 쪽 코드와 설계는 이 리포에 없습니다.</span>
+  <span lang="en">When we run it for you, the observation results have to leave the customer network, and
+  <code>saas/runner</code> is <strong>the place that sends them out</strong>. Only that piece lives in this
+  repository, for one reason: <strong>it runs on the customer's servers with the customer's privileges, so
+  what it sends must be open to reading.</strong> The control-plane code and its design are not here.</span>
 </p>
 
 <footer>
-  설계 근거는 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/design.md">docs/design.md</a>, 검증 기준은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/testcases.md">docs/testcases.md</a>,
-  여정은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/journey.md">docs/journey.md</a>에 있습니다.
+  <span lang="ko">설계 근거는 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/design.md">docs/design.md</a>, 검증 기준은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/testcases.md">docs/testcases.md</a>,
+  여정은 <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/journey.md">docs/journey.md</a>에 있습니다.</span>
+  <span lang="en">The design rationale is in <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/design.md">docs/design.md</a>, the acceptance criteria in <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/testcases.md">docs/testcases.md</a>,
+  and the journey in <a href="https://github.com/sntsoftgit/pqcaton/blob/main/docs/journey.md">docs/journey.md</a>.</span>
 </footer>
 
 </div>
+
+<script>
+  // 언어 전환. **한 파일 안에서 보이는 쪽만 바꾼다.** 고른 말은 localStorage 에 남겨
+  // 페이지를 옮겨도 따라온다. 사생활 모드에서 접근이 막히면 그냥 기본값으로 돈다.
+  (function () {
+    var root = document.documentElement;
+    var KEY = 'pqcaton-site-lang';
+    var titles = { ko: 'pqcaton 아키텍처', en: 'pqcaton architecture' };
+
+    function apply(lang) {
+      root.setAttribute('data-lang', lang);
+      root.setAttribute('lang', lang);
+      document.title = titles[lang];
+      var nodes = document.querySelectorAll('[data-label-ko]');
+      for (var i = 0; i < nodes.length; i++) {
+        nodes[i].setAttribute('aria-label', nodes[i].getAttribute('data-label-' + lang));
+      }
+      try { localStorage.setItem(KEY, lang); } catch (e) {}
+    }
+
+    var saved = null;
+    try { saved = localStorage.getItem(KEY); } catch (e) {}
+    if (saved === 'ko' || saved === 'en') { apply(saved); }
+
+    document.getElementById('langtoggle').addEventListener('click', function () {
+      apply(root.getAttribute('data-lang') === 'en' ? 'ko' : 'en');
+    });
+  })();
+</script>
+
 </body>
 </html>
