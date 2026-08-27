@@ -1,2 +1,4 @@
 # checkprose baseline. count<TAB>rule<TAB>file
 # Rewrite with: go run ./tools/checkprose -baseline
+1	갖다	CONTRIBUTING.md
+1	갖다	RELEASE_NOTES.md
