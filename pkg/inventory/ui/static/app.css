@@ -70,3 +70,80 @@ a.button { font: inherit; padding: .5rem 1rem; border-radius: 6px; border: 1px s
 tr.htmx-added td { animation: settle .5s ease-out; }
 @keyframes settle { from { background: color-mix(in srgb, var(--ok) 12%, transparent); } }
 @media (prefers-reduced-motion: reduce) { tr.htmx-added td { animation: none; } }
+
+/* ── 선언 요약(`/decl-next`) ────────────────────────────────────────────────
+   `site/ui-next.html` 의 스타일을 그대로 들여온다. **`.ui-next` 안에만 건다** —
+   `.primary` 같은 이름이 지금 화면에도 있어서, 울타리가 없으면 옛 화면의 저장
+   버튼까지 함께 바뀐다.
+
+   `--line` 은 새로 정하지 않는다. 지금 값이 알파(#8883)라 밝은 화면과 어두운
+   화면에서 그대로 서는데, 고정색으로 덮으면 한쪽이 안 보이게 된다. */
+:root {
+  --surface:#ffffff; --ink:#172033; --muted:#65708a;
+  --blue:#2865b5; --blue-soft:#eaf2ff;
+  --amber:#a76600; --amber-soft:#fff5df;
+  --green:#187247; --green-soft:#e9f8ee;
+  --red-tag:#b3261e; --red-soft:#fff0ef;
+}
+.ui-next .eyebrow { color: var(--blue); font-size: .78rem; font-weight: 800;
+                    letter-spacing: .08em; text-transform: uppercase; margin: 1.4rem 0 .2rem; }
+.ui-next .lede { color: var(--muted); margin: 0; }
+.ui-next .next { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 14px;
+                 align-items: center; margin: 22px 0; padding: 16px;
+                 background: var(--amber-soft); border: 1px solid #f1d39a; border-radius: 12px; }
+.ui-next .next.done { background: var(--green-soft); border-color: #c1e8ce; }
+.ui-next .next-icon { display: grid; place-items: center; width: 36px; height: 36px;
+                      border-radius: 10px; background: #fff; color: var(--amber); font-weight: 800; }
+.ui-next .next.done .next-icon { color: var(--green); }
+.ui-next .next strong, .ui-next .next span { display: block; }
+.ui-next .next span { color: #76511a; font-size: .9rem; }
+.ui-next .next.done span { color: var(--green); }
+.ui-next .primary, .ui-next .quiet { display: inline-block; border-radius: 8px;
+                 padding: .58rem .85rem; border: 1px solid var(--blue); background: var(--blue);
+                 color: #fff; font-weight: 700; white-space: nowrap; text-decoration: none; }
+.ui-next .quiet { border-color: var(--line); background: var(--surface);
+                  color: var(--ink); font-weight: 600; }
+.ui-next .metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr));
+                    gap: 10px; margin: 18px 0 22px; }
+.ui-next .metric { padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.ui-next .metric b { display: block; font-size: 1.45rem; letter-spacing: -.04em; }
+.ui-next .metric span { color: var(--muted); font-size: .82rem; }
+.ui-next .metric.warn { background: var(--amber-soft); border-color: #f1d39a; }
+.ui-next .section-label { display: flex; justify-content: space-between;
+                          align-items: center; margin: 26px 0 10px; }
+.ui-next .section-label h3 { margin: 0; }
+.ui-next .section-label span { color: var(--muted); font-size: .86rem; }
+.ui-next .card-list { display: grid; gap: 10px; }
+.ui-next .node-card { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: 12px;
+                      align-items: center; padding: 14px;
+                      border: 1px solid var(--line); border-radius: 11px; }
+.ui-next .node-card strong, .ui-next .node-card code { display: block; }
+.ui-next .node-card span { color: var(--muted); font-size: .84rem; }
+.ui-next .tag { display: inline-flex; align-items: center; width: max-content;
+                border-radius: 999px; padding: 3px 8px; background: var(--blue-soft);
+                color: var(--blue); font-size: .78rem; font-weight: 700; }
+.ui-next .tag.warn { background: var(--amber-soft); color: var(--amber); }
+
+@media (max-width: 650px) {
+  .ui-next .metrics { grid-template-columns: 1fr; }
+  .ui-next .next { grid-template-columns: auto 1fr; }
+  .ui-next .next .primary { grid-column: 1 / -1; }
+  .ui-next .node-card { grid-template-columns: 1fr 1fr; }
+  .ui-next .node-card .quiet { grid-column: 1 / -1; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface:#171c26; --ink:#edf2fc; --muted:#aab5c9;
+    --blue:#82b4ff; --blue-soft:#1d365b;
+    --amber:#f0b454; --amber-soft:#3b2c14;
+    --green:#80d7a1; --green-soft:#173627;
+    --red-tag:#ff9b91; --red-soft:#48211f;
+  }
+  .ui-next .primary { color: #10203a; }
+  .ui-next .next { border-color: #5a4520; }
+  .ui-next .next.done { border-color: #2b5c40; }
+  .ui-next .next span { color: #e9c88f; }
+  .ui-next .next-icon { background: #0f1319; }
+  .ui-next .metric.warn { border-color: #5a4520; }
+}

@@ -8,6 +8,10 @@ const (
 	ScreenSurvey    = "/survey"
 	ScreenReview    = "/review"
 	ScreenInventory = "/inventory"
+
+	// ScreenDeclNext — 선언 화면의 다음 판. **이동 링크에는 넣지 않는다** — 지금 쓰는
+	// 절차 화면과 나란히 두면 어느 쪽이 진짜인지 헷갈린다. 옮기는 동안만 주소로 연다.
+	ScreenDeclNext = "/decl-next"
 )
 
 // Screens — 재료를 받아 열린 화면들.

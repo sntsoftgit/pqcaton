@@ -1,0 +1,106 @@
+package ui
+
+import "fmt"
+import "strconv"
+
+// declNextPage — 선언 화면의 다음 판. **적는 자리 위에 「지금 무엇을 할지」를 얹는다.**
+//
+// 지금 화면(declPage)은 칸부터 펼친다. 칸이 많아서 처음 여는 사람은 어디부터 손대야
+// 하는지 알기 어렵고, 정작 급한 것 하나가 그 안에 묻힌다. 급한 것은 **관측에는 있는데
+// 어느 노드에도 붙지 않은 이름**이다 — 그 자리를 두면 대조가 통째로 어긋난다.
+//
+// **폼은 아래에 그대로 둔다**(declForm). 요약은 무엇을 할지 가리키기만 하고, 고치는 일은
+// 지금 쓰던 그 칸에서 한다. 새 편집기를 따로 만들면 저장 경로가 두 벌이 된다.
+templ declNextPage(v DeclView) {
+	@shell(v.Page) {
+		// **새 스타일을 이 안에만 건다.** `.primary` 같은 이름이 지금 화면에도 있어서,
+		// 스코프 없이 넣으면 옛 화면의 저장 버튼까지 함께 바뀐다. 옛 것을 그대로 두기로
+		// 했으므로 울타리를 친다.
+		<div class="ui-next">
+			<p class="eyebrow">{ tNextDeclEyebrow.In(v.Page.Lang) }</p>
+			<h2>{ tNextDeclHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tNextDeclLede.In(v.Page.Lang) }</p>
+			@declNextTodo(v)
+			@declNextMetrics(v)
+			<div class="section-label">
+				<h3>{ tNextLinkSection.In(v.Page.Lang) }</h3>
+				<span>{ tNextLinkNote.In(v.Page.Lang) }</span>
+			</div>
+			<div class="card-list">
+				for _, n := range v.Nodes {
+					@declNodeCard(v, n)
+				}
+			</div>
+			<h3 id={ declEditAnchor }>{ tNextEditHead.In(v.Page.Lang) }</h3>
+			<p class="lede">{ tNextEditLede.In(v.Page.Lang) }</p>
+			@declForm(v)
+		</div>
+	}
+}
+
+// declNextTodo — 다음에 할 일 하나. **없으면 없다고 적는다** — 빈 자리는 「아직 안
+// 불러온 것」으로 읽힌다.
+templ declNextTodo(v DeclView) {
+	if len(v.Unmatched) > 0 {
+		<div class="next">
+			<div class="next-icon">!</div>
+			<div>
+				<strong>{ fmt.Sprintf(tNextUnlinked.In(v.Page.Lang), len(v.Unmatched)) }</strong>
+				<span>
+					for i, id := range v.Unmatched {
+						if i > 0 {
+							{ " · " }
+						}
+						<code>{ id }</code>
+					}
+				</span>
+				<span>{ tNextUnlinkedBody.In(v.Page.Lang) }</span>
+			</div>
+			<a class="primary" href={ templ.SafeURL("#" + declEditAnchor) }>{ tNextReviewLink.In(v.Page.Lang) }</a>
+		</div>
+	} else {
+		<div class="next done">
+			<div class="next-icon">✓</div>
+			<div>
+				<strong>{ tNextAllLinked.In(v.Page.Lang) }</strong>
+				<span>{ tNextAllLinkedBody.In(v.Page.Lang) }</span>
+			</div>
+		</div>
+	}
+}
+
+// declNextMetrics — 숫자 셋. 세는 일은 뷰가 한다(DeclView.Summary).
+templ declNextMetrics(v DeclView) {
+	{{ s := v.Summary() }}
+	<div class="metrics">
+		<div class="metric">
+			<b>{ strconv.Itoa(s.Nodes) }</b>
+			<span>{ tNextMetricNodes.In(v.Page.Lang) }</span>
+		</div>
+		<div class={ "metric", templ.KV("warn", s.Unlinked > 0) }>
+			<b>{ strconv.Itoa(s.Unlinked) }</b>
+			<span>{ tNextMetricUnlinked.In(v.Page.Lang) }</span>
+		</div>
+		<div class="metric">
+			<b>{ strconv.Itoa(s.Assets) }</b>
+			<span>{ tNextMetricAssets.In(v.Page.Lang) }</span>
+		</div>
+	</div>
+}
+
+// declNodeCard — 노드 한 대. 이름·IP·관측 이름과, 지금 어떤 상태인지.
+templ declNodeCard(v DeclView, n DeclNode) {
+	{{ tag, warn := v.LinkTag(n) }}
+	<article class="node-card">
+		<div>
+			<strong>{ n.Name }</strong>
+			<span>{ n.IPText() }</span>
+		</div>
+		<div>
+			<span>{ tNextObservedAs.In(v.Page.Lang) }</span>
+			<code>{ v.ObservedText(n) }</code>
+		</div>
+		<span class={ "tag", templ.KV("warn", warn) }>{ tag.In(v.Page.Lang) }</span>
+		<a class="quiet" href={ templ.SafeURL("#" + declEditAnchor) }>{ tNextGoEdit.In(v.Page.Lang) }</a>
+	</article>
+}

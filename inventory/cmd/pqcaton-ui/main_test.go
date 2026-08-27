@@ -715,3 +715,46 @@ func TestReviewOpensFromResultsWithoutSessionFile(t *testing.T) {
 		t.Errorf("리뷰 큐가 비었다:\n%s", w.Body.String())
 	}
 }
+
+// IC-U30 — **새 화면을 두어도 옛 화면은 그대로다.**
+//
+// 옮기는 동안 둘을 나란히 두기로 했습니다(`/decl` 과 `/decl-next`). 새 스타일이 울타리
+// (`.ui-next`) 없이 새면 옛 화면의 버튼까지 함께 바뀌는데, 그러면 무엇을 비교하는지
+// 알 수 없게 됩니다.
+func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
+	s, _ := withDecl(t)
+
+	next := get(t, s, ui.ScreenDeclNext)
+	if next.Code != http.StatusOK {
+		t.Fatalf("새 화면이 %d", next.Code)
+	}
+	if !strings.Contains(next.Body.String(), `class="ui-next"`) {
+		t.Error("새 화면에 울타리가 없다 — 스타일이 옛 화면으로 샌다")
+	}
+
+	old := get(t, s, "/decl")
+	if old.Code != http.StatusOK {
+		t.Fatalf("옛 화면이 %d", old.Code)
+	}
+	if strings.Contains(old.Body.String(), `class="ui-next"`) {
+		t.Error("옛 화면에 요약이 붙었다 — 그대로 두기로 했다")
+	}
+	// 둘 다 같은 폼을 쓴다. 저장 경로가 갈리면 한쪽 저장이 조용히 틀린다.
+	for _, w := range []*httptest.ResponseRecorder{next, old} {
+		if !strings.Contains(w.Body.String(), `action="/decl/save"`) {
+			t.Error("두 화면이 같은 저장 경로를 쓰지 않는다")
+		}
+	}
+}
+
+// IC-U31 — **이동 링크에는 넣지 않는다.**
+//
+// 지금 쓰는 절차 화면과 나란히 두면 어느 쪽이 진짜인지 헷갈립니다. 옮기는 동안만 주소로
+// 엽니다. `/ui-next.html` 을 그렇게 다룬 것과 같은 선입니다(IC-U25).
+func TestDeclNextIsNotInTheNav(t *testing.T) {
+	s, _ := withDecl(t)
+	body := get(t, s, "/decl").Body.String()
+	if strings.Contains(body, `href="`+ui.ScreenDeclNext+`"`) {
+		t.Error("이동 링크에 새 화면이 들어갔다")
+	}
+}

@@ -6,57 +6,64 @@ import "strconv"
 // 명령(`pqcaton-report`)과 검토 화면이 짚는다.
 templ declPage(v DeclView) {
 	@shell(v.Page) {
-		<form method="post" action="/decl/save">
-			<fieldset>
-				<legend>{ tDeclOrg.In(v.Page.Lang) }</legend>
-				@tip(v.Page.Lang, tDeclOrgHint.In(v.Page.Lang))
-				<input type="text" name="org" value={ v.Org } placeholder="local"/>
-			</fieldset>
-			<fieldset>
-				<legend>{ tDeclScope.In(v.Page.Lang) }</legend>
-				if len(v.Unmatched) > 0 {
-					<datalist id={ unmatchedListID }>
-						for _, id := range v.Unmatched {
-							<option value={ id }></option>
-						}
-					</datalist>
-				}
-				@tip(v.Page.Lang, tDeclScopeHint.In(v.Page.Lang)+" "+tDeclNodesHint.In(v.Page.Lang)+" "+tDeclAssetsHint.In(v.Page.Lang))
-				<div id={ rowsID(KindNode) }>
-					for i, n := range v.Nodes {
-						@nodeBlock(v.Page.Lang, i, n)
-					}
-				</div>
-				@addRow(v.Page.Lang, KindNode, 0, len(v.Nodes), false)
-			</fieldset>
-			<fieldset>
-				<legend>{ tDeclEdges.In(v.Page.Lang) }</legend>
-				@tip(v.Page.Lang, tDeclEdgesHint.In(v.Page.Lang))
-				<table>
-					<thead>
-						<tr>
-							<th style="width:11rem">{ tColSrc.In(v.Page.Lang) }</th>
-							<th style="width:11rem">{ tColDst.In(v.Page.Lang) }</th>
-							<th style="width:6rem">{ tColPort.In(v.Page.Lang) }</th>
-							<th>{ tColProto.In(v.Page.Lang) }</th>
-							<th style="width:5rem"></th>
-						</tr>
-					</thead>
-					<tbody id={ rowsID(KindEdge) }>
-						for i, e := range v.Edges {
-							@edgeRow(v.Page.Lang, i, e.Src, e.Dst, portText(e.Port), e.Proto)
-						}
-					</tbody>
-				</table>
-				@addRow(v.Page.Lang, KindEdge, 0, len(v.Edges), false)
-			</fieldset>
-			<div class="actions">
-				<button class="primary">{ tDeclSave.In(v.Page.Lang) }</button>
-				@reloadButton(v.Page.Lang)
-				@tip(v.Page.Lang, tDeclSaveHint.In(v.Page.Lang))
-			</div>
-		</form>
+		@declForm(v)
 	}
+}
+
+// declForm — 선언을 적는 폼. **껍데기와 갈라 둔다** — 요약을 얹은 새 화면이 같은 폼을
+// 그대로 쓴다. 폼 이름이 곧 저장 경로라(`node.name.0` → 선언의 그 자리) 두 벌로 두면
+// 어긋나는 날이 오고, 그날 저장이 오류 없이 틀린다.
+templ declForm(v DeclView) {
+	<form method="post" action="/decl/save">
+		<fieldset>
+			<legend>{ tDeclOrg.In(v.Page.Lang) }</legend>
+			@tip(v.Page.Lang, tDeclOrgHint.In(v.Page.Lang))
+			<input type="text" name="org" value={ v.Org } placeholder="local"/>
+		</fieldset>
+		<fieldset>
+			<legend>{ tDeclScope.In(v.Page.Lang) }</legend>
+			if len(v.Unmatched) > 0 {
+				<datalist id={ unmatchedListID }>
+					for _, id := range v.Unmatched {
+						<option value={ id }></option>
+					}
+				</datalist>
+			}
+			@tip(v.Page.Lang, tDeclScopeHint.In(v.Page.Lang)+" "+tDeclNodesHint.In(v.Page.Lang)+" "+tDeclAssetsHint.In(v.Page.Lang))
+			<div id={ rowsID(KindNode) }>
+				for i, n := range v.Nodes {
+					@nodeBlock(v.Page.Lang, i, n)
+				}
+			</div>
+			@addRow(v.Page.Lang, KindNode, 0, len(v.Nodes), false)
+		</fieldset>
+		<fieldset>
+			<legend>{ tDeclEdges.In(v.Page.Lang) }</legend>
+			@tip(v.Page.Lang, tDeclEdgesHint.In(v.Page.Lang))
+			<table>
+				<thead>
+					<tr>
+						<th style="width:11rem">{ tColSrc.In(v.Page.Lang) }</th>
+						<th style="width:11rem">{ tColDst.In(v.Page.Lang) }</th>
+						<th style="width:6rem">{ tColPort.In(v.Page.Lang) }</th>
+						<th>{ tColProto.In(v.Page.Lang) }</th>
+						<th style="width:5rem"></th>
+					</tr>
+				</thead>
+				<tbody id={ rowsID(KindEdge) }>
+					for i, e := range v.Edges {
+						@edgeRow(v.Page.Lang, i, e.Src, e.Dst, portText(e.Port), e.Proto)
+					}
+				</tbody>
+			</table>
+			@addRow(v.Page.Lang, KindEdge, 0, len(v.Edges), false)
+		</fieldset>
+		<div class="actions">
+			<button class="primary">{ tDeclSave.In(v.Page.Lang) }</button>
+			@reloadButton(v.Page.Lang)
+			@tip(v.Page.Lang, tDeclSaveHint.In(v.Page.Lang))
+		</div>
+	</form>
 }
 
 // nodeBlock — 노드 한 대와 그 안의 자산. **자산을 노드 안에 둔다** — 「이 노드에서 이

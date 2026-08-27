@@ -378,3 +378,62 @@ func splitList(s string) []string {
 	}
 	return out
 }
+
+// DeclSummary — 선언 요약 화면(`/decl-next`)이 쓰는 숫자.
+//
+// **세는 일을 뷰에 둔다.** templ 안에서 세면 같은 계산이 화면마다 흩어지고, 그러면
+// 화면과 요약이 다른 답을 내는 날이 온다.
+type DeclSummary struct {
+	// Nodes — 관리 대상 노드.
+	Nodes int
+	// Unlinked — 관측에는 있는데 어느 선언 노드에도 붙지 않은 이름.
+	Unlinked int
+	// Assets — 선언한 암호 자산. 노드에 흩어져 있어 합쳐 센다.
+	Assets int
+}
+
+// Summary — 요약의 숫자 셋.
+func (v DeclView) Summary() DeclSummary {
+	s := DeclSummary{Nodes: len(v.Nodes), Unlinked: len(v.Unmatched)}
+	for _, n := range v.Nodes {
+		s.Assets += len(n.Assets)
+	}
+	return s
+}
+
+// LinkTag — 노드 카드의 배지와, 눈에 띄어야 하는지.
+//
+// **관측된 자산이 있으면 그 노드에는 관측이 붙은 것이다**(Seen). 붙지 않았는데 어디에도
+// 안 붙은 이름이 남아 있으면 그 가운데 하나일 수 있으니 고르라고 띄운다. 남은 이름이
+// 없으면 아직 관측되지 않은 것이라 사람이 할 일이 없다.
+func (v DeclView) LinkTag(n DeclNode) (T, bool) {
+	switch {
+	case len(n.Seen) > 0:
+		return tNextLinked, false
+	case len(v.Unmatched) > 0:
+		return tNextCandidate, true
+	default:
+		return tNextAwaiting, false
+	}
+}
+
+// ObservedText — 카드에 적을 관측 이름. 비었으면 「비어 있음」이라고 적는다 —
+// **빈 칸으로 두면 무엇이 비었는지 읽히지 않는다.**
+func (v DeclView) ObservedText(n DeclNode) string {
+	if len(n.ObservedAs) > 0 {
+		return strings.Join(n.ObservedAs, " · ")
+	}
+	return tNextEmpty.In(v.Page.Lang)
+}
+
+// declEditAnchor — 요약에서 폼으로 보내는 자리. **같은 화면 안이라 이동이 아니라 스크롤이다** —
+// 새 주소로 보내면 고치다 만 것이 날아간다.
+const declEditAnchor = "decl-edit"
+
+// RenderDeclNext — 요약을 얹은 선언 화면(`/decl-next`).
+//
+// 지금 화면(RenderDecl)과 **같은 뷰를 받는다.** 값을 따로 만들면 두 화면이 다른 답을
+// 내는 날이 오고, 그날 어느 쪽이 맞는지 아무도 모른다.
+func RenderDeclNext(w io.Writer, v DeclView) error {
+	return declNextPage(v).Render(context.Background(), w)
+}

@@ -846,3 +846,97 @@ func TestScopeOnlyNameStillShowsForFixing(t *testing.T) {
 		t.Fatalf("IP 없는 이름이 표에서 사라졌다: %+v", v.Nodes)
 	}
 }
+
+// IC-U26 — **요약과 편집 폼이 한 화면에 있다.**
+//
+// 요약은 무엇을 할지 가리키기만 하고, 고치는 일은 지금 쓰던 그 칸에서 합니다. 폼이
+// 빠지면 가리키기만 하고 고칠 자리가 없는 화면이 됩니다.
+func TestDeclNextCarriesSummaryAndForm(t *testing.T) {
+	var b strings.Builder
+	if err := ui.RenderDeclNext(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	for _, want := range []string{
+		`class="ui-next"`, // 새 스타일을 가두는 울타리
+		"관측한 노드를 선언과 연결합니다", // 요약
+		`id="decl-edit"`,      // 요약에서 폼으로 보내는 자리
+		`action="/decl/save"`, // 폼은 지금 쓰던 그 저장 경로다
+		`name="node.name.0"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("%q 가 없다 — 요약과 폼 가운데 한쪽이 빠졌다", want)
+		}
+	}
+}
+
+// IC-U27 — **연결할 이름이 없으면 없다고 적는다.**
+//
+// 빈 자리는 「아직 안 불러온 것」으로 읽힙니다. 할 일이 없다는 것도 알려 주어야 사람이
+// 다음 단계로 넘어갑니다.
+func TestDeclNextTellsWhenNothingIsLeft(t *testing.T) {
+	page := ui.Page{Title: "선언", Lang: ui.KO}
+
+	var quiet strings.Builder
+	if err := ui.RenderDeclNext(&quiet, ui.NewDeclView(sample(), page)); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(quiet.String(), "연결할 관측 이름이 없습니다") {
+		t.Error("할 일이 없는데 그렇다고 적지 않았다")
+	}
+	if strings.Contains(quiet.String(), `class="next"`) {
+		t.Error("할 일이 없는데 경고 상자를 띄웠다")
+	}
+
+	v := ui.NewDeclView(sample(), page).WithObserved(nil, []string{"node:1a2b", "node:3c4d"})
+	var loud strings.Builder
+	if err := ui.RenderDeclNext(&loud, v); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"관측 이름이 2개 있습니다", "node:1a2b", "node:3c4d"} {
+		if !strings.Contains(loud.String(), want) {
+			t.Errorf("%q 가 없다 — 붙지 않은 이름을 그대로 보여 주어야 고칠 수 있다", want)
+		}
+	}
+}
+
+// IC-U28 — **요약의 숫자는 뷰가 센다.**
+//
+// templ 안에서 세면 같은 계산이 화면마다 흩어지고, 그러면 화면과 요약이 다른 답을 내는
+// 날이 옵니다. 자산은 노드에 흩어져 있어 합쳐 세야 합니다.
+func TestDeclSummaryCounts(t *testing.T) {
+	d := sample()
+	d.Nodes = append(d.Nodes, decl.Node{Name: "db", IPs: []string{"10.0.0.2"}})
+	d.Assets = append(d.Assets, decl.Asset{Node: "db", Runtime: "jca", Component: "jca-provider-chain"})
+
+	v := ui.NewDeclView(d, ui.Page{Title: "선언", Lang: ui.KO}).WithObserved(nil, []string{"node:1a2b"})
+	got := v.Summary()
+	if got.Nodes != 2 || got.Assets != 2 || got.Unlinked != 1 {
+		t.Fatalf("센 값이 %+v — 노드 2 · 자산 2 · 안 붙은 이름 1 이어야 한다", got)
+	}
+}
+
+// IC-U29 — **관측된 자산이 있으면 그 노드에는 관측이 붙은 것이다.**
+//
+// 배지가 상태를 잘못 말하면 사람은 멀쩡한 노드를 고치러 갑니다. 가르는 것은 그 노드에서
+// 관측된 자산이 있는지이고, 없을 때 어디에도 안 붙은 이름이 남아 있으면 그 가운데 하나일
+// 수 있으니 고르라고 띄웁니다.
+func TestDeclNextLinkTag(t *testing.T) {
+	page := ui.Page{Title: "선언", Lang: ui.KO}
+	seen := map[string][]ui.DeclAsset{"web": {{Runtime: "openssl", Component: "libssl"}}}
+
+	linked := ui.NewDeclView(sample(), page).WithObserved(seen, nil)
+	if tag, warn := linked.LinkTag(linked.Nodes[0]); tag.In(ui.KO) != "연결됨" || warn {
+		t.Errorf("관측이 붙은 노드를 %q(warn=%v) 로 말한다", tag.In(ui.KO), warn)
+	}
+
+	candidate := ui.NewDeclView(sample(), page).WithObserved(nil, []string{"node:1a2b"})
+	if tag, warn := candidate.LinkTag(candidate.Nodes[0]); tag.In(ui.KO) != "연결 후보 있음" || !warn {
+		t.Errorf("고를 후보가 있는데 %q(warn=%v) 로 말한다", tag.In(ui.KO), warn)
+	}
+
+	awaiting := ui.NewDeclView(sample(), page).WithObserved(nil, nil)
+	if tag, warn := awaiting.LinkTag(awaiting.Nodes[0]); tag.In(ui.KO) != "관측 대기" || warn {
+		t.Errorf("관측도 후보도 없는데 %q(warn=%v) 로 말한다", tag.In(ui.KO), warn)
+	}
+}

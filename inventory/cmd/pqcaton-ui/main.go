@@ -26,6 +26,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -221,6 +222,7 @@ func (s *server) handler() http.Handler {
 	// 함께 싣는다. 현행 절차 화면과 헷갈리지 않게 별도 주소로만 연다.
 	r.Get("/ui-next.html", uiNext)
 	r.Get("/decl", s.declEdit)
+	r.Get(ui.ScreenDeclNext, s.declNext)
 	r.Get(ui.RowPath, s.declRow)
 	r.Get(ui.RemovePath, s.declRemove)
 	r.Post("/decl/save", s.declSave)
@@ -717,7 +719,19 @@ const defaultTTLDays = 180
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
 
+// declEdit · declNext — 같은 값을 서로 다른 판으로 그린다.
+//
+// **뷰를 하나만 만든다.** 두 화면이 각자 세면 숫자가 갈리는 날이 오고, 그날 어느 쪽이
+// 맞는지 아무도 모른다. 갈리는 것은 그리는 방식뿐이다.
 func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
+	s.declScreen(w, r, ui.RenderDecl)
+}
+
+func (s *server) declNext(w http.ResponseWriter, r *http.Request) {
+	s.declScreen(w, r, ui.RenderDeclNext)
+}
+
+func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.DeclView) error) {
 	if s.decl == "" {
 		http.Error(w, "no declaration file was given — pass -decl", http.StatusNotFound)
 		return
@@ -730,7 +744,7 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 	v := ui.NewDeclView(d, s.page(r, ui.ScreenDecl, sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)))
 	seen, unmatched := s.observedAssets(d)
 	v = v.WithObserved(seen, unmatched)
-	html(w, func() error { return ui.RenderDecl(w, v) })
+	html(w, func() error { return render(w, v) })
 }
 
 // observedAssets — 노드마다 **관측된** 자산. 컴포넌트 칸의 후보다.

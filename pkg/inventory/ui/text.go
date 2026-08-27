@@ -519,3 +519,54 @@ var (
 		EN: "No policy CSV was given — pass <code>-scope-out</code> (the finalized policy) " +
 			"to open “what is not being looked at”."}
 )
+
+// ── 선언 요약 (`/decl-next`) ────────────────────────────────────────────────
+//
+// **적는 자리 위에 「지금 무엇을 할지」를 얹는다.** 선언 편집은 칸이 많아서, 처음 여는
+// 사람은 어디부터 손대야 하는지 알기 어렵다. 관측에 있는데 어느 노드에도 붙지 않은
+// 이름이 그 답이고, 그것이 곧 대조가 통째로 어긋나는 자리다.
+var (
+	tNextDeclEyebrow = T{KO: "01 · 선언", EN: "01 · Declaration"}
+	tNextDeclHead    = T{
+		KO: "관측한 노드를 선언과 연결합니다",
+		EN: "Link observed nodes to the declaration"}
+	tNextDeclLede = T{
+		KO: "대조 전에 이름을 맞추면, 실제 자산을 다른 노드의 UNDECLARED로 오해하지 않습니다.",
+		EN: "Match the names before reconciling and a real asset will not be read as " +
+			"another node's UNDECLARED."}
+
+	tNextUnlinked = T{
+		KO: "선언 노드에 연결되지 않은 관측 이름이 %d개 있습니다",
+		EN: "%d observed names are not linked to a declared node"}
+	tNextUnlinkedBody = T{
+		KO: "이 이름으로 관측된 자산은 어느 노드에도 붙지 않아 통째로 UNDECLARED 로 오릅니다.",
+		EN: "Assets observed under these names attach to no node, so they all come up as UNDECLARED."}
+	tNextAllLinked = T{
+		KO: "연결할 관측 이름이 없습니다",
+		EN: "There is no observed name left to link"}
+	tNextAllLinkedBody = T{
+		KO: "관측에 나온 이름이 모두 선언 노드에 붙었습니다. 대조로 넘어가도 됩니다.",
+		EN: "Every observed name is attached to a declared node. You can move on to reconciliation."}
+	tNextReviewLink = T{KO: "연결 검토", EN: "Review the link"}
+
+	tNextMetricNodes    = T{KO: "관리 대상 노드", EN: "nodes in scope"}
+	tNextMetricUnlinked = T{KO: "연결할 관측 이름", EN: "observed names to link"}
+	tNextMetricAssets   = T{KO: "선언한 암호 자산", EN: "declared crypto assets"}
+
+	tNextLinkSection = T{KO: "노드와 관측 연결", EN: "Linking nodes to observations"}
+	tNextLinkNote    = T{
+		KO: "원본 선언은 그대로 유지합니다",
+		EN: "the original declaration stays as it is"}
+
+	tNextObservedAs = T{KO: "관측 이름", EN: "observed name"}
+	tNextEmpty      = T{KO: "비어 있음", EN: "empty"}
+	tNextLinked     = T{KO: "연결됨", EN: "linked"}
+	tNextCandidate  = T{KO: "연결 후보 있음", EN: "candidate found"}
+	tNextAwaiting   = T{KO: "관측 대기", EN: "awaiting observation"}
+	tNextGoEdit     = T{KO: "고치러 가기", EN: "Go and edit"}
+
+	tNextEditHead = T{KO: "선언 고치기", EN: "Edit the declaration"}
+	tNextEditLede = T{
+		KO: "위에서 본 것을 여기서 고칩니다. 저장하면 선언 파일에 그대로 씁니다.",
+		EN: "What you saw above gets edited here. Saving writes it straight to the declaration file."}
+)
