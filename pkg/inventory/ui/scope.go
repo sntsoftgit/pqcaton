@@ -168,3 +168,39 @@ func ApplyScope(sf scope.Session, f url.Values) scope.Session {
 	}
 	return sf
 }
+
+// ScopeSummary — 스코프 요약 화면(`/scope-next`)이 쓰는 숫자.
+//
+// **세는 일을 뷰에 둔다**(DeclSummary 와 같은 선). templ 안에서 세면 같은 계산이
+// 화면마다 흩어지고, 그러면 화면과 요약이 다른 답을 내는 날이 온다.
+type ScopeSummary struct {
+	// Layers — 화면에서 고칠 수 있는 계층. 계층 파일을 주지 않았으면 0 이고, 그때 화면은
+	// 승인만 하는 자리가 된다.
+	Layers int
+	// Rules — 그 계층들에 적힌 규칙을 합친 수.
+	Rules int
+	// Changes — 판정을 기다리는 변경.
+	Changes int
+	// Audited — 그 가운데 **왜 뺐는지를 적어야** 확정되는 것.
+	Audited int
+}
+
+// Summary — 요약의 숫자 넷.
+func (v ScopeView) Summary() ScopeSummary {
+	s := ScopeSummary{Layers: len(v.Editing), Audited: v.Audited}
+	for _, e := range v.Editing {
+		s.Rules += len(e.Rules)
+	}
+	for _, g := range v.Layers {
+		s.Changes += len(g.Changes)
+	}
+	return s
+}
+
+// scopeEditAnchor — 요약에서 승인 폼으로 보내는 자리.
+const scopeEditAnchor = "scope-edit"
+
+// RenderScopeNext — 요약을 얹은 스코프 화면(`/scope-next`).
+func RenderScopeNext(w io.Writer, v ScopeView) error {
+	return scopeNextPage(v).Render(context.Background(), w)
+}

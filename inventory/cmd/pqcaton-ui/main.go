@@ -227,6 +227,7 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.RemovePath, s.declRemove)
 	r.Post("/decl/save", s.declSave)
 	r.Get("/scope", s.scopeEdit)
+	r.Get(ui.ScreenScopeNext, s.scopeNext)
 	r.Get(ui.ScopeRowPath, s.scopeRow)
 	r.Post("/scope/rules", s.scopeRules)
 	r.Post("/scope/save", s.scopeSave)
@@ -414,6 +415,14 @@ func (s *server) scopeSession() (scope.Session, []scope.LayerFile, error) {
 }
 
 func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
+	s.scopeScreen(w, r, ui.RenderScope, false)
+}
+
+func (s *server) scopeNext(w http.ResponseWriter, r *http.Request) {
+	s.scopeScreen(w, r, ui.RenderScopeNext, true)
+}
+
+func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.ScopeView) error, next bool) {
 	if s.scope == "" {
 		http.Error(w, "no scope session was given — pass -scope or -layers", http.StatusNotFound)
 		return
@@ -428,7 +437,12 @@ func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 	if len(files) > 0 {
 		v = v.Editable(files)
 	}
-	html(w, func() error { return ui.RenderScope(w, v) })
+	if next {
+		got := v.Summary()
+		v.Page = s.nextPage(r, ui.ScreenScopeNext, s.scope, ui.StepState{Scope: &got})
+		v.Page.Org = sf.Org
+	}
+	html(w, func() error { return render(w, v) })
 }
 
 // scopeRules — 화면에서 고친 규칙을 계층 파일에 쓴다.
@@ -735,14 +749,14 @@ func (s *server) declNext(w http.ResponseWriter, r *http.Request) {
 //
 // **절차 카드는 여기서 만든다.** 상태를 아는 화면부터 채우는데, 지금은 선언 하나다 —
 // 카드 하나를 채우려면 그 화면의 계산을 매 요청마다 돌려야 하고, 대조는 계산이 무겁다.
-func (s *server) nextPage(r *http.Request, here, subtitle string, decl *ui.DeclSummary) ui.Page {
+func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepState) ui.Page {
 	p := s.page(r, here, subtitle)
 	p.Org = s.org
 	p.Results = s.results
 	p.Steps = ui.StepsFor(p.Lang, here, ui.Screens{
 		Decl: s.decl != "", Scope: s.scope != "", Survey: s.results != "",
 		Inventory: s.results != "",
-	}, decl)
+	}, st)
 	return p
 }
 
@@ -765,7 +779,7 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		got := v.Summary()
 		// **부제에는 파일만 적는다.** 조직은 위쪽 맥락 줄에 이미 있어서, 그대로 두면
 		// 같은 값이 한 화면에 두 번 나온다.
-		v.Page = s.nextPage(r, ui.ScreenDeclNext, s.decl, &got)
+		v.Page = s.nextPage(r, ui.ScreenDeclNext, s.decl, ui.StepState{Decl: &got})
 		v.Page.Org = d.OrgOrDefault()
 	}
 	html(w, func() error { return render(w, v) })

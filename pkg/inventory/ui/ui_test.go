@@ -983,7 +983,7 @@ func TestDeclNextLinksToTheRightNode(t *testing.T) {
 // **그렇다고 적습니다** — 빈 자리는 「할 일이 없다」로 읽힙니다.
 func TestStepsCarryState(t *testing.T) {
 	open := ui.Screens{Decl: true, Scope: true, Survey: true, Inventory: true}
-	steps := ui.StepsFor(ui.KO, ui.ScreenDeclNext, open, &ui.DeclSummary{Nodes: 3, Unlinked: 2})
+	steps := ui.StepsFor(ui.KO, ui.ScreenDeclNext, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3, Unlinked: 2}})
 	if len(steps) != 4 {
 		t.Fatalf("카드가 %d개 — 절차는 넷이다", len(steps))
 	}
@@ -999,7 +999,7 @@ func TestStepsCarryState(t *testing.T) {
 		}
 	}
 
-	done := ui.StepsFor(ui.KO, ui.ScreenDeclNext, open, &ui.DeclSummary{Nodes: 3})
+	done := ui.StepsFor(ui.KO, ui.ScreenDeclNext, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3}})
 	if done[0].Dot != "ok" {
 		t.Errorf("붙일 이름이 없는데 점이 %q 다", done[0].Dot)
 	}
@@ -1010,7 +1010,7 @@ func TestStepsCarryState(t *testing.T) {
 // 없는 것을 눌러 보게 하지 않는다는 선은 옛 이동 링크와 같습니다(`NavFor`). 다만 카드는
 // **자리를 비우지 않고 왜 닫혔는지 적습니다** — 넷이 늘 보여야 절차가 몇 걸음인지 읽힙니다.
 func TestStepsMarkWhatIsClosed(t *testing.T) {
-	steps := ui.StepsFor(ui.KO, ui.ScreenDeclNext, ui.Screens{Decl: true}, nil)
+	steps := ui.StepsFor(ui.KO, ui.ScreenDeclNext, ui.Screens{Decl: true}, ui.StepState{})
 	if len(steps) != 4 {
 		t.Fatalf("닫혔다고 카드를 뺐다: %d개", len(steps))
 	}
@@ -1029,7 +1029,7 @@ func TestStepsMarkWhatIsClosed(t *testing.T) {
 // 나란히 서야 비교가 됩니다.
 func TestNextShellDoesNotTouchTheOldScreens(t *testing.T) {
 	page := ui.Page{Title: "선언", Lang: ui.KO,
-		Steps: ui.StepsFor(ui.KO, ui.ScreenDeclNext, ui.Screens{Decl: true}, nil)}
+		Steps: ui.StepsFor(ui.KO, ui.ScreenDeclNext, ui.Screens{Decl: true}, ui.StepState{})}
 
 	var next strings.Builder
 	if err := ui.RenderDeclNext(&next, ui.NewDeclView(sample(), page)); err != nil {
@@ -1049,5 +1049,63 @@ func TestNextShellDoesNotTouchTheOldScreens(t *testing.T) {
 		if strings.Contains(old.String(), unwanted) {
 			t.Errorf("옛 화면에 %q 가 샜다", unwanted)
 		}
+	}
+}
+
+// scopeSession — 요약을 재는 데 쓰는 스코프 세션. 변경 셋 가운데 둘은 근거가 있고
+// 하나는 없다 — **근거 없는 것이 확정을 막는 자리**라 그 수를 따로 센다.
+func scopeSession() scope.Session {
+	return scope.Session{
+		Org: "acme", LayerDecisions: map[string]string{"corp": "", "pay": ""},
+		Changes: []scope.ChangeItem{
+			{ID: "a", Layer: "corp", Kind: scope.KindAdded, Audited: true},
+			{ID: "b", Layer: "corp", Kind: scope.KindRemoved},
+			{ID: "c", Layer: "pay", Kind: scope.KindAdded, Audited: true},
+		},
+	}
+}
+
+// IC-U36 — **스코프 요약도 뷰가 센다.** 계층과 규칙은 자리가 갈려 있어 합쳐 세야 한다.
+//
+// **근거가 필요한 수를 따로 셉니다.** 다 승인해 놓고 확정이 막히면 사람은 무엇이
+// 모자란지 화면에서 알 수 없습니다.
+func TestScopeSummaryCounts(t *testing.T) {
+	v := ui.NewScopeView(scopeSession(), ui.Page{Title: "스코프", Lang: ui.KO})
+	got := v.Summary()
+	if got.Changes == 0 {
+		t.Fatalf("판정할 변경을 하나도 세지 않았다: %+v", got)
+	}
+	if got.Audited > got.Changes {
+		t.Errorf("근거 필요 %d 가 변경 %d 보다 많다", got.Audited, got.Changes)
+	}
+}
+
+// IC-U37 — **스코프의 두 화면도 같은 폼을 쓴다.**
+//
+// 확정 경로가 두 벌이 되면 한쪽이 어긋나는 날이 오고, 그날 승인한 것과 확정된 것이
+// 달라집니다. 선언에서 정한 선과 같습니다(IC-U30).
+func TestScopeNextSharesTheForm(t *testing.T) {
+	page := ui.Page{Title: "스코프", Lang: ui.KO}
+
+	var next strings.Builder
+	if err := ui.RenderScopeNext(&next, ui.NewScopeView(scopeSession(), page)); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`class="ui-next"`, "관리하지 않을 자산을 승인합니다",
+		`id="scope-edit"`, `action="/scope/finalize"`} {
+		if !strings.Contains(next.String(), want) {
+			t.Errorf("%q 가 없다", want)
+		}
+	}
+
+	var old strings.Builder
+	if err := ui.RenderScope(&old, ui.NewScopeView(scopeSession(), page)); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(old.String(), `class="ui-next"`) {
+		t.Error("옛 화면에 요약이 붙었다")
+	}
+	if !strings.Contains(old.String(), `action="/scope/finalize"`) {
+		t.Error("두 화면이 같은 확정 경로를 쓰지 않는다")
 	}
 }

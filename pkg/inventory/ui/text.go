@@ -588,3 +588,50 @@ var (
 	tStepClosed   = T{KO: "입력 파일을 주지 않았습니다", EN: "no input was given"}
 	tStepUnknown  = T{KO: "아직 세지 않습니다", EN: "not counted yet"}
 )
+
+// ── 스코프 요약 (`/scope-next`) ─────────────────────────────────────────────
+var (
+	tNextScopeEyebrow = T{KO: "02 · 암호 자산 스코프", EN: "02 · Crypto asset scope"}
+	tNextScopeHead    = T{
+		KO: "관리하지 않을 자산을 승인합니다",
+		EN: "Approve what will not be managed"}
+	tNextScopeLede = T{
+		KO: "규칙 원본은 계층별 CSV에 남고, 제외 변경만 판정과 서명을 거쳐 확정합니다.",
+		EN: "The rules themselves stay in the per-layer CSVs; only exclusions go through " +
+			"judgment and a signature."}
+
+	tNextScopeTodo = T{
+		KO: "승인할 규칙 변경이 %d개 있습니다",
+		EN: "%d rule changes are waiting for approval"}
+	tNextScopeAudited = T{
+		KO: "그 가운데 %d개는 왜 뺐는지를 적어야 확정됩니다.",
+		EN: "%d of them need a recorded reason before they can be finalized."}
+	tNextScopeDone     = T{KO: "승인할 규칙 변경이 없습니다", EN: "No rule change is waiting"}
+	tNextScopeDoneBody = T{
+		KO: "지금 정책은 규칙 %d개이고, 새로 뺀 자산이 없습니다.",
+		EN: "The policy in force has %d rules, and nothing new was excluded."}
+
+	tNextScopeGo = T{KO: "승인하러 가기", EN: "Go and approve"}
+
+	tNextScopeMetricLayers  = T{KO: "적용 중인 계층", EN: "layers in force"}
+	tNextScopeMetricRules   = T{KO: "확정된 규칙", EN: "finalized rules"}
+	tNextScopeMetricChanges = T{KO: "판정할 변경", EN: "changes to judge"}
+
+	tNextLayerSection = T{KO: "적용 중인 계층", EN: "Layers in force"}
+	tNextLayerNote    = T{KO: "아래 계층일수록 우선합니다", EN: "the lower the layer, the higher it wins"}
+	tNextLayerRules   = T{KO: " · 규칙 %d개", EN: " · %d rules"}
+
+	tNextScopeEditHead = T{KO: "규칙과 판정", EN: "Rules and judgments"}
+	tNextScopeEditLede = T{
+		KO: "위에서 본 것을 여기서 승인합니다. 확정하면 pqcota 집행기가 읽는 CSV 그대로 나갑니다.",
+		EN: "What you saw above gets approved here. Finalizing writes the very CSV the " +
+			"pqcota enforcer reads."}
+)
+
+var (
+	tStepScopeOpen    = T{KO: "승인할 변경 %d건", EN: "%d changes to approve"}
+	tStepScopeAudited = T{
+		KO: "승인할 변경 %d건 · 근거 필요 %d건",
+		EN: "%d changes to approve · %d need a reason"}
+	tStepScopeDone = T{KO: "승인할 변경 없음", EN: "no change to approve"}
+)

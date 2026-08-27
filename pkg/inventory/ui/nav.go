@@ -14,6 +14,8 @@ const (
 	// ScreenDeclNext — 선언 화면의 다음 판. **이동 링크에는 넣지 않는다** — 지금 쓰는
 	// 절차 화면과 나란히 두면 어느 쪽이 진짜인지 헷갈린다. 옮기는 동안만 주소로 연다.
 	ScreenDeclNext = "/decl-next"
+	// ScreenScopeNext — 자산 스코프의 다음 판. 선언과 같은 선이다.
+	ScreenScopeNext = "/scope-next"
 )
 
 // Screens — 재료를 받아 열린 화면들.
@@ -54,7 +56,7 @@ func ScreenTitle(here string, l Lang) string {
 	// 다음 판도 같은 화면이다 — 제목이 갈리면 브라우저 기록에서 둘이 다른 것으로 남는다.
 	case ScreenDecl, ScreenDeclNext:
 		return tTitleDecl.In(l)
-	case ScreenScope:
+	case ScreenScope, ScreenScopeNext:
 		return tTitleScope.In(l)
 	case ScreenSurvey:
 		return tTitleSurvey.In(l)
@@ -89,10 +91,10 @@ type Step struct {
 // **상태는 옮긴 화면부터 채운다.** 카드 하나를 채우려면 그 화면의 계산을 매 요청마다
 // 돌려야 하는데, 대조는 계산이 무겁고 한 화면의 재료가 어긋나면 다른 화면까지 막힌다.
 // 그래서 화면을 옮기는 걸음마다 그 카드를 채운다(지금은 선언 하나다).
-func StepsFor(l Lang, here string, s Screens, decl *DeclSummary) []Step {
+func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 	steps := []Step{
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDeclNext, Open: s.Decl},
-		{Num: "02", Title: tTitleScope.In(l), Href: ScreenScope, Open: s.Scope},
+		{Num: "02", Title: tTitleScope.In(l), Href: ScreenScopeNext, Open: s.Scope},
 		{Num: "03", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
 		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReview, Open: true},
 	}
@@ -101,13 +103,35 @@ func StepsFor(l Lang, here string, s Screens, decl *DeclSummary) []Step {
 		switch {
 		case !steps[i].Open:
 			steps[i].State = tStepClosed.In(l)
-		case i == 0 && decl != nil:
-			steps[i].State, steps[i].Dot = declState(l, *decl)
+		case i == 0 && st.Decl != nil:
+			steps[i].State, steps[i].Dot = declState(l, *st.Decl)
+		case i == 1 && st.Scope != nil:
+			steps[i].State, steps[i].Dot = scopeState(l, *st.Scope)
 		default:
 			steps[i].State = tStepUnknown.In(l)
 		}
 	}
 	return steps
+}
+
+// StepState — 카드에 채울 상태. **옮긴 화면만 넣는다** — 카드 하나를 채우려면 그 화면의
+// 계산을 매 요청마다 돌려야 하고, 대조는 계산이 무겁다. 비어 있는 자리는 「아직 세지
+// 않는다」로 적힌다.
+type StepState struct {
+	Decl  *DeclSummary
+	Scope *ScopeSummary
+}
+
+// scopeState — 스코프 카드의 한 줄. **근거가 필요한 것을 따로 센다** — 다 승인해 놓고
+// 확정이 막히는 자리가 거기다.
+func scopeState(l Lang, s ScopeSummary) (string, string) {
+	if s.Changes == 0 {
+		return tStepScopeDone.In(l), "ok"
+	}
+	if s.Audited > 0 {
+		return fmt.Sprintf(tStepScopeAudited.In(l), s.Changes, s.Audited), "danger"
+	}
+	return fmt.Sprintf(tStepScopeOpen.In(l), s.Changes), "warn"
 }
 
 // declState — 선언 카드의 한 줄. 붙지 않은 이름이 그 화면의 급한 일이다.

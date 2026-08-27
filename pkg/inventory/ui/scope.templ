@@ -10,101 +10,107 @@ import (
 // scopePage — 자산 스코프. **exclude 추가만 근거 필수**라, 그 무게 차이가 화면에 보여야 한다.
 templ scopePage(v ScopeView) {
 	@shell(v.Page) {
-		@tip(v.Page.Lang, tScopeIntro.In(v.Page.Lang)+" "+tScopeDelta.In(v.Page.Lang)+" "+tScopeConclusionHint.In(v.Page.Lang))
-		<form method="post" action="/scope/finalize">
-			if len(v.Editing) > 0 {
-				@ruleLegend(v.Page.Lang)
-				for _, e := range v.Editing {
-					@layerEditor(v.Page.Lang, e)
-				}
-				<div class="actions">
-					<button formaction="/scope/rules" class="primary">{ tSaveRules.In(v.Page.Lang) }</button>
-					@tip(v.Page.Lang, tSaveRulesHint.In(v.Page.Lang))
-				</div>
-				<h2>{ tScopeEditResult.In(v.Page.Lang) }</h2>
+		@scopeForm(v)
+	}
+}
+
+// scopeForm — 스코프를 승인하는 폼. **껍데기와 갈라 둔다** — 요약을 얹은 새 화면이
+// 같은 폼을 그대로 쓴다. 확정 경로가 두 벌이 되면 한쪽이 어긋나는 날이 온다.
+templ scopeForm(v ScopeView) {
+	@tip(v.Page.Lang, tScopeIntro.In(v.Page.Lang)+" "+tScopeDelta.In(v.Page.Lang)+" "+tScopeConclusionHint.In(v.Page.Lang))
+	<form method="post" action="/scope/finalize">
+		if len(v.Editing) > 0 {
+			@ruleLegend(v.Page.Lang)
+			for _, e := range v.Editing {
+				@layerEditor(v.Page.Lang, e)
 			}
-			for _, g := range v.Layers {
-				<fieldset>
-					<legend>
-						{ layerName(v.Page.Lang, g.Name) }
-						<span class="n">
-							— { strconv.Itoa(len(g.Changes)) } { tChanges.In(v.Page.Lang) }
-							if g.Audited > 0 {
-								, { strconv.Itoa(g.Audited) } { tReasonNeeded.In(v.Page.Lang) }
-							}
-						</span>
-					</legend>
-					<label>
-						{ tLayerConclusion.In(v.Page.Lang) }
-						<input
-							type="text"
-							name={ "layer:" + g.Name }
-							value={ g.Conclusion }
-							placeholder={ tLayerPlaceholder.In(v.Page.Lang) }
-						/>
-					</label>
-					<table>
-						<tr>
-							<th style="width:4rem">{ tColChange.In(v.Page.Lang) }</th>
-							<th>{ tColRule.In(v.Page.Lang) }</th>
-							<th>{ tColNote.In(v.Page.Lang) }</th>
-							<th>{ tColException.In(v.Page.Lang) }</th>
-						</tr>
-						for _, c := range g.Changes {
-							<tr>
-								<td class={ templ.KV("must", c.Audited) }>{ kindLabel(v.Page.Lang, c.Kind) }</td>
-								<td><code>{ c.Rule }</code></td>
-								<td class="hint">{ c.Note }</td>
-								<td><input type="text" name={ "change:" + c.ID } value={ c.Conclusion }/></td>
-							</tr>
-						}
-					</table>
-				</fieldset>
-			}
-			if len(v.Layers) == 0 {
-				<p>{ tScopeEmpty.In(v.Page.Lang) }</p>
-			}
-			<fieldset>
-				<legend>{ tApproval.In(v.Page.Lang) }</legend>
-				@tip(v.Page.Lang, tScopeApprovalHint.In(v.Page.Lang))
-				<label>
-					{ tReviewer.In(v.Page.Lang) }
-					<input type="text" name="reviewer" value={ v.Session.Reviewer }/>
-				</label>
-				<label style="display:block;margin-top:.6rem">
-					{ tSignature.In(v.Page.Lang) }
-					<input type="text" name="signature" value={ v.Session.Signature }/>
-				</label>
-			</fieldset>
+			<div class="actions">
+				<button formaction="/scope/rules" class="primary">{ tSaveRules.In(v.Page.Lang) }</button>
+				@tip(v.Page.Lang, tSaveRulesHint.In(v.Page.Lang))
+			</div>
+			<h2>{ tScopeEditResult.In(v.Page.Lang) }</h2>
+		}
+		for _, g := range v.Layers {
 			<fieldset>
 				<legend>
-					{ tPolicyOnFinalize.In(v.Page.Lang) }
-					<span class="n">— { fmt.Sprintf(tPolicyRulesAll.In(v.Page.Lang), len(v.Session.Merged)) }</span>
+					{ layerName(v.Page.Lang, g.Name) }
+					<span class="n">
+						— { strconv.Itoa(len(g.Changes)) } { tChanges.In(v.Page.Lang) }
+						if g.Audited > 0 {
+							, { strconv.Itoa(g.Audited) } { tReasonNeeded.In(v.Page.Lang) }
+						}
+					</span>
 				</legend>
-				@tip(v.Page.Lang, tPolicyWholeHint.In(v.Page.Lang))
+				<label>
+					{ tLayerConclusion.In(v.Page.Lang) }
+					<input
+						type="text"
+						name={ "layer:" + g.Name }
+						value={ g.Conclusion }
+						placeholder={ tLayerPlaceholder.In(v.Page.Lang) }
+					/>
+				</label>
 				<table>
 					<tr>
-						<th style="width:6rem">action</th><th style="width:6rem">runtime</th>
-						<th>lib</th><th>app_key</th><th>note</th>
+						<th style="width:4rem">{ tColChange.In(v.Page.Lang) }</th>
+						<th>{ tColRule.In(v.Page.Lang) }</th>
+						<th>{ tColNote.In(v.Page.Lang) }</th>
+						<th>{ tColException.In(v.Page.Lang) }</th>
 					</tr>
-					for _, r := range v.Session.Merged {
+					for _, c := range g.Changes {
 						<tr>
-							<td class={ templ.KV("must", r.Action == "exclude") }>{ r.Action }</td>
-							<td>{ r.Runtime }</td>
-							<td><code>{ r.Lib }</code></td>
-							<td><code>{ r.AppKey }</code></td>
-							<td class="hint">{ r.Note }</td>
+							<td class={ templ.KV("must", c.Audited) }>{ kindLabel(v.Page.Lang, c.Kind) }</td>
+							<td><code>{ c.Rule }</code></td>
+							<td class="hint">{ c.Note }</td>
+							<td><input type="text" name={ "change:" + c.ID } value={ c.Conclusion }/></td>
 						</tr>
 					}
 				</table>
 			</fieldset>
-			<div class="actions">
-				<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
-				<button formaction="/scope/finalize" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
-				@tip(v.Page.Lang, tScopeGateHint.In(v.Page.Lang))
-			</div>
-		</form>
-	}
+		}
+		if len(v.Layers) == 0 {
+			<p>{ tScopeEmpty.In(v.Page.Lang) }</p>
+		}
+		<fieldset>
+			<legend>{ tApproval.In(v.Page.Lang) }</legend>
+			@tip(v.Page.Lang, tScopeApprovalHint.In(v.Page.Lang))
+			<label>
+				{ tReviewer.In(v.Page.Lang) }
+				<input type="text" name="reviewer" value={ v.Session.Reviewer }/>
+			</label>
+			<label style="display:block;margin-top:.6rem">
+				{ tSignature.In(v.Page.Lang) }
+				<input type="text" name="signature" value={ v.Session.Signature }/>
+			</label>
+		</fieldset>
+		<fieldset>
+			<legend>
+				{ tPolicyOnFinalize.In(v.Page.Lang) }
+				<span class="n">— { fmt.Sprintf(tPolicyRulesAll.In(v.Page.Lang), len(v.Session.Merged)) }</span>
+			</legend>
+			@tip(v.Page.Lang, tPolicyWholeHint.In(v.Page.Lang))
+			<table>
+				<tr>
+					<th style="width:6rem">action</th><th style="width:6rem">runtime</th>
+					<th>lib</th><th>app_key</th><th>note</th>
+				</tr>
+				for _, r := range v.Session.Merged {
+					<tr>
+						<td class={ templ.KV("must", r.Action == "exclude") }>{ r.Action }</td>
+						<td>{ r.Runtime }</td>
+						<td><code>{ r.Lib }</code></td>
+						<td><code>{ r.AppKey }</code></td>
+						<td class="hint">{ r.Note }</td>
+					</tr>
+				}
+			</table>
+		</fieldset>
+		<div class="actions">
+			<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
+			<button formaction="/scope/finalize" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
+			@tip(v.Page.Lang, tScopeGateHint.In(v.Page.Lang))
+		</div>
+	</form>
 }
 
 // ruleLegend — 다섯 칸이 무슨 뜻인지. **여기 두는 것이 문서로 미루는 것보다 싸다** —
@@ -128,7 +134,7 @@ templ ruleLegend(l Lang) {
 
 // layerEditor — 계층 하나의 규칙 표.
 templ layerEditor(l Lang, e LayerEdit) {
-	<fieldset>
+	<fieldset id={ layerBlockID(e.Index) }>
 		<legend>
 			{ tLayer.In(l) } { e.Name }
 			<span class="n">— { e.Path } · { strconv.Itoa(len(e.Rules)) } { tLayerRules.In(l) }</span>

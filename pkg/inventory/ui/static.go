@@ -162,3 +162,15 @@ func oobAttr(oob bool) templ.Attributes {
 	}
 	return templ.Attributes{"hx-swap-oob": "true"}
 }
+
+// layerBlockID — 계층 하나를 고치는 자리. 요약의 카드가 이 자리로 보낸다.
+func layerBlockID(layer int) string { return "layer-" + strconv.Itoa(layer) }
+
+// baseName — 카드에 적을 파일 이름. **전체 경로는 카드를 넘친다** — 어느 파일인지는
+// 이름으로 알아보고, 어디 있는지는 마우스를 올려 본다(title 속성).
+func baseName(p string) string {
+	if i := strings.LastIndexAny(p, `/\`); i >= 0 {
+		return p[i+1:]
+	}
+	return p
+}
