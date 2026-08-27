@@ -90,7 +90,7 @@ CI가 이것을 검사합니다(`make check-licenses`). 관문에 걸리면 대�
 
 예시는 [`review.Warning`](pkg/inventory/review/build.go)(코드 + 영어 문장)과
 [`ui/text_more.go`](pkg/inventory/ui/text_more.go)(그 코드의 한국어)입니다. 선언의 문제
-목록([`decl.Problem`](pkg/inventory/decl/decl.go))은 영어만 갖습니다. 어느 자리인지는
+목록([`decl.Problem`](pkg/inventory/decl/decl.go))에는 영어만 있습니다. 어느 자리인지는
 명령이 출력하고, 화면은 개수만 전하기 때문입니다.
 
 ### 화면 문구를 더할 때

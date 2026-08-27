@@ -187,7 +187,7 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
 
 **③에서 정책 단위로 판정합니다.** 세션 파일의 `policy_decisions` 에 정책 하나당 결론 하나를 적으면
 같은 정책의 항목이 한 번에 판정됩니다. 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
-개별 `conclusion`은 예외를 위한 자리입니다.
+개별 `conclusion`은 예외를 적는 자리입니다.
 
 **④가 이 리포에서 반드시 거쳐야 하는 관문입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 알려 줍니다.**
 

@@ -124,7 +124,7 @@ flowchart TB
 | ② 암호 자산 스코프 | **계층 CSV** 를 `-base` 와 맞대 **바뀐 규칙만** | `-layers corp.csv,prod.csv -base asset-scope.csv` |
 | ③ 대조 | 만들 것이 없습니다. 결과 디렉터리를 읽습니다 | `-results <디렉터리>` |
 | ④ 판정(리뷰 큐) | **선언 + 관측 결과** | `-decl` 과 `-results` |
-| 인벤토리·판정 이력 | 만들 것이 없습니다. 가지고 있는 파일을 읽습니다 | `-results` · `-judgments` · `-scope-out` |
+| 인벤토리·판정 이력 | 만들 것이 없습니다. 지금 있는 파일을 읽습니다 | `-results` · `-judgments` · `-scope-out` |
 
 ---
 
