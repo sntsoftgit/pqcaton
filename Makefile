@@ -1,6 +1,6 @@
-.PHONY: all check-licenses check-text check-prose check-cases check-fmt build test generate verify-generated
+.PHONY: all check-licenses check-text check-prose check-lang check-cases check-fmt build test generate verify-generated
 
-all: check-licenses check-text check-prose check-cases check-fmt build test
+all: check-licenses check-text check-prose check-lang check-cases check-fmt build test
 
 # 라이선스 관문: 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
@@ -22,6 +22,19 @@ check-text:
 # 그러지 않으면 관문이 「낡았다」고 막는다. 걷어낸 자리가 도로 채워지는 것을 그렇게 잡는다.
 check-prose:
 	@go run ./tools/checkprose
+
+# 두 말 관문: 공개 사이트 두 장의 한국어와 영어가 짝을 이루는지 잰다.
+#
+# 그 두 장은 문구를 두 벌 적어 두고 CSS 로 한쪽을 숨긴다. **한쪽 말로 볼 때는 멀쩡해 보이는
+# 고장이 생긴다.** `<span lang="ko">` 를 닫지 않은 자리가 아홉 곳 있었는데, 파서가 뒤따르는
+# 영어를 그 안으로 넣어서 영어로 열면 표 머리글 여섯과 표 셀 셋이 통째로 빈칸이 됐다.
+# 한국어로는 아홉 자리가 다 멀쩡했다.
+#
+# **위의 관문 넷이 그것을 하나도 잡지 못했다.** 사람이 사이트를 영어로 열어 본 날에야 드러났다.
+# 글자를 세는 검사로는 안 된다 — 닫는 태그가 빠져도 글자는 그대로 남는다. 고장이 브라우저가
+# 그 HTML 을 **어떻게 읽는가**에서 생기므로 같은 규칙으로 읽는 파서라야 보인다.
+check-lang:
+	@go run ./tools/checklang
 
 # 케이스 관문: docs/testcases.md 의 번호와 실제 테스트를 맞댄다.
 #
