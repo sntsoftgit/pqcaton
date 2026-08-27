@@ -49,6 +49,15 @@ type Page struct {
 	Lang Lang
 	// LangHref — 지금 자리 그대로 말만 바꾸는 주소.
 	LangHref string
+
+	// 아래 셋은 **다음 판 껍데기(nextShell)만 본다.** 옛 껍데기는 읽지 않으므로 채워도
+	// 지금 화면은 그대로다.
+	//
+	// Steps — 위쪽에 늘어놓는 절차 카드.
+	Steps []Step
+	// Org · Results — 상단에 적는 「무엇을 보고 있나」. 조직과 관측 결과 자리다.
+	Org     string
+	Results string
 }
 
 // Link — 위쪽 이동 링크.

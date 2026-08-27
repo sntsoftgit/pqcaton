@@ -570,3 +570,21 @@ var (
 		KO: "위에서 본 것을 여기서 고칩니다. 저장하면 선언 파일에 그대로 씁니다.",
 		EN: "What you saw above gets edited here. Saving writes it straight to the declaration file."}
 )
+
+// ── 다음 판의 껍데기 ────────────────────────────────────────────────────────
+var (
+	tWbTagline = T{KO: "무엇을 먼저 판단할까요?", EN: "What should you judge first?"}
+	tWbLede    = T{
+		KO: "원본은 보존하고, 지금 확정에 필요한 일만 먼저 보여 줍니다.",
+		EN: "The originals stay untouched, and only what this finalization needs comes first."}
+	tWbMode      = T{KO: "읽기·검토 모드", EN: "Read and review mode"}
+	tWbSelfHost  = T{KO: "직접 설치", EN: "self-hosted"}
+	tWbStepsAria = T{KO: "거버넌스 절차", EN: "Governance steps"}
+
+	tStepDeclOpen = T{
+		KO: "연결할 관측 이름 %d개",
+		EN: "%d observed names to link"}
+	tStepDeclDone = T{KO: "연결할 이름 없음", EN: "nothing left to link"}
+	tStepClosed   = T{KO: "입력 파일을 주지 않았습니다", EN: "no input was given"}
+	tStepUnknown  = T{KO: "아직 세지 않습니다", EN: "not counted yet"}
+)

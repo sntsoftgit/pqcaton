@@ -1,0 +1,97 @@
+package ui
+
+// nextShell — 다음 판 화면의 껍데기.
+//
+// **옛 껍데기(shell)를 그대로 두고 하나 더 둔다.** 옮기는 동안 두 판이 나란히 서야
+// 비교가 되는데, 한 껍데기를 고치면 지금 쓰는 화면 넷이 함께 움직인다.
+//
+// 위쪽이 셋으로 나뉜다. 무엇을 보고 있나(topbar) · 무엇을 먼저 할까(hero) · 절차가
+// 지금 어디까지 왔나(steps). 마지막 것이 이 판의 핵심이다 — **번호와 이름만 있는 탭은
+// 어디부터 볼지 말해 주지 않는다.**
+templ nextShell(p Page) {
+	<!DOCTYPE html>
+	<html lang={ string(p.Lang) }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ p.Title } — pqcaton</title>
+			<link rel="stylesheet" href={ StaticPath + "app.css" }/>
+			<script src={ StaticPath + "htmx.min.js" } defer></script>
+		</head>
+		<body class="wb">
+			<header class="topbar">
+				<div class="brand">pqcaton <span>/ workbench</span></div>
+				<div class="context" title={ p.Results }>
+					if p.Org != "" {
+						<strong>{ p.Org }</strong>
+					}
+					<span>{ " · " + tWbSelfHost.In(p.Lang) }</span>
+					if p.Results != "" {
+						<code>{ p.Results }</code>
+					}
+				</div>
+				<div class="mode">{ tWbMode.In(p.Lang) }</div>
+				if p.LangHref != "" {
+					<a class="langbtn" href={ templ.SafeURL(p.LangHref) } rel="nofollow">{ p.Lang.Other().Label() }</a>
+				}
+			</header>
+			<section class="hero">
+				<div>
+					<h1>{ tWbTagline.In(p.Lang) }</h1>
+					<p>{ tWbLede.In(p.Lang) }</p>
+				</div>
+				<div class="source">{ p.Subtitle }</div>
+			</section>
+			if len(p.Steps) > 0 {
+				<nav class="steps" aria-label={ tWbStepsAria.In(p.Lang) }>
+					for _, st := range p.Steps {
+						@stepCard(st)
+					}
+				</nav>
+			}
+			if p.Message != "" {
+				<p class="msg ok">{ p.Message }</p>
+			}
+			if len(p.Warnings) > 0 {
+				<div class="warn-list">
+					<ul>
+						for _, w := range p.Warnings {
+							<li>{ w }</li>
+						}
+					</ul>
+				</div>
+			}
+			if p.Problem != "" {
+				<div class="msg bad"><strong>{ tRefused.In(p.Lang) }</strong><pre>{ p.Problem }</pre></div>
+			}
+			{ children... }
+		</body>
+	</html>
+}
+
+// stepCard — 절차 카드 하나. **닫힌 자리는 누를 수 없게 둔다** — 없는 것을 눌러 보게
+// 하지 않는다는 선은 옛 이동 링크와 같다(NavFor).
+templ stepCard(st Step) {
+	if st.Open {
+		<a class={ "step", templ.KV("active", st.Here) } href={ templ.SafeURL(st.Href) }>
+			@stepBody(st)
+		</a>
+	} else {
+		<span class="step closed">
+			@stepBody(st)
+		</span>
+	}
+}
+
+templ stepBody(st Step) {
+	if st.Dot != "" {
+		<span class={ "dot", st.Dot }></span>
+	} else {
+		<span class="dot"></span>
+	}
+	<span>
+		<span class="step-num">{ st.Num }</span>
+		<span class="step-title">{ st.Title }</span>
+		<span class="step-state">{ st.State }</span>
+	</span>
+}

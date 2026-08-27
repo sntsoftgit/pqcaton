@@ -976,3 +976,78 @@ func TestDeclNextLinksToTheRightNode(t *testing.T) {
 		t.Errorf("할 일이 없는데 %q 로 간다", got)
 	}
 }
+
+// IC-U33 — **절차 카드가 지금 상태를 한 줄로 말한다.**
+//
+// 번호와 이름만 있는 탭은 어디부터 볼지 말해 주지 않습니다. 아직 세지 않는 화면은
+// **그렇다고 적습니다** — 빈 자리는 「할 일이 없다」로 읽힙니다.
+func TestStepsCarryState(t *testing.T) {
+	open := ui.Screens{Decl: true, Scope: true, Survey: true, Inventory: true}
+	steps := ui.StepsFor(ui.KO, ui.ScreenDeclNext, open, &ui.DeclSummary{Nodes: 3, Unlinked: 2})
+	if len(steps) != 4 {
+		t.Fatalf("카드가 %d개 — 절차는 넷이다", len(steps))
+	}
+	if steps[0].State != "연결할 관측 이름 2개" || steps[0].Dot != "warn" {
+		t.Errorf("선언 카드가 %q(%s) — 센 값을 말해야 한다", steps[0].State, steps[0].Dot)
+	}
+	if !steps[0].Here {
+		t.Error("지금 보고 있는 카드를 짚지 않았다")
+	}
+	for _, st := range steps[1:] {
+		if st.State == "" {
+			t.Errorf("%s 카드가 빈 상태다 — 아직 세지 않는다고 적어야 한다", st.Num)
+		}
+	}
+
+	done := ui.StepsFor(ui.KO, ui.ScreenDeclNext, open, &ui.DeclSummary{Nodes: 3})
+	if done[0].Dot != "ok" {
+		t.Errorf("붙일 이름이 없는데 점이 %q 다", done[0].Dot)
+	}
+}
+
+// IC-U34 — **재료를 주지 않은 화면은 닫힌 카드다.**
+//
+// 없는 것을 눌러 보게 하지 않는다는 선은 옛 이동 링크와 같습니다(`NavFor`). 다만 카드는
+// **자리를 비우지 않고 왜 닫혔는지 적습니다** — 넷이 늘 보여야 절차가 몇 걸음인지 읽힙니다.
+func TestStepsMarkWhatIsClosed(t *testing.T) {
+	steps := ui.StepsFor(ui.KO, ui.ScreenDeclNext, ui.Screens{Decl: true}, nil)
+	if len(steps) != 4 {
+		t.Fatalf("닫혔다고 카드를 뺐다: %d개", len(steps))
+	}
+	if steps[1].Open || steps[1].State != "입력 파일을 주지 않았습니다" {
+		t.Errorf("스코프 카드가 open=%v %q", steps[1].Open, steps[1].State)
+	}
+	// 판정은 재료가 따로 없어 늘 열린다.
+	if !steps[3].Open {
+		t.Error("판정 카드가 닫혔다")
+	}
+}
+
+// IC-U35 — **새 껍데기는 새 화면에만 붙는다.**
+//
+// 옛 껍데기(`shell`)를 고치면 지금 쓰는 화면 넷이 함께 움직입니다. 옮기는 동안 두 판이
+// 나란히 서야 비교가 됩니다.
+func TestNextShellDoesNotTouchTheOldScreens(t *testing.T) {
+	page := ui.Page{Title: "선언", Lang: ui.KO,
+		Steps: ui.StepsFor(ui.KO, ui.ScreenDeclNext, ui.Screens{Decl: true}, nil)}
+
+	var next strings.Builder
+	if err := ui.RenderDeclNext(&next, ui.NewDeclView(sample(), page)); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`class="wb"`, `class="topbar"`, `class="steps"`, "무엇을 먼저 판단할까요?"} {
+		if !strings.Contains(next.String(), want) {
+			t.Errorf("새 화면에 %q 가 없다", want)
+		}
+	}
+
+	var old strings.Builder
+	if err := ui.RenderDecl(&old, ui.NewDeclView(sample(), page)); err != nil {
+		t.Fatal(err)
+	}
+	for _, unwanted := range []string{`class="wb"`, `class="topbar"`, `class="steps"`} {
+		if strings.Contains(old.String(), unwanted) {
+			t.Errorf("옛 화면에 %q 가 샜다", unwanted)
+		}
+	}
+}

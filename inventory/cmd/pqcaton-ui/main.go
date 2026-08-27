@@ -724,14 +724,29 @@ const defaultTTLDays = 180
 // **뷰를 하나만 만든다.** 두 화면이 각자 세면 숫자가 갈리는 날이 오고, 그날 어느 쪽이
 // 맞는지 아무도 모른다. 갈리는 것은 그리는 방식뿐이다.
 func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
-	s.declScreen(w, r, ui.RenderDecl)
+	s.declScreen(w, r, ui.RenderDecl, false)
 }
 
 func (s *server) declNext(w http.ResponseWriter, r *http.Request) {
-	s.declScreen(w, r, ui.RenderDeclNext)
+	s.declScreen(w, r, ui.RenderDeclNext, true)
 }
 
-func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.DeclView) error) {
+// nextPage — 다음 판 껍데기가 쓰는 값을 얹는다.
+//
+// **절차 카드는 여기서 만든다.** 상태를 아는 화면부터 채우는데, 지금은 선언 하나다 —
+// 카드 하나를 채우려면 그 화면의 계산을 매 요청마다 돌려야 하고, 대조는 계산이 무겁다.
+func (s *server) nextPage(r *http.Request, here, subtitle string, decl *ui.DeclSummary) ui.Page {
+	p := s.page(r, here, subtitle)
+	p.Org = s.org
+	p.Results = s.results
+	p.Steps = ui.StepsFor(p.Lang, here, ui.Screens{
+		Decl: s.decl != "", Scope: s.scope != "", Survey: s.results != "",
+		Inventory: s.results != "",
+	}, decl)
+	return p
+}
+
+func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.DeclView) error, next bool) {
 	if s.decl == "" {
 		http.Error(w, "no declaration file was given — pass -decl", http.StatusNotFound)
 		return
@@ -741,9 +756,18 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	v := ui.NewDeclView(d, s.page(r, ui.ScreenDecl, sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)))
+	sub := sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)
+	v := ui.NewDeclView(d, s.page(r, ui.ScreenDecl, sub))
 	seen, unmatched := s.observedAssets(d)
 	v = v.WithObserved(seen, unmatched)
+	// **카드는 요약이 나온 뒤에 채운다** — 붙지 않은 이름을 세어야 선언 카드가 설 수 있다.
+	if next {
+		got := v.Summary()
+		// **부제에는 파일만 적는다.** 조직은 위쪽 맥락 줄에 이미 있어서, 그대로 두면
+		// 같은 값이 한 화면에 두 번 나온다.
+		v.Page = s.nextPage(r, ui.ScreenDeclNext, s.decl, &got)
+		v.Page.Org = d.OrgOrDefault()
+	}
 	html(w, func() error { return render(w, v) })
 }
 
