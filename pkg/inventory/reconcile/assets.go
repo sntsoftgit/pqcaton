@@ -57,7 +57,7 @@ const (
 )
 
 // 컴포넌트 이름. openssl 은 라이브러리 파일마다 하나지만, **JCA·CNG 는 머신에 하나뿐이라**
-// 관측이 고정된 이름으로 낸다 — 사람이 선언에 적을 이름도 그것이다.
+// 관측 결과에 고정된 이름으로 나온다 — 사람이 선언에 적을 이름도 그것이다.
 const (
 	ComponentJCA = "jca-provider-chain"
 	ComponentCNG = "cng-providers"

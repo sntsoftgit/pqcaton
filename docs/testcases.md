@@ -58,12 +58,12 @@
 | TC | Given → When | Then |
 |---|---|---|
 | **[IC-S1](../pkg/inventory/scope/scope_test.go) ✅** | 상위 계층 exclude 뒤에 하위 계층 include | **하위 계층의 것이 적용된다**. pqcota의 「매치되는 마지막 규칙이 결정한다」가 그대로 상속 규칙이다. 순서를 뒤집으면 결과도 뒤집힌다 |
-| [IC-S2](../pkg/inventory/scope/scope_test.go) ✅ | 지금 정책 vs 제안된 계층 합본 | **바뀐 규칙만** 올린다. exclude 추가는 근거 필수 |
+| [IC-S2](../pkg/inventory/scope/scope_test.go) ✅ | 지금 정책 vs 제안된 계층 합본 | **바뀐 규칙만** 리뷰에 올린다. exclude 추가는 근거 필수 |
 | [IC-S3](../pkg/inventory/scope/scope_test.go) ✅ | 규칙이 사라짐 | 리뷰에는 올리되 근거 필수는 아니다. 넓어지는 방향은 성격이 다르다 |
 | [IC-S4](../pkg/inventory/scope/scope_test.go) ✅ | note 만 고친 규칙 | 같은 규칙으로 본다. 설명을 다듬었다고 재승인을 받으면 리뷰가 잡음으로 찬다 |
 | **[IC-S5](../pkg/inventory/scope/scope_test.go) ✅** | 확정된 정책을 CSV로 냄 | **pqcota `LoadAssetPolicy`가 그대로 읽는다**. 우리 형식을 만들면 「거버넌스가 확정한 정책을 pqcota가 집행한다」가 거짓이 된다 |
 | [IC-S6](../pkg/inventory/scope/scope_test.go) ✅ | 정책이 뺀 자산 | **이름으로** 보여 준다(pqcota는 수만 센다). 관측을 걸러낸 것이므로 지금도 실재하는 것이다 |
-| **[IC-S7](../pkg/inventory/scope/scope_test.go) ✅** | 제외분 재검토 | 승인이 없거나 만료된 것만 다시 올린다. **제외는 영구 면제가 아니다.** 살아 있는 승인은 그대로 둔다 |
+| **[IC-S7](../pkg/inventory/scope/scope_test.go) ✅** | 제외분 재검토 | 승인이 없거나 만료된 것만 다시 리뷰에 올린다. **제외는 영구 면제가 아니다.** 살아 있는 승인은 그대로 둔다 |
 | [IC-S8](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | 계층 파일을 쓰고 다시 읽음 | 같은 규칙이 나오고 **계층 이름은 파일 이름에서** 온다. 어긋나면 저장할 때마다 규칙이 조금씩 달라진다 |
 | [IC-S9](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | 계층 파일 저장 | 쓰다 만 파일을 남기지 않는다. 잘린 CSV가 남으면 다음에 열 때 규칙이 통째로 사라진 것처럼 보인다 |
 | **[IC-S10](../inventory/cmd/pqcaton-scope/main_test.go) ✅** | note 만 고치고 세션 재개 | 적어 둔 판정이 남는다(동일성은 `RuleID`, note는 넣지 않는다). 고칠 때마다 다시 적게 하면 아무도 화면에서 안 고친다 |
@@ -326,7 +326,7 @@
 | **[IC-R16](../pkg/inventory/reconcile/reconcile_test.go) ✅** | CNG 관측(상류 v0.6.0) | **자산이 된다**. 런타임 `cng` · 컴포넌트 `cng-providers`. 갈래를 안 더하면 Windows 노드의 암호 자산이 인벤토리에서 통째로 사라진다. **모르는 런타임은 그대로 버린다**. 이름을 지어내면 선언과 영영 맞지 않는 자산이 생긴다 |
 | **[IC-R15](../pkg/inventory/report/report_test.go) ✅** | 관측 이름이 겹치거나 이름과 부딪힘 | **이름이 이기고, 겹친 관측 이름은 먼저 적힌 쪽이 가진다**. 뒤에 적힌 것으로 뒤집히면 파일 순서만 바뀌어도 자산이 다른 노드에 붙는다 |
 | **[IC-R14](../pkg/inventory/report/report_test.go) ✅** | 관측 노드 id 가 선언 이름과 다름 | **선언 노드로 잇는다**. 호스트명(짧은 이름 포함)이 같으면 알아서, 아니면 적어 둔 「관측 이름」으로. 대소문자는 가리지 않는다. **어디에도 안 걸리면 관측이 부른 이름을 그대로 둔다**. 억지로 고르면 남의 노드 자산이 붙는다 |
-| **[IC-R13](../pkg/inventory/report/report_test.go) ✅** | 못 본 계층을 화면·콘솔에 냄 | 상류 enum 상수(`COLLECTION_LAYER_ARTIFACT`)를 그대로 내지 않고 **관측이 어디서 오는지**를 적되 원래 이름을 괄호에 남긴다. **모르는 값은 그대로 낸다**. 상류에 계층이 늘었을 때 뭉개면 못 본 것이 화면에서 사라진다 |
+| **[IC-R13](../pkg/inventory/report/report_test.go) ✅** | 못 본 계층을 화면·콘솔에 보여 줌 | 상류 enum 상수(`COLLECTION_LAYER_ARTIFACT`)를 그대로 보여 주지 않고 **관측이 어디서 오는지**를 적되 원래 이름을 괄호에 남긴다. **모르는 값은 바꾸지 않고 그대로 보여 준다**. 상류에 계층이 늘었을 때 뭉개면 못 본 것이 화면에서 사라진다 |
 
 > **구현 위치**: 엣지 대조 `reconcile/edge.go`(없음) · 등급 분류 `pkg/kernel/posture/` · 토폴로지 DOT `reconcile/topology.go`(없음) · 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB). 관측 엣지 스키마 `contracts` `ObservedEdge`(CollectionResult.observed_edges). 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
 

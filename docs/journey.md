@@ -99,7 +99,7 @@ flowchart TB
 |---|---|---|---|
 | [`pqcaton-scope open`](../inventory/cmd/pqcaton-scope) | 계층을 겹쳐 **바뀐 규칙만** 승인 대상으로 올립니다 | 계층 CSV 여럿 · `-base` 현재 정책 | 스코프 세션(바뀐 규칙만) |
 | `pqcaton-scope close` | 승인을 확인하고 **정책을 배포 형태로** 만듭니다 | 사람이 채운 스코프 세션 | **`asset-scope.csv`** · 판정 원장 |
-| `pqcaton-scope review` | 빼 둔 자산을 **이름으로** 다시 올립니다 | 정책 CSV · 관측 결과 | 다시 볼 제외분(승인 없음·만료) |
+| `pqcaton-scope review` | 빼 둔 자산을 **이름으로** 다시 리뷰에 올립니다 | 정책 CSV · 관측 결과 | 다시 볼 제외분(승인 없음·만료) |
 | [`pqcaton-report`](../inventory/cmd/pqcaton-report) | 여러 노드의 관측을 선언과 **대조해 보여 줍니다** | 관측 결과 · 선언 | 콘솔 리포트 · 토폴로지 DOT |
 | [`pqcaton-decide open`](../inventory/cmd/pqcaton-decide) | 대조 결과에서 **사람이 판정할 것만** 골라 냅니다 | 선언 · **관측 결과**(`-results`) | 리뷰 세션(판정 대상) |
 | `pqcaton-decide open` *(지름길)* | **명령을 실행한 그 기계 자신**을 스캔해 같은 일을 합니다 | 선언 CSV | 리뷰 세션 |
