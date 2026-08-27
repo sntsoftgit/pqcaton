@@ -220,7 +220,10 @@ func scan(root string, rules []rule) ([]hit, error) {
 			return err
 		}
 		if d.IsDir() {
-			if n := d.Name(); n == ".git" || n == "node_modules" || n == "testdata" {
+			// `_workspace` 는 첨삭 도구가 만드는 작업 폴더다. **고칠 문장을 그대로
+			// 인용해 둔 파일**이라 걸리는 것이 당연하고, 날짜별로 새 폴더가 생기니
+			// 기준선에 넣으면 날마다 썩는다. .gitignore 도 이미 이 폴더를 뺀다.
+			if n := d.Name(); n == ".git" || n == "node_modules" || n == "testdata" || n == "_workspace" {
 				return filepath.SkipDir
 			}
 			return nil
