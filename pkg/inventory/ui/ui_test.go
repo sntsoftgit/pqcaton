@@ -940,3 +940,39 @@ func TestDeclNextLinkTag(t *testing.T) {
 		t.Errorf("관측도 후보도 없는데 %q(warn=%v) 로 말한다", tag.In(ui.KO), warn)
 	}
 }
+
+// IC-U32 — **카드는 그 노드의 줄로 보낸다.**
+//
+// 폼 머리로 보내면 노드가 여럿일 때 어느 줄을 고쳐야 하는지 다시 찾아야 하고, 그러면
+// 요약이 가리킨 뜻이 사라집니다. 「연결 검토」도 마찬가지로 **붙일 데가 있는 첫 노드**로
+// 갑니다. 그런 노드가 없으면 폼 머리로 갑니다.
+func TestDeclNextLinksToTheRightNode(t *testing.T) {
+	d := sample()
+	d.Nodes = append(d.Nodes, decl.Node{Name: "db", IPs: []string{"10.0.0.2"}})
+	page := ui.Page{Title: "선언", Lang: ui.KO}
+
+	var b strings.Builder
+	v := ui.NewDeclView(d, page).WithObserved(
+		map[string][]ui.DeclAsset{"web": {{Runtime: "openssl", Component: "libssl"}}},
+		[]string{"node:1a2b"})
+	if err := ui.RenderDeclNext(&b, v); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	for _, want := range []string{`href="#node-0"`, `href="#node-1"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("%q 가 없다 — 카드가 제 노드로 보내지 않는다", want)
+		}
+	}
+	// web 은 관측이 붙었으니 건너뛰고 db 로 간다.
+	if got := v.FirstToLinkAnchor(); got != "node-1" {
+		t.Errorf("「연결 검토」가 %q 로 간다 — 관측이 붙은 노드는 건너뛰어야 한다", got)
+	}
+
+	// 붙일 데가 없으면 폼 머리로.
+	all := ui.NewDeclView(sample(), page).WithObserved(
+		map[string][]ui.DeclAsset{"web": {{Runtime: "openssl", Component: "libssl"}}}, nil)
+	if got := all.FirstToLinkAnchor(); got != "decl-edit" {
+		t.Errorf("할 일이 없는데 %q 로 간다", got)
+	}
+}

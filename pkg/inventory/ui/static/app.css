@@ -124,6 +124,11 @@ tr.htmx-added td { animation: settle .5s ease-out; }
                 color: var(--blue); font-size: .78rem; font-weight: 700; }
 .ui-next .tag.warn { background: var(--amber-soft); color: var(--amber); }
 
+/* 앵커로 찾아온 노드를 잠깐 짚어 준다. **어디로 왔는지 보이지 않으면** 노드가 여럿일 때
+   요약이 가리킨 뜻이 사라진다. 울타리 안에만 걸어서 옛 화면은 그대로 둔다. */
+.ui-next .node:target { border-radius: 10px; outline: 2px solid var(--blue);
+                        outline-offset: 4px; }
+
 @media (max-width: 650px) {
   .ui-next .metrics { grid-template-columns: 1fr; }
   .ui-next .next { grid-template-columns: auto 1fr; }

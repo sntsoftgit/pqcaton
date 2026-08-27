@@ -437,3 +437,17 @@ const declEditAnchor = "decl-edit"
 func RenderDeclNext(w io.Writer, v DeclView) error {
 	return declNextPage(v).Render(context.Background(), w)
 }
+
+// FirstToLinkAnchor — 「연결 검토」가 보낼 자리.
+//
+// **붙일 데가 있는 첫 노드로 보낸다.** 폼 머리로 보내면 노드가 여럿일 때 어느 줄을
+// 고쳐야 하는지 다시 찾아야 하고, 그러면 요약이 가리킨 뜻이 사라진다. 관측 이름이 이미
+// 적힌 노드는 건너뛴다 — 거기는 할 일이 없다.
+func (v DeclView) FirstToLinkAnchor() string {
+	for i, n := range v.Nodes {
+		if len(n.ObservedAs) == 0 && len(n.Seen) == 0 {
+			return nodeBlockID(i)
+		}
+	}
+	return declEditAnchor
+}

@@ -133,8 +133,8 @@ func declNextPage(v DeclView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, n := range v.Nodes {
-				templ_7745c5c3_Err = declNodeCard(v, n).Render(ctx, templ_7745c5c3_Buffer)
+			for i, n := range v.Nodes {
+				templ_7745c5c3_Err = declNodeCard(v, i, n).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -289,9 +289,9 @@ func declNextTodo(v DeclView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 templ.SafeURL
-			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + declEditAnchor))
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + v.FirstToLinkAnchor()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/declnext.templ`, Line: 59, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/declnext.templ`, Line: 59, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -304,7 +304,7 @@ func declNextTodo(v DeclView) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(tNextReviewLink.In(v.Page.Lang))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/declnext.templ`, Line: 59, Col: 100}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/declnext.templ`, Line: 59, Col: 107}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -482,7 +482,7 @@ func declNextMetrics(v DeclView) templ.Component {
 }
 
 // declNodeCard — 노드 한 대. 이름·IP·관측 이름과, 지금 어떤 상태인지.
-func declNodeCard(v DeclView, n DeclNode) templ.Component {
+func declNodeCard(v DeclView, i int, n DeclNode) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -596,7 +596,7 @@ func declNodeCard(v DeclView, n DeclNode) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var37 templ.SafeURL
-		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + declEditAnchor))
+		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + nodeBlockID(i)))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/declnext.templ`, Line: 104, Col: 61}
 		}

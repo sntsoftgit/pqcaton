@@ -27,8 +27,8 @@ templ declNextPage(v DeclView) {
 				<span>{ tNextLinkNote.In(v.Page.Lang) }</span>
 			</div>
 			<div class="card-list">
-				for _, n := range v.Nodes {
-					@declNodeCard(v, n)
+				for i, n := range v.Nodes {
+					@declNodeCard(v, i, n)
 				}
 			</div>
 			<h3 id={ declEditAnchor }>{ tNextEditHead.In(v.Page.Lang) }</h3>
@@ -56,7 +56,7 @@ templ declNextTodo(v DeclView) {
 				</span>
 				<span>{ tNextUnlinkedBody.In(v.Page.Lang) }</span>
 			</div>
-			<a class="primary" href={ templ.SafeURL("#" + declEditAnchor) }>{ tNextReviewLink.In(v.Page.Lang) }</a>
+			<a class="primary" href={ templ.SafeURL("#" + v.FirstToLinkAnchor()) }>{ tNextReviewLink.In(v.Page.Lang) }</a>
 		</div>
 	} else {
 		<div class="next done">
@@ -89,7 +89,7 @@ templ declNextMetrics(v DeclView) {
 }
 
 // declNodeCard — 노드 한 대. 이름·IP·관측 이름과, 지금 어떤 상태인지.
-templ declNodeCard(v DeclView, n DeclNode) {
+templ declNodeCard(v DeclView, i int, n DeclNode) {
 	{{ tag, warn := v.LinkTag(n) }}
 	<article class="node-card">
 		<div>
@@ -101,6 +101,6 @@ templ declNodeCard(v DeclView, n DeclNode) {
 			<code>{ v.ObservedText(n) }</code>
 		</div>
 		<span class={ "tag", templ.KV("warn", warn) }>{ tag.In(v.Page.Lang) }</span>
-		<a class="quiet" href={ templ.SafeURL("#" + declEditAnchor) }>{ tNextGoEdit.In(v.Page.Lang) }</a>
+		<a class="quiet" href={ templ.SafeURL("#" + nodeBlockID(i)) }>{ tNextGoEdit.In(v.Page.Lang) }</a>
 	</article>
 }
