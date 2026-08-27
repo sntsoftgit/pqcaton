@@ -25,7 +25,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 
 이 데모는 **독립 스택이 아니라 확장**입니다. [pqcota의 디스커버리 데모](https://github.com/randyinthedev-hash/pqcota/tree/main/demo)를
 그대로 띄운 뒤, 그 위에 이 리포의 기능, 곧 **선언 대비 3-상태 대조(CONFIRMED/UNDECLARED/UNOBSERVED) +
-리뷰 큐 + 거버넌스 토폴로지**: 를 얹습니다.
+리뷰 큐 + 거버넌스 토폴로지**를 얹습니다.
 
 ```
 관측 등급 (pqcota)              →   + 선언 대비 reconciliation (pqcaton)

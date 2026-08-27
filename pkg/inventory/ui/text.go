@@ -219,7 +219,7 @@ var (
 	tReviewEmpty    = T{KO: "판정할 것이 없습니다.", EN: "Nothing to judge."}
 	tReviewAutopass = T{
 		KO: "자동통과 후보 %d개는 이 큐에 올리지 않았습니다. 선언과 맞고 신뢰도가 높은 " +
-			"것들이라 하나씩 볼 필요가 없습니다.",
+			"항목이라 하나씩 볼 필요가 없습니다.",
 		EN: "%d auto-pass candidates are not in this queue — they match the declaration " +
 			"with high confidence, so they are not worth looking at one by one."}
 
