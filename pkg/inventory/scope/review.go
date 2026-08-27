@@ -64,7 +64,7 @@ type ReviewItem struct {
 	Reason string
 }
 
-// 재검토 사유. **문장이 아니라 코드다** — 명령은 영어로, 화면은 보는 사람의 말로 낸다.
+// 재검토 사유. **문장이 아니라 코드다** — 명령에는 영어로, 화면에는 보는 사람의 말로 적는다.
 const (
 	ReasonNeverJudged = "never_judged"
 	ReasonStale       = "approval_stale"
