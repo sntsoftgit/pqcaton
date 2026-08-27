@@ -101,7 +101,9 @@
   code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: .875em; background: var(--surface-2); padding: .12em .38em;
-    border-radius: 3px; word-break: break-all;
+    /* anywhere 는 넘칠 때만 자른다. break-all 은 자리가 남아 있어도 줄 끝에서 무조건
+       잘라서 `saas/runner` 가 `saa s/runner` 로 끊겼다. */
+    border-radius: 3px; overflow-wrap: anywhere;
   }
   a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 
@@ -419,7 +421,7 @@
     </tr>
     <tr>
       <td><code>saas/runner</code></td>
-      <td><span lang="ko">호스팅으로 쓸 때만 필요한 <strong>밖으로 올리는 자리</strong></span>
+      <td><span lang="ko">호스팅으로 쓸 때만 필요한, <strong>결과를 내보내는 자리</strong></span>
       <span lang="en"><strong>The place that sends results out</strong>, needed only when we host it</span></td>
       <td><span lang="ko">고객 인프라 안에서만 돌 때는 필요 없습니다. <a href="#saas">05</a></span>
       <span lang="en">Not needed when everything runs inside the customer's infrastructure. <a href="#saas">05</a></span></td>
@@ -574,7 +576,7 @@
 </p>
 
 <p>
-  <span lang="ko">우리가 대신 돌려 주는 호스팅에서는 관측 결과가 고객망을 나와야 하고, 그 <strong>밖으로 올리는 자리</strong>가
+  <span lang="ko">우리가 대신 돌려 주는 호스팅에서는 관측 결과가 고객망을 나와야 하고, 그것을 <strong>내보내는 자리</strong>가
   <code>saas/runner</code>입니다. 그 코드만 이 리포에 있는 이유는 하나입니다.
   <strong>고객 서버에서 고객 권한으로 도니 무엇을 밖으로 보내는지 읽어서 확인할 수 있어야</strong> 합니다.
   컨트롤 플레인 쪽 코드와 설계는 이 리포에 없습니다.</span>
