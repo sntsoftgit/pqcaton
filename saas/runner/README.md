@@ -76,7 +76,7 @@ pqcota의 참조 플레이북으로 collector를 반입·실행·회수하고, �
 | [RUN-9](runner_test.go) | `TestOldResultsAreSweptByAge`: 오래된 결과 | `sent`는 지워지고 `bad`는 남는다 | 디스크가 차면 관측이 멈춥니다. 그렇다고 증거까지 같은 기간에 지우면 원인을 못 봅니다 |
 | [RUN-10](runner_test.go) | `TestKeepDaysConfig`: 0 · 음수 · 오타 | 0은 안 지움, 나머지는 거절 | 오타를 「지우지 않음」으로 삼키면 디스크가 아무 표시 없이 찹니다 |
 | **[RUN-12](runner_test.go)** | `TestFailedPlaybookStillUploadsWhatExists`: 플레이북 실패 | 생긴 결과는 **올린다.** 다만 오류로 끝난다 | 반쯤 나온 것을 버리면 그 관측은 사라집니다. 아무 표시 없이 0으로 끝내면 스케줄러가 잘 돈 것으로 읽습니다 |
-| [RUN-13](runner_test.go) | `TestNoPlaybookStillUploads`: 플레이북 미설정 | 올리기만 한다 | 러너의 값은 「올리는 입」이지 「돌리는 손」이 아닙니다 |
+| [RUN-13](runner_test.go) | `TestNoPlaybookStillUploads`: 플레이북 미설정 | 올리기만 한다 | 러너가 하는 일은 결과를 올리는 것이지 관측을 돌리는 것이 아닙니다 |
 | **[RUN-15](lock_unix_test.go)** | `TestSecondRunDoesNothingWhileFirstHoldsTheLock`: 이전 실행이 아직 끝나지 않음 | 아무것도 안 한다. 풀리면 다음이 실행된다 | cron은 이전 실행을 보지 않습니다. 겹치면 **같은 노드에 두 플레이북이 붙습니다** |
 | **[RUN-18](runner_test.go)** | `TestEnrollmentsGoToTheirOwnEndpoint`: 연결확인이 막히고 관측은 정상 | 관측은 올라가고, 못 올린 연결확인은 **그대로 남는다** | 둘은 같은 때에 올라오지 않습니다. 한 본문에 묶으면 하나가 막힐 때 나머지도 묵힙니다 |
 | **[RUN-19](runner_test.go)** | `TestAddrBecomesATokenAndNeverLeaves`: 주소가 적힌 연결확인 | 토큰만 나가고 **원본은 본문 어디에도 없다.** 같은 주소는 늘 같은 토큰 | 이 제품이 파는 성질입니다. 우리 DB가 털려도 **내부 주소 지도가 나오지 않습니다.** 토큰이 매번 달라지면 영역 간에 같은 상대를 이어 붙일 수 없습니다(§6.3.1) |

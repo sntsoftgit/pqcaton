@@ -387,8 +387,8 @@ func TestFailedPlaybookStillUploadsWhatExists(t *testing.T) {
 
 // RUN-13 — 플레이북이 설정되지 않았으면 **돌리지 않고 올리기만 한다.**
 //
-// 관측을 다른 방식으로 돌리는 고객이 있을 수 있다. 러너의 값은 「올리는 입」이지
-// 「돌리는 손」이 아니다.
+// 관측을 다른 방식으로 돌리는 고객이 있을 수 있다. 러너가 하는 일은 결과를 올리는
+// 것이지 관측을 돌리는 것이 아니다.
 func TestNoPlaybookStillUploads(t *testing.T) {
 	p := &plane{}
 	srv := p.start(t)
