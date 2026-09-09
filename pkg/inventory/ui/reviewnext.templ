@@ -1,0 +1,75 @@
+package ui
+
+import "fmt"
+import "strconv"
+
+// reviewNextPage — 판정 화면의 다음 판.
+//
+// **확정을 막는 것이 무엇인지 한 줄로 말한다.** 결론이 빈 정책과 서명은 서로 다른 이유로
+// 확정을 막는데, 화면이 둘을 뭉뚱그리면 사람은 결론을 다 채워 놓고 왜 여전히 막히는지
+// 모른다. 그래서 남은 것을 갈라 적는다.
+templ reviewNextPage(v ReviewView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			<p class="eyebrow">{ tNextReviewEyebrow.In(v.Page.Lang) }</p>
+			<h2>{ tNextReviewHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tNextReviewLede.In(v.Page.Lang) }</p>
+			@reviewNextTodo(v)
+			@reviewNextMetrics(v)
+			<h3 id={ reviewEditAnchor }>{ tNextReviewEditHead.In(v.Page.Lang) }</h3>
+			<p class="lede">{ tNextReviewEditLede.In(v.Page.Lang) }</p>
+			@reviewForm(v)
+		</div>
+	}
+}
+
+// reviewNextTodo — 무엇이 확정을 막고 있나. 셋으로 갈린다: 결론이 모자라거나, 서명만
+// 없거나, 다 찼거나.
+templ reviewNextTodo(v ReviewView) {
+	{{ s := v.Summary() }}
+	if s.Ready() {
+		<div class="next done">
+			<div class="next-icon">✓</div>
+			<div>
+				<strong>{ tNextReviewReady.In(v.Page.Lang) }</strong>
+				<span>{ tNextReviewReadyBody.In(v.Page.Lang) }</span>
+			</div>
+			<a class="primary" href={ templ.SafeURL("#" + reviewEditAnchor) }>{ tNextReviewGo.In(v.Page.Lang) }</a>
+		</div>
+	} else {
+		<div class="next">
+			<div class="next-icon">!</div>
+			<div>
+				if s.Open == 0 {
+					<strong>{ tNextReviewSignOnly.In(v.Page.Lang) }</strong>
+					<span>{ tNextReviewSignBody.In(v.Page.Lang) }</span>
+				} else if s.Signed {
+					<strong>{ fmt.Sprintf(tNextReviewTodo.In(v.Page.Lang), s.Mandatory) }</strong>
+					<span>{ fmt.Sprintf(tNextReviewTodoBody.In(v.Page.Lang), s.Open) }</span>
+				} else {
+					<strong>{ fmt.Sprintf(tNextReviewTodoSign.In(v.Page.Lang), s.Mandatory) }</strong>
+					<span>{ fmt.Sprintf(tNextReviewTodoBody.In(v.Page.Lang), s.Open) }</span>
+				}
+			</div>
+			<a class="primary" href={ templ.SafeURL("#" + reviewEditAnchor) }>{ tNextReviewGo.In(v.Page.Lang) }</a>
+		</div>
+	}
+}
+
+templ reviewNextMetrics(v ReviewView) {
+	{{ s := v.Summary() }}
+	<div class="metrics">
+		<div class="metric">
+			<b>{ strconv.Itoa(s.Policies) }</b>
+			<span>{ tNextReviewMetricPolicies.In(v.Page.Lang) }</span>
+		</div>
+		<div class={ "metric", templ.KV("danger", s.Open > 0) }>
+			<b>{ strconv.Itoa(s.Open) }</b>
+			<span>{ tNextReviewMetricOpen.In(v.Page.Lang) }</span>
+		</div>
+		<div class="metric ok">
+			<b>{ strconv.Itoa(s.Autopass) }</b>
+			<span>{ tNextReviewMetricAutopass.In(v.Page.Lang) }</span>
+		</div>
+	</div>
+}

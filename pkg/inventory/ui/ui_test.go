@@ -1201,3 +1201,103 @@ func TestSurveyNextSharesTheBody(t *testing.T) {
 		}
 	}
 }
+
+// reviewSession — 요약을 재는 판정 세션. 정책 둘 가운데 하나만 결론이 차 있다.
+func reviewSession(concluded, reviewer, signature string) review.Session {
+	return review.Session{
+		Scope: "org://acme", Reviewer: reviewer, Signature: signature,
+		PolicyDecisions: map[string]string{"openssl/libssl": concluded, "jca/provider": ""},
+		Items: []review.Item{
+			{ID: "a", Policy: "openssl/libssl", Mandatory: true},
+			{ID: "b", Policy: "jca/provider", Mandatory: true},
+			{ID: "c", Policy: "jca/provider", Mandatory: true},
+		},
+	}
+}
+
+// IC-U41 — **확정을 막는 것은 정책 수가 아니라 그 정책이 안고 있는 필수 항목이다.**
+//
+// 결론이 빈 정책 하나가 필수 항목 셋을 안고 있으면, 남은 것은 하나가 아니라 셋입니다.
+// 서명은 **승인자와 서명이 둘 다** 차야 채운 것입니다.
+func TestReviewSummaryCounts(t *testing.T) {
+	page := ui.Page{Title: "판정", Lang: ui.KO}
+
+	got := ui.NewReviewView(reviewSession("교체한다", "", ""), page).Summary()
+	if got.Policies != 2 || got.Open != 1 {
+		t.Fatalf("정책을 %+v 로 셌다", got)
+	}
+	if got.Mandatory != 2 {
+		t.Errorf("남은 필수 항목을 %d 로 셌다 — 결론이 빈 정책이 안고 있는 수여야 한다", got.Mandatory)
+	}
+	if got.Signed {
+		t.Error("승인자도 서명도 없는데 채웠다고 본다")
+	}
+	// 하나만 있으면 채운 것이 아니다.
+	half := ui.NewReviewView(reviewSession("교체한다", "김검토", ""), page).Summary()
+	if half.Signed {
+		t.Error("서명 없이 승인자만 있는데 채웠다고 본다")
+	}
+}
+
+// IC-U42 — **무엇이 확정을 막는지 갈라 적는다.**
+//
+// 결론이 빈 정책과 서명은 서로 다른 이유로 확정을 막습니다. 화면이 둘을 뭉뚱그리면
+// 사람은 **결론을 다 채워 놓고 왜 여전히 막히는지 모릅니다.**
+func TestReviewNextSaysWhatBlocksFinalizing(t *testing.T) {
+	page := ui.Page{Title: "판정", Lang: ui.KO}
+	render := func(sf review.Session) string {
+		var b strings.Builder
+		if err := ui.RenderReviewNext(&b, ui.NewReviewView(sf, page)); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+
+	// 결론도 서명도 모자랄 때
+	if got := render(reviewSession("교체한다", "", "")); !strings.Contains(got, "필수 판정 2개와 승인 서명이 남았습니다") {
+		t.Error("결론과 서명이 함께 모자란 것을 말하지 않는다")
+	}
+	// 결론은 다 찼고 서명만 없을 때
+	full := reviewSession("교체한다", "", "")
+	full.PolicyDecisions["jca/provider"] = "뺀다"
+	if got := render(full); !strings.Contains(got, "승인 서명이 남았습니다") {
+		t.Error("결론이 다 찼는데 서명이 남았다고 말하지 않는다")
+	}
+	// 둘 다 찼을 때
+	ready := reviewSession("교체한다", "김검토", "서명")
+	ready.PolicyDecisions["jca/provider"] = "뺀다"
+	got := render(ready)
+	if !strings.Contains(got, "확정할 수 있습니다") {
+		t.Error("다 찼는데 확정할 수 있다고 말하지 않는다")
+	}
+	if strings.Contains(got, "남았습니다") {
+		t.Error("다 찼는데 아직 남았다고 말한다")
+	}
+}
+
+// IC-U43 — **판정의 두 화면은 같은 폼을 쓴다.**
+//
+// 확정 관문이 두 벌이 되면 한쪽만 막는 날이 오고, 그날 결론 없이 확정된 계획이 나갑니다.
+func TestReviewNextSharesTheForm(t *testing.T) {
+	page := ui.Page{Title: "판정", Lang: ui.KO}
+	sf := reviewSession("교체한다", "", "")
+
+	var next, old strings.Builder
+	if err := ui.RenderReviewNext(&next, ui.NewReviewView(sf, page)); err != nil {
+		t.Fatal(err)
+	}
+	if err := ui.RenderReview(&old, ui.NewReviewView(sf, page)); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(next.String(), `id="review-edit"`) {
+		t.Error("새 화면에 폼으로 보내는 자리가 없다")
+	}
+	if strings.Contains(old.String(), `class="ui-next"`) {
+		t.Error("옛 화면에 요약이 붙었다")
+	}
+	for _, w := range []*strings.Builder{&next, &old} {
+		if !strings.Contains(w.String(), `action="/finalize"`) {
+			t.Error("두 화면이 같은 확정 경로를 쓰지 않는다")
+		}
+	}
+}

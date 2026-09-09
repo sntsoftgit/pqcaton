@@ -8,79 +8,85 @@ import (
 // reviewPage — 리뷰 큐. 정책으로 묶고, 정책마다 결론 칸 하나를 준다.
 templ reviewPage(v ReviewView) {
 	@shell(v.Page) {
-		<form method="post">
-			@tip(v.Page.Lang, tReviewQueueHint.In(v.Page.Lang))
-			for _, g := range v.Policies {
-				<fieldset>
-					<legend>
-						{ g.Name }
-						<span class="n">
-							— { strconv.Itoa(len(g.Items)) } { tReviewItems.In(v.Page.Lang) }
-							if g.Mandatory > 0 {
-								, { strconv.Itoa(g.Mandatory) } { tReviewMandatory.In(v.Page.Lang) }
-							}
-						</span>
-					</legend>
-					<label>
-						{ tReviewPolicyConclusion.In(v.Page.Lang) }
-						<input
-							type="text"
-							name={ "policy:" + g.Name }
-							value={ g.Conclusion }
-							placeholder={ tReviewPlaceholder.In(v.Page.Lang) }
-						/>
-					</label>
-					<table>
-						<tr>
-							<th>{ tColTarget.In(v.Page.Lang) }</th>
-							<th>{ tColState.In(v.Page.Lang) }</th>
-							<th>{ tColConfidence.In(v.Page.Lang) }</th>
-							<th>{ tColInPlan.In(v.Page.Lang) }</th>
-							<th>{ tColException.In(v.Page.Lang) }</th>
-						</tr>
-						for _, it := range g.Items {
-							<tr>
-								<td>
-									<code>{ it.ID }</code>
-									if it.Rescan {
-										<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
-									}
-									if platformFix(it.Runtime) {
-										<span class="hint">{ tPlatformFix.In(v.Page.Lang) }</span>
-									}
-								</td>
-								<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
-								<td>{ fmt.Sprintf("%.2f", it.Conf) }</td>
-								<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan }/></td>
-								<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
-							</tr>
-						}
-					</table>
-				</fieldset>
-			}
-			if len(v.Policies) == 0 {
-				<p>{ tReviewEmpty.In(v.Page.Lang) }</p>
-			}
-			if v.Autopass > 0 {
-				<p class="hint">{ fmt.Sprintf(tReviewAutopass.In(v.Page.Lang), v.Autopass) }</p>
-			}
-			<fieldset>
-				<legend>{ tApproval.In(v.Page.Lang) }</legend>
-				@tip(v.Page.Lang, tReviewApprovalHint.In(v.Page.Lang))
-				<label>
-					{ tReviewer.In(v.Page.Lang) }
-					<input type="text" name="reviewer" value={ v.Reviewer }/>
-				</label>
-				<label style="display:block;margin-top:.6rem">
-					{ tSignature.In(v.Page.Lang) }
-					<input type="text" name="signature" value={ v.Signature }/>
-				</label>
-			</fieldset>
-			<div class="actions">
-				<button formaction="/save">{ tSaveOnly.In(v.Page.Lang) }</button>
-				<button formaction="/finalize" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
-				@tip(v.Page.Lang, tReviewGateHint.In(v.Page.Lang))
-			</div>
-		</form>
+		@reviewForm(v)
 	}
+}
+
+// reviewForm — 판정을 남기고 확정하는 폼. **껍데기와 갈라 둔다** — 요약을 얹은 새
+// 화면이 같은 폼을 그대로 쓴다. 확정 관문이 두 벌이 되면 한쪽만 막는 날이 온다.
+templ reviewForm(v ReviewView) {
+	<form method="post">
+		@tip(v.Page.Lang, tReviewQueueHint.In(v.Page.Lang))
+		for _, g := range v.Policies {
+			<fieldset>
+				<legend>
+					{ g.Name }
+					<span class="n">
+						— { strconv.Itoa(len(g.Items)) } { tReviewItems.In(v.Page.Lang) }
+						if g.Mandatory > 0 {
+							, { strconv.Itoa(g.Mandatory) } { tReviewMandatory.In(v.Page.Lang) }
+						}
+					</span>
+				</legend>
+				<label>
+					{ tReviewPolicyConclusion.In(v.Page.Lang) }
+					<input
+						type="text"
+						name={ "policy:" + g.Name }
+						value={ g.Conclusion }
+						placeholder={ tReviewPlaceholder.In(v.Page.Lang) }
+					/>
+				</label>
+				<table>
+					<tr>
+						<th>{ tColTarget.In(v.Page.Lang) }</th>
+						<th>{ tColState.In(v.Page.Lang) }</th>
+						<th>{ tColConfidence.In(v.Page.Lang) }</th>
+						<th>{ tColInPlan.In(v.Page.Lang) }</th>
+						<th>{ tColException.In(v.Page.Lang) }</th>
+					</tr>
+					for _, it := range g.Items {
+						<tr>
+							<td>
+								<code>{ it.ID }</code>
+								if it.Rescan {
+									<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
+								}
+								if platformFix(it.Runtime) {
+									<span class="hint">{ tPlatformFix.In(v.Page.Lang) }</span>
+								}
+							</td>
+							<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
+							<td>{ fmt.Sprintf("%.2f", it.Conf) }</td>
+							<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan }/></td>
+							<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
+						</tr>
+					}
+				</table>
+			</fieldset>
+		}
+		if len(v.Policies) == 0 {
+			<p>{ tReviewEmpty.In(v.Page.Lang) }</p>
+		}
+		if v.Autopass > 0 {
+			<p class="hint">{ fmt.Sprintf(tReviewAutopass.In(v.Page.Lang), v.Autopass) }</p>
+		}
+		<fieldset>
+			<legend>{ tApproval.In(v.Page.Lang) }</legend>
+			@tip(v.Page.Lang, tReviewApprovalHint.In(v.Page.Lang))
+			<label>
+				{ tReviewer.In(v.Page.Lang) }
+				<input type="text" name="reviewer" value={ v.Reviewer }/>
+			</label>
+			<label style="display:block;margin-top:.6rem">
+				{ tSignature.In(v.Page.Lang) }
+				<input type="text" name="signature" value={ v.Signature }/>
+			</label>
+		</fieldset>
+		<div class="actions">
+			<button formaction="/save">{ tSaveOnly.In(v.Page.Lang) }</button>
+			<button formaction="/finalize" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
+			@tip(v.Page.Lang, tReviewGateHint.In(v.Page.Lang))
+		</div>
+	</form>
 }

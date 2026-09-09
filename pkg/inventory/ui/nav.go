@@ -18,6 +18,8 @@ const (
 	ScreenScopeNext = "/scope-next"
 	// ScreenSurveyNext — 대조의 다음 판.
 	ScreenSurveyNext = "/survey-next"
+	// ScreenReviewNext — 판정의 다음 판.
+	ScreenReviewNext = "/review-next"
 )
 
 // Screens — 재료를 받아 열린 화면들.
@@ -99,7 +101,7 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDeclNext, Open: s.Decl},
 		{Num: "02", Title: tTitleScope.In(l), Href: ScreenScopeNext, Open: s.Scope},
 		{Num: "03", Title: tTitleSurvey.In(l), Href: ScreenSurveyNext, Open: s.Survey},
-		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReview, Open: true},
+		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReviewNext, Open: true},
 	}
 	for i := range steps {
 		steps[i].Here = here == steps[i].Href
@@ -112,6 +114,8 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 			steps[i].State, steps[i].Dot = scopeState(l, *st.Scope)
 		case i == 2 && st.Survey != nil:
 			steps[i].State, steps[i].Dot = surveyState(l, *st.Survey)
+		case i == 3 && st.Review != nil:
+			steps[i].State, steps[i].Dot = reviewState(l, *st.Review)
 		default:
 			steps[i].State = tStepUnknown.In(l)
 		}
@@ -126,6 +130,19 @@ type StepState struct {
 	Decl   *DeclSummary
 	Scope  *ScopeSummary
 	Survey *SurveySummary
+	Review *ReviewSummary
+}
+
+// reviewState — 판정 카드의 한 줄. **확정을 막는 것이 무엇인지** 말한다.
+func reviewState(l Lang, s ReviewSummary) (string, string) {
+	switch {
+	case s.Ready():
+		return tStepReviewReady.In(l), "ok"
+	case s.Open == 0:
+		return tStepReviewSign.In(l), "warn"
+	default:
+		return fmt.Sprintf(tStepReviewOpen.In(l), s.Mandatory), "danger"
+	}
 }
 
 // surveyState — 대조 카드의 한 줄. **재수집 후보를 먼저 말한다** — 못 본 것을 없는 것으로

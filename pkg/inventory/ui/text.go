@@ -679,3 +679,49 @@ var (
 		EN: "%d items to judge · %d need re-observing"}
 	tStepSurveyDone = T{KO: "확인할 항목 없음", EN: "nothing to check"}
 )
+
+// ── 판정 요약 (`/review-next`) ──────────────────────────────────────────────
+var (
+	tNextReviewEyebrow = T{KO: "04 · 판정", EN: "04 · Judgment"}
+	tNextReviewHead    = T{
+		KO: "정책별로 결론을 남기고, 예외만 개별로 봅니다",
+		EN: "Record a conclusion per policy, and look at exceptions one by one"}
+	tNextReviewLede = T{
+		KO: "확정은 모든 필수 결론과 승인 서명이 채워진 뒤에만 가능합니다.",
+		EN: "Finalizing is possible only after every required conclusion and the approval " +
+			"signature are filled in."}
+
+	tNextReviewTodo = T{
+		KO: "필수 판정 %d개가 남았습니다",
+		EN: "%d required judgments are left"}
+	tNextReviewTodoSign = T{
+		KO: "필수 판정 %d개와 승인 서명이 남았습니다",
+		EN: "%d required judgments and the approval signature are left"}
+	tNextReviewSignOnly = T{KO: "승인 서명이 남았습니다", EN: "The approval signature is left"}
+	tNextReviewTodoBody = T{
+		KO: "정책 %d개에 결론을 남긴 뒤, 필요한 항목만 계획에 넣습니다.",
+		EN: "Record a conclusion on %d policies, then put only what is needed into the plan."}
+	tNextReviewSignBody = T{
+		KO: "결론은 다 찼습니다. 승인자와 서명을 채우면 확정할 수 있습니다.",
+		EN: "Every conclusion is in. Fill in the approver and the signature to finalize."}
+	tNextReviewReady     = T{KO: "확정할 수 있습니다", EN: "Ready to finalize"}
+	tNextReviewReadyBody = T{
+		KO: "필수 결론과 서명이 모두 찼습니다.",
+		EN: "Every required conclusion and the signature are filled in."}
+	tNextReviewGo = T{KO: "확정 준비", EN: "Get ready to finalize"}
+
+	tNextReviewMetricPolicies = T{KO: "결론을 남길 정책", EN: "policies to conclude"}
+	tNextReviewMetricOpen     = T{KO: "결론이 빈 정책", EN: "policies without a conclusion"}
+	tNextReviewMetricAutopass = T{KO: "기계가 답한 항목", EN: "items the machine answered"}
+
+	tNextReviewEditHead = T{KO: "정책별 결론과 확정", EN: "Conclusions and finalization"}
+	tNextReviewEditLede = T{
+		KO: "위에서 본 것을 여기서 남깁니다. 확정하면 판정 원장에 append-only 로 쌓입니다.",
+		EN: "What you saw above gets recorded here. Finalizing appends to the judgment ledger."}
+)
+
+var (
+	tStepReviewOpen  = T{KO: "필수 판정 %d개", EN: "%d required judgments"}
+	tStepReviewSign  = T{KO: "승인 서명이 남음", EN: "signature left"}
+	tStepReviewReady = T{KO: "확정할 수 있음", EN: "ready to finalize"}
+)

@@ -460,3 +460,44 @@ func (v DeclView) FirstToLinkAnchor() string {
 	}
 	return declEditAnchor
 }
+
+// ReviewSummary — 판정 요약 화면(`/review-next`)이 쓰는 숫자.
+type ReviewSummary struct {
+	// Policies — 결론을 남겨야 하는 정책 묶음.
+	Policies int
+	// Open — 그 가운데 아직 결론이 비어 있는 것.
+	Open int
+	// Mandatory — 결론이 비어 있는 정책들이 안고 있는 **필수 항목** 수. 확정을 막는 것이
+	// 이 수다 — 정책 수가 아니라.
+	Mandatory int
+	// Signed — 승인자와 서명이 둘 다 채워졌나. **하나만 있으면 채운 것이 아니다.**
+	Signed bool
+	// Autopass — 기계가 답을 낸 항목. 사람이 볼 것에서 뺀다.
+	Autopass int
+}
+
+// Summary — 요약의 숫자.
+func (v ReviewView) Summary() ReviewSummary {
+	s := ReviewSummary{
+		Policies: len(v.Policies), Autopass: v.Autopass,
+		Signed: strings.TrimSpace(v.Reviewer) != "" && strings.TrimSpace(v.Signature) != "",
+	}
+	for _, p := range v.Policies {
+		if strings.TrimSpace(p.Conclusion) == "" {
+			s.Open++
+			s.Mandatory += p.Mandatory
+		}
+	}
+	return s
+}
+
+// Ready — 확정할 수 있나. **결론이 다 찼고 서명도 있어야** 한다.
+func (s ReviewSummary) Ready() bool { return s.Open == 0 && s.Signed }
+
+// reviewEditAnchor — 요약에서 판정 폼으로 보내는 자리.
+const reviewEditAnchor = "review-edit"
+
+// RenderReviewNext — 요약을 얹은 판정 화면(`/review-next`).
+func RenderReviewNext(w io.Writer, v ReviewView) error {
+	return reviewNextPage(v).Render(context.Background(), w)
+}

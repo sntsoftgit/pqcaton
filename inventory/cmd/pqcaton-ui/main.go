@@ -236,6 +236,7 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.ScreenSurveyNext, s.surveyNext)
 	r.Get(ui.ScreenInventory, s.inventory)
 	r.Get("/review", s.review)
+	r.Get(ui.ScreenReviewNext, s.reviewNext)
 	r.Post("/save", s.save)
 	r.Post("/finalize", s.finalize)
 	return r
@@ -320,6 +321,14 @@ func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 }
 
 func (s *server) review(w http.ResponseWriter, r *http.Request) {
+	s.reviewScreen(w, r, ui.RenderReview, false)
+}
+
+func (s *server) reviewNext(w http.ResponseWriter, r *http.Request) {
+	s.reviewScreen(w, r, ui.RenderReviewNext, true)
+}
+
+func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.ReviewView) error, next bool) {
 	sf, warn, err := s.reviewSession()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -327,7 +336,16 @@ func (s *server) review(w http.ResponseWriter, r *http.Request) {
 	}
 	page := s.page(r, ui.ScreenReview, sub(sf.Scope, ui.LabelSession(ui.PickLang(r))+" "+s.path))
 	page.Warnings = ui.Warnings(ui.PickLang(r), warn)
-	html(w, func() error { return ui.RenderReview(w, ui.NewReviewView(sf, page)) })
+	v := ui.NewReviewView(sf, page)
+	if next {
+		got := v.Summary()
+		v.Page = s.nextPage(r, ui.ScreenReviewNext, s.path, ui.StepState{Review: &got})
+		// 세션의 스코프는 `org://이름` 이다. 위쪽 맥락 줄에는 다른 화면과 같은 모양으로
+		// 조직 이름만 적는다 — 한 껍데기에서 같은 자리가 화면마다 다르면 다른 값으로 읽힌다.
+		v.Page.Org = strings.TrimPrefix(sf.Scope, "org://")
+		v.Page.Warnings = ui.Warnings(ui.PickLang(r), warn)
+	}
+	html(w, func() error { return render(w, v) })
 }
 
 // applyReview — 폼 값을 얹어 파일에 쓴다. **읽고 얹고 쓴다** — 화면이 자기 사본을 들고
