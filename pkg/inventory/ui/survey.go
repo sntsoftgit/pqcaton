@@ -134,3 +134,35 @@ func gradeLabel(l Lang, grade string) string {
 func RenderSurvey(w io.Writer, v SurveyView) error {
 	return surveyPage(v).Render(context.Background(), w)
 }
+
+// SurveySummary — 대조 요약 화면(`/survey-next`)이 쓰는 숫자.
+type SurveySummary struct {
+	Confirmed, Undeclared, Unobserved int
+	// ToJudge — 사람이 확인해야 하는 항목. 확정된 것은 기계가 답을 냈으므로 빼고 센다.
+	ToJudge int
+	// Rescan — **다시 관측해 봐야 하는 자산.** 이 수가 0 이 아니면 UNOBSERVED 를 부재로
+	// 읽으면 안 된다 — 못 본 것인지 없는 것인지 아직 갈리지 않았다.
+	Rescan int
+}
+
+// Summary — 요약의 숫자.
+func (v SurveyView) Summary() SurveySummary {
+	s := SurveySummary{
+		Confirmed: v.Confirmed, Undeclared: v.Undeclared, Unobserved: v.Unobserved,
+		ToJudge: v.Undeclared + v.Unobserved,
+	}
+	for _, a := range v.Assets {
+		if a.Rescan {
+			s.Rescan++
+		}
+	}
+	return s
+}
+
+// surveyEditAnchor — 요약에서 원본 표로 보내는 자리.
+const surveyEditAnchor = "survey-detail"
+
+// RenderSurveyNext — 요약을 얹은 대조 화면(`/survey-next`).
+func RenderSurveyNext(w io.Writer, v SurveyView) error {
+	return surveyNextPage(v).Render(context.Background(), w)
+}

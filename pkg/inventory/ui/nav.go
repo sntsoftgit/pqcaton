@@ -16,6 +16,8 @@ const (
 	ScreenDeclNext = "/decl-next"
 	// ScreenScopeNext — 자산 스코프의 다음 판. 선언과 같은 선이다.
 	ScreenScopeNext = "/scope-next"
+	// ScreenSurveyNext — 대조의 다음 판.
+	ScreenSurveyNext = "/survey-next"
 )
 
 // Screens — 재료를 받아 열린 화면들.
@@ -58,7 +60,7 @@ func ScreenTitle(here string, l Lang) string {
 		return tTitleDecl.In(l)
 	case ScreenScope, ScreenScopeNext:
 		return tTitleScope.In(l)
-	case ScreenSurvey:
+	case ScreenSurvey, ScreenSurveyNext:
 		return tTitleSurvey.In(l)
 	case ScreenInventory:
 		return tTitleInventory.In(l)
@@ -96,7 +98,7 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 	steps := []Step{
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDeclNext, Open: s.Decl},
 		{Num: "02", Title: tTitleScope.In(l), Href: ScreenScopeNext, Open: s.Scope},
-		{Num: "03", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
+		{Num: "03", Title: tTitleSurvey.In(l), Href: ScreenSurveyNext, Open: s.Survey},
 		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReview, Open: true},
 	}
 	for i := range steps {
@@ -108,6 +110,8 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 			steps[i].State, steps[i].Dot = declState(l, *st.Decl)
 		case i == 1 && st.Scope != nil:
 			steps[i].State, steps[i].Dot = scopeState(l, *st.Scope)
+		case i == 2 && st.Survey != nil:
+			steps[i].State, steps[i].Dot = surveyState(l, *st.Survey)
 		default:
 			steps[i].State = tStepUnknown.In(l)
 		}
@@ -119,8 +123,21 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 // 계산을 매 요청마다 돌려야 하고, 대조는 계산이 무겁다. 비어 있는 자리는 「아직 세지
 // 않는다」로 적힌다.
 type StepState struct {
-	Decl  *DeclSummary
-	Scope *ScopeSummary
+	Decl   *DeclSummary
+	Scope  *ScopeSummary
+	Survey *SurveySummary
+}
+
+// surveyState — 대조 카드의 한 줄. **재수집 후보를 먼저 말한다** — 못 본 것을 없는 것으로
+// 확정하는 실수가 이 도구가 막으려는 바로 그 자리다.
+func surveyState(l Lang, s SurveySummary) (string, string) {
+	if s.Rescan > 0 {
+		return fmt.Sprintf(tStepSurveyRescan.In(l), s.ToJudge, s.Rescan), "danger"
+	}
+	if s.ToJudge == 0 {
+		return tStepSurveyDone.In(l), "ok"
+	}
+	return fmt.Sprintf(tStepSurveyOpen.In(l), s.ToJudge), "warn"
 }
 
 // scopeState — 스코프 카드의 한 줄. **근거가 필요한 것을 따로 센다** — 다 승인해 놓고

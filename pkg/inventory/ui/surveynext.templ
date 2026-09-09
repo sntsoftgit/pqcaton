@@ -1,0 +1,83 @@
+package ui
+
+import "fmt"
+import "strconv"
+
+// surveyNextPage — 대조 화면의 다음 판.
+//
+// **이 화면의 급한 일은 「관측이 어디까지 닿았나」다.** 다시 관측해 봐야 하는 자산이
+// 남아 있으면 UNOBSERVED 는 아직 「없다」가 아니라 「못 봤다」이고, 그것을 부재로 확정하면
+// 실재하는 자산이 장부에서 사라진다. 그래서 판정 수보다 그것을 먼저 띄운다.
+templ surveyNextPage(v SurveyView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			{{ s := v.Summary() }}
+			<p class="eyebrow">{ tNextSurveyEyebrow.In(v.Page.Lang) }</p>
+			if s.ToJudge > 0 {
+				<h2>{ fmt.Sprintf(tNextSurveyHead.In(v.Page.Lang), s.ToJudge) }</h2>
+			} else {
+				<h2>{ tNextSurveyHeadDone.In(v.Page.Lang) }</h2>
+			}
+			<p class="lede">{ tNextSurveyLede.In(v.Page.Lang) }</p>
+			@surveyNextMetrics(v)
+			@surveyNextTodo(v)
+			<h3 id={ surveyEditAnchor }>{ tNextSurveyDetail.In(v.Page.Lang) }</h3>
+			<p class="lede">{ tNextSurveyDetailLede.In(v.Page.Lang) }</p>
+			@surveyBody(v)
+		</div>
+	}
+}
+
+// surveyNextMetrics — 세 상태를 그대로 센다. **이름을 옮기지 않는다** — 화면과 명령과
+// 원장이 같은 낱말을 써야 같은 것을 가리킨다.
+templ surveyNextMetrics(v SurveyView) {
+	{{ s := v.Summary() }}
+	<div class="metrics">
+		<div class={ "metric", templ.KV("danger", s.Undeclared > 0) }>
+			<b>{ strconv.Itoa(s.Undeclared) }</b>
+			<span>UNDECLARED</span>
+		</div>
+		<div class={ "metric", templ.KV("warn", s.Unobserved > 0) }>
+			<b>{ strconv.Itoa(s.Unobserved) }</b>
+			<span>UNOBSERVED</span>
+		</div>
+		<div class="metric ok">
+			<b>{ strconv.Itoa(s.Confirmed) }</b>
+			<span>CONFIRMED</span>
+		</div>
+	</div>
+}
+
+// surveyNextTodo — 다음에 할 일. **재수집 후보가 판정보다 앞선다** — 못 본 것을 없는
+// 것으로 확정하는 실수가 이 도구가 막으려는 바로 그 자리다.
+templ surveyNextTodo(v SurveyView) {
+	{{ s := v.Summary() }}
+	if s.Rescan > 0 {
+		<div class="next">
+			<div class="next-icon">!</div>
+			<div>
+				<strong>{ tNextSurveyRescan.In(v.Page.Lang) }</strong>
+				<span>{ fmt.Sprintf(tNextSurveyRescanBody.In(v.Page.Lang), s.Rescan) }</span>
+			</div>
+			<a class="quiet" href={ templ.SafeURL("#" + surveyEditAnchor) }>{ tNextGoEdit.In(v.Page.Lang) }</a>
+		</div>
+	}
+	if s.ToJudge > 0 {
+		<div class="next">
+			<div class="next-icon">!</div>
+			<div>
+				<strong>{ fmt.Sprintf(tNextSurveyJudge.In(v.Page.Lang), s.ToJudge) }</strong>
+				<span>{ tNextSurveyJudgeBody.In(v.Page.Lang) }</span>
+			</div>
+			<a class="primary" href={ templ.SafeURL(ScreenReview) }>{ tNextSurveyGoReview.In(v.Page.Lang) }</a>
+		</div>
+	} else if s.Rescan == 0 {
+		<div class="next done">
+			<div class="next-icon">✓</div>
+			<div>
+				<strong>{ tNextSurveyDone.In(v.Page.Lang) }</strong>
+				<span>{ tNextSurveyDoneBody.In(v.Page.Lang) }</span>
+			</div>
+		</div>
+	}
+}

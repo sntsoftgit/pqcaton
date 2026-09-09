@@ -635,3 +635,47 @@ var (
 		EN: "%d changes to approve · %d need a reason"}
 	tStepScopeDone = T{KO: "승인할 변경 없음", EN: "no change to approve"}
 )
+
+// ── 대조 요약 (`/survey-next`) ──────────────────────────────────────────────
+var (
+	tNextSurveyEyebrow = T{KO: "03 · 대조", EN: "03 · Reconciliation"}
+	tNextSurveyHead    = T{
+		KO: "대조 결과에는 사람이 확인할 항목이 %d개 있습니다",
+		EN: "%d items in the reconciliation need a person to look"}
+	tNextSurveyHeadDone = T{
+		KO: "사람이 확인할 항목이 없습니다",
+		EN: "Nothing in the reconciliation needs a person"}
+	tNextSurveyLede = T{
+		KO: "관측이 부족한지, 선언이 빠진 것인지 먼저 가른 뒤 판정으로 보냅니다.",
+		EN: "Sort out whether the observation fell short or the declaration is missing, " +
+			"then send it on to judgment."}
+
+	tNextSurveyRescan     = T{KO: "관측 범위가 부족합니다", EN: "The observation did not reach far enough"}
+	tNextSurveyRescanBody = T{
+		KO: "다시 관측해 봐야 하는 자산이 %d개입니다. UNOBSERVED 를 없는 것으로 확정하지 마십시오.",
+		EN: "%d assets need to be observed again. Do not finalize UNOBSERVED as absent."}
+	tNextSurveyJudge = T{
+		KO: "판정할 항목이 %d개입니다",
+		EN: "%d items are waiting for a judgment"}
+	tNextSurveyJudgeBody = T{
+		KO: "관측과 선언이 어긋난 자리입니다. 판정 큐에서 결론을 남깁니다.",
+		EN: "These are where observation and declaration diverge. Record a conclusion in the review queue."}
+	tNextSurveyDone     = T{KO: "대조가 다 맞았습니다", EN: "Everything reconciled"}
+	tNextSurveyDoneBody = T{
+		KO: "선언과 관측이 모두 맞물렸습니다. 판정으로 넘어갈 것이 없습니다.",
+		EN: "Declaration and observation line up. Nothing is waiting for judgment."}
+	tNextSurveyGoReview = T{KO: "판정 큐 열기", EN: "Open the review queue"}
+
+	tNextSurveyDetail     = T{KO: "자산과 엣지 원본", EN: "The assets and edges themselves"}
+	tNextSurveyDetailLede = T{
+		KO: "위의 숫자가 어느 줄에서 나왔는지 여기서 봅니다.",
+		EN: "This is where the numbers above come from."}
+)
+
+var (
+	tStepSurveyOpen   = T{KO: "판정할 항목 %d개", EN: "%d items to judge"}
+	tStepSurveyRescan = T{
+		KO: "판정할 항목 %d개 · 재관측 필요 %d개",
+		EN: "%d items to judge · %d need re-observing"}
+	tStepSurveyDone = T{KO: "확인할 항목 없음", EN: "nothing to check"}
+)

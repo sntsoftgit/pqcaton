@@ -1109,3 +1109,95 @@ func TestScopeNextSharesTheForm(t *testing.T) {
 		t.Error("두 화면이 같은 확정 경로를 쓰지 않는다")
 	}
 }
+
+// surveyResult — 요약을 재는 대조 결과. 셋 가운데 하나는 **다시 관측해 봐야 하는** 것이다.
+func surveyResult(rescan bool) *report.Result {
+	return &report.Result{
+		Org: "acme",
+		Assets: []reconcile.Reconciled{
+			{Key: reconcile.AssetKey{NodeID: "web", Runtime: "openssl", Component: "libssl"},
+				State: "UNDECLARED"},
+			{Key: reconcile.AssetKey{NodeID: "web", Runtime: "openssl", Component: "libcrypto"},
+				State: "CONFIRMED"},
+			{Key: reconcile.AssetKey{NodeID: "db", Runtime: "jca", Component: "provider"},
+				State: "UNOBSERVED", RescanCandidate: rescan},
+		},
+	}
+}
+
+// IC-U38 — **대조 요약은 세 상태를 그대로 세고, 재관측 후보를 따로 센다.**
+//
+// 확정된 것은 기계가 답을 냈으므로 「사람이 볼 항목」에서 뺍니다. 재관측 후보는 상태가
+// 아니라 **그 상태를 믿어도 되는지**를 말하므로 따로 셉니다.
+func TestSurveySummaryCounts(t *testing.T) {
+	page := ui.Page{Title: "대조", Lang: ui.KO}
+	got := ui.NewSurveyView(surveyResult(true), page).Summary()
+	if got.Undeclared != 1 || got.Unobserved != 1 || got.Confirmed != 1 {
+		t.Fatalf("상태를 %+v 로 셌다", got)
+	}
+	if got.ToJudge != 2 {
+		t.Errorf("사람이 볼 항목을 %d 로 셌다 — 확정된 것은 빼야 한다", got.ToJudge)
+	}
+	if got.Rescan != 1 {
+		t.Errorf("재관측 후보를 %d 로 셌다", got.Rescan)
+	}
+}
+
+// IC-U39 — **재관측 후보가 판정보다 앞선다.**
+//
+// 못 본 것을 없는 것으로 확정하는 실수가 이 도구가 막으려는 바로 그 자리입니다. 관측이
+// 아직 닿지 않았는데 UNOBSERVED 를 부재로 읽으면 **실재하는 자산이 장부에서 사라집니다.**
+func TestSurveyNextWarnsBeforeJudging(t *testing.T) {
+	page := ui.Page{Title: "대조", Lang: ui.KO}
+
+	var loud strings.Builder
+	if err := ui.RenderSurveyNext(&loud, ui.NewSurveyView(surveyResult(true), page)); err != nil {
+		t.Fatal(err)
+	}
+	body := loud.String()
+	warn := strings.Index(body, "관측 범위가 부족합니다")
+	judge := strings.Index(body, "판정할 항목이")
+	if warn < 0 || judge < 0 {
+		t.Fatalf("경고(%d)나 판정 안내(%d)가 없다", warn, judge)
+	}
+	if warn > judge {
+		t.Error("판정 안내가 재관측 경고보다 먼저 나온다 — 못 본 것을 없는 것으로 확정하게 된다")
+	}
+
+	// 재관측할 것이 없으면 그 경고는 뜨지 않는다. 늘 뜨는 경고는 아무도 안 읽는다.
+	var quiet strings.Builder
+	if err := ui.RenderSurveyNext(&quiet, ui.NewSurveyView(surveyResult(false), page)); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(quiet.String(), "관측 범위가 부족합니다") {
+		t.Error("재관측할 것이 없는데 경고를 띄웠다")
+	}
+}
+
+// IC-U40 — **대조의 두 화면은 같은 표를 보여 준다.**
+//
+// 이 화면은 적는 자리가 없어서 두 판이 보여 주는 것도 같아야 합니다. 숫자만 얹고 근거가
+// 갈리면 요약이 어디서 나왔는지 확인할 수 없습니다.
+func TestSurveyNextSharesTheBody(t *testing.T) {
+	page := ui.Page{Title: "대조", Lang: ui.KO}
+
+	var next, old strings.Builder
+	if err := ui.RenderSurveyNext(&next, ui.NewSurveyView(surveyResult(false), page)); err != nil {
+		t.Fatal(err)
+	}
+	if err := ui.RenderSurvey(&old, ui.NewSurveyView(surveyResult(false), page)); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(next.String(), `id="survey-detail"`) {
+		t.Error("새 화면에 원본 표로 보내는 자리가 없다")
+	}
+	if strings.Contains(old.String(), `class="ui-next"`) {
+		t.Error("옛 화면에 요약이 붙었다")
+	}
+	// 두 판 모두 같은 자산을 적는다.
+	for _, w := range []*strings.Builder{&next, &old} {
+		if !strings.Contains(w.String(), "libcrypto") {
+			t.Error("자산 표가 빠졌다")
+		}
+	}
+}

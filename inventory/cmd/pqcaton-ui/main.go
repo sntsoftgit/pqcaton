@@ -233,6 +233,7 @@ func (s *server) handler() http.Handler {
 	r.Post("/scope/save", s.scopeSave)
 	r.Post("/scope/finalize", s.scopeFinalize)
 	r.Get("/survey", s.survey)
+	r.Get(ui.ScreenSurveyNext, s.surveyNext)
 	r.Get(ui.ScreenInventory, s.inventory)
 	r.Get("/review", s.review)
 	r.Post("/save", s.save)
@@ -586,6 +587,14 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 // survey — 관측을 모아 선언과 대조한 것을 보여 준다. **계산은 report 패키지가 한다** —
 // 명령(`pqcaton-report`)이 글로 찍는 것과 같은 것을 표로 그린다.
 func (s *server) survey(w http.ResponseWriter, r *http.Request) {
+	s.surveyScreen(w, r, ui.RenderSurvey, false)
+}
+
+func (s *server) surveyNext(w http.ResponseWriter, r *http.Request) {
+	s.surveyScreen(w, r, ui.RenderSurveyNext, true)
+}
+
+func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.SurveyView) error, next bool) {
 	if s.results == "" {
 		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
 		return
@@ -603,7 +612,12 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	v := ui.NewSurveyView(res, s.page(r, ui.ScreenSurvey,
 		sub(ui.LabelOrg(ui.PickLang(r))+" "+res.Org, ui.LabelResults(ui.PickLang(r))+" "+s.results)))
 	v.SVG = renderDOT(v.DOT)
-	html(w, func() error { return ui.RenderSurvey(w, v) })
+	if next {
+		got := v.Summary()
+		v.Page = s.nextPage(r, ui.ScreenSurveyNext, s.results, ui.StepState{Survey: &got})
+		v.Page.Org = res.Org
+	}
+	html(w, func() error { return render(w, v) })
 }
 
 // renderDOT — `dot` 이 있으면 SVG 로 그린다. 없으면 빈 값을 돌려주고 화면이 원문을 보인다.
