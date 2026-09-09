@@ -90,7 +90,8 @@ type Step struct {
 //
 // **상태는 옮긴 화면부터 채운다.** 카드 하나를 채우려면 그 화면의 계산을 매 요청마다
 // 돌려야 하는데, 대조는 계산이 무겁고 한 화면의 재료가 어긋나면 다른 화면까지 막힌다.
-// 그래서 화면을 옮기는 걸음마다 그 카드를 채운다(지금은 선언 하나다).
+// 그래서 화면을 옮기는 걸음마다 그 카드를 채운다. 채운 것은 StepState 의 필드가 말한다 —
+// 여기에 이름을 세어 적으면 화면을 하나 옮길 때마다 이 주석이 낡는다.
 func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 	steps := []Step{
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDeclNext, Open: s.Decl},
