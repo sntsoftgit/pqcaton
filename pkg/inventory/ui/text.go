@@ -725,3 +725,42 @@ var (
 	tStepReviewSign  = T{KO: "승인 서명이 남음", EN: "signature left"}
 	tStepReviewReady = T{KO: "확정할 수 있음", EN: "ready to finalize"}
 )
+
+// ── 조회 요약 (`/inventory-next`) ───────────────────────────────────────────
+var (
+	tNextInvEyebrow = T{KO: "조회 · 절차 밖", EN: "Lookup · outside the steps"}
+	tNextInvHead    = T{
+		KO: "인벤토리와 판정 이력을 살펴봅니다",
+		EN: "Look through the inventory and the judgment history"}
+	tNextInvLede = T{
+		KO: "이 화면은 단계가 아니라 언제든 근거를 확인하는 자리입니다.",
+		EN: "This screen is not a step; it is where you check the evidence at any time."}
+
+	tNextInvMetricAssets = T{KO: "관리 중인 자산", EN: "assets under management"}
+	tNextInvMetricUnseen = T{KO: "제외분 재검토", EN: "exclusions to re-examine"}
+	tNextInvMetricStale  = T{KO: "근거가 바뀐 판정", EN: "judgments whose basis changed"}
+
+	tNextInvAttention     = T{KO: "주의가 필요한 항목", EN: "What needs attention"}
+	tNextInvAttentionNote = T{
+		KO: "원본 전체는 아래에서 확인합니다",
+		EN: "the full records are below"}
+	tNextInvUnseenCard = T{KO: "제외분 재검토", EN: "Exclusions to re-examine"}
+	tNextInvUnseenBody = T{
+		KO: "승인이 없거나 만료된 제외 %d개",
+		EN: "%d exclusions with no approval or an expired one"}
+	tNextInvStaleCard = T{KO: "근거가 바뀐 판정", EN: "Judgments whose basis changed"}
+	tNextInvStaleBody = T{
+		KO: "다시 봐야 하는 결론 %d개",
+		EN: "%d conclusions that need another look"}
+	tNextInvQuiet     = T{KO: "지금 걸리는 것이 없습니다", EN: "Nothing is flagged right now"}
+	tNextInvQuietBody = T{
+		KO: "제외분과 판정 원장 모두 다시 볼 것이 없습니다.",
+		EN: "Neither the exclusions nor the judgment ledger has anything to revisit."}
+	tNextInvNeedCheck = T{KO: "검토 필요", EN: "needs a look"}
+
+	tNextInvDetail     = T{KO: "인벤토리 원본", EN: "The inventory itself"}
+	tNextInvDetailLede = T{
+		KO: "노드·런타임·컴포넌트·상태로 좁혀 봅니다. 좁힌 조건은 주소에 실리므로 그대로 남에게 보낼 수 있습니다.",
+		EN: "Narrow by node, runtime, component or state. The filter rides in the URL, so " +
+			"you can send the screen as it is."}
+)

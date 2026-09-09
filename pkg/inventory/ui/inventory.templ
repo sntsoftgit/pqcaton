@@ -8,124 +8,130 @@ import (
 // inventoryPage — 찾아보는 자리. **절차의 한 단계가 아니다.**
 templ inventoryPage(v InventoryView) {
 	@shell(v.Page) {
-		@tip(v.Page.Lang, tInventoryIntro.In(v.Page.Lang)+" "+tInventoryBounds.In(v.Page.Lang))
-		<fieldset>
-			<legend>{ tSearch.In(v.Page.Lang) }</legend>
-			<form method="get" action="/inventory">
-				<input type="hidden" name={ LangParam } value={ string(v.Page.Lang) }/>
-				<table>
-					<tr>
-						<td style="width:60%">
-							<input
-								type="text"
-								name="q"
-								value={ v.Filter.Q }
-								placeholder={ tSearchQ.In(v.Page.Lang) }
-							/>
-						</td>
-						<td>
-							<select name="state">
-								<option value="" selected?={ v.Filter.State == "" }>{ tSearchState.In(v.Page.Lang) } — { tSearchAll.In(v.Page.Lang) }</option>
-								for _, st := range []string{"CONFIRMED", "UNDECLARED", "UNOBSERVED"} {
-									<option value={ st } selected?={ v.Filter.State == st }>{ st }</option>
-								}
-							</select>
-						</td>
-						<td style="width:12rem">
-							<button class="primary">{ tSearchGo.In(v.Page.Lang) }</button>
-							<a href={ templ.SafeURL("/inventory?" + LangParam + "=" + string(v.Page.Lang)) }>{ tSearchClear.In(v.Page.Lang) }</a>
-						</td>
-					</tr>
-				</table>
-			</form>
-		</fieldset>
-		if v.Subject != "" {
-			@historySection(v)
-		}
-		<fieldset>
-			<legend>
-				{ tSurveyAssets.In(v.Page.Lang) }
-				<span class="n">
-					— 
-					@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalAssets, len(v.Assets)))
-				</span>
-			</legend>
+		@inventoryBody(v)
+	}
+}
+
+// inventoryBody — 조회하는 자리. **껍데기와 갈라 둔다** — 요약을 얹은 새 화면이 같은
+// 표와 검색을 그대로 쓴다. 좁히는 조건이 주소에 실리므로 두 판이 같은 것을 읽어야 한다.
+templ inventoryBody(v InventoryView) {
+	@tip(v.Page.Lang, tInventoryIntro.In(v.Page.Lang)+" "+tInventoryBounds.In(v.Page.Lang))
+	<fieldset>
+		<legend>{ tSearch.In(v.Page.Lang) }</legend>
+		<form method="get" action="/inventory">
+			<input type="hidden" name={ LangParam } value={ string(v.Page.Lang) }/>
 			<table>
 				<tr>
-					<th>{ tColState.In(v.Page.Lang) }</th>
-					<th>{ tColConfidence.In(v.Page.Lang) }</th>
-					<th>{ tColNode.In(v.Page.Lang) }</th>
-					<th>{ tColRuntime.In(v.Page.Lang) }</th>
-					<th>{ tColComponent.In(v.Page.Lang) }</th>
+					<td style="width:60%">
+						<input
+							type="text"
+							name="q"
+							value={ v.Filter.Q }
+							placeholder={ tSearchQ.In(v.Page.Lang) }
+						/>
+					</td>
+					<td>
+						<select name="state">
+							<option value="" selected?={ v.Filter.State == "" }>{ tSearchState.In(v.Page.Lang) } — { tSearchAll.In(v.Page.Lang) }</option>
+							for _, st := range []string{"CONFIRMED", "UNDECLARED", "UNOBSERVED"} {
+								<option value={ st } selected?={ v.Filter.State == st }>{ st }</option>
+							}
+						</select>
+					</td>
+					<td style="width:12rem">
+						<button class="primary">{ tSearchGo.In(v.Page.Lang) }</button>
+						<a href={ templ.SafeURL("/inventory?" + LangParam + "=" + string(v.Page.Lang)) }>{ tSearchClear.In(v.Page.Lang) }</a>
+					</td>
+				</tr>
+			</table>
+		</form>
+	</fieldset>
+	if v.Subject != "" {
+		@historySection(v)
+	}
+	<fieldset>
+		<legend>
+			{ tSurveyAssets.In(v.Page.Lang) }
+			<span class="n">
+				— 
+				@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalAssets, len(v.Assets)))
+			</span>
+		</legend>
+		<table>
+			<tr>
+				<th>{ tColState.In(v.Page.Lang) }</th>
+				<th>{ tColConfidence.In(v.Page.Lang) }</th>
+				<th>{ tColNode.In(v.Page.Lang) }</th>
+				<th>{ tColRuntime.In(v.Page.Lang) }</th>
+				<th>{ tColComponent.In(v.Page.Lang) }</th>
+				if v.HasLedger {
+					<th style="width:5rem"></th>
+				}
+			</tr>
+			for _, a := range v.Assets {
+				<tr>
+					<td class={ templ.KV("must", a.State != "CONFIRMED") }>{ a.State }</td>
+					<td>{ fmt.Sprintf("%.2f", a.Conf) }</td>
+					<td><code>{ a.Node }</code></td>
+					<td>{ a.Runtime }</td>
+					<td>
+						{ a.Component }
+						if a.Rescan {
+							<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
+						}
+					</td>
 					if v.HasLedger {
-						<th style="width:5rem"></th>
+						<td><a href={ templ.SafeURL(historyHref(v, a)) }>{ tOpenHistory.In(v.Page.Lang) }</a></td>
 					}
 				</tr>
-				for _, a := range v.Assets {
-					<tr>
-						<td class={ templ.KV("must", a.State != "CONFIRMED") }>{ a.State }</td>
-						<td>{ fmt.Sprintf("%.2f", a.Conf) }</td>
-						<td><code>{ a.Node }</code></td>
-						<td>{ a.Runtime }</td>
-						<td>
-							{ a.Component }
-							if a.Rescan {
-								<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
-							}
-						</td>
-						if v.HasLedger {
-							<td><a href={ templ.SafeURL(historyHref(v, a)) }>{ tOpenHistory.In(v.Page.Lang) }</a></td>
-						}
-					</tr>
-				}
-				if len(v.Assets) == 0 {
-					<tr><td colspan="6">{ tNoMatch.In(v.Page.Lang) }</td></tr>
-				}
-			</table>
-		</fieldset>
-		<fieldset>
-			<legend>
-				{ tSurveyEdges.In(v.Page.Lang) }
-				<span class="n">
-					— 
-					@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalEdges, len(v.Edges)))
-				</span>
-			</legend>
-			<table>
+			}
+			if len(v.Assets) == 0 {
+				<tr><td colspan="6">{ tNoMatch.In(v.Page.Lang) }</td></tr>
+			}
+		</table>
+	</fieldset>
+	<fieldset>
+		<legend>
+			{ tSurveyEdges.In(v.Page.Lang) }
+			<span class="n">
+				— 
+				@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalEdges, len(v.Edges)))
+			</span>
+		</legend>
+		<table>
+			<tr>
+				<th style="width:2rem"></th>
+				<th>{ tColSrc.In(v.Page.Lang) }</th>
+				<th>{ tColDst.In(v.Page.Lang) }</th>
+				<th>{ tColPort.In(v.Page.Lang) }</th>
+				<th>{ tColProto.In(v.Page.Lang) }</th>
+				<th>{ tColGroup.In(v.Page.Lang) }</th>
+				<th>{ tColReconcile.In(v.Page.Lang) }</th>
+			</tr>
+			for _, e := range v.Edges {
 				<tr>
-					<th style="width:2rem"></th>
-					<th>{ tColSrc.In(v.Page.Lang) }</th>
-					<th>{ tColDst.In(v.Page.Lang) }</th>
-					<th>{ tColPort.In(v.Page.Lang) }</th>
-					<th>{ tColProto.In(v.Page.Lang) }</th>
-					<th>{ tColGroup.In(v.Page.Lang) }</th>
-					<th>{ tColReconcile.In(v.Page.Lang) }</th>
+					<td>{ e.Mark }</td>
+					<td><code>{ e.Src }</code></td>
+					<td><code>{ e.Dst }</code></td>
+					<td>{ portText(e.Port) }</td>
+					<td>{ e.Proto }</td>
+					<td>
+						if e.Group != "" {
+							{ e.Group }
+						} else {
+							<span class="hint">{ gradeLabel(v.Page.Lang, e.Grade) }</span>
+						}
+					</td>
+					<td class={ templ.KV("must", e.State != "CONFIRMED") }>{ e.State }</td>
 				</tr>
-				for _, e := range v.Edges {
-					<tr>
-						<td>{ e.Mark }</td>
-						<td><code>{ e.Src }</code></td>
-						<td><code>{ e.Dst }</code></td>
-						<td>{ portText(e.Port) }</td>
-						<td>{ e.Proto }</td>
-						<td>
-							if e.Group != "" {
-								{ e.Group }
-							} else {
-								<span class="hint">{ gradeLabel(v.Page.Lang, e.Grade) }</span>
-							}
-						</td>
-						<td class={ templ.KV("must", e.State != "CONFIRMED") }>{ e.State }</td>
-					</tr>
-				}
-				if len(v.Edges) == 0 {
-					<tr><td colspan="7">{ tNoMatch.In(v.Page.Lang) }</td></tr>
-				}
-			</table>
-		</fieldset>
-		@unseenSection(v)
-		@staleSection(v)
-	}
+			}
+			if len(v.Edges) == 0 {
+				<tr><td colspan="7">{ tNoMatch.In(v.Page.Lang) }</td></tr>
+			}
+		</table>
+	</fieldset>
+	@unseenSection(v)
+	@staleSection(v)
 }
 
 // historySection — 자산 하나의 판정 이력. **원장은 덧붙이기만 한다.**

@@ -1301,3 +1301,74 @@ func TestReviewNextSharesTheForm(t *testing.T) {
 		}
 	}
 }
+
+// IC-U44 — **살아 있는 승인은 다시 볼 것이 아니다.**
+//
+// 제외분 재검토는 「승인이 없거나 만료된 것」만 셉니다(`Reason` 이 비면 승인이 살아
+// 있다는 뜻입니다). 전부 세면 **뺄 때마다 재검토 수가 늘어** 아무도 그 숫자를 안 봅니다.
+func TestInventorySummaryCounts(t *testing.T) {
+	v := ui.NewInventoryView(surveyResult(false), ui.Filter{}, ui.Page{Title: "조회", Lang: ui.KO})
+	v.Unseen = []ui.UnseenRow{
+		{Subject: "a", Reason: "never_judged", StillObserved: true},
+		{Subject: "b"}, // 살아 있는 승인
+		{Subject: "c", Reason: "approval_stale"},
+	}
+	v.Stale = []ui.JudgmentRow{{Subject: "d"}}
+
+	got := v.Summary()
+	if got.Assets != 3 {
+		t.Errorf("자산을 %d 로 셌다", got.Assets)
+	}
+	if got.Unseen != 2 {
+		t.Errorf("재검토 대상을 %d 로 셌다 — 살아 있는 승인은 빼야 한다", got.Unseen)
+	}
+	if got.Stale != 1 {
+		t.Errorf("근거가 바뀐 판정을 %d 로 셌다", got.Stale)
+	}
+}
+
+// IC-U45 — **걸리는 것이 없으면 없다고 적는다.**
+//
+// 이 화면은 절차의 한 단계가 아니라 아무 때나 들어오는 자리입니다. 빈 자리를 두면
+// 「아직 안 불러온 것」으로 읽힙니다.
+func TestInventoryNextTellsWhenNothingIsFlagged(t *testing.T) {
+	page := ui.Page{Title: "조회", Lang: ui.KO}
+
+	var quiet strings.Builder
+	if err := ui.RenderInventoryNext(&quiet, ui.NewInventoryView(surveyResult(false), ui.Filter{}, page)); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(quiet.String(), "지금 걸리는 것이 없습니다") {
+		t.Error("걸리는 것이 없는데 그렇다고 적지 않았다")
+	}
+
+	v := ui.NewInventoryView(surveyResult(false), ui.Filter{}, page)
+	v.Unseen = []ui.UnseenRow{{Subject: "a", Reason: "never_judged"}}
+	var loud strings.Builder
+	if err := ui.RenderInventoryNext(&loud, v); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(loud.String(), "제외분 재검토") {
+		t.Error("걸리는 것이 있는데 카드를 세우지 않았다")
+	}
+	if strings.Contains(loud.String(), "지금 걸리는 것이 없습니다") {
+		t.Error("걸리는 것이 있는데 없다고 적었다")
+	}
+}
+
+// IC-U46 — **조회는 절차 카드에 넣지 않는다.**
+//
+// 단계가 아니라 아무 때나 들어오는 자리라, 번호를 달면 ④ 다음에 하는 일로 읽힙니다.
+// 옛 이동 링크가 조회에만 번호를 안 붙인 것과 같은 선입니다.
+func TestInventoryIsNotAStep(t *testing.T) {
+	steps := ui.StepsFor(ui.KO, ui.ScreenInventoryNext,
+		ui.Screens{Decl: true, Scope: true, Survey: true, Inventory: true}, ui.StepState{})
+	if len(steps) != 4 {
+		t.Fatalf("절차 카드가 %d개 — 조회가 섞였다", len(steps))
+	}
+	for _, st := range steps {
+		if st.Href == ui.ScreenInventoryNext {
+			t.Error("조회가 절차 카드에 들어갔다")
+		}
+	}
+}

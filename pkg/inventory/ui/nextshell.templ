@@ -47,6 +47,9 @@ templ nextShell(p Page) {
 					for _, st := range p.Steps {
 						@stepCard(st)
 					}
+					if p.InventoryHref != "" {
+						<a class={ "inventory-tab", templ.KV("active", p.InventoryHref == ScreenInventoryNext && p.Title == tTitleInventory.In(p.Lang)) } href={ templ.SafeURL(p.InventoryHref) }>{ p.InventoryText }</a>
+					}
 				</nav>
 			}
 			if p.Message != "" {

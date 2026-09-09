@@ -228,3 +228,36 @@ func reasonLabel(l Lang, code string) string {
 	}
 	return scope.EnglishReason(code)
 }
+
+// InventorySummary — 인벤토리 요약 화면(`/inventory-next`)이 쓰는 숫자.
+//
+// **이 화면은 절차의 한 단계가 아니다.** 그래서 「다음에 할 일」을 띄우지 않고, 언제
+// 들어와도 눈에 걸려야 하는 것만 카드로 세워 둔다.
+type InventorySummary struct {
+	// Assets — 좁히기 전 전체 자산.
+	Assets int
+	// Unseen — 자산 스코프가 뺐는데 **지금도 관측되는** 것. 「내가 뭘 안 보고 있나」의 답이다.
+	Unseen int
+	// Stale — 근거가 바뀐 판정. 재관측 뒤 다시 봐야 한다.
+	Stale int
+}
+
+// Summary — 요약의 숫자 셋.
+func (v InventoryView) Summary() InventorySummary {
+	s := InventorySummary{Assets: v.TotalAssets, Stale: len(v.Stale)}
+	for _, u := range v.Unseen {
+		// **살아 있는 승인이 있으면 다시 볼 것이 아니다**(Reason 이 빈다).
+		if u.Reason != "" {
+			s.Unseen++
+		}
+	}
+	return s
+}
+
+// inventoryEditAnchor — 요약에서 원본 표로 보내는 자리.
+const inventoryEditAnchor = "inventory-detail"
+
+// RenderInventoryNext — 요약을 얹은 조회 화면(`/inventory-next`).
+func RenderInventoryNext(w io.Writer, v InventoryView) error {
+	return inventoryNextPage(v).Render(context.Background(), w)
+}

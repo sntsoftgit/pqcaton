@@ -235,6 +235,7 @@ func (s *server) handler() http.Handler {
 	r.Get("/survey", s.survey)
 	r.Get(ui.ScreenSurveyNext, s.surveyNext)
 	r.Get(ui.ScreenInventory, s.inventory)
+	r.Get(ui.ScreenInventoryNext, s.inventoryNext)
 	r.Get("/review", s.review)
 	r.Get(ui.ScreenReviewNext, s.reviewNext)
 	r.Post("/save", s.save)
@@ -665,6 +666,14 @@ func renderDOT(dot string) string {
 // 화면이다. 여기서는 조건을 걸어 찾고, 자산 하나의 판정 이력을 열고, 정책이 뺀 것과 근거가
 // 바뀐 판정을 본다. **전부 손에 든 파일에서 나온다.**
 func (s *server) inventory(w http.ResponseWriter, r *http.Request) {
+	s.inventoryScreen(w, r, ui.RenderInventory, false)
+}
+
+func (s *server) inventoryNext(w http.ResponseWriter, r *http.Request) {
+	s.inventoryScreen(w, r, ui.RenderInventoryNext, true)
+}
+
+func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.InventoryView) error, next bool) {
 	if s.results == "" {
 		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
 		return
@@ -691,7 +700,14 @@ func (s *server) inventory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	html(w, func() error { return ui.RenderInventory(w, v) })
+	if next {
+		// **조회는 절차 카드에 넣지 않는다** — 단계가 아니라 아무 때나 들어오는 자리다.
+		// 그래도 위쪽 카드는 그대로 세워 둔다. 어디서 들어왔든 절차가 어디까지 왔는지는
+		// 보여야 한다.
+		v.Page = s.nextPage(r, ui.ScreenInventoryNext, s.results, ui.StepState{})
+		v.Page.Org = res.Org
+	}
+	html(w, func() error { return render(w, v) })
 }
 
 // withPolicy — 「안 보고 있는 것」. 확정된 정책 CSV 가 있어야 셀 수 있다.
@@ -789,6 +805,10 @@ func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepStat
 		Decl: s.decl != "", Scope: s.scope != "", Survey: s.results != "",
 		Inventory: s.results != "",
 	}, st)
+	if s.results != "" {
+		p.InventoryHref = ui.ScreenInventoryNext
+		p.InventoryText = ui.InventoryLabel(p.Lang)
+	}
 	return p
 }
 

@@ -1,0 +1,86 @@
+package ui
+
+import "fmt"
+import "strconv"
+
+// inventoryNextPage — 조회 화면의 다음 판.
+//
+// **이 화면은 절차의 한 단계가 아니다.** 그래서 「다음에 할 일」을 띄우지 않는다. 대신
+// 언제 들어와도 눈에 걸려야 하는 둘을 카드로 세운다: 뺐는데 지금도 관측되는 자산과,
+// 근거가 바뀐 판정. 둘 다 **가만히 두면 아무도 다시 보지 않는** 자리다.
+templ inventoryNextPage(v InventoryView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			<p class="eyebrow">{ tNextInvEyebrow.In(v.Page.Lang) }</p>
+			<h2>{ tNextInvHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tNextInvLede.In(v.Page.Lang) }</p>
+			@inventoryNextMetrics(v)
+			<div class="section-label">
+				<h3>{ tNextInvAttention.In(v.Page.Lang) }</h3>
+				<span>{ tNextInvAttentionNote.In(v.Page.Lang) }</span>
+			</div>
+			@inventoryNextCards(v)
+			<h3 id={ inventoryEditAnchor }>{ tNextInvDetail.In(v.Page.Lang) }</h3>
+			<p class="lede">{ tNextInvDetailLede.In(v.Page.Lang) }</p>
+			@inventoryBody(v)
+		</div>
+	}
+}
+
+templ inventoryNextMetrics(v InventoryView) {
+	{{ s := v.Summary() }}
+	<div class="metrics">
+		<div class="metric">
+			<b>{ strconv.Itoa(s.Assets) }</b>
+			<span>{ tNextInvMetricAssets.In(v.Page.Lang) }</span>
+		</div>
+		<div class={ "metric", templ.KV("warn", s.Unseen > 0) }>
+			<b>{ strconv.Itoa(s.Unseen) }</b>
+			<span>{ tNextInvMetricUnseen.In(v.Page.Lang) }</span>
+		</div>
+		<div class={ "metric", templ.KV("warn", s.Stale > 0) }>
+			<b>{ strconv.Itoa(s.Stale) }</b>
+			<span>{ tNextInvMetricStale.In(v.Page.Lang) }</span>
+		</div>
+	</div>
+}
+
+// inventoryNextCards — 걸리는 것만 세운다. **없으면 없다고 적는다** — 빈 자리는 「아직
+// 안 불러온 것」으로 읽힌다.
+templ inventoryNextCards(v InventoryView) {
+	{{ s := v.Summary() }}
+	if s.Unseen == 0 && s.Stale == 0 {
+		<div class="next done">
+			<div class="next-icon">✓</div>
+			<div>
+				<strong>{ tNextInvQuiet.In(v.Page.Lang) }</strong>
+				<span>{ tNextInvQuietBody.In(v.Page.Lang) }</span>
+			</div>
+		</div>
+	} else {
+		<div class="card-list">
+			if s.Unseen > 0 {
+				<article class="node-card">
+					<div>
+						<strong>{ tNextInvUnseenCard.In(v.Page.Lang) }</strong>
+						<span>{ fmt.Sprintf(tNextInvUnseenBody.In(v.Page.Lang), s.Unseen) }</span>
+					</div>
+					<div></div>
+					<span class="tag warn">{ tNextInvNeedCheck.In(v.Page.Lang) }</span>
+					<a class="quiet" href={ templ.SafeURL("#" + inventoryEditAnchor) }>{ tNextGoEdit.In(v.Page.Lang) }</a>
+				</article>
+			}
+			if s.Stale > 0 {
+				<article class="node-card">
+					<div>
+						<strong>{ tNextInvStaleCard.In(v.Page.Lang) }</strong>
+						<span>{ fmt.Sprintf(tNextInvStaleBody.In(v.Page.Lang), s.Stale) }</span>
+					</div>
+					<div></div>
+					<span class="tag warn">{ tNextInvNeedCheck.In(v.Page.Lang) }</span>
+					<a class="quiet" href={ templ.SafeURL("#" + inventoryEditAnchor) }>{ tNextGoEdit.In(v.Page.Lang) }</a>
+				</article>
+			}
+		</div>
+	}
+}

@@ -208,3 +208,21 @@ body.wb .dot.ok { background: var(--green); }
   body.wb { padding: 0 16px 40px; }
   body.wb .steps { grid-template-columns: 1fr; }
 }
+/* 조회 탭. 절차 카드 옆에 붙되 번호가 없어서 좁다. **단계로 읽히면 안 된다.** */
+body.wb .steps { grid-template-columns: repeat(4, minmax(0, 1fr)) auto; }
+body.wb .inventory-tab { min-height: 68px; display: flex; align-items: center;
+                         justify-content: center; white-space: nowrap;
+                         border: 1px solid var(--line); border-radius: 11px;
+                         padding: 10px 14px; background: var(--surface);
+                         color: var(--muted); text-decoration: none; }
+body.wb .inventory-tab:hover { border-color: var(--blue); }
+body.wb .inventory-tab.active { color: var(--navy); border-color: var(--blue);
+                                box-shadow: 0 0 0 3px var(--blue-soft); }
+@media (max-width: 980px) {
+  body.wb .steps { grid-template-columns: repeat(2, 1fr); }
+  body.wb .inventory-tab { grid-column: span 2; }
+}
+@media (max-width: 650px) {
+  body.wb .steps { grid-template-columns: 1fr; }
+  body.wb .inventory-tab { grid-column: auto; }
+}

@@ -20,6 +20,9 @@ const (
 	ScreenSurveyNext = "/survey-next"
 	// ScreenReviewNext — 판정의 다음 판.
 	ScreenReviewNext = "/review-next"
+	// ScreenInventoryNext — 조회의 다음 판. **절차 카드에는 넣지 않는다** — 조회는 단계가
+	// 아니라 아무 때나 들어오는 자리다.
+	ScreenInventoryNext = "/inventory-next"
 )
 
 // Screens — 재료를 받아 열린 화면들.
@@ -64,7 +67,7 @@ func ScreenTitle(here string, l Lang) string {
 		return tTitleScope.In(l)
 	case ScreenSurvey, ScreenSurveyNext:
 		return tTitleSurvey.In(l)
-	case ScreenInventory:
+	case ScreenInventory, ScreenInventoryNext:
 		return tTitleInventory.In(l)
 	}
 	return tTitleReview.In(l)
@@ -176,3 +179,6 @@ func declState(l Lang, s DeclSummary) (string, string) {
 	}
 	return fmt.Sprintf(tStepDeclOpen.In(l), s.Unlinked), "warn"
 }
+
+// InventoryLabel — 조회 탭에 적을 이름. **번호를 붙이지 않는다**(NavFor 와 같은 선).
+func InventoryLabel(l Lang) string { return tNavInventory.In(l) }

@@ -58,6 +58,10 @@ type Page struct {
 	// Org · Results — 상단에 적는 「무엇을 보고 있나」. 조직과 관측 결과 자리다.
 	Org     string
 	Results string
+	// InventoryHref — 조회로 가는 자리. **절차 카드에 넣지 않고 옆에 둔다** — 조회는
+	// 단계가 아니라 아무 때나 들어오는 자리라, 번호를 달면 ④ 다음에 하는 일로 읽힌다.
+	InventoryHref string
+	InventoryText string
 }
 
 // Link — 위쪽 이동 링크.
