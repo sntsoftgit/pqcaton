@@ -200,11 +200,20 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
 > **명령의 출력은 영어입니다.** 화면에 쓸 말은 한국어와 English 중에서 고릅니다.
 > 자세한 것은 [CONTRIBUTING.md 「어느 말로 쓰나」](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
 
-나온 `plan.json`은 **pqcota가 그대로 받습니다.** 계약 형식이라 우리 형식이 따로 없습니다.
+나온 `plan.json`은 **계약 형식 그대로**입니다. 우리 형식이 따로 없어 pqcota가 그대로 읽습니다.
+
+다만 **바로 넘기지는 못합니다.** pqcota는 승인 서명을 그 승인자의 공개키로 확인하고, 확인할 키가 없으면 거절합니다. 우리가 `approvalSignatures`에 적는 것은 판정 원장의 승인자 표시이지 암호학적 서명이 아니라서, 그쪽에서는 「이름표라 아무것도 증명하지 않는다」로 읽힙니다. 그래서 사이에 서명 한 단계가 듭니다.
 
 ```bash
-pqcota-provision --level l2 plan.json > provision.yml   # pqcota 리포의 명령
+# 아래 셋 다 pqcota 리포의 명령입니다.
+eval "$(pqcota-keygen | grep '^PQCOTA_')"
+PQCOTA_APPROVAL_KEY="$PQCOTA_SIGN_KEY" \
+  pqcota-approve --approver reviewer-1 plan.json > plan.signed.json
+PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
+  pqcota-provision --level l2 plan.signed.json > provision.yml
 ```
+
+계획이 실행 필드를 다 채우지 못하면 pqcota는 산출물을 내되 **성공으로 끝내지 않습니다**(종료 상태 3). 무엇이 비었는지는 그 경고가 이름으로 알려 줍니다. 목표 알고리즘과 조치 종류를 우리 화면에서 고르는 일은 아직 열려 있습니다.
 
 여러 노드를 훑는 길과 거버넌스 토폴로지는 [여정](docs/journey.md)에 있습니다.
 
