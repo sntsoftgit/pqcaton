@@ -18,7 +18,8 @@ import (
 // openssl 로 조용히 떨어졌다 — 관측이 jca 여도 그랬다. 되찾지 않고 들고 다니게 고쳤다.
 func TestContractKeepsURINodeAndRuntime(t *testing.T) {
 	items := []Item{
-		{ID: "host://local/jca/provider", Node: "host://local", Runtime: "jca", Conclusion: "교체한다"},
+		{ID: "host://local/jca/provider", Node: "host://local", Runtime: "jca", Conclusion: "교체한다",
+			Kind: "REMEDIATION_KIND_PROVIDER_INJECT", TargetAlgorithm: "ML-KEM (FIPS 203)"},
 	}
 	p := &decision.FinalizedPlan{
 		Scope:       "host://local",

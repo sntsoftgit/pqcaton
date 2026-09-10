@@ -64,7 +64,7 @@ type Item struct {
 	Plan       bool   `json:"include_in_plan"`
 	Level      string `json:"deploy_level,omitempty"` // L1 | L2 | L3
 	FIPS       bool   `json:"fips_required,omitempty"`
-	// Kind — 조치 종류. 계약의 통제 어휘다(`REMEDIATION_KIND_*`). 비우면 PROVIDER_INJECT.
+	// Kind — 조치 종류. 계약의 통제 어휘다(`REMEDIATION_KIND_*`). **비우면 확정되지 않는다.**
 	Kind string `json:"remediation_kind,omitempty"`
 	// TargetAlgorithm — 무엇으로 바꾸는가. 비우면 상류가 낸 config 조각의 `Groups` 줄이 주석으로
 	// 나가 **배치해도 아무것도 켜지지 않는다.** 도구가 고르지 않는 값이라 사람이 적는다.
@@ -83,7 +83,10 @@ type Item struct {
 const Note = "Write one conclusion per policy under policy_decisions and every item in that " +
 	"policy is judged at once (recommended). Use an item's own conclusion only for exceptions. " +
 	"Fill in reviewer and signature, then feed this to `pqcaton-decide close`. " +
-	"Set include_in_plan to true for items that go into the finalized plan."
+	"Set include_in_plan to true for items that go into the finalized plan — each of those also needs " +
+	"deploy_level and remediation_kind chosen, target_algorithm when the kind delivers through config, " +
+	"and the activation hooks when the level is L3. None of these are filled in for you: the approval " +
+	"signature covers them, so a default would put your name on a decision you did not make."
 
 // Load — 세션 파일을 읽는다.
 func Load(path string) (Session, error) {
@@ -166,13 +169,12 @@ func Finalize(sf Session) (*Result, error) {
 		if err := RequireNode(it); err != nil {
 			return nil, err
 		}
-		lvl := it.Level
-		if lvl == "" {
-			lvl = "L2"
+		if err := RequireDecisions(it); err != nil {
+			return nil, err
 		}
 		plan = append(plan, decision.PlanItem{
 			NodeID: it.Node, RemediationClass: it.Conclusion,
-			DeployAutomationLevel: lvl,
+			DeployAutomationLevel: it.Level,
 			ProviderChoice:        decision.RouteProvider(it.Runtime, it.FIPS),
 		})
 		picked = append(picked, it)
@@ -215,6 +217,58 @@ func RequireNode(it Item) error {
 	if it.Node == "" {
 		return fmt.Errorf("item %s has no node — this is a v0.1.0 format session. "+
 			"run `pqcaton-decide open` again, or give the screen -results and let it raise a new one", it.ID)
+	}
+	return nil
+}
+
+// RequireDecisions — 계획에 넣는 항목이 **검토자가 골랐어야 할 것을 다 골랐는지** 본다.
+//
+// pqcaton 은 승인·확정 계층이다. 여기서 비운 값을 기본값으로 채우면 사용자가 하지 않은 정책
+// 결정을 도구가 대신 내리고 **그 결과에 승인 서명이 붙는다.** 서명은 조치의 내용을 덮으므로,
+// 승인자는 자기가 고르지 않은 수준과 조치에 책임을 지게 된다.
+//
+// 상류(pqcota)도 빈칸을 이름으로 알리고 종료 상태 3으로 끝내지만, 그것은 **직접 쓴 계획을 위한
+// 최후 안전장치**다. 여기서 통과시키고 거기서 걸리게 두면 계층의 역할이 뒤바뀐다.
+//
+// 필수의 범위는 상류의 완결성 기준을 따른다. 목표 알고리즘은 **config 로 배달하는 조치**에만
+// 필요하다 — 그 조치의 조각에만 `Groups` 줄이 있고, 비면 배치해도 아무것도 켜지지 않는다.
+// 포크 교체나 폐기에는 적을 자리가 없으므로 요구하지 않는다.
+func RequireDecisions(it Item) error {
+	if it.Level == "" {
+		return fmt.Errorf("item %s: no deploy level — pick L1, L2 or L3. "+
+			"an older session has none recorded, so it has to be chosen again", it.ID)
+	}
+	if _, err := levelOf(it.Level); err != nil {
+		return fmt.Errorf("item %s: %w", it.ID, err)
+	}
+	if it.Kind == "" {
+		return fmt.Errorf("item %s: no remediation kind — what to do is a review decision, not a default", it.ID)
+	}
+	if _, err := kindOf(it.Kind); err != nil {
+		return fmt.Errorf("item %s: %w", it.ID, err)
+	}
+	switch it.Kind {
+	case "REMEDIATION_KIND_CONFIG_ONLY", "REMEDIATION_KIND_PROVIDER_INJECT":
+		if strings.TrimSpace(it.TargetAlgorithm) == "" {
+			return fmt.Errorf("item %s: %s delivers its change through a config fragment, "+
+				"so it needs a target_algorithm — without one the fragment turns nothing on", it.ID, it.Kind)
+		}
+	}
+	// L3 는 활성화까지 간다. 상류가 무엇이 **일어나지 않는지** 알리는 자리를 여기서 먼저 막는다:
+	// activate 가 없으면 조각이 놓이기만 하고 참조되지 않으며, restart 가 없으면 새 provider 가
+	// 로드되지 않고, deactivate 가 없으면 롤백이 활성화를 되돌리지 못한다.
+	if strings.ToUpper(it.Level) == "L3" {
+		for _, h := range []struct {
+			name, cmd, why string
+		}{
+			{"activation.activate", it.Activate, "the fragment is placed but never referenced"},
+			{"activation.restart", it.Restart, "the new provider may never be loaded"},
+			{"activation.deactivate", it.Deactivate, "rollback cannot undo the activation"},
+		} {
+			if strings.TrimSpace(h.cmd) == "" {
+				return fmt.Errorf("item %s is L3 but has no %s — %s", it.ID, h.name, h.why)
+			}
+		}
 	}
 	return nil
 }
@@ -279,12 +333,16 @@ func ToContract(p *decision.FinalizedPlan, items []Item) (*provisioningv1.Finali
 		if err != nil {
 			return nil, err
 		}
+		lvl, err := levelOf(p.Items[i].DeployAutomationLevel)
+		if err != nil {
+			return nil, err
+		}
 		out.Actions = append(out.Actions, &provisioningv1.RemediationAction{
 			Id:              fmt.Sprintf("a%d", i+1),
 			TargetNodeId:    p.Items[i].NodeID,
 			CryptoRuntime:   runtimeOf(it.Runtime),
 			Kind:            kind,
-			AutomationLevel: levelOf(p.Items[i].DeployAutomationLevel),
+			AutomationLevel: lvl,
 			TargetAlgorithm: it.TargetAlgorithm,
 			ProviderChoice:  p.Items[i].ProviderChoice,
 			FindingId:       it.FindingID,
@@ -345,11 +403,12 @@ func runtimeOf(s string) commonv1.CryptoRuntime {
 	return commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL
 }
 
-// kindOf — 비우면 `PROVIDER_INJECT`. **모르는 값은 지어내지 않고 끊는다** — 계약의 통제
-// 어휘라 오타가 조용히 UNSPECIFIED로 떨어지면 그 조치는 아무것도 하지 않는다.
+// kindOf — **모르는 값도 빈 값도 지어내지 않고 끊는다.** 계약의 통제 어휘라 오타가 조용히
+// UNSPECIFIED로 떨어지면 그 조치는 아무것도 하지 않고, 빈 값을 기본 조치로 채우면 사용자가
+// 하지 않은 결정에 승인 서명이 붙는다.
 func kindOf(s string) (provisioningv1.RemediationKind, error) {
 	if s == "" {
-		return provisioningv1.RemediationKind_REMEDIATION_KIND_PROVIDER_INJECT, nil
+		return 0, fmt.Errorf("no remediation_kind — what to do is a review decision, not a default")
 	}
 	if v, ok := provisioningv1.RemediationKind_value[s]; ok && v != 0 {
 		return provisioningv1.RemediationKind(v), nil
@@ -357,14 +416,19 @@ func kindOf(s string) (provisioningv1.RemediationKind, error) {
 	return 0, fmt.Errorf("unknown remediation_kind: %q — must be one of the contract's REMEDIATION_KIND_*", s)
 }
 
-func levelOf(s string) provisioningv1.DeployAutomationLevel {
+// levelOf — 위임 수준. **모르는 값을 L2로 삼키지 않는다.** 전에는 미지정도 오타도 모두 L2가
+// 되어, 사용자가 하지 않은 정책 결정을 이 도구가 대신 내리고 그 결과에 승인 서명이 붙었다.
+// 확정 전에 RequireDecisions 가 막으므로 여기까지 빈 값이 오면 그것은 배선이 샌 것이다.
+func levelOf(s string) (provisioningv1.DeployAutomationLevel, error) {
 	switch strings.ToUpper(s) {
 	case "L1":
-		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L1_STAGE_ONLY
+		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L1_STAGE_ONLY, nil
+	case "L2":
+		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL, nil
 	case "L3":
-		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L3_FULL_AUTO
+		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L3_FULL_AUTO, nil
 	default:
-		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL
+		return 0, fmt.Errorf("unknown deploy level %q — it has to be L1, L2 or L3", s)
 	}
 }
 

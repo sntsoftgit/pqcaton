@@ -154,8 +154,12 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 	q := location(t, postForm(t, s, "/finalize", url.Values{
 		"policy:openssl/libssl":            {"PQC 라이브러리로 교체한다"},
 		"plan:host://local/openssl/libssl": {"on"},
-		"reviewer":                         {"보안팀"},
-		"signature":                        {"sig"},
+		// 계획에 넣는 항목은 **골라야 확정된다**(RequireDecisions). 화면이 이 칸들을 함께 보낸다.
+		"kind:host://local/openssl/libssl":   {"REMEDIATION_KIND_CONFIG_ONLY"},
+		"target:host://local/openssl/libssl": {"ML-KEM (FIPS 203)"},
+		"level:host://local/openssl/libssl":  {"L2"},
+		"reviewer":                           {"보안팀"},
+		"signature":                          {"sig"},
 	}))
 	if p := q.Get("problem"); p != "" {
 		t.Fatalf("확정되지 않았다: %s", p)
@@ -198,8 +202,12 @@ func TestSavedSessionStaysReadable(t *testing.T) {
 	location(t, postForm(t, s, "/save", url.Values{
 		"item:host://local/openssl/libssl": {"예외로 둔다"},
 		"plan:host://local/openssl/libssl": {"on"},
-		"reviewer":                         {"보안팀"},
-		"signature":                        {"sig"},
+		// 계획에 넣는 항목은 **골라야 확정된다**(RequireDecisions). 화면이 이 칸들을 함께 보낸다.
+		"kind:host://local/openssl/libssl":   {"REMEDIATION_KIND_CONFIG_ONLY"},
+		"target:host://local/openssl/libssl": {"ML-KEM (FIPS 203)"},
+		"level:host://local/openssl/libssl":  {"L2"},
+		"reviewer":                           {"보안팀"},
+		"signature":                          {"sig"},
 	}))
 
 	sf, err := review.Load(s.path)
