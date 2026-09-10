@@ -22,7 +22,8 @@ func TestChosenExecutionFieldsReachTheContract(t *testing.T) {
 	}
 	got, err := review.ToContract(p, []review.Item{{
 		Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY",
-		TargetAlgorithm: "ML-KEM (FIPS 203)",
+		TargetAlgorithm: "ML-KEM (FIPS 203)", FindingID: "f-1",
+		Activate: "systemctl reload app", Restart: "systemctl restart app",
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -37,11 +38,33 @@ func TestChosenExecutionFieldsReachTheContract(t *testing.T) {
 	if a.GetAutomationLevel().String() != "DEPLOY_AUTOMATION_LEVEL_L1_STAGE_ONLY" {
 		t.Errorf("위임 수준이 갈렸다: %s", a.GetAutomationLevel())
 	}
+	if a.GetFindingId() != "f-1" {
+		t.Errorf("근거 관측이 계약까지 가지 않았다: %q — 조치가 무엇을 보고 정해졌는지 대지 못한다", a.GetFindingId())
+	}
+	if a.GetActivation().GetActivate() != "systemctl reload app" {
+		t.Errorf("활성화 훅이 갈렸다: %+v", a.GetActivation())
+	}
 	// 도구가 아는 추적 정보는 도구가 채운다 — 사람에게 물을 값이 아니다.
 	if got.GetId() == "" {
 		t.Error("계획 id가 비었다 — 상류 레코드가 plan_id로 되짚는다")
 	}
 	if got.GetFinalizedAt() == nil {
 		t.Error("확정 시각이 비었다 — FINALIZED라고 하면서 언제인지 말하지 않는다")
+	}
+}
+
+// ★ 훅을 하나도 적지 않으면 훅 묶음 자체를 붙이지 않는다.
+//
+// 빈 묶음을 붙이면 상류가 「훅이 있는데 명령이 비었다」와 「훅 자체가 없다」를 가리지 못한다.
+// 상류는 L3에서 무엇이 **일어나지 않는지**를 알리는 쪽을 택했으므로, 그 구분이 살아 있어야 한다.
+func TestNoHooksMeansNoHookBlock(t *testing.T) {
+	s := &decision.Session{Status: decision.Finalized, Scope: "ring-0", Signature: "reviewer-1:sig"}
+	p, _ := decision.BuildPlan(s, []decision.PlanItem{{NodeID: "n1", DeployAutomationLevel: "L2"}})
+	got, err := review.ToContract(p, []review.Item{{Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetActions()[0].GetActivation() != nil {
+		t.Error("훅을 적지 않았는데 빈 묶음이 붙었다")
 	}
 }

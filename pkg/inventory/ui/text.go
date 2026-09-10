@@ -215,6 +215,11 @@ var (
 	tColTarget2    = T{KO: "목표 알고리즘", EN: "Target algorithm"}
 	tColLevel      = T{KO: "위임 수준", EN: "Delegation level"}
 	tKindAuto      = T{KO: "고르지 않음", EN: "not chosen"}
+	tHooks         = T{KO: "활성화 훅 (L3에서만 쓰인다)", EN: "Activation hooks (used at L3 only)"}
+	tHookPre       = T{KO: "내리기", EN: "pre"}
+	tHookActivate  = T{KO: "활성화", EN: "activate"}
+	tHookDeact     = T{KO: "되돌리기", EN: "deactivate"}
+	tHookRestart   = T{KO: "재시작", EN: "restart"}
 	tRescan        = T{KO: "재수집 후보", EN: "rescan candidate"}
 	// **provider 를 갈아 끼우는 조치가 아닌 자리.** 계획의 provider 칸이 비는데, 화면이
 	// 말하지 않으면 빠뜨린 것으로 읽힌다.

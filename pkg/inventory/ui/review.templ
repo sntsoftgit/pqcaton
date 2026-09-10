@@ -81,6 +81,15 @@ templ reviewForm(v ReviewView) {
 							</td>
 							<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
 						</tr>
+						<tr class="hooks">
+							<td colspan="8">
+								<span class="hint">{ tHooks.In(v.Page.Lang) }</span>
+								<label>{ tHookPre.In(v.Page.Lang) } <input type="text" name={ "pre:" + it.ID } value={ it.Pre }/></label>
+								<label>{ tHookActivate.In(v.Page.Lang) } <input type="text" name={ "activate:" + it.ID } value={ it.Activate }/></label>
+								<label>{ tHookDeact.In(v.Page.Lang) } <input type="text" name={ "deactivate:" + it.ID } value={ it.Deactivate }/></label>
+								<label>{ tHookRestart.In(v.Page.Lang) } <input type="text" name={ "restart:" + it.ID } value={ it.Restart }/></label>
+							</td>
+						</tr>
 					}
 				</table>
 			</fieldset>

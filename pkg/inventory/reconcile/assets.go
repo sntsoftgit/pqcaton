@@ -90,8 +90,9 @@ func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 			continue
 		}
 		out = append(out, Observed{
-			Key:      AssetKey{NodeID: node, Runtime: rt, Component: comp},
-			Evidence: evidenceStr(f.GetEvidenceStrength()),
+			Key:       AssetKey{NodeID: node, Runtime: rt, Component: comp},
+			Evidence:  evidenceStr(f.GetEvidenceStrength()),
+			FindingID: f.GetId(),
 		})
 	}
 	return out

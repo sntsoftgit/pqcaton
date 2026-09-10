@@ -145,6 +145,10 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 		sf.Items[i].Kind = strings.TrimSpace(f.Get("kind:" + it.ID))
 		sf.Items[i].TargetAlgorithm = strings.TrimSpace(f.Get("target:" + it.ID))
 		sf.Items[i].Level = strings.TrimSpace(f.Get("level:" + it.ID))
+		sf.Items[i].Pre = strings.TrimSpace(f.Get("pre:" + it.ID))
+		sf.Items[i].Activate = strings.TrimSpace(f.Get("activate:" + it.ID))
+		sf.Items[i].Deactivate = strings.TrimSpace(f.Get("deactivate:" + it.ID))
+		sf.Items[i].Restart = strings.TrimSpace(f.Get("restart:" + it.ID))
 	}
 	return sf
 }

@@ -195,7 +195,8 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, []reco
 		sf.Items = append(sf.Items, review.Item{
 			ID: review.Key(it.Rec.Key), Policy: pol,
 			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
-			State: string(it.Rec.State), Conf: it.Rec.Confidence,
+			FindingID: it.Rec.FindingID,
+			State:     string(it.Rec.State), Conf: it.Rec.Confidence,
 			Mandatory: it.Mandatory, Rescan: it.Rec.RescanCandidate,
 		})
 		if _, ok := sf.PolicyDecisions[pol]; !ok {

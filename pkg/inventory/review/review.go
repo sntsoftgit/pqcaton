@@ -46,6 +46,9 @@ type Item struct {
 	// 기본값으로 조용히 떨어진다. 대조할 때 이미 알던 값이므로 그대로 들고 간다.
 	Node    string `json:"node"`
 	Runtime string `json:"runtime"`
+	// FindingID — 이 항목을 낸 관측의 id. **조치의 근거로 상류까지 간다**(계약의 `finding_id`).
+	// 사람이 채우는 자리가 아니라 대조가 들고 온 사실이다. UNOBSERVED 는 관측이 없어 빈다.
+	FindingID string `json:"finding_id,omitempty"`
 	// Policy — 같은 정책의 항목은 한 번에 판정한다(§3.4).
 	Policy string  `json:"policy"`
 	State  string  `json:"state"`
@@ -68,6 +71,12 @@ type Item struct {
 	TargetAlgorithm string `json:"target_algorithm,omitempty"`
 	// Config — provider 설정 조각. **도구가 지어내지 않는다.**
 	Config string `json:"config_artifact,omitempty"`
+	// 활성화 훅 — L3에서만 쓰인다. **도구가 추측하지 않는다**(상류 §2.5): 활성화 지점은 앱
+	// 기동 방식에 달려 있어 관측으로 알 수 없다. 비면 상류가 무엇이 일어나지 않는지 알린다.
+	Pre        string `json:"activation_pre,omitempty"`
+	Activate   string `json:"activation_activate,omitempty"`
+	Deactivate string `json:"activation_deactivate,omitempty"`
+	Restart    string `json:"activation_restart,omitempty"`
 }
 
 // Note — 세션 파일 첫 줄에 적히는 사용법.
@@ -278,6 +287,8 @@ func ToContract(p *decision.FinalizedPlan, items []Item) (*provisioningv1.Finali
 			AutomationLevel: levelOf(p.Items[i].DeployAutomationLevel),
 			TargetAlgorithm: it.TargetAlgorithm,
 			ProviderChoice:  p.Items[i].ProviderChoice,
+			FindingId:       it.FindingID,
+			Activation:      hooksOf(it),
 			ConfigArtifact:  it.Config,
 			RollbackNote:    it.Conclusion,
 		})
@@ -354,5 +365,16 @@ func levelOf(s string) provisioningv1.DeployAutomationLevel {
 		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L3_FULL_AUTO
 	default:
 		return provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL
+	}
+}
+
+// hooksOf — 사람이 적은 활성화 명령. **하나도 없으면 nil을 준다** — 빈 훅 묶음을 붙이면
+// 상류가 「훅이 있는데 명령이 비었다」와 「훅 자체가 없다」를 가리지 못한다.
+func hooksOf(it Item) *provisioningv1.ActivationHooks {
+	if it.Pre == "" && it.Activate == "" && it.Deactivate == "" && it.Restart == "" {
+		return nil
+	}
+	return &provisioningv1.ActivationHooks{
+		Pre: it.Pre, Activate: it.Activate, Deactivate: it.Deactivate, Restart: it.Restart,
 	}
 }

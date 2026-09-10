@@ -90,7 +90,8 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 		sf.Items = append(sf.Items, Item{
 			ID: Key(it.Rec.Key), Policy: pol,
 			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
-			State: string(it.Rec.State), Conf: it.Rec.Confidence,
+			FindingID: it.Rec.FindingID,
+			State:     string(it.Rec.State), Conf: it.Rec.Confidence,
 			Mandatory: it.Mandatory, Rescan: it.Rec.RescanCandidate,
 		})
 		if _, ok := sf.PolicyDecisions[pol]; !ok {
