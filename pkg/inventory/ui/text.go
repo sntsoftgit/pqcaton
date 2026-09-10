@@ -211,6 +211,10 @@ var (
 	tColConfidence = T{KO: "신뢰도", EN: "Confidence"}
 	tColInPlan     = T{KO: "계획에 넣기", EN: "In plan"}
 	tColException  = T{KO: "개별 결론(예외)", EN: "Per-item conclusion (exception)"}
+	tColKind       = T{KO: "조치 종류", EN: "Remediation kind"}
+	tColTarget2    = T{KO: "목표 알고리즘", EN: "Target algorithm"}
+	tColLevel      = T{KO: "위임 수준", EN: "Delegation level"}
+	tKindAuto      = T{KO: "고르지 않음", EN: "not chosen"}
 	tRescan        = T{KO: "재수집 후보", EN: "rescan candidate"}
 	// **provider 를 갈아 끼우는 조치가 아닌 자리.** 계획의 provider 칸이 비는데, 화면이
 	// 말하지 않으면 빠뜨린 것으로 읽힌다.

@@ -43,6 +43,9 @@ templ reviewForm(v ReviewView) {
 						<th>{ tColState.In(v.Page.Lang) }</th>
 						<th>{ tColConfidence.In(v.Page.Lang) }</th>
 						<th>{ tColInPlan.In(v.Page.Lang) }</th>
+						<th>{ tColKind.In(v.Page.Lang) }</th>
+						<th>{ tColTarget2.In(v.Page.Lang) }</th>
+						<th>{ tColLevel.In(v.Page.Lang) }</th>
 						<th>{ tColException.In(v.Page.Lang) }</th>
 					</tr>
 					for _, it := range g.Items {
@@ -59,6 +62,23 @@ templ reviewForm(v ReviewView) {
 							<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
 							<td>{ fmt.Sprintf("%.2f", it.Conf) }</td>
 							<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan }/></td>
+							<td>
+								<select name={ "kind:" + it.ID }>
+									<option value="" selected?={ it.Kind == "" }>{ tKindAuto.In(v.Page.Lang) }</option>
+									for _, k := range remediationKinds {
+										<option value={ k } selected?={ it.Kind == k }>{ shortKind(k) }</option>
+									}
+								</select>
+							</td>
+							<td><input type="text" name={ "target:" + it.ID } value={ it.TargetAlgorithm } placeholder="ML-KEM (FIPS 203)"/></td>
+							<td>
+								<select name={ "level:" + it.ID }>
+									<option value="" selected?={ it.Level == "" }>{ tKindAuto.In(v.Page.Lang) }</option>
+									for _, l := range deployLevels {
+										<option value={ l } selected?={ it.Level == l }>{ l }</option>
+									}
+								</select>
+							</td>
 							<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
 						</tr>
 					}

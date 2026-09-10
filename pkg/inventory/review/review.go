@@ -18,6 +18,7 @@ import (
 	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
@@ -62,6 +63,9 @@ type Item struct {
 	FIPS       bool   `json:"fips_required,omitempty"`
 	// Kind — 조치 종류. 계약의 통제 어휘다(`REMEDIATION_KIND_*`). 비우면 PROVIDER_INJECT.
 	Kind string `json:"remediation_kind,omitempty"`
+	// TargetAlgorithm — 무엇으로 바꾸는가. 비우면 상류가 낸 config 조각의 `Groups` 줄이 주석으로
+	// 나가 **배치해도 아무것도 켜지지 않는다.** 도구가 고르지 않는 값이라 사람이 적는다.
+	TargetAlgorithm string `json:"target_algorithm,omitempty"`
 	// Config — provider 설정 조각. **도구가 지어내지 않는다.**
 	Config string `json:"config_artifact,omitempty"`
 }
@@ -251,10 +255,15 @@ func BasisOf(it Item) string {
 //
 // 어휘의 단일 출처는 계약이다 — 이 리포는 그 어휘로 말하고 자기 형식을 새로 만들지 않는다.
 func ToContract(p *decision.FinalizedPlan, items []Item) (*provisioningv1.FinalizedPlan, error) {
+	// 되짚을 근거 가운데 **도구가 아는 것은 도구가 채운다.** 계획 id와 확정 시각이 그렇다 —
+	// 사람에게 물을 값이 아니고, 비어 있으면 상류가 「이 실행을 그것을 일으킨 계획에 묶을 수
+	// 없다」로 알린다. 관측 스냅샷 id와 규칙 버전은 아직 이 함수에 오지 않아 비운다.
 	out := &provisioningv1.FinalizedPlan{
+		Id:                 "pqcaton:" + p.Scope + ":" + p.ApprovalSig[:min(8, len(p.ApprovalSig))],
 		Scope:              p.Scope,
 		Status:             provisioningv1.PlanStatus_PLAN_STATUS_FINALIZED,
 		ApprovalSignatures: []string{p.ApprovalSig},
+		FinalizedAt:        timestamppb.Now(),
 	}
 	for i, it := range items {
 		kind, err := kindOf(it.Kind)
@@ -267,6 +276,7 @@ func ToContract(p *decision.FinalizedPlan, items []Item) (*provisioningv1.Finali
 			CryptoRuntime:   runtimeOf(it.Runtime),
 			Kind:            kind,
 			AutomationLevel: levelOf(p.Items[i].DeployAutomationLevel),
+			TargetAlgorithm: it.TargetAlgorithm,
 			ProviderChoice:  p.Items[i].ProviderChoice,
 			ConfigArtifact:  it.Config,
 			RollbackNote:    it.Conclusion,

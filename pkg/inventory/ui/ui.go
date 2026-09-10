@@ -139,6 +139,12 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 	for i, it := range sf.Items {
 		sf.Items[i].Conclusion = strings.TrimSpace(f.Get("item:" + it.ID))
 		sf.Items[i].Plan = f.Get("plan:"+it.ID) != ""
+		// 실행 필드는 사람이 고른다. 도구가 관측에서 파생해 채우면 「무엇을 바꿀지는 사람이
+		// 정한다」가 무너진다. 비워 두는 것도 선택이라 그대로 넘긴다 — 상류가 그 빈칸을
+		// 이름으로 알리고 종료 상태로 구분한다.
+		sf.Items[i].Kind = strings.TrimSpace(f.Get("kind:" + it.ID))
+		sf.Items[i].TargetAlgorithm = strings.TrimSpace(f.Get("target:" + it.ID))
+		sf.Items[i].Level = strings.TrimSpace(f.Get("level:" + it.ID))
 	}
 	return sf
 }
