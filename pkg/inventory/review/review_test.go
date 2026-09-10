@@ -27,7 +27,7 @@ func TestContractKeepsURINodeAndRuntime(t *testing.T) {
 		Items:       []decision.PlanItem{{NodeID: "host://local", DeployAutomationLevel: "L2"}},
 	}
 
-	got, err := ToContract(p, items)
+	got, err := ToContract(p, items, "test-rules/v1")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,7 +24,7 @@ func TestChosenExecutionFieldsReachTheContract(t *testing.T) {
 		Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY",
 		TargetAlgorithm: "ML-KEM (FIPS 203)", FindingID: "f-1",
 		Activate: "systemctl reload app", Restart: "systemctl restart app",
-	}})
+	}}, "test-rules/v1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestChosenExecutionFieldsReachTheContract(t *testing.T) {
 func TestNoHooksMeansNoHookBlock(t *testing.T) {
 	s := &decision.Session{Status: decision.Finalized, Scope: "ring-0", Signature: "reviewer-1:sig"}
 	p, _ := decision.BuildPlan(s, []decision.PlanItem{{NodeID: "n1", DeployAutomationLevel: "L2"}})
-	got, err := review.ToContract(p, []review.Item{{Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY"}})
+	got, err := review.ToContract(p, []review.Item{{Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY"}}, "test-rules/v1")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -29,6 +29,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/randyinthedev-hash/pqcota v0.7.2 h1:nra0K5l4goreLq5dlFX7NihgQSvalgFg/21LCy2mBB0=
 github.com/randyinthedev-hash/pqcota v0.7.2/go.mod h1:FVnjMQRNXjxhiJCBRYMCjclMteohEo7FLma4sYHbUII=
+github.com/randyinthedev-hash/pqcota v0.7.3 h1:lKvQHSEKzzPbmuZAsfQszKS7YKZsuRahW3NzD9CAfZY=
+github.com/randyinthedev-hash/pqcota v0.7.3/go.mod h1:FVnjMQRNXjxhiJCBRYMCjclMteohEo7FLma4sYHbUII=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=

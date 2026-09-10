@@ -84,7 +84,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 	}
 	autopass, queue := reconcile.BuildReviewQueue(r.Assets)
 
-	sf := Session{Note: Note, Scope: "org://" + orgName, PolicyDecisions: map[string]string{}}
+	sf := Session{Note: Note, Scope: "org://" + orgName, PolicyDecisions: map[string]string{}, RulesetVersion: RulesetVersion}
 	for _, it := range queue {
 		pol := PolicyOf(it.Rec.Key)
 		sf.Items = append(sf.Items, Item{
@@ -133,8 +133,17 @@ func Carry(prev, next Session) Session {
 			gained[it.Policy] = true
 			continue
 		}
+		// 사람이 고른 것을 다 옮긴다. 하나라도 빠뜨리면 다시 열 때마다 검토자가 같은 선택을
+		// 되풀이하게 되고, 그러다 놓친 칸이 확정에서 막힌다.
 		next.Items[i].Conclusion = old.Conclusion
 		next.Items[i].Plan = old.Plan
+		next.Items[i].Level = old.Level
+		next.Items[i].Kind = old.Kind
+		next.Items[i].TargetAlgorithm = old.TargetAlgorithm
+		next.Items[i].FIPS = old.FIPS
+		next.Items[i].Config = old.Config
+		next.Items[i].Pre, next.Items[i].Activate = old.Pre, old.Activate
+		next.Items[i].Deactivate, next.Items[i].Restart = old.Deactivate, old.Restart
 	}
 	for pol := range next.PolicyDecisions {
 		if gained[pol] {
@@ -145,7 +154,10 @@ func Carry(prev, next Session) Session {
 		}
 	}
 	next.Reviewer = prev.Reviewer
-	if sameItems(prev.Items, next.Items) {
+	// **규칙 판이 바뀌면 서명은 남지 않는다.** 서명은 「이 근거를 이 규칙으로 보고 승인했다」는
+	// 뜻이다. 항목과 상태가 그대로여도 대조·강화 규칙이 달라졌으면 승인자가 본 것과 다른 근거가
+	// 된다. 전에는 ID와 상태만 비교해서, 규칙이 바뀌어도 서명이 그대로 살아남았다.
+	if prev.RulesetVersion == next.RulesetVersion && sameItems(prev.Items, next.Items) {
 		next.Signature = prev.Signature
 	}
 	return next

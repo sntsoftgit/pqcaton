@@ -23,6 +23,9 @@ import (
 func session() review.Session {
 	return review.Session{
 		Note: review.Note, Scope: "host://local",
+		// 세션은 **열 때** 규칙 판을 박는다. 없으면 확정이 막힌다 — 어느 규칙으로 본 근거인지
+		// 말하지 못하는 판정에 오늘의 규칙을 찍어 넣지 않기 위해서다.
+		RulesetVersion:  review.RulesetVersion,
 		PolicyDecisions: map[string]string{"openssl/libssl": ""},
 		Items: []review.Item{
 			{ID: "host://local/openssl/libssl", Policy: "openssl/libssl",

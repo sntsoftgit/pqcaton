@@ -89,7 +89,7 @@ func Scan(node string) (*Result, error) {
 	}
 	res := openssl.BuildResult(node, dets)
 	snap, err := normalize.Normalize([]*discoveryv1.CollectionResult{res},
-		"snap-1", node, "ruleset-1", nil, nil)
+		"snap-1", node, normalize.RulesetVersion, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("normalize: %w", err)
 	}

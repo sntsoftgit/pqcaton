@@ -17,6 +17,7 @@ import (
 
 	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
+	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -34,8 +35,11 @@ type Session struct {
 	// PolicyDecisions — 정책 하나에 결론 하나. **이것이 기본 단위다**(§3.4) — 수천 대를
 	// 한 건씩 보는 리뷰는 끝나지 않는다. 개별 항목의 Conclusion 은 예외를 위한 자리다.
 	PolicyDecisions map[string]string `json:"policy_decisions"`
-	Items           []Item            `json:"items"`
-	Autopass        []string          `json:"autopass_candidates"`
+	// RulesetVersion — 이 세션을 연 시점의 규칙 판. **여는 순간 박고 확정할 때 다시 찍지
+	// 않는다.** 검토 도중 도구가 올라가도 실제 검토 근거가 보존되어야 하기 때문이다.
+	RulesetVersion string   `json:"ruleset_version,omitempty"`
+	Items          []Item   `json:"items"`
+	Autopass       []string `json:"autopass_candidates"`
 }
 
 // Item — 판정 대상 하나.
@@ -79,14 +83,26 @@ type Item struct {
 	Restart    string `json:"activation_restart,omitempty"`
 }
 
+// RulesetVersion — **이 판정의 근거가 된 규칙 판.** 상류의 강화 규칙과 이 리포의 대조·계획
+// 규칙을 합친 것이다. 파생 결과를 바꿀 수 있는 규칙이 어느 쪽에서든 바뀌면 값이 달라진다.
+//
+// **릴리스 버전과 같지 않다.** 화면을 고치거나 문구를 다듬는다고 같은 관측에서 다른 판정이
+// 나오지 않는다. 반대로 대조 규칙이나 계획 변환이 바뀌면, 릴리스를 내지 않아도 이 값은 올라야
+// 한다 — 그때 옛 판정의 근거가 지금 규칙과 다르다는 사실이 이 문자열로 드러난다.
+//
+// **사용자가 입력하지 않는다.** 도구가 부여하고, 세션을 **열 때** 박아 둔다(확정할 때가 아니다).
+// 검토 도중 도구가 올라가도 실제로 검토한 근거가 그대로 남아야 하기 때문이다.
+const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v1"
+
 // Note — 세션 파일 첫 줄에 적히는 사용법.
 const Note = "Write one conclusion per policy under policy_decisions and every item in that " +
 	"policy is judged at once (recommended). Use an item's own conclusion only for exceptions. " +
 	"Fill in reviewer and signature, then feed this to `pqcaton-decide close`. " +
 	"Set include_in_plan to true for items that go into the finalized plan — each of those also needs " +
 	"deploy_level and remediation_kind chosen, target_algorithm when the kind delivers through config, " +
-	"and the activation hooks when the level is L3. None of these are filled in for you: the approval " +
-	"signature covers them, so a default would put your name on a decision you did not make."
+	"and the activation hooks when the level is L3. New items start at deploy_level L2 for you to confirm " +
+	"or change; nothing else is filled in, and nothing empty is corrected at finalize time. The approval " +
+	"signature covers all of it, so a silent default would put your name on a decision you did not make."
 
 // Load — 세션 파일을 읽는다.
 func Load(path string) (Session, error) {
@@ -179,6 +195,14 @@ func Finalize(sf Session) (*Result, error) {
 		})
 		picked = append(picked, it)
 	}
+	// 규칙 판은 **세션이 들고 있던 것**을 쓴다. 여기서 지금 실행 파일의 것을 찍으면, 검토 도중
+	// 도구가 올라갔을 때 실제로 검토한 근거가 아닌 판이 계획에 박힌다.
+	if sf.RulesetVersion == "" {
+		return nil, fmt.Errorf("this session records no ruleset_version — it was raised by an older build. " +
+			"raise it again from the results (`pqcaton-decide open`) rather than stamping today's rules onto " +
+			"a judgement made under rules we cannot name")
+	}
+
 	// **관문은 여기다.** finalized 아닌 세션에서는 계획 자체가 만들어지지 않는다.
 	p, err := decision.BuildPlan(s, plan)
 	if err != nil {
@@ -187,7 +211,7 @@ func Finalize(sf Session) (*Result, error) {
 	if err := decision.AcceptForDeploy(p); err != nil {
 		return nil, err
 	}
-	out, err := ToContract(p, picked)
+	out, err := ToContract(p, picked, sf.RulesetVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +341,7 @@ func BasisOf(it Item) string {
 // ToContract — 확정 계획을 pqcota 계약(`provisioningv1.FinalizedPlan`)으로 옮긴다.
 //
 // 어휘의 단일 출처는 계약이다 — 이 리포는 그 어휘로 말하고 자기 형식을 새로 만들지 않는다.
-func ToContract(p *decision.FinalizedPlan, items []Item) (*provisioningv1.FinalizedPlan, error) {
+func ToContract(p *decision.FinalizedPlan, items []Item, rulesetVersion string) (*provisioningv1.FinalizedPlan, error) {
 	// 되짚을 근거 가운데 **도구가 아는 것은 도구가 채운다.** 계획 id와 확정 시각이 그렇다 —
 	// 사람에게 물을 값이 아니고, 비어 있으면 상류가 「이 실행을 그것을 일으킨 계획에 묶을 수
 	// 없다」로 알린다. 관측 스냅샷 id와 규칙 버전은 아직 이 함수에 오지 않아 비운다.
@@ -327,6 +351,7 @@ func ToContract(p *decision.FinalizedPlan, items []Item) (*provisioningv1.Finali
 		Status:             provisioningv1.PlanStatus_PLAN_STATUS_FINALIZED,
 		ApprovalSignatures: []string{p.ApprovalSig},
 		FinalizedAt:        timestamppb.Now(),
+		RulesetVersion:     rulesetVersion,
 	}
 	for i, it := range items {
 		kind, err := kindOf(it.Kind)

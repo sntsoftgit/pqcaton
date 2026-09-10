@@ -86,7 +86,7 @@ func Build(dir string, d decl.Declaration) (*Result, error) {
 			continue
 		}
 		snap, err := normalize.Normalize([]*discoveryv1.CollectionResult{res},
-			"snap", node, "ruleset-demo", history.NewMemStore(), nil)
+			"snap", node, normalize.RulesetVersion, history.NewMemStore(), nil)
 		if err != nil {
 			return nil, fmt.Errorf("normalizing %s: %w", node, err)
 		}
