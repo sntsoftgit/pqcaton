@@ -62,8 +62,25 @@ decl["nodes"] = nodes
 # 되고, 그것은 실제로 있을 수 있는 상태다(선언을 아직 안 적은 조직).
 if os.environ.get("PQCATON_E2E_TRACE"):
     decl["assets"] = []
-    print("   [e2e fixture] declared assets cleared — every managed observation becomes UNDECLARED so the plan has something to carry")
-known   = {n["name"] for n in nodes}
+    print("   [e2e fixture] declared assets cleared: every managed observation becomes UNDECLARED so the plan has something to carry")
+    # **별칭 노드**(D9). 선언이 부르는 이름과 관측(봉투)이 부르는 이름이 다른 구성이다. 실제로
+    # 흔하다 - collector 는 호스트명이나 자기가 붙인 id 로 보내고, CMDB 는 자기 이름을 쓴다.
+    # 그 둘이 갈리면 조치는 선언 이름을 겨누고 스냅샷은 봉투 이름으로 저장돼 있어야 한다.
+    orig = os.environ.get("PQCATON_E2E_ALIAS_NODE", "pay-db")
+    if orig in decl.get("scope", []):
+        alias = orig + "-cmdb"
+        decl["scope"] = [alias if n == orig else n for n in decl["scope"]]
+        for n in decl["nodes"]:
+            if n["name"] == orig:
+                n["name"] = alias
+                n["observed_as"] = sorted(set(n.get("observed_as", []) + [orig]))
+        for e in decl.get("edges", []):
+            for k in ("src", "dst"):
+                if e.get(k) == orig:
+                    e[k] = alias
+        open("/tmp/e2e-alias", "w").write("%s %s\n" % (alias, orig))
+        print("   [e2e fixture] node %s is declared as %s and linked by observed_as" % (orig, alias))
+known   = {n["name"] for n in decl["nodes"]}  # 픽스처가 이름을 바꿨으면 바뀐 이름으로 본다
 missing = [n for n in decl.get("scope", []) if n not in known]
 if missing:
     # 토폴로지에서 만든 선언인데 실행 중 환경과 다르다 - 파서가 어긋났거나, up.sh 를 돌린
@@ -74,6 +91,18 @@ json.dump(decl, open(sys.argv[3], "w"), ensure_ascii=False, indent=2)
 print("   " + " · ".join("%s=%s" % (n["name"], ",".join(n["ips"])) for n in nodes))
 PYIN
 docker cp "$DECL" pqcota-ctl:/work/declaration.json
+
+# 별칭으로 적용하려면 인벤토리가 그 이름을 알아야 한다. 원래 호스트의 줄을 이름만 바꿔 더한다 -
+# 현실에서 CMDB 이름을 인벤토리가 실제 주소로 잇는 것과 같은 일이다.
+ALIAS_FILE=/tmp/e2e-alias
+if [ -f "$ALIAS_FILE" ]; then
+  read -r E2E_ALIAS E2E_ORIG < "$ALIAS_FILE"
+  rm -f "$ALIAS_FILE"
+  docker exec pqcota-ctl bash -lc "grep -q '^$E2E_ALIAS ' /work/ansible/targets.ini || sed -n 's/^$E2E_ORIG /$E2E_ALIAS /p' /work/ansible/targets.ini >> /work/ansible/targets.ini"
+  docker exec pqcota-ctl bash -lc "grep -c '^$E2E_ALIAS ' /work/ansible/targets.ini" >/dev/null \
+    || { echo "❌ could not add the alias $E2E_ALIAS to the inventory"; exit 1; }
+  echo "   [e2e fixture] inventory now maps $E2E_ALIAS to the same host as $E2E_ORIG"
+fi
 
 echo "▶ 3/8 inventory reconciliation + governance topology (pqcaton-report)…"
 # **콘솔 출력을 기대 파일로 그대로 갖고 온다.** 손으로 한 번 만들어 두면 그 순간부터
@@ -213,15 +242,46 @@ docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $NODE0" 2>&
 NODES=$(docker exec pqcota-ctl bash -lc 'python3 -c "import json; print(\" \".join(sorted({a[\"targetNodeId\"] for a in json.load(open(\"/work/plan.approved.json\"))[\"actions\"]})))"')
 echo "   target nodes: $NODES"
 docker exec pqcota-ctl bash -lc "$ANS-playbook $INV provision-gov.yml" | grep -E "ok=|changed=|failed=" | sed 's/^/   /'
+# 별칭은 컨테이너 이름이 아니다. 파일을 확인할 때는 원래 이름으로 들어간다.
+host_of() { if [ -n "${E2E_ALIAS:-}" ] && [ "$1" = "$E2E_ALIAS" ]; then echo "$E2E_ORIG"; else echo "$1"; fi; }
 for n in $NODES; do
-  docker exec "$n" sh -lc 'ls -l /etc/pqcota/ 2>/dev/null' | sed "s/^/   $n │ /"
+  docker exec "$(host_of "$n")" sh -lc 'ls -l /etc/pqcota/ 2>/dev/null' | sed "s/^/   $n │ /"
 done
+
+# ★ 별칭 사슬(D9)을 값으로 확인한다: 조치는 선언 별칭을 겨누고, 근거는 봉투 이름을 들고,
+# 해결된 스냅샷은 그 봉투 이름의 것이다. 셋이 어긋나면 별칭을 쓴 정상 구성에서 되짚기가 실패한다.
+if [ -n "${E2E_ALIAS:-}" ]; then
+  echo "   ── the alias chain: declared name ≠ envelope name, and the snapshot resolves under the envelope name ──"
+  docker exec pqcota-ctl bash -lc "ALIAS=$E2E_ALIAS ORIG=$E2E_ORIG python3 - <<PY
+import json, os, sys
+alias, orig = os.environ[\"ALIAS\"], os.environ[\"ORIG\"]
+p = json.load(open(\"/work/plan.approved.json\"))
+hit = [a for a in p[\"actions\"] if a[\"targetNodeId\"] == alias]
+if not hit:
+    sys.exit(\"the plan has no action targeting the declared alias %s\" % alias)
+a = hit[0]
+e = a[\"evidenceSources\"][0][\"snapshot\"]
+print(\"   action %s targetNodeId=%s (declared alias)\" % (a[\"id\"], a[\"targetNodeId\"]))
+print(\"   evidence sourceNodeId=%s (envelope name)\" % e[\"sourceNodeId\"])
+if e[\"sourceNodeId\"] != orig:
+    sys.exit(\"the evidence names %s, not the envelope name %s\" % (e[\"sourceNodeId\"], orig))
+if a[\"targetNodeId\"] == e[\"sourceNodeId\"]:
+    sys.exit(\"target and source are the same - this fixture is not exercising the alias\")
+PY" || { echo "❌ the alias chain is broken"; exit 1; }
+  # 레코드는 **조치의 노드**, 곧 별칭 아래 쌓인다. 그 레코드가 원천 노드의 스냅샷을 가리켜야 한다.
+  docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $E2E_ALIAS" 2>&1 \
+    | grep 'snapshot:' | sed 's/^/   resolved /' \
+    || { echo "❌ no record under the alias names a resolved snapshot"; exit 1; }
+  docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $E2E_ALIAS" 2>&1 \
+    | grep -q "snapshot: .*:$E2E_ORIG\$" \
+    || { echo "❌ the resolved snapshot is not the source node's"; exit 1; }
+fi
 
 echo "▶ 8/8 roll back (--rollback) — remove what this plan staged…"
 docker exec pqcota-ctl bash -lc 'pqcota-provision --level l2 --rollback /work/plan.approved.json > /work/ansible/provision-gov-rollback.yml' 2>/dev/null || true
 docker exec pqcota-ctl bash -lc "$ANS-playbook $INV provision-gov-rollback.yml" | grep -E "ok=|changed=|failed=" | sed 's/^/   /'
 for n in $NODES; do
-  docker exec "$n" sh -lc 'ls /etc/pqcota/ 2>/dev/null | wc -l' | sed "s/^/   $n │ files left: /"
+  docker exec "$(host_of "$n")" sh -lc 'ls /etc/pqcota/ 2>/dev/null | wc -l' | sed "s/^/   $n │ files left: /"
 done
 
 echo
