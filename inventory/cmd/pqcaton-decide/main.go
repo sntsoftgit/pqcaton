@@ -72,6 +72,7 @@ func main() {
 	fs := flag.NewFlagSet(sub, flag.ExitOnError)
 	judgments := fs.String("judgments", "", "file to append judgments to (JSONL, append-only)")
 	results := fs.String("results", "", "directory of collected results. Given this, **this machine is not scanned** and those results are reconciled instead (declaration is JSON)")
+	scopeAssets := fs.String("scope-assets", "", "asset-scope policy (scope-assets.csv) — give the SAME file pqcota-ingest was given, or the snapshot fingerprints will not match the central history and the plan's evidence cannot be traced back")
 	view := fs.Bool("view", false, "also print the reconciliation as a table (the session still goes to stdout)")
 	orgName := fs.String("org", "local", "organization the reconciliation and judgments are bound to")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
@@ -102,7 +103,7 @@ func main() {
 		if len(pos) > 1 {
 			node = pos[1]
 		}
-		err = open(pos[0], node, *orgName, *results, *view)
+		err = open(pos[0], node, *orgName, *results, *scopeAssets, *view)
 	case "close":
 		need(1)
 		err = closeSession(pos[0], *judgments, *orgName)
@@ -112,7 +113,7 @@ func main() {
 		if len(pos) > 2 {
 			node = pos[2]
 		}
-		err = delta(pos[0], pos[1], node, *orgName, *results)
+		err = delta(pos[0], pos[1], node, *orgName, *results, *scopeAssets)
 	default:
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(2)
@@ -126,8 +127,8 @@ func main() {
 // ── open ───────────────────────────────────────────────────────────────────
 
 // open - 대조해서 리뷰 세션을 낸다.
-func open(declPath, node, orgName, resultsDir string, view bool) error {
-	sf, recs, err := session(declPath, node, orgName, resultsDir)
+func open(declPath, node, orgName, resultsDir, scopeAssets string, view bool) error {
+	sf, recs, err := session(declPath, node, orgName, resultsDir, scopeAssets)
 	if err != nil {
 		return err
 	}
@@ -148,9 +149,9 @@ func open(declPath, node, orgName, resultsDir string, view bool) error {
 //
 // 세션에는 리뷰 대상만 담기므로(자동통과는 이름만), `-view` 가 대조 전체를 표로 보이려면
 // 원본이 필요하다.
-func session(declPath, node, orgName, resultsDir string) (review.Session, []reconcile.Reconciled, error) {
+func session(declPath, node, orgName, resultsDir, scopeAssets string) (review.Session, []reconcile.Reconciled, error) {
 	if resultsDir != "" {
-		return sessionFromResults(declPath, orgName, resultsDir)
+		return sessionFromResults(declPath, orgName, resultsDir, scopeAssets)
 	}
 	var sf review.Session
 	// **대조도 조직에 묶인다.** 엔진이 조직을 들고, 다른 조직의 자산이 섞이면 대조하지
@@ -196,7 +197,7 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, []reco
 		sf.Items = append(sf.Items, review.Item{
 			ID: review.Key(it.Rec.Key), Policy: pol,
 			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
-			FindingID: it.Rec.FindingID,
+			FindingID: it.Rec.FindingID, Fingerprint: it.Rec.Fingerprint, Sources: review.SourcesOf(it.Rec),
 			// 위임 수준은 **실제 값으로 저장한다.** 화면에만 기본으로 보여 주고 비워 두면
 			// 검토자가 고르지 않은 값이 나중에 기본값으로 채워지고, 그 결과에 승인 서명이
 			// 붙는다. 저장해 두면 검토자에게 보이고 승인 대상에 들어간다. 바꾸는 것은 화면에서 한다.
@@ -223,15 +224,19 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, []reco
 //
 // **대조는 `report` 가 한다.** 대조 화면(`pqcaton-ui`)이 보는 것과 같은 계산이라, 화면에서
 // 본 UNDECLARED 가 리뷰 큐에 그대로 올라온다 — 따로 계산하면 사람이 본 것과 판정할 것이 달라진다.
-func sessionFromResults(declPath, orgName, resultsDir string) (review.Session, []reconcile.Reconciled, error) {
+func sessionFromResults(declPath, orgName, resultsDir, scopeAssets string) (review.Session, []reconcile.Reconciled, error) {
 	var sf review.Session
 	d, err := decl.Load(declPath)
 	if err != nil {
 		return sf, nil, err
 	}
+	policy, err := review.LoadAssetPolicy(scopeAssets)
+	if err != nil {
+		return sf, nil, err
+	}
 	// **세우는 일은 review 패키지가 한다.** 화면(`pqcaton-ui`)이 같은 것을 부른다 — 두
 	// 곳에서 따로 계산하면 화면에서 본 UNDECLARED 와 명령이 올린 리뷰 큐가 달라진다.
-	b, err := review.FromResults(resultsDir, d, orgName)
+	b, err := review.FromResultsWith(resultsDir, d, orgName, policy)
 	if err != nil {
 		return sf, nil, err
 	}
@@ -285,7 +290,7 @@ func closeSession(path, judgmentPath, orgName string) error {
 //
 // 전면 재리뷰가 아니다. 재관측할 때마다 전부 다시 보게 하면 아무도 안 본다 - 바뀐 것만
 // 걸어야 그 큐가 읽힌다(§3.6).
-func delta(judgmentPath, declPath, node, orgName, resultsDir string) error {
+func delta(judgmentPath, declPath, node, orgName, resultsDir, scopeAssets string) error {
 	store, err := decision.NewFileJudgmentStore(org.ID(orgName), judgmentPath)
 	if err != nil {
 		return err
@@ -304,7 +309,7 @@ func delta(judgmentPath, declPath, node, orgName, resultsDir string) error {
 	prior = decision.LatestPerSubject(prior) // append-only 로그에서 대상별 최신만
 
 	// 지금 관측으로 근거를 다시 만든다. open 이 쓰는 것과 같은 경로여야 값이 맞는다.
-	sf, _, err := session(declPath, node, orgName, resultsDir)
+	sf, _, err := session(declPath, node, orgName, resultsDir, scopeAssets)
 	if err != nil {
 		return err
 	}

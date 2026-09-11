@@ -42,6 +42,12 @@ func (e *Engine) AssetsFromSnapshot(snap *history.Snapshot) []Observed {
 	return stampObserved(e.org, observedFromSnapshot(snap))
 }
 
+// AssetsFromSnapshotAs — 스냅샷의 관측을 선언 노드 이름(node)으로 낸다. 봉투의 노드 이름이 선언과
+// 다를 때(별칭) 쓴다. 스냅샷 위치는 원천 이름 그대로 실린다.
+func (e *Engine) AssetsFromSnapshotAs(snap *history.Snapshot, node string) []Observed {
+	return stampObserved(e.org, observedFromSnapshotAs(snap, node))
+}
+
 // AssetsFromResults — 선언 레인의 자산을 뽑고 이 엔진의 조직을 찍는다.
 func (e *Engine) AssetsFromResults(results []*discoveryv1.CollectionResult) ([]AssetKey, error) {
 	out, err := declaredFromResults(results)

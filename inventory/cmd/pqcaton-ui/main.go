@@ -58,6 +58,7 @@ func main() {
 	addr := fs.String("addr", "127.0.0.1:8765", "address to listen on")
 	declPath := fs.String("decl", "", "declaration file (declaration.json). Given this, the declaration screen opens")
 	resultsDir := fs.String("results", "", "directory of collected results. With -decl, the reconciliation screen opens")
+	scopeAssets := fs.String("scope-assets", "", "asset-scope policy (scope-assets.csv) — the SAME file pqcota-ingest was given, or snapshot fingerprints will not match the central history")
 	scopePath := fs.String("scope", "", "asset scope session file. With -layers, the screen raises one itself")
 	layerList := fs.String("layers", "", "asset scope layer CSVs, comma separated. They stack in the order given (org, environment, node group), and **the later layer wins** when rules clash. Given these, rules can be edited on the screen")
 	basePath := fs.String("base", "", "the policy CSV in force. Given this, only changed rules come up for review")
@@ -123,7 +124,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "❌ cannot read the layer CSVs:", err)
 		os.Exit(1)
 	}
-	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath,
+	policy, err := review.LoadAssetPolicy(*scopeAssets)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "❌", err)
+		os.Exit(2)
+	}
+	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath, policy: policy,
 		layers: layers, base: *basePath,
 		judgments: *judgments, org: *orgName, planOut: *planOut, scopeOut: *scopeOut}
 	h := s.handler()
@@ -189,6 +195,7 @@ type server struct {
 	path    string
 	decl    string
 	results string
+	policy  *kscope.AssetPolicy // 자산 스코프 정책. 상류 적재와 같은 것이어야 지문이 맞는다
 	scope   string
 	// layers — 자산 스코프 계층 CSV들, 준 순서대로. 있으면 화면에서 규칙을 고친다.
 	layers    []string
@@ -314,7 +321,7 @@ func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	if err != nil {
 		return prev, nil, err
 	}
-	b, err := review.FromResults(s.results, d, s.org)
+	b, err := review.FromResultsWith(s.results, d, s.org, s.policy)
 	if err != nil {
 		return prev, nil, err
 	}
@@ -623,7 +630,7 @@ func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render fun
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res, err := report.Build(s.results, d)
+	res, err := report.BuildWith(s.results, d, s.policy)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -683,7 +690,7 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res, err := report.Build(s.results, d)
+	res, err := report.BuildWith(s.results, d, s.policy)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -850,7 +857,7 @@ func (s *server) observedAssets(d decl.Declaration) (map[string][]ui.DeclAsset, 
 	if s.results == "" {
 		return nil, nil
 	}
-	res, err := report.Build(s.results, d)
+	res, err := report.BuildWith(s.results, d, s.policy)
 	if err != nil {
 		return nil, nil
 	}

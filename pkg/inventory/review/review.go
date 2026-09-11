@@ -18,6 +18,7 @@ import (
 
 	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
+	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 
@@ -63,6 +64,11 @@ type Item struct {
 	// 아니라 대조가 들고 온 사실이다. `finding_id` 는 자산이 같으면 같으므로, 버전이 오르거나
 	// 강화 판정이 달라진 것을 id 로는 알 수 없다 — 그 자리를 이 값이 맡는다.
 	Fingerprint string `json:"evidence_fingerprint,omitempty"`
+	// Sources — 근거 전부. 같은 자산을 원천 노드 여럿이 봤으면 여럿이고 주 근거가 앞이다
+	// (`FindingID`·`Fingerprint` 는 주 근거의 것). 계약의 `evidence_sources` 로 나간다. 근거 해시에는
+	// 정렬된 (finding, 지문, 원천 노드) 묶음이 들어간다 — 주 근거만 보면 보조 근거가 바뀌어도 판정
+	// 서명이 살아남는다. 스냅샷 지문은 근거 해시에 넣지 않는다 — 위치이지 근거가 아니다.
+	Sources []EvidenceSource `json:"evidence_sources,omitempty"`
 	// Policy — 같은 정책의 항목은 한 번에 판정한다(§3.4).
 	Policy string  `json:"policy"`
 	State  string  `json:"state"`
@@ -93,6 +99,27 @@ type Item struct {
 	Restart    string `json:"activation_restart,omitempty"`
 }
 
+// EvidenceSource — 근거 하나. 대조의 Source 를 세션 파일에 적는 꼴이다.
+type EvidenceSource struct {
+	FindingID   string `json:"finding_id"`
+	Fingerprint string `json:"fingerprint"`
+	Evidence    string `json:"evidence,omitempty"`
+	// 스냅샷 위치. 원천 노드는 봉투의 이름이라 항목의 Node(선언 이름)와 다를 수 있다.
+	SourceNodeID    string `json:"source_node_id"`
+	SnapshotDigest  string `json:"snapshot_digest"`
+	SnapshotRuleset string `json:"snapshot_ruleset"`
+}
+
+// SourcesOf — 대조 결과의 근거를 세션 항목의 꼴로 옮긴다.
+func SourcesOf(r reconcile.Reconciled) []EvidenceSource {
+	out := make([]EvidenceSource, 0, len(r.Sources))
+	for _, s := range r.Sources {
+		out = append(out, EvidenceSource{FindingID: s.FindingID, Fingerprint: s.Fingerprint, Evidence: s.Evidence,
+			SourceNodeID: s.Snapshot.SourceNodeID, SnapshotDigest: s.Snapshot.Digest, SnapshotRuleset: s.Snapshot.RulesetVersion})
+	}
+	return out
+}
+
 // RulesetVersion — **이 판정의 근거가 된 규칙 판.** 상류의 강화 규칙과 이 리포의 대조·계획
 // 규칙을 합친 것이다. 파생 결과를 바꿀 수 있는 규칙이 어느 쪽에서든 바뀌면 값이 달라진다.
 //
@@ -102,7 +129,10 @@ type Item struct {
 //
 // **사용자가 입력하지 않는다.** 도구가 부여하고, 세션을 **열 때** 박아 둔다(확정할 때가 아니다).
 // 검토 도중 도구가 올라가도 실제로 검토한 근거가 그대로 남아야 하기 때문이다.
-const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v1"
+//
+// v2 — 주 근거를 입력 순서가 아니라 가장 강한 증거로 고르고, 계약 변환이 근거 여럿을 낸다. 같은 관측에서
+// 다른 판정·다른 계획이 나오므로 올렸다. 상류도 같은 이유(병합 규칙)로 v2 다.
+const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v2"
 
 // NewSessionID — 세션을 **열 때** 한 번 만든다. UUID v4 다. 표준 라이브러리만 쓴다 — 식별자
 // 하나를 위해 의존성을 들이지 않는다.
@@ -379,18 +409,46 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 //   - **관측 내용 지문**. `finding_id` 는 자산 동일성이라 버전이 오르고 검출 방법이 바뀌고
 //     강화 판정이 달라져도 그대로다. 지문이 없으면 그 변화를 통째로 놓친다.
 //   - **재수집 후보 여부**. 「없다」와 「못 봤다」가 갈리는 자리라 결론이 달라진다.
+//   - **근거 전부**. 정렬된 (finding, 관측 지문, 원천 노드) 묶음. 주 근거만 보면 보조 근거가
+//     더해지거나 빠지거나 바뀌어도 판정 서명이 살아남는다. 스냅샷 지문은 넣지 않는다 — 관측
+//     지문이 내용을 이미 덮고, 그것은 그 관측이 속한 스냅샷의 위치다.
 //
 // **관측이 그대로면 몇 번을 다시 돌려도 걸리지 않는다**(§3.6, IC-D2/D3). 그래서 지문은
 // 재수집마다 흔들리는 스냅샷 id 를 빼고 만든다(`reconcile.Fingerprint`).
 func BasisOf(it Item, rulesetVersion string) string {
-	return decision.HashBasis(
-		"ruleset="+rulesetVersion,
-		"state="+it.State,
+	parts := []string{
+		"ruleset=" + rulesetVersion,
+		"state=" + it.State,
 		fmt.Sprintf("conf=%.2f", it.Conf),
-		"policy="+it.Policy,
-		"evidence="+it.Fingerprint,
+		"policy=" + it.Policy,
+		"evidence=" + it.Fingerprint,
 		fmt.Sprintf("rescan=%t", it.Rescan),
-	)
+	}
+	for _, s := range it.Sources {
+		parts = append(parts, "source="+s.FindingID+"|"+s.Fingerprint+"|"+s.SourceNodeID)
+	}
+	return decision.HashBasis(parts...) // HashBasis 가 정렬한다 — 근거의 순서는 근거가 아니다
+}
+
+// evidenceOf — 항목의 근거를 계약의 꼴로. 주 근거가 앞이다. 스냅샷 참조는 **내용 지문**이다 — 이
+// 리포는 상류 이력의 id 를 모른다. 원천 노드는 봉투의 이름이고, 규칙 판은 **스냅샷의** 것이다
+// (계획의 결합 판이 아니다). 상류는 (org, 원천 노드, 규칙 판, 지문)으로 찾고, 찾은 스냅샷에 그
+// finding 이 실제로 있는지까지 본다. 지문이 비면(옛 세션) 참조 없이 finding 만 낸다 — 상류가
+// 모양이 틀렸다고 알린다. 조용히 빼지 않는다.
+func evidenceOf(it Item) []*provisioningv1.ActionEvidenceSource {
+	out := make([]*provisioningv1.ActionEvidenceSource, 0, len(it.Sources))
+	for _, s := range it.Sources {
+		e := &provisioningv1.ActionEvidenceSource{FindingId: s.FindingID}
+		if s.SnapshotDigest != "" {
+			e.Snapshot = &provisioningv1.SnapshotReference{
+				SourceNodeId: s.SourceNodeID,
+				Reference: &provisioningv1.SnapshotReference_Content{Content: &provisioningv1.SnapshotContentReference{
+					FormatVersion: history.SnapshotContentFormatV1, Digest: s.SnapshotDigest, RulesetVersion: s.SnapshotRuleset}},
+			}
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 // ToContract — 판정이 끝난 계획을 pqcota 계약(`provisioningv1.FinalizedPlan`)으로 옮긴다.
@@ -436,6 +494,7 @@ func ToContract(p *decision.JudgedPlan, items []Item, rulesetVersion, sessionID 
 			TargetAlgorithm: it.TargetAlgorithm,
 			ProviderChoice:  p.Items[i].ProviderChoice,
 			FindingId:       it.FindingID,
+			EvidenceSources: evidenceOf(it),
 			Activation:      hooksOf(it),
 			ConfigArtifact:  it.Config,
 			RollbackNote:    it.Conclusion,

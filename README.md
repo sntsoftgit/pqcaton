@@ -116,7 +116,8 @@ printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-cha
 bin/pqcaton-decide open decl.csv local > session.json
 
 #    여러 노드를 다루는 길은 이쪽입니다 — pqcota 가 모은 관측으로 대조합니다
-#    bin/pqcaton-decide open declaration.json -results results/ -org acme > session.json
+#    bin/pqcaton-decide open declaration.json -results results/ -scope-assets scope-assets.csv -org acme > session.json
+#    (-scope-assets: pqcota-ingest 에 준 것과 같은 파일. 지문이 상류와 맞으려면 같은 정책이어야 합니다)
 
 # ③ 판정 — 사람이 하는 자리. session.json 을 열어
 #    필수 항목의 conclusion, 그리고 reviewer · signature 를 채웁니다
@@ -201,6 +202,8 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
 > 자세한 것은 [CONTRIBUTING.md 「어느 말로 쓰나」](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
 
 나온 `plan.json`은 **계약 형식 그대로**입니다. 우리 형식이 따로 없어 pqcota가 그대로 읽습니다.
+
+**계획이 근거를 듭니다.** 조치마다 어느 finding이 어느 스냅샷 상태에서 나왔는지를 `evidenceSources`로 적어 보냅니다. 참조는 스냅샷의 **내용 지문**(`pqcota-snapshot-content/v1`)과 **원천 노드**(봉투의 이름. 선언 이름과 다를 수 있습니다)입니다. 상류는 `--dsn`이 있으면 그것을 이력에서 실제로 찾아 레코드에 남기고, 못 찾으면 종료 상태 3입니다. **그러려면 이 리포가 상류 적재와 같은 스냅샷을 만들어야 합니다.** 결과를 원천 노드별로 모아 상류와 같은 함수로 정규화하고, **`-scope-assets`에 `pqcota-ingest`에 준 것과 같은 파일**을 줍니다. 다른 정책(또는 정책 없음)으로 정규화하면 지문이 달라져 되짚기가 실패합니다. 정책 유무는 추정하지 않습니다.
 
 **판정과 실행 승인은 다른 단계입니다.** 이 리포가 내는 것은 **판정이 끝난 계획**이고, 계약의 상태로는 `IN_REVIEW`입니다. 승인 칸(`approvalSignatures`)과 확정 시각은 비어서 나갑니다. 둘 다 실행 승인의 자리라, 상류의 `pqcota-approve`가 승인자의 키로 서명하면서 `FINALIZED`로 올리고 그때 채웁니다. 여기서 검토자가 적는 서명은 **「누가 판정했다고 기록됐나」**를 남기는 것이지 실행 승인이 아닙니다. 그래서 사이에 승인 한 단계가 듭니다. 이것은 이어 붙이지 못한 공백이 아니라 **판정한 사람과 실행을 승인하는 사람을 가르는 경계**입니다. 이어 붙여도 단계가 줄지 않습니다. 상류는 어떤 경우에도 자기가 등록한 키로 검증하므로, 개인키를 누가 쥐느냐만 옮겨 갑니다.
 

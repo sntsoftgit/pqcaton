@@ -18,7 +18,22 @@ func observedFromSnapshot(snap *history.Snapshot) []Observed {
 	if snap == nil {
 		return nil
 	}
-	return observedFrom(snap.NodeID, snap.Findings)
+	return observedFromSnapshotAs(snap, snap.NodeID)
+}
+
+// observedFromSnapshotAs — 스냅샷의 관측을 **선언 노드 이름**(node)으로 낸다. 스냅샷 위치(원천 노드 ·
+// v1 지문 · 규칙 판)는 스냅샷의 것 그대로다. 대조는 선언 이름으로 하고 되짚기는 원천 이름으로
+// 한다 — 두 축이 다르다.
+func observedFromSnapshotAs(snap *history.Snapshot, node string) []Observed {
+	if snap == nil {
+		return nil
+	}
+	loc := SnapshotLocation{SourceNodeID: snap.NodeID, Digest: history.ContentHashV1(snap), RulesetVersion: snap.RulesetVersion}
+	out := observedFrom(node, snap.Findings)
+	for i := range out {
+		out[i].Snapshot = loc
+	}
+	return out
 }
 
 // GapLayers — 스냅샷 완전성 맵의 미커버 계층(문자열)을 뽑는다. UNOBSERVED 재수집 판정 입력(IC-R4).

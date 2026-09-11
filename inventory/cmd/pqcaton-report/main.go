@@ -18,11 +18,12 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Fprintln(os.Stderr, "usage: pqcaton-report <results-dir> <declaration.json> [topology-out.dot]")
+		fmt.Fprintln(os.Stderr, "usage: pqcaton-report <results-dir> <declaration.json> [topology-out.dot]   (env PQCATON_SCOPE_ASSETS = the scope-assets.csv given to pqcota-ingest)")
 		os.Exit(2)
 	}
 	dir, declPath := os.Args[1], os.Args[2]
@@ -34,7 +35,15 @@ func main() {
 	d := loadDeclaration(declPath)
 	// **계산은 공용 패키지가 한다.** 화면(`pqcaton-ui`)이 같은 것을 그리므로, 계산이 두
 	// 곳에 있으면 화면과 글이 다른 답을 내는 날이 온다.
-	r, err := report.Build(dir, d)
+	// 자산 스코프 정책 — 상류 pqcota-ingest 에 준 것과 **같은 파일**을 PQCATON_SCOPE_ASSETS 로 준다.
+	// 다르면 스냅샷 지문이 중앙 이력과 갈려 계획의 근거를 되짚지 못한다. 위치 인자를 늘리지 않으려고
+	// 환경변수로 받는다.
+	policy, err := review.LoadAssetPolicy(os.Getenv("PQCATON_SCOPE_ASSETS"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "❌", err)
+		os.Exit(2)
+	}
+	r, err := report.BuildWith(dir, d, policy)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "❌", err)
 		os.Exit(1)

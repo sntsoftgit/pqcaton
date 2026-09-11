@@ -7,7 +7,10 @@ package review
 
 import (
 	"fmt"
+	"os"
 	"sort"
+
+	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
@@ -58,10 +61,30 @@ func (w Warning) English() string {
 	return w.Code
 }
 
+// LoadAssetPolicy — 자산 스코프 정책 파일(scope-assets.csv)을 읽는다. 빈 경로면 정책 없음(nil).
+// 상류 `pqcota-ingest -scope-assets` 가 읽는 것과 같은 파서다 — 다르게 읽으면 스냅샷 지문이 갈린다.
+func LoadAssetPolicy(path string) (*scope.AssetPolicy, error) {
+	if path == "" {
+		return nil, nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("opening the asset scope: %w", err)
+	}
+	defer f.Close()
+	return scope.LoadAssetPolicy(f)
+}
+
 // FromResults — 모아 둔 관측 결과와 선언으로 리뷰 세션을 세운다.
 //
 // **대조는 `report` 가 한다.** 대조 화면이 보는 것과 같은 계산이다.
 func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built, error) {
+	return FromResultsWith(resultsDir, d, orgName, nil)
+}
+
+// FromResultsWith — 자산 스코프 정책을 걸어 세운다. 상류 적재와 같은 정책을 걸어야 스냅샷 지문이
+// 상류와 같아 되짚기가 된다(`report.BuildWith`).
+func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, policy *scope.AssetPolicy) (*Built, error) {
 	// **선언이 조직을 말한다.** 따로 주지 않았으면 선언의 것을 쓴다.
 	if orgName == "" || orgName == decl.DefaultOrg {
 		orgName = d.OrgOrDefault()
@@ -75,7 +98,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 		out.Warnings = append(out.Warnings, Warning{Code: WarnDeclProblems, Count: len(p)})
 	}
 
-	r, err := report.Build(resultsDir, d)
+	r, err := report.BuildWith(resultsDir, d, policy)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +114,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 		sf.Items = append(sf.Items, Item{
 			ID: Key(it.Rec.Key), Policy: pol,
 			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
-			FindingID: it.Rec.FindingID, Fingerprint: it.Rec.Fingerprint,
+			FindingID: it.Rec.FindingID, Fingerprint: it.Rec.Fingerprint, Sources: SourcesOf(it.Rec),
 			// 위임 수준은 **실제 값으로 저장한다.** 화면에만 기본으로 보여 주고 비워 두면
 			// 검토자가 고르지 않은 값이 나중에 기본값으로 채워지고, 그 결과에 승인 서명이
 			// 붙는다. 저장해 두면 검토자에게 보이고 승인 대상에 들어간다. 바꾸는 것은 화면에서 한다.

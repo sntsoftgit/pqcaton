@@ -68,7 +68,12 @@ echo "▶ 3/8 inventory reconciliation + governance topology (pqcaton-report)…
 # **콘솔 출력을 기대 파일로 그대로 갖고 온다.** 손으로 한 번 만들어 두면 그 순간부터
 # 어긋난다 - 실제로 그렇게 낡아 있었고, 명령의 출력이 영어가 된 날에도 한국어인 채
 # 남아 있었다. 스크립트가 뜨면 어긋날 수가 없다.
-docker exec pqcota-ctl bash -lc 'pqcaton-report /work/results /work/declaration.json /work/topology-governance.dot' \
+# **상류 적재와 같은 자산 스코프 정책을 건다.** pqcota 데모는 /work/scope-assets.csv 로 적재했다.
+# 다른 정책(또는 정책 없음)으로 정규화하면 스냅샷 지문이 중앙 이력과 갈려, 아래 7/8 에서 생성기가
+# 계획의 근거를 되짚지 못한다. 정책 유무를 추정하지 않는다 — 같은 파일을 준다.
+SCOPE=/work/scope-assets.csv
+docker exec pqcota-ctl bash -lc "test -f $SCOPE" || { echo "❌ $SCOPE not in pqcota-ctl — pqcota/demo/scripts/demo.sh writes it"; exit 1; }
+docker exec -e PQCATON_SCOPE_ASSETS=$SCOPE pqcota-ctl bash -lc 'pqcaton-report /work/results /work/declaration.json /work/topology-governance.dot' \
   | tee "$DEMO_DIR/expected-output/report.txt"
 
 echo "▶ 4/8 judgment → judged plan, IN_REVIEW (pqcaton-decide)…"
@@ -76,7 +81,7 @@ echo "▶ 4/8 judgment → judged plan, IN_REVIEW (pqcaton-decide)…"
 # 증명되지 않는다 - 실제로 그 구간이 v0.9.0 전까지 끊겨 있었고, 데모가 대조에서 멈춰서
 # 아무도 몰랐다.
 docker exec pqcota-ctl bash -lc \
-  'pqcaton-decide open /work/declaration.json -results /work/results -org demo-corp > /work/session.json'
+  "pqcaton-decide open /work/declaration.json -results /work/results -scope-assets $SCOPE -org demo-corp > /work/session.json"
 # 사람이 하는 자리를 데모에서는 정책 단위 일괄 판정으로 대신한다. **확정은 사람이 한다**는
 # 원칙은 그대로다 - 여기서는 그 사람 역할을 스크립트가 맡는다.
 # 화면에서 사람이 고르는 것을 여기서 대신 고른다. 결론만이 아니라 **조치 종류 · 목표 알고리즘 ·
@@ -150,18 +155,26 @@ if p["status"] != "PLAN_STATUS_FINALIZED" or not p.get("finalizedAt"):
     sys.exit("❌ approval must raise the plan to FINALIZED and stamp finalized_at")
 PY'
 
-echo "▶ 7/8 generate (pqcota-provision, §3.7 gate) and actually apply the playbook…"
+echo "▶ 7/8 generate (pqcota-provision, §3.7 gate) — resolve the plan's evidence in the history, then actually apply…"
 ANS="cd /work/ansible && ansible"
 INV="-i /work/ansible/targets.ini -i /work/ansible/groups.ini"
+# --dsn 을 준다: 조치의 근거(원천 노드 · v1 지문 · 규칙 판)를 중앙 이력에서 **실제로 찾아** 레코드에
+# 남긴다. 못 찾으면 종료 3 이다 — 이 데모가 보이려는 것이 바로 그 고리다.
+DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
 set +e
-docker exec pqcota-ctl bash -lc 'pqcota-provision --level l2 /work/plan.approved.json > /work/ansible/provision-gov.yml' 2>&1 | sed 's/^/   /'
+docker exec pqcota-ctl bash -lc "pqcota-provision --level l2 --dsn '$DSN' /work/plan.approved.json > /work/ansible/provision-gov.yml" 2>&1 | sed 's/^/   /'
 st=${PIPESTATUS[0]}
 set -e
 case "$st" in
-  0) ;;
-  3) echo "   ↑ exit 3: the playbook is out but the plan has blanks the generator names above";;
+  0) echo "   ✓ every spot filled — the evidence resolved to real snapshots";;
+  3) echo "❌ exit 3: the generator names a blank above. Evidence that does not resolve is the thing this demo must catch"; exit 1;;
   *) echo "❌ pqcota-provision refused (exit $st)"; exit 1;;
 esac
+echo "   ── the record now points back at the snapshot (pqcota-records) ──"
+NODE0=$(docker exec pqcota-ctl bash -lc 'python3 -c "import json; print(json.load(open(\"/work/plan.approved.json\"))[\"actions\"][0][\"targetNodeId\"])"' | tr -d '[:space:]')
+docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $NODE0" 2>&1 | grep -E 'snapshot:|plan=' | sed 's/^/   /'
+docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $NODE0" 2>&1 | grep -q 'snapshot: ingest-' \
+  || { echo "❌ the record does not name a resolved snapshot"; exit 1; }
 NODES=$(docker exec pqcota-ctl bash -lc 'python3 -c "import json; print(\" \".join(sorted({a[\"targetNodeId\"] for a in json.load(open(\"/work/plan.approved.json\"))[\"actions\"]})))"')
 echo "   target nodes: $NODES"
 docker exec pqcota-ctl bash -lc "$ANS-playbook $INV provision-gov.yml" | grep -E "ok=|changed=|failed=" | sed 's/^/   /'

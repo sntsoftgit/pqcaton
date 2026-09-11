@@ -20,6 +20,7 @@ import (
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/resultio"
+	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
@@ -52,8 +53,16 @@ type Result struct {
 	Skipped []string
 }
 
-// Build — 결과 디렉터리와 선언을 받아 대조한다.
-func Build(dir string, d decl.Declaration) (*Result, error) {
+// Build — 결과 디렉터리와 선언을 받아 대조한다. 자산 스코프 정책 없이.
+func Build(dir string, d decl.Declaration) (*Result, error) { return BuildWith(dir, d, nil) }
+
+// BuildWith — 자산 스코프 정책을 걸어 대조한다.
+//
+// **정책은 상류 적재와 같은 것을 건다.** 적재는 정책이 뺀 finding 을 스냅샷에서 제거하므로, 여기서
+// 정책 없이 정규화하면 스냅샷 지문이 상류와 갈려 되짚기가 실패한다. 정책 유무는 추정하지 않는다 —
+// 두 명령은 독립이라 「여기 없으면 저기도 없었을 것」이 서지 않는다. 그 정책 파일(scope-assets.csv)은
+// 이 리포의 자산 스코프 화면이 만드는 것이라 같은 것을 걸 수 있다.
+func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Result, error) {
 	orgName := d.OrgOrDefault()
 	eng, err := reconcile.For(org.ID(orgName))
 	if err != nil {
@@ -73,25 +82,44 @@ func Build(dir string, d decl.Declaration) (*Result, error) {
 	var observedAssets []reconcile.Observed
 	var observedEdges []*discoveryv1.ObservedEdge
 	covered := map[string]bool{}
+	// **원천 노드별로 모아 상류 적재와 같은 경로로 정규화한다.** 전에는 결과 파일 하나마다
+	// 정규화하고 네트워크 결과는 비켜 두었다. 그러면 스냅샷의 모양이 상류와 달라(엣지·완전성이
+	// 없다) 지문이 같을 수 없고, 상류가 따로 저장한 원천 노드 둘을 선언 노드 하나로 합치면 어느
+	// 쪽 지문과도 맞지 않는 스냅샷이 된다. 원천 노드(봉투의 target_node_id)가 묶는 단위이고,
+	// 선언 노드(ResolveAssetNode)는 대조의 이름이다 — 두 축이 다르다.
+	bySource := map[string][]*discoveryv1.CollectionResult{}
+	var sourceOrder []string
 	for _, res := range results {
-		node := ResolveAssetNode(res, d.Nodes)
-		if len(res.GetObservedEdges()) > 0 || HasNetworkLayer(res) {
-			// 네트워크 레인. NETWORK 계층을 **실제로 커버**했으면 covered — 서버 전용 노드는
-			// client 엣지가 0이어도 관측은 수행됐다(collector 미설치가 아니라 강등만 미커버).
-			observedEdges = append(observedEdges, res.GetObservedEdges()...)
-			if NetworkCovered(res) {
-				covered[node] = true
-			}
+		src := res.GetEnvelope().GetTargetNodeId()
+		if src == "" {
+			out.Skipped = append(out.Skipped, res.GetEnvelope().GetCollectorId()+": no target node in the envelope")
 			continue
 		}
-		snap, err := normalize.Normalize([]*discoveryv1.CollectionResult{res},
-			"snap", node, normalize.RulesetVersion, history.NewMemStore(), nil)
-		if err != nil {
-			return nil, fmt.Errorf("normalizing %s: %w", node, err)
+		if _, ok := bySource[src]; !ok {
+			sourceOrder = append(sourceOrder, src)
 		}
-		observedAssets = append(observedAssets, eng.AssetsFromSnapshot(snap)...)
+		bySource[src] = append(bySource[src], res)
+	}
+	for _, src := range sourceOrder {
+		group := bySource[src]
+		node := ResolveAssetNode(group[0], d.Nodes)
+		for _, res := range group {
+			out.SeenBy[node] = append(out.SeenBy[node], res.GetEnvelope().GetCollectorId())
+			// NETWORK 계층을 **실제로 커버**했으면 covered — 서버 전용 노드는 client 엣지가 0이어도
+			// 관측은 수행됐다(collector 미설치가 아니라 강등만 미커버).
+			if (len(res.GetObservedEdges()) > 0 || HasNetworkLayer(res)) && NetworkCovered(res) {
+				covered[node] = true
+			}
+		}
+		// 상류 normalize.Normalize 그대로 — 파서를 따로 적으면 그중 하나는 반드시 다르게 읽는다.
+		// 스냅샷 id 는 상류 것을 흉내 내지 않는다. 되짚는 열쇠는 id 가 아니라 v1 지문이다.
+		snap, err := normalize.Normalize(group, "snap:"+src, src, normalize.RulesetVersion, history.NewMemStore(), policy)
+		if err != nil {
+			return nil, fmt.Errorf("normalizing %s: %w", src, err)
+		}
+		observedAssets = append(observedAssets, eng.AssetsFromSnapshotAs(snap, node)...)
+		observedEdges = append(observedEdges, snap.Edges...)
 		out.AssetGaps = append(out.AssetGaps, reconcile.GapLayers(snap)...)
-		out.SeenBy[node] = append(out.SeenBy[node], res.GetEnvelope().GetCollectorId())
 	}
 
 	declaredAssets := make([]reconcile.AssetKey, 0, len(d.Assets))
