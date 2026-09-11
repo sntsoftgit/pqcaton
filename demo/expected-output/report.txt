@@ -2,15 +2,15 @@
 ║  pqcota discovery → inventory demo report                ║
 ╚══════════════════════════════════════════════════════════╝
 
-nodes 3 · observed assets 5 · observed edges 4 · declared assets 5 · declared edges 3
+nodes 3 · observed assets 2 · observed edges 4 · declared assets 5 · declared edges 3
 
 ──────── ① Observation — what pqcota saw ────────
   The collector was carried to each target node, run, and taken back. Nothing is left behind.
-    pay-app      jvm-collector, openssl-collector
-    pay-db       openssl-collector
-    web-gw       openssl-collector
+    pay-app      jvm-collector, network-collector, openssl-collector
+    pay-db       network-collector, openssl-collector
+    web-gw       network-collector, openssl-collector
 
-  assets observed in actual use: jca 1 · openssl 4
+  assets observed in actual use: jca 1 · openssl 1
   connections negotiated in a handshake: 4 (graded in the next section)
 
   not seen: layer build artifacts — binaries and packages (ARTIFACT)
@@ -18,20 +18,21 @@ nodes 3 · observed assets 5 · observed edges 4 · declared assets 5 · declare
   is settled by the line above — if listed there, collect again first; otherwise a person judges.
 
 ──────── ② Asset inventory (three-state reconciliation) ────────
-reconciled: CONFIRMED 4 · UNDECLARED 1 · UNOBSERVED 1
-auto-pass candidates (proposed for batch approval): 4
+reconciled: CONFIRMED 2 · UNDECLARED 0 · UNOBSERVED 3
+auto-pass candidates (proposed for batch approval): 2
 
 mandatory review queue (by priority):
 #   state        conf   runtime  component
-1   UNDECLARED   0.60   openssl  libcrypto
-2   UNOBSERVED   0.30   openssl  libssl
+1   UNOBSERVED   0.30   openssl  libssl
+2   UNOBSERVED   0.30   openssl  libcrypto
+3   UNOBSERVED   0.30   openssl  libcrypto
 
 ──────── ③ Communication edges + quantum-resistance grade ────────
   ⚪ pay-app    → web-gw             TLS    (unknown)                UNOBSERVED
-  🟢 web-gw     → pay-app            TLS    X25519MLKEM768           CONFIRMED
-  🔴 web-gw     → pay-db             TLS    x25519                   CONFIRMED
   🟢 web-gw     → pay-app            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED
+  🟢 web-gw     → pay-app            TLS    X25519MLKEM768           CONFIRMED
   🔴 web-gw     → pay-db             SSH    curve25519-sha256        UNDECLARED
+  🔴 web-gw     → pay-db             TLS    x25519                   CONFIRMED
 
   grade totals: 🟢 PQC 2 · 🔴 classical 2 · ⚪ unknown 1
 
