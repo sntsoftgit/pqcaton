@@ -18,7 +18,7 @@ nodes 3 · observed assets 5 · observed edges 4 · declared assets 5 · declare
   is settled by the line above — if listed there, collect again first; otherwise a person judges.
 
 ──────── ② Asset inventory (three-state reconciliation) ────────
-reconciled: CONFIRMED 4 · UNDECLARED(shadow) 1 · UNOBSERVED 1
+reconciled: CONFIRMED 4 · UNDECLARED 1 · UNOBSERVED 1
 auto-pass candidates (proposed for batch approval): 4
 
 mandatory review queue (by priority):

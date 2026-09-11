@@ -1,25 +1,18 @@
 {
-  "status": "PLAN_STATUS_FINALIZED",
+  "id": "pqcaton:org://demo-corp:1d049f54-2533-465a-a530-3c0f736d84eb",
+  "status": "PLAN_STATUS_IN_REVIEW",
   "scope": "org://demo-corp",
   "actions": [
     {
       "id": "a1",
       "targetNodeId": "pay-app",
+      "findingId": "29a88656fdd022275a3b3392996954cac05e8f8a77e3c4625ec9daf16fe57f3e",
       "cryptoRuntime": "CRYPTO_RUNTIME_OPENSSL",
-      "kind": "REMEDIATION_KIND_PROVIDER_INJECT",
+      "kind": "REMEDIATION_KIND_CONFIG_ONLY",
       "automationLevel": "DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL",
-      "providerChoice": "internal-pqc-provider"
-    },
-    {
-      "id": "a2",
-      "targetNodeId": "web-gw",
-      "cryptoRuntime": "CRYPTO_RUNTIME_OPENSSL",
-      "kind": "REMEDIATION_KIND_PROVIDER_INJECT",
-      "automationLevel": "DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL",
+      "targetAlgorithm": "ML-KEM (FIPS 203)",
       "providerChoice": "internal-pqc-provider"
     }
   ],
-  "approvalSignatures": [
-    "demo-sig"
-  ]
+  "rulesetVersion": "pqcota-enrich/v1+pqcaton-plan/v1"
 }
