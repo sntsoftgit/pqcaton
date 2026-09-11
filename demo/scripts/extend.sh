@@ -48,10 +48,21 @@ DECL="$TMP/declaration.json"
 python3 "$DEMO_DIR/scripts/declare.py" "$TOPO" > "$TMP/declaration.gen.json"
 docker exec pqcota-ctl bash -lc 'cat /work/nodes.json' > "$TMP/nodes.json"
 python3 - "$TMP/declaration.gen.json" "$TMP/nodes.json" "$DECL" <<'PYIN'
-import json, sys
+import json, os, sys
 decl  = json.load(open(sys.argv[1]))
 nodes = json.load(open(sys.argv[2]))
 decl["nodes"] = nodes
+# PQCATON_E2E_TRACE — **되짚기 사슬을 재는 전용 픽스처다. 데모 서사가 아니다.**
+#
+# 선언에서 자산을 전부 빼면, 정책이 관리 대상으로 남긴 관측이 모두 UNDECLARED(그림자 자산)가 되어
+# 리뷰 큐에 오르고 계획 칸을 든다. 그래야 **pqcaton 이 만든 계획으로** 승인 → 생성 → 레코드 →
+# 실제 스냅샷 id 까지 한 바퀴를 돌 수 있다.
+#
+# 데모의 선언을 왜곡해 없는 자산을 지어내지 않는다. 빼기만 한다 — 빼면 관측된 것이 그대로 그림자가
+# 되고, 그것은 실제로 있을 수 있는 상태다(선언을 아직 안 적은 조직).
+if os.environ.get("PQCATON_E2E_TRACE"):
+    decl["assets"] = []
+    print("   [e2e fixture] declared assets cleared — every managed observation becomes UNDECLARED so the plan has something to carry")
 known   = {n["name"] for n in nodes}
 missing = [n for n in decl.get("scope", []) if n not in known]
 if missing:
