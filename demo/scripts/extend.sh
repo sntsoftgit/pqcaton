@@ -12,6 +12,15 @@
 # 몰랐다(조치 종류를 고르지 않은 항목이 확정을 막게 됐는데, 이 스크립트는 고르지 않았다).
 set -euo pipefail
 DEMO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # pqcaton/demo
+
+# 기대 산출물을 쓰는 자리. **픽스처로 돌릴 때는 여기에 쓰지 않는다.** 픽스처는 선언에서 자산을
+# 빼고 노드 하나를 별칭으로 바꾸므로, 그 결과를 기본 데모의 「예상 결과」로 올리면 공개 산출물에
+# 토폴로지에 없는 노드 이름이 들어가고, 읽는 사람은 그것이 기본 실행의 결과라고 믿는다.
+SAMPLE_DIR="$DEMO_DIR/expected-output"
+if [ -n "${PQCATON_E2E_TRACE:-}" ]; then
+  SAMPLE_DIR="$(mktemp -d)/expected-output"
+  mkdir -p "$SAMPLE_DIR"
+fi
 REPO_DIR="$(cd "$DEMO_DIR/.." && pwd)"                        # pqcaton
 
 # pqcota 리포를 찾는다 - 없으면 무엇을 어떻게 주라는지 말하고 멈춘다.
@@ -114,7 +123,7 @@ echo "▶ 3/8 inventory reconciliation + governance topology (pqcaton-report)…
 SCOPE=/work/scope-assets.csv
 docker exec pqcota-ctl bash -lc "test -f $SCOPE" || { echo "❌ $SCOPE not in pqcota-ctl — pqcota/demo/scripts/demo.sh writes it"; exit 1; }
 docker exec -e PQCATON_SCOPE_ASSETS=$SCOPE pqcota-ctl bash -lc 'pqcaton-report /work/results /work/declaration.json /work/topology-governance.dot' \
-  | tee "$DEMO_DIR/expected-output/report.txt"
+  | tee "$SAMPLE_DIR/report.txt"
 
 echo "▶ 4/8 judgment → judged plan, IN_REVIEW (pqcaton-decide)…"
 # **대조에서 멈추지 않는다.** 여기까지만 돌리면 「관측을 판정으로 잇는다」가 데모에서
@@ -151,11 +160,11 @@ print("   %d observed asset(s) go into the plan (CONFIRMED or UNDECLARED) · ses
 PY'
 docker exec pqcota-ctl bash -lc \
   'pqcaton-decide close /work/session.json -org demo-corp -judgments /work/judgments.jsonl > /work/plan.json'
-docker cp pqcota-ctl:/work/plan.json "$DEMO_DIR/expected-output/plan.json" 2>/dev/null || true
+docker cp pqcota-ctl:/work/plan.json "$SAMPLE_DIR/plan.json" 2>/dev/null || true
 # **공백을 고른다.** protojson 은 콜론 뒤 공백을 일부러 흔들어, 같은 계획을 두 번 내도
 # 파일이 달라진다. 그대로 두면 데모를 돌릴 때마다 기대 파일이 더러워져 **진짜 달라진
 # 날을 알아볼 수 없다.**
-python3 - "$DEMO_DIR/expected-output/plan.json" <<'PYFMT' || true
+python3 - "$SAMPLE_DIR/plan.json" <<'PYFMT' || true
 import json, sys
 p = sys.argv[1]
 json.dump(json.load(open(p)), open(p, "w"), indent=2, ensure_ascii=False, sort_keys=False)
