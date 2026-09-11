@@ -164,14 +164,14 @@ NODES=$(docker exec pqcota-ctl bash -lc 'python3 -c "import json; print(\" \".jo
 echo "   target nodes: $NODES"
 docker exec pqcota-ctl bash -lc "$ANS-playbook $INV provision-gov.yml" | grep -E "ok=|changed=|failed=" | sed 's/^/   /'
 for n in $NODES; do
-  docker exec "$n" sh -lc 'ls -l /etc/pqcota/*.cnf /etc/pqcota/*.properties 2>/dev/null' | sed "s/^/   $n │ /"
+  docker exec "$n" sh -lc 'ls -l /etc/pqcota/ 2>/dev/null' | sed "s/^/   $n │ /"
 done
 
 echo "▶ 8/8 roll back (--rollback) — remove what this plan staged…"
 docker exec pqcota-ctl bash -lc 'pqcota-provision --level l2 --rollback /work/plan.approved.json > /work/ansible/provision-gov-rollback.yml' 2>/dev/null || true
 docker exec pqcota-ctl bash -lc "$ANS-playbook $INV provision-gov-rollback.yml" | grep -E "ok=|changed=|failed=" | sed 's/^/   /'
 for n in $NODES; do
-  docker exec "$n" sh -lc 'ls /etc/pqcota/ 2>&1 | grep -c "cnf\|properties" || true' | sed "s/^/   $n │ files left: /"
+  docker exec "$n" sh -lc 'ls /etc/pqcota/ 2>/dev/null | wc -l' | sed "s/^/   $n │ files left: /"
 done
 
 echo
