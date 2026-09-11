@@ -7,7 +7,7 @@
 |---|---|
 | [report.txt](report.txt) | 콘솔 출력입니다. ① 관측(무엇을 보았고 **무엇을 못 봤나**) → ② 자산 3-상태 + 리뷰 큐 → ③ 엣지 대조 |
 | [topology-governance.svg](topology-governance.svg) | 거버넌스 토폴로지 (색=등급, 선형=상태: 실선 CONFIRMED / 굵은선 UNDECLARED / 점선 UNOBSERVED) |
-| [plan.json](plan.json) | **확정 계획**: 판정을 거쳐 나온 것. `pqcota-provision` 의 입력입니다 |
+| [plan.json](plan.json) | **판정된 계획**: 판정을 거쳐 나온 것이고 상태는 `IN_REVIEW` 입니다. 실행 승인을 받는 `pqcota-approve` 의 입력이고, 그 승인이 `FINALIZED` 로 올린 계획이 `pqcota-provision` 으로 갑니다 |
 
 **대조에서 끝나지 않습니다.** 데모는 판정을 거쳐 `plan.json` 까지 만듭니다. 그 사이가 끊겨
 있으면 여기서 드러나야 합니다. v0.9.0 전에는 데모가 대조에서 멈춰, **관측한 노드를 판정할

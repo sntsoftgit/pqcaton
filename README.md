@@ -44,7 +44,8 @@ pqcota는 **관측한 사실만 알려 줍니다.** 🔴 표시는 「취약하�
 pqcota                          pqcaton
   관측 ─────► contracts/ ─────►  선언과 대조 (3-상태)
   정규화                          confidence 스코어링
-  전환물 생성 ◄───── 확정 계획 ◄── 리뷰 큐 → 확정
+  실행 승인 ◄───── 판정된 계획 ◄── 리뷰 큐 → 판정
+    └─► 전환물 생성
 ```
 
 두 리포는 **계약으로만 이어집니다.** pqcota는 이 리포 없이도 그 자체로 완결되고, 실제로 그렇게
@@ -62,7 +63,7 @@ pqcota                          pqcaton
 | [`pkg/inventory/ui`](pkg/inventory/ui) | **화면**: 그리는 것과 폼을 읽는 것만 합니다. 어디서 읽고 누가 접속하는지는 부르는 쪽이 정합니다 |
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스**: 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
 | [`pkg/inventory/localscan`](pkg/inventory/localscan) | **이 기계를 스캔하는 지름길**: 관측 없이 전체 절차를 한 번 돌려 보는 자리입니다. 못 본 것은 「없다」로 보고하지 않습니다 |
-| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 확정**: 확정 계획을 계약 형식으로 만듭니다 |
+| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 닫습니다**: 판정된 계획을 계약 형식으로 만들되 상태는 `IN_REVIEW` 이고 승인 칸은 비웁니다. 실행 승인은 이 리포의 일이 아닙니다 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포**: 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
 | [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 다섯**: 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회. 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |

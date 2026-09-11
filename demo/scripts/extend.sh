@@ -39,6 +39,9 @@ docker exec pqcota-ctl bash -lc 'ls /work/results/*.json >/dev/null 2>&1' || { e
 
 echo "▶ 1/8  build (pqcaton-report · pqcaton-decide)…"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+# 픽스처가 고른 별칭을 bash 로 넘기는 자리. TMP 와 함께 지워진다.
+export PQCATON_E2E_ALIAS_FILE="$TMP/e2e-alias"
+ALIAS_FILE="$PQCATON_E2E_ALIAS_FILE"
 if [ -n "${PQCATON_BIN_DIR:-}" ]; then
   echo "   using prebuilt binaries from $PQCATON_BIN_DIR"
   cp "$PQCATON_BIN_DIR/pqcaton-report" "$PQCATON_BIN_DIR/pqcaton-decide" "$TMP/"
@@ -87,7 +90,7 @@ if os.environ.get("PQCATON_E2E_TRACE"):
             for k in ("src", "dst"):
                 if e.get(k) == orig:
                     e[k] = alias
-        open("/tmp/e2e-alias", "w").write("%s %s\n" % (alias, orig))
+        open(os.environ["PQCATON_E2E_ALIAS_FILE"], "w").write("%s %s\n" % (alias, orig))
         print("   [e2e fixture] node %s is declared as %s and linked by observed_as" % (orig, alias))
 known   = {n["name"] for n in decl["nodes"]}  # 픽스처가 이름을 바꿨으면 바뀐 이름으로 본다
 missing = [n for n in decl.get("scope", []) if n not in known]
@@ -103,10 +106,12 @@ docker cp "$DECL" pqcota-ctl:/work/declaration.json
 
 # 별칭으로 적용하려면 인벤토리가 그 이름을 알아야 한다. 원래 호스트의 줄을 이름만 바꿔 더한다 -
 # 현실에서 CMDB 이름을 인벤토리가 실제 주소로 잇는 것과 같은 일이다.
-ALIAS_FILE=/tmp/e2e-alias
-if [ -f "$ALIAS_FILE" ]; then
+#
+# **전달 파일은 이 실행의 임시 디렉터리에 둔다.** 고정 경로에 두면 실패한 픽스처 실행이 남긴
+# 파일을 다음 기본 실행이 읽어, 픽스처를 켜지도 않았는데 별칭이 섞인다. 그리고 **픽스처를 켠
+# 실행에서만 읽는다** - 조건 둘을 다 걸어야 한쪽이 틀려도 기본 실행이 오염되지 않는다.
+if [ -n "${PQCATON_E2E_TRACE:-}" ] && [ -f "$ALIAS_FILE" ]; then
   read -r E2E_ALIAS E2E_ORIG < "$ALIAS_FILE"
-  rm -f "$ALIAS_FILE"
   docker exec pqcota-ctl bash -lc "grep -q '^$E2E_ALIAS ' /work/ansible/targets.ini || sed -n 's/^$E2E_ORIG /$E2E_ALIAS /p' /work/ansible/targets.ini >> /work/ansible/targets.ini"
   docker exec pqcota-ctl bash -lc "grep -c '^$E2E_ALIAS ' /work/ansible/targets.ini" >/dev/null \
     || { echo "❌ could not add the alias $E2E_ALIAS to the inventory"; exit 1; }
