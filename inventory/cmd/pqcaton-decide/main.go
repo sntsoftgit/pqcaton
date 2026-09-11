@@ -309,7 +309,7 @@ func delta(judgmentPath, declPath, node, orgName, resultsDir string) error {
 	}
 	basis := make(map[string]string, len(sf.Items))
 	for _, it := range sf.Items {
-		basis[it.ID] = review.BasisOf(it)
+		basis[it.ID] = review.BasisOf(it, sf.RulesetVersion)
 	}
 
 	out := decision.DeltaReview(prior, basis)

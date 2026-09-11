@@ -90,7 +90,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 		sf.Items = append(sf.Items, Item{
 			ID: Key(it.Rec.Key), Policy: pol,
 			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
-			FindingID: it.Rec.FindingID,
+			FindingID: it.Rec.FindingID, Fingerprint: it.Rec.Fingerprint,
 			// 위임 수준은 **실제 값으로 저장한다.** 화면에만 기본으로 보여 주고 비워 두면
 			// 검토자가 고르지 않은 값이 나중에 기본값으로 채워지고, 그 결과에 승인 서명이
 			// 붙는다. 저장해 두면 검토자에게 보이고 승인 대상에 들어간다. 바꾸는 것은 화면에서 한다.
@@ -154,21 +154,32 @@ func Carry(prev, next Session) Session {
 		}
 	}
 	next.Reviewer = prev.Reviewer
-	// **규칙 판이 바뀌면 서명은 남지 않는다.** 서명은 「이 근거를 이 규칙으로 보고 승인했다」는
-	// 뜻이다. 항목과 상태가 그대로여도 대조·강화 규칙이 달라졌으면 승인자가 본 것과 다른 근거가
-	// 된다. 전에는 ID와 상태만 비교해서, 규칙이 바뀌어도 서명이 그대로 살아남았다.
-	if prev.RulesetVersion == next.RulesetVersion && sameItems(prev.Items, next.Items) {
+	// **근거가 달라지면 서명은 남지 않는다.** 서명은 「이 근거를 이 규칙으로 보고 승인했다」는
+	// 뜻이다. 사람이 적은 것은 참고값으로 옮기되(위), 승인만은 옮기지 않는다.
+	//
+	// 무엇이 근거인지는 [BasisOf] 하나가 말한다. 전에는 여기서 ID와 상태만 비교해서, 같은
+	// 규칙 아래 관측이 달라진 것을 통째로 놓쳤다 — 상류의 `finding_id` 는 자산 동일성이라
+	// 버전이 오르고 강화 판정이 달라져도 그대로이기 때문이다. 델타 리뷰는 걸리는데 승인
+	// 서명은 살아남는 상태가 그 자리에서 났다.
+	if sameBasis(prev, next) {
 		next.Signature = prev.Signature
 	}
 	return next
 }
 
-func sameItems(a, b []Item) bool {
-	if len(a) != len(b) {
+// sameBasis — 두 세션이 같은 근거 위에 서 있나.
+//
+// 규칙 판을 따로 한 번 더 보는 것은 **큐가 비었을 때** 때문이다. 항목이 하나도 없으면
+// 항목별 비교는 전부 참이라, 규칙이 바뀌어도 서명이 살아남는다.
+func sameBasis(prev, next Session) bool {
+	if prev.RulesetVersion != next.RulesetVersion || len(prev.Items) != len(next.Items) {
 		return false
 	}
-	for i := range a {
-		if a[i].ID != b[i].ID || a[i].State != b[i].State {
+	for i := range prev.Items {
+		if prev.Items[i].ID != next.Items[i].ID {
+			return false
+		}
+		if BasisOf(prev.Items[i], prev.RulesetVersion) != BasisOf(next.Items[i], next.RulesetVersion) {
 			return false
 		}
 	}

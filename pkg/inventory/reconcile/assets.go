@@ -1,12 +1,15 @@
 package reconcile
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 
 	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
+	"google.golang.org/protobuf/proto"
 )
 
 // observedFromSnapshot — 디스커버리 스냅샷(관측 레인)의 Finding에서 Observed(자산+증거강도)를
@@ -90,9 +93,10 @@ func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 			continue
 		}
 		out = append(out, Observed{
-			Key:       AssetKey{NodeID: node, Runtime: rt, Component: comp},
-			Evidence:  evidenceStr(f.GetEvidenceStrength()),
-			FindingID: f.GetId(),
+			Key:         AssetKey{NodeID: node, Runtime: rt, Component: comp},
+			Evidence:    evidenceStr(f.GetEvidenceStrength()),
+			FindingID:   f.GetId(),
+			Fingerprint: Fingerprint(f),
 		})
 	}
 	return out
@@ -118,4 +122,33 @@ func normalizeComponent(name string) string {
 		return name[:i]
 	}
 	return name
+}
+
+// Fingerprint — 이 관측의 **내용** 지문. 동일성(`Finding.Id`)과 다른 것을 잰다.
+//
+// 상류의 id 는 `sha256(노드|이름|런타임|fork)` 라 **자산이 같으면 같다**. 그래서 버전이
+// 오르고, 검출 방법이 바뀌고, 강화가 낸 `pqc_readiness`·`remediation_class` 가 달라져도
+// 값이 그대로다. 판정의 근거가 달라졌는데 id 만 보면 그 사실을 알 수 없다.
+//
+// **재수집마다 흔들리는 것은 뺀다.** `derived_from_snapshot_id` 는 돌릴 때마다 달라지므로
+// 넣으면 관측이 그대로여도 매번 근거가 바뀐 것처럼 보이고, 그런 델타 큐는 아무도 읽지 않는다.
+// `ruleset_version` 도 뺀다 — 규칙 판은 세션이 따로 들고 가므로 여기 넣으면 두 번 센다.
+// `id` 는 동일성이고, 동일성은 근거가 아니라 열쇠라 뺀다.
+func Fingerprint(f *discoveryv1.Finding) string {
+	if f == nil {
+		return ""
+	}
+	c, ok := proto.Clone(f).(*discoveryv1.Finding)
+	if !ok {
+		return ""
+	}
+	c.Id, c.DerivedFromSnapshotId, c.RulesetVersion = "", "", ""
+	// 정준 직렬화 — 맵이 없어 Deterministic 이 순서를 고정한다. 이 값이 흔들리면
+	// 같은 관측에 매번 델타가 걸린다.
+	raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(c)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }

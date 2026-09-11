@@ -25,6 +25,8 @@
 | [IC-R2](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 관측 only(선언 안 됨) | **UNDECLARED**, NeedsReview |
 | [IC-R3](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 선언 only(관측 안 됨) | UNOBSERVED, NeedsReview(기계 확정 불가) |
 | [IC-R4](../pkg/inventory/reconcile/edge_test.go) ✅ | UNOBSERVED + 완전성 맵에 해당 계층 **갭** | "재수집 후보"로 표시(갭이면 미관측일 뿐). 갭 아니면 실존/stale 사람 판정(§3.3) |
+| [IC-R5](../pkg/inventory/reconcile/fingerprint_test.go) ✅ | 같은 관측을 다시 읽기 · 스냅샷 id 와 규칙 판만 다른 관측 · 관측 없음 | 지문이 같다. **재수집만으로는 흔들리지 않는다.** 흔들리면 안 바뀐 관측이 매번 델타 큐에 올라오고, 그런 큐는 읽히지 않습니다. 관측이 없으면 지문도 없다 |
+| **[IC-R6](../pkg/inventory/reconcile/fingerprint_test.go) ✅** | **`finding_id` 는 같은데 버전·검출 방법·증거 강도·강화 판정·알고리즘·로드한 앱이 달라진 관측** | **지문이 달라진다.** 상류의 id 는 `sha256(노드\|이름\|런타임\|fork)` 라 자산이 같으면 같아서, id 만 보면 이 변화가 통째로 「그대로」로 읽힙니다. 대조가 그 지문을 세션까지 들고 간다 |
 
 ### O. 대조의 조직 축 (설계 §1.1) ✅
 | TC | Given → When | Then |
@@ -112,6 +114,9 @@
 | [IC-D6](../pkg/inventory/decision/file_test.go) ✅ | 같은 대상을 다시 판정 | **파일 원장도 쌓기만 한다**. 덮어쓰면 「언제 무엇으로 바뀌었나」가 사라진다(§0.2) |
 | [IC-D7](../pkg/inventory/decision/file_test.go) ✅ | 다른 조직의 판정이 섞인 파일 | 읽지 않는다. 파일은 누구나 이어 쓸 수 있어, 거르지 않으면 격리가 파일 권한에만 기댄다 |
 | [IC-D8](../pkg/inventory/decision/file_test.go) ✅ | 조직 없이 열기 · 아직 아무것도 없는 파일 | 조직 없이는 열리지 않는다(Mem·Pg와 같은 규칙). 빈 파일은 오류가 아니다 |
+| [IC-D9](../pkg/inventory/decl/decl_test.go) ✅ | 같은 관측을 두 번 · 규칙 판·대조 상태·신뢰도·정책·관측 지문·재수집 후보 여부를 하나씩 바꾸기 | 같으면 근거 해시가 같고, **여섯 가운데 하나라도 움직이면 달라진다.** 근거를 세는 자리는 `BasisOf` 하나다 |
+| **[IC-D10](../pkg/inventory/decl/decl_test.go) ✅** | **규칙 판은 그대로인데 관측 지문(또는 신뢰도)만 달라진 세션을 다시 열기** | **승인 서명이 지워진다.** 전에는 id 와 상태만 비교해서, 델타 리뷰에는 올라오는 변화가 서명은 그대로 지나갔습니다. 승인자가 본 적 없는 근거에 이름이 남는 자리입니다 |
+| [IC-D11](../pkg/inventory/decl/decl_test.go) ✅ | 항목이 하나도 없는 세션에서 규칙 판만 바뀌기 | 서명이 지워진다. 항목별 비교만 하면 빈 큐에서는 전부 참이라 규칙 변경이 지나간다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, §8) ✅
 | TC | Given → When | Then |

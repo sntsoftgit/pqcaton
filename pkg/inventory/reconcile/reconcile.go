@@ -41,13 +41,19 @@ type Observed struct {
 	// `finding_id`). 여기서 버리면 계획이 「무엇을 보고 정했나」를 대지 못해, 판정 원장에는
 	// 근거가 있는데 실행 계획에는 없는 상태가 된다. UNOBSERVED 는 관측이 없으니 빈다.
 	FindingID string
+	// Fingerprint — 그 관측의 **내용** 지문([Fingerprint]). id 는 자산이 같으면 같으므로,
+	// 버전이 오르거나 강화 판정이 달라진 것을 id 로는 알 수 없다. 판정의 근거가 바뀌었는지는
+	// 이 값으로 가른다.
+	Fingerprint string
 }
 
 // Reconciled — 한 대상의 대조 결과.
 type Reconciled struct {
 	Key AssetKey
 	// FindingID — 근거 관측(있을 때만). Observed 에서 그대로 옮긴다.
-	FindingID       string
+	FindingID string
+	// Fingerprint — 근거 관측의 내용 지문. Observed 에서 그대로 옮긴다.
+	Fingerprint     string
 	State           State
 	Confidence      float64 // §3.5 (상태 + 관측 evidence 기반. 실측 캘리브레이션은 §11)
 	NeedsReview     bool    // UNDECLARED·UNOBSERVED은 사람 판정 필수(§3.5 MANUAL)
@@ -77,9 +83,9 @@ func reconcileAssets(declared []AssetKey, observed []Observed, gapLayers []strin
 		}
 		seen[o.Key] = true
 		if dset[o.Key] {
-			out = append(out, Reconciled{Key: o.Key, FindingID: o.FindingID, State: Confirmed, Confidence: confidence(Confirmed, o.Evidence)})
+			out = append(out, Reconciled{Key: o.Key, FindingID: o.FindingID, Fingerprint: o.Fingerprint, State: Confirmed, Confidence: confidence(Confirmed, o.Evidence)})
 		} else {
-			out = append(out, Reconciled{Key: o.Key, FindingID: o.FindingID, State: Undeclared, Confidence: confidence(Undeclared, o.Evidence), NeedsReview: true})
+			out = append(out, Reconciled{Key: o.Key, FindingID: o.FindingID, Fingerprint: o.Fingerprint, State: Undeclared, Confidence: confidence(Undeclared, o.Evidence), NeedsReview: true})
 		}
 	}
 	// 선언만 있고 관측 안 됨 → UNOBSERVED. 커버리지 갭이면 재수집 후보.

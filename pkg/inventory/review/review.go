@@ -53,6 +53,10 @@ type Item struct {
 	// FindingID — 이 항목을 낸 관측의 id. **조치의 근거로 상류까지 간다**(계약의 `finding_id`).
 	// 사람이 채우는 자리가 아니라 대조가 들고 온 사실이다. UNOBSERVED 는 관측이 없어 빈다.
 	FindingID string `json:"finding_id,omitempty"`
+	// Fingerprint — 근거 관측의 **내용** 지문(`reconcile.Fingerprint`). 사람이 채우는 자리가
+	// 아니라 대조가 들고 온 사실이다. `finding_id` 는 자산이 같으면 같으므로, 버전이 오르거나
+	// 강화 판정이 달라진 것을 id 로는 알 수 없다 — 그 자리를 이 값이 맡는다.
+	Fingerprint string `json:"evidence_fingerprint,omitempty"`
 	// Policy — 같은 정책의 항목은 한 번에 판정한다(§3.4).
 	Policy string  `json:"policy"`
 	State  string  `json:"state"`
@@ -316,7 +320,7 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 		j := &decision.Judgment{
 			ID: fmt.Sprintf("%s@%d", it.ID, now), Subject: it.ID, Conclusion: c,
 			Reviewer: sf.Reviewer, Signature: sf.Signature,
-			BasisHash: BasisOf(it), Confidence: it.Conf, DecidedAt: now,
+			BasisHash: BasisOf(it, sf.RulesetVersion), Confidence: it.Conf, DecidedAt: now,
 		}
 		if err := store.Save(j); err != nil {
 			return n, err
@@ -326,15 +330,31 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 	return n, nil
 }
 
-// BasisOf — 이 판정이 무엇을 보고 내려졌나. 대조 상태와 신뢰도가 근거다.
+// BasisOf — 이 판정이 무엇을 보고 내려졌나. **근거를 세는 자리는 여기 하나다.**
 //
-// **관측이 바뀌면 이 값이 바뀐다** — 그때 델타 리뷰가 걸린다. 반대로 관측이 그대로면
-// 몇 번을 다시 돌려도 걸리지 않는다(§3.6, IC-D2/D3).
-func BasisOf(it Item) string {
+// 델타 리뷰(무엇을 다시 봐야 하나)와 서명 무효화(승인이 아직 유효한가)는 같은 물음의 두
+// 얼굴이다. 전에는 둘이 따로 셌다 — 원장은 상태·신뢰도·정책을 보고, 서명은 id 와 상태만
+// 봤다. 그래서 신뢰도가 움직이면 델타는 걸리는데 승인 서명은 그대로 살아남았다.
+//
+// 근거에 넣는 것:
+//
+//   - **규칙 판**. 같은 관측이어도 규칙이 달라지면 다른 판정이 나온다. 인자로 받는 것은
+//     세션이 **열릴 때** 박은 값을 써야 하기 때문이다(지금 상수가 아니다).
+//   - **대조 상태와 신뢰도, 정책**. 판정을 요구하는 이유 자체다.
+//   - **관측 내용 지문**. `finding_id` 는 자산 동일성이라 버전이 오르고 검출 방법이 바뀌고
+//     강화 판정이 달라져도 그대로다. 지문이 없으면 그 변화를 통째로 놓친다.
+//   - **재수집 후보 여부**. 「없다」와 「못 봤다」가 갈리는 자리라 결론이 달라진다.
+//
+// **관측이 그대로면 몇 번을 다시 돌려도 걸리지 않는다**(§3.6, IC-D2/D3). 그래서 지문은
+// 재수집마다 흔들리는 스냅샷 id 를 빼고 만든다(`reconcile.Fingerprint`).
+func BasisOf(it Item, rulesetVersion string) string {
 	return decision.HashBasis(
+		"ruleset="+rulesetVersion,
 		"state="+it.State,
 		fmt.Sprintf("conf=%.2f", it.Conf),
 		"policy="+it.Policy,
+		"evidence="+it.Fingerprint,
+		fmt.Sprintf("rescan=%t", it.Rescan),
 	)
 }
 
