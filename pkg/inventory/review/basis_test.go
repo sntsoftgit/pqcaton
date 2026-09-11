@@ -21,7 +21,7 @@ func base() review.Item {
 	}
 }
 
-// IC-D9 — 관측이 그대로면 몇 번을 다시 돌려도 근거가 흔들리지 않는다(IC-D3와 같은 규칙).
+// IC-D19 — 관측이 그대로면 몇 번을 다시 돌려도 근거가 흔들리지 않는다(IC-D3와 같은 규칙).
 // 흔들리면 델타 큐가 매번 가득 차고, 그런 큐는 아무도 읽지 않는다.
 func TestSameObservationKeepsTheSameBasis(t *testing.T) {
 	if review.BasisOf(base(), rules) != review.BasisOf(base(), rules) {
@@ -29,7 +29,7 @@ func TestSameObservationKeepsTheSameBasis(t *testing.T) {
 	}
 }
 
-// IC-D9 — 근거를 이루는 것이 하나라도 움직이면 해시가 움직여야 한다.
+// IC-D19 — 근거를 이루는 것이 하나라도 움직이면 해시가 움직여야 한다.
 func TestEveryPartOfTheBasisMovesTheHash(t *testing.T) {
 	was := review.BasisOf(base(), rules)
 	for _, tc := range []struct {
@@ -50,7 +50,7 @@ func TestEveryPartOfTheBasisMovesTheHash(t *testing.T) {
 	}
 }
 
-// IC-D10 — ★ 같은 규칙 아래 관측 근거만 바뀌는 경우.
+// IC-D20 — ★ 같은 규칙 아래 관측 근거만 바뀌는 경우.
 //
 // 상류의 `finding_id` 는 `sha256(노드|이름|런타임|fork)` 라 **자산이 같으면 같다.** 버전이
 // 오르고 검출 방법이 바뀌고 강화가 낸 판정이 달라져도 id 는 그대로다. id 와 상태만 보던
@@ -74,7 +74,7 @@ func TestChangedEvidenceDropsTheSignatureEvenUnderTheSameRules(t *testing.T) {
 	}
 }
 
-// IC-D10 — 신뢰도가 움직이면 델타도 걸리고 서명도 지워진다. 전에는 앞만 걸렸다.
+// IC-D20 — 신뢰도가 움직이면 델타도 걸리고 서명도 지워진다. 전에는 앞만 걸렸다.
 func TestConfidenceMovesBothDeltaAndSignature(t *testing.T) {
 	prev := review.Session{RulesetVersion: rules, Signature: "sig", Items: []review.Item{base()}}
 	shaky := base()
@@ -89,7 +89,7 @@ func TestConfidenceMovesBothDeltaAndSignature(t *testing.T) {
 	}
 }
 
-// IC-D11 — 큐가 비면 항목별 비교가 전부 참이다. 규칙 판을 따로 한 번 더 보는 이유다.
+// IC-D21 — 큐가 비면 항목별 비교가 전부 참이다. 규칙 판을 따로 한 번 더 보는 이유다.
 func TestEmptyQueueStillLosesTheSignatureWhenTheRulesMove(t *testing.T) {
 	prev := review.Session{RulesetVersion: rules, Signature: "sig"}
 	got := review.Carry(prev, review.Session{RulesetVersion: "pqcota-enrich/v2+pqcaton-plan/v1",

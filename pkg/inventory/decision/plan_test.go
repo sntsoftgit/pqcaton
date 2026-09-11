@@ -17,7 +17,7 @@ func finalizedSession(t *testing.T) *Session {
 	return s
 }
 
-// IC-P1·P2: finalized 세션 → 확정 계획. deploy_automation_level은 자산별.
+// IC-P1·P2: 판정이 끝난 세션 → 계획. deploy_automation_level은 자산별.
 func TestBuildPlan(t *testing.T) {
 	s := finalizedSession(t)
 	items := []PlanItem{
@@ -28,36 +28,36 @@ func TestBuildPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.ApprovalSig == "" {
-		t.Error("확정 계획에 승인 서명 없음")
+	if p.ReviewerSig == "" {
+		t.Error("계획에 판정자 표시가 없다")
 	}
 	if p.Items[0].DeployAutomationLevel != "L2" || p.Items[1].DeployAutomationLevel != "L3" {
 		t.Error("deploy_automation_level 자산별 판정 반영 안 됨(IC-P2)")
 	}
 }
 
-// IC-P4: finalized 아닌 세션 → 확정 계획 생성 거부.
+// IC-P4: 판정이 끝나지 않은 세션 → 계획 생성 거부.
 func TestBuildPlan_notFinalized(t *testing.T) {
 	s := NewSession("r", []Item{{ID: "a", Mandatory: true}})
 	_ = s.StartReview() // in-review (not finalized)
-	if _, err := BuildPlan(s, nil); !errors.Is(err, ErrNotFinalized) {
-		t.Errorf("err = %v, want ErrNotFinalized", err)
+	if _, err := BuildPlan(s, nil); !errors.Is(err, ErrNotJudged) {
+		t.Errorf("err = %v, want ErrNotJudged", err)
 	}
 }
 
-// IC-P4·P5: Deploy 관문 — finalized 계획만 통과한다. 확정된 계획이 프로비저닝의 유일한
-// 실행 근거다(§3.7).
-func TestAcceptForDeploy(t *testing.T) {
+// IC-P4·P5: 넘김 관문 — 판정자 표시가 있는 계획만 계약으로 넘긴다. 실행 근거가 되는 것은
+// 상류의 승인이 FINALIZED 로 올린 뒤다(§3.7). 이 관문은 실행을 허용하지 않는다.
+func TestReadyForApproval(t *testing.T) {
 	s := finalizedSession(t)
 	p, _ := BuildPlan(s, []PlanItem{{NodeID: "n"}})
-	if err := AcceptForDeploy(p); err != nil {
-		t.Errorf("finalized 계획인데 거부됨: %v", err)
+	if err := ReadyForApproval(p); err != nil {
+		t.Errorf("판정이 끝난 계획인데 거부됐다: %v", err)
 	}
-	// 서명 없는(가짜) 계획 → 거부
-	if err := AcceptForDeploy(&FinalizedPlan{Scope: "r"}); !errors.Is(err, ErrNotFinalized) {
-		t.Errorf("미finalized 계획 통과됨: %v", err)
+	// 판정자 표시 없는(가짜) 계획 → 거부
+	if err := ReadyForApproval(&JudgedPlan{Scope: "r"}); !errors.Is(err, ErrNotJudged) {
+		t.Errorf("판정자 표시 없는 계획이 통과됐다: %v", err)
 	}
-	if err := AcceptForDeploy(nil); !errors.Is(err, ErrNotFinalized) {
+	if err := ReadyForApproval(nil); !errors.Is(err, ErrNotJudged) {
 		t.Error("nil 계획 통과됨")
 	}
 }

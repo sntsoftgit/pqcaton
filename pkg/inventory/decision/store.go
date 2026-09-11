@@ -1,6 +1,7 @@
 package decision
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
@@ -8,10 +9,18 @@ import (
 
 // JudgmentStore — 판정 영속화(§3.6, §7). append-only — Save는 언제나 새 레코드를 쌓는다(§0.2).
 // All()은 판정 순서(오래된→최신)로 돌려준다. 최신 상태는 LatestPerSubject로 파생.
+// ErrNoSessionID — 빈 세션 id 로 원장을 찾으려 했다. 옛 행이 빈 값을 갖고 있어, 그것으로 찾으면
+// 세션이 아니라 「세션을 모르는 판정 전부」가 나온다. 세션이 아닌 것을 세션이라고 돌려주지 않는다.
+var ErrNoSessionID = errors.New("cannot look up judgments by an empty session id")
+
 type JudgmentStore interface {
 	Save(j *Judgment) error
 	Get(id string) (*Judgment, error)
 	BySubject(subject string) ([]*Judgment, error)
+	// BySessionID — 한 리뷰 세션에서 난 판정 전부. 계획 id 가 담은 세션 id 로 원장을 되짚는 길이다.
+	// 빈 id 는 아무것도 가리키지 않는다 — 옛 행이 빈 값을 갖고 있어, 빈 값으로 찾으면 세션이
+	// 아니라 「세션을 모르는 판정 전부」가 나온다.
+	BySessionID(sessionID string) ([]*Judgment, error)
 	All() ([]*Judgment, error)
 }
 
@@ -61,6 +70,22 @@ func (m *MemJudgmentStore) BySubject(subject string) ([]*Judgment, error) {
 	var out []*Judgment
 	for _, j := range m.log {
 		if j.Subject == subject {
+			cp := *j
+			out = append(out, &cp)
+		}
+	}
+	return out, nil
+}
+
+func (m *MemJudgmentStore) BySessionID(sessionID string) ([]*Judgment, error) {
+	if sessionID == "" {
+		return nil, ErrNoSessionID
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []*Judgment
+	for _, j := range m.log {
+		if j.SessionID == sessionID {
 			cp := *j
 			out = append(out, &cp)
 		}

@@ -26,8 +26,13 @@ CREATE TABLE IF NOT EXISTS pqcota_judgments (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE pqcota_judgments ADD COLUMN IF NOT EXISTS org TEXT NOT NULL DEFAULT '';
+-- session_id ties a judgment to the review session it was made in. The plan id carries the same
+-- value, so this is how a plan is traced back to its judgments. Rows from before the column
+-- existed keep '' — the tool cannot know which session they came from, and does not guess.
+ALTER TABLE pqcota_judgments ADD COLUMN IF NOT EXISTS session_id TEXT NOT NULL DEFAULT '';
 -- org leads the index — every query is filtered by organization first.
 CREATE INDEX IF NOT EXISTS idx_pqcota_judg_org_subject ON pqcota_judgments(org, subject, seq);
+CREATE INDEX IF NOT EXISTS idx_pqcota_judg_org_session ON pqcota_judgments(org, session_id, seq);
 `
 
 // rlsSQL — 행 수준 보안. **핸들 격리가 뚫려도 DB가 막는 한 겹**이다.
@@ -180,26 +185,34 @@ func (p *PgJudgmentStore) Org() org.ID { return p.org }
 
 func (p *PgJudgmentStore) Save(j *Judgment) error {
 	_, err := p.pool.Exec(context.Background(),
-		`INSERT INTO pqcota_judgments(org,id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at)
-		 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-		p.org, j.ID, j.Subject, j.Conclusion, j.Reviewer, j.Signature, j.BasisHash, j.Confidence, j.DecidedAt)
+		`INSERT INTO pqcota_judgments(org,id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id)
+		 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+		p.org, j.ID, j.Subject, j.Conclusion, j.Reviewer, j.Signature, j.BasisHash, j.Confidence, j.DecidedAt, j.SessionID)
 	return err
 }
 
 func (p *PgJudgmentStore) Get(id string) (*Judgment, error) {
 	row := p.pool.QueryRow(context.Background(),
-		`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at
+		`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id
 		 FROM pqcota_judgments WHERE org=$1 AND id=$2 ORDER BY seq DESC LIMIT 1`, p.org, id)
 	return scanJudgment(row)
 }
 
 func (p *PgJudgmentStore) BySubject(subject string) ([]*Judgment, error) {
-	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at
+	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id
 		FROM pqcota_judgments WHERE org=$1 AND subject=$2 ORDER BY seq ASC`, p.org, subject)
 }
 
+func (p *PgJudgmentStore) BySessionID(sessionID string) ([]*Judgment, error) {
+	if sessionID == "" {
+		return nil, ErrNoSessionID
+	}
+	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id
+		FROM pqcota_judgments WHERE org=$1 AND session_id=$2 ORDER BY seq ASC`, p.org, sessionID)
+}
+
 func (p *PgJudgmentStore) All() ([]*Judgment, error) {
-	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at
+	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id
 		FROM pqcota_judgments WHERE org=$1 ORDER BY seq ASC`, p.org)
 }
 
@@ -225,7 +238,7 @@ type scannable interface{ Scan(dest ...any) error }
 func scanJudgment(r scannable) (*Judgment, error) {
 	var j Judgment
 	if err := r.Scan(&j.ID, &j.Subject, &j.Conclusion, &j.Reviewer,
-		&j.Signature, &j.BasisHash, &j.Confidence, &j.DecidedAt); err != nil {
+		&j.Signature, &j.BasisHash, &j.Confidence, &j.DecidedAt, &j.SessionID); err != nil {
 		return nil, err
 	}
 	return &j, nil

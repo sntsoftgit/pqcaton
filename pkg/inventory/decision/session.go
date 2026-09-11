@@ -7,6 +7,12 @@ package decision
 
 import "errors"
 
+// Status — 이 리포 안의 판정 세션 상태.
+//
+// **이 리포의 `finalized` 는 계약의 `FINALIZED` 가 아니다.** 여기서 finalized 는 판정 세션이
+// 닫혔다는 뜻이고, 계약의 FINALIZED 는 실행 승인까지 끝났다는 뜻이다. 판정과 실행 승인은 다른
+// 단계라, 이 리포는 판정이 끝난 계획을 계약의 IN_REVIEW 로 내보내고 승인(상류의
+// pqcota-approve)이 FINALIZED 로 올린다. 두 축이 같은 낱말을 쓰지만 가리키는 것이 다르다.
 type Status string
 
 const (
@@ -21,7 +27,7 @@ var (
 	// **확정이 막힐 때 사람이 읽는 문장이다**(영어). 화면은 이것을 그대로 내지 않고,
 	// [NotFinalized] 가 들고 있는 값을 보는 사람의 말로 다시 그린다.
 	ErrMandatoryPending = errors.New("cannot finalize: mandatory items are still unjudged — every mandatory item must be judged")
-	ErrNoSignature      = errors.New("cannot finalize: there is no approval signature")
+	ErrNoSignature      = errors.New("cannot finalize: there is no reviewer's signature")
 )
 
 // Item — 리뷰 대상(자산/엣지). 같은 Policy는 정책 단위로 일괄 판정된다(§3.4).

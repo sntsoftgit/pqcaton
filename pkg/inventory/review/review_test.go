@@ -21,13 +21,13 @@ func TestContractKeepsURINodeAndRuntime(t *testing.T) {
 		{ID: "host://local/jca/provider", Node: "host://local", Runtime: "jca", Conclusion: "교체한다",
 			Kind: "REMEDIATION_KIND_PROVIDER_INJECT", TargetAlgorithm: "ML-KEM (FIPS 203)"},
 	}
-	p := &decision.FinalizedPlan{
+	p := &decision.JudgedPlan{
 		Scope:       "host://local",
-		ApprovalSig: "sig",
+		ReviewerSig: "sig",
 		Items:       []decision.PlanItem{{NodeID: "host://local", DeployAutomationLevel: "L2"}},
 	}
 
-	got, err := ToContract(p, items, "test-rules/v1")
+	got, err := ToContract(p, items, "test-rules/v1", "sess-1")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,7 +24,7 @@ func TestChosenExecutionFieldsReachTheContract(t *testing.T) {
 		Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY",
 		TargetAlgorithm: "ML-KEM (FIPS 203)", FindingID: "f-1",
 		Activate: "systemctl reload app", Restart: "systemctl restart app",
-	}}, "test-rules/v1")
+	}}, "test-rules/v1", "sess-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,8 +48,8 @@ func TestChosenExecutionFieldsReachTheContract(t *testing.T) {
 	if got.GetId() == "" {
 		t.Error("계획 id가 비었다 — 상류 레코드가 plan_id로 되짚는다")
 	}
-	if got.GetFinalizedAt() == nil {
-		t.Error("확정 시각이 비었다 — FINALIZED라고 하면서 언제인지 말하지 않는다")
+	if got.GetFinalizedAt() != nil {
+		t.Error("확정 시각을 이쪽이 찍었다 — 그것은 상류의 첫 승인이 찍는 값이다")
 	}
 }
 
@@ -60,7 +60,7 @@ func TestChosenExecutionFieldsReachTheContract(t *testing.T) {
 func TestNoHooksMeansNoHookBlock(t *testing.T) {
 	s := &decision.Session{Status: decision.Finalized, Scope: "ring-0", Signature: "reviewer-1:sig"}
 	p, _ := decision.BuildPlan(s, []decision.PlanItem{{NodeID: "n1", DeployAutomationLevel: "L2"}})
-	got, err := review.ToContract(p, []review.Item{{Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY"}}, "test-rules/v1")
+	got, err := review.ToContract(p, []review.Item{{Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY"}}, "test-rules/v1", "sess-1")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -97,9 +97,9 @@
 |---|---|---|
 | [IC-F1](../pkg/inventory/decision/session_test.go) ✅ | 신규 판정 대상 | 상태 = **draft** |
 | [IC-F2](../pkg/inventory/decision/session_test.go) ✅ | draft → in-review 전이 | 허용 |
-| [IC-F3](../pkg/inventory/decision/session_test.go) ✅ | in-review에서 finalize (전 필수항목 판정 + 승인 서명 有) | **finalized** |
+| [IC-F3](../pkg/inventory/decision/session_test.go) ✅ | in-review에서 finalize (전 필수항목 판정 + 판정자 서명 有) | **finalized**. 이 리포의 finalized는 판정 세션이 닫혔다는 뜻이고 계약의 `FINALIZED`(실행 승인 완료)와 다르다 |
 | [IC-F4](../pkg/inventory/decision/session_test.go) ✅ | 필수 항목 미판정 상태로 finalize 시도 | **거부**(전 필수 판정 전 불가) |
-| [IC-F5](../pkg/inventory/decision/session_test.go) ✅ | 승인 서명 없이 finalize | **거부** |
+| [IC-F5](../pkg/inventory/decision/session_test.go) ✅ | 판정자 서명 없이 finalize | **거부** |
 | [IC-F6](../pkg/inventory/decision/session_test.go) ✅ | 링/도메인 단위 부분 확정 | 허용(부분 finalize, §3.3③) |
 | [IC-F7](../pkg/inventory/decision/session_test.go) ✅ | 정책 단위 판정(버전×링크모드 템플릿) | 동종 자산 일괄 적용(§3.4) / 예외만 엣지 단위 |
 
@@ -114,9 +114,10 @@
 | [IC-D6](../pkg/inventory/decision/file_test.go) ✅ | 같은 대상을 다시 판정 | **파일 원장도 쌓기만 한다**. 덮어쓰면 「언제 무엇으로 바뀌었나」가 사라진다(§0.2) |
 | [IC-D7](../pkg/inventory/decision/file_test.go) ✅ | 다른 조직의 판정이 섞인 파일 | 읽지 않는다. 파일은 누구나 이어 쓸 수 있어, 거르지 않으면 격리가 파일 권한에만 기댄다 |
 | [IC-D8](../pkg/inventory/decision/file_test.go) ✅ | 조직 없이 열기 · 아직 아무것도 없는 파일 | 조직 없이는 열리지 않는다(Mem·Pg와 같은 규칙). 빈 파일은 오류가 아니다 |
-| [IC-D9](../pkg/inventory/decl/decl_test.go) ✅ | 같은 관측을 두 번 · 규칙 판·대조 상태·신뢰도·정책·관측 지문·재수집 후보 여부를 하나씩 바꾸기 | 같으면 근거 해시가 같고, **여섯 가운데 하나라도 움직이면 달라진다.** 근거를 세는 자리는 `BasisOf` 하나다 |
-| **[IC-D10](../pkg/inventory/decl/decl_test.go) ✅** | **규칙 판은 그대로인데 관측 지문(또는 신뢰도)만 달라진 세션을 다시 열기** | **승인 서명이 지워진다.** 전에는 id 와 상태만 비교해서, 델타 리뷰에는 올라오는 변화가 서명은 그대로 지나갔습니다. 승인자가 본 적 없는 근거에 이름이 남는 자리입니다 |
-| [IC-D11](../pkg/inventory/decl/decl_test.go) ✅ | 항목이 하나도 없는 세션에서 규칙 판만 바뀌기 | 서명이 지워진다. 항목별 비교만 하면 빈 큐에서는 전부 참이라 규칙 변경이 지나간다 |
+| [IC-D19](../pkg/inventory/review/basis_test.go) ✅ | 같은 관측을 두 번 · 규칙 판·대조 상태·신뢰도·정책·관측 지문·재수집 후보 여부를 하나씩 바꾸기 | 같으면 근거 해시가 같고, **여섯 가운데 하나라도 움직이면 달라진다.** 근거를 세는 자리는 `BasisOf` 하나다 |
+| **[IC-D20](../pkg/inventory/review/basis_test.go) ✅** | **규칙 판은 그대로인데 관측 지문(또는 신뢰도)만 달라진 세션을 다시 열기** | **승인 서명이 지워진다.** 전에는 id 와 상태만 비교해서, 델타 리뷰에는 올라오는 변화가 서명은 그대로 지나갔습니다. 승인자가 본 적 없는 근거에 이름이 남는 자리입니다 |
+| [IC-D21](../pkg/inventory/review/basis_test.go) ✅ | 항목이 하나도 없는 세션에서 규칙 판만 바뀌기 | 서명이 지워진다. 항목별 비교만 하면 빈 큐에서는 전부 참이라 규칙 변경이 지나간다 |
+| **[IC-D22](../pkg/inventory/decision/session_id_test.go) ✅** | **두 세션의 판정과 옛 빌드의 행(세션 id 없음)을 한 원장에 · 계획 id에서 세션 id를 읽어 원장을 찾기** | `BySessionID`가 그 세션의 판정만 돌려주고 다른 세션 것은 섞이지 않는다. **메모리·파일·Postgres 셋이 같은 답이다.** 빈 id로 찾으면 거절한다. 옛 행의 값이 비어 있어서, 그것으로 찾으면 세션이 아니라 「세션을 모르는 판정 전부」가 나온다. Postgres는 열과 `(org, session_id, seq)` 인덱스를 `ALTER TABLE … IF NOT EXISTS`로 더한다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, §8) ✅
 | TC | Given → When | Then |
@@ -124,10 +125,12 @@
 | [IC-P1](../pkg/inventory/decision/plan_test.go) ✅ | finalized 계획 생성 | PlanItem[]: node·remediation_class·**deploy_automation_level**·provider_choice |
 | [IC-P2](../pkg/inventory/decision/plan_test.go) ✅ | deploy_automation_level 판정 | 자산별로 리뷰어가 판정한다(§4.5 MANUAL). 전사 일괄이 아니다 |
 | [IC-P3](../pkg/inventory/decision/plan_test.go) ✅ | 규제 대상 자산(fips_validation 요구) | **FIPS 검증 provider로 라우팅 강제**(§4.10, Java=BC-FJA) · **CNG 는 빈 값이다**. 갈아 끼울 provider 가 관측에 없고 FIPS 여부는 알 수 없다(§2.5). 이름을 지어내면 계획을 받는 쪽이 검증된 선택으로 읽는다 |
-| **[IC-P4](../pkg/inventory/decision/plan_test.go) ✅** | **finalized 아닌 계획을 Deploy로** | **실행을 거부한다**(§5. 반드시 거쳐야 하는 관문). 핵심 인수 기준이다 |
-| [IC-P5](../pkg/inventory/decision/plan_test.go) ✅ | finalized 계획 | 프로비저닝의 **유일** 실행 근거(§3.7) |
+| **[IC-P4](../pkg/inventory/decision/plan_test.go) ✅** | **판정이 끝나지 않은 세션에서 계획을 만들거나, 판정자 표시 없는 계획을 넘기려 한다** | **거부한다**(`ErrNotJudged`, §5. 반드시 거쳐야 하는 관문). 이 관문은 실행을 허용하는 것이 아니라 **계약으로 넘길 수 있는지**를 본다(`ReadyForApproval`). 실행 허용은 상류의 `Executable`과 승인 검증이 한다 |
+| [IC-P5](../pkg/inventory/decision/plan_test.go) ✅ | 판정이 끝난 세션에서 계획 | 만들어진다(`JudgedPlan`). 실행 근거가 되는 것은 상류의 승인이 `FINALIZED`로 올린 뒤다(§3.7) |
 | **[IC-P6](../pkg/inventory/review/review_test.go) ✅** | 스코프가 URI인 노드(`host://local`)를 계약 형식으로 | **겨눈 노드와 런타임이 그대로 간다**. v0.1.0은 id를 쪼개 `host:`를 겨누고 런타임을 기본값으로 떨어뜨렸다 |
 | [IC-P7](../pkg/inventory/review/review_test.go) ✅ | node가 빈 항목을 계획에 | 확정 직전에 거부하고 `open`을 다시 돌리라고 알려 준다. 이름 없는 노드에 조치를 걸지 않는다 |
+| **[IC-P8](../pkg/inventory/review/session_id_test.go) ✅** | **판정이 끝난 세션을 계약으로** | 상태는 **`IN_REVIEW`**, `approval_signatures`와 `finalized_at`은 **비어 있다.** 계획 id는 `pqcaton:<스코프>:<세션 id>`이고 검토자가 적은 문자열은 들어가지 않는다. 판정과 실행 승인은 다른 단계라 승인 칸은 상류가 채운다. 전에는 검증되지 않는 판정자 문자열을 승인 칸에 넣고 `FINALIZED`를 달아, 아무것도 증명하지 않는 값이 상류 구조 관문의 「승인 항목 있음」을 충족하는 모양이 됐다 |
+| [IC-P9](../pkg/inventory/review/session_id_test.go) ✅ | 세션 id 없는 세션(옛 빌드)을 확정 · 세션을 다시 열기 · 같은 내용의 새 세션 · 앞 세션에 id가 없는 채로 다시 열기 | 첫째는 **거부하고 다시 열라고 안내한다.** 여기서 새로 찍으면 계획은 세션을 가리키는데 원장에는 그 세션이 없다. 다시 열면 같은 id, 새 세션이면 다른 id, 앞 세션에 id가 없으면 새 id를 지킨다 |
 
 ### E. 통신 엣지 대조와 토폴로지 (§12) 🔶: 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector(§2.5)가 공급
 | TC | Given → When | Then |
@@ -396,7 +399,7 @@
 | 20 | **문체 관문**(한 번 걷어낸 말이 다시 들어오는가) | K1~11 | ✅ |
 | 21 | **케이스 관문**(번호와 테스트가 실제로 대응하는가) | M1~9 | ✅ |
 
-**핵심 인수 기준**: **IC-P4**(finalized 아니면 Deploy 거부. 반드시 거쳐야 하는 관문)와 **IC-F3~F5**(승인 서명·전 필수 판정 없으면 확정 불가).
+**핵심 인수 기준**: **IC-P4**(판정이 끝나지 않으면 계획을 넘기지 않는다. 반드시 거쳐야 하는 관문)와 **IC-F3~F5**(판정자 서명·전 필수 판정 없으면 확정 불가), 그리고 **IC-P8**(판정이 끝난 계획은 `IN_REVIEW`로 나가고 승인 칸은 상류가 채운다).
 
 ## 3. 데이터 모델 매핑 (구현 위치)
 

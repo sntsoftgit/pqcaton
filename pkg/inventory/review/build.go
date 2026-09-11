@@ -84,7 +84,8 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 	}
 	autopass, queue := reconcile.BuildReviewQueue(r.Assets)
 
-	sf := Session{Note: Note, Scope: "org://" + orgName, PolicyDecisions: map[string]string{}, RulesetVersion: RulesetVersion}
+	sf := Session{Note: Note, Scope: "org://" + orgName, PolicyDecisions: map[string]string{},
+		RulesetVersion: RulesetVersion, SessionID: NewSessionID()}
 	for _, it := range queue {
 		pol := PolicyOf(it.Rec.Key)
 		sf.Items = append(sf.Items, Item{
@@ -154,6 +155,13 @@ func Carry(prev, next Session) Session {
 		}
 	}
 	next.Reviewer = prev.Reviewer
+	// **세션의 동일성을 옮긴다.** 다시 연 것은 같은 세션이다 — 계획 id 와 원장 행이 이 값으로
+	// 이어지므로, 다시 열 때마다 바뀌면 원장에 같은 세션의 판정이 여러 id 로 흩어진다.
+	// 앞 세션에 id 가 없으면(옛 빌드가 연 것) 새로 만든 것을 그대로 둔다 — 빈 값을 옮겨 오면
+	// 확정에서 다시 열라며 막히는데, 지금 여는 것이 곧 그 「다시 열기」다.
+	if prev.SessionID != "" {
+		next.SessionID = prev.SessionID
+	}
 	// **근거가 달라지면 서명은 남지 않는다.** 서명은 「이 근거를 이 규칙으로 보고 승인했다」는
 	// 뜻이다. 사람이 적은 것은 참고값으로 옮기되(위), 승인만은 옮기지 않는다.
 	//

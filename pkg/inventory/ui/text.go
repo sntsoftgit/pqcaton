@@ -29,8 +29,8 @@ var (
 		KO: "세션 파일에 저장했습니다. 아직 확정하지 않았습니다",
 		EN: "Saved to the session file — not finalized yet"}
 	tFinalizedPlan = T{
-		KO: "확정했습니다. 조치 %d건을 %s 에 썼습니다",
-		EN: "Finalized — %d actions written to %s"}
+		KO: "판정을 확정했습니다. 조치 %d건을 %s 에 썼습니다. 실행 승인은 pqcota-approve 가 합니다",
+		EN: "Judging finalized — %d actions written to %s. Execution approval is done by pqcota-approve"}
 	tFinalizedPolicy = T{
 		KO: "확정했습니다. 규칙 %d개를 %s 에 썼습니다. 이 파일이 `pqcota-ingest -scope-assets` 의 입력입니다",
 		EN: "Finalized — %d rules written to %s. That file is the input to `pqcota-ingest -scope-assets`"}

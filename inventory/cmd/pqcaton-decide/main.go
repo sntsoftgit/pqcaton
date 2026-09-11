@@ -189,7 +189,8 @@ func session(declPath, node, orgName, resultsDir string) (review.Session, []reco
 	}
 	autopass, queue := reconcile.BuildReviewQueue(recs)
 
-	sf = review.Session{Note: review.Note, Scope: node, PolicyDecisions: map[string]string{}, RulesetVersion: review.RulesetVersion}
+	sf = review.Session{Note: review.Note, Scope: node, PolicyDecisions: map[string]string{},
+		RulesetVersion: review.RulesetVersion, SessionID: review.NewSessionID()}
 	for _, it := range queue {
 		pol := review.PolicyOf(it.Rec.Key)
 		sf.Items = append(sf.Items, review.Item{

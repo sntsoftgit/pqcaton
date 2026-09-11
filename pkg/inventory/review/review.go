@@ -9,6 +9,7 @@
 package review
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,7 +20,6 @@ import (
 	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
@@ -37,9 +37,15 @@ type Session struct {
 	PolicyDecisions map[string]string `json:"policy_decisions"`
 	// RulesetVersion — 이 세션을 연 시점의 규칙 판. **여는 순간 박고 확정할 때 다시 찍지
 	// 않는다.** 검토 도중 도구가 올라가도 실제 검토 근거가 보존되어야 하기 때문이다.
-	RulesetVersion string   `json:"ruleset_version,omitempty"`
-	Items          []Item   `json:"items"`
-	Autopass       []string `json:"autopass_candidates"`
+	RulesetVersion string `json:"ruleset_version,omitempty"`
+	// SessionID — 이 세션의 동일성. **열 때 만들고, 다시 열어도 그대로다.** 계약으로 나가는 계획의
+	// id 가 이 값을 담고 판정 원장 행도 이 값을 들고 가서, 계획에서 원장으로 되짚는 열쇠가 된다.
+	// 「어느 계획 사건인가」를 답하는 값이라 내용 해시가 아니다 — 같은 내용이 두 번 승인·실행될
+	// 수 있고, 그때 감사 기록이 겹치면 안 된다. 근거 해시([BasisOf])에는 넣지 않는다 — 동일성이지
+	// 판정의 근거가 아니다.
+	SessionID string   `json:"session_id,omitempty"`
+	Items     []Item   `json:"items"`
+	Autopass  []string `json:"autopass_candidates"`
 }
 
 // Item — 판정 대상 하나.
@@ -98,6 +104,23 @@ type Item struct {
 // 검토 도중 도구가 올라가도 실제로 검토한 근거가 그대로 남아야 하기 때문이다.
 const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v1"
 
+// NewSessionID — 세션을 **열 때** 한 번 만든다. UUID v4 다. 표준 라이브러리만 쓴다 — 식별자
+// 하나를 위해 의존성을 들이지 않는다.
+//
+// 세션을 다시 열면 [Carry] 가 앞 세션의 것을 옮기므로 새로 만들지 않는다. 새 세션이면 내용이
+// 같아도 다른 값이다.
+func NewSessionID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// crypto/rand 가 실패하는 환경은 이 도구가 돌 수 없는 환경이다. 조용히 약한 값을
+		// 내느니 여기서 멈춘다 — 식별자가 겹치면 감사 기록이 겹친다.
+		panic("session id: " + err.Error())
+	}
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // variant RFC 4122
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
+
 // Note — 세션 파일 첫 줄에 적히는 사용법.
 const Note = "Write one conclusion per policy under policy_decisions and every item in that " +
 	"policy is judged at once (recommended). Use an item's own conclusion only for exceptions. " +
@@ -105,8 +128,10 @@ const Note = "Write one conclusion per policy under policy_decisions and every i
 	"Set include_in_plan to true for items that go into the finalized plan — each of those also needs " +
 	"deploy_level and remediation_kind chosen, target_algorithm when the kind delivers through config, " +
 	"and the activation hooks when the level is L3. New items start at deploy_level L2 for you to confirm " +
-	"or change; nothing else is filled in, and nothing empty is corrected at finalize time. The approval " +
-	"signature covers all of it, so a silent default would put your name on a decision you did not make."
+	"or change; nothing else is filled in, and nothing empty is corrected at finalize time. Your signature " +
+	"here records who judged; it is not the execution approval. The plan goes out as IN_REVIEW and " +
+	"`pqcota-approve` (upstream, with the approver's own key) raises it to FINALIZED. That approval " +
+	"covers every field, so a silent default would put an approver's name on a decision nobody made."
 
 // Load — 세션 파일을 읽는다.
 func Load(path string) (Session, error) {
@@ -207,15 +232,24 @@ func Finalize(sf Session) (*Result, error) {
 			"a judgement made under rules we cannot name")
 	}
 
-	// **관문은 여기다.** finalized 아닌 세션에서는 계획 자체가 만들어지지 않는다.
+	// 세션 id 도 **세션이 들고 있던 것**을 쓴다. 없으면 옛 빌드가 연 세션이다. 여기서 새로
+	// 찍으면 그 세션의 판정 원장 행들은 빈 세션 id 를 갖고 있어 계획에서 되짚을 수 없다 —
+	// 계획은 세션을 가리키는데 원장에는 그 세션이 없는 상태가 된다.
+	if sf.SessionID == "" {
+		return nil, fmt.Errorf("this session records no session_id — it was raised by an older build. " +
+			"raise it again from the results (`pqcaton-decide open`) so its judgments and its plan " +
+			"share one session id; finalizing it as-is would leave a plan nothing in the ledger points back to")
+	}
+
+	// **관문은 여기다.** 판정이 끝나지 않은 세션에서는 계획 자체가 만들어지지 않는다.
 	p, err := decision.BuildPlan(s, plan)
 	if err != nil {
 		return nil, err
 	}
-	if err := decision.AcceptForDeploy(p); err != nil {
+	if err := decision.ReadyForApproval(p); err != nil {
 		return nil, err
 	}
-	out, err := ToContract(p, picked, sf.RulesetVersion)
+	out, err := ToContract(p, picked, sf.RulesetVersion, sf.SessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -321,6 +355,7 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 			ID: fmt.Sprintf("%s@%d", it.ID, now), Subject: it.ID, Conclusion: c,
 			Reviewer: sf.Reviewer, Signature: sf.Signature,
 			BasisHash: BasisOf(it, sf.RulesetVersion), Confidence: it.Conf, DecidedAt: now,
+			SessionID: sf.SessionID,
 		}
 		if err := store.Save(j); err != nil {
 			return n, err
@@ -358,20 +393,30 @@ func BasisOf(it Item, rulesetVersion string) string {
 	)
 }
 
-// ToContract — 확정 계획을 pqcota 계약(`provisioningv1.FinalizedPlan`)으로 옮긴다.
+// ToContract — 판정이 끝난 계획을 pqcota 계약(`provisioningv1.FinalizedPlan`)으로 옮긴다.
 //
 // 어휘의 단일 출처는 계약이다 — 이 리포는 그 어휘로 말하고 자기 형식을 새로 만들지 않는다.
-func ToContract(p *decision.FinalizedPlan, items []Item, rulesetVersion string) (*provisioningv1.FinalizedPlan, error) {
-	// 되짚을 근거 가운데 **도구가 아는 것은 도구가 채운다.** 계획 id와 확정 시각이 그렇다 —
-	// 사람에게 물을 값이 아니고, 비어 있으면 상류가 「이 실행을 그것을 일으킨 계획에 묶을 수
-	// 없다」로 알린다. 관측 스냅샷 id와 규칙 버전은 아직 이 함수에 오지 않아 비운다.
+//
+// **판정과 실행 승인은 다른 단계다.** 이 함수가 내는 것은 판정이 끝난 계획이지 실행 근거가
+// 아니다. 그래서 상태는 IN_REVIEW 이고, approval_signatures 와 finalized_at 은 **비운다** — 둘 다
+// 실행 승인의 자리라 상류의 pqcota-approve 가 채운다. 전에는 판정자의 자유 문자열을
+// approval_signatures 에 넣고 FINALIZED 를 달았는데, 그 이름표는 검증되지 않는 것이라 아무것도
+// 증명하지 않으면서 상류 구조 관문의 「승인 항목 있음」을 충족하는 모양이 됐다.
+//
+// 계획 id 는 세션 id 를 담는다. 판정 원장 행도 같은 값을 들고 있어, 계획에서 원장으로 되짚는
+// 열쇠다. 검토자가 적은 문자열은 id 에 넣지 않는다 — 전에는 그 앞 여덟 글자가 박혀 나갔다.
+func ToContract(p *decision.JudgedPlan, items []Item, rulesetVersion, sessionID string) (*provisioningv1.FinalizedPlan, error) {
+	if sessionID == "" {
+		return nil, fmt.Errorf("a plan needs the session id it came from — without it nothing in the ledger points back to this plan")
+	}
+	// 되짚을 근거 가운데 **도구가 아는 것은 도구가 채운다.** 계획 id 와 규칙 판이 그렇다 —
+	// 사람에게 물을 값이 아니다. 관측 스냅샷 id 는 계획이 여러 노드에 걸치는데 계약의 그 칸이
+	// 계획마다 하나라 비운다.
 	out := &provisioningv1.FinalizedPlan{
-		Id:                 "pqcaton:" + p.Scope + ":" + p.ApprovalSig[:min(8, len(p.ApprovalSig))],
-		Scope:              p.Scope,
-		Status:             provisioningv1.PlanStatus_PLAN_STATUS_FINALIZED,
-		ApprovalSignatures: []string{p.ApprovalSig},
-		FinalizedAt:        timestamppb.Now(),
-		RulesetVersion:     rulesetVersion,
+		Id:             "pqcaton:" + p.Scope + ":" + sessionID,
+		Scope:          p.Scope,
+		Status:         provisioningv1.PlanStatus_PLAN_STATUS_IN_REVIEW,
+		RulesetVersion: rulesetVersion,
 	}
 	for i, it := range items {
 		kind, err := kindOf(it.Kind)

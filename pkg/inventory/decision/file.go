@@ -123,6 +123,23 @@ func (f *FileJudgmentStore) Get(id string) (*Judgment, error) {
 	return nil, nil
 }
 
+func (f *FileJudgmentStore) BySessionID(sessionID string) ([]*Judgment, error) {
+	if sessionID == "" {
+		return nil, ErrNoSessionID
+	}
+	all, err := f.All()
+	if err != nil {
+		return nil, err
+	}
+	var out []*Judgment
+	for _, j := range all {
+		if j.SessionID == sessionID {
+			out = append(out, j)
+		}
+	}
+	return out, nil
+}
+
 func (f *FileJudgmentStore) BySubject(subject string) ([]*Judgment, error) {
 	all, err := f.All()
 	if err != nil {

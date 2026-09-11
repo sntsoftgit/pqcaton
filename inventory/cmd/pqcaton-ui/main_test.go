@@ -25,7 +25,10 @@ func session() review.Session {
 		Note: review.Note, Scope: "host://local",
 		// 세션은 **열 때** 규칙 판을 박는다. 없으면 확정이 막힌다 — 어느 규칙으로 본 근거인지
 		// 말하지 못하는 판정에 오늘의 규칙을 찍어 넣지 않기 위해서다.
-		RulesetVersion:  review.RulesetVersion,
+		RulesetVersion: review.RulesetVersion,
+		// 세션 id 도 열 때 박는다. 없으면 확정이 막힌다 — 원장 행이 가리킬 세션이 없는 계획이
+		// 나오기 때문이다.
+		SessionID:       "01234567-89ab-4cde-8f01-23456789abcd",
 		PolicyDecisions: map[string]string{"openssl/libssl": ""},
 		Items: []review.Item{
 			{ID: "host://local/openssl/libssl", Policy: "openssl/libssl",
@@ -178,8 +181,14 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 	if err := protojson.Unmarshal(raw, &plan); err != nil {
 		t.Fatalf("계약 형식이 아니다: %v\n%s", err, raw)
 	}
-	if plan.GetStatus() != provisioningv1.PlanStatus_PLAN_STATUS_FINALIZED {
-		t.Errorf("확정 상태가 아니다: %v", plan.GetStatus())
+	// 판정이 끝난 계획은 IN_REVIEW 로 나간다. FINALIZED 는 상류의 승인이 올린다 — 여기서
+	// FINALIZED 를 달면 승인 없는 계획이 실행 근거의 모양을 하고 건너간다.
+	if plan.GetStatus() != provisioningv1.PlanStatus_PLAN_STATUS_IN_REVIEW {
+		t.Errorf("판정이 끝난 계획은 IN_REVIEW 여야 한다: %v", plan.GetStatus())
+	}
+	if len(plan.GetApprovalSignatures()) != 0 || plan.GetFinalizedAt() != nil {
+		t.Errorf("승인 칸과 확정 시각은 상류가 채운다 — 이쪽이 채우면 안 된다: %v %v",
+			plan.GetApprovalSignatures(), plan.GetFinalizedAt())
 	}
 	if len(plan.GetActions()) != 1 {
 		t.Fatalf("조치 %d건", len(plan.GetActions()))

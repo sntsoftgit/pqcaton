@@ -18,6 +18,12 @@ type Judgment struct {
 	BasisHash  string  // 판정 근거 증거의 해시. 근거가 바뀌면 델타 리뷰 대상(§3.6)
 	Confidence float64 // 판정 신뢰도. stale 만료 시 감쇠(IC-D4)
 	DecidedAt  int64   // 판정 시각(unix). 테스트·재현성을 위해 호출자가 주입
+	// SessionID — 이 판정이 난 리뷰 세션. **계획과 원장을 잇는 열쇠다.** 계약으로 나가는 계획의
+	// id 가 이 값을 담으므로, 계획에서 이 값을 읽어 원장에서 그 세션의 판정들을 찾는다
+	// ([JudgmentStore.BySessionID]). 저장만 하고 찾는 길이 없으면 「원장에서 찾을 수 있다」가
+	// 기능이 아니라 가능성에 그친다. 옛 행은 비어 있고 소급하지 않는다 — 어느 세션에서 난
+	// 판정인지 도구가 알 수 없다.
+	SessionID string
 
 	// 파생 플래그(영속화 대상 아님 — 델타/만료 계산 결과):
 	NeedsReReview bool // 근거 변화 또는 만료로 재확인 필요
