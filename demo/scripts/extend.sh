@@ -146,7 +146,11 @@ PY'
 # 여기서 드러난 것: **자동통과(CONFIRMED·고신뢰)한 자산을 조치로 가져가는 길이 없다.** 자동통과는
 # 리뷰 큐에 항목으로 들어가지 않아 계획 칸을 들지 못한다. 자동통과는 「사람이 볼 필요가 없다」는
 # 뜻이지 「바꿀 필요가 없다」가 아닌데, 지금 구조로는 그것을 계획에 넣을 수 없다.
-if [ "$(docker exec pqcota-ctl bash -lc 'python3 -c "import json;print(len(json.load(open("/work/plan.json"))["actions"]))"' | tr -d '[:space:]')" = "0" ]; then
+ACTIONS=$(docker exec pqcota-ctl bash -lc 'python3 - <<PY
+import json
+print(len(json.load(open("/work/plan.json")).get("actions", [])))
+PY' | tr -d '[:space:]')
+if [ "$ACTIONS" = "0" ]; then
   echo
   echo "ℹ  no action in the judged plan — after the asset-scope policy, nothing in the review queue is an observed asset."
   echo "   CONFIRMED assets auto-passed and cannot be taken into a plan today; UNOBSERVED is 'not seen', not 'not there' (§2.7)."
