@@ -166,13 +166,19 @@ PY'
 docker exec pqcota-ctl bash -lc \
   'pqcaton-decide close /work/session.json -org demo-corp -judgments /work/judgments.jsonl > /work/plan.json'
 docker cp pqcota-ctl:/work/plan.json "$SAMPLE_DIR/plan.json" 2>/dev/null || true
-# **공백을 고른다.** protojson 은 콜론 뒤 공백을 일부러 흔들어, 같은 계획을 두 번 내도
-# 파일이 달라진다. 그대로 두면 데모를 돌릴 때마다 기대 파일이 더러워져 **진짜 달라진
-# 날을 알아볼 수 없다.**
+# **공백과 세션 id 를 고른다.** protojson 은 콜론 뒤 공백을 일부러 흔들고, 계획 id 에는 실행마다
+# 새로 뽑는 세션 UUID 가 들어 있다. 그대로 두면 데모를 돌릴 때마다 기대 파일이 더러워져
+# **진짜 달라진 날을 알아볼 수 없다.** 세션 id 는 자리만 보이면 되므로 고정값으로 바꾼다 -
+# 실제 실행의 id 는 콘솔과 판정 원장에 남는다.
 python3 - "$SAMPLE_DIR/plan.json" <<'PYFMT' || true
-import json, sys
+import json, re, sys
 p = sys.argv[1]
-json.dump(json.load(open(p)), open(p, "w"), indent=2, ensure_ascii=False, sort_keys=False)
+d = json.load(open(p))
+FIXED = "00000000-0000-4000-8000-000000000000"
+uuid = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+if isinstance(d.get("id"), str):
+    d["id"] = re.sub(uuid, FIXED, d["id"])
+json.dump(d, open(p, "w"), indent=2, ensure_ascii=False, sort_keys=False)
 open(p, "a").write("\n")
 PYFMT
 
