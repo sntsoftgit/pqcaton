@@ -11,7 +11,6 @@ package report
 import (
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -20,8 +19,8 @@ import (
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
+	"github.com/randyinthedev-hash/pqcota/pkg/discovery/resultio"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
@@ -196,28 +195,20 @@ func (r *Result) GapLayers() []string { return Uniq(r.AssetGaps) }
 
 // ── 재료 ───────────────────────────────────────────────────────────────────
 
-// LoadResults — 노드들이 낸 CollectionResult JSON 을 읽는다.
+// LoadResults — 노드들이 낸 CollectionResult 를 읽는다. **상류의 공식 디코더를 쓴다.**
+//
+// 전에는 `*.json` 만 골라 파일 하나를 객체 하나로 읽었다. 그래서 JVM 수집기가 내는
+// `*.jsonl`(한 줄에 결과 하나 — 노드에 JVM 이 여럿일 수 있다)을 통째로 못 봤고, 그 노드의
+// JCA 자산이 「관측 안 됨」으로 올라왔다. 아무것도 실패하지 않았다 — 종단을 돌려 보고서야
+// 드러났다. 상류가 「소비자마다 파서를 따로 적으면 그중 하나는 반드시 다르게 읽는다」며
+// 디코더를 리포 밖에서 쓰라고 공개해 두었는데, 이 리포가 바로 그 하나였다.
 //
 // **한 파일이 깨졌다고 전부 멈추지 않는다.** 다만 조용히 넘기지도 않는다 — 빠진 노드를
 // 모르면 「관측 안 됨」과 「못 읽음」이 뒤섞인다.
 func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []string, err error) {
-	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
-	if err != nil {
-		return nil, nil, err
-	}
-	sort.Strings(paths)
-	for _, p := range paths {
-		raw, err := os.ReadFile(p)
-		if err != nil {
-			skipped = append(skipped, filepath.Base(p)+": "+err.Error())
-			continue
-		}
-		res := &discoveryv1.CollectionResult{}
-		if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(raw, res); err != nil {
-			skipped = append(skipped, filepath.Base(p)+": "+err.Error())
-			continue
-		}
-		out = append(out, res)
+	out, flaws := resultio.LoadDir(dir)
+	for _, f := range flaws {
+		skipped = append(skipped, filepath.Base(f.Path)+": "+f.Error())
 	}
 	return out, skipped, nil
 }

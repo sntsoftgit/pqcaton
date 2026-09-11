@@ -364,6 +364,7 @@
 | [IC-R10](../pkg/inventory/report/report_test.go) ✅ | 한 노드를 collector 둘이 봄 | 중복은 지우되 **처음 순서를 지키고 입력을 덮지 않는다** |
 | [IC-R11](../pkg/inventory/report/report_test.go) ✅ | 깨진 결과 파일 | 나머지는 읽되 **건너뛴 것을 이름으로 알려 준다**. 모르면 「관측 안 됨」과 「못 읽음」이 뒤섞인다 |
 | [IC-R12](../pkg/inventory/report/report_test.go) ✅ | 관측 결과가 하나도 없음 | 선언만으로 대조가 돌고 **전부 미관측**이 된다. 그것이 「없다」가 아니라 「아직 못 봤다」다 |
+| **[IC-R17](../pkg/inventory/report/report_test.go) ✅** | **JSON Lines 결과(`*.jsonl`, JVM 수집기)와 단일 객체(`*.json`)가 한 디렉터리에** | 셋 다 읽힌다. 건너뛴 것이 없다. `*.json`만 고르면 그 노드의 JCA 자산이 아무것도 실패하지 않은 채 「관측 안 됨」이 된다. 실제로 그랬고 종단 데모에서야 드러났다. 상류의 공식 디코더(`resultio.LoadDir`)를 쓴다 |
 | **[IC-R16](../pkg/inventory/reconcile/reconcile_test.go) ✅** | CNG 관측(상류 v0.6.0) | **자산이 된다**. 런타임 `cng` · 컴포넌트 `cng-providers`. 갈래를 안 더하면 Windows 노드의 암호 자산이 인벤토리에서 통째로 사라진다. **모르는 런타임은 그대로 버린다**. 이름을 지어내면 선언과 영영 맞지 않는 자산이 생긴다 |
 | **[IC-R15](../pkg/inventory/report/report_test.go) ✅** | 관측 이름이 겹치거나 이름과 부딪힘 | **이름이 이기고, 겹친 관측 이름은 먼저 적힌 쪽이 가진다**. 뒤에 적힌 것으로 뒤집히면 파일 순서만 바뀌어도 자산이 다른 노드에 붙는다 |
 | **[IC-R14](../pkg/inventory/report/report_test.go) ✅** | 관측 노드 id 가 선언 이름과 다름 | **선언 노드로 잇는다**. 호스트명(짧은 이름 포함)이 같으면 알아서, 아니면 적어 둔 「관측 이름」으로. 대소문자는 가리지 않는다. **어디에도 안 걸리면 관측이 부른 이름을 그대로 둔다**. 억지로 고르면 남의 노드 자산이 붙는다 |

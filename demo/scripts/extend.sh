@@ -137,7 +137,9 @@ echo "▶ 6/8 execution approval (pqcota-approve, upstream) — a second approve
 GOV_KEYS=$(docker exec pqcota-ctl bash -lc 'pqcota-keygen')
 GOV_PRIV=$(echo "$GOV_KEYS" | grep '^PQCOTA_SIGN_KEY=' | cut -d= -f2-)
 GOV_PUB=$(echo "$GOV_KEYS" | grep '^PQCOTA_VERIFY_KEY=' | cut -d= -f2-)
-docker exec pqcota-ctl bash -lc "sed -i 's|^export PQCOTA_APPROVAL_KEYS=\(.*\)\$|export PQCOTA_APPROVAL_KEYS=\1,governance-1=$GOV_PUB|' /etc/profile.d/pqcota-approval.sh"
+# 같은 환경에서 다시 돌려도 되게, 앞서 등록한 governance-1 은 걷어내고 다시 넣는다. 한 id 에 키가
+# 둘이면 상류가 「어느 것이 그 사람의 키인지 말할 수 없다」며 거절한다 — 그것이 맞는 동작이다.
+docker exec pqcota-ctl bash -lc "sed -i -e 's|,governance-1=[^,]*||g' -e 's|^export PQCOTA_APPROVAL_KEYS=\(.*\)\$|export PQCOTA_APPROVAL_KEYS=\1,governance-1=$GOV_PUB|' /etc/profile.d/pqcota-approval.sh"
 docker exec -e PQCOTA_APPROVAL_KEY="$GOV_PRIV" pqcota-ctl bash -lc \
   'pqcota-approve --approver governance-1 /work/plan.json > /work/plan.approved.json' 2>&1 | sed 's/^/   /'
 docker exec pqcota-ctl bash -lc 'python3 - <<PY

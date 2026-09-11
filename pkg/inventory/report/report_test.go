@@ -209,3 +209,42 @@ func TestLayerLabelIsReadableAndKeepsTheRawName(t *testing.T) {
 		t.Errorf("모르는 계층을 %q 로 뭉갰다 — 상류에 계층이 늘면 오류 없이 틀린다", got)
 	}
 }
+
+// ★ IC-R17 — JSON Lines 결과도 읽는다. **형식은 확장자가 아니라 내용으로 가린다.**
+//
+// JVM 수집기는 노드에 JVM 이 여럿일 수 있어 `.jsonl`(한 줄에 결과 하나)로 낸다. `*.json` 만 고르면
+// 그 노드의 JCA 자산이 통째로 「관측 안 됨」이 된다 — 아무것도 실패하지 않은 채로. 실제로 그랬고,
+// 종단 데모를 돌려 보고서야 드러났다. 상류의 공식 디코더를 쓴 뒤로는 같은 파일을 같게 읽는다.
+func TestLoadResultsReadsJSONLines(t *testing.T) {
+	dir := t.TempDir()
+	one := func(node, collector string) string {
+		return `{"envelope":{"targetNodeId":"` + node + `","collectorId":"` + collector + `"}}`
+	}
+	// 단일 객체(들여쓰기 있는 .json)와 JSON Lines(.jsonl, 두 JVM) 를 나란히 둔다.
+	if err := os.WriteFile(filepath.Join(dir, "web-openssl.json"), []byte(one("web", "openssl-collector")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "app-jca.jsonl"),
+		[]byte(one("app", "jvm-collector")+"\n"+one("app", "jvm-collector")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, skipped, err := report.LoadResults(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(skipped) != 0 {
+		t.Fatalf("멀쩡한 파일을 건너뛰었다: %v", skipped)
+	}
+	if len(got) != 3 {
+		t.Fatalf("결과 셋(json 하나 + jsonl 두 줄)이어야 한다: %d", len(got))
+	}
+	jvm := 0
+	for _, r := range got {
+		if r.GetEnvelope().GetCollectorId() == "jvm-collector" {
+			jvm++
+		}
+	}
+	if jvm != 2 {
+		t.Errorf("JSON Lines 의 두 JVM 결과가 다 읽혀야 한다: %d", jvm)
+	}
+}
