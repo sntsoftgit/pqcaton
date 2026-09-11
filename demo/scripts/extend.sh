@@ -85,8 +85,12 @@ docker exec pqcota-ctl bash -lc \
 # 사람이 하는 자리를 데모에서는 정책 단위 일괄 판정으로 대신한다. **확정은 사람이 한다**는
 # 원칙은 그대로다 - 여기서는 그 사람 역할을 스크립트가 맡는다.
 # 화면에서 사람이 고르는 것을 여기서 대신 고른다. 결론만이 아니라 **조치 종류 · 목표 알고리즘 ·
-# 위임 수준**까지다 — 비면 확정이 막힌다(v0.16.0). 관측된 것(UNDECLARED)만 계획에 넣는다.
-# 관측되지 않은 것(UNOBSERVED)은 「없다」가 아니라 「못 봤다」라 조치 대상이 아니다.
+# 위임 수준**까지다 — 비면 확정이 막힌다(v0.16.0).
+#
+# **실제로 관측된 자산**(CONFIRMED·UNDECLARED)만 계획에 넣는다. 조치는 있는 것을 바꾸는 일이다.
+# UNOBSERVED 는 「없다」가 아니라 「못 봤다」라(§2.7) 조치 대상이 아니다 — 재수집이 먼저다. 그리고
+# 그 근거를 상류 이력에서 되짚을 수 있어야 하므로, 여기 드는 자산은 정책이 관리 대상으로 남긴 것,
+# 곧 중앙 이력의 스냅샷에 실제로 있는 것이다.
 docker exec pqcota-ctl bash -lc 'python3 - <<PY
 import json
 s = json.load(open("/work/session.json"))
@@ -95,7 +99,7 @@ for k in s["policy_decisions"]:
     s["policy_decisions"][k] = "PQC 라이브러리로 교체한다"
 n = 0
 for it in s["items"]:
-    if it["state"] != "UNDECLARED":
+    if it["state"] not in ("CONFIRMED", "UNDECLARED"):
         continue
     it["include_in_plan"] = True
     it["remediation_kind"] = "REMEDIATION_KIND_CONFIG_ONLY"
@@ -103,7 +107,7 @@ for it in s["items"]:
     it["deploy_level"] = "L2"
     n += 1
 json.dump(s, open("/work/session.json", "w"), ensure_ascii=False, indent=2)
-print("   %d item(s) go into the plan (UNDECLARED only) · session %s" % (n, s.get("session_id", "?")))
+print("   %d observed asset(s) go into the plan (CONFIRMED or UNDECLARED) · session %s" % (n, s.get("session_id", "?")))
 PY'
 docker exec pqcota-ctl bash -lc \
   'pqcaton-decide close /work/session.json -org demo-corp -judgments /work/judgments.jsonl > /work/plan.json'
@@ -134,6 +138,22 @@ print("   status=%s approvals=%d finalizedAt=%s id=%s" % (st, len(sigs), at, p.g
 if st != "PLAN_STATUS_IN_REVIEW" or sigs or at:
     sys.exit("❌ a judged plan must leave IN_REVIEW with the approval slot and finalized_at empty")
 PY'
+
+# 계획에 조치가 없으면 승인부터는 돌 것이 없다. **실패가 아니다** — 자산 스코프 정책이 관리
+# 대상에서 뺀 것을 빼고 나면 이 환경에는 사람이 판정해 조치할 자산이 남지 않는다는 뜻이고, 그것이
+# 맞는 결과다. 억지로 조치를 만들면 관리하지 않기로 한 자산에 계획을 세우게 된다.
+#
+# 여기서 드러난 것: **자동통과(CONFIRMED·고신뢰)한 자산을 조치로 가져가는 길이 없다.** 자동통과는
+# 리뷰 큐에 항목으로 들어가지 않아 계획 칸을 들지 못한다. 자동통과는 「사람이 볼 필요가 없다」는
+# 뜻이지 「바꿀 필요가 없다」가 아닌데, 지금 구조로는 그것을 계획에 넣을 수 없다.
+if [ "$(docker exec pqcota-ctl bash -lc 'python3 -c "import json;print(len(json.load(open("/work/plan.json"))["actions"]))"' | tr -d '[:space:]')" = "0" ]; then
+  echo
+  echo "ℹ  no action in the judged plan — after the asset-scope policy, nothing in the review queue is an observed asset."
+  echo "   CONFIRMED assets auto-passed and cannot be taken into a plan today; UNOBSERVED is 'not seen', not 'not there' (§2.7)."
+  echo "   Approval → generation → resolution is exercised by pqcota's own demo (it resolves its evidence against this same history)."
+  echo "   clean up: pqcota/demo/scripts/down.sh"
+  exit 0
+fi
 
 echo "▶ 6/8 execution approval (pqcota-approve, upstream) — a second approver, with their own key…"
 # 판정한 사람과 실행을 승인하는 사람은 다르다. 데모 승인자(reviewer-1)는 pqcota 데모가 만들었고,
