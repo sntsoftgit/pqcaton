@@ -63,7 +63,7 @@ pqcota                          pqcaton
 | [`pkg/inventory/ui`](pkg/inventory/ui) | **화면**: 그리는 것과 폼을 읽는 것만 합니다. 어디서 읽고 누가 접속하는지는 부르는 쪽이 정합니다 |
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스**: 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
 | [`pkg/inventory/localscan`](pkg/inventory/localscan) | **이 기계를 스캔하는 지름길**: 관측 없이 전체 절차를 한 번 돌려 보는 자리입니다. 못 본 것은 「없다」로 보고하지 않습니다 |
-| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 닫습니다**: 판정된 계획을 계약 형식으로 만들되 상태는 `IN_REVIEW`이고 승인 칸은 비웁니다. 실행 승인은 이 리포의 일이 아닙니다 |
+| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐 판정과 종료**: 판정된 계획을 계약 형식으로 만들되 상태는 `IN_REVIEW`이고 승인 칸은 비웁니다. 실행 승인은 이 리포의 일이 아닙니다 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포**: 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
 | [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 다섯**: 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회. 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
@@ -104,7 +104,7 @@ make            # 라이선스 · 문구 · 문체 · 케이스 · 서식 관문
 ```
 
 **이 리포만으로 처음부터 끝까지 해볼 수 있습니다.** 관측할 대상은 이 기계입니다.
-**이 지름길은 `/proc`을 읽으므로 리눅스에서만 됩니다.** macOS·Windows 에서는 아래 ②의
+**이 지름길은 `/proc`을 읽으므로 리눅스에서만 됩니다.** macOS·Windows에서는 아래 ②의
 주석처럼 pqcota가 모은 `results/`를 읽는 길로 갑니다.
 
 ```bash
@@ -204,7 +204,7 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
 
 나온 `plan.json`은 **계약 형식 그대로**입니다. 우리 형식이 따로 없어 pqcota가 그대로 읽습니다.
 
-**계획이 근거를 듭니다.** 조치마다 어느 finding이 어느 스냅샷 상태에서 나왔는지를 `evidenceSources`로 적어 보냅니다. 참조는 스냅샷의 **내용 지문**(`pqcota-snapshot-content/v1`)과 **원천 노드**(봉투의 이름. 선언 이름과 다를 수 있습니다)입니다. 상류는 `--dsn`이 있으면 그것을 이력에서 실제로 찾아 레코드에 남기고, 못 찾으면 종료 상태 3입니다. **그러려면 이 리포가 상류 적재와 같은 스냅샷을 만들어야 합니다.** 결과를 원천 노드별로 모아 상류와 같은 함수로 정규화하고, **`-scope-assets`에 `pqcota-ingest`에 준 것과 같은 파일**을 줍니다. 다른 정책(또는 정책 없음)으로 정규화하면 지문이 달라져 되짚기가 실패합니다. 정책 유무는 추정하지 않습니다.
+**계획이 근거를 듭니다.** 조치마다 어느 finding이 어느 스냅샷 상태에서 나왔는지를 `evidenceSources`로 적어 보냅니다. 참조에는 스냅샷의 **내용 지문**(`pqcota-snapshot-content/v1`)과 봉투에 적힌 **원천 노드**가 들어가며, 원천 노드는 선언 이름과 다를 수 있습니다. 상류는 `--dsn`이 있으면 그것을 이력에서 실제로 찾아 레코드에 남기고, 못 찾으면 종료 상태 3입니다. **그러려면 이 리포가 상류 적재와 같은 스냅샷을 만들어야 합니다.** 결과를 원천 노드별로 모아 상류와 같은 함수로 정규화하고, **`-scope-assets`에 `pqcota-ingest`에 준 것과 같은 파일**을 줍니다. 다른 정책(또는 정책 없음)으로 정규화하면 지문이 달라져 되짚기가 실패합니다. 정책 유무는 추정하지 않습니다.
 
 **판정과 실행 승인은 다른 단계입니다.** 이 리포가 내는 것은 **판정이 끝난 계획**이고, 계약의 상태로는 `IN_REVIEW`입니다. 승인 칸(`approvalSignatures`)과 확정 시각은 비어서 나갑니다. 둘 다 실행 승인의 자리라, 상류의 `pqcota-approve`가 승인자의 키로 서명하면서 `FINALIZED`로 올리고 그때 채웁니다. 여기서 검토자가 적는 서명은 **「누가 판정했다고 기록됐나」**를 남기는 것이지 실행 승인이 아닙니다. 그래서 사이에 승인 한 단계가 듭니다. 이것은 이어 붙이지 못한 공백이 아니라 **판정한 사람과 실행을 승인하는 사람을 가르는 경계**입니다. 이어 붙여도 단계가 줄지 않습니다. 상류는 어떤 경우에도 자기가 등록한 키로 검증하므로, 개인키를 누가 쥐느냐만 옮겨 갑니다.
 

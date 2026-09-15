@@ -68,7 +68,7 @@ CI가 이것을 검사합니다(`make check-licenses`). 관문에 걸리면 대�
 
 **문서와 화면 문구의 문체는 `make check-prose`가 봅니다.** 한 번 걷어낸 말이 다시
 들어오지 않게 막습니다. 지금 있는 것은 `tools/checkprose/baseline.tsv`에 파일마다 적어
-두었고, **늘어나면 막습니다.** 고쳐서 줄었으면 `go run ./tools/checkprose -baseline` 으로
+두었고, **늘어나면 막습니다.** 고쳐서 줄었으면 `go run ./tools/checkprose -baseline`으로
 기준선을 내려 함께 커밋합니다. 무엇을 대신 쓰는지는 `tools/checkprose/rules.tsv`에
 규칙마다 적혀 있습니다.
 
