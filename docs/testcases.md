@@ -26,6 +26,11 @@
 | [IC-R3](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 선언 only(관측 안 됨) | UNOBSERVED, NeedsReview(기계 확정 불가) |
 | [IC-R4](../pkg/inventory/reconcile/edge_test.go) ✅ | UNOBSERVED + 완전성 맵에 해당 계층 **갭** | "재수집 후보"로 표시(갭이면 미관측일 뿐). 갭 아니면 실존/stale 사람 판정(§3.3) |
 | [IC-R5](../pkg/inventory/reconcile/fingerprint_test.go) ✅ | 같은 관측을 다시 읽기 · 스냅샷 id 와 규칙 판만 다른 관측 · 관측 없음 | 지문이 같다. **재수집만으로는 흔들리지 않는다.** 흔들리면 안 바뀐 관측이 매번 델타 큐에 올라오고, 그런 큐는 읽히지 않습니다. 관측이 없으면 지문도 없다 |
+| **[IC-R20](../pkg/inventory/reconcile/managed_test.go) ✅** | 관리 근거만 · 제외 근거만 · 둘 다 없음 | **관리 축은 근거의 구성에서 파생한다.** 관리 근거 ≥ 1 이면 `MANAGED`. 관측은 있으나 전부 정책이 뺐으면 대조 축은 그대로(보았다) 이고 관리 축이 `EXCLUDED_BY_POLICY` 이며, 대표 근거는 비고 신뢰도는 미평가이고 사람 판정을 요구하지 않는다. 관측이 없으면 `UNOBSERVED` + `NOT_EVALUATED` 이고 신뢰도는 상태 기본값이되 미평가다. 전에는 제외된 finding 이 정규화 안에서 사라져 선언 자산이 「보지 못했다」로 읽혔다 |
+| **[IC-R21](../pkg/inventory/reconcile/managed_test.go) ✅** | 같은 자산을 원천 노드 둘이 봤고 한쪽만 정책에 걸림 | **`MANAGED` 다.** 관리할 근거가 있는데 관리하지 않으면 실재하는 관리 대상을 놓친다. 대표값·신뢰도는 **관리 근거에서만**, 제외 근거는 따로 보존해 「관리 n · 제외 m」으로 알린다. 제외 근거의 순서는 입력이 아니라 원천 노드·finding 순이다 |
+| **[IC-R22](../pkg/inventory/reconcile/managed_test.go) ✅** | 정책 없이 정규화한 스냅샷 + 정책 | **정책 판정은 상류 `scope.AssetPolicy.Managed` 가 한다.** 거짓인 finding 만 제외 근거가 되고, 앱 식별자는 **전부** 실리며(공유 `.so` 하나를 여러 앱이 로드하면 그 목록 전부가 함께 빠진 것이다), 조직이 찍힌다. 정책이 nil 이면 아무것도 빠지지 않는다 |
+| **[IC-R23](../pkg/inventory/report/managed_test.go) ✅** | 선언은 `openssl/libcrypto` 를 적었고 정책은 그것을 관측한 앱(`sshd`)을 뺌 · 데모의 모양 | `UNOBSERVED` 가 **아니라** `CONFIRMED` + `EXCLUDED_BY_POLICY` 다. 리포트가 선언·정책의 어긋남을 **자산 식별자·원천 노드·앱 식별자 전부·같은 정책 코드가 뺐다는 사실**로 경고한다. 어느 규칙인지는 말하지 않는다 - 상류 `Managed` 는 bool 만 돌려준다. 리뷰 큐에는 오르지 않는다. 정책을 걸지 않으면 관리 대상이고 어긋남도 없다 |
+| **[IC-R24](../pkg/inventory/report/managed_test.go) ✅** | 정책을 걸고 대조 | 관리 근거는 정책을 건 스냅샷에서만 나오고 지문이 있다. 제외 근거에는 **지문이 없다** - 적재되지 않은 스냅샷의 지문은 아무것도 가리키지 않는다 |
 | **[IC-R6](../pkg/inventory/reconcile/fingerprint_test.go) ✅** | **`finding_id` 는 같은데 버전·검출 방법·증거 강도·강화 판정·알고리즘·로드한 앱이 달라진 관측** | **지문이 달라진다.** 상류의 id 는 `sha256(노드\|이름\|런타임\|fork)` 라 자산이 같으면 같아서, id 만 보면 이 변화가 통째로 「그대로」로 읽힙니다. 대조가 그 지문을 세션까지 들고 간다 |
 
 ### O. 대조의 조직 축 (설계 §1.1) ✅
@@ -91,6 +96,7 @@
 | **[IC-Q5](../pkg/inventory/review/build_test.go) ✅** | 관측이 갱신되어 큐를 다시 세움 | 적어 둔 판정과 계획 표시가 남는다. 그때마다 다시 적게 하면 아무도 화면을 안 쓴다 |
 | **[IC-Q6](../pkg/inventory/review/build_test.go) ✅** | 정책에 **못 보던 항목**이 생김 | 그 정책의 일괄 결론과 서명을 **지운다.** 새로 관측된 UNDECLARED 는 사람이 본 적이 없다 |
 | [IC-Q7](../pkg/inventory/review/build_test.go) ✅ | 사라진 항목 | 판정이 따라오지 않는다. 더는 올라온 것이 아니다 |
+| **[IC-Q8](../pkg/inventory/reconcile/managed_test.go) ✅** | 제외 전용 · 혼합 · `NOT_EVALUATED` + `UNOBSERVED` | **큐는 관리 축을 신뢰도보다 먼저 본다.** 제외 전용은 신뢰도가 미평가라 `≥ 0.8` 비교에 넣으면 0 으로 읽혀 필수 리뷰에 올라간다 - 관리하지 않기로 한 자산을 판정하라고 올리는 것이다. 큐에도 자동통과에도 넣지 않는다. 혼합은 관리 근거의 신뢰도로 가고, `NOT_EVALUATED` + `UNOBSERVED` 는 지금대로 필수 리뷰다 |
 
 ### F. 리뷰-확정 상태기계 (§3.3③, §6) ✅: 핵심
 | TC | Given → When | Then |
@@ -366,7 +372,7 @@
 | [IC-R11](../pkg/inventory/report/report_test.go) ✅ | 깨진 결과 파일 | 나머지는 읽되 **건너뛴 것을 이름으로 알려 준다**. 모르면 「관측 안 됨」과 「못 읽음」이 뒤섞인다 |
 | [IC-R12](../pkg/inventory/report/report_test.go) ✅ | 관측 결과가 하나도 없음 | 선언만으로 대조가 돌고 **전부 미관측**이 된다. 그것이 「없다」가 아니라 「아직 못 봤다」다 |
 | **[IC-R17](../pkg/inventory/report/report_test.go) ✅** | **JSON Lines 결과(`*.jsonl`, JVM 수집기)와 단일 객체(`*.json`)가 한 디렉터리에** | 셋 다 읽힌다. 건너뛴 것이 없다. `*.json`만 고르면 그 노드의 JCA 자산이 아무것도 실패하지 않은 채 「관측 안 됨」이 된다. 실제로 그랬고 종단 데모에서야 드러났다. 상류의 공식 디코더(`resultio.LoadDir`)를 쓴다 |
-| **[IC-R18](../pkg/inventory/report/provenance_test.go) ✅** | **같은 결과 디렉터리를 상류 `ingest.IngestWith`(메모리 이력)와 이 리포의 대조가 각각 읽음** · 결과 파일 순서를 섞음 | 근거의 스냅샷 지문이 **상류가 저장한 스냅샷의 v1 지문과 같고**, 상류 이력이 그 지문으로 찾는다. 원천 노드는 봉투의 이름, 규칙 판은 상류 것. 순서를 섞어도 같다 | 되짚기의 전제다. 전에는 결과 하나마다 정규화하고 네트워크 결과를 비켜 두어 어떤 경우에도 같은 지문이 나올 수 없었다. 이제 원천 노드별로 모아 상류와 같은 함수로 정규화한다 |
+| **[IC-R18](../pkg/inventory/report/managed_test.go) ✅** | **같은 결과 디렉터리를 상류 `ingest.IngestWith`(메모리 이력)와 이 리포의 대조가 각각 읽음** · 결과 파일 순서를 섞음 | 근거의 스냅샷 지문이 **상류가 저장한 스냅샷의 v1 지문과 같고**, 상류 이력이 그 지문으로 찾는다. 원천 노드는 봉투의 이름, 규칙 판은 상류 것. 순서를 섞어도 같다 | 되짚기의 전제다. 전에는 결과 하나마다 정규화하고 네트워크 결과를 비켜 두어 어떤 경우에도 같은 지문이 나올 수 없었다. 이제 원천 노드별로 모아 상류와 같은 함수로 정규화한다 |
 | **[IC-R19](../pkg/inventory/report/provenance_test.go) ✅** | 원천 노드 둘이 `observed_as`로 선언 노드 하나에 걸리고 같은 자산을 봄. 파일 순서는 약한 증거가 앞 | 근거가 **둘 다** 실리고, 주 근거는 **가장 강한 증거**(`confirmed`)이며 `FindingID`가 `Sources[0]`과 같다 | 전에는 같은 자산의 첫 관측만 남아 둘째 원천의 근거가 사라졌고, 주 근거가 입력 순서에 달렸다 |
 | **[IC-R16](../pkg/inventory/reconcile/reconcile_test.go) ✅** | CNG 관측(상류 v0.6.0) | **자산이 된다**. 런타임 `cng` · 컴포넌트 `cng-providers`. 갈래를 안 더하면 Windows 노드의 암호 자산이 인벤토리에서 통째로 사라진다. **모르는 런타임은 그대로 버린다**. 이름을 지어내면 선언과 영영 맞지 않는 자산이 생긴다 |
 | **[IC-R15](../pkg/inventory/report/report_test.go) ✅** | 관측 이름이 겹치거나 이름과 부딪힘 | **이름이 이기고, 겹친 관측 이름은 먼저 적힌 쪽이 가진다**. 뒤에 적힌 것으로 뒤집히면 파일 순서만 바뀌어도 자산이 다른 노드에 붙는다 |

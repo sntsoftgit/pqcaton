@@ -21,6 +21,7 @@ import (
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
 	"github.com/randyinthedev-hash/pqcota/pkg/kernel/registry"
+	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 )
 
 // ErrNoProc — `/proc` 을 열 수 없다. 비-리눅스이거나 마운트되지 않았다.
@@ -68,17 +69,23 @@ func LabelWarning(node string) string {
 
 // Result — 이 기계를 관측한 결과.
 type Result struct {
+	// Snapshot — 정책을 건 스냅샷. 관리 근거는 여기서 나온다.
 	Snapshot *history.Snapshot
+	// All — 정책 없이 정규화한 스냅샷. **제외분을 찾는 데만 쓴다** - 정책이 없었으면 Snapshot 과
+	// 같은 것이다. 결과 파일 경로(report.BuildWith)와 같은 모양이다: 같은 정책 파일을 주고도
+	// 한쪽만 제외를 모르면 같은 명령이 입력 경로에 따라 다른 관리 상태를 낸다.
+	All *history.Snapshot
 	// Warnings — 결과는 냈지만 사람이 알아야 하는 것.
 	Warnings []string
 	// Accessible · Denied — 스캔이 무엇을 볼 수 있었나.
 	Accessible, Denied int
 }
 
-// Scan — 이 기계를 관측해 스냅샷으로 만든다. `node` 는 결과에 붙일 이름이다.
+// Scan — 이 기계를 관측해 스냅샷으로 만든다. `node` 는 결과에 붙일 이름이다. policy 는 자산
+// 스코프 정책이고 nil 이면 전부 관리 대상이다.
 //
 // 스캔하는 자리는 여기 하나다 — 두 곳에 두면 한쪽만 고쳐지는 날이 온다.
-func Scan(node string) (*Result, error) {
+func Scan(node string, policy *scope.AssetPolicy) (*Result, error) {
 	if node == "" {
 		node = DefaultNode
 	}
@@ -89,11 +96,18 @@ func Scan(node string) (*Result, error) {
 	}
 	res := openssl.BuildResult(node, dets)
 	snap, err := normalize.Normalize([]*discoveryv1.CollectionResult{res},
-		"snap-1", node, normalize.RulesetVersion, nil, nil)
+		"snap-1", node, normalize.RulesetVersion, nil, policy)
 	if err != nil {
 		return nil, fmt.Errorf("normalize: %w", err)
 	}
-	out := &Result{Snapshot: snap, Accessible: st.Accessible, Denied: st.Denied}
+	all := snap
+	if policy != nil {
+		if all, err = normalize.Normalize([]*discoveryv1.CollectionResult{res},
+			"snap-1", node, normalize.RulesetVersion, nil, nil); err != nil {
+			return nil, fmt.Errorf("normalize without the policy: %w", err)
+		}
+	}
+	out := &Result{Snapshot: snap, All: all, Accessible: st.Accessible, Denied: st.Denied}
 	if warn != "" {
 		out.Warnings = append(out.Warnings, warn)
 	}

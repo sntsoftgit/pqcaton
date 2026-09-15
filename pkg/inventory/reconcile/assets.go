@@ -112,6 +112,7 @@ func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 			Evidence:    evidenceStr(f.GetEvidenceStrength()),
 			FindingID:   f.GetId(),
 			Fingerprint: Fingerprint(f),
+			appKeys:     append([]string(nil), f.GetAppKeys()...),
 		})
 	}
 	return out

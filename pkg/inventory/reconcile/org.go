@@ -6,6 +6,7 @@ import (
 
 	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
 	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
+	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 )
 
@@ -48,6 +49,34 @@ func (e *Engine) AssetsFromSnapshotAs(snap *history.Snapshot, node string) []Obs
 	return stampObserved(e.org, observedFromSnapshotAs(snap, node))
 }
 
+// ExcludedFromSnapshotAs — **정책 없이** 정규화한 스냅샷(snapAll)에서, 정책이 관리 대상에서
+// 뺄 finding 을 제외 근거로 낸다. 선언 노드 이름(node)으로 열쇠를 만들고 조직을 찍는다.
+//
+// 관리 근거는 정책을 건 스냅샷에서 나와야 한다([AssetsFromSnapshotAs]) - 그것이 상류 이력과
+// 같은 지문을 내는 스냅샷이다. 여기 오는 스냅샷은 어디에도 적재되지 않은 것이라 지문을
+// 쓰지 않는다. 정책 판정은 상류 코드([scope.AssetPolicy.Managed])를 그대로 부른다 - 이
+// 리포가 정책을 다시 해석하지 않는다. policy 가 nil 이면 제외되는 것이 없다.
+func (e *Engine) ExcludedFromSnapshotAs(snapAll *history.Snapshot, node string, policy *scope.AssetPolicy) []Excluded {
+	if snapAll == nil || policy == nil {
+		return nil
+	}
+	var kept []*discoveryv1.Finding
+	for _, f := range snapAll.Findings {
+		if !policy.Managed(f) {
+			kept = append(kept, f)
+		}
+	}
+	var out []Excluded
+	for _, o := range observedFrom(node, kept) {
+		out = append(out, Excluded{
+			Key: AssetKey{Org: e.org, NodeID: o.Key.NodeID, Runtime: o.Key.Runtime, Component: o.Key.Component},
+			Source: ExcludedSource{FindingID: o.FindingID, Fingerprint: o.Fingerprint, Evidence: o.Evidence,
+				SourceNodeID: snapAll.NodeID, AppKeys: o.appKeys},
+		})
+	}
+	return out
+}
+
 // AssetsFromResults — 선언 레인의 자산을 뽑고 이 엔진의 조직을 찍는다.
 func (e *Engine) AssetsFromResults(results []*discoveryv1.CollectionResult) ([]AssetKey, error) {
 	out, err := declaredFromResults(results)
@@ -65,7 +94,11 @@ func (e *Engine) AssetsFromResults(results []*discoveryv1.CollectionResult) ([]A
 // 열쇠에 조직이 들어 있으므로 섞인 입력은 그냥 두면 서로 안 맞아 CONFIRMED가 UNDECLARED와
 // UNOBSERVED 한 쌍으로 구분된다 — 오류가 아니라 **그럴듯한 결과**로 나온다. 그래서 대조보다
 // 검사가 먼저다.
-func (e *Engine) Reconcile(declared []AssetKey, observed []Observed, gapLayers []string) ([]Reconciled, error) {
+//
+// excluded 는 정책이 뺀 관측이다([ExcludedFromSnapshotAs]). **인자로 받는 것은 잊지 못하게
+// 하려는 것이다** - 선택 인자로 두면 로컬 스캔 같은 경로 하나가 빠뜨리고, 그 경로에서만
+// 제외가 미관측으로 읽힌다. 없으면 nil 을 넘긴다.
+func (e *Engine) Reconcile(declared []AssetKey, observed []Observed, excluded []Excluded, gapLayers []string) ([]Reconciled, error) {
 	for _, k := range declared {
 		if err := e.want(k.Org, "declared", k.NodeID); err != nil {
 			return nil, err
@@ -76,7 +109,12 @@ func (e *Engine) Reconcile(declared []AssetKey, observed []Observed, gapLayers [
 			return nil, err
 		}
 	}
-	return reconcileAssets(declared, observed, gapLayers), nil
+	for _, x := range excluded {
+		if err := e.want(x.Key.Org, "excluded", x.Key.NodeID); err != nil {
+			return nil, err
+		}
+	}
+	return reconcileAssets(declared, observed, excluded, gapLayers), nil
 }
 
 // ReconcileEdges — 통신 엣지의 3-상태 대조(IC-E1). 자산과 같은 규칙으로 끊는다.

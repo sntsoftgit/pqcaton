@@ -160,9 +160,16 @@ func session(declPath, node, orgName, resultsDir, scopeAssets string) (review.Se
 	if err != nil {
 		return sf, nil, err
 	}
+	// **같은 정책을 건다.** 전에는 이 갈래가 -scope-assets 를 받고도 쓰지 않아, 같은 정책 파일을
+	// 주고도 결과 파일 경로와 다른 관리 상태를 냈다. 플래그가 무시되는 것보다 나쁘다 - 무시되면
+	// 아무 일도 안 일어나지만, 이쪽은 틀린 값이 나온다.
+	policy, err := review.LoadAssetPolicy(scopeAssets)
+	if err != nil {
+		return sf, nil, err
+	}
 	// **이 기계를 스캔한다.** 노드 이름은 결과에 붙이는 이름표일 뿐이고, /proc 을 못 열면
 	// 끊는다 - 그 상태로 대조하면 「못 본 것」이 「없는 것」으로 읽힌다.
-	scan, err := localscan.Scan(node)
+	scan, err := localscan.Scan(node, policy)
 	if err != nil {
 		return sf, nil, err
 	}
@@ -184,7 +191,8 @@ func session(declPath, node, orgName, resultsDir, scopeAssets string) (review.Se
 		return sf, nil, fmt.Errorf("declared assets: %w", err)
 	}
 
-	recs, err := eng.Reconcile(declared, eng.AssetsFromSnapshot(snap), reconcile.GapLayers(snap))
+	recs, err := eng.Reconcile(declared, eng.AssetsFromSnapshot(snap),
+		eng.ExcludedFromSnapshotAs(scan.All, snap.NodeID, policy), reconcile.GapLayers(snap))
 	if err != nil {
 		return sf, nil, err
 	}

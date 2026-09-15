@@ -40,6 +40,10 @@ type Result struct {
 
 	Assets []reconcile.Reconciled
 	Edges  []reconcile.ReconciledEdge
+	// PolicyConflicts — 선언은 관리 대상으로 적었는데 정책이 뺀 자산(CONFIRMED + EXCLUDED_BY_POLICY).
+	// **둘이 어긋난 것이고, 어느 쪽을 고칠지는 기계가 정하지 않는다.** 경고문이 자산 열쇠·원천 노드·
+	// 앱 열쇠 전부를 값으로 말한다 - 사람이 정책 파일에서 그 열쇠에 걸리는 줄을 찾는다.
+	PolicyConflicts []reconcile.Reconciled
 
 	// 센 것. 화면과 글이 같은 수를 말하게 한다.
 	ObservedAssets int
@@ -80,6 +84,7 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 
 	// 관측 자산(openssl)과 관측 엣지(network)를 레인별로 가른다.
 	var observedAssets []reconcile.Observed
+	var excludedAssets []reconcile.Excluded
 	var observedEdges []*discoveryv1.ObservedEdge
 	covered := map[string]bool{}
 	// **원천 노드별로 모아 상류 적재와 같은 경로로 정규화한다.** 전에는 결과 파일 하나마다
@@ -118,6 +123,17 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 			return nil, fmt.Errorf("normalizing %s: %w", src, err)
 		}
 		observedAssets = append(observedAssets, eng.AssetsFromSnapshotAs(snap, node)...)
+		// **정책이 뺀 것을 알려면 정책 없이 한 번 더 정규화해야 한다.** 정책은 Normalize 안에서
+		// 걸리고 제외분은 개수만 남기 때문이다. 관리 근거는 위의 snap(상류와 지문이 같은 것)에서
+		// 나오고, 이 스냅샷은 제외분을 찾는 데만 쓴다 - 어디에도 적재되지 않은 스냅샷의 지문은
+		// 아무것도 가리키지 않는다. 비용이 두 배인 것은 안다; 상류가 제외분을 돌려주면 없어진다.
+		if policy != nil {
+			all, err := normalize.Normalize(group, "snap:"+src, src, normalize.RulesetVersion, history.NewMemStore(), nil)
+			if err != nil {
+				return nil, fmt.Errorf("normalizing %s without the policy: %w", src, err)
+			}
+			excludedAssets = append(excludedAssets, eng.ExcludedFromSnapshotAs(all, node, policy)...)
+		}
 		observedEdges = append(observedEdges, snap.Edges...)
 		out.AssetGaps = append(out.AssetGaps, reconcile.GapLayers(snap)...)
 	}
@@ -127,8 +143,15 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 		declaredAssets = append(declaredAssets, reconcile.AssetKey{
 			Org: org.ID(orgName), NodeID: a.Node, Runtime: a.Runtime, Component: a.Component})
 	}
-	if out.Assets, err = eng.Reconcile(declaredAssets, observedAssets, out.AssetGaps); err != nil {
+	if out.Assets, err = eng.Reconcile(declaredAssets, observedAssets, excludedAssets, out.AssetGaps); err != nil {
 		return nil, err
+	}
+	// 선언과 정책이 어긋난 자산. 대조는 CONFIRMED 로 맞게 읽었고(보았다), 관리 축이 그것을 정책이
+	// 뺐다고 말한다. 여기서 모아 두면 리포트가 「보지 못했다」 대신 어긋남을 말한다.
+	for _, r := range out.Assets {
+		if r.State == reconcile.Confirmed && r.Managed == reconcile.ExcludedByPolicy {
+			out.PolicyConflicts = append(out.PolicyConflicts, r)
+		}
 	}
 
 	// 관측 IP → 스코프 노드 잇기(§0.4). 이어지면 CONFIRMED 로 잡히고, 안 되면 off-scope 다.

@@ -112,7 +112,7 @@ func TestReconciledCarriesTheFingerprint(t *testing.T) {
 	if len(got) != 1 || got[0].Fingerprint == "" {
 		t.Fatalf("관측에 지문이 안 붙었다: %+v", got)
 	}
-	rec := reconcileAssets(nil, got, nil)
+	rec := reconcileAssets(nil, got, nil, nil)
 	if len(rec) != 1 || rec[0].Fingerprint != got[0].Fingerprint {
 		t.Errorf("대조가 지문을 떨어뜨렸다: %+v", rec)
 	}

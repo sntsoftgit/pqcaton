@@ -28,7 +28,7 @@ func eng(t *testing.T) *Engine {
 // rec — 대조 결과만 보는 케이스용. 조직이 어긋나는 쪽은 IC-O1~O5 가 따로 본다.
 func rec(t *testing.T, declared []AssetKey, observed []Observed, gaps []string) []Reconciled {
 	t.Helper()
-	out, err := eng(t).Reconcile(declared, observed, gaps)
+	out, err := eng(t).Reconcile(declared, observed, nil, gaps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,11 +146,11 @@ func TestBuildReviewQueue(t *testing.T) {
 func TestReconcileRefusesAnotherOrg(t *testing.T) {
 	남 := AssetKey{Org: org.ID("beta"), NodeID: "n", Runtime: "openssl", Component: "libssl"}
 
-	if _, err := eng(t).Reconcile([]AssetKey{남}, nil, nil); !errors.Is(err, ErrOrgMismatch) {
+	if _, err := eng(t).Reconcile([]AssetKey{남}, nil, nil, nil); !errors.Is(err, ErrOrgMismatch) {
 		t.Fatalf("선언 레인: 남의 조직을 그대로 대조했다: %v", err)
 	}
 	obs := []Observed{{Key: 남, Evidence: "confirmed"}}
-	if _, err := eng(t).Reconcile(nil, obs, nil); !errors.Is(err, ErrOrgMismatch) {
+	if _, err := eng(t).Reconcile(nil, obs, nil, nil); !errors.Is(err, ErrOrgMismatch) {
 		t.Fatalf("관측 레인: 남의 조직을 그대로 대조했다: %v", err)
 	}
 }
@@ -159,7 +159,7 @@ func TestReconcileRefusesAnotherOrg(t *testing.T) {
 // 것을 이 엔진의 조직으로 지어내면 검사가 있으나 마나다.
 func TestReconcileRefusesEmptyOrg(t *testing.T) {
 	빈 := AssetKey{NodeID: "n", Runtime: "openssl", Component: "libssl"}
-	if _, err := eng(t).Reconcile([]AssetKey{빈}, nil, nil); !errors.Is(err, ErrOrgMismatch) {
+	if _, err := eng(t).Reconcile([]AssetKey{빈}, nil, nil, nil); !errors.Is(err, ErrOrgMismatch) {
 		t.Fatalf("조직 없는 열쇠를 그대로 대조했다: %v", err)
 	}
 	if _, err := For(""); err == nil {
