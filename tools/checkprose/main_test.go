@@ -305,3 +305,53 @@ func TestSpacedParticleAfterCodeIsCaughtButAttachedIsNot(t *testing.T) {
 		t.Fatalf("HTML 에서 띄운 조사 하나만 잡혀야 한다: %d건 %v", len(got), got)
 	}
 }
+
+// IC-K15 — **함께 나가는 rules.tsv 의 띄운 조사 규칙**을 실제 문장으로 잰다. 「에만」·「나」·
+// 「까지만」·「로만」·「뿐」처럼 뒤늦게 더한 조사가 잡히는지, 그리고 「할 뿐」·「쓰다 만」처럼
+// 낱말로 서는 「뿐」·「만」을 잘못 잡지 않는지. 규칙을 테스트 안에 따로 적으면 파일이 바뀌어도
+// 케이스가 통과한다.
+func TestShippedSpacedParticleRule(t *testing.T) {
+	all, err := loadRules(filepath.Join("..", "..", rulesFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rs []rule
+	for _, r := range all {
+		if r.name == "띄운 조사" {
+			rs = append(rs, r)
+		}
+	}
+	if len(rs) != 1 {
+		t.Fatalf("띄운 조사 규칙이 하나여야 한다: %d", len(rs))
+	}
+	caught := []string{
+		"훅은 L3 에만 묻는다.",
+		"방금 나타난 UNDECLARED 나 방금 넣은 것.",
+		"`pqcaton-report` 까지만 돌린다.",
+		"한 role 로만 붙는다.",
+		"`sshd`와 `python` 뿐 아니라",
+		"§ 로만 적으면",
+	}
+	for _, s := range caught {
+		src := []byte(s + "\n")
+		if got := hitsOf("a.md", src, maskMarkdown(src), rs); len(got) != 1 {
+			t.Errorf("잡혀야 한다: %q → %d건 %v", s, len(got), got)
+		}
+	}
+	clean := []string{
+		"훅은 L3에만 묻는다. UNDECLARED나 `exclude`가. `pqcaton-report`까지만. role로만. `python`뿐 아니라",
+		"판정 대상을 구조화할 뿐, 확정은 사람이 한다.",
+		"쓰다 만 파일을 남기지 않는다. 채우다 만 것을",
+		"이름표일 뿐 관측 대상이 아니다.",
+	}
+	for _, s := range clean {
+		src := []byte(s + "\n")
+		if got := hitsOf("a.md", src, maskMarkdown(src), rs); len(got) != 0 {
+			t.Errorf("잡히면 안 된다: %q → %v", s, got)
+		}
+	}
+	html := []byte("<p>오른쪽이 없으면 <em>판정이 없을</em> 뿐 관측은 된다. <code>x</code> 뿐 아니라</p>\n")
+	if got := hitsOf("a.html", html, maskHTML(html), rs); len(got) != 1 {
+		t.Errorf("HTML 태그 뒤의 「뿐」은 두고 코드 뒤만 잡아야 한다: %d건 %v", len(got), got)
+	}
+}
