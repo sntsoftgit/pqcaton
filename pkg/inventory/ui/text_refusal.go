@@ -29,6 +29,9 @@ func koMissing(m decision.Missing) string {
 			return "왜 이렇게 정했는지를 적지 않았습니다: " + m.Subject
 		}
 		return "왜 이렇게 정했는지를 적지 않았습니다: " + m.Subject + " (" + m.Detail + ")"
+	case decision.MissingPlanField:
+		// Detail 은 영어 오류문이다. 항목 id 는 앞에 두고 원문은 그대로 남긴다 - 붙여 넣어 물어볼 것이 사라지지 않게.
+		return "계획에 넣은 대로는 낼 수 없습니다: " + m.Subject + " (" + m.Detail + ")"
 	}
 	return decision.EnglishMissing(m)
 }

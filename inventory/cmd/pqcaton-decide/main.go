@@ -201,26 +201,16 @@ func session(declPath, node, orgName, resultsDir, scopeAssets string) (review.Se
 	sf = review.Session{Note: review.Note, Scope: node, PolicyDecisions: map[string]string{},
 		RulesetVersion: review.RulesetVersion, SessionID: review.NewSessionID()}
 	for _, it := range queue {
-		pol := review.PolicyOf(it.Rec.Key)
-		sf.Items = append(sf.Items, review.Item{
-			ID: review.Key(it.Rec.Key), Policy: pol,
-			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
-			FindingID: it.Rec.FindingID, Fingerprint: it.Rec.Fingerprint, Sources: review.SourcesOf(it.Rec),
-			// 위임 수준은 **실제 값으로 저장한다.** 화면에만 기본으로 보여 주고 비워 두면
-			// 검토자가 고르지 않은 값이 나중에 기본값으로 채워지고, 그 결과에 승인 서명이
-			// 붙는다. 저장해 두면 검토자에게 보이고 승인 대상에 들어간다. 바꾸는 것은 화면에서 한다.
-			Level: "L2",
-			State: string(it.Rec.State), Conf: it.Rec.Confidence,
-			Mandatory: it.Mandatory, Rescan: it.Rec.RescanCandidate,
-		})
-		if _, ok := sf.PolicyDecisions[pol]; !ok {
-			sf.PolicyDecisions[pol] = "" // 사람이 채울 자리를 미리 열어 둔다
+		item := review.ItemOf(it.Rec, it.Mandatory)
+		sf.Items = append(sf.Items, item)
+		if _, ok := sf.PolicyDecisions[item.Policy]; !ok {
+			sf.PolicyDecisions[item.Policy] = "" // 사람이 채울 자리를 미리 열어 둔다
 		}
 	}
 	for _, a := range autopass {
-		sf.Autopass = append(sf.Autopass, review.Key(a.Key))
+		sf.Autopass = append(sf.Autopass, review.ItemOf(a, false))
 	}
-	sort.Strings(sf.Autopass)
+	sort.Slice(sf.Autopass, func(i, j int) bool { return sf.Autopass[i].ID < sf.Autopass[j].ID })
 	fmt.Fprintf(os.Stderr, "scan: %d accessible · %d denied (this machine)\n", scan.Accessible, scan.Denied)
 	return sf, recs, nil
 }

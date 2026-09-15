@@ -35,7 +35,8 @@ func session() review.Session {
 				Node: "host://local", Runtime: "openssl", State: "UNDECLARED",
 				Conf: 0.6, Mandatory: true},
 		},
-		Autopass: []string{"host://local/openssl/libcrypto"},
+		Autopass: []review.Item{{ID: "host://local/openssl/libcrypto", Policy: "openssl/libcrypto",
+			Node: "host://local", Runtime: "openssl", State: "CONFIRMED", Conf: 0.9}},
 	}
 }
 
@@ -99,10 +100,11 @@ func TestIndexGroupsByPolicy(t *testing.T) {
 	}
 	body := w.Body.String()
 	for _, want := range []string{
-		"openssl/libssl",               // 정책 이름
-		`name="policy:openssl/libssl"`, // 정책 단위 입력칸
-		"host://local/openssl/libssl",  // 항목
-		"자동통과 후보 1개",                   // 자동통과는 세어서 고지한다
+		"openssl/libssl",                             // 정책 이름
+		`name="policy:openssl/libssl"`,               // 정책 단위 입력칸
+		"host://local/openssl/libssl",                // 항목
+		"기계가 답한 항목",                                  // 자동통과는 따로 묶어 보인다 - 판정 칸은 없고 계획 칸만
+		`name="plan:host://local/openssl/libcrypto"`, // 그리고 계획에 넣을 수 있다
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("화면에 %q 가 없다", want)

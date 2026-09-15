@@ -11,7 +11,7 @@ import (
 // **문장이 아니라 값이다.** 같은 거절을 명령은 영어로 말하고 화면은 보는 사람의 말로
 // 말해야 한다 — 여기에 문장을 담으면 그 둘 중 하나는 남의 말로 뜬다.
 type Missing struct {
-	// Code — [MissingSignature] | [MissingConclusion].
+	// Code — [MissingSignature] | [MissingConclusion] | [MissingPlanField].
 	Code string
 	// Subject · Detail — 무엇이 빠졌나. 항목 id 와, 그 항목을 알아볼 곁말(상태·계층).
 	Subject, Detail string
@@ -25,6 +25,9 @@ const (
 	MissingSignature  = "signature"
 	MissingApproval   = "approval"
 	MissingConclusion = "conclusion"
+	// MissingPlanField — 계획에 고른 항목의 계획 칸이 비었거나 고를 수 없는 항목을 골랐다. 결론과
+	// 다른 축이다 - 자동통과 항목은 결론 없이도 계획에 들어가지만 이 검사는 지난다.
+	MissingPlanField = "plan-field"
 )
 
 // NotFinalized — 확정이 관문을 지나지 못했다. **무엇이 남았는지를 들고 있다.**
@@ -60,6 +63,8 @@ func EnglishMissing(m Missing) string {
 			return fmt.Sprintf("no record of why this was decided: %s", m.Subject)
 		}
 		return fmt.Sprintf("no record of why this was decided: %s (%s)", m.Subject, m.Detail)
+	case MissingPlanField:
+		return fmt.Sprintf("cannot be planned as selected: %s", m.Detail)
 	}
 	return m.Code
 }

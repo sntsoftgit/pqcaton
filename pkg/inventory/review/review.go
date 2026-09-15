@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,9 +45,18 @@ type Session struct {
 	// 「어느 계획 사건인가」를 답하는 값이라 내용 해시가 아니다 — 같은 내용이 두 번 승인·실행될
 	// 수 있고, 그때 감사 기록이 겹치면 안 된다. 근거 해시([BasisOf])에는 넣지 않는다 — 동일성이지
 	// 판정의 근거가 아니다.
-	SessionID string   `json:"session_id,omitempty"`
-	Items     []Item   `json:"items"`
-	Autopass  []string `json:"autopass_candidates"`
+	SessionID string `json:"session_id,omitempty"`
+	Items     []Item `json:"items"`
+	// Autopass — 기계가 답한 항목(CONFIRMED + 고신뢰). **판정을 다시 받지 않지만 계획에는 들어갈 수
+	// 있다.** 자동통과는 「사람이 볼 필요가 없다」이지 「바꿀 필요가 없다」가 아니다 - 선언과 맞고
+	// 확인된 자산이야말로 가장 자연스러운 조치 대상이다. Item 과 같은 형이라 계획 칸을 든다.
+	// 결론 칸은 쓰지 않는다.
+	Autopass []Item `json:"autopass_candidates"`
+	// LegacyAutopass — 옛 빌드가 남긴 식별자 문자열. **표시용이고 계획에 넣을 수 없다.** ID 밖에
+	// 없어 노드·근거·관리 판정을 복원할 방법이 없고, 빈 칸을 채워 일반 항목으로 올리면 사람이 새
+	// 후보로 읽는다. 관측에서 같은 ID 를 찾으면 Carry 가 치환한다. 이름을 새로 둔 것은 같은 이름에
+	// 두 형을 허용하면 읽는 코드가 형을 살펴야 하고 그 분기는 한 번 쓰면 지워지지 않기 때문이다.
+	LegacyAutopass []string `json:"autopass_candidates_legacy,omitempty"`
 }
 
 // Item — 판정 대상 하나.
@@ -69,10 +79,22 @@ type Item struct {
 	// 정렬된 (finding, 지문, 원천 노드) 묶음이 들어간다 — 주 근거만 보면 보조 근거가 바뀌어도 판정
 	// 서명이 살아남는다. 스냅샷 지문은 근거 해시에 넣지 않는다 — 위치이지 근거가 아니다.
 	Sources []EvidenceSource `json:"evidence_sources,omitempty"`
+	// Managed — 관리 축(대조의 ManagedState). **세션 파일에 적는다.** BasisOf 가 이 값을 덮고,
+	// 계획 차단이 이 값을 본다. 파일에 없으면 다시 열 때 사라져, 해시가 관리 판정을 덮지 못하고
+	// 손으로 고친 파일을 막을 수도 없다. 옛 파일(v2 이하)에는 이 칸이 없다 - 큐에 오른 항목은
+	// 전부 관리 대상이었으므로 빈 값을 MANAGED 로 읽는다.
+	Managed string `json:"managed,omitempty"`
+	// ExcludedSources — 정책이 뺀 근거. **계약으로 나가지 않는다**(형이 다르다). 해시에는 들어간다 -
+	// 근거 구성이 바뀌면 서명이 무효가 돼야 하기 때문이다.
+	ExcludedSources []ExcludedSource `json:"excluded_sources,omitempty"`
 	// Policy — 같은 정책의 항목은 한 번에 판정한다(§3.4).
 	Policy string  `json:"policy"`
 	State  string  `json:"state"`
 	Conf   float64 `json:"confidence"`
+	// ConfEvaluated — Conf 가 잰 값인가. 거짓이면 UNOBSERVED 의 상태 기본값 같은 것이다. 옛 파일(v2
+	// 이하)에는 이 칸이 없어 거짓으로 읽히는데, 그 판에는 미평가라는 개념이 없었으므로 규칙 판을
+	// 보고 참으로 읽는다([Item.ConfidenceEvaluated]).
+	ConfEvaluated bool `json:"confidence_evaluated,omitempty"`
 	// Mandatory — 이 항목은 결론 없이 확정할 수 없다(§3.3②).
 	Mandatory bool `json:"mandatory"`
 	// Rescan — UNOBSERVED인데 커버리지 갭으로 설명된다. **「없다」가 아니라 「못 봤다」**이므로
@@ -91,6 +113,11 @@ type Item struct {
 	TargetAlgorithm string `json:"target_algorithm,omitempty"`
 	// Config — provider 설정 조각. **도구가 지어내지 않는다.**
 	Config string `json:"config_artifact,omitempty"`
+	// RollbackNote — 계약의 rollback_note. **계획 축의 값이다.** 전에는 판정 결론을 그대로 넣었는데,
+	// 결론은 「어떻게 판정했나」이고 이것은 「어떻게 되돌리나」다. 자동통과 항목은 결론을 요구하지
+	// 않으므로 결론에 기대면 빈 값이 계약으로 나간다. 옛 판(v2 이하)의 세션에서 비어 있으면 결론으로
+	// 물러선다 - 그 자리에 있던 값이 실제로 되돌림 메모 구실을 해 왔다. v3 부터 빈 값은 비우기로 한 것이다.
+	RollbackNote string `json:"rollback_note,omitempty"`
 	// 활성화 훅 — L3에서만 쓰인다. **도구가 추측하지 않는다**(상류 §2.5): 활성화 지점은 앱
 	// 기동 방식에 달려 있어 관측으로 알 수 없다. 비면 상류가 무엇이 일어나지 않는지 알린다.
 	Pre        string `json:"activation_pre,omitempty"`
@@ -108,6 +135,120 @@ type EvidenceSource struct {
 	SourceNodeID    string `json:"source_node_id"`
 	SnapshotDigest  string `json:"snapshot_digest"`
 	SnapshotRuleset string `json:"snapshot_ruleset"`
+}
+
+// All — 이 세션의 항목 전부(Items + Autopass). **읽기 전용이다.**
+//
+// 돌려주는 것은 값의 복사본이므로 여기에 쓰면 세션은 바뀌지 않는다. 해시·비교·선택 수집처럼
+// **읽는** 자리에만 쓴다. 값을 고치는 자리(Carry·화면 저장)는 [update] 로 실제 컬렉션의 자리를
+// 찾아 쓴다 - 복사본에 쓰면 쓰고 나서 아무 일도 일어나지 않는 코드가 된다.
+//
+// **판정 생성·결론 검사·판정 원장은 이 함수를 쓰지 않는다.** 그 자리는 Items 만 본다 - 자동통과는
+// 판정을 다시 받지 않는다. 여기에 넣으면 결론을 요구하게 된다.
+func All(sf Session) []Item {
+	out := make([]Item, 0, len(sf.Items)+len(sf.Autopass))
+	out = append(out, sf.Items...)
+	out = append(out, sf.Autopass...)
+	return out
+}
+
+// Selected — 계획에 고른 것(Plan=true). 리뷰 항목과 자동통과 양쪽에서. 읽기 전용이다.
+func Selected(sf Session) []Item {
+	var out []Item
+	for _, it := range All(sf) {
+		if it.Plan {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+// update — ID 로 실제 컬렉션의 자리를 찾아 그 항목을 고친다. 찾았으면 참이다.
+func update(sf *Session, id string, fn func(*Item)) bool {
+	for i := range sf.Items {
+		if sf.Items[i].ID == id {
+			fn(&sf.Items[i])
+			return true
+		}
+	}
+	for i := range sf.Autopass {
+		if sf.Autopass[i].ID == id {
+			fn(&sf.Autopass[i])
+			return true
+		}
+	}
+	return false
+}
+
+// checkNoDuplicateIDs — 한 자산은 한 컬렉션에만 있다. 양쪽에 같은 ID 가 있으면 대조의 결함이므로
+// 오류로 끊는다 - 그대로 두면 Carry 가 한쪽에만 쓰고 다른 쪽이 그것을 덮는다.
+func checkNoDuplicateIDs(sf Session) error {
+	seen := map[string]string{}
+	for _, it := range sf.Items {
+		seen[it.ID] = "items"
+	}
+	for _, it := range sf.Autopass {
+		if where, dup := seen[it.ID]; dup {
+			return fmt.Errorf("item %s appears in both %s and autopass_candidates — one asset belongs in exactly one of them", it.ID, where)
+		}
+	}
+	return nil
+}
+
+// ExcludedSource — 정책이 뺀 근거 하나. 대조의 ExcludedSource 를 세션 파일에 적는 꼴이다.
+// **EvidenceSource 와 형이 다르다** - 계약 변환(evidenceOf)이 이 값을 받지 못한다. 스냅샷 위치가
+// 없는 것은 이 finding 이 중앙 이력에 없기 때문이다.
+type ExcludedSource struct {
+	FindingID    string   `json:"finding_id"`
+	Fingerprint  string   `json:"fingerprint"`
+	Evidence     string   `json:"evidence,omitempty"`
+	SourceNodeID string   `json:"source_node_id"`
+	AppKeys      []string `json:"app_keys,omitempty"`
+}
+
+// ExcludedSourcesOf — 대조 결과의 제외 근거를 세션 항목의 꼴로. SourcesOf 와 짝이다.
+func ExcludedSourcesOf(r reconcile.Reconciled) []ExcludedSource {
+	out := make([]ExcludedSource, 0, len(r.ExcludedSources))
+	for _, x := range r.ExcludedSources {
+		out = append(out, ExcludedSource{FindingID: x.FindingID, Fingerprint: x.Fingerprint, Evidence: x.Evidence,
+			SourceNodeID: x.SourceNodeID, AppKeys: append([]string(nil), x.AppKeys...)})
+	}
+	return out
+}
+
+// ItemOf — 대조 결과 하나를 세션 항목으로. **항목을 만드는 자리는 여기 하나다.** 명령과 화면이
+// 따로 만들면 한쪽만 칸을 더하는 날이 오고, 그날 그 칸은 한쪽 세션 파일에만 있다.
+func ItemOf(r reconcile.Reconciled, mandatory bool) Item {
+	return Item{
+		ID: Key(r.Key), Policy: PolicyOf(r.Key),
+		Node: r.Key.NodeID, Runtime: r.Key.Runtime,
+		FindingID: r.FindingID, Fingerprint: r.Fingerprint, Sources: SourcesOf(r),
+		Managed: string(r.Managed), ExcludedSources: ExcludedSourcesOf(r),
+		// 위임 수준은 **실제 값으로 저장한다.** 화면에만 기본으로 보여 주고 비워 두면
+		// 검토자가 고르지 않은 값이 나중에 기본값으로 채워지고, 그 결과에 승인 서명이
+		// 붙는다. 저장해 두면 검토자에게 보이고 승인 대상에 들어간다. 바꾸는 것은 화면에서 한다.
+		Level: "L2",
+		State: string(r.State), Conf: r.Confidence, ConfEvaluated: r.ConfidenceEvaluated,
+		Mandatory: mandatory, Rescan: r.RescanCandidate,
+	}
+}
+
+// ManagedOf — 항목의 관리 축. 옛 파일(빈 값)은 MANAGED 다 - 그 판에서 큐에 오른 항목은 전부
+// 관리 대상이었다.
+func ManagedOf(it Item) reconcile.ManagedState {
+	if it.Managed == "" {
+		return reconcile.Managed
+	}
+	return reconcile.ManagedState(it.Managed)
+}
+
+// ConfidenceEvaluated — 항목의 신뢰도가 잰 값인가. 규칙 판이 v2 이하이면 칸의 부재를 평가됨으로
+// 읽는다 - 그 판에는 미평가라는 개념이 없었다. v3 부터는 칸의 값 그대로다.
+func ConfidenceEvaluated(it Item, rulesetVersion string) bool {
+	if it.ConfEvaluated {
+		return true
+	}
+	return !rulesetAtLeastV3(rulesetVersion)
 }
 
 // SourcesOf — 대조 결과의 근거를 세션 항목의 꼴로 옮긴다.
@@ -133,6 +274,26 @@ func SourcesOf(r reconcile.Reconciled) []EvidenceSource {
 // v2 — 주 근거를 입력 순서가 아니라 가장 강한 증거로 고르고, 계약 변환이 근거 여럿을 낸다. 같은 관측에서
 // 다른 판정·다른 계획이 나오므로 올렸다. 상류도 같은 이유(병합 규칙)로 v2 다.
 const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v2"
+
+// planRulesetNumber — 결합 판 문자열에서 이 리포의 계획 규칙 판 번호를 꺼낸다. 없거나 못 읽으면
+// 0 이다(옛 빌드가 연 세션, 또는 규칙 판을 안 적은 것).
+func planRulesetNumber(rulesetVersion string) int {
+	const tag = "+pqcaton-plan/v"
+	i := strings.LastIndex(rulesetVersion, tag)
+	if i < 0 {
+		return 0
+	}
+	n, err := strconv.Atoi(rulesetVersion[i+len(tag):])
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// rulesetAtLeastV3 — 이 세션이 v3 이후 규칙으로 열렸나. 세션 파일의 옛 칸(관리 축 · 미평가 ·
+// 되돌림 메모)을 어떻게 읽을지가 여기에 달린다. **세션이 들고 있는 규칙 판을 본다** - 지금 실행
+// 파일의 상수가 아니다. 검토 도중 도구가 올라갈 수 있다.
+func rulesetAtLeastV3(rulesetVersion string) bool { return planRulesetNumber(rulesetVersion) >= 3 }
 
 // NewSessionID — 세션을 **열 때** 한 번 만든다. UUID v4 다. 표준 라이브러리만 쓴다 — 식별자
 // 하나를 위해 의존성을 들이지 않는다.
@@ -165,14 +326,45 @@ const Note = "Write one conclusion per policy under policy_decisions and every i
 
 // Load — 세션 파일을 읽는다.
 func Load(path string) (Session, error) {
-	var sf Session
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return sf, err
+		return Session{}, err
 	}
-	if err := json.Unmarshal(raw, &sf); err != nil {
-		return sf, fmt.Errorf("session file: %w", err)
+	return Decode(raw)
+}
+
+// sessionWire — 세션 파일의 표면. autopass_candidates 가 판에 따라 객체 배열이거나 문자열 배열이라,
+// 형을 정하지 않고 먼저 받는다. **Session 에 직접 붙이지 않는다** - 형이 안 맞으면 Unmarshal 이
+// 그 자리에서 실패해 변환 코드에 닿지 못한다. 나머지 칸은 Session 을 그대로 판다.
+type sessionWire struct {
+	Session
+	Autopass json.RawMessage `json:"autopass_candidates"`
+}
+
+// Decode — 세션 파일의 바이트를 읽는다. 옛 형식의 자동통과 목록(문자열 배열)은 **표시용으로
+// 보존**하고 계획에는 넣지 못하게 둔다 - ID 밖에 없어 노드·근거·관리 판정을 복원할 수 없고,
+// 빈 칸을 채워 일반 항목으로 올리면 사람이 새 후보로 읽는다. 모르는 형식은 오류로 끊는다 -
+// 「모르니 비워 둔다」로 넘기면 사람이 검토한 목록이 조용히 사라진다.
+func Decode(raw []byte) (Session, error) {
+	var w sessionWire
+	if err := json.Unmarshal(raw, &w); err != nil {
+		return Session{}, fmt.Errorf("session file: %w", err)
 	}
+	sf := w.Session
+	sf.Autopass = nil
+	if len(w.Autopass) == 0 || string(w.Autopass) == "null" {
+		return sf, nil
+	}
+	var items []Item
+	if err := json.Unmarshal(w.Autopass, &items); err == nil {
+		sf.Autopass = items
+		return sf, nil
+	}
+	var legacy []string
+	if err := json.Unmarshal(w.Autopass, &legacy); err != nil {
+		return Session{}, fmt.Errorf("session file: autopass_candidates is neither a list of items nor a list of ids: %w", err)
+	}
+	sf.LegacyAutopass = append(sf.LegacyAutopass, legacy...)
 	return sf, nil
 }
 
@@ -235,12 +427,14 @@ func Finalize(sf Session) (*Result, error) {
 		return nil, &decision.NotFinalized{Err: err, Missing: Pending(sf)}
 	}
 
+	// **계획은 리뷰 항목과 자동통과 양쪽에서 고른다.** 판정은 위에서 Items 만 봤다 - 자동통과는
+	// 판정을 다시 받지 않는다. 계획에 넣는 문턱(RequireNode·RequireDecisions)은 양쪽에 같은 것 하나다.
+	if err := checkNoDuplicateIDs(sf); err != nil {
+		return nil, err
+	}
 	plan := make([]decision.PlanItem, 0)
 	picked := make([]Item, 0)
-	for _, it := range sf.Items {
-		if !it.Plan {
-			continue
-		}
+	for _, it := range Selected(sf) {
 		if err := RequireNode(it); err != nil {
 			return nil, err
 		}
@@ -253,6 +447,12 @@ func Finalize(sf Session) (*Result, error) {
 			ProviderChoice:        decision.RouteProvider(it.Runtime, it.FIPS),
 		})
 		picked = append(picked, it)
+	}
+	// 옛 목록의 항목은 계획에 넣을 수 없다. 파일을 고쳐 넣으려 해도 ID 뿐이라 여기까지 오지 않지만,
+	// 그 목록이 남아 있는 세션에서 계획을 내는 것은 사람이 「저 후보들은?」을 물을 자리라 알린다.
+	if len(sf.LegacyAutopass) > 0 {
+		fmt.Fprintf(os.Stderr, "note: %d auto-pass candidate(s) from an older session are listed by id only and cannot be put in a plan — "+
+			"reopen the session from the results (`pqcaton-decide open -results …`) to make them selectable\n", len(sf.LegacyAutopass))
 	}
 	// 규칙 판은 **세션이 들고 있던 것**을 쓴다. 여기서 지금 실행 파일의 것을 찍으면, 검토 도중
 	// 도구가 올라갔을 때 실제로 검토한 근거가 아닌 판이 계획에 박힌다.
@@ -300,6 +500,12 @@ func Pending(sf Session) []decision.Missing {
 			})
 		}
 	}
+	// 계획 칸은 **고른 것만** 본다. 자동통과에는 결론을 요구하지 않는다.
+	for _, it := range Selected(sf) {
+		if err := RequireDecisions(it); err != nil {
+			out = append(out, decision.Missing{Code: decision.MissingPlanField, Subject: it.ID, Detail: err.Error()})
+		}
+	}
 	return out
 }
 
@@ -326,6 +532,13 @@ func RequireNode(it Item) error {
 // 필요하다 — 그 조치의 조각에만 `Groups` 줄이 있고, 비면 배치해도 아무것도 켜지지 않는다.
 // 포크 교체나 폐기에는 적을 자리가 없으므로 요구하지 않는다.
 func RequireDecisions(it Item) error {
+	// **관리 대상이 아닌 자산에 조치를 세우지 않는다.** 이미 한 번 잡힌 결함이다 - 정책을 무시하던
+	// 동안 뺀 자산에 조치 계획을 세우고 있었다. 화면에서 고를 수 없고, 세션 파일을 손으로 고쳐
+	// 켜도 여기서 막힌다. 관리 축이 세션 파일에 있어야 이 검사가 가능하다.
+	if ManagedOf(it) == reconcile.ExcludedByPolicy {
+		return fmt.Errorf("item %s is excluded by the asset-scope policy — it was observed, but it is not managed, "+
+			"so no action can be planned for it. Change the policy or the declaration first", it.ID)
+	}
 	if it.Level == "" {
 		return fmt.Errorf("item %s: no deploy level — pick L1, L2 or L3. "+
 			"an older session has none recorded, so it has to be chosen again", it.ID)
@@ -424,6 +637,18 @@ func BasisOf(it Item, rulesetVersion string) string {
 		"evidence=" + it.Fingerprint,
 		fmt.Sprintf("rescan=%t", it.Rescan),
 	}
+	// v3 부터 관리 축과 미평가 여부도 근거다. 관리 판정이 MANAGED 에서 EXCLUDED 로 바뀌면 다른
+	// 판정 대상이고, 미평가와 0.00 을 해시가 가르지 못하면 정책이 바뀌어 평가 대상에서 빠진 것이
+	// 서명을 살려 둔다. 옛 판(v2 이하)의 해시는 그대로 두어야 그 세션의 원장 행과 델타 비교가
+	// 어긋나지 않는다 - 그 판의 세션에는 이 칸들이 없고, 있어도 뜻이 없다.
+	if rulesetAtLeastV3(rulesetVersion) {
+		parts = append(parts,
+			"managed="+string(ManagedOf(it)),
+			fmt.Sprintf("conf_evaluated=%t", ConfidenceEvaluated(it, rulesetVersion)))
+		for _, x := range it.ExcludedSources {
+			parts = append(parts, "excluded="+x.FindingID+"|"+x.Fingerprint+"|"+x.SourceNodeID)
+		}
+	}
 	for _, s := range it.Sources {
 		parts = append(parts, "source="+s.FindingID+"|"+s.Fingerprint+"|"+s.SourceNodeID)
 	}
@@ -497,10 +722,20 @@ func ToContract(p *decision.JudgedPlan, items []Item, rulesetVersion, sessionID 
 			EvidenceSources: evidenceOf(it),
 			Activation:      hooksOf(it),
 			ConfigArtifact:  it.Config,
-			RollbackNote:    it.Conclusion,
+			RollbackNote:    rollbackNoteOf(it, rulesetVersion),
 		})
 	}
 	return out, nil
+}
+
+// rollbackNoteOf — 계약의 rollback_note. v3 부터는 계획 칸 그대로이고 빈 값은 빈 값이다. v2 이하의
+// 세션에서만 빈 값을 결론으로 채운다 - 그 판에는 이 칸이 없었다. 판단 기준은 **세션이 들고 있는
+// 규칙 판**이다. 지금 실행 파일의 상수로 보면 v3 사용자가 일부러 비운 자리에 결론이 다시 들어간다.
+func rollbackNoteOf(it Item, rulesetVersion string) string {
+	if it.RollbackNote != "" || rulesetAtLeastV3(rulesetVersion) {
+		return it.RollbackNote
+	}
+	return it.Conclusion
 }
 
 // Key — 자산 열쇠의 문자열 표현. 판정 원장의 대상 id 가 된다.

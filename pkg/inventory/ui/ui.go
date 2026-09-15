@@ -16,6 +16,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/url"
 	"sort"
@@ -23,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
 
@@ -82,7 +84,13 @@ type ReviewView struct {
 	Reviewer  string
 	Signature string
 	Policies  []PolicyGroup
-	Autopass  int
+	// Autopass — 기계가 답한 항목. 판정 칸은 없고 **계획 칸만** 있다. 자동통과는 「사람이 볼
+	// 필요가 없다」이지 「바꿀 필요가 없다」가 아니다.
+	Autopass []review.Item
+	// LegacyAutopass — 옛 세션의 식별자만 있는 후보. 보이기만 하고 계획에 넣을 수 없다.
+	LegacyAutopass []string
+	// RulesetVersion — 세션의 규칙 판. 옛 칸(미평가)을 어떻게 읽을지가 여기에 달린다.
+	RulesetVersion string
 }
 
 // PolicyGroup — 한 정책과 그에 묶인 항목들.
@@ -111,7 +119,8 @@ func NewReviewView(sf review.Session, page Page) ReviewView {
 	}
 	sort.Strings(order)
 	v := ReviewView{Page: page, Scope: sf.Scope, Reviewer: sf.Reviewer,
-		Signature: sf.Signature, Autopass: len(sf.Autopass)}
+		Signature: sf.Signature, Autopass: sf.Autopass, LegacyAutopass: sf.LegacyAutopass,
+		RulesetVersion: sf.RulesetVersion}
 	for _, name := range order {
 		v.Policies = append(v.Policies, *byPolicy[name])
 	}
@@ -136,22 +145,44 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 	for pol := range sf.PolicyDecisions {
 		sf.PolicyDecisions[pol] = strings.TrimSpace(f.Get("policy:" + pol))
 	}
+	// 결론은 리뷰 항목에만 있다. 자동통과는 판정을 다시 받지 않는다.
 	for i, it := range sf.Items {
 		sf.Items[i].Conclusion = strings.TrimSpace(f.Get("item:" + it.ID))
-		sf.Items[i].Plan = f.Get("plan:"+it.ID) != ""
-		// 실행 필드는 사람이 고른다. 도구가 관측에서 파생해 채우면 「무엇을 바꿀지는 사람이
-		// 정한다」가 무너진다. 비워 두는 것도 선택이라 그대로 넘긴다 — 상류가 그 빈칸을
-		// 이름으로 알리고 종료 상태로 구분한다.
-		sf.Items[i].Kind = strings.TrimSpace(f.Get("kind:" + it.ID))
-		sf.Items[i].TargetAlgorithm = strings.TrimSpace(f.Get("target:" + it.ID))
-		sf.Items[i].Level = strings.TrimSpace(f.Get("level:" + it.ID))
-		sf.Items[i].Pre = strings.TrimSpace(f.Get("pre:" + it.ID))
-		sf.Items[i].Activate = strings.TrimSpace(f.Get("activate:" + it.ID))
-		sf.Items[i].Deactivate = strings.TrimSpace(f.Get("deactivate:" + it.ID))
-		sf.Items[i].Restart = strings.TrimSpace(f.Get("restart:" + it.ID))
 	}
+	// 계획 칸은 양쪽에 같은 것 하나다. 실행 필드는 사람이 고른다. 도구가 관측에서 파생해 채우면
+	// 「무엇을 바꿀지는 사람이 정한다」가 무너진다. 비워 두는 것도 선택이라 그대로 넘긴다 —
+	// 상류가 그 빈칸을 이름으로 알리고 종료 상태로 구분한다.
+	// 제외 전용은 화면에서 고를 수 없지만(칸이 잠긴다) 폼을 손으로 보내면 올 수 있다 - 그때는
+	// 확정이 막는다(review.RequireDecisions). 여기서 조용히 지우면 사람이 왜 안 켜지는지 모른다.
+	apply := func(items []review.Item) {
+		for i, it := range items {
+			items[i].Plan = f.Get("plan:"+it.ID) != ""
+			items[i].Kind = strings.TrimSpace(f.Get("kind:" + it.ID))
+			items[i].TargetAlgorithm = strings.TrimSpace(f.Get("target:" + it.ID))
+			items[i].Level = strings.TrimSpace(f.Get("level:" + it.ID))
+			items[i].Pre = strings.TrimSpace(f.Get("pre:" + it.ID))
+			items[i].Activate = strings.TrimSpace(f.Get("activate:" + it.ID))
+			items[i].Deactivate = strings.TrimSpace(f.Get("deactivate:" + it.ID))
+			items[i].Restart = strings.TrimSpace(f.Get("restart:" + it.ID))
+			items[i].RollbackNote = strings.TrimSpace(f.Get("rollback:" + it.ID))
+		}
+	}
+	apply(sf.Items)
+	apply(sf.Autopass)
 	return sf
 }
+
+// confCell — 신뢰도 칸. **미평가는 숫자로 보이지 않는다** - 0.30 은 「재 봤더니 낮다」로 읽히는데
+// 재지 않은 값이다. 옛 세션(v2 이하)은 칸이 없어도 평가된 값이다.
+func confCell(it review.Item, rulesetVersion string) string {
+	if !review.ConfidenceEvaluated(it, rulesetVersion) {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.2f", it.Conf)
+}
+
+// plannable — 계획에 넣을 수 있는 항목인가. 제외 전용은 관리 대상이 아니라 칸을 잠근다.
+func plannable(it review.Item) bool { return review.ManagedOf(it) != reconcile.ExcludedByPolicy }
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
 
@@ -493,7 +524,7 @@ type ReviewSummary struct {
 // Summary — 요약의 숫자.
 func (v ReviewView) Summary() ReviewSummary {
 	s := ReviewSummary{
-		Policies: len(v.Policies), Autopass: v.Autopass,
+		Policies: len(v.Policies), Autopass: len(v.Autopass),
 		Signed: strings.TrimSpace(v.Reviewer) != "" && strings.TrimSpace(v.Signature) != "",
 	}
 	for _, p := range v.Policies {

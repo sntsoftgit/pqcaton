@@ -232,6 +232,19 @@ var (
 		EN: "%d auto-pass candidates are not in this queue — they match the declaration " +
 			"with high confidence, so they are not worth looking at one by one."}
 
+	tAutopassLegend = T{KO: "기계가 답한 항목 (계획에는 넣을 수 있습니다)", EN: "Items the machine answered (they can still go into the plan)"}
+	tAutopassHint   = T{
+		KO: "선언과 맞고 신뢰도가 높아 하나씩 판정할 필요가 없는 항목입니다. 판정 칸은 없습니다. " +
+			"다만 「볼 필요가 없다」는 「바꿀 필요가 없다」가 아닙니다. 확인된 자산이야말로 조치 대상이 " +
+			"되기 쉬우므로, 계획에 넣고 조치 종류·목표·위임 수준을 고를 수 있습니다.",
+		EN: "These match the declaration with high confidence, so they need no per-item judgment - there is " +
+			"no conclusion field. But not needing a look is not the same as not needing a change: confirmed " +
+			"assets are the most natural targets, so they can be put in the plan with a kind, target and level."}
+	tLegacyAutopass = T{
+		KO: "옛 세션의 자동통과 후보 %d개는 식별자만 남아 있어 계획에 넣을 수 없습니다. 결과에서 세션을 다시 열면 고를 수 있게 됩니다.",
+		EN: "%d auto-pass candidate(s) from an older session are listed by id only and cannot be put in a plan. Reopen the session from the results to make them selectable."}
+	tRollbackNote = T{KO: "되돌림 메모", EN: "Rollback note"}
+
 	tApproval           = T{KO: "승인", EN: "Approval"}
 	tReviewApprovalHint = T{
 		KO: "정책마다 <b>판정</b>(결론)을 적고, 여기에 <b>승인</b>자와 서명을 채운 뒤, " +

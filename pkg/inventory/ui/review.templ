@@ -3,6 +3,8 @@ package ui
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
 
 // reviewPage — 리뷰 큐. 정책으로 묶고, 정책마다 결론 칸 하나를 준다.
@@ -60,45 +62,46 @@ templ reviewForm(v ReviewView) {
 								}
 							</td>
 							<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
-							<td>{ fmt.Sprintf("%.2f", it.Conf) }</td>
-							<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan }/></td>
-							<td>
-								<select name={ "kind:" + it.ID }>
-									<option value="" selected?={ it.Kind == "" }>{ tKindAuto.In(v.Page.Lang) }</option>
-									for _, k := range remediationKinds {
-										<option value={ k } selected?={ it.Kind == k }>{ shortKind(k) }</option>
-									}
-								</select>
-							</td>
-							<td><input type="text" name={ "target:" + it.ID } value={ it.TargetAlgorithm } placeholder="ML-KEM (FIPS 203)"/></td>
-							<td>
-								<select name={ "level:" + it.ID }>
-									<option value="" selected?={ it.Level == "" }>{ tKindAuto.In(v.Page.Lang) }</option>
-									for _, l := range deployLevels {
-										<option value={ l } selected?={ it.Level == l }>{ l }</option>
-									}
-								</select>
-							</td>
+							<td>{ confCell(it, v.RulesetVersion) }</td>
+							@planCells(v.Page.Lang, it)
 							<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
 						</tr>
-						<tr class="hooks">
-							<td colspan="8">
-								<span class="hint">{ tHooks.In(v.Page.Lang) }</span>
-								<label>{ tHookPre.In(v.Page.Lang) } <input type="text" name={ "pre:" + it.ID } value={ it.Pre }/></label>
-								<label>{ tHookActivate.In(v.Page.Lang) } <input type="text" name={ "activate:" + it.ID } value={ it.Activate }/></label>
-								<label>{ tHookDeact.In(v.Page.Lang) } <input type="text" name={ "deactivate:" + it.ID } value={ it.Deactivate }/></label>
-								<label>{ tHookRestart.In(v.Page.Lang) } <input type="text" name={ "restart:" + it.ID } value={ it.Restart }/></label>
-							</td>
-						</tr>
+						@hooksRow(v.Page.Lang, it, 8)
 					}
 				</table>
 			</fieldset>
 		}
+		if len(v.Autopass) > 0 {
+			<fieldset>
+				<legend>{ tAutopassLegend.In(v.Page.Lang) }</legend>
+				@tip(v.Page.Lang, tAutopassHint.In(v.Page.Lang))
+				<table>
+					<tr>
+						<th>{ tColTarget.In(v.Page.Lang) }</th>
+						<th>{ tColState.In(v.Page.Lang) }</th>
+						<th>{ tColConfidence.In(v.Page.Lang) }</th>
+						<th>{ tColInPlan.In(v.Page.Lang) }</th>
+						<th>{ tColKind.In(v.Page.Lang) }</th>
+						<th>{ tColTarget2.In(v.Page.Lang) }</th>
+						<th>{ tColLevel.In(v.Page.Lang) }</th>
+					</tr>
+					for _, it := range v.Autopass {
+						<tr>
+							<td><code>{ it.ID }</code></td>
+							<td>{ it.State }</td>
+							<td>{ confCell(it, v.RulesetVersion) }</td>
+							@planCells(v.Page.Lang, it)
+						</tr>
+						@hooksRow(v.Page.Lang, it, 7)
+					}
+				</table>
+			</fieldset>
+		}
+		if len(v.LegacyAutopass) > 0 {
+			<p class="hint">{ fmt.Sprintf(tLegacyAutopass.In(v.Page.Lang), len(v.LegacyAutopass)) }</p>
+		}
 		if len(v.Policies) == 0 {
 			<p>{ tReviewEmpty.In(v.Page.Lang) }</p>
-		}
-		if v.Autopass > 0 {
-			<p class="hint">{ fmt.Sprintf(tReviewAutopass.In(v.Page.Lang), v.Autopass) }</p>
 		}
 		<fieldset>
 			<legend>{ tApproval.In(v.Page.Lang) }</legend>
@@ -118,4 +121,41 @@ templ reviewForm(v ReviewView) {
 			@tip(v.Page.Lang, tReviewGateHint.In(v.Page.Lang))
 		</div>
 	</form>
+}
+
+// planCells — 계획 축의 칸. 리뷰 항목과 자동통과 항목이 **같은 칸**을 쓴다. 두 벌로 만들면 한쪽만
+// 고쳐지는 날이 오고, 그날 한쪽 항목은 계획에 넣을 수 없는 칸을 든다.
+templ planCells(lang Lang, it review.Item) {
+	<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan } disabled?={ !plannable(it) }/></td>
+	<td>
+		<select name={ "kind:" + it.ID }>
+			<option value="" selected?={ it.Kind == "" }>{ tKindAuto.In(lang) }</option>
+			for _, k := range remediationKinds {
+				<option value={ k } selected?={ it.Kind == k }>{ shortKind(k) }</option>
+			}
+		</select>
+	</td>
+	<td><input type="text" name={ "target:" + it.ID } value={ it.TargetAlgorithm } placeholder="ML-KEM (FIPS 203)"/></td>
+	<td>
+		<select name={ "level:" + it.ID }>
+			<option value="" selected?={ it.Level == "" }>{ tKindAuto.In(lang) }</option>
+			for _, l := range deployLevels {
+				<option value={ l } selected?={ it.Level == l }>{ l }</option>
+			}
+		</select>
+	</td>
+}
+
+// hooksRow — 활성화 훅과 되돌림 메모. 되돌림 메모는 판정 결론이 아니라 계획 축의 값이다.
+templ hooksRow(lang Lang, it review.Item, span int) {
+	<tr class="hooks">
+		<td colspan={ strconv.Itoa(span) }>
+			<span class="hint">{ tHooks.In(lang) }</span>
+			<label>{ tHookPre.In(lang) } <input type="text" name={ "pre:" + it.ID } value={ it.Pre }/></label>
+			<label>{ tHookActivate.In(lang) } <input type="text" name={ "activate:" + it.ID } value={ it.Activate }/></label>
+			<label>{ tHookDeact.In(lang) } <input type="text" name={ "deactivate:" + it.ID } value={ it.Deactivate }/></label>
+			<label>{ tHookRestart.In(lang) } <input type="text" name={ "restart:" + it.ID } value={ it.Restart }/></label>
+			<label>{ tRollbackNote.In(lang) } <input type="text" name={ "rollback:" + it.ID } value={ it.RollbackNote }/></label>
+		</td>
+	</tr>
 }

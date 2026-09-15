@@ -110,26 +110,17 @@ func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, poli
 	sf := Session{Note: Note, Scope: "org://" + orgName, PolicyDecisions: map[string]string{},
 		RulesetVersion: RulesetVersion, SessionID: NewSessionID()}
 	for _, it := range queue {
-		pol := PolicyOf(it.Rec.Key)
-		sf.Items = append(sf.Items, Item{
-			ID: Key(it.Rec.Key), Policy: pol,
-			Node: it.Rec.Key.NodeID, Runtime: it.Rec.Key.Runtime,
-			FindingID: it.Rec.FindingID, Fingerprint: it.Rec.Fingerprint, Sources: SourcesOf(it.Rec),
-			// 위임 수준은 **실제 값으로 저장한다.** 화면에만 기본으로 보여 주고 비워 두면
-			// 검토자가 고르지 않은 값이 나중에 기본값으로 채워지고, 그 결과에 승인 서명이
-			// 붙는다. 저장해 두면 검토자에게 보이고 승인 대상에 들어간다. 바꾸는 것은 화면에서 한다.
-			Level: "L2",
-			State: string(it.Rec.State), Conf: it.Rec.Confidence,
-			Mandatory: it.Mandatory, Rescan: it.Rec.RescanCandidate,
-		})
-		if _, ok := sf.PolicyDecisions[pol]; !ok {
-			sf.PolicyDecisions[pol] = ""
+		item := ItemOf(it.Rec, it.Mandatory)
+		sf.Items = append(sf.Items, item)
+		if _, ok := sf.PolicyDecisions[item.Policy]; !ok {
+			sf.PolicyDecisions[item.Policy] = ""
 		}
 	}
+	// 자동통과도 항목이다 - 판정은 요구하지 않지만 계획 칸을 든다. 순서는 ID 순으로 고정한다.
 	for _, a := range autopass {
-		sf.Autopass = append(sf.Autopass, Key(a.Key))
+		sf.Autopass = append(sf.Autopass, ItemOf(a, false))
 	}
-	sort.Strings(sf.Autopass)
+	sort.Slice(sf.Autopass, func(i, j int) bool { return sf.Autopass[i].ID < sf.Autopass[j].ID })
 
 	out.Session, out.Assets, out.Nodes = sf, r.Assets, len(r.SeenBy)
 	out.Confirmed, out.Undeclared, out.Unobserved = r.Counts()
@@ -145,29 +136,52 @@ func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, poli
 // 항목들을 보고 내린 결론」인데, 새 항목은 사람이 본 적이 없다 — 그대로 두면 방금 나타난
 // UNDECLARED 가 누가 승인한 적 없는 근거를 달고 확정을 통과한다. 서명도 지운다: 서명은 그
 // 큐에 대한 것이다.
+//
+// **리뷰 항목과 자동통과를 합쳐 ID 로 찾는다.** 확신이 0.8 을 넘나들면 같은 자산이 두 컬렉션
+// 사이를 옮겨 다닌다 - 어느 컬렉션에 있었는지는 보지 않고, 사람이 고른 계획 칸은 따라간다.
+// 쓰는 자리는 [update] 다: [All] 이 준 복사본에 쓰면 아무 일도 일어나지 않는다.
+//
+// 옛 식별자 목록(LegacyAutopass)은 새 세션에 같은 ID 의 구조화 후보가 있으면 그것으로 치환된
+// 셈이다(새 세션이 이미 들고 있다). 없으면 목록에 남기고 계획 불가를 알린다 - 조용히 지우지 않는다.
 func Carry(prev, next Session) Session {
 	was := map[string]Item{}
-	for _, it := range prev.Items {
+	for _, it := range All(prev) {
 		was[it.ID] = it
 	}
 	gained := map[string]bool{}
-	for i, it := range next.Items {
+	for _, it := range next.Items {
+		if _, seen := was[it.ID]; !seen {
+			gained[it.Policy] = true
+		}
+	}
+	for _, it := range All(next) {
 		old, seen := was[it.ID]
 		if !seen {
-			gained[it.Policy] = true
 			continue
 		}
 		// 사람이 고른 것을 다 옮긴다. 하나라도 빠뜨리면 다시 열 때마다 검토자가 같은 선택을
 		// 되풀이하게 되고, 그러다 놓친 칸이 확정에서 막힌다.
-		next.Items[i].Conclusion = old.Conclusion
-		next.Items[i].Plan = old.Plan
-		next.Items[i].Level = old.Level
-		next.Items[i].Kind = old.Kind
-		next.Items[i].TargetAlgorithm = old.TargetAlgorithm
-		next.Items[i].FIPS = old.FIPS
-		next.Items[i].Config = old.Config
-		next.Items[i].Pre, next.Items[i].Activate = old.Pre, old.Activate
-		next.Items[i].Deactivate, next.Items[i].Restart = old.Deactivate, old.Restart
+		update(&next, it.ID, func(n *Item) {
+			n.Conclusion = old.Conclusion
+			n.Plan = old.Plan
+			n.Level = old.Level
+			n.Kind = old.Kind
+			n.TargetAlgorithm = old.TargetAlgorithm
+			n.FIPS = old.FIPS
+			n.Config = old.Config
+			n.RollbackNote = old.RollbackNote
+			n.Pre, n.Activate = old.Pre, old.Activate
+			n.Deactivate, n.Restart = old.Deactivate, old.Restart
+		})
+	}
+	present := map[string]bool{}
+	for _, it := range All(next) {
+		present[it.ID] = true
+	}
+	for _, id := range prev.LegacyAutopass {
+		if !present[id] {
+			next.LegacyAutopass = append(next.LegacyAutopass, id)
+		}
 	}
 	for pol := range next.PolicyDecisions {
 		if gained[pol] {
@@ -202,15 +216,25 @@ func Carry(prev, next Session) Session {
 //
 // 규칙 판을 따로 한 번 더 보는 것은 **큐가 비었을 때** 때문이다. 항목이 하나도 없으면
 // 항목별 비교는 전부 참이라, 규칙이 바뀌어도 서명이 살아남는다.
+//
+// **자리(index)가 아니라 ID 로 맞춘다.** 항목이 컬렉션을 옮기면 길이가 둘 다 달라지고 자리도
+// 어긋난다. ID 집합이 다르거나 같은 ID 의 근거가 다르면 다른 근거다. 자동통과의 근거만 바뀌어도
+// 서명이 무효다 - 그 항목도 계획에 들어갈 수 있다.
 func sameBasis(prev, next Session) bool {
-	if prev.RulesetVersion != next.RulesetVersion || len(prev.Items) != len(next.Items) {
+	if prev.RulesetVersion != next.RulesetVersion {
 		return false
 	}
-	for i := range prev.Items {
-		if prev.Items[i].ID != next.Items[i].ID {
-			return false
-		}
-		if BasisOf(prev.Items[i], prev.RulesetVersion) != BasisOf(next.Items[i], next.RulesetVersion) {
+	a, b := All(prev), All(next)
+	if len(a) != len(b) {
+		return false
+	}
+	was := map[string]string{}
+	for _, it := range a {
+		was[it.ID] = BasisOf(it, prev.RulesetVersion)
+	}
+	for _, it := range b {
+		h, ok := was[it.ID]
+		if !ok || h != BasisOf(it, next.RulesetVersion) {
 			return false
 		}
 	}

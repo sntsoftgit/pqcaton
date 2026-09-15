@@ -666,7 +666,7 @@ func TestEnglishScreensHaveNoKorean(t *testing.T) {
 
 	rv := review.Session{Scope: "org://acme", PolicyDecisions: map[string]string{"p": ""},
 		Items:    []review.Item{{ID: "a", Policy: "p", State: "UNDECLARED", Mandatory: true}},
-		Autopass: []string{"b"}}
+		Autopass: []review.Item{{ID: "b", Policy: "p", State: "CONFIRMED", Conf: 0.9}}}
 
 	sc := scope.Session{Org: "acme", LayerDecisions: map[string]string{"corp": ""},
 		Changes: []scope.ChangeItem{{ID: "r1", Layer: "corp", Kind: scope.KindAdded,
