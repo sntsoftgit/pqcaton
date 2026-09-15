@@ -5,7 +5,7 @@
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** 관측은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가
 하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.**
 
-**사용하는 방법이 둘입니다.** 이 문서가 설명하는 것은 **직접 설치**입니다. 관측 결과를 자기
+**사용 방법은 두 가지입니다.** 이 문서가 설명하는 것은 **직접 설치**입니다. 관측 결과를 자기
 인프라에 두고 대조·판정·확정까지 같은 자리에서 끝내므로 밖으로 나가는 것이 없습니다.
 **호스팅**으로 쓰면 관측 결과가 고객망을 나와 컨트롤 플레인으로 올라가고, 그것을 내보내는 자리가
 [`saas/runner`](saas/runner/README.md)입니다. 무엇을 보내고 무엇을 보내지 않는지가 그
@@ -95,7 +95,7 @@ ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 colle
 
 > 예외가 하나 있습니다. `pqcaton-decide open`을 `-results` 없이 쓰면 **명령을 실행한 그 기계 자신을**
 > 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **리눅스에서만** 됩니다.
-> 여러 노드를 제대로 다루는 방법은 pqcota가 모은 결과를 읽는 [`pqcaton-report`](inventory/cmd/pqcaton-report)입니다.
+> 여러 노드를 제대로 다루려면 pqcota가 모은 결과를 읽는 [`pqcaton-report`](inventory/cmd/pqcaton-report)를 사용합니다.
 
 ## 써보기
 
@@ -105,7 +105,7 @@ make            # 라이선스 · 문구 · 문체 · 케이스 · 서식 관문
 
 **이 리포만으로 처음부터 끝까지 해볼 수 있습니다.** 관측할 대상은 이 기계입니다.
 **이 지름길은 `/proc`을 읽으므로 리눅스에서만 됩니다.** macOS·Windows에서는 아래 ②의
-주석처럼 pqcota가 모은 `results/`를 읽는 방법으로 갑니다.
+주석처럼 pqcota가 모은 `results/`를 읽어 처리합니다.
 
 ```bash
 go build -o bin/ ./inventory/cmd/...
@@ -116,7 +116,7 @@ printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-cha
 # ② 대조 — 이 기계를 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 만듭니다
 bin/pqcaton-decide open decl.csv local > session.json
 
-#    여러 노드를 다루는 방법은 이쪽입니다 — pqcota가 모은 관측으로 대조합니다
+#    여러 노드는 다음과 같이 다룹니다 — pqcota가 모은 관측으로 대조합니다
 #    bin/pqcaton-decide open declaration.json -results results/ -scope-assets scope-assets.csv -org acme > session.json
 #    (-scope-assets: pqcota-ingest에 준 것과 같은 파일. 지문이 상류와 맞으려면 같은 정책이어야 합니다)
 
@@ -150,7 +150,7 @@ bin/pqcaton-ui session.json \
 주면 그렇습니다. 그리고 **규칙을 화면에서 고칩니다.** 다섯 칸이 무슨 뜻인지는 「규칙을
 적는 법」 도움말에 있고, `action`은 고르는 칸이라 오타로 규칙이 어긋나지 않습니다.
 
-명령으로 세션을 먼저 만드는 방법도 그대로입니다. 같은 파일이고 같은 관문입니다.
+명령으로 세션을 먼저 만들 수도 있습니다. 같은 파일이고 같은 관문입니다.
 
 ```bash
 bin/pqcaton-decide open declaration.json -results results/ -org acme > session.json

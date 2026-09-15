@@ -35,7 +35,7 @@ pqcota는 관측한 사실만 알려 줍니다. 무엇이 위험한지, 무엇�
 > 없는 근거를 달고** 확정을 통과합니다. 정책·큐가 달라지면 **서명도 지웁니다**(승인자 이름은
 > 남깁니다. 그것은 사람이지 확인이 아닙니다).
 
-명령으로 세우는 길(`pqcaton-scope open` · `pqcaton-decide open`)은 그대로입니다. 세우는
+명령으로도 세션을 만들 수 있습니다(`pqcaton-scope open` · `pqcaton-decide open`). 세우는
 코드가 공용 패키지 한 곳이라(`review.FromResults` · `scope.NewSession`), 명령과 화면이 같은
 큐를 봅니다. 따로 계산하면 화면에서 본 UNDECLARED와 판정할 것이 달라집니다.
 
