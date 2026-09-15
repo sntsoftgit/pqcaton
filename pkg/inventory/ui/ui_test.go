@@ -11,6 +11,7 @@ import (
 
 	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
@@ -1370,5 +1371,58 @@ func TestInventoryIsNotAStep(t *testing.T) {
 		if st.Href == ui.ScreenInventoryNext {
 			t.Error("조회가 절차 카드에 들어갔다")
 		}
+	}
+}
+
+// IC-UI40 — **자동통과 항목의 계획 칸도 폼에서 세션으로 얹힌다.** 리뷰 항목과 같은 이름의 칸을 쓰고,
+// 결론은 리뷰 항목에만 얹힌다. 되돌림 메모도 계획 축의 칸이라 함께 온다.
+func TestApplyReviewWritesAutopassPlanFields(t *testing.T) {
+	sf := review.Session{
+		PolicyDecisions: map[string]string{"p": ""},
+		Items:           []review.Item{{ID: "a", Policy: "p"}},
+		Autopass:        []review.Item{{ID: "b", Policy: "p", State: "CONFIRMED"}},
+	}
+	got := ui.ApplyReview(sf, url.Values{
+		"plan:b": {"on"}, "kind:b": {"REMEDIATION_KIND_CONFIG_ONLY"}, "target:b": {"ML-KEM (FIPS 203)"},
+		"level:b": {"L2"}, "rollback:b": {"cnf 조각 제거"}, "item:b": {"이건 얹히면 안 된다"},
+	})
+	b := got.Autopass[0]
+	if !b.Plan || b.Kind != "REMEDIATION_KIND_CONFIG_ONLY" || b.TargetAlgorithm != "ML-KEM (FIPS 203)" || b.Level != "L2" || b.RollbackNote != "cnf 조각 제거" {
+		t.Errorf("자동통과의 계획 칸이 안 얹혔다: %+v", b)
+	}
+	if b.Conclusion != "" {
+		t.Errorf("자동통과에 결론이 얹혔다: %q", b.Conclusion)
+	}
+}
+
+// IC-UI41 — **원장 화면은 계획 선택 행을 판정으로 보이지 않는다.** 결론 칸이 빈 것을 판정으로 읽으면
+// 사람이 판정을 안 적은 줄 안다. 이력에는 두 행이 다 보이되, 계획 선택 행은 그 말이 선다.
+func TestLedgerMarksPlanSelectionRows(t *testing.T) {
+	all := []decision.Judgment{
+		{ID: "s@1", Subject: "s", Conclusion: "실존", DecidedAt: 1, ConfidenceEvaluated: true},
+		{ID: "s@2#plan", Subject: "s", DecidedAt: 2, RecordKind: decision.RecordPlanSelection, ConfidenceEvaluated: true},
+	}
+	r := &report.Result{Assets: []reconcile.Reconciled{{Key: reconcile.AssetKey{NodeID: "n", Runtime: "openssl", Component: "s"}, State: "CONFIRMED"}}}
+	v := ui.NewInventoryView(r, ui.Filter{}, ui.Page{Title: "t", Lang: ui.KO}).WithLedger(all, map[string]string{}, "s")
+	if len(v.History) != 2 {
+		t.Fatalf("이력 %d행, want 2", len(v.History))
+	}
+	var plan, judged int
+	for _, h := range v.History {
+		if h.PlanSelection {
+			plan++
+		} else {
+			judged++
+		}
+	}
+	if plan != 1 || judged != 1 {
+		t.Errorf("종류가 갈리지 않았다: 계획 선택 %d · 판정 %d", plan, judged)
+	}
+	var b strings.Builder
+	if err := ui.RenderInventory(&b, v); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "계획에 넣기로 한 기록") {
+		t.Error("화면이 계획 선택 행을 판정처럼 보인다")
 	}
 }

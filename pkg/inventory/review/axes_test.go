@@ -246,3 +246,45 @@ func TestDuplicateIDAcrossCollectionsIsAnError(t *testing.T) {
 		t.Error("중복 ID 는 판정 미완이 아니라 구조 오류다")
 	}
 }
+
+// IC-P18 — **옛 규칙 판의 세션을 그대로 확정하면 서명은 살아 있고 경고만 난다.** 막지 않는 것은
+// 검토 중인 세션이 도구 교체로 버려지면 사람이 한 일이 사라지기 때문이다. 다만 그 근거 해시와
+// 서명은 옛 규칙의 것이라, 무엇으로 판정됐는지를 값으로 알린다.
+func TestFinalizingAnOldSessionWarnsButDoesNotBlock(t *testing.T) {
+	sf := judgedSession()
+	sf.RulesetVersion = v2
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := os.Stderr
+	os.Stderr = w
+	res, ferr := review.Finalize(sf)
+	w.Close()
+	os.Stderr = saved
+	var out strings.Builder
+	buf := make([]byte, 4096)
+	for {
+		n, rerr := r.Read(buf)
+		out.Write(buf[:n])
+		if rerr != nil {
+			break
+		}
+	}
+	if ferr != nil {
+		t.Fatalf("옛 세션이 막혔다: %v", ferr)
+	}
+	if res.Plan.GetRulesetVersion() != v2 {
+		t.Errorf("계획의 규칙 판이 세션의 것이 아니다: %s", res.Plan.GetRulesetVersion())
+	}
+	if !strings.Contains(out.String(), "warning") || !strings.Contains(out.String(), v2) || !strings.Contains(out.String(), review.RulesetVersion) {
+		t.Errorf("옛 규칙 판이라는 경고가 없거나 값이 빠졌다: %q", out.String())
+	}
+	// 같은 세션을 v3 으로 다시 열어 Carry 하면 서명은 지워진다 - 근거 해시의 입력이 넓어졌다.
+	next := judgedSession()
+	next.RulesetVersion, next.Signature = review.RulesetVersion, ""
+	if review.Carry(sf, next).Signature != "" {
+		t.Error("규칙 판이 올랐는데 서명이 살아남았다")
+	}
+}
