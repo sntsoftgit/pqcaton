@@ -56,8 +56,14 @@ func main() {
 	fmt.Println("╔══════════════════════════════════════════════════════════╗")
 	fmt.Println("║  pqcota discovery → inventory demo report                ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════╝")
-	fmt.Printf("\nnodes %d · observed assets %d · observed edges %d · declared assets %d · declared edges %d\n\n",
-		r.Nodes, r.ObservedAssets, r.ObservedEdges, r.DeclaredAssets, r.DeclaredEdges)
+	// 관측 수는 정책이 뺀 것도 든다 - 보았으므로. 관리 수를 따로 적어 둘이 다를 때 그 차이가
+	// 「정책이 뺀 것」임을 읽는 사람이 알게 한다.
+	managed := ""
+	if r.ManagedAssets != r.ObservedAssets {
+		managed = fmt.Sprintf(" (managed %d)", r.ManagedAssets)
+	}
+	fmt.Printf("\nnodes %d · observed assets %d%s · observed edges %d · declared assets %d · declared edges %d\n\n",
+		r.Nodes, r.ObservedAssets, managed, r.ObservedEdges, r.DeclaredAssets, r.DeclaredEdges)
 
 	// ① 관측 - **여기서 시작하는 사람이 있다.** pqcota 데모를 거치지 않고 이 리포트만 보는
 	// 사람에게는 대조 앞에 무엇이 있었는지가 안 보인다. 재료는 이미 손에 있으니 보여 준다.

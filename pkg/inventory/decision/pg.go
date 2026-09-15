@@ -168,10 +168,15 @@ func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 	if !enabled {
 		return false, nil
 	}
+	// **이 연결이 실제로 보는 표의 열만 센다.** information_schema.columns 를 표 이름으로만 고르면 같은
+	// 데이터베이스의 다른 스키마에 같은 이름의 표가 있을 때 그 열까지 세어, 지금 표에 열이 없어도
+	// 준비됐다고 하거나(다른 스키마의 열을 봄) 열이 다 있어도 준비되지 않았다고(4 이상) 오판한다.
+	// to_regclass 가 search_path 로 고른 바로 그 관계의 OID 를 pg_attribute 에 맞댄다.
 	var cols int
 	if err := pool.QueryRow(ctx,
-		`SELECT count(*) FROM information_schema.columns
-		 WHERE table_name = 'pqcota_judgments' AND column_name IN ('record_kind', 'confidence_evaluated')`).Scan(&cols); err != nil {
+		`SELECT count(*) FROM pg_attribute
+		 WHERE attrelid = to_regclass('pqcota_judgments') AND NOT attisdropped
+		   AND attname IN ('record_kind', 'confidence_evaluated')`).Scan(&cols); err != nil {
 		return false, fmt.Errorf("checking the columns: %w", err)
 	}
 	return cols == 2, nil

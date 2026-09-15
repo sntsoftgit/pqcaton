@@ -120,3 +120,32 @@ func TestExcludedSourcesCarryNoSnapshotLocation(t *testing.T) {
 		}
 	}
 }
+
+// IC-R25 — **관측 자산 수는 정책이 뺀 것도 센다.** 보았으므로. 관리 근거의 수로 세면 머리에서
+// 「관측 2」라 하고 바로 아래 런타임별 합계는 5 라고 하는 리포트가 나온다 - 제외를 부재로 세는 것이고,
+// 이 판이 닫으려는 바로 그 결함이다. 관리 수는 따로 든다.
+func TestObservedCountIncludesPolicyExcludedAssets(t *testing.T) {
+	dir := t.TempDir()
+	writeResults(t, dir,
+		resultWithApps("web", 100, "libssl.so.3", "/opt/app/bin/app"),
+		resultWithApps("web", 200, "libcrypto.so.3", "/usr/sbin/sshd"))
+	d := decl.Declaration{Org: "acme", Scope: []string{"web"},
+		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}},
+		Assets: []decl.Asset{{Node: "web", Runtime: "openssl", Component: "libssl"}, {Node: "web", Runtime: "openssl", Component: "libpq"}}}
+	policy := &scope.AssetPolicy{Rules: []scope.AssetRule{{Runtime: "*", Lib: "*", AppKey: "/usr/sbin/sshd*", Exclude: true}}}
+	r, err := report.BuildWith(dir, d, policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 관측 둘(libssl 관리 · libcrypto 제외) · 미관측 하나(libpq).
+	if r.ObservedAssets != 2 || r.ManagedAssets != 1 {
+		t.Errorf("관측 %d · 관리 %d, want 2 · 1", r.ObservedAssets, r.ManagedAssets)
+	}
+	sum := 0
+	for _, n := range r.ObservedByRuntime() {
+		sum += n
+	}
+	if sum != r.ObservedAssets {
+		t.Errorf("머리의 관측 수(%d)와 런타임별 합계(%d)가 다르다", r.ObservedAssets, sum)
+	}
+}

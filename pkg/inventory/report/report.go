@@ -46,7 +46,13 @@ type Result struct {
 	PolicyConflicts []reconcile.Reconciled
 
 	// 센 것. 화면과 글이 같은 수를 말하게 한다.
+	//
+	// ObservedAssets — **관측된 자산 전부**(대조 축이 UNOBSERVED 가 아닌 것, 고유 자산 기준). 정책이
+	// 뺀 것도 든다 - 보았으므로. 관리 근거의 수로 세면 머리에서 「관측 2」라 하고 바로 아래에서
+	// 「openssl 4」라 하는 리포트가 나온다. 제외를 부재로 세는 것이고, 이 판이 닫으려는 바로 그 결함이다.
+	// ManagedAssets — 그 가운데 관리 대상(MANAGED). 계획에 들 수 있는 것의 수다.
 	ObservedAssets int
+	ManagedAssets  int
 	ObservedEdges  int
 	DeclaredAssets int
 	DeclaredEdges  int
@@ -175,7 +181,15 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 			out.Uncovered[n] = true
 		}
 	}
-	out.ObservedAssets, out.ObservedEdges = len(observedAssets), len(observedEdges)
+	for _, rec := range out.Assets {
+		if rec.State != reconcile.Unobserved {
+			out.ObservedAssets++
+			if rec.Managed == reconcile.Managed {
+				out.ManagedAssets++
+			}
+		}
+	}
+	out.ObservedEdges = len(observedEdges)
 	out.DeclaredAssets, out.DeclaredEdges = len(declaredAssets), len(declaredEdges)
 	return out, nil
 }

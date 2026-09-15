@@ -31,6 +31,7 @@
 | **[IC-R22](../pkg/inventory/reconcile/managed_test.go) ✅** | 정책 없이 정규화한 스냅샷 + 정책 | **정책 판정은 상류 `scope.AssetPolicy.Managed` 가 한다.** 거짓인 finding 만 제외 근거가 되고, 앱 식별자는 **전부** 실리며(공유 `.so` 하나를 여러 앱이 로드하면 그 목록 전부가 함께 빠진 것이다), 조직이 찍힌다. 정책이 nil 이면 아무것도 빠지지 않는다 |
 | **[IC-R23](../pkg/inventory/report/managed_test.go) ✅** | 선언은 `openssl/libcrypto` 를 적었고 정책은 그것을 관측한 앱(`sshd`)을 뺌 · 데모의 모양 | `UNOBSERVED` 가 **아니라** `CONFIRMED` + `EXCLUDED_BY_POLICY` 다. 리포트가 선언·정책의 어긋남을 **자산 식별자·원천 노드·앱 식별자 전부·같은 정책 코드가 뺐다는 사실**로 경고한다. 어느 규칙인지는 말하지 않는다 - 상류 `Managed` 는 bool 만 돌려준다. 리뷰 큐에는 오르지 않는다. 정책을 걸지 않으면 관리 대상이고 어긋남도 없다 |
 | **[IC-R24](../pkg/inventory/report/managed_test.go) ✅** | 정책을 걸고 대조 | 관리 근거는 정책을 건 스냅샷에서만 나오고 지문이 있다. 제외 근거에는 **지문이 없다** - 적재되지 않은 스냅샷의 지문은 아무것도 가리키지 않는다 |
+| **[IC-R25](../pkg/inventory/report/managed_test.go) ✅** | 관리 자산 하나 · 정책이 뺀 자산 하나 · 미관측 자산 하나 | **관측 자산 수는 정책이 뺀 것도 센다**(2). 관리 수는 따로 든다(1). 머리의 관측 수와 런타임별 합계가 같다 | 관리 근거의 수로 세면 머리에서 「관측 2」라 하고 바로 아래 합계는 5 라고 하는 리포트가 나온다. 제외를 부재로 세는 것이고, 이 판이 닫으려는 바로 그 결함이다 |
 | **[IC-R6](../pkg/inventory/reconcile/fingerprint_test.go) ✅** | **`finding_id` 는 같은데 버전·검출 방법·증거 강도·강화 판정·알고리즘·로드한 앱이 달라진 관측** | **지문이 달라진다.** 상류의 id 는 `sha256(노드\|이름\|런타임\|fork)` 라 자산이 같으면 같아서, id 만 보면 이 변화가 통째로 「그대로」로 읽힙니다. 대조가 그 지문을 세션까지 들고 간다 |
 
 ### O. 대조의 조직 축 (설계 §1.1) ✅
@@ -129,6 +130,7 @@
 | **[IC-D24](../pkg/inventory/decision/judgment_test.go) ✅** | 같은 자산에 판정 행 뒤에 계획 선택 행이 쌓임 · 계획 선택 행만 있는 자산 | **최신 판정과 델타 판정의 결과가 달라지지 않는다.** `LatestPerSubject` 는 판정 행을 돌려주고, `DeltaReview` 는 계획 선택 행에 재검토 표시를 붙이지 않는다. 옛 행(빈 종류)은 판정으로 읽는다 |
 | **[IC-D25](../pkg/inventory/decision/file_test.go) ✅** | 파일 원장의 옛 줄(`ConfidenceEvaluated` 칸 없음) · 새 미평가 줄 · 계획 선택 줄 | 옛 줄은 **평가된 판정**으로 읽히고, 새 줄의 명시적 `false` 는 그대로 보존된다. 새로 쓴 줄에는 부재가 없다. `Judgment` 에 json 태그가 없어 `bool` 로 두면 옛 줄의 부재가 `false` 로 읽히고, 그러면 옛 판정 전부가 미평가로 둔갑해 만료 시 신뢰도가 감쇠되지 않는다 - wire 형식이 포인터로 받는다 |
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT` 로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN` 이 있을 때만 |
+| **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass` 가 고른 관계의 OID 를 `pg_attribute` 에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN` 이 있을 때만 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, §8) ✅
 | TC | Given → When | Then |
