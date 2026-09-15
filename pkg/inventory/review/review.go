@@ -273,7 +273,13 @@ func SourcesOf(r reconcile.Reconciled) []EvidenceSource {
 //
 // v2 — 주 근거를 입력 순서가 아니라 가장 강한 증거로 고르고, 계약 변환이 근거 여럿을 낸다. 같은 관측에서
 // 다른 판정·다른 계획이 나오므로 올렸다. 상류도 같은 이유(병합 규칙)로 v2 다.
-const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v2"
+//
+// v3 — 판정 축과 계획 축, 대조 축과 관리 축을 나눴다. 자동통과 자산이 계획에 들어올 수 있고, 정책이
+// 뺀 선언 자산이 리뷰 큐에서 빠진다 - 같은 관측에서 다른 계획이 나온다. 근거 해시가 관리 판정·제외
+// 근거·미평가 여부를 덮으므로 **v3 으로 다시 열어 Carry 한 세션의 서명은 무효**다. 저장된 옛 세션을
+// 그대로 확정하면 서명은 살아 있고 경고만 난다([Finalize]) - 검토 중인 세션이 도구 교체로 버려지면
+// 사람이 한 일이 사라진다.
+const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v3"
 
 // planRulesetNumber — 결합 판 문자열에서 이 리포의 계획 규칙 판 번호를 꺼낸다. 없거나 못 읽으면
 // 0 이다(옛 빌드가 연 세션, 또는 규칙 판을 안 적은 것).
@@ -469,6 +475,15 @@ func Finalize(sf Session) (*Result, error) {
 		return nil, fmt.Errorf("this session records no session_id — it was raised by an older build. " +
 			"raise it again from the results (`pqcaton-decide open`) so its judgments and its plan " +
 			"share one session id; finalizing it as-is would leave a plan nothing in the ledger points back to")
+	}
+
+	// 규칙 판이 지금 도구보다 낮은 세션이다. 막지는 않는다 - 검토 중인 세션이 도구 교체로 버려지면
+	// 사람이 한 일이 사라진다. 다만 그 세션의 근거 해시는 옛 규칙으로 계산됐고 서명도 그것을 덮은
+	// 것이라, 무엇으로 판정됐는지를 값으로 알린다.
+	if have, now := planRulesetNumber(sf.RulesetVersion), planRulesetNumber(RulesetVersion); have < now {
+		fmt.Fprintf(os.Stderr, "warning: this session was judged under %s; the tool now runs %s. "+
+			"Its basis hashes and signature are the old rules' — reopen it from the results to judge under the current rules\n",
+			sf.RulesetVersion, RulesetVersion)
 	}
 
 	// **관문은 여기다.** 판정이 끝나지 않은 세션에서는 계획 자체가 만들어지지 않는다.

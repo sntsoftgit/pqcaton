@@ -16,7 +16,10 @@ import (
 // 판정 축과 계획 축을 나눈다. 자동통과는 「사람이 볼 필요가 없다」이지 「바꿀 필요가 없다」가
 // 아니다. 관리 축은 대조 축과 다른 것을 재고, 세션 파일에 들어가 해시가 덮고 계획 차단이 본다.
 
-const v3 = "pqcota-enrich/v2+pqcaton-plan/v3"
+const (
+	v2 = "pqcota-enrich/v2+pqcaton-plan/v2"
+	v3 = "pqcota-enrich/v2+pqcaton-plan/v3"
+)
 
 func autopassItem(id string) review.Item {
 	return review.Item{ID: id, Node: "n1", Runtime: "openssl", Policy: "openssl/libcrypto",
@@ -198,7 +201,6 @@ func TestBasisCoversTheManagedAxisFromV3(t *testing.T) {
 		t.Error("미평가로 바뀌었는데 해시가 같다")
 	}
 	// v2 세션의 해시는 이 칸들을 보지 않는다 - 그 판의 원장 행·델타 비교와 어긋나면 안 된다.
-	v2 := review.RulesetVersion
 	if review.BasisOf(base, v2) != review.BasisOf(x, v2) || review.BasisOf(base, v2) != review.BasisOf(e, v2) {
 		t.Error("v2 해시가 v3 의 칸을 보고 있다")
 	}
@@ -219,7 +221,7 @@ func TestRollbackNoteFallsBackOnlyForOldSessions(t *testing.T) {
 		}
 		return res.Plan.GetActions()[0].GetRollbackNote()
 	}
-	if got := note(review.RulesetVersion, "결론", ""); got != "결론" {
+	if got := note(v2, "결론", ""); got != "결론" {
 		t.Errorf("v2 세션의 빈 되돌림 메모는 결론으로 채워야 한다: %q", got)
 	}
 	if got := note(v3, "결론", ""); got != "" {

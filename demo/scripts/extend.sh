@@ -145,23 +145,34 @@ docker exec pqcota-ctl bash -lc \
 # UNOBSERVED 는 「없다」가 아니라 「못 봤다」라(§2.7) 조치 대상이 아니다 — 재수집이 먼저다. 그리고
 # 그 근거를 상류 이력에서 되짚을 수 있어야 하므로, 여기 드는 자산은 정책이 관리 대상으로 남긴 것,
 # 곧 중앙 이력의 스냅샷에 실제로 있는 것이다.
+#
+# **자동통과 항목도 계획에 넣는다**(v0.18.0). 선언과 맞고 확인된 자산이야말로 조치 대상이다 —
+# 「사람이 볼 필요가 없다」는 「바꿀 필요가 없다」가 아니다. 판정 칸은 없고 계획 칸만 채운다. 전에는
+# 자동통과가 식별자 목록이라 계획에 들 자리가 없어, 현실적인 선언에서는 계획이 비었다.
+# 제외 전용(EXCLUDED_BY_POLICY)은 큐에도 후보에도 없다 — 관리하지 않기로 한 자산에 조치를 세우지 않는다.
 docker exec pqcota-ctl bash -lc 'python3 - <<PY
 import json
 s = json.load(open("/work/session.json"))
 s["reviewer"], s["signature"] = "데모 판정자", "demo-judged"
 for k in s["policy_decisions"]:
     s["policy_decisions"][k] = "PQC 라이브러리로 교체한다"
-n = 0
-for it in s["items"]:
-    if it["state"] not in ("CONFIRMED", "UNDECLARED"):
-        continue
+def pick(it):
     it["include_in_plan"] = True
     it["remediation_kind"] = "REMEDIATION_KIND_CONFIG_ONLY"
     it["target_algorithm"] = "ML-KEM (FIPS 203)"
     it["deploy_level"] = "L2"
-    n += 1
+    it["rollback_note"] = "remove the staged config fragment"
+n = m = 0
+for it in s["items"]:
+    if it["state"] not in ("CONFIRMED", "UNDECLARED") or it.get("managed") == "EXCLUDED_BY_POLICY":
+        continue
+    pick(it); n += 1
+for it in s.get("autopass_candidates") or []:
+    if not isinstance(it, dict):
+        continue  # an older session lists ids only; those cannot be planned
+    pick(it); m += 1
 json.dump(s, open("/work/session.json", "w"), ensure_ascii=False, indent=2)
-print("   %d observed asset(s) go into the plan (CONFIRMED or UNDECLARED) · session %s" % (n, s.get("session_id", "?")))
+print("   %d reviewed + %d auto-passed asset(s) go into the plan · session %s" % (n, m, s.get("session_id", "?")))
 PY'
 docker exec pqcota-ctl bash -lc \
   'pqcaton-decide close /work/session.json -org demo-corp -judgments /work/judgments.jsonl > /work/plan.json'
@@ -212,8 +223,8 @@ print(len(json.load(open("/work/plan.json")).get("actions", [])))
 PY' | tr -d '[:space:]')
 if [ "$ACTIONS" = "0" ]; then
   echo
-  echo "ℹ  no action in the judged plan — after the asset-scope policy, nothing in the review queue is an observed asset."
-  echo "   CONFIRMED assets auto-passed and cannot be taken into a plan today; UNOBSERVED is 'not seen', not 'not there' (§2.7)."
+  echo "ℹ  no action in the judged plan — nothing observed is both managed by the asset-scope policy and selectable."
+  echo "   UNOBSERVED is 'not seen', not 'not there' (§2.7); EXCLUDED_BY_POLICY is 'seen, not managed' and cannot be planned."
   echo "   Approval → generation → resolution is exercised by pqcota's own demo (it resolves its evidence against this same history)."
   echo "   clean up: pqcota/demo/scripts/down.sh"
   exit 0
