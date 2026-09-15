@@ -51,12 +51,20 @@ func TestDeltaReview_basisUnchanged(t *testing.T) {
 }
 
 // IC-D4: stale 판정 + 만료 경과 → 신뢰도 감쇠 + 재확인 플래그.
+//
+// IC-D23 — **미평가 판정은 재확인 표시만 서고 숫자는 그대로다.** 재지 않은 값을 줄이면 「재 봤더니
+// 더 낮아졌다」로 읽힌다. 계획 선택 행은 판정이 아니라 아예 보지 않는다.
 func TestExpireStale(t *testing.T) {
 	js := []Judgment{
-		{ID: "old", Subject: "s1", Confidence: 1.0, DecidedAt: 0},     // 오래됨
-		{ID: "fresh", Subject: "s2", Confidence: 1.0, DecidedAt: 900}, // 최근
+		{ID: "old", Subject: "s1", Confidence: 1.0, ConfidenceEvaluated: true, DecidedAt: 0},     // 오래됨
+		{ID: "fresh", Subject: "s2", Confidence: 1.0, ConfidenceEvaluated: true, DecidedAt: 900}, // 최근
+		{ID: "unevaluated", Subject: "s3", Confidence: 0.3, ConfidenceEvaluated: false, DecidedAt: 0},
+		{ID: "plan", Subject: "s4", Confidence: 0.9, ConfidenceEvaluated: true, DecidedAt: 0, RecordKind: RecordPlanSelection},
 	}
 	got := ExpireStale(js, 1000, 500, 0.5) // now=1000, ttl=500s, decay=0.5
+	if len(got) != 3 {
+		t.Fatalf("계획 선택 행이 만료 계산에 들어갔다: %d행", len(got))
+	}
 	if !got[0].Stale || !got[0].NeedsReReview {
 		t.Error("만료 판정은 stale + 재확인이어야")
 	}
@@ -65,6 +73,9 @@ func TestExpireStale(t *testing.T) {
 	}
 	if got[1].Stale || got[1].Confidence != 1.0 {
 		t.Error("미만료 판정은 그대로여야")
+	}
+	if !got[2].Stale || !got[2].NeedsReReview || got[2].Confidence != 0.3 {
+		t.Errorf("미평가 판정은 표시만 서고 숫자는 그대로여야: %+v", got[2])
 	}
 }
 
@@ -106,5 +117,29 @@ func TestMemJudgmentStore_appendOnly(t *testing.T) {
 	hist, _ := st.BySubject("s1")
 	if len(hist) != 2 {
 		t.Fatalf("append-only: 이전 판정 보존돼 2개여야, got %d", len(hist))
+	}
+}
+
+// IC-D24 — **계획 선택 행을 더해도 최신 판정과 델타 판정의 결과가 달라지지 않는다.**
+//
+// 같은 자산에 판정 행 뒤에 계획 선택 행이 쌓여도 LatestPerSubject 는 판정 행을 돌려주고, DeltaReview
+// 는 계획 선택 행에 재검토 표시를 붙이지 않는다. 종류를 보지 않고 subject 로 덮으면 결론이 빈 행이
+// 사람의 판정을 덮는다.
+func TestPlanSelectionRowsDoNotPolluteDerivations(t *testing.T) {
+	js := []Judgment{
+		{ID: "s@1", Subject: "s", Conclusion: "실존", BasisHash: "h1", DecidedAt: 1, ConfidenceEvaluated: true},
+		{ID: "s@2#plan", Subject: "s", BasisHash: "h1", DecidedAt: 2, RecordKind: RecordPlanSelection, ConfidenceEvaluated: true},
+		{ID: "t@3#plan", Subject: "t", BasisHash: "h9", DecidedAt: 3, RecordKind: RecordPlanSelection, ConfidenceEvaluated: true},
+	}
+	latest := LatestPerSubject(js)
+	if len(latest) != 1 || latest[0].ID != "s@1" || latest[0].Conclusion != "실존" {
+		t.Fatalf("계획 선택 행이 최신 판정을 덮었다: %+v", latest)
+	}
+	delta := DeltaReview(js, map[string]string{"s": "h2", "t": "h0"})
+	if len(delta) != 1 || delta[0].ID != "s@1" || !delta[0].NeedsReReview {
+		t.Fatalf("델타가 판정 행만 보지 않는다: %+v", delta)
+	}
+	if (Judgment{}).Kind() != RecordJudgment {
+		t.Error("옛 행(빈 종류)은 판정으로 읽혀야 한다")
 	}
 }

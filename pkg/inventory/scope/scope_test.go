@@ -173,3 +173,18 @@ func TestReviewRaisesUnjudgedAndStale(t *testing.T) {
 		t.Error("승인이 살아 있는 것까지 올리면 리뷰가 잡음으로 찬다")
 	}
 }
+
+// IC-S15 — **계획 선택 행은 판정이 아니다.** 원장에 그 행만 있는 제외는 여전히 「승인이 아예 없다」로
+// 올라온다. 종류를 보지 않고 subject 로 덮으면 결론이 빈 행이 「판정이 있다」로 읽혀, 「제외 ≠
+// 부재」를 시간 축에서 지키는 이 경고가 사라진다 - 사라진 경고는 화면에 보이지 않는다.
+func TestPlanSelectionRowDoesNotCountAsJudged(t *testing.T) {
+	now := int64(1_000_000)
+	ex := []scope.Excluded{{Node: "n", Runtime: "openssl", Asset: "선택만"}}
+	prior := []decision.Judgment{
+		{ID: "n/openssl/선택만@1#plan", Subject: "n/openssl/선택만", DecidedAt: now - 1, RecordKind: decision.RecordPlanSelection},
+	}
+	got := scope.Review(ex, prior, now, 100)
+	if len(got) != 1 || got[0].Reason != scope.ReasonNeverJudged {
+		t.Fatalf("계획 선택 행이 판정으로 읽혔다: %+v", got)
+	}
+}

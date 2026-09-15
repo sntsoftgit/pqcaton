@@ -47,8 +47,46 @@ func (f *FileJudgmentStore) Org() org.ID { return f.org }
 
 // record — 파일에 실제로 쓰는 모양. 조직을 함께 적는다 — 읽을 때 거르기 위해서다.
 type record struct {
-	Org string   `json:"org"`
-	J   Judgment `json:"judgment"`
+	Org string       `json:"org"`
+	J   judgmentWire `json:"judgment"`
+}
+
+// judgmentWire — Judgment 의 파일 모양. **ConfidenceEvaluated 를 포인터로 받는다.** Judgment 에는
+// json 태그가 없어 Go 이름으로 직렬화되는데, bool 로 두면 옛 줄의 칸 부재가 false 로 읽힌다. 옛 행은
+// 전부 평가된 값이었다(그때는 미평가라는 개념이 없었다). nil 이면 참, 명시적 false 만 미평가다.
+// 쓸 때는 언제나 명시적으로 쓴다 - 새 파일에는 부재가 없게. 나머지 칸은 Judgment 와 같은 이름이다.
+type judgmentWire struct {
+	ID                  string
+	Subject             string
+	Conclusion          string
+	Reviewer            string
+	Signature           string
+	BasisHash           string
+	Confidence          float64
+	ConfidenceEvaluated *bool `json:",omitempty"`
+	DecidedAt           int64
+	SessionID           string
+	RecordKind          RecordKind `json:",omitempty"`
+	// 파생 플래그는 저장하지 않는다. 옛 줄에 남아 있어도 읽을 때 버린다.
+	NeedsReReview bool `json:",omitempty"`
+	Stale         bool `json:",omitempty"`
+}
+
+func toWire(j Judgment) judgmentWire {
+	ev := j.ConfidenceEvaluated
+	return judgmentWire{ID: j.ID, Subject: j.Subject, Conclusion: j.Conclusion, Reviewer: j.Reviewer,
+		Signature: j.Signature, BasisHash: j.BasisHash, Confidence: j.Confidence, ConfidenceEvaluated: &ev,
+		DecidedAt: j.DecidedAt, SessionID: j.SessionID, RecordKind: j.RecordKind}
+}
+
+func fromWire(w judgmentWire) Judgment {
+	ev := true // 칸이 없으면 옛 행이고, 옛 행은 전부 평가된 값이다
+	if w.ConfidenceEvaluated != nil {
+		ev = *w.ConfidenceEvaluated
+	}
+	return Judgment{ID: w.ID, Subject: w.Subject, Conclusion: w.Conclusion, Reviewer: w.Reviewer,
+		Signature: w.Signature, BasisHash: w.BasisHash, Confidence: w.Confidence, ConfidenceEvaluated: ev,
+		DecidedAt: w.DecidedAt, SessionID: w.SessionID, RecordKind: w.RecordKind}
 }
 
 func (f *FileJudgmentStore) Save(j *Judgment) error {
@@ -64,7 +102,7 @@ func (f *FileJudgmentStore) Save(j *Judgment) error {
 		return err
 	}
 	defer fh.Close()
-	line, err := json.Marshal(record{Org: string(f.org), J: *j})
+	line, err := json.Marshal(record{Org: string(f.org), J: toWire(*j)})
 	if err != nil {
 		return err
 	}
@@ -103,7 +141,7 @@ func (f *FileJudgmentStore) All() ([]*Judgment, error) {
 			return nil, fmt.Errorf("%w: %s:%d - this handle is %q but that line is %q",
 				ErrOrgMismatch, f.path, n, f.org, r.Org)
 		}
-		j := r.J
+		j := fromWire(r.J)
 		out = append(out, &j)
 	}
 	return out, sc.Err()

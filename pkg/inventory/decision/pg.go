@@ -30,6 +30,12 @@ ALTER TABLE pqcota_judgments ADD COLUMN IF NOT EXISTS org TEXT NOT NULL DEFAULT 
 -- value, so this is how a plan is traced back to its judgments. Rows from before the column
 -- existed keep '' — the tool cannot know which session they came from, and does not guess.
 ALTER TABLE pqcota_judgments ADD COLUMN IF NOT EXISTS session_id TEXT NOT NULL DEFAULT '';
+-- record_kind separates a judgment from a plan selection. Rows from before the column existed
+-- keep '' and are read as judgments. confidence_evaluated defaults to TRUE so every existing row
+-- migrates as an evaluated value — the notion of "not evaluated" did not exist when they were
+-- written; only new unevaluated rows carry an explicit FALSE.
+ALTER TABLE pqcota_judgments ADD COLUMN IF NOT EXISTS record_kind TEXT NOT NULL DEFAULT '';
+ALTER TABLE pqcota_judgments ADD COLUMN IF NOT EXISTS confidence_evaluated BOOLEAN NOT NULL DEFAULT TRUE;
 -- org leads the index — every query is filtered by organization first.
 CREATE INDEX IF NOT EXISTS idx_pqcota_judg_org_subject ON pqcota_judgments(org, subject, seq);
 CREATE INDEX IF NOT EXISTS idx_pqcota_judg_org_session ON pqcota_judgments(org, session_id, seq);
@@ -144,10 +150,11 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-// schemaReady — 테이블이 있고 그 위에 행 수준 보안이 켜져 있는가.
+// schemaReady — 테이블이 있고 그 위에 행 수준 보안이 켜져 있으며, **이 판이 읽는 열이 다 있는가.**
 //
 // 테이블만 보고 넘어가면 **정책 없는 테이블에 조용히 붙는다** - 이 버전이 더하려던 한 겹이
-// 없는 채로 있다는 사실을 아무도 모르게 된다.
+// 없는 채로 있다는 사실을 아무도 모르게 된다. 열도 본다: 소유자가 옛 스키마만 돌려 두었으면
+// 첫 SELECT 가 「열이 없다」로 터지는데, 그것보다 여기서 무엇을 돌려야 하는지 말하는 편이 낫다.
 func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 	var enabled bool
 	err := pool.QueryRow(ctx,
@@ -158,7 +165,16 @@ func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("checking the schema: %w", err)
 	}
-	return enabled, nil
+	if !enabled {
+		return false, nil
+	}
+	var cols int
+	if err := pool.QueryRow(ctx,
+		`SELECT count(*) FROM information_schema.columns
+		 WHERE table_name = 'pqcota_judgments' AND column_name IN ('record_kind', 'confidence_evaluated')`).Scan(&cols); err != nil {
+		return false, fmt.Errorf("checking the columns: %w", err)
+	}
+	return cols == 2, nil
 }
 
 // RLSActive — 이 연결에서 행 수준 보안이 실제로 무는가.
@@ -185,21 +201,22 @@ func (p *PgJudgmentStore) Org() org.ID { return p.org }
 
 func (p *PgJudgmentStore) Save(j *Judgment) error {
 	_, err := p.pool.Exec(context.Background(),
-		`INSERT INTO pqcota_judgments(org,id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id)
-		 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-		p.org, j.ID, j.Subject, j.Conclusion, j.Reviewer, j.Signature, j.BasisHash, j.Confidence, j.DecidedAt, j.SessionID)
+		`INSERT INTO pqcota_judgments(org,id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id,record_kind,confidence_evaluated)
+		 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+		p.org, j.ID, j.Subject, j.Conclusion, j.Reviewer, j.Signature, j.BasisHash, j.Confidence, j.DecidedAt, j.SessionID,
+		string(j.RecordKind), j.ConfidenceEvaluated)
 	return err
 }
 
 func (p *PgJudgmentStore) Get(id string) (*Judgment, error) {
 	row := p.pool.QueryRow(context.Background(),
-		`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id
+		`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id,record_kind,confidence_evaluated
 		 FROM pqcota_judgments WHERE org=$1 AND id=$2 ORDER BY seq DESC LIMIT 1`, p.org, id)
 	return scanJudgment(row)
 }
 
 func (p *PgJudgmentStore) BySubject(subject string) ([]*Judgment, error) {
-	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id
+	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id,record_kind,confidence_evaluated
 		FROM pqcota_judgments WHERE org=$1 AND subject=$2 ORDER BY seq ASC`, p.org, subject)
 }
 
@@ -207,12 +224,12 @@ func (p *PgJudgmentStore) BySessionID(sessionID string) ([]*Judgment, error) {
 	if sessionID == "" {
 		return nil, ErrNoSessionID
 	}
-	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id
+	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id,record_kind,confidence_evaluated
 		FROM pqcota_judgments WHERE org=$1 AND session_id=$2 ORDER BY seq ASC`, p.org, sessionID)
 }
 
 func (p *PgJudgmentStore) All() ([]*Judgment, error) {
-	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id
+	return p.query(`SELECT id,subject,conclusion,reviewer,signature,basis_hash,confidence,decided_at,session_id,record_kind,confidence_evaluated
 		FROM pqcota_judgments WHERE org=$1 ORDER BY seq ASC`, p.org)
 }
 
@@ -237,9 +254,11 @@ type scannable interface{ Scan(dest ...any) error }
 
 func scanJudgment(r scannable) (*Judgment, error) {
 	var j Judgment
+	var kind string
 	if err := r.Scan(&j.ID, &j.Subject, &j.Conclusion, &j.Reviewer,
-		&j.Signature, &j.BasisHash, &j.Confidence, &j.DecidedAt, &j.SessionID); err != nil {
+		&j.Signature, &j.BasisHash, &j.Confidence, &j.DecidedAt, &j.SessionID, &kind, &j.ConfidenceEvaluated); err != nil {
 		return nil, err
 	}
+	j.RecordKind = RecordKind(kind)
 	return &j, nil
 }

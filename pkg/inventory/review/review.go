@@ -589,6 +589,7 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 	}
 	now := time.Now().Unix()
 	n := 0
+	// **판정 행은 리뷰 항목에서만 난다.** 자동통과는 판정을 다시 받지 않는다.
 	for _, it := range sf.Items {
 		c, ok := decided[it.ID]
 		if !ok {
@@ -597,8 +598,29 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 		j := &decision.Judgment{
 			ID: fmt.Sprintf("%s@%d", it.ID, now), Subject: it.ID, Conclusion: c,
 			Reviewer: sf.Reviewer, Signature: sf.Signature,
-			BasisHash: BasisOf(it, sf.RulesetVersion), Confidence: it.Conf, DecidedAt: now,
-			SessionID: sf.SessionID,
+			BasisHash: BasisOf(it, sf.RulesetVersion), Confidence: it.Conf,
+			ConfidenceEvaluated: ConfidenceEvaluated(it, sf.RulesetVersion), DecidedAt: now,
+			SessionID: sf.SessionID, RecordKind: decision.RecordJudgment,
+		}
+		if err := store.Save(j); err != nil {
+			return n, err
+		}
+		n++
+	}
+	// **계획 선택 행은 계획에 고른 항목마다 난다** - 리뷰 항목이든 자동통과든. 「이 자산을 이렇게
+	// 판정했다」와 「이 자산을 이 계획에 넣기로 했다」는 다른 사실이라, 결론이 있는 리뷰 항목을
+	// 계획에 넣으면 두 행이 다 생긴다. 결론 칸은 비운다 - 사람이 내린 결론이 없거나(자동통과),
+	// 있어도 이 행의 사실이 아니다. id 에 접미를 붙여 같은 초의 판정 행과 부딪히지 않게 한다.
+	//
+	// Reviewer·Signature 는 세션에 적힌 자유 문자열이다. 이 행이 답하는 것은 「누가 넣었나」가
+	// 아니라 「누가 넣었다고 기록됐나」다. 검증된 신원은 상류의 실행 승인에만 있다.
+	for _, it := range Selected(sf) {
+		j := &decision.Judgment{
+			ID: fmt.Sprintf("%s@%d#plan", it.ID, now), Subject: it.ID,
+			Reviewer: sf.Reviewer, Signature: sf.Signature,
+			BasisHash: BasisOf(it, sf.RulesetVersion), Confidence: it.Conf,
+			ConfidenceEvaluated: ConfidenceEvaluated(it, sf.RulesetVersion), DecidedAt: now,
+			SessionID: sf.SessionID, RecordKind: decision.RecordPlanSelection,
 		}
 		if err := store.Save(j); err != nil {
 			return n, err

@@ -152,7 +152,11 @@ templ historySection(v InventoryView) {
 				for _, j := range v.History {
 					<tr>
 						<td>{ j.DecidedAt }</td>
-						<td>{ j.Conclusion }</td>
+						if j.PlanSelection {
+							<td class="hint">{ tPlanSelectionRow.In(v.Page.Lang) }</td>
+						} else {
+							<td>{ j.Conclusion }</td>
+						}
 						<td>{ j.Reviewer }</td>
 						<td class="hint"><code>{ shortHash(j.Basis) }</code></td>
 					</tr>

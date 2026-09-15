@@ -147,10 +147,25 @@ func TestPlanTracesBackToItsJudgments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].SessionID != a.SessionID {
-		t.Fatalf("계획이 가리키는 세션의 판정이 나오지 않는다: %+v", got)
+	// 그 항목은 판정도 됐고 계획에도 들어갔으므로 행이 둘이다 - 판정 행과 계획 선택 행. 다른 사실이다.
+	if len(got) != 2 || got[0].SessionID != a.SessionID || got[1].SessionID != a.SessionID {
+		t.Fatalf("계획이 가리키는 세션의 사건이 나오지 않는다: %+v", got)
 	}
-	if got[0].Subject != a.Items[0].ID {
-		t.Errorf("다른 항목의 판정이 나왔다: %s", got[0].Subject)
+	kinds := map[decision.RecordKind]*decision.Judgment{}
+	for _, j := range got {
+		if j.Subject != a.Items[0].ID {
+			t.Errorf("다른 항목의 행이 나왔다: %s", j.Subject)
+		}
+		kinds[j.Kind()] = j
+	}
+	jr, pr := kinds[decision.RecordJudgment], kinds[decision.RecordPlanSelection]
+	if jr == nil || pr == nil {
+		t.Fatalf("판정 행과 계획 선택 행이 둘 다 있어야 한다: %v", kinds)
+	}
+	if jr.ID == pr.ID || !strings.HasSuffix(pr.ID, "#plan") {
+		t.Errorf("두 행의 id 가 갈리지 않았다: %q · %q", jr.ID, pr.ID)
+	}
+	if pr.Conclusion != "" || jr.Conclusion == "" {
+		t.Errorf("결론은 판정 행에만 있어야 한다: 판정 %q · 계획 선택 %q", jr.Conclusion, pr.Conclusion)
 	}
 }

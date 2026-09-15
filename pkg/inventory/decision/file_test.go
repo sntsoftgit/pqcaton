@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
@@ -94,4 +95,47 @@ func countLines(b []byte) int {
 		}
 	}
 	return n
+}
+
+// IC-D25 — **옛 원장 줄(칸 없음)은 평가된 값으로 읽히고, 새 미평가 줄은 명시적 false 그대로다.**
+//
+// Judgment 에는 json 태그가 없어 bool 로 두면 옛 줄의 부재가 false 로 읽힌다. 그러면 옛 판정 전부가
+// 미평가로 둔갑해 만료 시 신뢰도가 감쇠되지 않는다. wire 형식이 포인터로 받아 부재를 참으로 읽는다.
+func TestFileStoreReadsMissingEvaluatedAsTrue(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "j.jsonl")
+	old := `{"org":"acme","judgment":{"ID":"s@1","Subject":"s","Conclusion":"실존","Confidence":0.9,"DecidedAt":1}}` + "\n"
+	if err := os.WriteFile(path, []byte(old), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	st, err := decision.NewFileJudgmentStore(org.ID("acme"), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Save(&decision.Judgment{ID: "u@2", Subject: "u", Confidence: 0.3, ConfidenceEvaluated: false, DecidedAt: 2, RecordKind: decision.RecordJudgment}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Save(&decision.Judgment{ID: "s@3#plan", Subject: "s", Confidence: 0.9, ConfidenceEvaluated: true, DecidedAt: 3, RecordKind: decision.RecordPlanSelection}); err != nil {
+		t.Fatal(err)
+	}
+	all, err := st.All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("행 %d, want 3", len(all))
+	}
+	if !all[0].ConfidenceEvaluated || all[0].Kind() != decision.RecordJudgment {
+		t.Errorf("옛 줄이 평가된 판정으로 읽히지 않았다: %+v", all[0])
+	}
+	if all[1].ConfidenceEvaluated {
+		t.Errorf("명시적 false 가 보존되지 않았다: %+v", all[1])
+	}
+	if all[2].Kind() != decision.RecordPlanSelection || !all[2].ConfidenceEvaluated {
+		t.Errorf("계획 선택 행이 그대로 읽히지 않았다: %+v", all[2])
+	}
+	// 새로 쓴 줄에는 부재가 없다 - 두 번째 읽기도 같은 답이다.
+	raw, _ := os.ReadFile(path)
+	if n := strings.Count(string(raw), `"ConfidenceEvaluated"`); n != 2 {
+		t.Errorf("새 줄 둘에 명시적 값이 있어야 한다: %d", n)
+	}
 }

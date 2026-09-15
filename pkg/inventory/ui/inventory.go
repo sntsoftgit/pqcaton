@@ -63,6 +63,9 @@ type JudgmentRow struct {
 	// DecidedAt — 사람이 읽는 시각(RFC3339). 판정 원장이 시간축을 갖는 유일한 자리다.
 	DecidedAt string
 	Basis     string
+	// PlanSelection — 판정이 아니라 「계획에 넣기로 한 기록」이다. **판정으로 보이지 않는다** -
+	// 결론 칸이 빈 것을 판정으로 읽으면 사람이 판정을 안 적은 줄 안다.
+	PlanSelection bool
 }
 
 // NewInventoryView — 손에 든 것으로 조회 화면을 세운다.
@@ -171,7 +174,7 @@ func judgmentRow(j decision.Judgment) JudgmentRow {
 	}
 	return JudgmentRow{
 		Subject: j.Subject, Conclusion: j.Conclusion, Reviewer: j.Reviewer,
-		DecidedAt: at, Basis: j.BasisHash,
+		DecidedAt: at, Basis: j.BasisHash, PlanSelection: j.Kind() == decision.RecordPlanSelection,
 	}
 }
 

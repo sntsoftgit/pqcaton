@@ -24,6 +24,10 @@ type JudgmentStore interface {
 	All() ([]*Judgment, error)
 }
 
+// 조회의 범위. **Get·BySubject·BySessionID·All 은 감사 사건 전부를 돌려준다** - 판정 행과 계획 선택 행
+// 둘 다. append-only 로그를 그대로 읽는 자리라, 여기서 거르면 감사가 계획 선택 행을 볼 길이 없어진다.
+// 판정만 필요한 자리(최신·델타·만료)는 파생 함수가 [JudgmentsOnly] 로 거른다. 저장소 셋이 같은 규칙이다.
+
 // MemJudgmentStore — 인메모리 append-only 로그(테스트·데모용).
 //
 // Pg판과 같은 모양으로 조직에 묶인다 — 테스트가 격리 없는 경로를 타면 실제 동작과 어긋난다.

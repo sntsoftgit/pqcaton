@@ -78,6 +78,7 @@
 | [IC-S12](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | 정책이 그대로인 채 세션 재개 | 서명도 그대로다. 새로고침마다 지우면 사람이 서명 칸을 계속 다시 채운다 |
 | [IC-S13](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | 빈 조직으로 `open` | 열리지 않는다. 저장소들과 같은 규칙이다 |
 | [IC-S14](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | 계층 파일 경로 | **계층 이름은 파일 이름에서 온다**. 그 이름이 곧 일괄 판정의 식별자라, 어긋나면 승인 단위가 흩어진다 |
+| **[IC-S15](../pkg/inventory/scope/scope_test.go) ✅** | 원장에 그 대상의 **계획 선택 행만** 있는 제외 | 여전히 「승인이 아예 없다」로 올라온다. **계획 선택 행은 판정이 아니다.** 종류를 보지 않고 대상으로 덮으면 결론이 빈 행이 「판정이 있다」로 읽혀, 「제외 ≠ 부재」를 시간 축에서 지키는 이 경고가 사라진다. 사라진 경고는 화면에 보이지 않는다 |
 
 ### C. confidence 스코어링 (§3.5): 부분
 | TC | Given → When | Then |
@@ -124,6 +125,10 @@
 | **[IC-D20](../pkg/inventory/review/basis_test.go) ✅** | **규칙 판은 그대로인데 관측 지문(또는 신뢰도)만 달라진 세션을 다시 열기** | **승인 서명이 지워진다.** 전에는 id 와 상태만 비교해서, 델타 리뷰에는 올라오는 변화가 서명은 그대로 지나갔습니다. 승인자가 본 적 없는 근거에 이름이 남는 자리입니다 |
 | [IC-D21](../pkg/inventory/review/basis_test.go) ✅ | 항목이 하나도 없는 세션에서 규칙 판만 바뀌기 | 서명이 지워진다. 항목별 비교만 하면 빈 큐에서는 전부 참이라 규칙 변경이 지나간다 |
 | **[IC-D22](../pkg/inventory/decision/session_id_test.go) ✅** | **두 세션의 판정과 옛 빌드의 행(세션 id 없음)을 한 원장에 · 계획 id에서 세션 id를 읽어 원장을 찾기** | `BySessionID`가 그 세션의 판정만 돌려주고 다른 세션 것은 섞이지 않는다. **메모리·파일·Postgres 셋이 같은 답이다.** 빈 id로 찾으면 거절한다. 옛 행의 값이 비어 있어서, 그것으로 찾으면 세션이 아니라 「세션을 모르는 판정 전부」가 나온다. Postgres는 열과 `(org, session_id, seq)` 인덱스를 `ALTER TABLE … IF NOT EXISTS`로 더한다 |
+| **[IC-D23](../pkg/inventory/decision/judgment_test.go) ✅** | 만료된 판정이 평가됨 · 미평가 · 계획 선택 행 | 평가된 것은 `Stale`·재확인이 서고 **숫자가 감쇠**한다. **미평가는 표시만 서고 숫자는 그대로다** - 재지 않은 값을 줄이면 「재 봤더니 더 낮아졌다」로 읽힌다. 계획 선택 행은 만료 계산에 아예 들어가지 않는다 |
+| **[IC-D24](../pkg/inventory/decision/judgment_test.go) ✅** | 같은 자산에 판정 행 뒤에 계획 선택 행이 쌓임 · 계획 선택 행만 있는 자산 | **최신 판정과 델타 판정의 결과가 달라지지 않는다.** `LatestPerSubject` 는 판정 행을 돌려주고, `DeltaReview` 는 계획 선택 행에 재검토 표시를 붙이지 않는다. 옛 행(빈 종류)은 판정으로 읽는다 |
+| **[IC-D25](../pkg/inventory/decision/file_test.go) ✅** | 파일 원장의 옛 줄(`ConfidenceEvaluated` 칸 없음) · 새 미평가 줄 · 계획 선택 줄 | 옛 줄은 **평가된 판정**으로 읽히고, 새 줄의 명시적 `false` 는 그대로 보존된다. 새로 쓴 줄에는 부재가 없다. `Judgment` 에 json 태그가 없어 `bool` 로 두면 옛 줄의 부재가 `false` 로 읽히고, 그러면 옛 판정 전부가 미평가로 둔갑해 만료 시 신뢰도가 감쇠되지 않는다 - wire 형식이 포인터로 받는다 |
+| **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT` 로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN` 이 있을 때만 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, §8) ✅
 | TC | Given → When | Then |

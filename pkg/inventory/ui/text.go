@@ -244,6 +244,8 @@ var (
 		KO: "옛 세션의 자동통과 후보 %d개는 식별자만 남아 있어 계획에 넣을 수 없습니다. 결과에서 세션을 다시 열면 고를 수 있게 됩니다.",
 		EN: "%d auto-pass candidate(s) from an older session are listed by id only and cannot be put in a plan. Reopen the session from the results to make them selectable."}
 	tRollbackNote = T{KO: "되돌림 메모", EN: "Rollback note"}
+	// 원장의 계획 선택 행. 판정이 아니다 - 결론 칸 대신 이 말이 선다.
+	tPlanSelectionRow = T{KO: "(계획에 넣기로 한 기록입니다. 판정이 아닙니다)", EN: "(recorded as put in a plan — not a judgment)"}
 
 	tApproval           = T{KO: "승인", EN: "Approval"}
 	tReviewApprovalHint = T{
