@@ -2,7 +2,7 @@
 ║  pqcota discovery → inventory demo report                ║
 ╚══════════════════════════════════════════════════════════╝
 
-nodes 3 · observed assets 2 · observed edges 4 · declared assets 5 · declared edges 3
+nodes 3 · observed assets 5 (managed 2) · observed edges 4 · declared assets 5 · declared edges 3
 
 ──────── ① Observation — what pqcota saw ────────
   The collector was carried to each target node, run, and taken back. Nothing is left behind.
