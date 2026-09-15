@@ -2,5 +2,55 @@
   "id": "pqcaton:org://demo-corp:00000000-0000-4000-8000-000000000000",
   "status": "PLAN_STATUS_IN_REVIEW",
   "scope": "org://demo-corp",
-  "rulesetVersion": "pqcota-enrich/v2+pqcaton-plan/v2"
+  "actions": [
+    {
+      "id": "a1",
+      "targetNodeId": "pay-app",
+      "findingId": "c61c591f135ff81f9113b5d0013db43df2293de42cdb2d0eb496f2b08f79a3ca",
+      "cryptoRuntime": "CRYPTO_RUNTIME_JCA",
+      "kind": "REMEDIATION_KIND_CONFIG_ONLY",
+      "automationLevel": "DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL",
+      "targetAlgorithm": "ML-KEM (FIPS 203)",
+      "providerChoice": "BouncyCastle",
+      "rollbackNote": "remove the staged config fragment",
+      "evidenceSources": [
+        {
+          "findingId": "c61c591f135ff81f9113b5d0013db43df2293de42cdb2d0eb496f2b08f79a3ca",
+          "snapshot": {
+            "sourceNodeId": "pay-app",
+            "content": {
+              "formatVersion": "pqcota-snapshot-content/v1",
+              "digest": "a33e43bc6a75f4421588b6261787f40bac798277feba72ff82050738d9fa087e",
+              "rulesetVersion": "pqcota-enrich/v2"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a2",
+      "targetNodeId": "pay-db",
+      "findingId": "b247f951ffcf4da0064f3979927211f7a10012da68685457854109e47b4ea6b0",
+      "cryptoRuntime": "CRYPTO_RUNTIME_OPENSSL",
+      "kind": "REMEDIATION_KIND_CONFIG_ONLY",
+      "automationLevel": "DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL",
+      "targetAlgorithm": "ML-KEM (FIPS 203)",
+      "providerChoice": "internal-pqc-provider",
+      "rollbackNote": "remove the staged config fragment",
+      "evidenceSources": [
+        {
+          "findingId": "b247f951ffcf4da0064f3979927211f7a10012da68685457854109e47b4ea6b0",
+          "snapshot": {
+            "sourceNodeId": "pay-db",
+            "content": {
+              "formatVersion": "pqcota-snapshot-content/v1",
+              "digest": "c3d7a5a18162953efe87bfd573cdc6d8df6b2c7bc51359b0f833f7ac4eddedd6",
+              "rulesetVersion": "pqcota-enrich/v2"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "rulesetVersion": "pqcota-enrich/v2+pqcaton-plan/v3"
 }

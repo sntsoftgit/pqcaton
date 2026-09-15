@@ -10,7 +10,7 @@ nodes 3 · observed assets 2 · observed edges 4 · declared assets 5 · declare
     pay-db       network-collector, openssl-collector
     web-gw       network-collector, openssl-collector
 
-  assets observed in actual use: jca 1 · openssl 1
+  assets observed in actual use: jca 1 · openssl 4
   connections negotiated in a handshake: 4 (graded in the next section)
 
   not seen: layer build artifacts — binaries and packages (ARTIFACT)
@@ -18,21 +18,25 @@ nodes 3 · observed assets 2 · observed edges 4 · declared assets 5 · declare
   is settled by the line above — if listed there, collect again first; otherwise a person judges.
 
 ──────── ② Asset inventory (three-state reconciliation) ────────
-reconciled: CONFIRMED 2 · UNDECLARED 0 · UNOBSERVED 3
+reconciled: CONFIRMED 4 · UNDECLARED 1 · UNOBSERVED 1
+excluded by the asset-scope policy: 3 (observed, not managed - not in any queue below)
 auto-pass candidates (proposed for batch approval): 2
+
+⚠ declared as managed, but the asset-scope policy excludes it - the two disagree:
+  • pay-db/openssl/libcrypto  seen on pay-db via /opt/apps/api-gw, /opt/apps/payment-gw, /usr/bin/python3.8, /usr/sbin/sshd  (excluded by the same policy code the ingest uses)
+  • web-gw/openssl/libcrypto  seen on web-gw via /usr/bin/python3.12, /usr/sbin/sshd  (excluded by the same policy code the ingest uses)
+  fix the declaration or the policy - this tool does not choose which.
 
 mandatory review queue (by priority):
 #   state        conf   runtime  component
-1   UNOBSERVED   0.30   openssl  libssl
-2   UNOBSERVED   0.30   openssl  libcrypto
-3   UNOBSERVED   0.30   openssl  libcrypto
+1   UNOBSERVED   n/a    openssl  libssl
 
 ──────── ③ Communication edges + quantum-resistance grade ────────
   ⚪ pay-app    → web-gw             TLS    (unknown)                UNOBSERVED
-  🟢 web-gw     → pay-app            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED
-  🟢 web-gw     → pay-app            TLS    X25519MLKEM768           CONFIRMED
   🔴 web-gw     → pay-db             SSH    curve25519-sha256        UNDECLARED
   🔴 web-gw     → pay-db             TLS    x25519                   CONFIRMED
+  🟢 web-gw     → pay-app            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED
+  🟢 web-gw     → pay-app            TLS    X25519MLKEM768           CONFIRMED
 
   grade totals: 🟢 PQC 2 · 🔴 classical 2 · ⚪ unknown 1
 
