@@ -91,7 +91,8 @@ func TestPolicyExcludedDeclaredAssetIsConfirmedNotUnobserved(t *testing.T) {
 
 // IC-R24 — 관리 근거는 정책을 건 스냅샷에서만 나온다. 정책 없이 정규화한 스냅샷은 제외분을
 // 찾는 데만 쓰고 그 지문은 어디에도 실리지 않는다 - 적재되지 않은 스냅샷의 지문은 아무것도
-// 가리키지 않는다. 그래서 정책을 걸었을 때의 관리 근거 지문은 IC-R18 의 상류 지문과 같아야 하고,
+// 가리키지 않는다. 그래서 정책을 걸었을 때의 관리 근거 지문은 TestSnapshotDigestMatchesUpstreamIngest 가
+// 재는 상류 지문과 같아야 하고,
 // 제외 근거에는 지문이 아예 없다.
 func TestExcludedSourcesCarryNoSnapshotLocation(t *testing.T) {
 	dir := t.TempDir()
