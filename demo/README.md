@@ -51,7 +51,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 ```
 
 `extend.sh`는 새 컨테이너를 만들지 않습니다. 실행 중인 `pqcota-ctl`에 이 리포의 `pqcaton-report`를 주입하고,
-core가 이미 수집한 `/work/results`에 **선언(declaration.json)** 을 대조해 3-상태 인벤토리 + 거버넌스
+core가 이미 수집한 `/work/results`에 **선언(declaration.json)**을 대조해 3-상태 인벤토리 + 거버넌스
 토폴로지를 만들고, **그 결과를 판정해 계획을 만든 뒤, 상류의 승인 → 생성 → 적용 → 되돌림까지
 실제로 돌립니다.**
 
@@ -78,7 +78,7 @@ Go가 없는 호스트에서는 `PQCATON_BIN_DIR=<dir>`로 미리 빌드한 `pqc
 
 ## 요구 사항
 - **pqcota 리포 체크아웃**: 선언을 그쪽 `topology.yaml`에서 만듭니다. 형제 디렉터리
-  (`../pqcota`)에 두거나 `PQCOTA_DIR=/경로` 로 알려 줍니다.
+  (`../pqcota`)에 두거나 `PQCOTA_DIR=/경로`로 알려 줍니다.
 - 실행 중인 pqcota 디스커버리 데모(위 1단계).
 - 빌드 기계에 **Go**와 **python3**. 그게 전부입니다. pqcota v0.5.0부터 모듈 경로가 리포 주소와 같아져
   `go build`가 계약을 스스로 받아옵니다. 형제 체크아웃도 `replace`도 필요 없습니다.
@@ -93,5 +93,5 @@ Go가 없는 호스트에서는 `PQCATON_BIN_DIR=<dir>`로 미리 빌드한 `pqc
 | **환경**: 노드·망·버전·provider | pqcota의 `demo/topology/topology.yaml`. 고친 뒤 `up.sh`부터 다시 |
 | **선언 규칙**: 무엇을 선언하고 무엇을 뺄지 | [`scripts/declare.py`](scripts/declare.py)의 `ASSETS`·`DECLARED_PROTOS` |
 
-예를 들어 `DECLARED_PROTOS`에 `ssh`를 넣으면 UNDECLARED 가 사라지고 전부 CONFIRMED가 됩니다.
+예를 들어 `DECLARED_PROTOS`에 `ssh`를 넣으면 UNDECLARED가 사라지고 전부 CONFIRMED가 됩니다.
 **선언이 완벽한 조직**이 어떻게 보이는지가 그것입니다.

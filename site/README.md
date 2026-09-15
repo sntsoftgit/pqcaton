@@ -6,8 +6,8 @@
 
 | 지금 | |
 |---|---|
-| [`index.html`](index.html) | 아키텍처 문서. 자립형 한 장이라 외부 요청이 하나도 없습니다. 한국어와 English 로 봅니다 |
-| [`ui-next.html`](ui-next.html) | 현재 `pqcaton-ui`와 정보 구조를 비교하는 작업 중심 UI 프로토타입. 정적 예시이며 데이터를 읽거나 쓰지 않습니다. 본 화면과 같이 한국어와 English 로 봅니다 |
+| [`index.html`](index.html) | 아키텍처 문서. 자립형 한 장이라 외부 요청이 하나도 없습니다. 한국어와 English로 봅니다 |
+| [`ui-next.html`](ui-next.html) | 현재 `pqcaton-ui`와 정보 구조를 비교하는 작업 중심 UI 프로토타입. 정적 예시이며 데이터를 읽거나 쓰지 않습니다. 본 화면과 같이 한국어와 English로 봅니다 |
 
 ## 규칙
 

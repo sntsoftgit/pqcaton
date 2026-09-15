@@ -63,12 +63,12 @@ pqcota                          pqcaton
 | [`pkg/inventory/ui`](pkg/inventory/ui) | **화면**: 그리는 것과 폼을 읽는 것만 합니다. 어디서 읽고 누가 접속하는지는 부르는 쪽이 정합니다 |
 | [`pkg/inventory/scope`](pkg/inventory/scope) | **자산 스코프 거버넌스**: 계층 상속·변경 승인·제외분 재검토. 규칙 형식과 집행은 pqcota 것을 그대로 씁니다 |
 | [`pkg/inventory/localscan`](pkg/inventory/localscan) | **이 기계를 스캔하는 지름길**: 관측 없이 전체 절차를 한 번 돌려 보는 자리입니다. 못 본 것은 「없다」로 보고하지 않습니다 |
-| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 닫습니다**: 판정된 계획을 계약 형식으로 만들되 상태는 `IN_REVIEW` 이고 승인 칸은 비웁니다. 실행 승인은 이 리포의 일이 아닙니다 |
+| [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐를 사람이 판정하고 닫습니다**: 판정된 계획을 계약 형식으로 만들되 상태는 `IN_REVIEW`이고 승인 칸은 비웁니다. 실행 승인은 이 리포의 일이 아닙니다 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포**: 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
 | [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 다섯**: 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회. 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
-**UNDECLARED 가 이 도구가 주는 첫 번째 쓸모입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지, 곧 조직이
+**UNDECLARED가 이 도구가 주는 첫 번째 쓸모입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지, 곧 조직이
 모르는 연결입니다. 보안에서 가장 먼저 봐야 할 것이 거기 있습니다.
 
 **UNOBSERVED는 기계가 확정하지 않습니다.** 선언에는 있는데 관측되지 않은 것이 *실재하는데 못
@@ -90,10 +90,10 @@ pqcota                          pqcaton
 `apt install graphviz` · `brew install graphviz` · `winget install graphviz`.
 
 **어디서 실행되는가.** 이 리포는 **ctl 노드**(관측 결과를 모아 대조·판정하는 자리)의 일을 합니다.
-ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota 의 collector 가 대상 노드에서
-하고, 리눅스와 Windows 를 다룹니다(상류 v0.8.0).
+ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 collector가 대상 노드에서
+하고, 리눅스와 Windows를 다룹니다(상류 v0.8.0).
 
-> 예외가 하나 있습니다. `pqcaton-decide open` 을 `-results` 없이 쓰면 **명령을 실행한 그 기계 자신을**
+> 예외가 하나 있습니다. `pqcaton-decide open`을 `-results` 없이 쓰면 **명령을 실행한 그 기계 자신을**
 > 스캔합니다(`/proc`). 「체크아웃만으로 한 바퀴」를 위한 지름길이라 **리눅스에서만** 됩니다.
 > 여러 노드를 제대로 다루는 길은 pqcota가 모은 결과를 읽는 [`pqcaton-report`](inventory/cmd/pqcaton-report)입니다.
 
@@ -104,8 +104,8 @@ make            # 라이선스 · 문구 · 문체 · 케이스 · 서식 관문
 ```
 
 **이 리포만으로 처음부터 끝까지 해볼 수 있습니다.** 관측할 대상은 이 기계입니다.
-**이 지름길은 `/proc` 을 읽으므로 리눅스에서만 됩니다.** macOS·Windows 에서는 아래 ②의
-주석처럼 pqcota 가 모은 `results/` 를 읽는 길로 갑니다.
+**이 지름길은 `/proc`을 읽으므로 리눅스에서만 됩니다.** macOS·Windows 에서는 아래 ②의
+주석처럼 pqcota가 모은 `results/`를 읽는 길로 갑니다.
 
 ```bash
 go build -o bin/ ./inventory/cmd/...
@@ -116,23 +116,23 @@ printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-cha
 # ② 대조 — 이 기계를 스캔해 선언과 맞대고, 리뷰 큐를 세션 파일로 만듭니다
 bin/pqcaton-decide open decl.csv local > session.json
 
-#    여러 노드를 다루는 길은 이쪽입니다 — pqcota 가 모은 관측으로 대조합니다
+#    여러 노드를 다루는 길은 이쪽입니다 — pqcota가 모은 관측으로 대조합니다
 #    bin/pqcaton-decide open declaration.json -results results/ -scope-assets scope-assets.csv -org acme > session.json
-#    (-scope-assets: pqcota-ingest 에 준 것과 같은 파일. 지문이 상류와 맞으려면 같은 정책이어야 합니다)
+#    (-scope-assets: pqcota-ingest에 준 것과 같은 파일. 지문이 상류와 맞으려면 같은 정책이어야 합니다)
 
-# ③ 판정 — 사람이 하는 자리. session.json 을 열어
-#    필수 항목의 conclusion, 그리고 reviewer · signature 를 채웁니다
-#    확정 계획에 넣을 항목은 `include_in_plan` 을 true 로
+# ③ 판정 — 사람이 하는 자리. session.json을 열어
+#    필수 항목의 conclusion, 그리고 reviewer · signature를 채웁니다
+#    확정 계획에 넣을 항목은 `include_in_plan`을 true로
 
 # ④ 확정 — 전 필수 판정과 승인 서명이 있어야 통과하고,
-#    판정은 append-only 로 남습니다 (감사 기록)
+#    판정은 append-only로 남습니다 (감사 기록)
 bin/pqcaton-decide close session.json -judgments judgments.jsonl -org acme > plan.json
 
 # ⑤ 재관측한 뒤 — 근거가 바뀐 판정만 다시 봅니다 (전면 재리뷰가 아닙니다)
 bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
 ```
 
-**JSON 을 손으로 채우기 번거로우면 화면에서 채웁니다.** 같은 파일, 같은 관문입니다.
+**JSON을 손으로 채우기 번거로우면 화면에서 채웁니다.** 같은 파일, 같은 관문입니다.
 
 **필요한 파일만 주면 화면이 세션까지 만듭니다.** 명령을 먼저 돌리지 않아도 됩니다.
 
@@ -146,9 +146,9 @@ bin/pqcaton-ui session.json \
 #   → ③ 대조(3-상태·등급·토폴로지) → ④ 판정(리뷰 큐 — 판정·확정)
 ```
 
-`session.json` 이 없으면 **선언과 관측 결과로 화면이 세션을 만듭니다.** 자산 스코프도 계층 CSV를
+`session.json`이 없으면 **선언과 관측 결과로 화면이 세션을 만듭니다.** 자산 스코프도 계층 CSV를
 주면 그렇습니다. 그리고 **규칙을 화면에서 고칩니다.** 다섯 칸이 무슨 뜻인지는 「규칙을
-적는 법」 도움말에 있고, `action` 은 고르는 칸이라 오타로 규칙이 어긋나지 않습니다.
+적는 법」 도움말에 있고, `action`은 고르는 칸이라 오타로 규칙이 어긋나지 않습니다.
 
 명령으로 세션을 먼저 만드는 길도 그대로입니다. 같은 파일이고 같은 관문입니다.
 
@@ -164,7 +164,7 @@ bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scop
 > 말이 서로 다르면 같은 문제가 두 문장으로 남습니다. 자세한 규칙은
 > [CONTRIBUTING.md](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
 
-`-decl`·`-layers`·`-results` 는 **주는 것만 탭이 열립니다.** 선언 파일만 주면 「선언」과
+`-decl`·`-layers`·`-results`는 **주는 것만 탭이 열립니다.** 선언 파일만 주면 「선언」과
 「판정」 둘만 보입니다. 없는 것을 눌러 보게 하지 않습니다.
 
 **무엇을 계속 볼지도 승인을 거칩니다.** 인벤토리에서 뺀 자산은 나중에 「왜 이것은 안 봤나」에
@@ -174,20 +174,20 @@ bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scop
 계층의 것이 적용됩니다.**
 
 ```bash
-# 계층을 겹쳐 바뀐 규칙만 리뷰에 올립니다 (-base 로 지금 쓰는 정책을 주면 델타만)
+# 계층을 겹쳐 바뀐 규칙만 리뷰에 올립니다 (-base로 지금 쓰는 정책을 주면 델타만)
 bin/pqcaton-scope open corp.csv prod.csv pay.csv -org acme > scope-session.json
 
 # 승인 — exclude 추가는 결론이 없으면 확정되지 않습니다
 bin/pqcaton-scope close scope-session.json -judgments judgments.jsonl -org acme > asset-scope.csv
 
-# 나온 CSV 가 그대로 pqcota 집행기의 입력입니다
+# 나온 CSV가 그대로 pqcota 집행기의 입력입니다
 pqcota-ingest -scope-assets asset-scope.csv results/
 
 # 제외는 영구 면제가 아닙니다 — 승인이 없거나 오래된 것만 다시 올립니다
 bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -org acme
 ```
 
-**③에서 정책 단위로 판정합니다.** 세션 파일의 `policy_decisions` 에 정책 하나당 결론 하나를 적으면
+**③에서 정책 단위로 판정합니다.** 세션 파일의 `policy_decisions`에 정책 하나당 결론 하나를 적으면
 같은 정책의 항목이 한 번에 판정됩니다. 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
 개별 `conclusion`은 예외를 적는 자리입니다.
 
@@ -217,13 +217,13 @@ PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
   pqcota-provision --level l2 plan.signed.json > provision.yml
 ```
 
-계획이 실행 필드를 다 채우지 못하면 pqcota는 산출물을 내되 **성공으로 끝내지 않습니다**(종료 상태 3). 무엇이 비었는지는 그 경고가 이름으로 알려 줍니다. 다만 그 상태까지 가지 않습니다. 위임 수준과 조치 종류, 목표 알고리즘, L3 의 활성화 훅은 **우리 화면에서 고르고, 비면 확정이 막힙니다.** 빈값을 상류로 넘기고 거기서 걸리게 두는 것보다, 승인 서명이 붙기 전에 이쪽에서 막는 편이 맞기 때문입니다.
+계획이 실행 필드를 다 채우지 못하면 pqcota는 산출물을 내되 **성공으로 끝내지 않습니다**(종료 상태 3). 무엇이 비었는지는 그 경고가 이름으로 알려 줍니다. 다만 그 상태까지 가지 않습니다. 위임 수준과 조치 종류, 목표 알고리즘, L3의 활성화 훅은 **우리 화면에서 고르고, 비면 확정이 막힙니다.** 빈값을 상류로 넘기고 거기서 걸리게 두는 것보다, 승인 서명이 붙기 전에 이쪽에서 막는 편이 맞기 때문입니다.
 
 **맞는 조합.** 이 리포의 최소 요구 버전은 pqcota **v0.9.0**이고, `go.mod`도 그 판을 고정합니다. 검증한 조합 역시 v0.9.0이며, 그 뒤 판과의 호환은 재지 않았습니다. 위 명령도 그 릴리스 기준입니다. **이 판이 내는 계획은 조치마다 근거(`evidenceSources`)를 담으므로, 그 필드를 모르는 v0.8.0 이하의 `pqcota-approve`·`pqcota-provision`은 계획을 읽지 못하고 거절합니다.** 상태가 `IN_REVIEW`로 나가는 것은 v0.8.0부터 받고, 그 아래에서는 서명만 붙고 `IN_REVIEW`인 채로 남아 생성기가 「확정 아님」으로 거절합니다. 그 밖에 승인 검증이 기본으로 닫힌 것과 종료 상태 3은 v0.7.0부터, 컨트롤러 CLI가 릴리스에 붙는 것은 v0.7.2부터, 강화 규칙 판이 상수로 서는 것은 v0.7.3부터(외부 CBOM 수신 종단까지는 v0.7.4)입니다.
 
 여러 노드를 훑는 길과 거버넌스 토폴로지는 [여정](docs/journey.md)에 있습니다.
 
-데모는 pqcota의 디스커버리 데모 위에 얹습니다. [demo/README.md](demo/README.md) 를 보십시오.
+데모는 pqcota의 디스커버리 데모 위에 얹습니다. [demo/README.md](demo/README.md)를 보십시오.
 
 ## 라이선스
 

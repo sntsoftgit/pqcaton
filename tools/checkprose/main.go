@@ -374,13 +374,33 @@ func maskMarkdown(b []byte) []byte {
 			lines[i] = blank(l)
 			continue
 		}
-		lines[i] = inlineMD.ReplaceAllStringFunc(l, blank)
+		lines[i] = inlineMD.ReplaceAllStringFunc(l, fill)
 	}
 	return []byte(strings.Join(lines, "\n"))
 }
 
+// fill — 인라인 코드를 **공백이 아니라 채움 글자**로 가린다. 길이는 그대로라 열 위치가 맞고,
+// 규칙은 그 안을 보지 못한다. 공백으로 지우면 「`x` 에」와 「`x`에」가 똑같이 「   에」가 되어
+// 띄운 조사 규칙이 둘을 가르지 못한다. 채움 글자는 한글도 조사도 아닌 것이라 다른 규칙에는
+// 걸리지 않는다.
+func fill(s string) string {
+	return strings.Repeat("x", len(s))
+}
+
 func maskHTML(b []byte) []byte {
-	return []byte(htmlBlock.ReplaceAllStringFunc(string(b), keepNewlines))
+	// 코드 블록은 줄바꿈만 남기고 채움 글자로 가린다(fill 과 같은 이유 - 공백으로 지우면
+	// 「<code>x</code>가」가 띄운 조사로 읽힌다).
+	return []byte(htmlBlock.ReplaceAllStringFunc(string(b), fillKeepNewlines))
+}
+
+func fillKeepNewlines(s string) string {
+	out := []byte(s)
+	for i, c := range out {
+		if c != '\n' {
+			out[i] = 'x'
+		}
+	}
+	return string(out)
 }
 
 // maskGo — 문자열 리터럴만 남기고 나머지를 덮는다. 주석은 한국어이므로 보지 않는다.

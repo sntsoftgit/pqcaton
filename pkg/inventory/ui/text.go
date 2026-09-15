@@ -29,13 +29,13 @@ var (
 		KO: "세션 파일에 저장했습니다. 아직 확정하지 않았습니다",
 		EN: "Saved to the session file — not finalized yet"}
 	tFinalizedPlan = T{
-		KO: "판정을 확정했습니다. 조치 %d건을 %s 에 썼습니다. 실행 승인은 pqcota-approve 가 합니다",
+		KO: "판정을 확정했습니다. 조치 %d건을 %s에 썼습니다. 실행 승인은 pqcota-approve가 합니다",
 		EN: "Judging finalized — %d actions written to %s. Execution approval is done by pqcota-approve"}
 	tFinalizedPolicy = T{
-		KO: "확정했습니다. 규칙 %d개를 %s 에 썼습니다. 이 파일이 `pqcota-ingest -scope-assets` 의 입력입니다",
+		KO: "확정했습니다. 규칙 %d개를 %s에 썼습니다. 이 파일이 `pqcota-ingest -scope-assets`의 입력입니다",
 		EN: "Finalized — %d rules written to %s. That file is the input to `pqcota-ingest -scope-assets`"}
 	tJudgmentsSaved = T{
-		KO: " · 판정 %d건을 %s 에 남겼습니다",
+		KO: " · 판정 %d건을 %s에 남겼습니다",
 		EN: " · %d judgments appended to %s"}
 	tRulesSaved = T{
 		KO: "계층 %d개에 규칙 %d개를 썼습니다. 판정할 변경이 %d건이고, 그중 %d건은 왜 뺐는지를 적어야 합니다",
@@ -87,7 +87,7 @@ var (
 
 	tDeclOrg     = T{KO: "조직", EN: "Organization"}
 	tDeclOrgHint = T{
-		KO: "대조와 판정이 이 조직에 묶입니다. 비우면 <code>local</code> 입니다.",
+		KO: "대조와 판정이 이 조직에 묶입니다. 비우면 <code>local</code>입니다.",
 		EN: "Reconciliation and judgments are bound to this org. Empty means <code>local</code>."}
 
 	tDeclScope     = T{KO: "관리 대상 노드와 그 안의 암호 자산", EN: "Nodes under management, and the crypto assets inside them"}
@@ -105,7 +105,7 @@ var (
 			"관리 대상이 되지 않습니다</b>. 이을 근거가 없으면 대조 결과가 오류 없이 " +
 			"틀리기 때문입니다. 저장하면 그 줄은 표에서 사라집니다. 이름을 비워도 지워집니다.<br>" +
 			"<b>「관측 이름」은 관측이 이 노드를 부르는 이름입니다.</b> 자산 대조는 노드 " +
-			"이름이 글자 그대로 같아야 맞는데, collector 는 자기가 붙인 " +
+			"이름이 글자 그대로 같아야 맞는데, collector는 자기가 붙인 " +
 			"id(<code>node:1a2b…</code>)나 호스트명으로 보내는 일이 흔합니다. 이름이 서로 다르면 " +
 			"<b>그 노드의 자산이 통째로 UNDECLARED 로</b> 올라옵니다. 선언이 틀려서가 아니라 " +
 			"이름이 서로 달라서입니다. 호스트명(짧은 이름 포함)이 위 이름과 같으면 비워 두십시오. " +
@@ -130,11 +130,11 @@ var (
 			"<b>목록에서 고릅니다</b>. 관측 결과에 나올 수 있는 이름만 들어 있습니다.<br>" +
 			"<b>컴포넌트는 관측된 이름과 글자 그대로 같아야 맞습니다.</b> 앞부분만 같거나 " +
 			"뒷부분만 같은 것은 맞지 않고, <code>*</code> 같은 것도 쓸 수 없습니다. 적을 때는 " +
-			"관측 이름에서 <code>.so</code> 부터 뒤를 뗍니다. <code>libssl.so.3</code> 은 " +
-			"<code>libssl</code> 로 적습니다. <b>벤더링 해시는 떼지 않습니다</b>. " +
-			"<code>libcrypto-fbc9a285.so.3</code> 은 <code>libcrypto-fbc9a285</code> 여야 하고, " +
-			"<code>libcrypto</code> 는 다른 자산입니다. <code>jca</code> 의 컴포넌트는 " +
-			"<code>jca-provider-chain</code> 하나, <code>cng</code> 는 " +
+			"관측 이름에서 <code>.so</code> 부터 뒤를 뗍니다. <code>libssl.so.3</code>은 " +
+			"<code>libssl</code>로 적습니다. <b>벤더링 해시는 떼지 않습니다</b>. " +
+			"<code>libcrypto-fbc9a285.so.3</code>은 <code>libcrypto-fbc9a285</code> 여야 하고, " +
+			"<code>libcrypto</code>는 다른 자산입니다. <code>jca</code>의 컴포넌트는 " +
+			"<code>jca-provider-chain</code> 하나, <code>cng</code>는 " +
 			"<code>cng-providers</code> 하나입니다. 기계에 하나뿐이라 관측 결과에 늘 그 " +
 			"이름으로 적힙니다.<br>맞지 않아도 막히지 않습니다. " +
 			"<b>선언한 것은 미관측으로, 관측된 것은 UNDECLARED 로</b> 구분됩니다. 그래서 " +
@@ -164,7 +164,7 @@ var (
 
 	tDeclSave     = T{KO: "저장", EN: "Save"}
 	tDeclSaveHint = T{
-		KO: "저장하면 <code>pqcaton-report</code> 가 읽는 바로 그 파일에 씁니다. " +
+		KO: "저장하면 <code>pqcaton-report</code>가 읽는 바로 그 파일에 씁니다. " +
 			"화면 위에 경로가 적혀 있습니다.",
 		EN: "Saving writes to the very file <code>pqcaton-report</code> reads — " +
 			"its path is shown at the top of this page."}
@@ -193,8 +193,8 @@ var (
 		KO: "정책마다 결론을 하나 적으면 그 아래 항목이 한 번에 판정됩니다. 수천 대를 " +
 			"한 건씩 보는 리뷰는 끝나지 않습니다. 「개별 결론(예외)」은 그 정책에서 " +
 			"어긋나는 것만 따로 적는 자리입니다.<br><b>「플랫폼 조치」가 붙은 항목</b>은 " +
-			"provider 를 갈아 끼우는 자리가 아닙니다. <code>cng</code> 가 그렇습니다. " +
-			"쓸 수 있는 알고리즘은 Windows 빌드가, FIPS 는 OS 정책이 정하므로 계획의 " +
+			"provider를 갈아 끼우는 자리가 아닙니다. <code>cng</code>가 그렇습니다. " +
+			"쓸 수 있는 알고리즘은 Windows 빌드가, FIPS는 OS 정책이 정하므로 계획의 " +
 			"provider 칸이 빕니다. 무엇을 할지는 여기 적는 결론이 담습니다.",
 		EN: "One conclusion per policy judges every item under it at once — a review that " +
 			"looks at thousands of machines one by one never ends. The per-item column is " +
@@ -259,7 +259,7 @@ var (
 	tSaveOnly       = T{KO: "저장만", EN: "Save only"}
 	tFinalizePlan   = T{KO: "확정하고 계획 내보내기", EN: "Finalize and emit the plan"}
 	tReviewGateHint = T{
-		KO: "확정은 <code>pqcaton-decide close</code> 와 같은 검사를 거칩니다. " +
+		KO: "확정은 <code>pqcaton-decide close</code>와 같은 검사를 거칩니다. " +
 			"필수 항목의 결론과 서명이 모두 있어야 통과합니다.",
 		EN: "Finalizing goes through the same gate as <code>pqcaton-decide close</code> — " +
 			"every mandatory item needs a conclusion, and the signature must be present."}
@@ -295,7 +295,7 @@ var (
 		KO: "런타임 이름. <code>openssl</code> · <code>jca</code> · <code>cng</code> 같은 것. 비우면 <b>전부</b>입니다",
 		EN: "Which runtime — <code>openssl</code>, <code>jca</code>, <code>cng</code>. Empty means <b>all</b>"}
 	tRuleLib = T{
-		KO: "라이브러리 이름. <code>*</code> 를 쓸 수 있습니다. <code>libcrypto.so.*</code>",
+		KO: "라이브러리 이름. <code>*</code>를 쓸 수 있습니다. <code>libcrypto.so.*</code>",
 		EN: "Library name. <code>*</code> is allowed — <code>libcrypto.so.*</code>"}
 	tRuleAppKey = T{
 		KO: "그 라이브러리를 쓰는 실행 파일. <code>/usr/bin/python*</code> · <code>/usr/sbin/sshd</code>",
@@ -308,7 +308,7 @@ var (
 		KO: "<b>빈 칸은 「전부」입니다.</b> 그래서 <code>runtime</code>·<code>lib</code>·" +
 			"<code>app_key</code> 세 칸이 모두 빈 줄은 규칙으로 만들지 않습니다. 그대로 두면 " +
 			"<code>exclude</code> 하나로 <b>인벤토리가 통째로 빕니다.</b> 「전부」를 뜻하려면 " +
-			"<code>*</code> 를 적으십시오.",
+			"<code>*</code>를 적으십시오.",
 		EN: "<b>An empty cell means “all”.</b> That is why a row with " +
 			"<code>runtime</code>, <code>lib</code> and <code>app_key</code> all empty is not " +
 			"turned into a rule — as written, a single <code>exclude</code> would " +
@@ -316,7 +316,7 @@ var (
 	tRuleLayerOrder = T{
 		KO: "<b>같은 자산에 규칙이 여럿 걸리면 아래 계층의 것이 적용됩니다.</b> " +
 			"계층은 위에서 아래로 겹치기 때문입니다(조직 → 환경 → 노드군). 그래서 위 계층이 " +
-			"뺀 자산을 아래 계층에서 <code>include</code> 로 되돌릴 수 있고, 그 되돌림도 승인을 거칩니다.",
+			"뺀 자산을 아래 계층에서 <code>include</code>로 되돌릴 수 있고, 그 되돌림도 승인을 거칩니다.",
 		EN: "<b>When several rules match one asset, the lower layer wins.</b> Layers stack " +
 			"top to bottom (org → environment → node group). So a lower layer can put back " +
 			"an asset an upper layer excluded, and that reversal goes through approval too."}
@@ -336,7 +336,7 @@ var (
 			"changed need judging again."}
 	tScopeEditResult = T{KO: "고친 결과: 승인할 변경", EN: "What your edits change — for approval"}
 	tRemoveRuleHint  = T{
-		KO: "줄을 지우려면 <code>runtime</code>·<code>lib</code>·<code>app_key</code> 를 모두 비우십시오.",
+		KO: "줄을 지우려면 <code>runtime</code>·<code>lib</code>·<code>app_key</code>를 모두 비우십시오.",
 		EN: "To delete a row, clear <code>runtime</code>, <code>lib</code> and <code>app_key</code>."}
 
 	tChanges          = T{KO: "변경", EN: "changes"}
@@ -374,8 +374,8 @@ var (
 			"pqcota's enforcer takes the entire policy, not a fragment."}
 	tFinalizePolicy = T{KO: "확정하고 정책 내보내기", EN: "Finalize and emit the policy"}
 	tScopeGateHint  = T{
-		KO: "확정은 <code>pqcaton-scope close</code> 와 같은 검사를 거칩니다. 나온 CSV 가 " +
-			"<code>pqcota-ingest -scope-assets</code> 의 입력입니다.",
+		KO: "확정은 <code>pqcaton-scope close</code>와 같은 검사를 거칩니다. 나온 CSV가 " +
+			"<code>pqcota-ingest -scope-assets</code>의 입력입니다.",
 		EN: "Finalizing goes through the same gate as <code>pqcaton-scope close</code>. " +
 			"The CSV it emits is the input to <code>pqcota-ingest -scope-assets</code>."}
 )
@@ -384,7 +384,7 @@ var (
 var (
 	tSurveyObserved     = T{KO: "관측", EN: "Observation"}
 	tSurveyObservedHint = T{
-		KO: "pqcota 가 무엇을 보았는지 보여 줍니다. 대상 노드에 collector를 가져가 실행하고 " +
+		KO: "pqcota가 무엇을 보았는지 보여 줍니다. 대상 노드에 collector를 가져가 실행하고 " +
 			"회수했습니다. 노드에는 아무것도 남지 않습니다.",
 		EN: "What pqcota saw. The collector was carried to the target node, run, and taken " +
 			"back — nothing is left behind on the node."}
@@ -402,7 +402,7 @@ var (
 	tNotSeenEdges = T{
 		KO: "이 노드의 통신을 보지 못했습니다: ", EN: "This node's traffic was not observed —"}
 	tNotSeenHint = T{
-		KO: "<b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED 가 「쓰지 않는 것」인지 " +
+		KO: "<b>못 본 것과 없는 것은 다릅니다.</b> 아래 UNOBSERVED가 「쓰지 않는 것」인지 " +
 			"「보지 못한 것」인지는 위 목록에서 구분합니다. <b>위에 적힌 것이면 재수집이 먼저</b>이고, " +
 			"아니면 사람이 판정할 차례입니다.",
 		EN: "<b>Not seen is not the same as not there.</b> Whether an UNOBSERVED below means " +
@@ -420,7 +420,7 @@ var (
 		EN: "The crypto runtimes and components inside each node, in three states against the declaration."}
 	tSurveyNoAssets = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
 	tUndeclaredHint = T{
-		KO: "<b>UNDECLARED 를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b>. 선언에 없는데 " +
+		KO: "<b>UNDECLARED를 찾아내는 것이 이 도구의 첫 번째 쓸모입니다</b>. 선언에 없는데 " +
 			"실제로 쓰이고 있는 것입니다. 판정은 <a href=\"/review\">판정(리뷰 큐)</a> 탭에서 합니다.",
 		EN: "<b>Finding UNDECLARED is the first thing this tool is good for</b> — things in " +
 			"actual use that nobody declared. Judge them in the " +
@@ -456,7 +456,7 @@ var (
 		KO: "설치하지 않아도 나머지는 그대로 됩니다(README 「사전 준비」). " +
 			"<code>apt install graphviz</code> · <code>brew install graphviz</code> · " +
 			"<code>winget install graphviz</code>.<br>설치하지 않고 그리려면 아래를 저장해 " +
-			"아무 데서나 <code>dot -Tsvg topology.dot -o topology.svg</code> 로 그리십시오.",
+			"아무 데서나 <code>dot -Tsvg topology.dot -o topology.svg</code>로 그리십시오.",
 		EN: "Everything else works without it (see README, “Prerequisites”). " +
 			"<code>apt install graphviz</code>, <code>brew install graphviz</code>, " +
 			"<code>winget install graphviz</code>.<br>To draw it without installing, save " +
@@ -513,7 +513,7 @@ var (
 	tStale     = T{KO: "근거가 바뀐 판정", EN: "Judgments whose basis changed"}
 	tStaleHint = T{
 		KO: "재관측 뒤 <b>근거가 달라진 판정</b>입니다. 전면 재리뷰가 아니라 이것만 " +
-			"다시 봅니다. <code>pqcaton-decide delta</code> 와 같은 계산입니다.",
+			"다시 봅니다. <code>pqcaton-decide delta</code>와 같은 계산입니다.",
 		EN: "These are <b>judgments resting on a basis that changed</b> after re-collection. " +
 			"Not a full re-review — only these need looking at again, the same computation as " +
 			"<code>pqcaton-decide delta</code>."}
@@ -533,7 +533,7 @@ var (
 	tColBasis      = T{KO: "근거 해시", EN: "Basis hash"}
 
 	tNoLedger = T{
-		KO: "판정 원장을 주지 않았습니다. <code>-judgments</code> 로 지정하면 이력과 " +
+		KO: "판정 원장을 주지 않았습니다. <code>-judgments</code>로 지정하면 이력과 " +
 			"「근거가 바뀐 판정」이 열립니다.",
 		EN: "No judgment ledger was given — pass <code>-judgments</code> to open the history " +
 			"and the “basis changed” section."}
@@ -563,7 +563,7 @@ var (
 		KO: "선언 노드에 연결되지 않은 관측 이름이 %d개 있습니다",
 		EN: "%d observed names are not linked to a declared node"}
 	tNextUnlinkedBody = T{
-		KO: "이 이름으로 관측된 자산은 어느 노드에도 붙지 않아 통째로 UNDECLARED 로 오릅니다.",
+		KO: "이 이름으로 관측된 자산은 어느 노드에도 붙지 않아 통째로 UNDECLARED로 오릅니다.",
 		EN: "Assets observed under these names attach to no node, so they all come up as UNDECLARED."}
 	tNextAllLinked = T{
 		KO: "연결할 관측 이름이 없습니다",
@@ -676,7 +676,7 @@ var (
 
 	tNextSurveyRescan     = T{KO: "관측 범위가 부족합니다", EN: "The observation did not reach far enough"}
 	tNextSurveyRescanBody = T{
-		KO: "다시 관측해 봐야 하는 자산이 %d개입니다. UNOBSERVED 를 없는 것으로 확정하지 마십시오.",
+		KO: "다시 관측해 봐야 하는 자산이 %d개입니다. UNOBSERVED를 없는 것으로 확정하지 마십시오.",
 		EN: "%d assets need to be observed again. Do not finalize UNOBSERVED as absent."}
 	tNextSurveyJudge = T{
 		KO: "판정할 항목이 %d개입니다",
@@ -740,7 +740,7 @@ var (
 
 	tNextReviewEditHead = T{KO: "정책별 결론과 확정", EN: "Conclusions and finalization"}
 	tNextReviewEditLede = T{
-		KO: "위에서 본 것을 여기서 남깁니다. 확정하면 판정 원장에 append-only 로 쌓입니다.",
+		KO: "위에서 본 것을 여기서 남깁니다. 확정하면 판정 원장에 append-only로 쌓입니다.",
 		EN: "What you saw above gets recorded here. Finalizing appends to the judgment ledger."}
 )
 

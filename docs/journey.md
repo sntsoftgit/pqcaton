@@ -121,9 +121,9 @@ flowchart TB
 | 화면 탭 | 무엇에서 나오나 | 화면에 무엇을 주면 되나 |
 |---|---|---|
 | ① 선언 | 사람이 처음 씁니다(데모는 `declare.py`) | `-decl declaration.json` |
-| ② 암호 자산 스코프 | **계층 CSV** 를 `-base` 와 맞대 **바뀐 규칙만** | `-layers corp.csv,prod.csv -base asset-scope.csv` |
+| ② 암호 자산 스코프 | **계층 CSV**를 `-base`와 맞대 **바뀐 규칙만** | `-layers corp.csv,prod.csv -base asset-scope.csv` |
 | ③ 대조 | 만들 것이 없습니다. 결과 디렉터리를 읽습니다 | `-results <디렉터리>` |
-| ④ 판정(리뷰 큐) | **선언 + 관측 결과** | `-decl` 과 `-results` |
+| ④ 판정(리뷰 큐) | **선언 + 관측 결과** | `-decl`과 `-results` |
 | 인벤토리·판정 이력 | 만들 것이 없습니다. 지금 있는 파일을 읽습니다 | `-results` · `-judgments` · `-scope-out` |
 
 ---
@@ -185,7 +185,7 @@ declaration.json     scope · nodes · assets · edges
 | **`assets`** | 그 노드에서 쓴다고 아는 암호 런타임·컴포넌트 |
 | **`edges`** | 그 노드가 어디와 어떻게 통신한다고 아는가 |
 
-**선언이 비어 있어도 됩니다.** 그러면 전부 `UNDECLARED` 로 나옵니다. 「우리가 아는 것이 하나도
+**선언이 비어 있어도 됩니다.** 그러면 전부 `UNDECLARED`로 나옵니다. 「우리가 아는 것이 하나도
 없었다」가 첫 리포트입니다.
 
 ### 「무엇을 볼 것인가」가 두 층입니다
@@ -200,9 +200,9 @@ declaration.json     scope · nodes · assets · edges
 노드를 등재해도 그 안에서 관측되는 것이 전부 관리 대상은 아닙니다. 시스템 기본 라이브러리나
 패키지 매니저가 딸려 넣은 런타임이 섞이면 인벤토리가 잡음에 묻힙니다(§1.6). 그래서 층이 둘입니다.
 
-> 코드와 이 문서는 pqcota 의 `scope.AssetPolicy` 를 따라 **「자산 스코프」** 라고 씁니다.
-> 화면은 무엇의 스코프인지가 드러나게 **「암호 자산 스코프」** 로 적고, 선언 안의 노드
-> 목록은 **「관리 대상 노드」** 로 불러 겹치지 않게 합니다.
+> 코드와 이 문서는 pqcota의 `scope.AssetPolicy`를 따라 **「자산 스코프」** 라고 씁니다.
+> 화면은 무엇의 스코프인지가 드러나게 **「암호 자산 스코프」**로 적고, 선언 안의 노드
+> 목록은 **「관리 대상 노드」**로 불러 겹치지 않게 합니다.
 
 ---
 
@@ -218,7 +218,7 @@ ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 |---|---|
 | **openssl** | 어떤 암호 라이브러리·알고리즘이 실제로 쓰이는가 |
 | **jvm** | JCA provider 구성 |
-| **cng** | Windows CNG 에 등록된 provider 와 알고리즘 (상류 v0.6.0) |
+| **cng** | Windows CNG에 등록된 provider와 알고리즘 (상류 v0.6.0) |
 | **network** | 핸드셰이크에서 **협상된 키교환 그룹**입니다. 여기서 양자내성 등급이 나옵니다 |
 
 산출은 `results/*.json`(`CollectionResult`)입니다. **관측하지 못한 것도 함께 나옵니다.**
@@ -243,17 +243,17 @@ ansible-playbook -i inventory.ini discovery/ansible/discover.yml
 
 | | 관측을 어디서 | 언제 쓰나 |
 |---|---|---|
-| **주경로** | pqcota 가 여러 노드에서 모은 `results/` | 실제 운영. `pqcaton-decide open -results` |
+| **주경로** | pqcota가 여러 노드에서 모은 `results/` | 실제 운영. `pqcaton-decide open -results` |
 | **지름길** | **명령을 실행한 그 기계 자신**(`/proc`) | 체험. `pqcaton-decide open decl.csv` |
 
 **지름길은 대상을 고르지 못합니다.** 원격 접속도 노드 선택도 없이 자기가 실행된 기계의 `/proc`
-하나만 읽습니다. 다른 노드를 관측하려면 pqcota 의 collector 를 그 노드에서 돌려야 합니다.
+하나만 읽습니다. 다른 노드를 관측하려면 pqcota의 collector를 그 노드에서 돌려야 합니다.
 그래서 두 가지가 따라옵니다.
 
-- **Linux 에서만** 됩니다. `/proc` 이 없으면 명령이 중단됩니다.
-- 노드 이름은 결과에 붙이는 **이름표일 뿐**입니다. `pqcaton-decide open decl.csv web-gw` 는
-  `web-gw` 를 관측하지 않고 **이 기계를 관측해 `web-gw` 라고 적습니다.** 이름이 맞으면 선언과 대조까지
-  되어 **다른 기계의 관측으로 CONFIRMED 가 나옵니다.** 그래서 다른 이름을 주면 경고합니다.
+- **Linux 에서만** 됩니다. `/proc`이 없으면 명령이 중단됩니다.
+- 노드 이름은 결과에 붙이는 **이름표일 뿐**입니다. `pqcaton-decide open decl.csv web-gw`는
+  `web-gw`를 관측하지 않고 **이 기계를 관측해 `web-gw` 라고 적습니다.** 이름이 맞으면 선언과 대조까지
+  되어 **다른 기계의 관측으로 CONFIRMED가 나옵니다.** 그래서 다른 이름을 주면 경고합니다.
 
 ---
 

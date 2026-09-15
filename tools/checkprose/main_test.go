@@ -288,3 +288,20 @@ func TestEnglishStringOnTheSameLineIsNotCounted(t *testing.T) {
 		t.Fatalf("영어 문자열까지 셌다: %v", got)
 	}
 }
+
+// IC-K14 — **코드 뒤에 띄운 조사는 잡고, 붙인 조사는 잡지 않는다.** 인라인 코드를 공백으로
+// 지우면 「`x` 에」와 「`x`에」가 똑같이 「   에」가 되어 둘을 가르지 못한다. 그래서 같은 길이의
+// 채움 글자로 가린다. HTML 의 `<code>` 도 같다.
+func TestSpacedParticleAfterCodeIsCaughtButAttachedIsNot(t *testing.T) {
+	rs := mustRules(t, "띄운 조사\t(?m)(^|[ \\t])(가|은|는|을|를|에|의)([ \\t.,)]|$)\t붙여 쓴다")
+	src := []byte("`go.mod` 가 판을 고정한다. `go.mod`가 판을 고정한다. pqcota 의 것. pqcota의 것.\n")
+	got := hitsOf("a.md", src, maskMarkdown(src), rs)
+	if len(got) != 2 {
+		t.Fatalf("띄운 조사 둘만 잡혀야 한다: %d건 %v", len(got), got)
+	}
+	html := []byte("<p><code>go.mod</code>가 판을 고정한다. <code>go.mod</code> 가 판을 고정한다.</p>\n")
+	got = hitsOf("a.html", html, maskHTML(html), rs)
+	if len(got) != 1 {
+		t.Fatalf("HTML 에서 띄운 조사 하나만 잡혀야 한다: %d건 %v", len(got), got)
+	}
+}

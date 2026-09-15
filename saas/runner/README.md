@@ -55,7 +55,7 @@ pqcota의 참조 플레이북으로 collector를 반입·실행·회수하고, �
 ## 케이스
 
 **러너가 무엇을 지키는지는 이 표가 정하고, 그 옆의 테스트가 잽니다.** 번호는 테스트 주석에
-그대로 적혀 있고, `make check-cases` 가 표와 테스트를 맞대 어긋나면 막습니다.
+그대로 적혀 있고, `make check-cases`가 표와 테스트를 맞대 어긋나면 막습니다.
 
 컨트롤 플레인 명세(`pqcaton-saas`)에도 같은 표가 있습니다. **원본은 여기입니다.** 코드가
 여기 있으니 케이스도 여기 있어야 합니다.
@@ -83,7 +83,7 @@ pqcota의 참조 플레이북으로 collector를 반입·실행·회수하고, �
 | **[RUN-20](runner_test.go)** | `TestConnectedWithoutFingerprintIsReportedAsFailure`: 붙었다는데 지문이 없음 | 사유를 붙여 올린다 | 그대로 올리면 지문 없는 노드가 등재되어 **클론 검출을 통째로 빠져나갑니다.** 버리면 운영자는 등재된 줄 압니다 |
 | **[RUN-21](runner_test.go)** | `TestEnrollmentsGoUpWithoutAnyResults`: 관측 결과가 하나도 없음 | 연결확인만으로 올린다 | 첫 등재는 결과가 없을 때 일어납니다. 결과가 있어야만 올린다면 **아무도 등재되지 못합니다** |
 | [RUN-22](runner_test.go) | `TestEnrollmentWithoutNodeIdIsSetAside`: `node_id` 없는 파일이 섞임 | 나머지는 올리고 그것만 `bad/`로 | 컨트롤 플레인이 쓸 수 없는 파일입니다. 그대로 두면 다음 실행마다 걸립니다. 지우지는 않습니다 |
-| **[RUN-23](runner_test.go)** | `TestServerReasonIsReadableInTheRunnerLog`: 402와 사유를 받음 | 사유가 **사람이 읽는 문장으로** 로그에 나온다 | `{"error":…}` 를 그대로 찍으면 **제품이 보내는 가장 중요한 말**(무료 기간이 끝났다는 안내)이 잡음에 묻힙니다. 운영자가 알아보지 못하면 멈춘 이유를 코드에서 찾습니다 |
+| **[RUN-23](runner_test.go)** | `TestServerReasonIsReadableInTheRunnerLog`: 402와 사유를 받음 | 사유가 **사람이 읽는 문장으로** 로그에 나온다 | `{"error":…}`를 그대로 찍으면 **제품이 보내는 가장 중요한 말**(무료 기간이 끝났다는 안내)이 잡음에 묻힙니다. 운영자가 알아보지 못하면 멈춘 이유를 코드에서 찾습니다 |
 | [RUN-24](runner_test.go) | `TestNonJSONBodyIsPassedThrough`: 앞단 프록시의 502 등 | **받은 그대로** 낸다 | 원문 자체가 단서입니다. 우리 모양이 아니라고 삼키면 아무 말도 남지 않습니다 |
 
 ## 무엇이 무엇으로 막는지: 뭉뚱그리지 않습니다
