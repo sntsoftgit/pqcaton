@@ -26,7 +26,7 @@
 
 ```mermaid
 flowchart TB
-    A["0 · 어떤 방식인가"] --> B
+    A["0 · 운영 방식 선택"] --> B
 
     subgraph inside["자기 인프라"]
       B["1 · 준비"] --> C["2 · 접근 준비<br/>(여러 노드일 때만)"]
