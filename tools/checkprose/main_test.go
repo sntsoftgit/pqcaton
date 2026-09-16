@@ -307,8 +307,9 @@ func TestSpacedParticleAfterCodeIsCaughtButAttachedIsNot(t *testing.T) {
 }
 
 // IC-K15 — **함께 나가는 rules.tsv 의 띄운 조사 규칙**을 실제 문장으로 잰다. 「에만」·「나」·
-// 「까지만」·「로만」·「뿐」처럼 뒤늦게 더한 조사가 잡히는지, 그리고 「할 뿐」·「쓰다 만」처럼
-// 낱말로 서는 「뿐」·「만」을 잘못 잡지 않는지. 규칙을 테스트 안에 따로 적으면 파일이 바뀌어도
+// 「까지만」·「로만」·「뿐」·「라」·「라고」·「였습니다」·「여야」처럼 뒤늦게 더한 조사가 잡히는지,
+// 조사 뒤에 `**`·`<`·「」」가 와도 잡히는지, 그리고 「할 뿐」·「쓰다 만」처럼 낱말로 서는
+// 「뿐」·「만」을 잘못 잡지 않는지. 규칙을 테스트 안에 따로 적으면 파일이 바뀌어도
 // 케이스가 통과한다.
 func TestShippedSpacedParticleRule(t *testing.T) {
 	all, err := loadRules(filepath.Join("..", "..", rulesFile))
@@ -331,6 +332,11 @@ func TestShippedSpacedParticleRule(t *testing.T) {
 		"한 role 로만 붙는다.",
 		"`sshd`와 `python` 뿐 아니라",
 		"§ 로만 적으면",
+		"상류의 id는 `sha256(노드|이름)` 라 자산이 같으면",
+		"조치 종류가 비면 `PROVIDER_INJECT` 였습니다.",
+		"이 문서 첫머리가 **「링크입니다」** 라고 약속한다.",
+		"**Linux 에서만** 됩니다.",
+		"「그대로」 였고, 그때는",
 	}
 	for _, s := range caught {
 		src := []byte(s + "\n")
@@ -343,6 +349,7 @@ func TestShippedSpacedParticleRule(t *testing.T) {
 		"판정 대상을 구조화할 뿐, 확정은 사람이 한다.",
 		"쓰다 만 파일을 남기지 않는다. 채우다 만 것을",
 		"이름표일 뿐 관측 대상이 아니다.",
+		"머리에서 「관측 2」라 하고, `PROVIDER_INJECT`였습니다. **Linux에서만** 됩니다. `libcrypto`여야 하고.",
 	}
 	for _, s := range clean {
 		src := []byte(s + "\n")
@@ -353,5 +360,39 @@ func TestShippedSpacedParticleRule(t *testing.T) {
 	html := []byte("<p>오른쪽이 없으면 <em>판정이 없을</em> 뿐 관측은 된다. <code>x</code> 뿐 아니라</p>\n")
 	if got := hitsOf("a.html", html, maskHTML(html), rs); len(got) != 1 {
 		t.Errorf("HTML 태그 뒤의 「뿐」은 두고 코드 뒤만 잡아야 한다: %d건 %v", len(got), got)
+	}
+	html = []byte("<p><b>자산이 통째로 UNDECLARED 로</b> 올라온다. <code>libcrypto</code> 여야 하고, <b>UNDECLARED로</b> 구분된다.</p>\n")
+	if got := hitsOf("a.html", html, maskHTML(html), rs); len(got) != 2 {
+		t.Errorf("태그가 바로 뒤에 와도 띄운 조사 둘을 잡고 붙인 것은 두어야 한다: %d건 %v", len(got), got)
+	}
+}
+
+// IC-K16 — **알림표는 관문이 아니다.** notices.tsv 가 읽히고 실제 문장에 걸리되, 표 행과
+// 제목은 비켜 가며, 관문 규칙과 섞이지 않는다. 막는 규칙으로 두면 제목·표의 정당한 구분
+// 기호까지 예외 목록에 쌓이므로 후보로만 알린다.
+func TestShippedNoticesFlagCandidatesWithoutGating(t *testing.T) {
+	ns, err := loadRules(filepath.Join("..", "..", noticesFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ns) == 0 {
+		t.Fatal("notices.tsv 가 비어 있다")
+	}
+	src := []byte(strings.Join([]string{
+		"**노드 수**로 셉니다 - 관측하거나 적용하는 대상입니다.",
+		"| 구독 - 관측/인벤토리 | 0.86억 |",
+		"## 5. 데이터 - 무엇을 내보내나",
+		"노드 수로 셉니다. 노드는 관측 대상입니다.",
+	}, "\n") + "\n")
+	got := hitsOf("a.md", src, maskMarkdown(src), ns)
+	if len(got) != 1 || got[0].line != 1 {
+		t.Fatalf("본문의 띄운 붙임표 하나만 걸려야 한다(표·제목은 제외): %d건 %v", len(got), got)
+	}
+	rs, err := loadRules(filepath.Join("..", "..", rulesFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gate := hitsOf("a.md", src, maskMarkdown(src), rs); len(gate) != 0 {
+		t.Fatalf("알림표의 문장이 관문 규칙에 걸리면 안 된다: %v", gate)
 	}
 }

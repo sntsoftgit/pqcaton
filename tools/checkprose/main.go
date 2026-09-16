@@ -23,10 +23,15 @@
 // 가 막는다(Go 문자열의 한글). 그리고 두 목록 모두 지적받을 때마다 늘어나므로 코드 밖에
 // 있어야 한다.
 //
+// **알림표 notices.tsv 는 관문이 아니다.** 맞는 용법이 섞여 있어 기계가 가르지 못하는 것
+// (제목·표에서는 구분 기호인 띄운 붙임표 같은 것)은 막지 않고 후보로만 알린다. 걸려도
+// 통과하고 기준선에도 넣지 않는다. 막는 규칙으로 두면 예외 목록이 쌓이고, 예외가 쌓이면
+// 진짜 위반도 함께 묻힌다.
+//
 // usage:
 //
 //	go run ./tools/checkprose             # 관문
-//	go run ./tools/checkprose -list       # 걸린 자리를 줄 번호까지
+//	go run ./tools/checkprose -list       # 걸린 자리를 줄 번호까지(알림 포함)
 //	go run ./tools/checkprose -baseline   # 기준선을 다시 찍는다
 package main
 
@@ -67,6 +72,7 @@ var extraHTML = []string{"site/index.html", "site/ui-next.html"}
 
 const (
 	rulesFile    = "tools/checkprose/rules.tsv"
+	noticesFile  = "tools/checkprose/notices.tsv"
 	baselineFile = "tools/checkprose/baseline.tsv"
 	overlapFile  = "tools/checkprose/overlap.txt"
 )
@@ -107,8 +113,17 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
+	notices, err := loadRules(noticesFile)
+	if err != nil {
+		fail(err)
+	}
+	noted, err := scan(".", notices)
+	if err != nil {
+		fail(err)
+	}
 	if *list {
 		printList(hits)
+		printNotices(noted)
 	}
 	counts := tally(hits)
 
@@ -117,6 +132,7 @@ func main() {
 			fail(err)
 		}
 		fmt.Printf("✓ baseline rewritten: %d entries, %d hits\n", len(counts), len(hits))
+		printNoticeCount(noted)
 		return
 	}
 
@@ -145,6 +161,7 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("✓ prose check passed (%d hits, all at the baseline)\n", len(hits))
+	printNoticeCount(noted)
 }
 
 func fail(err error) {
@@ -551,4 +568,20 @@ func printList(hits []hit) {
 		fmt.Printf("%s:%d\t%s\t%s\n", h.file, h.line, h.rule, h.text)
 	}
 	fmt.Printf("%d hits\n", len(hits))
+}
+
+// printNotices — 알림표에 걸린 자리. 관문 판정과 섞이지 않게 따로 찍는다.
+func printNotices(noted []hit) {
+	for _, h := range noted {
+		fmt.Printf("%s:%d\tnotice: %s\t%s\n", h.file, h.line, h.rule, h.text)
+	}
+	fmt.Printf("%d notices (not gated)\n", len(noted))
+}
+
+// printNoticeCount — 관문 결과 뒤에 알림 건수만 한 줄. 0 이면 아무것도 찍지 않는다.
+func printNoticeCount(noted []hit) {
+	if len(noted) == 0 {
+		return
+	}
+	fmt.Printf("  %d notices to review (not gated): go run ./tools/checkprose -list\n", len(noted))
 }

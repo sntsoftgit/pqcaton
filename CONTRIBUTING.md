@@ -70,7 +70,9 @@ CI가 이것을 검사합니다(`make check-licenses`). 관문에 걸리면 대�
 들어오지 않게 막습니다. 지금 있는 것은 `tools/checkprose/baseline.tsv`에 파일마다 적어
 두었고, **늘어나면 막습니다.** 고쳐서 줄었으면 `go run ./tools/checkprose -baseline`으로
 기준선을 내려 함께 커밋합니다. 무엇을 대신 쓰는지는 `tools/checkprose/rules.tsv`에
-규칙마다 적혀 있습니다.
+규칙마다 적혀 있습니다. `tools/checkprose/notices.tsv`는 관문이 아니라 알림입니다. 제목·표에서는
+맞는 용법이라 기계가 가르지 못하는 것(띄운 붙임표 「 - 」)을 후보로만 알리고, 걸려도 통과합니다.
+`go run ./tools/checkprose -list`로 자리를 보고 눈으로 가립니다.
 
 **케이스 번호와 실제 테스트의 대응은 `make check-cases`가 봅니다.** 테스트 주석에 번호를
 적으면(`// IC-R1`) 관문이 그것을 문서의 표와 맞댑니다. 한쪽만 적으면 막힙니다. 번호에 붙는
