@@ -132,7 +132,7 @@ var (
 			"뒷부분만 같은 것은 맞지 않고, <code>*</code> 같은 것도 쓸 수 없습니다. 적을 때는 " +
 			"관측 이름에서 <code>.so</code>부터 뒤를 뗍니다. <code>libssl.so.3</code>은 " +
 			"<code>libssl</code>로 적습니다. <b>벤더링 해시는 떼지 않습니다</b>. " +
-			"<code>libcrypto-fbc9a285.so.3</code>은 <code>libcrypto-fbc9a285</code> 여야 하고, " +
+			"<code>libcrypto-fbc9a285.so.3</code>은 <code>libcrypto-fbc9a285</code>여야 하고, " +
 			"<code>libcrypto</code>는 다른 자산입니다. <code>jca</code>의 컴포넌트는 " +
 			"<code>jca-provider-chain</code> 하나, <code>cng</code>는 " +
 			"<code>cng-providers</code> 하나입니다. 기계에 하나뿐이라 관측 결과에 늘 그 " +

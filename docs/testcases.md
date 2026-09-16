@@ -32,7 +32,7 @@
 | **[IC-R23](../pkg/inventory/report/managed_test.go) ✅** | 선언은 `openssl/libcrypto`를 적었고 정책은 그것을 관측한 앱(`sshd`)을 뺌 · 데모의 모양 | `UNOBSERVED`가 **아니라** `CONFIRMED` + `EXCLUDED_BY_POLICY`다. 리포트가 선언·정책의 어긋남을 **자산 식별자·원천 노드·앱 식별자 전부·같은 정책 코드가 뺐다는 사실**로 경고한다. 어느 규칙인지는 말하지 않는다 - 상류 `Managed`는 bool만 돌려준다. 리뷰 큐에는 오르지 않는다. 정책을 걸지 않으면 관리 대상이고 어긋남도 없다 |
 | **[IC-R24](../pkg/inventory/report/managed_test.go) ✅** | 정책을 걸고 대조 | 관리 근거는 정책을 건 스냅샷에서만 나오고 지문이 있다. 제외 근거에는 **지문이 없다** - 적재되지 않은 스냅샷의 지문은 아무것도 가리키지 않는다 |
 | **[IC-R25](../pkg/inventory/report/managed_test.go) ✅** | 관리 자산 하나 · 정책이 뺀 자산 하나 · 미관측 자산 하나 | **관측 자산 수는 정책이 뺀 것도 센다**(2). 관리 수는 따로 든다(1). 머리의 관측 수와 런타임별 합계가 같다 | 관리 근거의 수로 세면 머리에서 「관측 2」라 하고 바로 아래 합계는 5 라고 하는 리포트가 나온다. 제외를 부재로 세는 것이고, 이 판이 닫으려는 바로 그 결함이다 |
-| **[IC-R6](../pkg/inventory/reconcile/fingerprint_test.go) ✅** | **`finding_id`는 같은데 버전·검출 방법·증거 강도·강화 판정·알고리즘·로드한 앱이 달라진 관측** | **지문이 달라진다.** 상류의 id는 `sha256(노드\|이름\|런타임\|fork)` 라 자산이 같으면 같아서, id만 보면 이 변화가 통째로 「그대로」로 읽힙니다. 대조가 그 지문을 세션까지 들고 간다 |
+| **[IC-R6](../pkg/inventory/reconcile/fingerprint_test.go) ✅** | **`finding_id`는 같은데 버전·검출 방법·증거 강도·강화 판정·알고리즘·로드한 앱이 달라진 관측** | **지문이 달라진다.** 상류의 id는 `sha256(노드\|이름\|런타임\|fork)`라 자산이 같으면 같아서, id만 보면 이 변화가 통째로 「그대로」로 읽힙니다. 대조가 그 지문을 세션까지 들고 간다 |
 
 ### O. 대조의 조직 축 (설계 §1.1) ✅
 | TC | Given → When | Then |
@@ -137,7 +137,7 @@
 |---|---|---|
 | [IC-P1](../pkg/inventory/decision/plan_test.go) ✅ | finalized 계획 생성 | PlanItem[]: node·remediation_class·**deploy_automation_level**·provider_choice |
 | [IC-P2](../pkg/inventory/decision/plan_test.go) ✅ | deploy_automation_level 판정 | 자산별로 리뷰어가 판정한다(§4.5 MANUAL). 전사 일괄이 아니다 |
-| [IC-P3](../pkg/inventory/decision/plan_test.go) ✅ | 규제 대상 자산(fips_validation 요구) | **FIPS 검증 provider로 라우팅 강제**(§4.10, Java=BC-FJA) · **CNG는 빈 값이다**. 갈아 끼울 provider가 관측에 없고 FIPS 여부는 알 수 없다(§2.5). 이름을 지어내면 계획을 받는 쪽이 검증된 선택으로 읽는다 |
+| [IC-P3](../pkg/inventory/decision/plan_test.go) ✅ | 규제 대상 자산(fips_validation 요구) | **FIPS 검증 provider로 라우팅 강제**([pqcota 프로비저닝 설계 §4.2](https://github.com/randyinthedev-hash/pqcota/blob/main/provisioning/design.md#42-jca-브랜치-jcago-jdk-세대와-provider가-kind를-결정한다), Java=BC-FJA) · **CNG는 빈 값이다**. 갈아 끼울 provider가 관측에 없고 FIPS 여부는 알 수 없다(§2.5). 이름을 지어내면 계획을 받는 쪽이 검증된 선택으로 읽는다 |
 | **[IC-P4](../pkg/inventory/decision/plan_test.go) ✅** | **판정이 끝나지 않은 세션에서 계획을 만들거나, 판정자 표시 없는 계획을 넘기려 한다** | **거부한다**(`ErrNotJudged`, §5. 반드시 거쳐야 하는 관문). 이 관문은 실행을 허용하는 것이 아니라 **계약으로 넘길 수 있는지**를 본다(`ReadyForApproval`). 실행 허용은 상류의 `Executable`과 승인 검증이 한다 |
 | [IC-P5](../pkg/inventory/decision/plan_test.go) ✅ | 판정이 끝난 세션에서 계획 | 만들어진다(`JudgedPlan`). 실행 근거가 되는 것은 상류의 승인이 `FINALIZED`로 올린 뒤다(§3.7) |
 | **[IC-P6](../pkg/inventory/review/review_test.go) ✅** | 스코프가 URI인 노드(`host://local`)를 계약 형식으로 | **겨눈 노드와 런타임이 그대로 간다**. v0.1.0은 id를 쪼개 `host:`를 겨누고 런타임을 기본값으로 떨어뜨렸다 |
@@ -301,7 +301,7 @@
 
 ### M. 번호와 테스트의 대응 (`tools/checkcases`) ✅
 
-이 문서 첫머리가 **「케이스 번호가 곧 테스트 파일 링크입니다」** 라고 약속한다. 그 약속을
+이 문서 첫머리가 **「케이스 번호가 곧 테스트 파일 링크입니다」**라고 약속한다. 그 약속을
 사람이 지키게 두었더니 백일흔넷 가운데 링크가 하나도 없었고, 두 주 동안 아무도 몰랐다.
 그래서 **약속을 지키는 일을 기계에 맡긴다.** 링크는 `-write`가 찍는다.
 
