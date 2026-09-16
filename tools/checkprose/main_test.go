@@ -396,3 +396,47 @@ func TestShippedNoticesFlagCandidatesWithoutGating(t *testing.T) {
 		t.Fatalf("알림표의 문장이 관문 규칙에 걸리면 안 된다: %v", gate)
 	}
 }
+
+// IC-K17 — **실제 실행 경로에서 알림은 통과하고 기준선에 섞이지 않는다.** IC-K16 은 규칙
+// 분리를 재지만 명령의 종료 코드와 기준선 파일은 재지 않는다. 알림만 있는 입력으로 -baseline
+// 을 찍으면 기준선이 비고, 관문을 돌리면 0 으로 끝나며, 관문 규칙에 걸리는 줄을 더하면 1 이 된다.
+func TestNoticesPassTheGateAndStayOutOfTheBaseline(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.MkdirAll(filepath.Join(dir, "tools", "checkprose"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	put := func(rel, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, rel), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put(rulesFile, "엠대시\t—\t콜론으로 푼다\n")
+	put(noticesFile, "띄운 붙임표\t(?m)^[^|#\\n]*[가-힣][ \\t]+-[ \\t]+[가-힣]\t마침표나 콜론으로 푼다\n")
+	put(overlapFile, "# 없음\n")
+	put("a.md", "노드 수로 셉니다 - 관측 대상입니다.\n")
+	oldGo, oldHTML := extraGo, extraHTML
+	extraGo, extraHTML = nil, nil
+	t.Cleanup(func() { extraGo, extraHTML = oldGo, oldHTML })
+
+	if code := run(false, true); code != 0 {
+		t.Fatalf("알림만 있는 입력의 -baseline 이 실패했다: %d", code)
+	}
+	b, err := os.ReadFile(baselineFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if line != "" && !strings.HasPrefix(line, "#") {
+			t.Fatalf("알림이 기준선에 들어갔다: %q", line)
+		}
+	}
+	if code := run(false, false); code != 0 {
+		t.Fatalf("알림만 있는 입력이 관문을 막았다: %d", code)
+	}
+	put("a.md", "노드 수로 셉니다 - 관측 대상입니다.\n관측 — 실행 중인 것을 본다.\n")
+	if code := run(false, false); code != 1 {
+		t.Fatalf("관문 규칙에 걸리는 줄을 더했는데 막지 않았다: %d", code)
+	}
+}

@@ -100,47 +100,52 @@ func main() {
 	list := flag.Bool("list", false, "print every hit with its line")
 	write := flag.Bool("baseline", false, "rewrite the baseline file")
 	flag.Parse()
+	os.Exit(run(*list, *write))
+}
 
+// run — 관문 한 번. 종료 코드를 돌려주고 os.Exit 은 main 이 한다: 실제 실행 경로(알림만
+// 있는 입력이 통과하는지, 기준선에 알림이 섞이지 않는지)를 테스트가 그대로 밟기 위해서다.
+func run(list, write bool) int {
 	rules, err := loadRules(rulesFile)
 	if err != nil {
-		fail(err)
+		return failed(err)
 	}
 	overlap, err = loadWords(overlapFile)
 	if err != nil {
-		fail(err)
+		return failed(err)
 	}
 	hits, err := scan(".", rules)
 	if err != nil {
-		fail(err)
+		return failed(err)
 	}
 	notices, err := loadRules(noticesFile)
 	if err != nil {
-		fail(err)
+		return failed(err)
 	}
 	noted, err := scan(".", notices)
 	if err != nil {
-		fail(err)
+		return failed(err)
 	}
-	if *list {
+	if list {
 		printList(hits)
 		printNotices(noted)
 	}
 	counts := tally(hits)
 
-	if *write {
+	if write {
 		if err := writeBaseline(baselineFile, counts); err != nil {
-			fail(err)
+			return failed(err)
 		}
 		fmt.Printf("✓ baseline rewritten: %d entries, %d hits\n", len(counts), len(hits))
 		printNoticeCount(noted)
-		return
+		return 0
 	}
 
 	base, err := readBaseline(baselineFile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "✗ no usable baseline:", err)
 		fmt.Fprintln(os.Stderr, "  run: go run ./tools/checkprose -baseline")
-		os.Exit(1)
+		return 1
 	}
 	grown, shrunk := compare(base, counts)
 	if len(grown) > 0 {
@@ -150,7 +155,7 @@ func main() {
 		}
 		fmt.Fprintln(os.Stderr, "\nSee them with: go run ./tools/checkprose -list")
 		fmt.Fprintln(os.Stderr, "Each rule in", rulesFile, "says what to write instead.")
-		os.Exit(1)
+		return 1
 	}
 	if len(shrunk) > 0 {
 		fmt.Fprintln(os.Stderr, "✗ prose gate: the baseline is stale — these went down")
@@ -158,15 +163,16 @@ func main() {
 			fmt.Fprintln(os.Stderr, "   ", l)
 		}
 		fmt.Fprintln(os.Stderr, "\nLock the win in: go run ./tools/checkprose -baseline")
-		os.Exit(1)
+		return 1
 	}
 	fmt.Printf("✓ prose check passed (%d hits, all at the baseline)\n", len(hits))
 	printNoticeCount(noted)
+	return 0
 }
 
-func fail(err error) {
+func failed(err error) int {
 	fmt.Fprintln(os.Stderr, "✗ checkprose:", err)
-	os.Exit(1)
+	return 1
 }
 
 // ── 규칙 ───────────────────────────────────────────────────────────────────
