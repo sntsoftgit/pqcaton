@@ -279,7 +279,7 @@
   <text class="lbl-sm" x="530" y="410" lang="en">no machine finalizes an UNOBSERVED item</text>
 
   <rect class="box-us" x="512" y="444" width="424" height="104" rx="5"/>
-  <text class="lbl" x="530" y="470" lang="ko">판정: 사람의 결론을 붙들어 둔다</text>
+  <text class="lbl" x="530" y="470" lang="ko">판정: 사람의 결론을 남겨 둔다</text>
   <text class="lbl" x="530" y="470" lang="en">Judgment: holds the human conclusion</text>
   <text class="lbl-mono" x="530" y="492">pkg/inventory/decision</text>
   <text class="lbl-sm" x="530" y="514">draft → in-review → finalized · append-only</text>
@@ -381,7 +381,7 @@
 </div>
 
 <p>
-  <span lang="ko"><code>internal/probe</code>는 그 연결을 붙들어 두는 최소 코드입니다. 지워도 빌드는 되지만,
+  <span lang="ko"><code>internal/probe</code>는 그 연결을 유지하는 최소 코드입니다. 지워도 빌드는 되지만,
   그러면 <code>go.mod</code>의 <code>require</code>가 아무 표시 없이 미사용이 됩니다.</span>
   <span lang="en"><code>internal/probe</code> is the smallest amount of code that holds that link in place.
   Delete it and the build still passes, but the <code>require</code> lines in <code>go.mod</code> quietly

@@ -60,7 +60,7 @@ pqcota의 참조 플레이북으로 collector를 반입·실행·회수하고, �
 컨트롤 플레인 명세(`pqcaton-saas`)에도 같은 표가 있습니다. **원본은 여기입니다.** 코드가
 여기 있으니 케이스도 여기 있어야 합니다.
 
-> **번호가 비어 있습니다**(`RUN-1`·`11`·`14`·`16`·`17`). 작업 큐를 걷어내며 지운 케이스들입니다.
+> **번호가 비어 있습니다**(`RUN-1`·`11`·`14`·`16`·`17`). 작업 큐를 없애며 지운 케이스들입니다.
 > 작업 id를 결과에 실어 닫기 · `--limit`으로 대상 좁히기 · 점유 만료 데드라인 · 작업 종류 분기.
 > **번호를 당기지 않습니다.** 커밋과 이력이 그 번호로 그 케이스를 가리키고 있습니다.
 
@@ -79,7 +79,7 @@ pqcota의 참조 플레이북으로 collector를 반입·실행·회수하고, �
 | [RUN-13](runner_test.go) | `TestNoPlaybookStillUploads`: 플레이북 미설정 | 올리기만 한다 | 러너가 하는 일은 결과를 올리는 것이지 관측을 돌리는 것이 아닙니다 |
 | **[RUN-15](lock_unix_test.go)** | `TestSecondRunDoesNothingWhileFirstHoldsTheLock`: 이전 실행이 아직 끝나지 않음 | 아무것도 안 한다. 풀리면 다음이 실행된다 | cron은 이전 실행을 보지 않습니다. 겹치면 **같은 노드에 두 플레이북이 붙습니다** |
 | **[RUN-18](runner_test.go)** | `TestEnrollmentsGoToTheirOwnEndpoint`: 연결확인이 막히고 관측은 정상 | 관측은 올라가고, 못 올린 연결확인은 **그대로 남는다** | 둘은 같은 때에 올라오지 않습니다. 한 본문에 묶으면 하나가 막힐 때 나머지도 묵힙니다 |
-| **[RUN-19](runner_test.go)** | `TestAddrBecomesATokenAndNeverLeaves`: 주소가 적힌 연결확인 | 토큰만 나가고 **원본은 본문 어디에도 없다.** 같은 주소는 늘 같은 토큰 | 이 제품이 파는 성질입니다. 우리 DB가 털려도 **내부 주소 지도가 나오지 않습니다.** 토큰이 매번 달라지면 영역 간에 같은 상대를 이어 붙일 수 없습니다(§6.3.1) |
+| **[RUN-19](runner_test.go)** | `TestAddrBecomesATokenAndNeverLeaves`: 주소가 적힌 연결확인 | 토큰만 나가고 **원본은 본문 어디에도 없다.** 같은 주소는 늘 같은 토큰 | 이 제품이 파는 성질입니다. 우리 DB가 침해당해도 **내부 주소 지도가 나오지 않습니다.** 토큰이 매번 달라지면 영역 간에 같은 상대를 이어 붙일 수 없습니다(§6.3.1) |
 | **[RUN-20](runner_test.go)** | `TestConnectedWithoutFingerprintIsReportedAsFailure`: 붙었다는데 지문이 없음 | 사유를 붙여 올린다 | 그대로 올리면 지문 없는 노드가 등재되어 **클론 검출을 통째로 빠져나갑니다.** 버리면 운영자는 등재된 줄 압니다 |
 | **[RUN-21](runner_test.go)** | `TestEnrollmentsGoUpWithoutAnyResults`: 관측 결과가 하나도 없음 | 연결확인만으로 올린다 | 첫 등재는 결과가 없을 때 일어납니다. 결과가 있어야만 올린다면 **아무도 등재되지 못합니다** |
 | [RUN-22](runner_test.go) | `TestEnrollmentWithoutNodeIdIsSetAside`: `node_id` 없는 파일이 섞임 | 나머지는 올리고 그것만 `bad/`로 | 컨트롤 플레인이 쓸 수 없는 파일입니다. 그대로 두면 다음 실행마다 걸립니다. 지우지는 않습니다 |

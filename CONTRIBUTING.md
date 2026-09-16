@@ -66,7 +66,7 @@ CI가 이것을 검사합니다(`make check-licenses`). 관문에 걸리면 대�
 **정규식이 아니라 파서로 봅니다.** 즉석 스크립트로 훑었을 때 URL 안의 `//`에서 줄이
 잘려 `"화면: http://%s"` 하나를, 여러 줄 백틱 문자열에서 둘을 놓쳤습니다.
 
-**문서와 화면 문구의 문체는 `make check-prose`가 봅니다.** 한 번 걷어낸 말이 다시
+**문서와 화면 문구의 문체는 `make check-prose`가 봅니다.** 한 번 없앤 말이 다시
 들어오지 않게 막습니다. 지금 있는 것은 `tools/checkprose/baseline.tsv`에 파일마다 적어
 두었고, **늘어나면 막습니다.** 고쳐서 줄었으면 `go run ./tools/checkprose -baseline`으로
 기준선을 내려 함께 커밋합니다. 무엇을 대신 쓰는지는 `tools/checkprose/rules.tsv`에
@@ -74,7 +74,7 @@ CI가 이것을 검사합니다(`make check-licenses`). 관문에 걸리면 대�
 
 **케이스 번호와 실제 테스트의 대응은 `make check-cases`가 봅니다.** 테스트 주석에 번호를
 적으면(`// IC-R1`) 관문이 그것을 문서의 표와 맞댑니다. 한쪽만 적으면 막힙니다. 번호에 붙는
-링크는 손으로 붙이지 말고 `go run ./tools/checkcases -write`로 찍어 같은 커밋에 넣습니다.
+링크는 손으로 붙이지 말고 `go run ./tools/checkcases -write`로 만들어 같은 커밋에 넣습니다.
 
 ### 화면에도 뜨고 명령도 찍는 문장
 

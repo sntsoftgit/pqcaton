@@ -107,7 +107,7 @@ var (
 			"<b>「관측 이름」은 관측이 이 노드를 부르는 이름입니다.</b> 자산 대조는 노드 " +
 			"이름이 글자 그대로 같아야 맞는데, collector는 자기가 붙인 " +
 			"id(<code>node:1a2b…</code>)나 호스트명으로 보내는 일이 흔합니다. 이름이 서로 다르면 " +
-			"<b>그 노드의 자산이 통째로 UNDECLARED 로</b> 올라옵니다. 선언이 틀려서가 아니라 " +
+			"<b>그 노드의 자산이 통째로 UNDECLARED로</b> 올라옵니다. 선언이 틀려서가 아니라 " +
 			"이름이 서로 달라서입니다. 호스트명(짧은 이름 포함)이 위 이름과 같으면 비워 두십시오. " +
 			"그때는 저절로 이어집니다. 아직 어느 노드에도 붙지 않은 관측 이름은 " +
 			"이 칸에서 고를 수 있습니다.",
@@ -137,7 +137,7 @@ var (
 			"<code>jca-provider-chain</code> 하나, <code>cng</code>는 " +
 			"<code>cng-providers</code> 하나입니다. 기계에 하나뿐이라 관측 결과에 늘 그 " +
 			"이름으로 적힙니다.<br>맞지 않아도 막히지 않습니다. " +
-			"<b>선언한 것은 미관측으로, 관측된 것은 UNDECLARED 로</b> 구분됩니다. 그래서 " +
+			"<b>선언한 것은 미관측으로, 관측된 것은 UNDECLARED로</b> 구분됩니다. 그래서 " +
 			"<b>그 노드에서 관측된 이름이 컴포넌트 칸에 후보로 뜹니다</b>. 칸을 " +
 			"누르면 뜨고, 거기서 고르면 옮겨 적다 틀릴 일이 없습니다. 관측이 아직 없으면 " +
 			"후보도 없으니 위 규칙대로 적으십시오.",
@@ -215,7 +215,7 @@ var (
 	tColTarget2    = T{KO: "목표 알고리즘", EN: "Target algorithm"}
 	tColLevel      = T{KO: "위임 수준", EN: "Delegation level"}
 	tKindAuto      = T{KO: "고르지 않음", EN: "not chosen"}
-	tHooks         = T{KO: "활성화 훅 (L3에서만 쓰인다)", EN: "Activation hooks (used at L3 only)"}
+	tHooks         = T{KO: "활성화 훅 (L3 전용)", EN: "Activation hooks (used at L3 only)"}
 	tHookPre       = T{KO: "내리기", EN: "pre"}
 	tHookActivate  = T{KO: "활성화", EN: "activate"}
 	tHookDeact     = T{KO: "되돌리기", EN: "deactivate"}
@@ -416,7 +416,7 @@ var (
 
 	tSurveyAssets     = T{KO: "암호 자산", EN: "Crypto assets"}
 	tSurveyAssetsHint = T{
-		KO: "노드 안의 암호 런타임·컴포넌트를 선언과 맞댄 3-상태입니다.",
+		KO: "노드 안의 암호 런타임·컴포넌트를 선언과 대조해 세 가지 상태로 구분한 결과입니다.",
 		EN: "The crypto runtimes and components inside each node, in three states against the declaration."}
 	tSurveyNoAssets = T{KO: "대조할 자산이 없습니다.", EN: "No assets to reconcile."}
 	tUndeclaredHint = T{
@@ -428,7 +428,7 @@ var (
 
 	tSurveyEdges     = T{KO: "통신 엣지", EN: "Communication edges"}
 	tSurveyEdgesHint = T{
-		KO: "선언과 맞댄 3-상태, 그리고 협상된 통신의 양자내성 등급입니다.",
+		KO: "선언과 대조해 구분한 세 가지 상태, 그리고 협상된 통신의 양자내성 등급입니다.",
 		EN: "Three states against the declaration, and the quantum-resistance grade of " +
 			"each negotiated connection."}
 	tSurveyNoEdges = T{KO: "대조할 엣지가 없습니다.", EN: "No edges to reconcile."}

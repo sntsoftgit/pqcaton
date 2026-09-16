@@ -25,28 +25,28 @@
 | [IC-R2](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 관측 only(선언 안 됨) | **UNDECLARED**, NeedsReview |
 | [IC-R3](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 선언 only(관측 안 됨) | UNOBSERVED, NeedsReview(기계 확정 불가) |
 | [IC-R4](../pkg/inventory/reconcile/edge_test.go) ✅ | UNOBSERVED + 완전성 맵에 해당 계층 **갭** | "재수집 후보"로 표시(갭이면 미관측일 뿐). 갭 아니면 실존/stale 사람 판정(§3.3) |
-| [IC-R5](../pkg/inventory/reconcile/fingerprint_test.go) ✅ | 같은 관측을 다시 읽기 · 스냅샷 id와 규칙 판만 다른 관측 · 관측 없음 | 지문이 같다. **재수집만으로는 흔들리지 않는다.** 흔들리면 안 바뀐 관측이 매번 델타 큐에 올라오고, 그런 큐는 읽히지 않습니다. 관측이 없으면 지문도 없다 |
+| [IC-R5](../pkg/inventory/reconcile/fingerprint_test.go) ✅ | 같은 관측을 다시 읽기 · 스냅샷 id와 규칙 판만 다른 관측 · 관측 없음 | 지문이 같다. **재수집만으로는 흔들리지 않는다.** 흔들리면 안 바뀐 관측이 매번 델타 큐에 올라오고, 그런 큐는 읽히지 않는다. 관측이 없으면 지문도 없다 |
 | **[IC-R20](../pkg/inventory/reconcile/managed_test.go) ✅** | 관리 근거만 · 제외 근거만 · 둘 다 없음 | **관리 축은 근거의 구성에서 파생한다.** 관리 근거 ≥ 1이면 `MANAGED`. 관측은 있으나 전부 정책이 뺐으면 대조 축은 그대로(보았다)이고 관리 축이 `EXCLUDED_BY_POLICY`이며, 대표 근거는 비고 신뢰도는 미평가이고 사람 판정을 요구하지 않는다. 관측이 없으면 `UNOBSERVED` + `NOT_EVALUATED`이고 신뢰도는 상태 기본값이되 미평가다. 전에는 제외된 finding이 정규화 안에서 사라져 선언 자산이 「보지 못했다」로 읽혔다 |
 | **[IC-R21](../pkg/inventory/reconcile/managed_test.go) ✅** | 같은 자산을 원천 노드 둘이 봤고 한쪽만 정책에 걸림 | **`MANAGED`다.** 관리할 근거가 있는데 관리하지 않으면 실재하는 관리 대상을 놓친다. 대표값·신뢰도는 **관리 근거에서만**, 제외 근거는 따로 보존해 「관리 n · 제외 m」으로 알린다. 제외 근거의 순서는 입력이 아니라 원천 노드·finding 순이다 |
 | **[IC-R22](../pkg/inventory/reconcile/managed_test.go) ✅** | 정책 없이 정규화한 스냅샷 + 정책 | **정책 판정은 상류 `scope.AssetPolicy.Managed`가 한다.** 거짓인 finding만 제외 근거가 되고, 앱 식별자는 **전부** 실리며(공유 `.so` 하나를 여러 앱이 로드하면 그 목록 전부가 함께 빠진 것이다), 조직이 찍힌다. 정책이 nil이면 아무것도 빠지지 않는다 |
 | **[IC-R23](../pkg/inventory/report/managed_test.go) ✅** | 선언은 `openssl/libcrypto`를 적었고 정책은 그것을 관측한 앱(`sshd`)을 뺌 · 데모의 모양 | `UNOBSERVED`가 **아니라** `CONFIRMED` + `EXCLUDED_BY_POLICY`다. 리포트가 선언·정책의 어긋남을 **자산 식별자·원천 노드·앱 식별자 전부·같은 정책 코드가 뺐다는 사실**로 경고한다. 어느 규칙인지는 말하지 않는다 - 상류 `Managed`는 bool만 돌려준다. 리뷰 큐에는 오르지 않는다. 정책을 걸지 않으면 관리 대상이고 어긋남도 없다 |
 | **[IC-R24](../pkg/inventory/report/managed_test.go) ✅** | 정책을 걸고 대조 | 관리 근거는 정책을 건 스냅샷에서만 나오고 지문이 있다. 제외 근거에는 **지문이 없다** - 적재되지 않은 스냅샷의 지문은 아무것도 가리키지 않는다 |
 | **[IC-R25](../pkg/inventory/report/managed_test.go) ✅** | 관리 자산 하나 · 정책이 뺀 자산 하나 · 미관측 자산 하나 | **관측 자산 수는 정책이 뺀 것도 센다**(2). 관리 수는 따로 든다(1). 머리의 관측 수와 런타임별 합계가 같다 | 관리 근거의 수로 세면 머리에서 「관측 2」라 하고 바로 아래 합계는 5 라고 하는 리포트가 나온다. 제외를 부재로 세는 것이고, 이 판이 닫으려는 바로 그 결함이다 |
-| **[IC-R6](../pkg/inventory/reconcile/fingerprint_test.go) ✅** | **`finding_id`는 같은데 버전·검출 방법·증거 강도·강화 판정·알고리즘·로드한 앱이 달라진 관측** | **지문이 달라진다.** 상류의 id는 `sha256(노드\|이름\|런타임\|fork)`라 자산이 같으면 같아서, id만 보면 이 변화가 통째로 「그대로」로 읽힙니다. 대조가 그 지문을 세션까지 들고 간다 |
+| **[IC-R6](../pkg/inventory/reconcile/fingerprint_test.go) ✅** | **`finding_id`는 같은데 버전·검출 방법·증거 강도·강화 판정·알고리즘·로드한 앱이 달라진 관측** | **지문이 달라진다.** 상류의 id는 `sha256(노드\|이름\|런타임\|fork)`라 자산이 같으면 같아서, id만 보면 이 변화가 통째로 「그대로」로 읽힌다. 대조가 그 지문을 세션까지 들고 간다 |
 
 ### O. 대조의 조직 축 (설계 §1.1) ✅
 | TC | Given → When | Then |
 |---|---|---|
 | **[IC-O1](../pkg/inventory/reconcile/reconcile_test.go) ✅** | 다른 조직의 자산이 선언·관측 어느 레인에든 섞임 | **대조하지 않고 중단한다**(`ErrOrgMismatch`). 그냥 두면 오류가 아니라 그럴듯한 결과가 나온다 |
 | [IC-O2](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 식별자에 조직이 빔 / 빈 조직으로 엔진 열기 | 둘 다 거부한다. 빈 것은 「아무 조직」이 아니라 「모른다」다 |
-| [IC-O3](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 스냅샷에서 관측 자산을 뽑음 | 엔진이 조직을 찍는다. 찍는 자리가 하나여야 조직 없는 식별자가 안 생긴다 |
+| [IC-O3](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 스냅샷에서 관측 자산을 뽑음 | 엔진이 조직을 붙인다. 붙이는 자리가 하나여야 조직 없는 식별자가 안 생긴다 |
 | [IC-O4](../pkg/inventory/reconcile/edge_test.go) ✅ | 다른 조직의 선언 엣지 | 자산과 같은 규칙으로 중단한다 |
-| [IC-O5](../pkg/inventory/reconcile/edge_test.go) ✅ | 관측 엣지(조직 없음) | 엔진이 찍는다. 안 찍으면 선언과 영영 안 맞아 전부 UNDECLARED로 올라온다 |
+| [IC-O5](../pkg/inventory/reconcile/edge_test.go) ✅ | 관측 엣지(조직 없음) | 엔진이 붙인다. 안 붙이면 선언과 영영 안 맞아 전부 UNDECLARED로 올라온다 |
 
 ### L. 행 수준 보안 (설계 §2.2) ✅: Postgres
 | TC | Given → When | Then |
 |---|---|---|
-| **[IC-L1](../pkg/inventory/decision/rls_test.go) ✅** | 앱 롤로 붙어 **org 조건 없는 날것의 질의** (핸들 격리가 뚫린 상황) | 남의 조직 행이 **0건**이다. DB가 막는다. 이 케이스가 통과하지 않으면 더한 한 겹은 없는 것이다 |
+| **[IC-L1](../pkg/inventory/decision/rls_test.go) ✅** | 앱 롤로 붙어 **org 조건 없는 날것의 질의** (핸들 격리가 우회된 상황) | 남의 조직 행이 **0건**이다. DB가 막는다. 이 케이스가 통과하지 않으면 더한 한 겹은 없는 것이다 |
 | [IC-L2](../pkg/inventory/decision/rls_test.go) ✅ | 남의 조직 이름으로 INSERT | 거부한다(`WITH CHECK`). 읽기만 막으면 안 보이는 행이 들어와 쌓인다 |
 | [IC-L3](../pkg/inventory/decision/rls_test.go) ✅ | 자기 조직 판정 조회 | 그대로 보인다. 막는 것만 재면 전부 막아도 통과한다 |
 | **[IC-L4](../pkg/inventory/decision/rls_test.go) ✅** | 슈퍼유저로 붙고 `PQCATON_REQUIRE_RLS=1` | **저장소가 열리지 않는다**. 걸어 놓고 안 무는 것이 가장 위험한 거짓 안심이다 |
@@ -123,7 +123,7 @@
 | [IC-D7](../pkg/inventory/decision/file_test.go) ✅ | 다른 조직의 판정이 섞인 파일 | 읽지 않는다. 파일은 누구나 이어 쓸 수 있어, 거르지 않으면 격리가 파일 권한에만 기댄다 |
 | [IC-D8](../pkg/inventory/decision/file_test.go) ✅ | 조직 없이 열기 · 아직 아무것도 없는 파일 | 조직 없이는 열리지 않는다(Mem·Pg와 같은 규칙). 빈 파일은 오류가 아니다 |
 | [IC-D19](../pkg/inventory/review/basis_test.go) ✅ | 같은 관측을 두 번 · 규칙 판·대조 상태·신뢰도·정책·관측 지문·재수집 후보 여부를 하나씩 바꾸기 | 같으면 근거 해시가 같고, **여섯 가운데 하나라도 움직이면 달라진다.** 근거를 세는 자리는 `BasisOf` 하나다 |
-| **[IC-D20](../pkg/inventory/review/basis_test.go) ✅** | **규칙 판은 그대로인데 관측 지문(또는 신뢰도)만 달라진 세션을 다시 열기** | **승인 서명이 지워진다.** 전에는 id와 상태만 비교해서, 델타 리뷰에는 올라오는 변화가 서명은 그대로 지나갔습니다. 승인자가 본 적 없는 근거에 이름이 남는 자리입니다 |
+| **[IC-D20](../pkg/inventory/review/basis_test.go) ✅** | **규칙 판은 그대로인데 관측 지문(또는 신뢰도)만 달라진 세션을 다시 열기** | **승인 서명이 지워진다.** 전에는 id와 상태만 비교해서, 델타 리뷰에는 올라오는 변화가 서명은 그대로 지나갔다. 승인자가 본 적 없는 근거에 이름이 남는 자리다 |
 | [IC-D21](../pkg/inventory/review/basis_test.go) ✅ | 항목이 하나도 없는 세션에서 규칙 판만 바뀌기 | 서명이 지워진다. 항목별 비교만 하면 빈 큐에서는 전부 참이라 규칙 변경이 지나간다 |
 | **[IC-D22](../pkg/inventory/decision/session_id_test.go) ✅** | **두 세션의 판정과 옛 빌드의 행(세션 id 없음)을 한 원장에 · 계획 id에서 세션 id를 읽어 원장을 찾기** | `BySessionID`가 그 세션의 판정만 돌려주고 다른 세션 것은 섞이지 않는다. **메모리·파일·Postgres 셋이 같은 답이다.** 빈 id로 찾으면 거절한다. 옛 행의 값이 비어 있어서, 그것으로 찾으면 세션이 아니라 「세션을 모르는 판정 전부」가 나온다. Postgres는 열과 `(org, session_id, seq)` 인덱스를 `ALTER TABLE … IF NOT EXISTS`로 더한다 |
 | **[IC-D23](../pkg/inventory/decision/judgment_test.go) ✅** | 만료된 판정이 평가됨 · 미평가 · 계획 선택 행 | 평가된 것은 `Stale`·재확인이 서고 **숫자가 감쇠**한다. **미평가는 표시만 서고 숫자는 그대로다** - 재지 않은 값을 줄이면 「재 봤더니 더 낮아졌다」로 읽힌다. 계획 선택 행은 만료 계산에 아예 들어가지 않는다 |
@@ -247,7 +247,7 @@
 
 ### K. 문체의 경계 (`tools/checkprose`) ✅
 
-문서와 화면 문구의 한국어를 잰다. **한 번 걷어낸 말이 다시 들어오지 않게** 막는 것이 전부다.
+문서와 화면 문구의 한국어를 잰다. **한 번 없앤 말이 다시 들어오지 않게** 막는 것이 전부다.
 지금 있는 것은 `baseline.tsv`에 파일마다 적어 두고 **늘어나는 것만** 막는다.
 
 | TC | Given → When | Then |
@@ -259,7 +259,7 @@
 | [IC-K5](../tools/checkprose/main_test.go) ✅ | 덮은 문서 | 바이트 수가 그대로라 줄 번호가 맞는다. 보여 주는 것은 덮인 줄이 아니라 원문이다. 덮인 줄을 찍으면 어느 문장인지 알아볼 수 없다 |
 | **[IC-K6](../tools/checkprose/main_test.go) ✅** | 기준선보다 늘어남 | 막고 **무엇이 얼마나 늘었는지 알려 준다** |
 | **[IC-K7](../tools/checkprose/main_test.go) ✅** | 기준선보다 줄어듦 | 이것도 막고 새로 찍으라고 알려 준다. 고쳐 놓고 기준선을 안 내리면 그 자리가 도로 채워져도 알 수 없다 |
-| [IC-K8](../tools/checkprose/main_test.go) ✅ | 기준선을 찍고 다시 읽음 | 같다. 찍는 쪽과 읽는 쪽이 어긋나면 관문이 매번 붉어지고, 그러면 기준선을 지우는 것으로 끝난다 |
+| [IC-K8](../tools/checkprose/main_test.go) ✅ | 기준선을 만들고 다시 읽음 | 같다. 만드는 쪽과 읽는 쪽이 어긋나면 관문이 매번 실패하고, 그러면 기준선을 지우는 것으로 끝난다 |
 | [IC-K9](../tools/checkprose/main_test.go) ✅ | 함께 나가는 `rules.tsv` | 읽힌다. 이름이 겹치지 않고 **무엇으로 바꿀지가 규칙마다 적혀 있다**. 막기만 하고 대안을 주지 않으면 고칠 수 없다 |
 | [IC-K10](../tools/checkprose/main_test.go) ✅ | 목록에 적힌 화면 문구 파일 | 실제로 있다. 화면 문구가 네 파일에 나뉘어 있어(`text*.go`) 규약으로 두면 새 파일이 관문 밖이 된다 |
 | [IC-K11](../tools/checkprose/main_test.go) ✅ | 함께 나가는 `overlap.txt` | 읽히고, 덮어도 바이트 수가 그대로다 |
@@ -303,7 +303,7 @@
 
 이 문서 첫머리가 **「케이스 번호가 곧 테스트 파일 링크입니다」**라고 약속한다. 그 약속을
 사람이 지키게 두었더니 백일흔넷 가운데 링크가 하나도 없었고, 두 주 동안 아무도 몰랐다.
-그래서 **약속을 지키는 일을 기계에 맡긴다.** 링크는 `-write`가 찍는다.
+그래서 **약속을 지키는 일을 기계에 맡긴다.** 링크는 `-write`가 만든다.
 
 **케이스 표가 둘이다.** 인벤토리는 이 문서에, 러너는
 [`saas/runner/README.md`](../saas/runner/README.md)에 있다. 코드가 거기 있으니 케이스도 거기
@@ -398,7 +398,7 @@
 | **[IC-R14](../pkg/inventory/report/report_test.go) ✅** | 관측 노드 id가 선언 이름과 다름 | **선언 노드로 잇는다**. 호스트명(짧은 이름 포함)이 같으면 알아서, 아니면 적어 둔 「관측 이름」으로. 대소문자는 가리지 않는다. **어디에도 안 걸리면 관측이 부른 이름을 그대로 둔다**. 억지로 고르면 남의 노드 자산이 붙는다 |
 | **[IC-R13](../pkg/inventory/report/report_test.go) ✅** | 못 본 계층을 화면·콘솔에 보여 줌 | 상류 enum 상수(`COLLECTION_LAYER_ARTIFACT`)를 그대로 보여 주지 않고 **관측이 어디서 오는지**를 적되 원래 이름을 괄호에 남긴다. **모르는 값은 바꾸지 않고 그대로 보여 준다**. 상류에 계층이 늘었을 때 뭉개면 못 본 것이 화면에서 사라진다 |
 
-> **구현 위치**: 엣지 대조 `reconcile/edge.go`(없음) · 등급 분류 `pkg/kernel/posture/` · 토폴로지 DOT `reconcile/topology.go`(없음) · 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB). 관측 엣지 스키마 `contracts` `ObservedEdge`(CollectionResult.observed_edges). 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
+> **구현 위치**: 이 리포에는 엣지 대조 `pkg/inventory/reconcile/edge.go`와 토폴로지 DOT `pkg/inventory/reconcile/topology.go`가 있다. 등급 분류 `pkg/kernel/posture/`, 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB), 관측 엣지 스키마 `contracts`의 `ObservedEdge`(CollectionResult.observed_edges)는 pqcota에 있다. 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
 
 ---
 
@@ -414,7 +414,7 @@
 | 6 | 통신 엣지 reconciliation + 토폴로지 | E1~3 | 🔶 unit ✅ / 라이브 관측은 pqcota의 network collector |
 | 7 | **대조의 조직 축**(엔진이 조직을 들고 섞인 입력을 끊음) | O1~5 | ✅ pure |
 | 8 | **자산 스코프 거버넌스**(계층 상속·변경 승인·감사·제외분 재검토) | S1~7 | ✅ pure |
-| 9 | **행 수준 보안**(핸들 격리가 뚫려도 DB가 막음) | L1~4 | ✅ integration |
+| 9 | **행 수준 보안**(핸들 격리가 우회돼도 DB가 막음) | L1~4 | ✅ integration |
 | 10 | **명령 계층**(관문·잇기·집계가 명령에서 실제로 실행되는가) | S8~14, P6~7 | ✅ |
 | 11 | **라이선스 관문**(카피레프트가 링크되면 빌드가 멈추는가) | X1~7 | ✅ |
 | 12 | **리뷰 화면**(명령과 같은 파일·같은 관문) | U1~8 | ✅ |
@@ -425,7 +425,7 @@
 | 17 | **인벤토리 조회 화면**(찾아보는 자리이지 절차의 한 단계가 아니다) | UI24~25 | ✅ |
 | 18 | **선언 화면을 적는 자리로**(노드마다 자산 · 제거 · 후보 · 접은 설명) | U10, U24, UI9, UI27, UI29~36 | ✅ |
 | 19 | **관측과 선언의 이름을 잇는다 + 상류 v0.6.3**(CNG 자산 · 플랫폼 조치) | R14~16, D17~18, UI37~39, P3 | ✅ |
-| 20 | **문체 관문**(한 번 걷어낸 말이 다시 들어오는가) | K1~11 | ✅ |
+| 20 | **문체 관문**(한 번 없앤 말이 다시 들어오는가) | K1~11 | ✅ |
 | 21 | **케이스 관문**(번호와 테스트가 실제로 대응하는가) | M1~9 | ✅ |
 
 **핵심 인수 기준**: **IC-P4**(판정이 끝나지 않으면 계획을 넘기지 않는다. 반드시 거쳐야 하는 관문)와 **IC-F3~F5**(판정자 서명·전 필수 판정 없으면 확정 불가), 그리고 **IC-P8**(판정이 끝난 계획은 `IN_REVIEW`로 나가고 승인 칸은 상류가 채운다).
