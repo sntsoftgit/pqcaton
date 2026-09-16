@@ -17,7 +17,7 @@
 // **코드는 보지 않는다.** 변수명·주석·커밋·로그처럼 코드에 속하는 텍스트는 프로젝트
 // 관례를 따르는 자리다. 그래서 마크다운은 코드 블록과 인라인 코드를 덮고 나서 보며,
 // Go 는 go/ast 로 **문자열 리터럴만** 본다(주석은 한국어다). HTML 은 code·pre·script·
-// style 안을 덮는다.
+// style 과 주석 안을 덮는다.
 //
 // **규칙은 rules.tsv 에, 잘못 잡는 말은 overlap.txt 에 있다.** 코드에 적으면 tools/checktext
 // 가 막는다(Go 문자열의 한글). 그리고 두 목록 모두 지적받을 때마다 늘어나므로 코드 밖에
@@ -369,9 +369,10 @@ func excerpt(s string, off int) string {
 // 덮는 자리는 **같은 길이의 채움 글자로 바꾼다**(fill). 줄바꿈은 그대로 두어야 줄 번호가 맞는다.
 
 var (
-	fence     = regexp.MustCompile("(?m)^\\s*(```|~~~)")
-	inlineMD  = regexp.MustCompile("`[^`\n]*`")
-	htmlBlock = regexp.MustCompile(htmlBlockPattern())
+	fence       = regexp.MustCompile("(?m)^\\s*(```|~~~)")
+	inlineMD    = regexp.MustCompile("`[^`\n]*`")
+	htmlBlock   = regexp.MustCompile(htmlBlockPattern())
+	htmlComment = regexp.MustCompile(`(?s)<!--.*?-->`)
 )
 
 // htmlBlockPattern — 여는 태그와 닫는 태그를 짝지어야 하는데 RE2 에는 역참조가 없다.
@@ -412,8 +413,10 @@ func fill(s string) string {
 
 func maskHTML(b []byte) []byte {
 	// 코드 블록은 줄바꿈만 남기고 채움 글자로 가린다(fill 과 같은 이유 - 공백으로 지우면
-	// 「<code>x</code>가」가 띄운 조사로 읽힌다).
-	return []byte(htmlBlock.ReplaceAllStringFunc(string(b), fillKeepNewlines))
+	// 「<code>x</code>가」가 띄운 조사로 읽힌다). HTML 주석도 덮는다: 코드 주석과 같은 자리라
+	// 프로젝트 관례를 따르고, 화면에 보이지 않는다.
+	s := htmlBlock.ReplaceAllStringFunc(string(b), fillKeepNewlines)
+	return []byte(htmlComment.ReplaceAllStringFunc(s, fillKeepNewlines))
 }
 
 func fillKeepNewlines(s string) string {

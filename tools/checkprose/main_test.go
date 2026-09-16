@@ -440,3 +440,18 @@ func TestNoticesPassTheGateAndStayOutOfTheBaseline(t *testing.T) {
 		t.Fatalf("관문 규칙에 걸리는 줄을 더했는데 막지 않았다: %d", code)
 	}
 }
+
+// IC-K18 — **HTML 주석은 보지 않는다.** 코드 주석과 같은 자리라 프로젝트 관례를 따르고, 화면에
+// 보이지 않는다. 주석을 덮어도 줄 수는 그대로여야 뒤 줄 번호가 맞는다.
+func TestHTMLCommentsAreNotCounted(t *testing.T) {
+	rs := mustRules(t, "엠대시\t—\t콜론으로")
+	html := []byte("<!-- 컷 1 — 훅\n  두 줄짜리 주석 — -->\n<p>본문 — 여기는 센다</p>\n")
+	masked := maskHTML(html)
+	if strings.Count(string(masked), "\n") != strings.Count(string(html), "\n") {
+		t.Fatal("주석을 덮으면서 줄 수가 달라졌다")
+	}
+	got := hitsOf("a.html", html, masked, rs)
+	if len(got) != 1 || got[0].line != 3 {
+		t.Fatalf("주석 밖의 엠대시 하나만 3행에서 잡혀야 한다: %d건 %v", len(got), got)
+	}
+}
