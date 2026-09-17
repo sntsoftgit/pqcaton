@@ -160,7 +160,7 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 		}
 	}
 
-	// 관측 IP → 스코프 노드 잇기(§0.4). 이어지면 CONFIRMED 로 잡히고, 안 되면 off-scope 다.
+	// 관측 IP → 스코프 노드 잇기(§1.4). 이어지면 CONFIRMED 로 잡히고, 안 되면 off-scope 다.
 	ResolveEdgeDsts(observedEdges, d.Nodes)
 
 	declaredEdges := make([]reconcile.EdgeKey, 0, len(d.Edges))
@@ -278,7 +278,7 @@ func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []str
 	return out, skipped, nil
 }
 
-// ResolveEdgeDsts — 관측 상대의 IP 를 스코프 노드로 바꾼다(§0.4).
+// ResolveEdgeDsts — 관측 상대의 IP 를 스코프 노드로 바꾼다(§1.4).
 //
 // **잘못 이으면 CONFIRMED 여야 할 통신이 UNDECLARED 로 올라온다** — 오류가 아니라 그럴듯한
 // 결과라 눈으로는 안 잡힌다(IC-R8). 이미 이어진 것은 덮지 않는다.

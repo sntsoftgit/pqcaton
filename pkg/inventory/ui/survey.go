@@ -14,7 +14,7 @@ import (
 // SurveyView — 대조 결과 화면이 보는 것.
 //
 // **관측을 먼저 보인다.** 대조 결과만 보면 UNOBSERVED가 「없다」인지 「원리상 못 봤다」인지
-// 읽는 사람이 가를 수 없다(§2.7 갭 ≠ 부재) — 그 답이 관측 절에 있다.
+// 읽는 사람이 가를 수 없다(§2.6 갭 ≠ 부재) — 그 답이 관측 절에 있다.
 type SurveyView struct {
 	Page
 	R *report.Result

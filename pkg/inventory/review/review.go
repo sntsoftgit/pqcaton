@@ -98,7 +98,7 @@ type Item struct {
 	// Mandatory — 이 항목은 결론 없이 확정할 수 없다(§3.3②).
 	Mandatory bool `json:"mandatory"`
 	// Rescan — UNOBSERVED인데 커버리지 갭으로 설명된다. **「없다」가 아니라 「못 봤다」**이므로
-	// 재수집이 먼저다(§2.7).
+	// 재수집이 먼저다(§2.6).
 	Rescan bool `json:"rescan_candidate,omitempty"`
 
 	// ── 사람이 채우는 자리 ──

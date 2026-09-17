@@ -46,7 +46,7 @@ const (
 	NotEvaluated ManagedState = "NOT_EVALUATED"
 )
 
-// AssetKey — reconciliation 대상의 동일성. 노드는 스코프 마스터 앵커(§0.4).
+// AssetKey — reconciliation 대상의 동일성. 노드는 스코프 마스터 앵커(§1.4).
 type AssetKey struct {
 	// Org — 어느 조직의 자산인가. **동일성의 일부다** — 노드 이름이 같아도 조직이 다르면
 	// 다른 자산이다. 열쇠에 박아 두면 섞인 입력이 맞아떨어지는 일이 구조적으로 없다.
@@ -135,13 +135,13 @@ type Reconciled struct {
 	State           State
 	// Managed — 관리 축. Sources 와 ExcludedSources 의 구성에서 파생한다.
 	Managed ManagedState
-	// Confidence — §3.5 (상태 + 관측 evidence 기반. 실측 캘리브레이션은 §11).
+	// Confidence — §3.5 (상태 + 관측 evidence 기반. 실측 캘리브레이션은 설계 §1.2).
 	// **ConfidenceEvaluated 가 거짓이면 이 숫자는 잰 값이 아니다.** UNOBSERVED 의 상태 기본값이나
 	// 제외 전용의 0 이 그렇다. 0.00 과 「재지 않았다」는 다른 사실이라 따로 든다.
 	Confidence          float64
 	ConfidenceEvaluated bool
 	NeedsReview         bool // UNDECLARED·UNOBSERVED은 사람 판정 필수(§3.5 MANUAL)
-	RescanCandidate     bool // UNOBSERVED인데 커버리지 갭으로 설명됨 → 재수집 후보(§3.3, §2.7)
+	RescanCandidate     bool // UNOBSERVED인데 커버리지 갭으로 설명됨 → 재수집 후보(§3.3, §2.6)
 }
 
 // reconcileAssets — 선언 집합 vs 관측 집합을 대조해 3-상태로 분류한다(§3.3①).
@@ -149,7 +149,7 @@ type Reconciled struct {
 // **조직 검사를 지난 뒤에만 불린다**([Engine.Reconcile]). 여기서 다시 보지 않는 것은
 // 검사가 두 곳에 있으면 한쪽만 고쳐지는 날이 오기 때문이다.
 // gapLayers(관측 완전성 맵의 미커버 계층)가 있으면, UNOBSERVED는 "실제 없음"이 아니라
-// "원리상 못 봄일 수 있음" → RescanCandidate로 표시한다(IC-R4, §2.7 갭≠부재).
+// "원리상 못 봄일 수 있음" → RescanCandidate로 표시한다(IC-R4, §2.6 갭≠부재).
 //
 // 관리 축은 근거의 구성에서 파생한다.
 //

@@ -23,7 +23,7 @@ func fileStore(t *testing.T, o string) (*decision.FileJudgmentStore, string) {
 
 // IC-D6 — 파일 저장소는 **쌓기만 한다.** 같은 대상을 다시 판정해도 앞 줄이 사라지지 않는다.
 //
-// 판정 이력이 감사 근거인데 덮어쓰면 "언제 무엇으로 바뀌었나"가 사라진다(§0.2).
+// 판정 이력이 감사 근거인데 덮어쓰면 "언제 무엇으로 바뀌었나"가 사라진다(§1.2).
 func TestFileStoreAppendsNeverOverwrites(t *testing.T) {
 	s, path := fileStore(t, "acme")
 	for i, c := range []string{"허용(예외)", "제거대상"} {

@@ -81,7 +81,7 @@ func TestResolveAssetNodePrefersNamesAndFirstClaim(t *testing.T) {
 	}
 }
 
-// IC-R8 — **관측 IP를 스코프 노드로 잇는다**(§0.4).
+// IC-R8 — **관측 IP를 스코프 노드로 잇는다**(§1.4).
 //
 // 이어지지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 UNDECLARED 로 올라온다** —
 // 틀린 답이 아니라 그럴듯한 답이라 눈으로는 안 잡힌다. 포트가 붙은 주소와 망 둘에 걸친

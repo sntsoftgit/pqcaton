@@ -142,7 +142,7 @@ docker exec pqcota-ctl bash -lc \
 # 위임 수준**까지다 — 비면 확정이 막힌다(v0.16.0).
 #
 # **실제로 관측된 자산**(CONFIRMED·UNDECLARED)만 계획에 넣는다. 조치는 있는 것을 바꾸는 일이다.
-# UNOBSERVED 는 「없다」가 아니라 「못 봤다」라(§2.7) 조치 대상이 아니다 — 재수집이 먼저다. 그리고
+# UNOBSERVED 는 「없다」가 아니라 「못 봤다」라(§2.6) 조치 대상이 아니다 — 재수집이 먼저다. 그리고
 # 그 근거를 상류 이력에서 되짚을 수 있어야 하므로, 여기 드는 자산은 정책이 관리 대상으로 남긴 것,
 # 곧 중앙 이력의 스냅샷에 실제로 있는 것이다.
 #
@@ -224,7 +224,7 @@ PY' | tr -d '[:space:]')
 if [ "$ACTIONS" = "0" ]; then
   echo
   echo "ℹ  no action in the judged plan — nothing observed is both managed by the asset-scope policy and selectable."
-  echo "   UNOBSERVED is 'not seen', not 'not there' (§2.7); EXCLUDED_BY_POLICY is 'seen, not managed' and cannot be planned."
+  echo "   UNOBSERVED is 'not seen', not 'not there' (§2.6); EXCLUDED_BY_POLICY is 'seen, not managed' and cannot be planned."
   echo "   Approval → generation → resolution is exercised by pqcota's own demo (it resolves its evidence against this same history)."
   echo "   clean up: pqcota/demo/scripts/down.sh"
   exit 0

@@ -24,7 +24,7 @@ type Declaration struct {
 	// Org — 이 선언이 어느 조직의 것인가. **선언 문서가 조직의 것이므로 여기 적힌다** —
 	// 대조 엔진이 이 값으로 열리고, 다른 조직의 자산이 섞이면 대조하지 않고 끊는다.
 	Org string `json:"org,omitempty"`
-	// Scope — 등재된 노드 이름. 관측 상대가 여기 없으면 off-scope 로 표기된다(§0.4).
+	// Scope — 등재된 노드 이름. 관측 상대가 여기 없으면 off-scope 로 표기된다(§1.4).
 	Scope []string `json:"scope"`
 	// Nodes — 스코프 마스터: 노드↔IP. **관측 IP를 노드로 잇는 유일한 근거다.**
 	Nodes []Node `json:"nodes"`
@@ -222,7 +222,7 @@ func claimedNames(nodes []Node) map[string][]string {
 //
 // **여기서 잡지 못하면 대조 결과가 오류 없이 틀린다.** 노드↔IP가 없거나 겹치면 관측 IP가
 // 노드로 이어지지 않고, 그러면 선언 엣지와 영영 맞지 않아 **CONFIRMED여야 할 통신이
-// UNDECLARED로 올라온다**(§0.4, IC-R8) — 오류가 아니라 그럴듯한 결과라 눈으로는
+// UNDECLARED로 올라온다**(§1.4, IC-R8) — 오류가 아니라 그럴듯한 결과라 눈으로는
 // 안 잡힌다. 사람이 파일을 저장하기 전에 짚어 주는 것이 이 함수의 일이다.
 //
 // **막지는 않는다.** 선언은 고객의 문서이고, 아직 IP를 모르는 노드를 적어 두는 것도 정당한

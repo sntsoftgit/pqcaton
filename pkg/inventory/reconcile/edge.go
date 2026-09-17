@@ -18,16 +18,16 @@ type EdgeKey struct {
 	Proto string // TLS | SSH | QUIC | ""
 }
 
-// ReconciledEdge — 한 통신 엣지의 대조 결과(§3.3 엣지판 + §12 posture 오버레이).
+// ReconciledEdge — 한 통신 엣지의 대조 결과(§3.3 엣지판 + 인벤토리 설계 §6 posture 오버레이).
 type ReconciledEdge struct {
 	Key             EdgeKey
 	State           State                      // CONFIRMED | UNDECLARED | UNOBSERVED
 	Confidence      float64                    // §3.5 (상태 + 관측 evidence)
-	Posture         discoveryv1.QuantumPosture // 관측 엣지의 양자내성 posture(§12.1). 미관측이면 UNSPECIFIED
+	Posture         discoveryv1.QuantumPosture // 관측 엣지의 양자내성 posture(인벤토리 설계 §6.1). 미관측이면 UNSPECIFIED
 	Group           string                     // 협상된 KEX 그룹(표시용)
 	NeedsReview     bool                       // UNDECLARED·UNOBSERVED·off-scope는 사람 판정 필수
-	RescanCandidate bool                       // UNOBSERVED인데 네트워크 계층 갭으로 설명됨(§2.7)
-	OffScopeDst     bool                       // dst가 스코프 마스터 미등재 → "등재 판정 요청"(§0.4/§5, IC-E3)
+	RescanCandidate bool                       // UNOBSERVED인데 네트워크 계층 갭으로 설명됨(§2.6)
+	OffScopeDst     bool                       // dst가 스코프 마스터 미등재 → "등재 판정 요청"(§1.4/§5, IC-E3)
 }
 
 // reconcileEdges — 관측 엣지(network-collector) vs 선언 엣지를 3-상태로 분류한다(IC-E1).
@@ -36,7 +36,7 @@ type ReconciledEdge struct {
 // 여기서 찍는다 — 관측은 늘 그 엔진의 조직에서 온 것이다.
 //   - 관측 ∩ 선언  → CONFIRMED
 //   - 관측 only    → UNDECLARED(UNDECLARED 통신 — 보안 최우선)
-//   - 선언 only    → UNOBSERVED (네트워크 갭이면 재수집 후보; §12.2 미관측≠부재)
+//   - 선언 only    → UNOBSERVED (네트워크 갭이면 재수집 후보; 인벤토리 설계 §6.2 미관측≠부재)
 //
 // scope: 스코프 마스터 등재 노드 집합. 관측 상대(dst)가 여기 없으면 off-scope로 표기한다(IC-E3).
 // gapLayers: 관측 완전성 맵의 미커버 계층 — NETWORK 갭이면 UNOBSERVED를 재수집 후보로 본다.

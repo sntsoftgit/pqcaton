@@ -1,4 +1,4 @@
-// Package decision implements the Inventory 리뷰-확정 상태기계 (규정서 §3.3③, §6).
+// Package decision implements the Inventory 리뷰-확정 상태기계 (규정서 §3.3③, 설계 §1.4).
 //
 // pqcota가 만들지 않기로 한 계층이다 — 확정된 계획만 그쪽 프로비저닝의 입력이 된다.
 // draft → in-review → finalized. finalized 전에는 프로비저닝 실행 불가(§5 — 반드시 거쳐야 하는 관문).
@@ -39,7 +39,7 @@ type Item struct {
 	Conclusion string
 }
 
-// Session — 링/도메인 단위 리뷰-확정 세션(§6). 세션 단위라 부분 확정이 자연스럽다(§3.3③).
+// Session — 링/도메인 단위 리뷰-확정 세션(설계 §1.4). 세션 단위라 부분 확정이 자연스럽다(§3.3③).
 type Session struct {
 	Scope     string // ring/domain
 	Status    Status

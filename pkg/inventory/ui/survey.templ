@@ -7,7 +7,7 @@ import (
 )
 
 // surveyPage — 대조 결과. **관측을 먼저 보인다** — 그것 없이는 UNOBSERVED가 「없다」인지
-// 「못 봤다」인지 읽는 사람이 가를 수 없다(§2.7).
+// 「못 봤다」인지 읽는 사람이 가를 수 없다(§2.6).
 templ surveyPage(v SurveyView) {
 	@shell(v.Page) {
 		@surveyBody(v)

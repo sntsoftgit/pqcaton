@@ -15,7 +15,7 @@ import (
 )
 
 // surveyPage — 대조 결과. **관측을 먼저 보인다** — 그것 없이는 UNOBSERVED가 「없다」인지
-// 「못 봤다」인지 읽는 사람이 가를 수 없다(§2.7).
+// 「못 봤다」인지 읽는 사람이 가를 수 없다(§2.6).
 func surveyPage(v SurveyView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

@@ -87,7 +87,7 @@ func main() {
 // printObservation — 대조 앞에 무엇이 있었는지. **여기서 처음 보는 사람을 위한 절이다.**
 //
 // 특히 「못 본 계층」을 보인다 - 그것이 없으면 다음 절의 UNOBSERVED가 「없다」인지
-// 「원리상 못 봤다」인지 읽는 사람이 가를 수 없다(§2.7 갭 != 부재).
+// 「원리상 못 봤다」인지 읽는 사람이 가를 수 없다(§2.6 갭 != 부재).
 func printObservation(r *report.Result) {
 	seenBy, gaps, uncovered := r.SeenBy, r.GapLayers(), r.Uncovered
 	byRuntime := r.ObservedByRuntime()

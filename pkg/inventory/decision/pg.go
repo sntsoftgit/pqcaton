@@ -75,7 +75,7 @@ func RequireRLS() bool { return os.Getenv(RequireEnv) == "1" }
 // 아무 일도 하지 않는다** — 가장 위험한 종류의 거짓 안심이라, 조용히 넘기지 않는다.
 var ErrRLSInert = errors.New("RLS does not bite for this role (superuser or BYPASSRLS)")
 
-// PgJudgmentStore — Postgres append-only 판정 저장소(§3.6, §7, §0.2).
+// PgJudgmentStore — Postgres append-only 판정 저장소(§3.6, 설계 §1.5, §1.2).
 // INSERT만 한다 — 판정은 갱신/삭제하지 않고 새 레코드를 쌓는다. 파생 플래그(Stale/NeedsReReview)는
 // 저장하지 않고 델타/만료 계산으로 재산출한다.
 //

@@ -7,7 +7,7 @@ import (
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 )
 
-// JudgmentStore — 판정 영속화(§3.6, §7). append-only — Save는 언제나 새 레코드를 쌓는다(§0.2).
+// JudgmentStore — 판정 영속화(§3.6, 설계 §1.5). append-only — Save는 언제나 새 레코드를 쌓는다(§1.2).
 // All()은 판정 순서(오래된→최신)로 돌려준다. 최신 상태는 LatestPerSubject로 파생.
 // ErrNoSessionID — 빈 세션 id 로 원장을 찾으려 했다. 옛 행이 빈 값을 갖고 있어, 그것으로 찾으면
 // 세션이 아니라 「세션을 모르는 판정 전부」가 나온다. 세션이 아닌 것을 세션이라고 돌려주지 않는다.

@@ -13,7 +13,7 @@ type PlanItem struct {
 	NodeID                string
 	RemediationClass      string // taxonomy 분기(§4.3/§4.4)
 	DeployAutomationLevel string // L1/L2/L3 — 자산별 리뷰어 판정(§4.5, IC-P2)
-	ProviderChoice        string // FIPS 라우팅 결과(§4.10)
+	ProviderChoice        string // FIPS 라우팅 결과(프로비저닝 설계 §4.2)
 }
 
 // JudgedPlan — **판정이 끝난** 계획. 실행 근거가 아니다.
@@ -53,7 +53,7 @@ func ReadyForApproval(p *JudgedPlan) error {
 	return nil
 }
 
-// RouteProvider — 규제 대상 자산(fips 요구)은 FIPS 검증 provider로 강제 라우팅한다(§4.10, IC-P3).
+// RouteProvider — 규제 대상 자산(fips 요구)은 FIPS 검증 provider로 강제 라우팅한다(프로비저닝 설계 §4.2, IC-P3).
 // fips 요구가 provider 선택을 강제한다 — 내부 미검증 provider 금지.
 func RouteProvider(runtime string, fipsRequired bool) string {
 	if fipsRequired {
