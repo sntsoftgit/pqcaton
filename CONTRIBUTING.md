@@ -67,12 +67,15 @@ CI가 이것을 검사합니다(`make check-licenses`). 관문에 걸리면 대�
 잘려 `"화면: http://%s"` 하나를, 여러 줄 백틱 문자열에서 둘을 놓쳤습니다.
 
 **문서와 화면 문구의 문체는 `make check-prose`가 봅니다.** 한 번 없앤 말이 다시
-들어오지 않게 막습니다. 지금 있는 것은 `tools/checkprose/baseline.tsv`에 파일마다 적어
-두었고, **늘어나면 막습니다.** 고쳐서 줄었으면 `go run ./tools/checkprose -baseline`으로
-기준선을 내려 함께 커밋합니다. 무엇을 대신 쓰는지는 `tools/checkprose/rules.tsv`에
-규칙마다 적혀 있습니다. `tools/checkprose/notices.tsv`는 관문이 아니라 알림입니다. 제목·표에서는
-맞는 용법이라 기계가 가르지 못하는 것(띄운 붙임표 「 - 」)을 후보로만 알리고, 걸려도 통과합니다.
-`go run ./tools/checkprose -list`로 자리를 보고 눈으로 가립니다.
+들어오지 않게 막습니다. 검사 엔진은 상류 pqcota의 `tools/checkprose`이고 Makefile이 판을 고정해
+돌립니다(`PROSE_CHECKER`). 이 리포에는 설정만 있습니다: 무엇을 막는지는 `tools/checkprose/rules.tsv`에
+규칙마다 대신 쓸 말과 함께 적혀 있고, 마크다운 밖에서 볼 화면 문구 파일은 `files.txt`에, 잘못 잡는
+말은 `overlap.txt`에 있습니다. 지금 있는 것은 `baseline.tsv`에 파일마다 적어 두었고, **늘어나면
+막습니다.** 고쳐서 줄었으면 `make prose-baseline`으로 기준선을 내려 함께 커밋합니다.
+`notices.tsv`는 관문이 아니라 알림입니다. 제목·표에서는 맞는 용법이라 기계가 가르지 못하는
+것(띄운 붙임표 「 - 」)을 후보로만 알리고, 걸려도 통과합니다. `go run $(PROSE_CHECKER) -dir
+tools/checkprose -list`로 자리를 보고 눈으로 가립니다. 엔진의 케이스는 상류에 있고, 이 리포는
+자기 설정으로 그 엔진을 CI에서 돌립니다.
 
 **케이스 번호와 실제 테스트의 대응은 `make check-cases`가 봅니다.** 테스트 주석에 번호를
 적으면(`// IC-R1`) 관문이 그것을 문서의 표와 맞댑니다. 한쪽만 적으면 막힙니다. 번호에 붙는

@@ -1,0 +1,15 @@
+# checkprose 가 마크다운 밖에서 보는 파일. 한 줄에 하나, 리포 루트 기준 경로. Go 는 문자열
+# 리터럴만, HTML 은 code·pre·script·style·주석을 덮고 본다.
+#
+# **경로로 적는다.** 규약으로 두면 새 파일이 슬그머니 들어오거나 빠진다. 화면 문구는 네 파일에
+# 나뉘어 있다(text.go 가 카탈로그, 나머지 셋은 「영어는 그 사실을 가진 패키지가 갖고 한국어는
+# 화면이 갖는다」는 규칙에 따라 갈라 둔 것). ui-next.html 을 만들고 목록에 안 넣었더니 그 사이
+# 엠대시가 셋 들어갔다. 목록이라야 빠진 것이 보인다.
+
+pkg/inventory/ui/text.go
+pkg/inventory/ui/text_more.go
+pkg/inventory/ui/text_msg.go
+pkg/inventory/ui/text_refusal.go
+
+site/index.html
+site/ui-next.html

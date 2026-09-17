@@ -1,4 +1,4 @@
-.PHONY: all check-licenses check-text check-prose check-lang check-cases check-fmt build test generate verify-generated
+.PHONY: all check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt build test generate verify-generated
 
 all: check-licenses check-text check-prose check-lang check-cases check-fmt build test
 
@@ -18,10 +18,18 @@ check-text:
 # 하나도 없는데, 그 관문이 보지 않는 문서에는 천 개가 넘게 쌓여 있었다.
 #
 # **지금 있는 것은 기준선에 적어 두고 늘어나는 것만 막는다**(tools/checkprose/baseline.tsv).
-# 고쳐서 줄었으면 `go run ./tools/checkprose -baseline` 으로 기준선을 내리고 함께 커밋한다.
+# 고쳐서 줄었으면 `$(MAKE) prose-baseline` 으로 기준선을 내리고 함께 커밋한다.
 # 그러지 않으면 관문이 「낡았다」고 막는다. 걷어낸 자리가 도로 채워지는 것을 그렇게 잡는다.
+#
+# **엔진은 상류(pqcota)가 갖고, 이 리포는 설정만 갖는다**(tools/checkprose/ 의 rules·notices·
+# overlap·files·baseline). 판을 고정해 돌리고 최신을 받지 않는다. 올릴 때는 여기 판을 바꾸고
+# 관문을 다시 돌려 기준선이 그대로인지 본다. 계약 의존은 go.mod 가 정하고 이 판과 무관하다.
+PROSE_CHECKER := github.com/randyinthedev-hash/pqcota/tools/checkprose@v0.9.1
 check-prose:
-	@go run ./tools/checkprose
+	@go run $(PROSE_CHECKER) -dir tools/checkprose
+
+prose-baseline:
+	@go run $(PROSE_CHECKER) -dir tools/checkprose -baseline
 
 # 두 말 관문: 공개 사이트 두 장의 한국어와 영어가 짝을 이루는지 잰다.
 #
