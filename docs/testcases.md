@@ -384,7 +384,7 @@
 | **[IC-R14](../pkg/inventory/report/report_test.go) ✅** | 관측 노드 id가 선언 이름과 다름 | **선언 노드로 잇는다**. 호스트명(짧은 이름 포함)이 같으면 알아서, 아니면 적어 둔 「관측 이름」으로. 대소문자는 가리지 않는다. **어디에도 안 걸리면 관측이 부른 이름을 그대로 둔다**. 억지로 고르면 남의 노드 자산이 붙는다 |
 | **[IC-R13](../pkg/inventory/report/report_test.go) ✅** | 못 본 계층을 화면·콘솔에 보여 줌 | 상류 enum 상수(`COLLECTION_LAYER_ARTIFACT`)를 그대로 보여 주지 않고 **관측이 어디서 오는지**를 적되 원래 이름을 괄호에 남긴다. **모르는 값은 바꾸지 않고 그대로 보여 준다**. 상류에 계층이 늘었을 때 뭉개면 못 본 것이 화면에서 사라진다 |
 
-> **구현 위치**: 이 리포에는 엣지 대조 `pkg/inventory/reconcile/edge.go`와 토폴로지 DOT `pkg/inventory/reconcile/topology.go`가 있다. 등급 분류 `pkg/kernel/posture/`, 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB), 관측 엣지 스키마 `contracts`의 `ObservedEdge`(CollectionResult.observed_edges)는 pqcota에 있다. 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
+> **구현 위치**: 이 리포에는 엣지 대조 `pkg/inventory/reconcile/edge.go`와 토폴로지 DOT `pkg/inventory/reconcile/topology.go`가 있습니다. 등급 분류 `pkg/kernel/posture/`, 저장 `pkg/discovery/history`(Snapshot.Edges, Postgres `edges` JSONB), 관측 엣지 스키마 `contracts`의 `ObservedEdge`(CollectionResult.observed_edges)는 pqcota에 있습니다. 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
 
 ---
 
