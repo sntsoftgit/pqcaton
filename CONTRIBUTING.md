@@ -73,8 +73,9 @@ CI가 이것을 검사합니다(`make check-licenses`). 관문에 걸리면 대�
 말은 `overlap.txt`에 있습니다. 지금 있는 것은 `baseline.tsv`에 파일마다 적어 두었고, **늘어나면
 막습니다.** 고쳐서 줄었으면 `make prose-baseline`으로 기준선을 내려 함께 커밋합니다.
 `notices.tsv`는 관문이 아니라 알림입니다. 제목·표에서는 맞는 용법이라 기계가 가르지 못하는
-것(띄운 붙임표 「 - 」)을 후보로만 알리고, 걸려도 통과합니다. `go run $(PROSE_CHECKER) -dir
-tools/checkprose -list`로 자리를 보고 눈으로 가립니다. 엔진의 케이스는 상류에 있고, 이 리포는
+것(띄운 붙임표 「 - 」)을 후보로만 알리고, 걸려도 통과합니다. 걸린 자리는
+`go run github.com/randyinthedev-hash/pqcota/tools/checkprose@v0.9.1 -dir tools/checkprose -list`로 보고
+눈으로 가립니다(판은 Makefile의 `PROSE_CHECKER`와 같게 둡니다). 엔진의 케이스는 상류에 있고, 이 리포는
 자기 설정으로 그 엔진을 CI에서 돌립니다.
 
 **케이스 번호와 실제 테스트의 대응은 `make check-cases`가 봅니다.** 테스트 주석에 번호를
