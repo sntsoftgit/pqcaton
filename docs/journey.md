@@ -181,7 +181,7 @@ declaration.json     scope · nodes · assets · edges
 | | 무엇을 적나 |
 |---|---|
 | **`scope`** | 어느 노드를 볼 것인가. 여기 없는 노드는 관측돼도 적재되지 않습니다(§1.4) |
-| **`nodes`** | 노드↔IP. 관측에 기록된 IP를 이 이름과 잇는 근거입니다(§0.4) |
+| **`nodes`** | 노드↔IP. 관측에 기록된 IP를 이 이름과 잇는 근거입니다(§1.4) |
 | **`assets`** | 그 노드에서 쓴다고 아는 암호 런타임·컴포넌트 |
 | **`edges`** | 그 노드가 어디와 어떻게 통신한다고 아는가 |
 
@@ -276,7 +276,7 @@ pqcaton-report <results-dir> <declaration.json> [topology.dot]
 못하게** 막는 자리입니다.
 
 산출은 둘입니다: **3-상태 뷰**와 **거버넌스 토폴로지**(DOT). 토폴로지는 색으로 양자내성
-등급을, 선으로 대조 상태를 나타냅니다. 정직성 규정을 그래프 문법으로 강제합니다(§12.2).
+등급을, 선으로 대조 상태를 나타냅니다. 정직성 규정을 그래프 문법으로 강제합니다([인벤토리 설계 §6.2](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/design.md)).
 
 ---
 

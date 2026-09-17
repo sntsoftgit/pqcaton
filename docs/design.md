@@ -123,7 +123,7 @@ draft ──▶ in-review ──▶ finalized
 - 판정은 엣지 상태가 아니라 "사람의 결론"이라 재수집에도 부착을 유지합니다(`Decision.BasisHash`로 근거를 추적합니다).
 - **무효화 트리거**: 근거 증거가 실질적으로 바뀌면 해당 판정만 재검토 플래그를 답니다. 이것이 **델타 리뷰**입니다(전면 재리뷰가 아닙니다).
 - 오래된 판정 만료: 신뢰도가 깎이고 주기적으로 다시 확인합니다. 이 판정 이력이 provenance
-  chain(§0.3)에서 **사람이 판단한 갈래**입니다.
+  chain(§1.3)에서 **사람이 판단한 갈래**입니다.
 
 > 스키마(`Decision`·`FinalizedPlan`·`ReconState`)는 [pqcota의 계약](https://github.com/randyinthedev-hash/pqcota/tree/main/contracts)이 SSOT입니다.
 > 이 리포는 그 어휘를 그대로 쓰고, 위 엔진만 여기서 만듭니다.
@@ -134,7 +134,7 @@ draft ──▶ in-review ──▶ finalized
 
 pqcota에 **메커니즘**이 있습니다: `scope.AssetPolicy`(CSV 규칙, glob)입니다. 노드를 등재해도 그 안에서
 **무엇을 계속 관리할지**를 사용자가 선언하고, `pqcota-ingest -scope-assets`가 적재 전에 집행합니다.
-제외분은 `Snapshot.ExcludedByScope`로 세어 함께 알려 줍니다(제외 ≠ 부재, §2.7). 잡음을 못 거르면 인벤토리 자체가 못 쓰게 되므로,
+제외분은 `Snapshot.ExcludedByScope`로 세어 함께 알려 줍니다(제외 ≠ 부재, §2.6). 잡음을 못 거르면 인벤토리 자체가 못 쓰게 되므로,
 이것은 관측 도구가 스스로 갖춰야 합니다. pqcota 없이 이 리포만으로는 아무것도 못 한다는 뜻이 아니라,
 그 반대입니다: **pqcota만으로도 전 과정을 끝낼 수 있습니다.**
 

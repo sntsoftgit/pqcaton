@@ -86,7 +86,7 @@
 |---|---|---|
 | [IC-C1](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 상태별 | CONFIRMED > UNDECLARED > UNOBSERVED |
 | [IC-C2](../pkg/inventory/reconcile/reconcile_test.go) ✅ | 관측 finding의 evidence_strength=inferred-low | confidence 상한 하향(불확실 관측은 신뢰 낮춤) |
-| IC-C3 ⏳ | 관측빈도·기간·선언신선도 실측 | f(...) 캘리브레이션(설계 §11, Phase 1 데이터 필요) |
+| IC-C3 ⏳ | 관측빈도·기간·선언신선도 실측 | f(...) 캘리브레이션(설계 §1.2, Phase 1 데이터 필요) |
 
 ### Q. 리뷰 큐 (§3.3②) ✅ / 부분
 | TC | Given → When | Then |
@@ -100,7 +100,7 @@
 | [IC-Q7](../pkg/inventory/review/build_test.go) ✅ | 사라진 항목 | 판정이 따라오지 않는다. 더는 올라온 것이 아니다 |
 | **[IC-Q8](../pkg/inventory/reconcile/managed_test.go) ✅** | 제외 전용 · 혼합 · `NOT_EVALUATED` + `UNOBSERVED` | **큐는 관리 축을 신뢰도보다 먼저 본다.** 제외 전용은 신뢰도가 미평가라 `≥ 0.8` 비교에 넣으면 0으로 읽혀 필수 리뷰에 올라간다 - 관리하지 않기로 한 자산을 판정하라고 올리는 것이다. 큐에도 자동통과에도 넣지 않는다. 혼합은 관리 근거의 신뢰도로 가고, `NOT_EVALUATED` + `UNOBSERVED`는 지금대로 필수 리뷰다 |
 
-### F. 리뷰-확정 상태기계 (§3.3③, §6) ✅: 핵심
+### F. 리뷰-확정 상태기계 (§3.3③, 설계 §1.4) ✅: 핵심
 | TC | Given → When | Then |
 |---|---|---|
 | [IC-F1](../pkg/inventory/decision/session_test.go) ✅ | 신규 판정 대상 | 상태 = **draft** |
@@ -111,15 +111,15 @@
 | [IC-F6](../pkg/inventory/decision/session_test.go) ✅ | 링/도메인 단위 부분 확정 | 허용(부분 finalize, §3.3③) |
 | [IC-F7](../pkg/inventory/decision/session_test.go) ✅ | 정책 단위 판정(버전×링크모드 템플릿) | 동종 자산 일괄 적용(§3.4) / 예외만 엣지 단위 |
 
-### D. 판정 영속화 (§3.6, §7) ✅: 파일과 Postgres
+### D. 판정 영속화 (§3.6, 설계 §1.5) ✅: 파일과 Postgres
 | TC | Given → When | Then |
 |---|---|---|
 | [IC-D1](../pkg/inventory/decision/judgment_test.go) ✅ | 판정 후 재수집(새 스냅샷) | 판정(사람의 결론)이 **그대로 붙어 있다**. 엣지 상태가 바뀌어도 결론은 남는다 |
 | [IC-D2](../pkg/inventory/decision/judgment_test.go) ✅ | 근거 증거(BasisHash) 실질 변화 | **해당 판정만** 재검토 플래그(델타 리뷰), 나머지 유지 |
 | [IC-D3](../pkg/inventory/decision/judgment_test.go) ✅ | 근거 불변 | 판정 유지(재리뷰 안 함) |
 | [IC-D4](../pkg/inventory/decision/judgment_test.go) ✅ | stale 판정 + 만료 경과 | 신뢰도 감쇠 + 주기 재확인 플래그 |
-| [IC-D5](../pkg/inventory/decision/pg_test.go) ✅ | 영속화(Postgres) 라운드트립 | Decision 보존(append-only, §0.2) |
-| [IC-D6](../pkg/inventory/decision/file_test.go) ✅ | 같은 대상을 다시 판정 | **파일 원장도 쌓기만 한다**. 덮어쓰면 「언제 무엇으로 바뀌었나」가 사라진다(§0.2) |
+| [IC-D5](../pkg/inventory/decision/pg_test.go) ✅ | 영속화(Postgres) 라운드트립 | Decision 보존(append-only, §1.2) |
+| [IC-D6](../pkg/inventory/decision/file_test.go) ✅ | 같은 대상을 다시 판정 | **파일 원장도 쌓기만 한다**. 덮어쓰면 「언제 무엇으로 바뀌었나」가 사라진다(§1.2) |
 | [IC-D7](../pkg/inventory/decision/file_test.go) ✅ | 다른 조직의 판정이 섞인 파일 | 읽지 않는다. 파일은 누구나 이어 쓸 수 있어, 거르지 않으면 격리가 파일 권한에만 기댄다 |
 | [IC-D8](../pkg/inventory/decision/file_test.go) ✅ | 조직 없이 열기 · 아직 아무것도 없는 파일 | 조직 없이는 열리지 않는다(Mem·Pg와 같은 규칙). 빈 파일은 오류가 아니다 |
 | [IC-D19](../pkg/inventory/review/basis_test.go) ✅ | 같은 관측을 두 번 · 규칙 판·대조 상태·신뢰도·정책·관측 지문·재수집 후보 여부를 하나씩 바꾸기 | 같으면 근거 해시가 같고, **여섯 가운데 하나라도 움직이면 달라진다.** 근거를 세는 자리는 `BasisOf` 하나다 |
@@ -132,7 +132,7 @@
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT`로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass`가 고른 관계의 OID를 `pg_attribute`에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN`이 있을 때만 |
 
-### P. 확정 계획 & 핸드오프 (§3.7, §5, §8) ✅
+### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/design.md)) ✅
 | TC | Given → When | Then |
 |---|---|---|
 | [IC-P1](../pkg/inventory/decision/plan_test.go) ✅ | finalized 계획 생성 | PlanItem[]: node·remediation_class·**deploy_automation_level**·provider_choice |
@@ -154,12 +154,12 @@
 | **[IC-P17](../pkg/inventory/review/axes_test.go) ✅** | 같은 ID가 리뷰 항목과 자동통과 양쪽에 있음 | **확정이 구조 오류로 중단한다**(판정 미완이 아니다) | 한 자산은 한 컬렉션에만 있다. 양쪽에 있으면 대조의 결함이고, 그대로 두면 `Carry`가 한쪽에만 쓰고 다른 쪽이 덮는다 |
 | **[IC-P18](../pkg/inventory/review/axes_test.go) ✅** | v2 규칙 판의 세션을 그대로 확정 · 같은 세션을 v3으로 다시 열어 `Carry` | 확정은 **막히지 않고** 계획의 규칙 판은 세션의 것(v2)이며, 옛 규칙 판이라는 **경고**가 두 판을 값으로 적어 난다. 다시 열어 `Carry` 하면 서명은 지워진다 | 막으면 검토 중인 세션이 도구 교체로 버려져 사람이 한 일이 사라진다. 다만 그 근거 해시와 서명은 옛 규칙의 것이다 |
 
-### E. 통신 엣지 대조와 토폴로지 (§12) 🔶: 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector(§2.5)가 공급
+### E. 통신 엣지 대조와 토폴로지 ([인벤토리 설계 §6](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/design.md)) 🔶: 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector(§2.5)가 공급
 | TC | Given → When | Then |
 |---|---|---|
 | [IC-E1](../pkg/inventory/reconcile/edge_test.go) ✅ | 관측 엣지(TLS/SSH 협상) vs 선언 엣지 | 엣지 3-상태(CONFIRMED/UNDECLARED/UNOBSERVED) + 등급 부착 |
-| [IC-E2](../pkg/inventory/reconcile/topology_test.go) ✅ | 토폴로지 렌더 | 색=등급(🟢PQC/🔴취약/⚪불명), 미관측=점선(≠부재, §12.2 정직성) |
-| [IC-E3](../pkg/inventory/reconcile/edge_test.go) ✅ | 스코프 밖 관측 상대 | off-scope 표기 "등재 판정 요청"(§0.4/§5) |
+| [IC-E2](../pkg/inventory/reconcile/topology_test.go) ✅ | 토폴로지 렌더 | 색=등급(🟢PQC/🔴취약/⚪불명), 미관측=점선(≠부재, [인벤토리 설계 §6.2](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/design.md) 정직성) |
+| [IC-E3](../pkg/inventory/reconcile/edge_test.go) ✅ | 스코프 밖 관측 상대 | off-scope 표기 "등재 판정 요청"(§1.4/§5) |
 
 ### X. 라이선스 관문 (`tools/checklicenses`) ✅
 | TC | Given → When | Then |
