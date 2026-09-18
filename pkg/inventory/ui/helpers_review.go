@@ -16,8 +16,9 @@ var remediationKinds = []string{
 	"REMEDIATION_KIND_DECOMMISSION",
 }
 
-// deployLevels — 위임 수준. **자산별로 고른다**(상류 규정서 §4.3). 비워 두면 상류가 실행할 때
-// 준 `--level`을 쓰는데, 그 플래그는 승인 서명 밖이라 승인한 수준과 실행 수준이 어긋날 수 있다.
+// deployLevels — 위임 수준. **자산별로 고른다**(상류 규정서 §4.3). 계획에 넣는 조치는 반드시 골라야
+// 한다 — 비면 확정이 막힌다(review.RequireDecisions). 상류에는 미지정을 실행할 때 준 `--level`로 채우는
+// 경로가 있지만 그 플래그는 승인 서명 밖이라, pqcaton은 확정 전에 미지정을 거부한다.
 var deployLevels = []string{"L1", "L2", "L3"}
 
 // shortKind — 화면에 길게 늘어놓지 않는다. 값은 계약 어휘 그대로 보내고 표시만 줄인다.

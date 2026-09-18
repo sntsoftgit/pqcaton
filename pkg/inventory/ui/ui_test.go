@@ -222,9 +222,9 @@ func TestAddedRowUsesSameFormNames(t *testing.T) {
 
 // IC-UI10 — **새 줄을 내줄 때마다 다음 번호가 하나 오른다.**
 //
-// `ApplyDecl`은 번호가 끊기는 자리에서 읽기를 멈춥니다. 버튼이 같은 번호를 계속 주면
-// 새 줄이 앞의 것을 덮고, 번호를 건너뛰면 그 뒤가 통째로 저장되지 않습니다 — 둘 다
-// 오류로 드러나지 않은 채 틀리는 자리입니다.
+// 버튼이 같은 번호를 계속 주면 새 줄이 앞의 것을 덮습니다 — 오류로 드러나지 않은 채 틀리는
+// 자리입니다. 번호가 끊기는 것은 `ApplyDecl`이 실제로 온 번호를 모아 읽으므로(IC-UI31) 문제가
+// 아닙니다.
 func TestAddedRowAdvancesTheButton(t *testing.T) {
 	var b strings.Builder
 	if err := ui.RenderRow(&b, ui.KO, ui.KindNode, 0, 7); err != nil {
