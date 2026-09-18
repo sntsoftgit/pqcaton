@@ -30,12 +30,12 @@ EDGE = re.compile(
 )
 SECTION = re.compile(r"^([a-z_]+):")
 
-# 런타임별로 선언할 자산. 토폴로지의 kind 가 정한다.
+# 런타임별로 선언할 자산. 토폴로지의 kind가 정한다.
 ASSETS = {
     "openssl": ["libssl", "libcrypto"],
     "java": ["jca-provider-chain"],
 }
-# 선언할 통신. ssh 는 뺀다 - 그것이 shadow 로 드러나는 것이 이 데모의 첫 값이다.
+# 선언할 통신. ssh는 뺀다 - 그것이 shadow로 드러나는 것이 이 데모의 첫 값이다.
 DECLARED_PROTOS = {"pqc": "TLS", "ssl": "TLS"}
 
 
@@ -67,7 +67,7 @@ def main() -> int:
         sys.exit("usage: declare.py <topology.yaml>")
     nodes, edges = parse(sys.argv[1])
 
-    # **못 읽었으면 멈춘다.** 정규식으로 좁게 읽으므로 형식이 바뀌면 조용히 비어 나온다 -
+    # **못 읽었으면 멈춘다.** 정규식으로 좁게 읽으므로 형식이 바뀌면 오류 없이 비어 나온다 -
     # 빈 선언으로 데모를 돌리면 전부 UNDECLARED가 되어 "그런 결과인가 보다" 하고 넘어간다.
     if not nodes or not edges:
         sys.exit(
@@ -84,10 +84,10 @@ def main() -> int:
             "환경을 바꾸려면 그쪽 topology.yaml 을, 선언 규칙을 바꾸려면 declare.py 를 고칩니다."
         ),
         # org - 이 선언이 어느 조직의 것인가. 대조 엔진이 이 값으로 열리고, 다른 조직의
-        # 자산이 섞이면 대조하지 않고 끊는다. 데모는 조직 하나뿐이라 이름만 보인다.
+        # 자산이 섞이면 대조하지 않고 중단한다. 데모는 조직 하나뿐이라 이름만 보인다.
         "org": "demo-corp",
         "scope": [n["id"] for n in nodes],
-        "nodes": [],  # extend.sh 가 실행 중 환경의 nodes.json 으로 채운다
+        "nodes": [],  # extend.sh가 실행 중 환경의 nodes.json으로 채운다
         "assets": [
             {"node": n["id"], "runtime": "jca" if n["kind"] == "java" else n["kind"], "component": c}
             for n in nodes

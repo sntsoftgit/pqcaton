@@ -15,7 +15,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 )
 
-// 앱 열쇠가 달린 openssl 결과. 데모의 모양이다: libcrypto 를 sshd 가 로드하고 있다.
+// 앱 식별자가 달린 openssl 결과. 데모의 모양이다: libcrypto를 sshd가 로드하고 있다.
 func resultWithApps(src string, at int64, lib string, apps ...string) *discoveryv1.CollectionResult {
 	cbom := fmt.Sprintf(`{"bomFormat":"CycloneDX","specVersion":"1.6","components":[
       {"type":"cryptographic-asset","name":%q,"properties":[
@@ -32,13 +32,13 @@ func resultWithApps(src string, at int64, lib string, apps ...string) *discovery
 	}
 }
 
-// ★ IC-R23 — 정책이 뺀 선언 자산은 UNOBSERVED 가 아니라 CONFIRMED + EXCLUDED_BY_POLICY 다.
+// ★ IC-R23 — 정책이 뺀 선언 자산은 UNOBSERVED가 아니라 CONFIRMED + EXCLUDED_BY_POLICY 다.
 //
-// 데모에서 실제로 났던 모양이다. 선언은 openssl/libcrypto 를 관리 대상으로 적었고, 정책은 그것을
-// 관측한 통로(sshd)를 앱 열쇠로 뺐다. 전에는 제외된 finding 이 정규화 안에서 사라져 대조가
+// 데모에서 실제로 났던 모양이다. 선언은 openssl/libcrypto를 관리 대상으로 적었고, 정책은 그것을
+// 관측한 통로(sshd)를 앱 식별자로 뺐다. 전에는 제외된 finding이 정규화 안에서 사라져 대조가
 // 「선언했는데 보지 못했다」로 읽었다. **보았고, 관리하지 않기로 한 것이다.** 상류 적재는 이 구분을
 // 지켰고(excluded … not absence) 대조에서 무너졌었다. 이제 대조 축은 CONFIRMED, 관리 축은
-// 제외이고, 리포트가 선언·정책의 어긋남을 앱 열쇠와 함께 경고한다.
+// 제외이고, 리포트가 선언·정책의 어긋남을 앱 식별자와 함께 경고한다.
 func TestPolicyExcludedDeclaredAssetIsConfirmedNotUnobserved(t *testing.T) {
 	dir := t.TempDir()
 	writeResults(t, dir, resultWithApps("pay-db", 100, "libcrypto.so.3", "/usr/sbin/sshd", "/usr/bin/python3"))
@@ -91,7 +91,7 @@ func TestPolicyExcludedDeclaredAssetIsConfirmedNotUnobserved(t *testing.T) {
 
 // IC-R24 — 관리 근거는 정책을 건 스냅샷에서만 나온다. 정책 없이 정규화한 스냅샷은 제외분을
 // 찾는 데만 쓰고 그 지문은 어디에도 실리지 않는다 - 적재되지 않은 스냅샷의 지문은 아무것도
-// 가리키지 않는다. 그래서 정책을 걸었을 때의 관리 근거 지문은 TestSnapshotDigestMatchesUpstreamIngest 가
+// 가리키지 않는다. 그래서 정책을 걸었을 때의 관리 근거 지문은 TestSnapshotDigestMatchesUpstreamIngest가
 // 재는 상류 지문과 같아야 하고,
 // 제외 근거에는 지문이 아예 없다.
 func TestExcludedSourcesCarryNoSnapshotLocation(t *testing.T) {
@@ -123,7 +123,7 @@ func TestExcludedSourcesCarryNoSnapshotLocation(t *testing.T) {
 }
 
 // IC-R25 — **관측 자산 수는 정책이 뺀 것도 센다.** 보았으므로. 관리 근거의 수로 세면 머리에서
-// 「관측 2」라 하고 바로 아래 런타임별 합계는 5 라고 하는 리포트가 나온다 - 제외를 부재로 세는 것이고,
+// 「관측 2」라 하고 바로 아래 런타임별 합계는 5라고 하는 리포트가 나온다 - 제외를 부재로 세는 것이고,
 // 이 판이 닫으려는 바로 그 결함이다. 관리 수는 따로 든다.
 func TestObservedCountIncludesPolicyExcludedAssets(t *testing.T) {
 	dir := t.TempDir()

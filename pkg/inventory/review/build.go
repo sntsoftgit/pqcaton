@@ -1,7 +1,7 @@
-// 이 파일은 **관측 결과에서 리뷰 세션을 세우는 일** 하나를 갖는다.
+// 이 파일은 **관측 결과에서 리뷰 세션을 세우는 일** 하나만 한다.
 //
 // 명령(`pqcaton-decide open -results`)과 화면(`pqcaton-ui`)이 같은 세션을 만들어야 한다.
-// 따로 계산하면 화면에서 본 UNDECLARED 와 명령이 올린 리뷰 큐가 달라지고, 사람이 본 것과
+// 따로 계산하면 화면에서 본 UNDECLARED와 명령이 올린 리뷰 큐가 달라지고, 사람이 본 것과
 // 판정하는 것이 어긋난다 — 오류가 아니라 그럴듯한 결과가 나오는 자리다.
 package review
 
@@ -53,7 +53,7 @@ func (w Warning) English() string {
 	switch w.Code {
 	case WarnDeclProblems:
 		// **화면은 어느 자리인지 말하지 않는다** — 선언 화면은 적는 자리다. 어느 자리인지는
-		// `pqcaton-report` 가 파일 안쪽 표기로 말한다.
+		// `pqcaton-report`가 파일 안쪽 표기로 알린다.
 		return fmt.Sprintf("%d places where the declaration does not add up — `pqcaton-report` names them", w.Count)
 	case WarnUnreadableResult:
 		return "skipped (unreadable): " + w.Detail
@@ -62,7 +62,7 @@ func (w Warning) English() string {
 }
 
 // LoadAssetPolicy — 자산 스코프 정책 파일(scope-assets.csv)을 읽는다. 빈 경로면 정책 없음(nil).
-// 상류 `pqcota-ingest -scope-assets` 가 읽는 것과 같은 파서다 — 다르게 읽으면 스냅샷 지문이 갈린다.
+// 상류 `pqcota-ingest -scope-assets`가 읽는 것과 같은 파서다 — 다르게 읽으면 스냅샷 지문이 갈린다.
 func LoadAssetPolicy(path string) (*scope.AssetPolicy, error) {
 	if path == "" {
 		return nil, nil
@@ -77,7 +77,7 @@ func LoadAssetPolicy(path string) (*scope.AssetPolicy, error) {
 
 // FromResults — 모아 둔 관측 결과와 선언으로 리뷰 세션을 세운다.
 //
-// **대조는 `report` 가 한다.** 대조 화면이 보는 것과 같은 계산이다.
+// **대조는 `report`가 한다.** 대조 화면이 보는 것과 같은 계산이다.
 func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built, error) {
 	return FromResultsWith(resultsDir, d, orgName, nil)
 }
@@ -85,7 +85,7 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 // FromResultsWith — 자산 스코프 정책을 걸어 세운다. 상류 적재와 같은 정책을 걸어야 스냅샷 지문이
 // 상류와 같아 되짚기가 된다(`report.BuildWith`).
 func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, policy *scope.AssetPolicy) (*Built, error) {
-	// **선언이 조직을 말한다.** 따로 주지 않았으면 선언의 것을 쓴다.
+	// **선언에 조직이 적혀 있다.** 따로 주지 않았으면 선언의 것을 쓴다.
 	if orgName == "" || orgName == decl.DefaultOrg {
 		orgName = d.OrgOrDefault()
 	}
@@ -93,7 +93,7 @@ func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, poli
 		return nil, fmt.Errorf("the declaration belongs to organization %q but reconciliation was asked for %q", d.Org, orgName)
 	}
 	out := &Built{Org: orgName}
-	// **앞뒤가 안 맞으면 말한다.** 노드↔IP 가 틀리면 CONFIRMED 여야 할 것이 UNDECLARED 로 올라온다.
+	// **앞뒤가 안 맞으면 알린다.** 노드↔IP가 틀리면 CONFIRMED여야 할 것이 UNDECLARED로 올라온다.
 	if p := decl.Check(d); len(p) > 0 {
 		out.Warnings = append(out.Warnings, Warning{Code: WarnDeclProblems, Count: len(p)})
 	}
@@ -130,19 +130,19 @@ func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, poli
 // Carry — 다시 세운 세션에 **사람이 적은 것을 옮긴다.**
 //
 // 관측이 갱신되면 리뷰 큐도 갱신되어야 하지만, 그때마다 판정을 처음부터 다시 적게 하면
-// 아무도 화면을 안 쓴다. 항목 동일성(ID)과 정책 이름을 열쇠로 옮긴다.
+// 아무도 화면을 안 쓴다. 항목 동일성(ID)과 정책 이름을 식별자로 옮긴다.
 //
 // **정책에 못 보던 항목이 생겼으면 그 정책의 일괄 결론을 지운다.** 일괄 판정은 「이 정책의
 // 항목들을 보고 내린 결론」인데, 새 항목은 사람이 본 적이 없다 — 그대로 두면 방금 나타난
-// UNDECLARED 가 누가 승인한 적 없는 근거를 달고 확정을 통과한다. 서명도 지운다: 서명은 그
+// UNDECLARED가 누가 승인한 적 없는 근거를 달고 확정을 통과한다. 서명도 지운다: 서명은 그
 // 큐에 대한 것이다.
 //
-// **리뷰 항목과 자동통과를 합쳐 ID 로 찾는다.** 확신이 0.8 을 넘나들면 같은 자산이 두 컬렉션
+// **리뷰 항목과 자동통과를 합쳐 ID로 찾는다.** 확신이 0.8을 넘나들면 같은 자산이 두 컬렉션
 // 사이를 옮겨 다닌다 - 어느 컬렉션에 있었는지는 보지 않고, 사람이 고른 계획 칸은 따라간다.
 // 쓰는 자리는 [update] 다: [All] 이 준 복사본에 쓰면 아무 일도 일어나지 않는다.
 //
-// 옛 식별자 목록(LegacyAutopass)은 새 세션에 같은 ID 의 구조화 후보가 있으면 그것으로 치환된
-// 셈이다(새 세션이 이미 들고 있다). 없으면 목록에 남기고 계획 불가를 알린다 - 조용히 지우지 않는다.
+// 옛 식별자 목록(LegacyAutopass)은 새 세션에 같은 ID의 구조화 후보가 있으면 그것으로 치환된
+// 셈이다(새 세션이 이미 들고 있다). 없으면 목록에 남기고 계획 불가를 알린다 - 알리지 않고 지우지 않는다.
 func Carry(prev, next Session) Session {
 	was := map[string]Item{}
 	for _, it := range All(prev) {
@@ -192,9 +192,9 @@ func Carry(prev, next Session) Session {
 		}
 	}
 	next.Reviewer = prev.Reviewer
-	// **세션의 동일성을 옮긴다.** 다시 연 것은 같은 세션이다 — 계획 id 와 원장 행이 이 값으로
-	// 이어지므로, 다시 열 때마다 바뀌면 원장에 같은 세션의 판정이 여러 id 로 흩어진다.
-	// 앞 세션에 id 가 없으면(옛 빌드가 연 것) 새로 만든 것을 그대로 둔다 — 빈 값을 옮겨 오면
+	// **세션의 동일성을 옮긴다.** 다시 연 것은 같은 세션이다 — 계획 id와 원장 행이 이 값으로
+	// 이어지므로, 다시 열 때마다 바뀌면 원장에 같은 세션의 판정이 여러 id로 흩어진다.
+	// 앞 세션에 id가 없으면(옛 빌드가 연 것) 새로 만든 것을 그대로 둔다 — 빈 값을 옮겨 오면
 	// 확정에서 다시 열라며 막히는데, 지금 여는 것이 곧 그 「다시 열기」다.
 	if prev.SessionID != "" {
 		next.SessionID = prev.SessionID
@@ -202,8 +202,8 @@ func Carry(prev, next Session) Session {
 	// **근거가 달라지면 서명은 남지 않는다.** 서명은 「이 근거를 이 규칙으로 보고 승인했다」는
 	// 뜻이다. 사람이 적은 것은 참고값으로 옮기되(위), 승인만은 옮기지 않는다.
 	//
-	// 무엇이 근거인지는 [BasisOf] 하나가 말한다. 전에는 여기서 ID와 상태만 비교해서, 같은
-	// 규칙 아래 관측이 달라진 것을 통째로 놓쳤다 — 상류의 `finding_id` 는 자산 동일성이라
+	// 무엇이 근거인지는 [BasisOf] 하나가 정한다. 전에는 여기서 ID와 상태만 비교해서, 같은
+	// 규칙 아래 관측이 달라진 것을 통째로 놓쳤다 — 상류의 `finding_id`는 자산 동일성이라
 	// 버전이 오르고 강화 판정이 달라져도 그대로이기 때문이다. 델타 리뷰는 걸리는데 승인
 	// 서명은 살아남는 상태가 그 자리에서 났다.
 	if sameBasis(prev, next) {
@@ -217,8 +217,8 @@ func Carry(prev, next Session) Session {
 // 규칙 판을 따로 한 번 더 보는 것은 **큐가 비었을 때** 때문이다. 항목이 하나도 없으면
 // 항목별 비교는 전부 참이라, 규칙이 바뀌어도 서명이 살아남는다.
 //
-// **자리(index)가 아니라 ID 로 맞춘다.** 항목이 컬렉션을 옮기면 길이가 둘 다 달라지고 자리도
-// 어긋난다. ID 집합이 다르거나 같은 ID 의 근거가 다르면 다른 근거다. 자동통과의 근거만 바뀌어도
+// **자리(index)가 아니라 ID로 맞춘다.** 항목이 컬렉션을 옮기면 길이가 둘 다 달라지고 자리도
+// 어긋난다. ID 집합이 다르거나 같은 ID의 근거가 다르면 다른 근거다. 자동통과의 근거만 바뀌어도
 // 서명이 무효다 - 그 항목도 계획에 들어갈 수 있다.
 func sameBasis(prev, next Session) bool {
 	if prev.RulesetVersion != next.RulesetVersion {

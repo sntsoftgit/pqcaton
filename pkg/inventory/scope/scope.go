@@ -21,13 +21,13 @@ import (
 	"strings"
 
 	// pqcota의 스코프 커널. **우리 패키지와 이름이 같아 별칭을 둔다** — 규칙 형식과 판정은
-	// 저쪽이 갖고, 여기는 그 위의 거버넌스만 갖는다.
+	// 저쪽에 있고, 여기는 그 위의 거버넌스만 둔다.
 	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 )
 
 // Layer — 정책 계층 하나. 조직 → 환경(prod/dev) → 노드군 순으로 겹친다.
 //
-// 이름은 **일괄 판정의 열쇠**다(§3.4) — 한 계층에서 온 규칙들은 한 번에 판정된다. 수천 대를
+// 이름은 **일괄 판정의 기준**이다(§3.4) — 한 계층에서 온 규칙들은 한 번에 판정된다. 수천 대를
 // 규칙 한 줄씩 승인하는 리뷰는 끝나지 않는다.
 type Layer struct {
 	Name  string
@@ -53,7 +53,7 @@ func Merge(layers ...Layer) *kscope.AssetPolicy {
 
 // Change — 정책 변경 하나. 리뷰가 다루는 단위다.
 type Change struct {
-	Layer string           // 어느 계층에서 왔나. 일괄 판정의 열쇠
+	Layer string           // 어느 계층에서 왔나. 일괄 판정의 기준
 	Rule  kscope.AssetRule //
 	Added bool             // true=이번에 생김, false=이번에 사라짐
 
@@ -103,7 +103,7 @@ func Diff(base *kscope.AssetPolicy, layers []Layer) []Change {
 		r := byID[id]
 		out = append(out, Change{Layer: now[id], Rule: r, Added: true, Audited: r.Exclude})
 	}
-	// 사라진 규칙. 정렬해서 내는 것은 base 의 순서가 계층과 무관하기 때문이다.
+	// 사라진 규칙. 정렬해서 내는 것은 base의 순서가 계층과 무관하기 때문이다.
 	var gone []string
 	if base != nil {
 		for _, r := range base.Rules {
@@ -126,7 +126,7 @@ const LayerRemoved = "(removed)"
 
 // RuleID — 규칙 하나의 동일성. 판정 원장의 대상 키가 된다.
 //
-// **note 는 넣지 않는다.** 사람이 읽으라고 붙인 설명이라, 문구를 다듬었다고 같은 규칙이
+// **note는 넣지 않는다.** 사람이 읽으라고 붙인 설명이라, 문구를 다듬었다고 같은 규칙이
 // 다른 규칙으로 보여서는 안 된다. 빈 칸은 pqcota와 같이 `*`로 읽는다.
 func RuleID(r kscope.AssetRule) string {
 	act := "include"
@@ -145,7 +145,7 @@ func star(s string) string {
 
 // WriteCSV — 확정된 정책을 **pqcota의 집행기가 읽는 형식 그대로** 낸다.
 //
-// `pqcota-ingest -scope-assets` 의 입력이다. 우리 형식을 따로 만들면 「거버넌스가 확정한
+// `pqcota-ingest -scope-assets`의 입력이다. 우리 형식을 따로 만들면 「거버넌스가 확정한
 // 정책을 pqcota가 집행한다」가 코드로는 거짓이 된다.
 func WriteCSV(w io.Writer, p *kscope.AssetPolicy) error {
 	cw := csv.NewWriter(w)

@@ -38,11 +38,11 @@ func find(t *testing.T, rs []Reconciled, key AssetKey) Reconciled {
 // IC-R20 — 관리 축은 근거의 구성에서 파생한다. 대조 축(State)은 그대로다.
 //
 //	관리 근거 ≥ 1          → MANAGED. 대표값·신뢰도는 관리 근거에서, 평가됨
-//	관측은 있으나 전부 제외 → EXCLUDED_BY_POLICY. 대조 축은 여전히 CONFIRMED(보았다) 이고,
+//	관측은 있으나 전부 제외 → EXCLUDED_BY_POLICY. 대조 축은 여전히 CONFIRMED(보았다)이고,
 //	                         대표 근거는 비며 신뢰도는 미평가. 사람 판정을 요구하지 않는다
 //	관리·제외 근거 모두 없음 → UNOBSERVED + NOT_EVALUATED. 신뢰도는 상태 기본값이되 미평가
 //
-// 전에는 제외된 finding 이 정규화 안에서 사라져 선언 자산이 UNOBSERVED 로 읽혔다 - 「보았고
+// 전에는 제외된 finding이 정규화 안에서 사라져 선언 자산이 UNOBSERVED로 읽혔다 - 「보았고
 // 관리하지 않기로 한 것」을 「보지 못했다」고 말한 것이다.
 func TestManagedAxisDerivesFromSources(t *testing.T) {
 	managed, excluded, gone := k("n", "openssl", "libssl"), k("n", "openssl", "libcrypto"), k("n", "openssl", "libpq")
@@ -117,7 +117,7 @@ func TestMixedSourcesAreManagedAndKeepTheExcludedOnes(t *testing.T) {
 // IC-R22 — 정책 없이 정규화한 스냅샷에서 제외 근거를 뽑는다.
 //
 // **정책 판정은 상류 코드(scope.AssetPolicy.Managed)가 한다** - 이 리포가 정책을 다시 해석하지
-// 않는다. Managed 가 거짓인 finding 만 나오고, 앱 열쇠는 **전부** 실리며(공유 .so 를 여러 앱이
+// 않는다. Managed가 거짓인 finding만 나오고, 앱 식별자는 **전부** 실리며(공유 .so를 여러 앱이
 // 로드하면 그 목록 전부가 함께 빠진 것이다), 조직이 찍힌다. 정책이 nil 이면 아무것도 빠지지 않는다.
 func TestExcludedFromSnapshotUsesTheUpstreamPolicy(t *testing.T) {
 	lib := func(id, name string, keys ...string) *discoveryv1.Finding {
@@ -153,9 +153,9 @@ func TestExcludedFromSnapshotUsesTheUpstreamPolicy(t *testing.T) {
 
 // IC-Q8 — 큐는 관리 축을 신뢰도보다 먼저 본다.
 //
-// 제외 전용은 신뢰도가 미평가라 0.8 비교에 넣으면 0 으로 읽혀 필수 리뷰에 올라간다 - 관리하지
+// 제외 전용은 신뢰도가 미평가라 0.8 비교에 넣으면 0으로 읽혀 필수 리뷰에 올라간다 - 관리하지
 // 않기로 한 자산을 판정하라고 올리는 것이다. 큐에도 자동통과에도 넣지 않는다. 혼합은 관리
-// 근거의 신뢰도로 가고, NOT_EVALUATED + UNOBSERVED 는 지금대로 필수 리뷰다.
+// 근거의 신뢰도로 가고, NOT_EVALUATED + UNOBSERVED는 지금대로 필수 리뷰다.
 func TestQueueLooksAtTheManagedAxisFirst(t *testing.T) {
 	recs := []Reconciled{
 		{Key: k("n", "openssl", "excluded"), State: Confirmed, Managed: ExcludedByPolicy},

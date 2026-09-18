@@ -19,7 +19,7 @@ type RecordKind string
 const (
 	// RecordJudgment — 사람이 내린 판정. 옛 행은 이 칸이 비어 있고 판정으로 읽는다. 소급하지 않는다.
 	RecordJudgment RecordKind = "judgment"
-	// RecordPlanSelection — 계획에 넣기로 한 선택. 결론 칸은 비어 있다. Reviewer·Signature 는 세션에
+	// RecordPlanSelection — 계획에 넣기로 한 선택. 결론 칸은 비어 있다. Reviewer·Signature는 세션에
 	// 적힌 **자유 문자열**이라, 이 행이 답하는 것은 「누가 넣었나」가 아니라 「누가 넣었다고 기록됐나」다.
 	// 검증된 신원은 상류의 실행 승인에만 있다.
 	RecordPlanSelection RecordKind = "plan-selection"
@@ -36,15 +36,15 @@ type Judgment struct {
 	Signature  string  // 승인 서명(§3.3③)
 	BasisHash  string  // 판정 근거 증거의 해시. 근거가 바뀌면 델타 리뷰 대상(§3.6)
 	Confidence float64 // 판정 신뢰도. stale 만료 시 감쇠(IC-D4)
-	// ConfidenceEvaluated — Confidence 가 잰 값인가. 거짓이면 상태 기본값 같은 것이라 만료돼도
+	// ConfidenceEvaluated — Confidence가 잰 값인가. 거짓이면 상태 기본값 같은 것이라 만료돼도
 	// 감쇠하지 않는다 - 재지 않은 값을 줄이면 「재 봤더니 더 낮아졌다」로 읽힌다. **옛 행은 칸이
 	// 없고 전부 평가된 값이다** - 그때는 미평가라는 개념이 없었다. 저장소가 부재를 참으로 읽는다.
 	ConfidenceEvaluated bool
 	// RecordKind — 이 행의 종류. 빈 값은 판정이다(옛 행).
 	RecordKind RecordKind
 	DecidedAt  int64 // 판정 시각(unix). 테스트·재현성을 위해 호출자가 주입
-	// SessionID — 이 판정이 난 리뷰 세션. **계획과 원장을 잇는 열쇠다.** 계약으로 나가는 계획의
-	// id 가 이 값을 담으므로, 계획에서 이 값을 읽어 원장에서 그 세션의 판정들을 찾는다
+	// SessionID — 이 판정이 난 리뷰 세션. **계획과 원장을 잇는 식별자다.** 계약으로 나가는 계획의
+	// id가 이 값을 담으므로, 계획에서 이 값을 읽어 원장에서 그 세션의 판정들을 찾는다
 	// ([JudgmentStore.BySessionID]). 저장만 하고 찾는 길이 없으면 「원장에서 찾을 수 있다」가
 	// 기능이 아니라 가능성에 그친다. 옛 행은 비어 있고 소급하지 않는다 — 어느 세션에서 난
 	// 판정인지 도구가 알 수 없다.
@@ -135,7 +135,7 @@ func ExpireStale(js []Judgment, now, ttlSeconds int64, decay float64) []Judgment
 // LatestPerSubject — append-only 로그에서 subject별 최신(마지막) 판정만 뽑는다.
 // 입력은 판정 순서(오래된→최신) 가정. 델타/만료 계산의 입력으로 쓴다.
 //
-// 판정 행만 본다. 종류를 보지 않고 subject 로 덮으면 결론이 빈 계획 선택 행이 사람의 판정을 덮고,
+// 판정 행만 본다. 종류를 보지 않고 subject로 덮으면 결론이 빈 계획 선택 행이 사람의 판정을 덮고,
 // 「이 대상에 판정이 아예 없다」는 경고가 사라진다.
 func LatestPerSubject(all []Judgment) []Judgment {
 	idx := map[string]int{}

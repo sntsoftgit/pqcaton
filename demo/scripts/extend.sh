@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #  확장 — 실행 중인 pqcota 디스커버리 데모에 3-상태 대조 + 거버넌스 토폴로지를 얹고,
 #  판정한 계획을 **상류의 승인 → 생성 → 적용 → 되돌림까지** 실제로 돌린다.
-# 전제: pqcota/demo/scripts/{up,demo}.sh 로 환경이 떠 있고 디스커버리(/work/results)가 끝난 상태.
-#       빌드 머신에 Go와 python3. pqcota v0.5.0부터 모듈 경로가 리포 주소와 같아 `go build`가
+# 전제: pqcota/demo/scripts/{up,demo}.sh로 환경이 떠 있고 디스커버리(/work/results)가 끝난 상태.
+#       빌드 기계에 Go와 python3. pqcota v0.5.0부터 모듈 경로가 리포 주소와 같아 `go build`가
 #       계약을 스스로 받아온다 — 형제 체크아웃도 gen 생성도 필요 없다.
-#       Go 가 없는 호스트에서는 미리 빌드한 둘을 PQCATON_BIN_DIR 로 준다(pqcaton-report · pqcaton-decide).
+#       Go가 없는 호스트에서는 미리 빌드한 둘을 PQCATON_BIN_DIR로 준다(pqcaton-report · pqcaton-decide).
 #
-# 판정과 실행 승인은 다른 단계다. pqcaton-decide close 가 내는 계획은 IN_REVIEW 이고 승인 칸이
-# 비어 있다. 상류의 pqcota-approve 가 FINALIZED 로 올리며 서명해야 생성기가 받는다. 그 사이가
-# 끊겨 있으면 여기서 드러나야 한다 — v0.16.0 은 close 에서 이미 끊겨 있었는데 아무도 돌리지 않아
+# 판정과 실행 승인은 다른 단계다. pqcaton-decide close가 내는 계획은 IN_REVIEW이고 승인 칸이
+# 비어 있다. 상류의 pqcota-approve가 FINALIZED로 올리며 서명해야 생성기가 받는다. 그 사이가
+# 끊겨 있으면 여기서 드러나야 한다 — v0.16.0은 close에서 이미 끊겨 있었는데 아무도 돌리지 않아
 # 몰랐다(조치 종류를 고르지 않은 항목이 확정을 막게 됐는데, 이 스크립트는 고르지 않았다).
 set -euo pipefail
 DEMO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # pqcaton/demo
@@ -23,7 +23,7 @@ if [ -n "${PQCATON_E2E_TRACE:-}" ]; then
 fi
 REPO_DIR="$(cd "$DEMO_DIR/.." && pwd)"                        # pqcaton
 
-# pqcota 리포를 찾는다 - 없으면 무엇을 어떻게 주라는지 말하고 멈춘다.
+# pqcota 리포를 찾는다 - 없으면 무엇을 어떻게 주라는지 알리고 멈춘다.
 PQCOTA_DIR="${PQCOTA_DIR:-$REPO_DIR/../pqcota}"
 TOPO="$PQCOTA_DIR/demo/topology/topology.yaml"
 [ -f "$TOPO" ] || TOPO="$PQCOTA_DIR/demo/topology/topology.example.yaml"
@@ -39,7 +39,7 @@ docker exec pqcota-ctl bash -lc 'ls /work/results/*.json >/dev/null 2>&1' || { e
 
 echo "▶ 1/8  build (pqcaton-report · pqcaton-decide)…"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-# 픽스처가 고른 별칭을 bash 로 넘기는 자리. TMP 와 함께 지워진다.
+# 픽스처가 고른 별칭을 bash로 넘기는 자리. TMP와 함께 지워진다.
 export PQCATON_E2E_ALIAS_FILE="$TMP/e2e-alias"
 ALIAS_FILE="$PQCATON_E2E_ALIAS_FILE"
 if [ -n "${PQCATON_BIN_DIR:-}" ]; then
@@ -54,8 +54,8 @@ docker cp "$TMP/pqcaton-decide" pqcota-ctl:/usr/local/bin/pqcaton-decide
 
 echo "▶ 2/8 generate the declaration (topology.yaml -> declaration) and inject node↔IP…"
 echo "   topology: $TOPO"
-# **선언을 환경에서 끌어온다.** 노드 이름을 우리 파일에 박아 두면 상류가 토폴로지를 고칠 때
-# 조용히 어긋난다. 규칙(무엇을 선언하고 무엇을 일부러 뺄지)은 declare.py 에 있다.
+# **선언을 환경에서 끌어온다.** 노드 이름을 우리 파일에 적어 두면 상류가 토폴로지를 고칠 때
+# 표시 없이 어긋난다. 규칙(무엇을 선언하고 무엇을 일부러 뺄지)은 declare.py에 있다.
 DECL="$TMP/declaration.json"
 python3 "$DEMO_DIR/scripts/declare.py" "$TOPO" > "$TMP/declaration.gen.json"
 docker exec pqcota-ctl bash -lc 'cat /work/nodes.json' > "$TMP/nodes.json"
@@ -67,8 +67,8 @@ decl["nodes"] = nodes
 # PQCATON_E2E_TRACE — **되짚기 사슬을 재는 전용 픽스처다. 데모 서사가 아니다.**
 #
 # 선언에서 자산을 전부 빼면, 정책이 관리 대상으로 남긴 관측이 모두 UNDECLARED(그림자 자산)가 되어
-# 리뷰 큐에 오르고 계획 칸을 든다. 그래야 **pqcaton 이 만든 계획으로** 승인 → 생성 → 레코드 →
-# 실제 스냅샷 id 까지 한 바퀴를 돌 수 있다.
+# 리뷰 큐에 오르고 계획 칸을 든다. 그래야 **pqcaton이 만든 계획으로** 승인 → 생성 → 레코드 →
+# 실제 스냅샷 id까지 한 바퀴를 돌 수 있다.
 #
 # 데모의 선언을 왜곡해 없는 자산을 지어내지 않는다. 빼기만 한다 — 빼면 관측된 것이 그대로 그림자가
 # 되고, 그것은 실제로 있을 수 있는 상태다(선언을 아직 안 적은 조직).
@@ -76,8 +76,8 @@ if os.environ.get("PQCATON_E2E_TRACE"):
     decl["assets"] = []
     print("   [e2e fixture] declared assets cleared: every managed observation becomes UNDECLARED so the plan has something to carry")
     # **별칭 노드**(D9). 선언이 부르는 이름과 관측(봉투)이 부르는 이름이 다른 구성이다. 실제로
-    # 흔하다 - collector 는 호스트명이나 자기가 붙인 id 로 보내고, CMDB 는 자기 이름을 쓴다.
-    # 그 둘이 갈리면 조치는 선언 이름을 겨누고 스냅샷은 봉투 이름으로 저장돼 있어야 한다.
+    # 흔하다 - collector는 호스트명이나 자기가 붙인 id로 보내고, CMDB는 자기 이름을 쓴다.
+    # 그 둘이 다르면 조치는 선언 이름을 겨누고 스냅샷은 봉투 이름으로 저장돼 있어야 한다.
     orig = os.environ.get("PQCATON_E2E_ALIAS_NODE", "pay-db")
     if orig in decl.get("scope", []):
         alias = orig + "-cmdb"
@@ -95,8 +95,8 @@ if os.environ.get("PQCATON_E2E_TRACE"):
 known   = {n["name"] for n in decl["nodes"]}  # 픽스처가 이름을 바꿨으면 바뀐 이름으로 본다
 missing = [n for n in decl.get("scope", []) if n not in known]
 if missing:
-    # 토폴로지에서 만든 선언인데 실행 중 환경과 다르다 - 파서가 어긋났거나, up.sh 를 돌린
-    # 뒤에 topology.yaml 을 고쳤다는 뜻이다. 어느 쪽이든 그대로 두면 결과가 거짓이 된다.
+    # 토폴로지에서 만든 선언인데 실행 중 환경과 다르다 - 파서가 어긋났거나, up.sh를 돌린
+    # 뒤에 topology.yaml을 고쳤다는 뜻이다. 어느 쪽이든 그대로 두면 결과가 거짓이 된다.
     sys.exit("❌ 선언의 노드가 이 환경에 없다: %s\n   환경의 노드: %s\n"
              "   topology.yaml 을 고쳤다면 up.sh 부터 다시 돌리라." % (missing, sorted(known)))
 json.dump(decl, open(sys.argv[3], "w"), ensure_ascii=False, indent=2)
@@ -122,8 +122,8 @@ echo "▶ 3/8 inventory reconciliation + governance topology (pqcaton-report)…
 # **콘솔 출력을 기대 파일로 그대로 갖고 온다.** 손으로 한 번 만들어 두면 그 순간부터
 # 어긋난다 - 실제로 그렇게 낡아 있었고, 명령의 출력이 영어가 된 날에도 한국어인 채
 # 남아 있었다. 스크립트가 뜨면 어긋날 수가 없다.
-# **상류 적재와 같은 자산 스코프 정책을 건다.** pqcota 데모는 /work/scope-assets.csv 로 적재했다.
-# 다른 정책(또는 정책 없음)으로 정규화하면 스냅샷 지문이 중앙 이력과 갈려, 아래 7/8 에서 생성기가
+# **상류 적재와 같은 자산 스코프 정책을 건다.** pqcota 데모는 /work/scope-assets.csv로 적재했다.
+# 다른 정책(또는 정책 없음)으로 정규화하면 스냅샷 지문이 중앙 이력과 어긋나, 아래 7/8에서 생성기가
 # 계획의 근거를 되짚지 못한다. 정책 유무를 추정하지 않는다 — 같은 파일을 준다.
 SCOPE=/work/scope-assets.csv
 docker exec pqcota-ctl bash -lc "test -f $SCOPE" || { echo "❌ $SCOPE not in pqcota-ctl — pqcota/demo/scripts/demo.sh writes it"; exit 1; }
@@ -142,7 +142,7 @@ docker exec pqcota-ctl bash -lc \
 # 위임 수준**까지다 — 비면 확정이 막힌다(v0.16.0).
 #
 # **실제로 관측된 자산**(CONFIRMED·UNDECLARED)만 계획에 넣는다. 조치는 있는 것을 바꾸는 일이다.
-# UNOBSERVED 는 「없다」가 아니라 「못 봤다」라(§2.6) 조치 대상이 아니다 — 재수집이 먼저다. 그리고
+# UNOBSERVED는 「없다」가 아니라 「못 봤다」라(§2.6) 조치 대상이 아니다 — 재수집이 먼저다. 그리고
 # 그 근거를 상류 이력에서 되짚을 수 있어야 하므로, 여기 드는 자산은 정책이 관리 대상으로 남긴 것,
 # 곧 중앙 이력의 스냅샷에 실제로 있는 것이다.
 #
@@ -177,10 +177,10 @@ PY'
 docker exec pqcota-ctl bash -lc \
   'pqcaton-decide close /work/session.json -org demo-corp -judgments /work/judgments.jsonl > /work/plan.json'
 docker cp pqcota-ctl:/work/plan.json "$SAMPLE_DIR/plan.json" 2>/dev/null || true
-# **공백과 세션 id 를 고른다.** protojson 은 콜론 뒤 공백을 일부러 흔들고, 계획 id 에는 실행마다
-# 새로 뽑는 세션 UUID 가 들어 있다. 그대로 두면 데모를 돌릴 때마다 기대 파일이 더러워져
-# **진짜 달라진 날을 알아볼 수 없다.** 세션 id 는 자리만 보이면 되므로 고정값으로 바꾼다 -
-# 실제 실행의 id 는 콘솔과 판정 원장에 남는다.
+# **공백과 세션 id를 고른다.** protojson은 콜론 뒤 공백을 일부러 흔들고, 계획 id에는 실행마다
+# 새로 뽑는 세션 UUID가 들어 있다. 그대로 두면 데모를 돌릴 때마다 기대 파일이 더러워져
+# **진짜 달라진 날을 알아볼 수 없다.** 세션 id는 자리만 보이면 되므로 고정값으로 바꾼다 -
+# 실제 실행의 id는 콘솔과 판정 원장에 남는다.
 python3 - "$SAMPLE_DIR/plan.json" <<'PYFMT' || true
 import json, re, sys
 p = sys.argv[1]
@@ -194,15 +194,15 @@ open(p, "a").write("\n")
 PYFMT
 
 echo "▶ 5/8 render the topology SVG and collect it…"
-# **SVG 도 기대 산출물로 그대로 가져온다.** report.txt·plan.json 은 스크립트가 떴는데 SVG 만 손으로
-# 옮기던 자리라, 범례가 영어가 된 날에도 한국어인 채 남아 있었다(2026-09-18 에 고쳤다).
+# **SVG도 기대 산출물로 그대로 가져온다.** report.txt·plan.json은 스크립트가 떴는데 SVG만 손으로
+# 옮기던 자리라, 범례가 영어가 된 날에도 한국어인 채 남아 있었다(2026-09-18에 고쳤다).
 if docker exec pqcota-ctl bash -lc 'command -v dot >/dev/null && dot -Tsvg /work/topology-governance.dot -o /work/topology-governance.svg'; then
   docker cp pqcota-ctl:/work/topology-governance.svg "$DEMO_DIR/topology-governance.svg"
   cp "$DEMO_DIR/topology-governance.svg" "$SAMPLE_DIR/topology-governance.svg"
   echo "   → $DEMO_DIR/topology-governance.svg (and $SAMPLE_DIR/)"
 fi
 
-# 계약으로 나간 계획은 IN_REVIEW 이고 승인 칸이 비어 있어야 한다. 그렇지 않으면 이 리포가
+# 계약으로 나간 계획은 IN_REVIEW이고 승인 칸이 비어 있어야 한다. 그렇지 않으면 이 리포가
 # 실행 승인의 자리에 무언가를 넣은 것이다.
 docker exec pqcota-ctl bash -lc 'python3 - <<PY
 import json, sys
@@ -240,7 +240,7 @@ echo "▶ 6/8 execution approval (pqcota-approve, upstream) — a second approve
 GOV_KEYS=$(docker exec pqcota-ctl bash -lc 'pqcota-keygen')
 GOV_PRIV=$(echo "$GOV_KEYS" | grep '^PQCOTA_SIGN_KEY=' | cut -d= -f2-)
 GOV_PUB=$(echo "$GOV_KEYS" | grep '^PQCOTA_VERIFY_KEY=' | cut -d= -f2-)
-# 같은 환경에서 다시 돌려도 되게, 앞서 등록한 governance-1 은 걷어내고 다시 넣는다. 한 id 에 키가
+# 같은 환경에서 다시 돌려도 되게, 앞서 등록한 governance-1은 걷어내고 다시 넣는다. 한 id에 키가
 # 둘이면 상류가 「어느 것이 그 사람의 키인지 말할 수 없다」며 거절한다 — 그것이 맞는 동작이다.
 docker exec pqcota-ctl bash -lc "sed -i -e 's|,governance-1=[^,]*||g' -e 's|^export PQCOTA_APPROVAL_KEYS=\(.*\)\$|export PQCOTA_APPROVAL_KEYS=\1,governance-1=$GOV_PUB|' /etc/profile.d/pqcota-approval.sh"
 docker exec -e PQCOTA_APPROVAL_KEY="$GOV_PRIV" pqcota-ctl bash -lc \
@@ -256,8 +256,8 @@ PY'
 echo "▶ 7/8 generate (pqcota-provision, §3.7 gate) — resolve the plan's evidence in the history, then actually apply…"
 ANS="cd /work/ansible && ansible"
 INV="-i /work/ansible/targets.ini -i /work/ansible/groups.ini"
-# --dsn 을 준다: 조치의 근거(원천 노드 · v1 지문 · 규칙 판)를 중앙 이력에서 **실제로 찾아** 레코드에
-# 남긴다. 못 찾으면 종료 3 이다 — 이 데모가 보이려는 것이 바로 그 고리다.
+# --dsn을 준다: 조치의 근거(원천 노드 · v1 지문 · 규칙 판)를 중앙 이력에서 **실제로 찾아** 레코드에
+# 남긴다. 못 찾으면 종료 3이다 — 이 데모가 보이려는 것이 바로 그 고리다.
 DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
 set +e
 docker exec pqcota-ctl bash -lc "pqcota-provision --level l2 --dsn '$DSN' /work/plan.approved.json > /work/ansible/provision-gov.yml" 2>&1 | sed 's/^/   /'

@@ -676,7 +676,7 @@ func nodeBlock(l Lang, i int, n DeclNode) templ.Component {
 // assetRow · edgeRow — 표의 한 줄.
 //
 // **화면과 「행 추가」가 같은 조각을 쓴다.** 조각이 둘이면 이름이 어긋나는 날이 오고, 그러면
-// 새로 넣은 줄만 조용히 저장되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
+// 새로 넣은 줄만 오류 없이 저장되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
 func assetRow(l Lang, node, i int, runtime, component string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -958,8 +958,8 @@ func edgeRow(l Lang, i int, src, dst, port, proto string) templ.Component {
 // 번에 사라진다. 서버는 빈 응답만 돌려주고, 지우는 것은 브라우저가 한다. 파일이
 // 달라지는 것은 저장할 때뿐이다.
 //
-// 지운 자리는 번호가 빈 채로 남는다 — `ApplyDecl` 이 빈 번호를 건너뛰고 읽으므로,
-// 가운데 줄을 지워도 뒤의 줄이 조용히 사라지지 않는다.
+// 지운 자리는 번호가 빈 채로 남는다 — `ApplyDecl`이 빈 번호를 건너뛰고 읽으므로,
+// 가운데 줄을 지워도 뒤의 줄이 표시 없이 사라지지 않는다.
 func removeButton(l Lang, target, ask string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -1043,11 +1043,11 @@ func removeButton(l Lang, target, ask string) templ.Component {
 
 // addRow — 「행 추가」 버튼. 다음에 쓸 번호를 자기 주소에 들고 있다.
 //
-// 번호가 촘촘해야 한다 — `ApplyDecl` 은 번호가 끊기는 자리에서 읽기를 멈추므로, 건너뛴
+// 번호가 촘촘해야 한다 — `ApplyDecl`은 번호가 끊기는 자리에서 읽기를 멈추므로, 건너뛴
 // 줄 뒤의 것은 **오류 없이 저장되지 않는다.** 그래서 서버가 다음 번호를 쥐고, 줄을 하나
 // 내줄 때마다 이 버튼을 자기 자신으로 갈아 끼운다(`hx-swap-oob`).
 //
-// 자산은 노드마다 표가 따로라 버튼도 노드마다 따로다 — node 가 그 번호다.
+// 자산은 노드마다 표가 따로라 버튼도 노드마다 따로다 — node가 그 번호다.
 //
 // 말도 주소에 실어 보낸다 — 조각만 받아 오는 요청이라 쿠키에 기대지 않는다.
 func addRow(l Lang, kind string, node, next int, oob bool) templ.Component {
@@ -1189,7 +1189,7 @@ func rowFragment(l Lang, kind string, node, i int) templ.Component {
 // reloadButton — 「다시 불러오기」. 편집을 버리고 **마지막으로 저장된 선언**을 다시
 // 그린다. 묻고 나서 바꾼다 — 적던 것이 다 날아가는 자리다.
 //
-// htmx 가 막힌 환경에서는 그냥 링크로 동작한다(묻지는 못한다) — 화면의 뼈대는 여전히
+// htmx가 막힌 환경에서는 그냥 링크로 동작한다(묻지는 못한다) — 화면의 뼈대는 여전히
 // 폼과 링크다.
 func reloadButton(l Lang) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

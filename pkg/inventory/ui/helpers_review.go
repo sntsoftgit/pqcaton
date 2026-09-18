@@ -3,7 +3,7 @@ package ui
 import "strings"
 
 // remediationKinds — 계약의 통제 어휘(`RemediationKind`). **여기서 지어내지 않는다** — 상류
-// 계약에 있는 값만 고를 수 있어야, 오타가 UNSPECIFIED로 조용히 떨어져 아무 일도 안 하는
+// 계약에 있는 값만 고를 수 있어야, 오타가 UNSPECIFIED로 표시 없이 떨어져 아무 일도 안 하는
 // 조치가 되는 것을 막는다. 비워 두면 상류가 PROVIDER_INJECT로 본다.
 var remediationKinds = []string{
 	"REMEDIATION_KIND_CONFIG_ONLY",

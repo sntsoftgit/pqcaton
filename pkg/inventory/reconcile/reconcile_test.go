@@ -9,7 +9,7 @@ import (
 	"github.com/randyinthedev-hash/pqcota/pkg/org"
 )
 
-// testOrg — 케이스가 쓰는 조직. 대조는 조직에 묶이므로 열쇠에도 엔진에도 같은 값이 든다.
+// testOrg — 케이스가 쓰는 조직. 대조는 조직에 묶이므로 식별자에도 엔진에도 같은 값이 든다.
 const testOrg = org.ID("acme")
 
 func k(node, rt, comp string) AssetKey {
@@ -25,7 +25,7 @@ func eng(t *testing.T) *Engine {
 	return e
 }
 
-// rec — 대조 결과만 보는 케이스용. 조직이 어긋나는 쪽은 IC-O1~O5 가 따로 본다.
+// rec — 대조 결과만 보는 케이스용. 조직이 어긋나는 쪽은 IC-O1~O5가 따로 본다.
 func rec(t *testing.T, declared []AssetKey, observed []Observed, gaps []string) []Reconciled {
 	t.Helper()
 	out, err := eng(t).Reconcile(declared, observed, nil, gaps)
@@ -104,7 +104,7 @@ func TestConfidenceFollowsState(t *testing.T) {
 	}
 }
 
-// IC-C2: 관측 evidence_strength=inferred-low는 confidence 상한을 누른다(불확실 관측은 신뢰 낮춤).
+// IC-C2: 관측 evidence_strength=inferred-low는 confidence 상한을 낮춘다(불확실 관측은 신뢰 낮춤).
 func TestReconcile_evidenceConfidence(t *testing.T) {
 	decl := []AssetKey{k("n", "openssl", "lib")}
 	hi := rec(t, decl, []Observed{obs("n", "openssl", "lib", "confirmed")}, nil)[0].Confidence
@@ -141,7 +141,7 @@ func TestBuildReviewQueue(t *testing.T) {
 
 // IC-O1 — **다른 조직의 자산이 섞이면 대조하지 않는다.**
 //
-// 그냥 두면 오류가 아니라 그럴듯한 결과가 나온다 — 열쇠가 안 맞아 같은 자산이 UNDECLARED와
+// 그냥 두면 오류가 아니라 그럴듯한 결과가 나온다 — 식별자가 안 맞아 같은 자산이 UNDECLARED와
 // UNOBSERVED 한 쌍으로 갈리고, 리뷰 큐에는 UNDECLARED 발견으로 오른다.
 func TestReconcileRefusesAnotherOrg(t *testing.T) {
 	남 := AssetKey{Org: org.ID("beta"), NodeID: "n", Runtime: "openssl", Component: "libssl"}
@@ -155,7 +155,7 @@ func TestReconcileRefusesAnotherOrg(t *testing.T) {
 	}
 }
 
-// IC-O2 — **조직 없는 열쇠도 끊는다.** 비면 「아무 조직」이 아니라 「모른다」이고, 모르는
+// IC-O2 — **조직 없는 식별자도 거부한다.** 비면 「아무 조직」이 아니라 「모른다」이고, 모르는
 // 것을 이 엔진의 조직으로 지어내면 검사가 있으나 마나다.
 func TestReconcileRefusesEmptyOrg(t *testing.T) {
 	빈 := AssetKey{NodeID: "n", Runtime: "openssl", Component: "libssl"}
@@ -168,7 +168,7 @@ func TestReconcileRefusesEmptyOrg(t *testing.T) {
 }
 
 // IC-O3 — **엔진이 조직을 찍는다.** 스냅샷에도 계약에도 조직이 없으니, 찍는 자리가 하나가
-// 아니면 조직 없는 열쇠가 어딘가에서 만들어진다.
+// 아니면 조직 없는 식별자가 어딘가에서 만들어진다.
 func TestEngineStampsOrg(t *testing.T) {
 	in := []Observed{{Key: AssetKey{NodeID: "n", Runtime: "openssl", Component: "libssl"}}}
 	for _, o := range stampObserved(testOrg, in) {
@@ -180,7 +180,7 @@ func TestEngineStampsOrg(t *testing.T) {
 
 // IC-R16 — **CNG 관측도 자산이 된다**(상류 v0.6.0).
 //
-// 런타임 갈래를 안 더하면 그 관측은 조용히 버려집니다. Windows 노드의 암호 자산이
+// 런타임 갈래를 안 더하면 그 관측은 표시 없이 버려집니다. Windows 노드의 암호 자산이
 // 인벤토리에서 통째로 사라지고, 화면은 「없다」와 같은 얼굴로 그것을 보여 줍니다 —
 // 이 도구가 막으려는 바로 그 자리입니다(§2.6).
 //

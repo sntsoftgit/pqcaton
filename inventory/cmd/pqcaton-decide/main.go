@@ -5,14 +5,14 @@
 //
 //	pqcaton-decide open  <declaration.json> -results <results-dir> [-org 이름] > session.json
 //	pqcaton-decide open  <declaration.csv> [이-기계에-붙일-이름] [-org 이름] > session.json
-//	  … 사람이 session.json 을 편집한다 (결론 · 승인자 · 서명)
+//	  … 사람이 session.json을 편집한다 (결론 · 승인자 · 서명)
 //	pqcaton-decide close <session.json> [-judgments 파일] [-org 이름] > plan.json
 //	pqcaton-decide delta <judgments.jsonl> <declaration.csv> [node]
 //
 // **파일이 곧 감사 기록이다.** 대화형으로 물어보면 무엇을 근거로 무엇을 정했는지가 화면에서
 // 사라진다 — 편집한 파일이 그대로 남는 편이 낫다. 화면(`pqcaton-ui`)도 이 파일을 읽고 쓴다.
 //
-// 파일 형식과 확정 관문은 `pkg/inventory/review` 에 있다 — 명령과 화면이 같은 것을 쓴다.
+// 파일 형식과 확정 관문은 `pkg/inventory/review`에 있다 — 명령과 화면이 같은 것을 쓴다.
 package main
 
 import (
@@ -132,7 +132,7 @@ func open(declPath, node, orgName, resultsDir, scopeAssets string, view bool) er
 	if err != nil {
 		return err
 	}
-	// **표는 표준오류로 낸다.** 세션 JSON 이 표준출력으로 나가므로 섞이면 파이프가 깨진다.
+	// **표는 표준오류로 낸다.** 세션 JSON이 표준출력으로 나가므로 섞이면 파이프가 깨진다.
 	if view {
 		fmt.Fprint(os.Stderr, "\n", reconcile.RenderView(recs), "\n")
 	}
@@ -141,13 +141,13 @@ func open(declPath, node, orgName, resultsDir, scopeAssets string, view bool) er
 	return write(sf)
 }
 
-// session - 지금 이 머신을 관측해 선언과 대조하고 리뷰 세션을 만든다.
+// session - 지금 이 기계를 관측해 선언과 대조하고 리뷰 세션을 만든다.
 //
-// **open 과 delta 가 같은 함수를 쓴다.** 근거 해시가 이 결과에서 나오므로, 두 곳이 갈리면
+// **open과 delta가 같은 함수를 쓴다.** 근거 해시가 이 결과에서 나오므로, 두 곳이 어긋나면
 // 델타 리뷰가 "바뀌지 않은 것"을 바뀌었다고 부른다.
 // session — 리뷰 세션과 **그것을 만든 대조 결과**를 함께 낸다.
 //
-// 세션에는 리뷰 대상만 담기므로(자동통과는 이름만), `-view` 가 대조 전체를 표로 보이려면
+// 세션에는 리뷰 대상만 담기므로(자동통과는 이름만), `-view`가 대조 전체를 표로 보이려면
 // 원본이 필요하다.
 func session(declPath, node, orgName, resultsDir, scopeAssets string) (review.Session, []reconcile.Reconciled, error) {
 	if resultsDir != "" {
@@ -155,20 +155,20 @@ func session(declPath, node, orgName, resultsDir, scopeAssets string) (review.Se
 	}
 	var sf review.Session
 	// **대조도 조직에 묶인다.** 엔진이 조직을 들고, 다른 조직의 자산이 섞이면 대조하지
-	// 않고 끊는다 - 섞인 채로 돌면 오류가 아니라 그럴듯한 결과가 나온다.
+	// 않고 중단한다 - 섞인 채로 돌면 오류가 아니라 그럴듯한 결과가 나온다.
 	eng, err := reconcile.For(org.ID(orgName))
 	if err != nil {
 		return sf, nil, err
 	}
-	// **같은 정책을 건다.** 전에는 이 갈래가 -scope-assets 를 받고도 쓰지 않아, 같은 정책 파일을
+	// **같은 정책을 건다.** 전에는 이 갈래가 -scope-assets를 받고도 쓰지 않아, 같은 정책 파일을
 	// 주고도 결과 파일 경로와 다른 관리 상태를 냈다. 플래그가 무시되는 것보다 나쁘다 - 무시되면
 	// 아무 일도 안 일어나지만, 이쪽은 틀린 값이 나온다.
 	policy, err := review.LoadAssetPolicy(scopeAssets)
 	if err != nil {
 		return sf, nil, err
 	}
-	// **이 기계를 스캔한다.** 노드 이름은 결과에 붙이는 이름표일 뿐이고, /proc 을 못 열면
-	// 끊는다 - 그 상태로 대조하면 「못 본 것」이 「없는 것」으로 읽힌다.
+	// **이 기계를 스캔한다.** 노드 이름은 결과에 붙이는 이름표일 뿐이고, /proc을 못 열면
+	// 중단한다 - 그 상태로 대조하면 「못 본 것」이 「없는 것」으로 읽힌다.
 	scan, err := localscan.Scan(node, policy)
 	if err != nil {
 		return sf, nil, err
@@ -215,13 +215,13 @@ func session(declPath, node, orgName, resultsDir, scopeAssets string) (review.Se
 	return sf, recs, nil
 }
 
-// sessionFromResults — **pqcota 가 모은 관측**으로 리뷰 세션을 만든다.
+// sessionFromResults — **pqcota가 모은 관측**으로 리뷰 세션을 만든다.
 //
 // 이것이 주경로다. 여러 노드를 관측해 놓고도 판정할 수 없으면 「관측을 판정으로 잇는다」가
 // 코드로는 거짓이 된다 — 확정 계획을 낼 수 있는 것이 명령을 돌린 그 기계 하나뿐이었다.
 //
-// **대조는 `report` 가 한다.** 대조 화면(`pqcaton-ui`)이 보는 것과 같은 계산이라, 화면에서
-// 본 UNDECLARED 가 리뷰 큐에 그대로 올라온다 — 따로 계산하면 사람이 본 것과 판정할 것이 달라진다.
+// **대조는 `report`가 한다.** 대조 화면(`pqcaton-ui`)이 보는 것과 같은 계산이라, 화면에서
+// 본 UNDECLARED가 리뷰 큐에 그대로 올라온다 — 따로 계산하면 사람이 본 것과 판정할 것이 달라진다.
 func sessionFromResults(declPath, orgName, resultsDir, scopeAssets string) (review.Session, []reconcile.Reconciled, error) {
 	var sf review.Session
 	d, err := decl.Load(declPath)
@@ -233,7 +233,7 @@ func sessionFromResults(declPath, orgName, resultsDir, scopeAssets string) (revi
 		return sf, nil, err
 	}
 	// **세우는 일은 review 패키지가 한다.** 화면(`pqcaton-ui`)이 같은 것을 부른다 — 두
-	// 곳에서 따로 계산하면 화면에서 본 UNDECLARED 와 명령이 올린 리뷰 큐가 달라진다.
+	// 곳에서 따로 계산하면 화면에서 본 UNDECLARED와 명령이 올린 리뷰 큐가 달라진다.
 	b, err := review.FromResultsWith(resultsDir, d, orgName, policy)
 	if err != nil {
 		return sf, nil, err
@@ -306,7 +306,7 @@ func delta(judgmentPath, declPath, node, orgName, resultsDir, scopeAssets string
 	}
 	prior = decision.LatestPerSubject(prior) // append-only 로그에서 대상별 최신만
 
-	// 지금 관측으로 근거를 다시 만든다. open 이 쓰는 것과 같은 경로여야 값이 맞는다.
+	// 지금 관측으로 근거를 다시 만든다. open이 쓰는 것과 같은 경로여야 값이 맞는다.
 	sf, _, err := session(declPath, node, orgName, resultsDir, scopeAssets)
 	if err != nil {
 		return err
@@ -317,7 +317,7 @@ func delta(judgmentPath, declPath, node, orgName, resultsDir, scopeAssets string
 	}
 
 	out := decision.DeltaReview(prior, basis)
-	// **빈 결과도 배열이다.** nil 로 두면 `null` 이 찍혀 받는 쪽이 길이를 셀 수 없다.
+	// **빈 결과도 배열이다.** nil로 두면 `null`이 찍혀 받는 쪽이 길이를 셀 수 없다.
 	need := make([]decision.Judgment, 0)
 	for _, j := range out {
 		if j.NeedsReReview {

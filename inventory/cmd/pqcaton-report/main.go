@@ -35,8 +35,8 @@ func main() {
 	d := loadDeclaration(declPath)
 	// **계산은 공용 패키지가 한다.** 화면(`pqcaton-ui`)이 같은 것을 그리므로, 계산이 두
 	// 곳에 있으면 화면과 글이 다른 답을 내는 날이 온다.
-	// 자산 스코프 정책 — 상류 pqcota-ingest 에 준 것과 **같은 파일**을 PQCATON_SCOPE_ASSETS 로 준다.
-	// 다르면 스냅샷 지문이 중앙 이력과 갈려 계획의 근거를 되짚지 못한다. 위치 인자를 늘리지 않으려고
+	// 자산 스코프 정책 — 상류 pqcota-ingest에 준 것과 **같은 파일**을 PQCATON_SCOPE_ASSETS로 준다.
+	// 다르면 스냅샷 지문이 중앙 이력과 어긋나 계획의 근거를 되짚지 못한다. 위치 인자를 늘리지 않으려고
 	// 환경변수로 받는다.
 	policy, err := review.LoadAssetPolicy(os.Getenv("PQCATON_SCOPE_ASSETS"))
 	if err != nil {
@@ -66,7 +66,7 @@ func main() {
 		r.Nodes, r.ObservedAssets, managed, r.ObservedEdges, r.DeclaredAssets, r.DeclaredEdges)
 
 	// ① 관측 - **여기서 시작하는 사람이 있다.** pqcota 데모를 거치지 않고 이 리포트만 보는
-	// 사람에게는 대조 앞에 무엇이 있었는지가 안 보인다. 재료는 이미 손에 있으니 보여 준다.
+	// 사람에게는 대조 앞에 무엇이 있었는지가 안 보인다. 입력은 이미 있으니 보여 준다.
 	fmt.Println("──────── ① Observation — what pqcota saw ────────")
 	printObservation(r)
 
@@ -173,7 +173,7 @@ func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
 	}
 }
 
-// loadDeclaration - 선언을 읽는다. 형식은 `pkg/inventory/decl` 에 있다 - 화면이 같은
+// loadDeclaration - 선언을 읽는다. 형식은 `pkg/inventory/decl`에 있다 - 화면이 같은
 // 파일을 편집하므로 형식이 한 곳에 있어야 한다.
 func loadDeclaration(path string) decl.Declaration {
 	d, err := decl.Load(path)
@@ -181,7 +181,7 @@ func loadDeclaration(path string) decl.Declaration {
 		fmt.Fprintln(os.Stderr, "declaration:", err)
 		os.Exit(1)
 	}
-	// **앞뒤가 안 맞으면 말한다.** 막지는 않는다 - 그대로 두면 대조 결과가 오류 없이 틀린다.
+	// **앞뒤가 안 맞으면 알린다.** 막지는 않는다 - 그대로 두면 대조 결과가 오류 없이 틀린다.
 	if p := decl.Check(d); len(p) > 0 {
 		fmt.Fprintf(os.Stderr, "\u26a0 %d places where the declaration does not add up - open it with `pqcaton-ui -decl`\n", len(p))
 		for _, x := range p {

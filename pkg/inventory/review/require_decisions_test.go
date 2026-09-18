@@ -48,7 +48,7 @@ func TestPlannedItemsNeedTheirDecisions(t *testing.T) {
 		})
 	}
 
-	// config 로 배달하지 않는 조치에는 목표 알고리즘을 적을 자리가 없다 — 요구하지 않는다.
+	// config로 배달하지 않는 조치에는 목표 알고리즘을 적을 자리가 없다 — 요구하지 않는다.
 	fork := base
 	fork.Kind, fork.TargetAlgorithm = "REMEDIATION_KIND_FORK_REPLACE", ""
 	if err := review.RequireDecisions(fork); err != nil {
@@ -56,7 +56,7 @@ func TestPlannedItemsNeedTheirDecisions(t *testing.T) {
 	}
 }
 
-// ★ L3 는 활성화까지 간다. 훅이 비면 무엇이 **일어나지 않는지**를 여기서 먼저 막는다.
+// ★ L3는 활성화까지 간다. 훅이 비면 무엇이 **일어나지 않는지**를 여기서 먼저 막는다.
 func TestL3NeedsItsHooks(t *testing.T) {
 	full := review.Item{
 		ID: "n1/openssl/libssl", Node: "n1", Runtime: "openssl", Plan: true,
@@ -87,7 +87,7 @@ func TestL3NeedsItsHooks(t *testing.T) {
 			}
 		})
 	}
-	// L2 는 활성화하지 않으므로 훅을 요구하지 않는다.
+	// L2는 활성화하지 않으므로 훅을 요구하지 않는다.
 	l2 := full
 	l2.Level, l2.Activate, l2.Restart, l2.Deactivate = "L2", "", "", ""
 	if err := review.RequireDecisions(l2); err != nil {

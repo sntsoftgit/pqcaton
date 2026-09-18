@@ -39,10 +39,10 @@ func LoadLayers(paths []string) ([]LayerFile, error) {
 	return out, nil
 }
 
-// SaveLayer — 계층 하나를 그 파일에 CSV 로 쓴다.
+// SaveLayer — 계층 하나를 그 파일에 CSV로 쓴다.
 //
 // **덮어쓰기 전에 임시 파일에 쓰고 옮긴다.** 계층 파일은 사람이 손으로도 고치는 것이고,
-// 쓰다 만 CSV 가 남으면 다음에 열 때 규칙이 통째로 사라진 것처럼 보인다.
+// 쓰다 만 CSV가 남으면 다음에 열 때 규칙이 통째로 사라진 것처럼 보인다.
 func SaveLayer(lf LayerFile) error {
 	tmp := lf.Path + ".tmp"
 	f, err := os.Create(tmp)
@@ -72,16 +72,16 @@ func Layers(files []LayerFile) []Layer {
 // Reopen — 계층이 바뀐 뒤 세션을 **다시 만들되, 사람이 적은 것은 들고 간다.**
 //
 // 규칙을 고칠 때마다 판정을 처음부터 다시 적게 하면 아무도 화면에서 고치지 않는다. 그래서
-// 규칙의 동일성([RuleID])을 열쇠로 결론을 옮긴다 — note 는 동일성에 넣지 않으므로, 설명을
+// 규칙의 동일성([RuleID])을 기준으로 결론을 옮긴다 — note는 동일성에 넣지 않으므로, 설명을
 // 다듬은 것만으로는 판정이 날아가지 않는다.
 //
 // **두 가지는 일부러 버린다:**
 //
 //   - 계층에 **못 보던 변경이 생겼으면 그 계층의 일괄 결론을 지운다.** 일괄 판정은 「이
 //     계층의 변경들을 보고 내린 결론」인데, 새 변경은 사람이 본 적이 없다. 그대로 두면
-//     방금 넣은 exclude 가 **누가 승인한 적 없는 근거를 달고** 확정을 통과한다.
+//     방금 넣은 exclude가 **누가 승인한 적 없는 근거를 달고** 확정을 통과한다.
 //   - 정책 전문이 달라졌으면 **서명을 지운다.** 서명은 그 정책에 대한 것이다. 승인자
-//     이름은 남긴다 — 그건 사람이지 확인이 아니다.
+//     이름은 남긴다 — 그것은 사람이지 확인이 아니다.
 func Reopen(prev Session, layers []Layer, base *kscope.AssetPolicy, orgName string) Session {
 	next := NewSession(layers, base, orgName)
 
@@ -114,7 +114,7 @@ func Reopen(prev Session, layers []Layer, base *kscope.AssetPolicy, orgName stri
 	return next
 }
 
-// samePolicy — 나갈 CSV 가 같은가. note 까지 본다 — 나가는 파일의 한 칸이다.
+// samePolicy — 나갈 CSV가 같은가. note까지 본다 — 나가는 파일의 한 칸이다.
 func samePolicy(a, b []Rule) bool {
 	if len(a) != len(b) {
 		return false

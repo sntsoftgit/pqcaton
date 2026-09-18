@@ -30,8 +30,8 @@ func autopassItem(id string) review.Item {
 
 // ★ IC-P11 — 자동통과 항목만 고른 세션에서도 실제 계획이 생긴다.
 //
-// 전에는 자동통과가 식별자 문자열 목록이라 계획 칸을 들 자리가 없었고, Finalize 는 Items 만 봐서
-// 켜도 조용히 빠졌다. 판정은 요구하지 않는다 - 결론이 비어도 Pending 에 오르지 않는다.
+// 전에는 자동통과가 식별자 문자열 목록이라 계획 칸을 들 자리가 없었고, Finalize는 Items만 봐서
+// 켜도 표시 없이 빠졌다. 판정은 요구하지 않는다 - 결론이 비어도 Pending에 오르지 않는다.
 func TestPlanFromAutopassOnly(t *testing.T) {
 	sf := judgedSession()
 	sf.Items[0].Plan = false // 리뷰 항목은 판정만 하고 계획에는 넣지 않는다
@@ -83,8 +83,8 @@ func TestExcludedItemCannotBePlannedEvenByHandEditing(t *testing.T) {
 
 // ★ IC-P13 — 옛 세션 파일의 자동통과 목록(문자열 배열)은 열리되 계획에 넣을 수 없는 상태로 남는다.
 //
-// 형을 바로 []Item 으로 바꾸면 json.Unmarshal 이 형 오류로 먼저 실패해 변환 코드에 닿지 못한다.
-// wire 구조가 먼저 받는다. 빈 칸의 일반 항목으로 조용히 올리면 사람이 새 후보로 읽는다. 모르는
+// 형을 바로 []Item으로 바꾸면 json.Unmarshal이 형 오류로 먼저 실패해 변환 코드에 닿지 못한다.
+// wire 구조가 먼저 받는다. 빈 칸의 일반 항목으로 알리지 않고 올리면 사람이 새 후보로 읽는다. 모르는
 // 형식은 오류다 - 「모르니 비워 둔다」로 넘기면 검토한 목록이 사라진다.
 func TestDecodeKeepsLegacyAutopassAsDisplayOnly(t *testing.T) {
 	legacy := []byte(`{"scope":"org://acme","items":[],"autopass_candidates":["n1/openssl/libcrypto","n2/jca/jca-provider-chain"]}`)
@@ -105,7 +105,7 @@ func TestDecodeKeepsLegacyAutopassAsDisplayOnly(t *testing.T) {
 		t.Error("모르는 형식을 조용히 넘겼다")
 	}
 
-	// Save 는 새 형식만 쓴다. 옛 목록은 별도 이름으로 나간다.
+	// Save는 새 형식만 쓴다. 옛 목록은 별도 이름으로 나간다.
 	dir := t.TempDir()
 	sf, _ = review.Decode(legacy)
 	path := filepath.Join(dir, "s.json")
@@ -127,7 +127,7 @@ func TestDecodeKeepsLegacyAutopassAsDisplayOnly(t *testing.T) {
 }
 
 // ★ IC-P14 — 같은 자산이 리뷰 항목과 자동통과 사이를 옮겨 다녀도 계획 선택값은 따라오고, 근거가
-// 바뀌면 서명은 지워진다. 옛 식별자는 새 세션에 같은 ID 가 있으면 치환된 셈이고 없으면 남는다.
+// 바뀌면 서명은 지워진다. 옛 식별자는 새 세션에 같은 ID가 있으면 치환된 셈이고 없으면 남는다.
 func TestCarryFollowsItemsAcrossCollections(t *testing.T) {
 	prev := judgedSession()
 	prev.RulesetVersion = v3
@@ -162,14 +162,14 @@ func TestCarryFollowsItemsAcrossCollections(t *testing.T) {
 		t.Errorf("옛 식별자: 같은 ID 는 치환되고 없는 것만 남아야 한다: %v", got.LegacyAutopass)
 	}
 
-	// 아무것도 안 바뀌면 서명이 남는다 - 자리(index)가 아니라 ID 로 맞춘다.
+	// 아무것도 안 바뀌면 서명이 남는다 - 자리(index)가 아니라 ID로 맞춘다.
 	same := review.Carry(prev, prev)
 	if same.Signature != prev.Signature {
 		t.Error("근거가 그대로인데 서명이 지워졌다")
 	}
 	// 자동통과의 근거만 바뀌어도 서명이 무효다.
 	only := judgedSession()
-	only.RulesetVersion, only.Signature = v3, "" // 새로 세운 세션은 서명이 없다. Carry 가 옮겨 주는지가 물음이다
+	only.RulesetVersion, only.Signature = v3, "" // 새로 세운 세션은 서명이 없다. Carry가 옮겨 주는지가 물음이다
 	only.Autopass = []review.Item{moved}
 	only.Autopass[0].Fingerprint = "fp-other"
 	if review.Carry(prev, only).Signature != "" {
@@ -179,7 +179,7 @@ func TestCarryFollowsItemsAcrossCollections(t *testing.T) {
 
 // ★ IC-P15 — v3 근거 해시는 관리 판정·제외 근거·미평가 여부를 덮는다. v2 해시는 그대로다.
 //
-// 관리 근거만 덮으면 정책이 바뀌어 근거 구성이 달라져도 서명이 살아남는다. 미평가와 0.00 을 해시가
+// 관리 근거만 덮으면 정책이 바뀌어 근거 구성이 달라져도 서명이 살아남는다. 미평가와 0.00을 해시가
 // 가르지 못하면 정책이 바뀌어 평가 대상에서 빠진 것이 서명을 살려 둔다.
 func TestBasisCoversTheManagedAxisFromV3(t *testing.T) {
 	base := autopassItem("n1/openssl/libcrypto")
@@ -206,7 +206,7 @@ func TestBasisCoversTheManagedAxisFromV3(t *testing.T) {
 	}
 }
 
-// ★ IC-P16 — rollback_note 는 계획 축의 값이다. v2 이하의 세션에서만 빈 값을 결론으로 채운다.
+// ★ IC-P16 — rollback_note는 계획 축의 값이다. v2 이하의 세션에서만 빈 값을 결론으로 채운다.
 //
 // 전에는 판정 결론을 그대로 넣었는데, 결론은 「어떻게 판정했나」이고 이것은 「어떻게 되돌리나」다.
 // v3 사용자가 일부러 비운 자리에 결론이 다시 들어가면 사람의 선택을 덮는 것이다.
@@ -232,7 +232,7 @@ func TestRollbackNoteFallsBackOnlyForOldSessions(t *testing.T) {
 	}
 }
 
-// IC-P17 — 한 자산은 한 컬렉션에만 있다. 양쪽에 같은 ID 가 있으면 대조의 결함이므로 확정이 끊는다.
+// IC-P17 — 한 자산은 한 컬렉션에만 있다. 양쪽에 같은 ID가 있으면 대조의 결함이므로 확정을 막는다.
 func TestDuplicateIDAcrossCollectionsIsAnError(t *testing.T) {
 	sf := judgedSession()
 	dup := autopassItem(sf.Items[0].ID)
@@ -281,7 +281,7 @@ func TestFinalizingAnOldSessionWarnsButDoesNotBlock(t *testing.T) {
 	if !strings.Contains(out.String(), "warning") || !strings.Contains(out.String(), v2) || !strings.Contains(out.String(), review.RulesetVersion) {
 		t.Errorf("옛 규칙 판이라는 경고가 없거나 값이 빠졌다: %q", out.String())
 	}
-	// 같은 세션을 v3 으로 다시 열어 Carry 하면 서명은 지워진다 - 근거 해시의 입력이 넓어졌다.
+	// 같은 세션을 v3으로 다시 열어 Carry 하면 서명은 지워진다 - 근거 해시의 입력이 넓어졌다.
 	next := judgedSession()
 	next.RulesetVersion, next.Signature = review.RulesetVersion, ""
 	if review.Carry(sf, next).Signature != "" {

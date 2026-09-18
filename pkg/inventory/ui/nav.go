@@ -25,9 +25,9 @@ const (
 	ScreenInventoryNext = "/inventory-next"
 )
 
-// Screens — 재료를 받아 열린 화면들.
+// Screens — 입력을 받아 열린 화면들.
 //
-// **재료를 주지 않은 자리는 만들지 않는다** — 없는 것을 눌러 보게 하지 않는다.
+// **입력을 주지 않은 자리는 만들지 않는다** — 없는 것을 눌러 보게 하지 않는다.
 type Screens struct{ Decl, Scope, Survey, Inventory bool }
 
 // NavFor — 위쪽 이동 링크. **절차 순서로 둔다** — 선언 → 자산 스코프 → 대조 → 판정.
@@ -60,7 +60,7 @@ func NavFor(l Lang, here string, s Screens) []Link {
 // ScreenTitle — 그 화면의 이름. 탭 이름과 같게 둔다(번호만 뺀다).
 func ScreenTitle(here string, l Lang) string {
 	switch here {
-	// 다음 판도 같은 화면이다 — 제목이 갈리면 브라우저 기록에서 둘이 다른 것으로 남는다.
+	// 다음 판도 같은 화면이다 — 제목이 다르면 브라우저 기록에서 둘이 다른 것으로 남는다.
 	case ScreenDecl, ScreenDeclNext:
 		return tTitleDecl.In(l)
 	case ScreenScope, ScreenScopeNext:
@@ -89,15 +89,15 @@ type Step struct {
 	Dot  string
 	Href string
 	Here bool
-	// Open — 재료가 있어 열리는 화면인가. 닫힌 카드는 누를 수 없다.
+	// Open — 입력이 있어 열리는 화면인가. 닫힌 카드는 누를 수 없다.
 	Open bool
 }
 
 // StepsFor — 절차 카드 넷과 조회 하나.
 //
 // **상태는 옮긴 화면부터 채운다.** 카드 하나를 채우려면 그 화면의 계산을 매 요청마다
-// 돌려야 하는데, 대조는 계산이 무겁고 한 화면의 재료가 어긋나면 다른 화면까지 막힌다.
-// 그래서 화면을 옮기는 걸음마다 그 카드를 채운다. 채운 것은 StepState 의 필드가 말한다 —
+// 돌려야 하는데, 대조는 계산이 무겁고 한 화면의 입력이 어긋나면 다른 화면까지 막힌다.
+// 그래서 화면을 옮기는 걸음마다 그 카드를 채운다. 채운 것은 StepState의 필드에 적힌다 —
 // 여기에 이름을 세어 적으면 화면을 하나 옮길 때마다 이 주석이 낡는다.
 func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 	steps := []Step{
@@ -136,7 +136,7 @@ type StepState struct {
 	Review *ReviewSummary
 }
 
-// reviewState — 판정 카드의 한 줄. **확정을 막는 것이 무엇인지** 말한다.
+// reviewState — 판정 카드의 한 줄. **확정을 막는 것이 무엇인지** 알린다.
 func reviewState(l Lang, s ReviewSummary) (string, string) {
 	switch {
 	case s.Ready():
@@ -148,7 +148,7 @@ func reviewState(l Lang, s ReviewSummary) (string, string) {
 	}
 }
 
-// surveyState — 대조 카드의 한 줄. **재수집 후보를 먼저 말한다** — 못 본 것을 없는 것으로
+// surveyState — 대조 카드의 한 줄. **재수집 후보를 먼저 알린다** — 못 본 것을 없는 것으로
 // 확정하는 실수가 이 도구가 막으려는 바로 그 자리다.
 func surveyState(l Lang, s SurveySummary) (string, string) {
 	if s.Rescan > 0 {
@@ -180,5 +180,5 @@ func declState(l Lang, s DeclSummary) (string, string) {
 	return fmt.Sprintf(tStepDeclOpen.In(l), s.Unlinked), "warn"
 }
 
-// InventoryLabel — 조회 탭에 적을 이름. **번호를 붙이지 않는다**(NavFor 와 같은 선).
+// InventoryLabel — 조회 탭에 적을 이름. **번호를 붙이지 않는다**(NavFor와 같은 선).
 func InventoryLabel(l Lang) string { return tNavInventory.In(l) }

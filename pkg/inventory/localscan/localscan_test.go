@@ -8,11 +8,11 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/localscan"
 )
 
-// IC-L5 — **`/proc` 을 못 열면 끊는다.**
+// IC-L5 — **`/proc`을 못 열면 중단한다.**
 //
 // 관측 0건과 다르다. 0건은 「아무것도 안 쓰고 있다」일 수 있지만 이것은 「볼 수가 없었다」다.
-// 그 상태로 대조하면 선언 자산이 전부 UNOBSERVED 로 나오고 리포트는 「못 본 것: 없습니다」
-// 라고까지 말한다 — **관측을 아예 못 한 기계에서.** 이 리포가 내내 경계해 온 그것이다.
+// 그 상태로 대조하면 선언 자산이 전부 UNOBSERVED로 나오고 리포트는 「못 본 것: 없습니다」
+// 라고까지 적는다 — **관측을 아예 못 한 기계에서.** 이 리포가 내내 경계해 온 그것이다.
 func TestCheckRefusesWithoutProc(t *testing.T) {
 	_, err := localscan.Check(true, 0, 0)
 	if !errors.Is(err, localscan.ErrNoProc) {
@@ -26,8 +26,8 @@ func TestCheckRefusesWithoutProc(t *testing.T) {
 
 // IC-L6 — **접근 가능한 프로세스가 0이면 말하되 끊지는 않는다.**
 //
-// `/proc` 은 열렸으니 결과는 낼 수 있다. 다만 권한 때문에 하나도 못 읽었을 수 있으므로,
-// 그 결과를 완전한 관측으로 보지 말라고 말한다.
+// `/proc`은 열렸으니 결과는 낼 수 있다. 다만 권한 때문에 하나도 못 읽었을 수 있으므로,
+// 그 결과를 완전한 관측으로 보지 말라고 알린다.
 func TestCheckWarnsWhenNothingReadable(t *testing.T) {
 	warn, err := localscan.Check(false, 0, 42)
 	if err != nil {
@@ -51,9 +51,9 @@ func TestCheckQuietWhenFine(t *testing.T) {
 
 // IC-L8 — **다른 이름을 붙이면 경고한다.**
 //
-// 노드 이름은 이름표일 뿐 대상이 아니다. `pqcaton-decide open decl.csv web-gw` 는 web-gw 를
-// 관측하는 것이 아니라 **이 기계를 관측해 web-gw 라고 적는다** — 이름이 맞으면 선언과
-// 대조까지 되어 CONFIRMED 가 나온다. 다른 기계의 관측으로.
+// 노드 이름은 이름표일 뿐 대상이 아니다. `pqcaton-decide open decl.csv web-gw`는 web-gw를
+// 관측하는 것이 아니라 **이 기계를 관측해 web-gw라고 적는다** — 이름이 맞으면 선언과
+// 대조까지 되어 CONFIRMED가 나온다. 다른 기계의 관측으로.
 func TestLabelWarning(t *testing.T) {
 	if w := localscan.LabelWarning("web-gw"); w == "" {
 		t.Fatal("다른 이름을 붙였는데 조용하다")

@@ -31,7 +31,7 @@ func finding(lib, app string) *discoveryv1.Finding {
 
 // IC-S1 — **상속은 규칙 이어붙이기다.** pqcota의 「매치되는 마지막 규칙이 결정한다」를
 // 그대로 쓰므로 판정
-// 규칙이 세상에 하나만 존재한다. 우리가 잠금을 따로 두면 내려보낸 CSV 를 pqcota가 집행한
+// 규칙이 세상에 하나만 존재한다. 우리가 잠금을 따로 두면 내려보낸 CSV를 pqcota가 집행한
 // 결과와 우리 화면이 갈라진다.
 func TestMergeLetsLowerLayerWin(t *testing.T) {
 	조직 := scope.Layer{Name: "corp", Rules: []kscope.AssetRule{ex("openssl", "libcrypto*", "", "전사 제외")}}
@@ -69,7 +69,7 @@ func TestDiffOnlyChanges(t *testing.T) {
 }
 
 // IC-S3 — **사라진 규칙도 리뷰 대상이다.** 다만 근거 필수는 아니다 — 제외를 거두는 것은
-// 인벤토리가 넓어지는 방향이라 무게가 다르다.
+// 인벤토리가 넓어지는 방향이라 성격이 다르다.
 func TestDiffReportsRemoval(t *testing.T) {
 	base := &kscope.AssetPolicy{Rules: []kscope.AssetRule{ex("openssl", "libssl*", "", "")}}
 	got := scope.Diff(base, nil)
@@ -81,7 +81,7 @@ func TestDiffReportsRemoval(t *testing.T) {
 	}
 }
 
-// IC-S4 — **note 는 동일성이 아니다.** 사람이 읽으라고 붙인 설명이라 문구를 다듬었다고
+// IC-S4 — **note는 동일성이 아니다.** 사람이 읽으라고 붙인 설명이라 문구를 다듬었다고
 // 재승인을 받게 하면 리뷰가 잡음으로 찬다.
 func TestRuleIDIgnoresNote(t *testing.T) {
 	a := scope.RuleID(ex("openssl", "libssl*", "", "처음 쓴 설명"))
@@ -141,7 +141,7 @@ func TestExcludedFromNamesWhatWasDropped(t *testing.T) {
 }
 
 // IC-S7 — **제외는 영구 면제가 아니다.** 승인이 아예 없는 것과 오래된 것은 다시 올리고,
-// 살아 있는 승인은 조용히 둔다 — 매번 전부 올리면 아무도 안 본다.
+// 살아 있는 승인은 그대로 둔다 — 매번 전부 올리면 아무도 안 본다.
 func TestReviewRaisesUnjudgedAndStale(t *testing.T) {
 	now := int64(1_000_000)
 	ttl := int64(100)
@@ -175,7 +175,7 @@ func TestReviewRaisesUnjudgedAndStale(t *testing.T) {
 }
 
 // IC-S15 — **계획 선택 행은 판정이 아니다.** 원장에 그 행만 있는 제외는 여전히 「승인이 아예 없다」로
-// 올라온다. 종류를 보지 않고 subject 로 덮으면 결론이 빈 행이 「판정이 있다」로 읽혀, 「제외 ≠
+// 올라온다. 종류를 보지 않고 subject로 덮으면 결론이 빈 행이 「판정이 있다」로 읽혀, 「제외 ≠
 // 부재」를 시간 축에서 지키는 이 경고가 사라진다 - 사라진 경고는 화면에 보이지 않는다.
 func TestPlanSelectionRowDoesNotCountAsJudged(t *testing.T) {
 	now := int64(1_000_000)

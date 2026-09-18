@@ -79,7 +79,7 @@ func TestReconcileEdges_posture(t *testing.T) {
 // IC-E3: 스코프 밖 관측 상대 → off-scope 표기(등재 판정 요청).
 func TestReconcileEdges_offScope(t *testing.T) {
 	scope := map[string]bool{"web-01": true}
-	// dst_node_id 를 잇지 못함(원시 주소만) → off-scope.
+	// dst_node_id를 잇지 못함(원시 주소만) → off-scope.
 	unresolved := recEdges(t, nil, []*discoveryv1.ObservedEdge{
 		oe("web-01", "", "203.0.113.5:443", 443, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_TLS, "X25519"),
 	}, scope, nil)[0]
@@ -120,7 +120,7 @@ func TestReconcileEdgesRefusesAnotherOrg(t *testing.T) {
 }
 
 // IC-O5 — 관측 엣지에는 조직이 없다. **엔진이 찍는다** — 찍지 않으면 선언과 영영 안 맞아
-// 모든 관측 엣지가 UNDECLARED 로 올라온다.
+// 모든 관측 엣지가 UNDECLARED로 올라온다.
 func TestObservedEdgeGetsOrg(t *testing.T) {
 	got := recEdges(t, nil, []*discoveryv1.ObservedEdge{
 		oe("web-01", "app-01", "", 8443, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_TLS, "X25519MLKEM768"),

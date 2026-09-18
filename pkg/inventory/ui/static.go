@@ -12,25 +12,25 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 )
 
-// static — 화면이 브라우저로 내보내는 것. **바이너리에 박아 나간다.**
+// static — 화면이 브라우저로 내보내는 것. **바이너리에 담아 나간다.**
 //
-// CDN 을 걸지 않는 이유: 이 화면은 망이 끊긴 기계에서도 떠야 한다. 관측 대상 망이
+// CDN을 걸지 않는 이유: 이 화면은 망이 끊긴 기계에서도 떠야 한다. 관측 대상 망이
 // 바깥으로 나가지 못하는 것은 이 도구를 쓰는 곳에서 오히려 흔한 조건이다. 그리고
 // 남의 서버에서 받아 오는 스크립트는 **우리 라이선스 관문이 볼 수 없다** — 여기 두면
-// `checklicenses` 가 licenses.txt 와 맞대 본다.
+// `checklicenses`가 licenses.txt와 맞대 본다.
 //
 //go:embed static
 var static embed.FS
 
 // StaticPath · RowPath — 화면이 스스로를 가리키는 주소.
 //
-// 템플릿에 문자열로 박아 두면 라우터에서 경로를 옮기는 날 조용히 404 가 된다. 한 자리에
+// 템플릿에 문자열로 적어 두면 라우터에서 경로를 옮기는 날 오류 없이 404가 된다. 한 자리에
 // 두어 **옮기면 같이 옮겨지게** 한다.
 const (
 	StaticPath = "/static/"
 	RowPath    = "/decl/row"
 	// RemovePath — 「제거」가 부르는 자리. **서버는 아무것도 하지 않는다** — 빈 응답을
-	// 돌려주면 htmx 가 그 줄을 화면에서 지운다. 파일이 달라지는 것은 저장할 때뿐이다.
+	// 돌려주면 htmx가 그 줄을 화면에서 지운다. 파일이 달라지는 것은 저장할 때뿐이다.
 	RemovePath = "/decl/remove"
 	// ScopeRowPath — 자산 스코프의 규칙 한 줄. 선언의 것과 나눈 것은 계층 번호가
 	// 하나 더 붙기 때문이다 — 한 주소에 둘을 밀어 넣으면 둘 다 읽기 어려워진다.
@@ -57,7 +57,7 @@ func ValidKind(kind string) bool {
 func Static() http.Handler {
 	sub, err := fs.Sub(static, "static")
 	if err != nil {
-		// embed 는 빌드 시점에 정해진다 — 여기서 실패하면 프로그램이 잘못 만들어진 것이다.
+		// embed는 빌드 시점에 정해진다 — 여기서 실패하면 프로그램이 잘못 만들어진 것이다.
 		panic(err)
 	}
 	return http.StripPrefix(StaticPath, http.FileServer(http.FS(sub)))
@@ -123,10 +123,10 @@ const unmatchedListID = "seen-nodes"
 // 그 안의 줄들이 같이 쓴다. 관측이 없어 목록이 없으면 브라우저는 그냥 무시한다.
 func seenListID(node int) string { return "seen-" + strconv.Itoa(node) }
 
-// platformFix — 이 런타임의 조치가 **provider 를 갈아 끼우는 일이 아닌가.**
+// platformFix — 이 런타임의 조치가 **provider를 갈아 끼우는 일이 아닌가.**
 //
-// CNG 가 그렇다. 갈아 끼울 대상이 관측에 없고, 쓸 수 있는 알고리즘은 Windows 빌드가,
-// FIPS 는 OS 정책이 정한다 — 그래서 계획의 provider 칸이 빈다(`decision.RouteProvider`).
+// CNG가 그렇다. 갈아 끼울 대상이 관측에 없고, 쓸 수 있는 알고리즘은 Windows 빌드가,
+// FIPS는 OS 정책이 정한다 — 그래서 계획의 provider 칸이 빈다(`decision.RouteProvider`).
 // 화면이 그것을 말하지 않으면 **빠뜨린 것으로 읽힌다.**
 func platformFix(runtime string) bool { return runtime == reconcile.RuntimeCNG }
 
@@ -137,7 +137,7 @@ func platformFix(runtime string) bool { return runtime == reconcile.RuntimeCNG }
 // 오른다 — 사람은 그 노드에서 그 모듈이 안 쓰인다고 읽는다.
 //
 // 다만 **파일에 있던 낯선 이름은 지우지 않는다.** 손으로 적었거나 상류에 런타임이 는
-// 것일 수 있고, 화면이 조용히 바꿔 쓰면 선언이 사람 몰래 달라진다.
+// 것일 수 있고, 화면이 알리지 않고 바꿔 쓰면 선언이 사람 몰래 달라진다.
 func runtimeOptions(current string) []string {
 	out := reconcile.Runtimes()
 	for _, rt := range out {
@@ -151,8 +151,8 @@ func runtimeOptions(current string) []string {
 	return append(out, current)
 }
 
-// portText — 포트를 칸에 넣을 문자열로. 0 도 그대로 보인다 — 「안 적었다」와 「0 이라고
-// 적었다」를 화면이 대신 판단하지 않는다. 그 판정은 decl.Check 가 한다.
+// portText — 포트를 칸에 넣을 문자열로. 0도 그대로 보인다 — 「안 적었다」와 「0이라고
+// 적었다」를 화면이 대신 판단하지 않는다. 그 판정은 decl.Check가 한다.
 func portText(p uint32) string { return strconv.FormatUint(uint64(p), 10) }
 
 // oobAttr — 「행 추가」 버튼이 자기 자신을 갈아 끼울 때만 붙는 표시.

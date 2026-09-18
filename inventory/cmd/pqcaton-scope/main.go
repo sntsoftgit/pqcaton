@@ -1,18 +1,18 @@
 // Command pqcaton-scope — 자산 스코프 정책을 사람이 승인하고 배포하는 자리(설계 §1.6).
 //
 // **규칙을 다시 만들지 않는다.** 형식과 집행은 pqcota의 `scope.AssetPolicy`가 갖고, 여기는
-// 그 위의 거버넌스만 갖는다 — 계층 상속, 변경 승인, 감사 기록, 제외분 재검토.
+// 그 위의 거버넌스만 둔다 — 계층 상속, 변경 승인, 감사 기록, 제외분 재검토.
 //
 //	pqcaton-scope open   <계층.csv>... [-base 현재.csv] [-org 이름] > session.json
-//	  … 사람이 session.json 을 편집한다 (결론 · 승인자 · 서명)
+//	  … 사람이 session.json을 편집한다 (결론 · 승인자 · 서명)
 //	pqcaton-scope close  <session.json> [-judgments 파일] [-org 이름] > asset-scope.csv
 //	pqcaton-scope review <정책.csv> <results-dir> [-judgments 파일] [-org 이름]
 //
 // 계층은 준 순서대로 겹친다 — 조직, 환경, 노드군 순으로 준다. 같은 자산에 규칙이 여럿
 // 걸리면 **뒤 계층의 것이 적용된다.**
 //
-// **파일이 곧 감사 기록이다.** `pqcaton-decide` 와 같은 왕복이라 조작을 따로 외울 것이 없다.
-// 파일 형식과 확정 관문은 `pkg/inventory/scope` 에 있다 — 화면(`pqcaton-ui`)이 같은 것을 쓴다.
+// **파일이 곧 감사 기록이다.** `pqcaton-decide`와 같은 왕복이라 조작을 따로 외울 것이 없다.
+// 파일 형식과 확정 관문은 `pkg/inventory/scope`에 있다 — 화면(`pqcaton-ui`)이 같은 것을 쓴다.
 package main
 
 import (
@@ -66,7 +66,7 @@ func main() {
 	orgName := fs.String("org", "local", "organization the policy and judgments are bound to")
 	ttlDays := fs.Int("ttl", defaultTTLDays, "how long an exclusion approval stays valid (days)")
 
-	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - pqcaton-decide 와 같은 규칙이다.
+	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - pqcaton-decide와 같은 규칙이다.
 	var pos, flags []string
 	for i := 0; i < len(args); i++ {
 		if strings.HasPrefix(args[i], "-") {
@@ -214,7 +214,7 @@ func review(policyPath, dir, judgmentPath, orgName string, ttl int64) error {
 	for _, e := range ex {
 		fmt.Fprintf(os.Stderr, "   dropped: %s (%s)\n", e.Subject(), evidenceOrUnknown(e.Evidence))
 	}
-	// **왜 다시 보라는지 말한다.** JSON 에는 코드가 담기므로(화면이 그 말로 그린다),
+	// **왜 다시 보라는지 알린다.** JSON에는 코드가 담기므로(화면이 그 말로 그린다),
 	// 사람이 읽는 줄은 여기서 낸다.
 	for _, n := range need {
 		fmt.Fprintf(os.Stderr, "   look again: %s — %s\n", n.Subject(), scope.EnglishReason(n.Reason))
@@ -231,7 +231,7 @@ func evidenceOrUnknown(s string) string {
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
 
-// loadResults — 노드들이 낸 CollectionResult JSON 을 읽는다.
+// loadResults — 노드들이 낸 CollectionResult JSON을 읽는다.
 func loadResults(dir string) ([]*discoveryv1.CollectionResult, error) {
 	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil {
@@ -246,7 +246,7 @@ func loadResults(dir string) ([]*discoveryv1.CollectionResult, error) {
 		}
 		res := &discoveryv1.CollectionResult{}
 		if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(raw, res); err != nil {
-			// **한 파일이 깨졌다고 전부 멈추지 않는다.** 다만 조용히 넘기지도 않는다 —
+			// **한 파일이 깨졌다고 전부 멈추지 않는다.** 다만 알리지 않고 넘기지도 않는다 —
 			// 빠진 노드를 모르면 "관측 안 됨"과 "못 읽음"이 뒤섞인다.
 			fmt.Fprintf(os.Stderr, "   skipped (unreadable): %s — %v\n", filepath.Base(p), err)
 			continue

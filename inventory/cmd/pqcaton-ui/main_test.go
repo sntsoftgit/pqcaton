@@ -26,7 +26,7 @@ func session() review.Session {
 		// 세션은 **열 때** 규칙 판을 박는다. 없으면 확정이 막힌다 — 어느 규칙으로 본 근거인지
 		// 말하지 못하는 판정에 오늘의 규칙을 찍어 넣지 않기 위해서다.
 		RulesetVersion: review.RulesetVersion,
-		// 세션 id 도 열 때 박는다. 없으면 확정이 막힌다 — 원장 행이 가리킬 세션이 없는 계획이
+		// 세션 id도 열 때 박는다. 없으면 확정이 막힌다 — 원장 행이 가리킬 세션이 없는 계획이
 		// 나오기 때문이다.
 		SessionID:       "01234567-89ab-4cde-8f01-23456789abcd",
 		PolicyDecisions: map[string]string{"openssl/libssl": ""},
@@ -177,14 +177,14 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 	if err != nil {
 		t.Fatalf("확정 계획이 없다: %v", err)
 	}
-	// **바이트로 견주지 않는다.** protojson 은 콜론 뒤 공백을 일부러 흔들어 바이트 비교를
+	// **바이트로 견주지 않는다.** protojson은 콜론 뒤 공백을 일부러 흔들어 바이트 비교를
 	// 막는다 — 그렇게 재면 통과 여부가 운에 달린다.
 	var plan provisioningv1.FinalizedPlan
 	if err := protojson.Unmarshal(raw, &plan); err != nil {
 		t.Fatalf("계약 형식이 아니다: %v\n%s", err, raw)
 	}
-	// 판정이 끝난 계획은 IN_REVIEW 로 나간다. FINALIZED 는 상류의 승인이 올린다 — 여기서
-	// FINALIZED 를 달면 승인 없는 계획이 실행 근거의 모양을 하고 건너간다.
+	// 판정이 끝난 계획은 IN_REVIEW로 나간다. FINALIZED는 상류의 승인이 올린다 — 여기서
+	// FINALIZED를 달면 승인 없는 계획이 실행 근거의 모양을 하고 건너간다.
 	if plan.GetStatus() != provisioningv1.PlanStatus_PLAN_STATUS_IN_REVIEW {
 		t.Errorf("판정이 끝난 계획은 IN_REVIEW 여야 한다: %v", plan.GetStatus())
 	}
@@ -195,7 +195,7 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 	if len(plan.GetActions()) != 1 {
 		t.Fatalf("조치 %d건", len(plan.GetActions()))
 	}
-	// v0.1.1 에서 고친 자리다 — 겨눈 노드가 쪼개져 사라지면 안 된다.
+	// v0.1.1에서 고친 자리다 — 겨눈 노드가 쪼개져 사라지면 안 된다.
 	if got := plan.GetActions()[0].GetTargetNodeId(); got != "host://local" {
 		t.Errorf("겨눈 노드가 %q다", got)
 	}
@@ -209,8 +209,8 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 	}
 }
 
-// IC-U5 — **화면이 쓴 파일을 명령이 그대로 읽는다.** 두 길이 갈리면 화면으로 채운 것을
-// close 가 못 읽는 날이 온다.
+// IC-U5 — **화면이 쓴 파일을 명령이 그대로 읽는다.** 두 경로가 다르면 화면으로 채운 것을
+// close가 못 읽는 날이 온다.
 func TestSavedSessionStaysReadable(t *testing.T) {
 	s, _ := newServer(t)
 	location(t, postForm(t, s, "/save", url.Values{
@@ -231,7 +231,7 @@ func TestSavedSessionStaysReadable(t *testing.T) {
 	if len(sf.Items) != 1 || sf.Items[0].Conclusion != "예외로 둔다" || !sf.Items[0].Plan {
 		t.Fatalf("항목이 온전하지 않다: %+v", sf.Items)
 	}
-	// 기계가 채우는 값이 화면 왕복에서 사라지면 안 된다 — node 가 비면 확정이 끊긴다.
+	// 기계가 채우는 값이 화면 왕복에서 사라지면 안 된다 — node가 비면 확정이 끊긴다.
 	if sf.Items[0].Node == "" || sf.Items[0].Runtime == "" || sf.Items[0].State == "" {
 		t.Errorf("기계가 채운 값이 사라졌다: %+v", sf.Items[0])
 	}
@@ -259,8 +259,8 @@ func TestLoopback(t *testing.T) {
 
 // IC-U8 — **위치 인자 뒤의 플래그도 먹는다.**
 //
-// 표준 flag 는 첫 비플래그에서 파싱을 멈춘다. 그냥 두면 `pqcaton-ui session.json -addr ...`
-// 의 -addr 이 **조용히 무시되고** 기본 주소로 뜬다 — 밖으로 열려고 준 값이 안 먹는 것도,
+// 표준 flag는 첫 비플래그에서 파싱을 멈춘다. 그냥 두면 `pqcaton-ui session.json -addr ...`의
+// -addr이 **표시 없이 무시되고** 기본 주소로 뜬다 — 밖으로 열려고 준 값이 안 먹는 것도,
 // 안쪽으로 좁히려던 값이 안 먹는 것도 같은 자리다.
 func TestSplitArgs(t *testing.T) {
 	pos, flags := splitArgs([]string{"session.json", "-addr", "127.0.0.1:9", "-org", "acme"})
@@ -275,7 +275,7 @@ func TestSplitArgs(t *testing.T) {
 	}
 }
 
-// IC-U7 — GET 만 받는 자리에 POST 를, POST 만 받는 자리에 GET 을 던져도 조용히 넘어가지
+// IC-U7 — GET만 받는 자리에 POST를, POST만 받는 자리에 GET을 던져도 알리지 않고 넘어가지
 // 않는다. 새로고침으로 확정이 다시 도는 것을 막는 것도 같은 이유다.
 func TestMethodGuards(t *testing.T) {
 	s, _ := newServer(t)
@@ -350,8 +350,8 @@ func TestDeclKeepsExplanationsFolded(t *testing.T) {
 	}
 }
 
-// IC-U11 — **저장한 것을 명령이 그대로 읽는다.** 두 길이 갈리면 화면으로 고친 선언을
-// pqcaton-report 가 못 읽는 날이 온다.
+// IC-U11 — **저장한 것을 명령이 그대로 읽는다.** 두 경로가 다르면 화면으로 고친 선언을
+// pqcaton-report가 못 읽는 날이 온다.
 func TestDeclSaveRoundTrips(t *testing.T) {
 	s, _ := withDecl(t)
 	q := location(t, postForm(t, s, "/decl/save", url.Values{
@@ -463,7 +463,7 @@ func TestHomeGoesToFirstStep(t *testing.T) {
 	}
 }
 
-// IC-U15 — **재료를 안 주면 그 자리를 만들지 않는다.** 대조는 관측 결과가 있어야 한다.
+// IC-U15 — **입력을 안 주면 그 자리를 만들지 않는다.** 대조는 관측 결과가 있어야 한다.
 func TestSurveyNeedsResults(t *testing.T) {
 	s, _ := withDecl(t)
 	if body := get(t, s, "/review").Body.String(); strings.Contains(body, `href="/survey"`) {
@@ -533,7 +533,7 @@ func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 	}
 }
 
-// IC-U18 — 통과하면 **pqcota의 집행기가 읽는 CSV** 가 나온다.
+// IC-U18 — 통과하면 **pqcota의 집행기가 읽는 CSV**가 나온다.
 func TestScopeFinalizeEmitsPolicy(t *testing.T) {
 	s, dir := withScope(t)
 	s.judgments = filepath.Join(dir, "judgments.jsonl")
@@ -563,7 +563,7 @@ func TestScopeFinalizeEmitsPolicy(t *testing.T) {
 // IC-U19 — **「행 추가」의 번호는 밖에서 오는 값이다.**
 //
 // 주소에 실려 오므로 받는 대로 믿지 않는다. 모르는 표 이름이나 범위 밖 번호를 그대로
-// 그리면, 화면에는 줄이 생기는데 `ApplyDecl` 이 읽지 못하는 자리에 놓인다 — 사람은
+// 그리면, 화면에는 줄이 생기는데 `ApplyDecl`이 읽지 못하는 자리에 놓인다 — 사람은
 // 적어 넣고 저장했는데 아무 일도 일어나지 않는다.
 func TestDeclRowRefusesBadInput(t *testing.T) {
 	s, _ := newServer(t)
@@ -592,8 +592,8 @@ func TestDeclRowRefusesBadInput(t *testing.T) {
 	}
 }
 
-// IC-U20 — 화면이 스타일과 htmx 를 같은 서버에서 내준다. 주소가 어긋나면 화면은 뜨는데
-// 모양이 무너지고 「행 추가」가 조용히 안 듣는다.
+// IC-U20 — 화면이 스타일과 htmx를 같은 서버에서 내준다. 주소가 어긋나면 화면은 뜨는데
+// 모양이 무너지고 「행 추가」가 오류 없이 안 듣는다.
 func TestStaticIsMounted(t *testing.T) {
 	s, _ := newServer(t)
 	mux := s.handler()
@@ -608,8 +608,8 @@ func TestStaticIsMounted(t *testing.T) {
 
 // IC-U25 — **비교 화면은 자료를 건드리지 않는 별도 주소다.**
 //
-// 배포본에도 들어 있어야 하므로 site/ 의 단일 원본을 바이너리에서 그대로 내보낸다.
-// ServeFile 로 소스 트리를 읽으면 설치된 바이너리에서 404 가 된다.
+// 배포본에도 들어 있어야 하므로 site/의 단일 원본을 바이너리에서 그대로 내보낸다.
+// ServeFile로 소스 트리를 읽으면 설치된 바이너리에서 404가 된다.
 func TestUINextIsMounted(t *testing.T) {
 	s, _ := newServer(t)
 	w := httptest.NewRecorder()
@@ -643,7 +643,7 @@ func withLayers(t *testing.T) (*server, string) {
 
 // IC-U21 — **계층 CSV만 주면 화면이 세션을 연다.**
 //
-// 재료를 손에 들고도 명령을 한 번 돌려야 화면이 열리는 것은, 화면을 두는 이유와
+// 입력을 갖추고도 명령을 한 번 돌려야 화면이 열리는 것은, 화면을 두는 이유와
 // 어긋납니다. 5노드 사용자가 터미널을 열지 않고 한 바퀴를 도는 것이 목표입니다.
 func TestScopeOpensFromLayersWithoutSessionFile(t *testing.T) {
 	s, _ := withLayers(t)
@@ -668,7 +668,7 @@ func TestScopeOpensFromLayersWithoutSessionFile(t *testing.T) {
 // IC-U22 — **화면에서 고친 규칙이 계층 CSV에 그대로 쓰인다.**
 //
 // 여기가 이 버전의 전부입니다. 규칙을 손으로 CSV에 적으라고 하려면 다섯 칸의 뜻과 glob과
-// 계층 우선순위를 문서로 가르쳐야 하고, 그 문서가 편집 화면보다 비쌉니다.
+// 계층 우선순위를 문서로 가르쳐야 하고, 그 문서가 편집 화면보다 비용이 큽니다.
 func TestScopeRulesWriteBackToLayerFile(t *testing.T) {
 	s, dir := withLayers(t)
 	q := location(t, postForm(t, s, "/scope/rules", url.Values{
@@ -702,7 +702,7 @@ func TestScopeRulesWriteBackToLayerFile(t *testing.T) {
 		t.Errorf("새 규칙이 다르다: %+v", p.Rules[1])
 	}
 
-	// 세션도 함께 갱신된다 — 새 exclude 가 판정 대상으로 올라와야 한다.
+	// 세션도 함께 갱신된다 — 새 exclude가 판정 대상으로 올라와야 한다.
 	sf, err := scope.LoadSession(s.scope)
 	if err != nil {
 		t.Fatal(err)
@@ -732,7 +732,7 @@ func TestReviewOpensFromResultsWithoutSessionFile(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /review = %d — 세션 파일 없이 열리지 않았다\n%s", w.Code, w.Body.String())
 	}
-	// 선언한 자산이 관측되지 않았으므로 UNOBSERVED 로 올라온다.
+	// 선언한 자산이 관측되지 않았으므로 UNOBSERVED로 올라온다.
 	if !strings.Contains(w.Body.String(), "UNOBSERVED") {
 		t.Errorf("리뷰 큐가 비었다:\n%s", w.Body.String())
 	}
@@ -740,7 +740,7 @@ func TestReviewOpensFromResultsWithoutSessionFile(t *testing.T) {
 
 // IC-U30 — **새 화면을 두어도 옛 화면은 그대로다.**
 //
-// 옮기는 동안 둘을 나란히 두기로 했습니다(`/decl` 과 `/decl-next`). 새 스타일이 울타리
+// 옮기는 동안 둘을 나란히 두기로 했습니다(`/decl`과 `/decl-next`). 새 스타일이 울타리
 // (`.ui-next`) 없이 새면 옛 화면의 버튼까지 함께 바뀌는데, 그러면 무엇을 비교하는지
 // 알 수 없게 됩니다.
 func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
@@ -761,7 +761,7 @@ func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
 	if strings.Contains(old.Body.String(), `class="ui-next"`) {
 		t.Error("옛 화면에 요약이 붙었다 — 그대로 두기로 했다")
 	}
-	// 둘 다 같은 폼을 쓴다. 저장 경로가 갈리면 한쪽 저장이 조용히 틀린다.
+	// 둘 다 같은 폼을 쓴다. 저장 경로가 다르면 한쪽 저장이 오류 없이 틀린다.
 	for _, w := range []*httptest.ResponseRecorder{next, old} {
 		if !strings.Contains(w.Body.String(), `action="/decl/save"`) {
 			t.Error("두 화면이 같은 저장 경로를 쓰지 않는다")
@@ -772,7 +772,7 @@ func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
 // IC-U31 — **이동 링크에는 넣지 않는다.**
 //
 // 지금 쓰는 절차 화면과 나란히 두면 어느 쪽이 진짜인지 헷갈립니다. 옮기는 동안만 주소로
-// 엽니다. `/ui-next.html` 을 그렇게 다룬 것과 같은 선입니다(IC-U25).
+// 엽니다. `/ui-next.html`을 그렇게 다룬 것과 같은 선입니다(IC-U25).
 func TestDeclNextIsNotInTheNav(t *testing.T) {
 	s, _ := withDecl(t)
 	body := get(t, s, "/decl").Body.String()

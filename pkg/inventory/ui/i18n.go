@@ -8,7 +8,7 @@ import (
 // Lang — 화면을 그릴 말.
 //
 // **화면만 두 말을 쓴다.** 명령의 출력과 로그는 영어 하나다 — 그쪽은 사람이 읽는
-// 자리이기 전에 기록이고, 붙여 넣어 검색하고 이슈에 올리는 것이라 말이 갈리면
+// 자리이기 전에 기록이고, 붙여 넣어 검색하고 이슈에 올리는 것이라 말이 다르면
 // 같은 문제가 두 문장으로 남는다.
 type Lang string
 
@@ -27,7 +27,7 @@ const (
 //
 //	?lang= → 쿠키 → Accept-Language → 영어
 //
-// **고른 것이 브라우저 설정을 이긴다.** 한국어 브라우저를 쓰면서 영어 화면을 보고
+// **고른 것이 브라우저 설정보다 우선한다.** 한국어 브라우저를 쓰면서 영어 화면을 보고
 // 싶은 사람이 있고, 그 반대도 있다. 아무것도 고르지 않았을 때만 브라우저에 묻는다.
 func PickLang(r *http.Request) Lang {
 	if l, ok := parseLang(r.URL.Query().Get(LangParam)); ok {
@@ -58,7 +58,7 @@ func parseLang(v string) (Lang, bool) {
 // acceptLang — 브라우저가 말한 것 중 **먼저 오는 것**만 본다.
 //
 // q 값까지 재지 않는 것은, 여기서 고르는 것이 둘뿐이라 순서로 충분하기 때문이다.
-// `ko-KR` 처럼 지역이 붙어 와도 앞의 두 글자로 받는다.
+// `ko-KR`처럼 지역이 붙어 와도 앞의 두 글자로 받는다.
 func acceptLang(header string) (Lang, bool) {
 	for _, part := range strings.Split(header, ",") {
 		tag := strings.TrimSpace(part)

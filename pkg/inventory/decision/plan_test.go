@@ -46,7 +46,7 @@ func TestBuildPlan_notFinalized(t *testing.T) {
 }
 
 // IC-P4·P5: 넘김 관문 — 판정자 표시가 있는 계획만 계약으로 넘긴다. 실행 근거가 되는 것은
-// 상류의 승인이 FINALIZED 로 올린 뒤다(§3.7). 이 관문은 실행을 허용하지 않는다.
+// 상류의 승인이 FINALIZED로 올린 뒤다(§3.7). 이 관문은 실행을 허용하지 않는다.
 func TestReadyForApproval(t *testing.T) {
 	s := finalizedSession(t)
 	p, _ := BuildPlan(s, []PlanItem{{NodeID: "n"}})
@@ -73,7 +73,7 @@ func TestRouteProvider(t *testing.T) {
 	if got := RouteProvider("openssl", true); got != "openssl-fips-provider" {
 		t.Errorf("규제 OpenSSL = %q", got)
 	}
-	// **CNG 는 provider 라우팅으로 답하지 않는다.** 갈아 끼울 대상이 관측에 없고,
+	// **CNG는 provider 라우팅으로 답하지 않는다.** 갈아 끼울 대상이 관측에 없고,
 	// FIPS 여부는 알 수 없다(§2.5) — 이름을 지어내면 계획을 받는 쪽이 그것을 검증된
 	// 선택으로 읽는다. 무엇을 할지는 사람이 적은 결론이 담는다.
 	for _, fips := range []bool{true, false} {

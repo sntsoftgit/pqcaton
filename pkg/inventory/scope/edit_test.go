@@ -46,7 +46,7 @@ func TestSaveLayerRoundTrips(t *testing.T) {
 }
 
 // IC-S9 — **쓰다 만 파일을 남기지 않는다.** 계층 파일은 사람이 손으로도 고치는 것이라,
-// 잘린 CSV 가 남으면 다음에 열 때 규칙이 통째로 사라진 것처럼 보인다.
+// 잘린 CSV가 남으면 다음에 열 때 규칙이 통째로 사라진 것처럼 보인다.
 func TestSaveLayerLeavesNoTempFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "corp.csv")
@@ -67,7 +67,7 @@ func TestSaveLayerLeavesNoTempFile(t *testing.T) {
 	}
 }
 
-// 판정이 채워진 세션 하나. 계층 corp 에 exclude 두 개.
+// 판정이 채워진 세션 하나. 계층 corp에 exclude 두 개.
 func judgedSession(t *testing.T) (scope.Session, []scope.Layer) {
 	t.Helper()
 	layers := []scope.Layer{{Name: "corp", Rules: []kscope.AssetRule{
@@ -86,7 +86,7 @@ func judgedSession(t *testing.T) (scope.Session, []scope.Layer) {
 // IC-S10 — **규칙을 고쳐도 적어 둔 판정은 남는다.**
 //
 // 고칠 때마다 판정을 처음부터 다시 적게 하면 아무도 화면에서 고치지 않습니다. 규칙의
-// 동일성(RuleID)이 열쇠이고, note 는 동일성에 넣지 않으므로 설명을 다듬은 것만으로는
+// 동일성(RuleID)이 기준이고, note는 동일성에 넣지 않으므로 설명을 다듬은 것만으로는
 // 판정이 날아가지 않습니다.
 func TestReopenKeepsJudgmentsAcrossNoteEdit(t *testing.T) {
 	sf, layers := judgedSession(t)
@@ -110,7 +110,7 @@ func TestReopenKeepsJudgmentsAcrossNoteEdit(t *testing.T) {
 	if next.Reviewer != "보안팀" {
 		t.Error("승인자 이름이 날아갔다 — 사람은 그대로다")
 	}
-	// note 는 나가는 CSV 의 한 칸이라 정책은 달라졌다.
+	// note는 나가는 CSV의 한 칸이라 정책은 달라졌다.
 	if next.Signature != "" {
 		t.Error("정책이 달라졌는데 서명이 남았다")
 	}
@@ -119,7 +119,7 @@ func TestReopenKeepsJudgmentsAcrossNoteEdit(t *testing.T) {
 // IC-S11 — **계층에 못 보던 변경이 생기면 그 계층의 일괄 결론을 지운다.**
 //
 // 일괄 판정은 「이 계층의 변경들을 보고 내린 결론」입니다. 새 변경은 사람이 본 적이
-// 없는데 그대로 두면, 방금 넣은 exclude 가 **누가 승인한 적 없는 근거를 달고** 확정을
+// 없는데 그대로 두면, 방금 넣은 exclude가 **누가 승인한 적 없는 근거를 달고** 확정을
 // 통과합니다 — 오류 없이 틀리는 자리입니다.
 func TestReopenClearsLayerDecisionOnNewChange(t *testing.T) {
 	sf, layers := judgedSession(t)

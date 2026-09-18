@@ -26,14 +26,14 @@ type Excluded struct {
 
 	// StillObserved — 지금도 관측되는가.
 	//
-	// **여기 있는 것은 전부 그렇다.** 관측된 finding 을 정책에 통과시켜 걸러낸 것이므로,
+	// **여기 있는 것은 전부 그렇다.** 관측된 finding을 정책에 통과시켜 걸러낸 것이므로,
 	// 이 목록은 곧 **실재하는데 우리가 안 보고 있는 것**이다. 그래서 재검토 대상이다.
 	StillObserved bool
 }
 
-// ExcludedFrom — 한 노드의 관측 finding 을 정책에 통과시켜 **빠지는 것을 이름으로** 낸다.
+// ExcludedFrom — 한 노드의 관측 finding을 정책에 통과시켜 **빠지는 것을 이름으로** 낸다.
 //
-// 판정은 pqcota의 `Managed` 가 한다 — 여기서 glob 을 다시 구현하면 내려보낸 CSV 를 pqcota가
+// 판정은 pqcota의 `Managed`가 한다 — 여기서 glob을 다시 구현하면 내려보낸 CSV를 pqcota가
 // 집행한 결과와 우리 화면이 갈라진다.
 func ExcludedFrom(p *kscope.AssetPolicy, node string, findings []*discoveryv1.Finding) []Excluded {
 	var out []Excluded
@@ -53,8 +53,8 @@ func ExcludedFrom(p *kscope.AssetPolicy, node string, findings []*discoveryv1.Fi
 	return out
 }
 
-// Subject — 이 제외 자산의 판정 대상 키. `reconcile` 의 자산 키와 같은 모양이다 —
-// 제외분 재검토도 결국 같은 자산에 대한 판정이라 대상이 갈리면 이력이 끊긴다.
+// Subject — 이 제외 자산의 판정 대상 키. `reconcile`의 자산 키와 같은 모양이다 —
+// 제외분 재검토도 결국 같은 자산에 대한 판정이라 대상이 다르면 이력이 끊긴다.
 func (e Excluded) Subject() string { return e.Node + "/" + e.Runtime + "/" + e.Asset }
 
 // ReviewItem — 제외분 재검토 큐의 한 줄.
@@ -106,7 +106,7 @@ func ExcludedFromResults(p *kscope.AssetPolicy, results []*discoveryv1.Collectio
 // 거짓이 되는 자리다.
 //
 // 두 가지를 본다. 승인한 판정이 아예 없는 것(정책만 있고 결정이 없다), 그리고 승인은
-// 있었지만 ttl 을 넘긴 것. 둘 다 아니면 조용히 둔다 — 매번 전부 올리면 아무도 안 본다.
+// 있었지만 ttl을 넘긴 것. 둘 다 아니면 그대로 둔다 — 매번 전부 올리면 아무도 안 본다.
 func Review(ex []Excluded, prior []decision.Judgment, now, ttlSeconds int64) []ReviewItem {
 	latest := map[string]decision.Judgment{}
 	for _, j := range decision.LatestPerSubject(prior) {

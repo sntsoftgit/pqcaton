@@ -6,10 +6,10 @@
 //
 // 화면을 명령 안에 두면 고칠 곳이 둘이 되고, 고객마다 다른 화면이 생길 길이 열린다.
 //
-// 템플릿은 templ 로 쓰고 생성된 `*_templ.go` 를 리포에 함께 둔다 — **빌드에 생성기가
-// 필요하지 않다.** 화면을 고치는 사람만 `make generate` 를 돌린다.
+// 템플릿은 templ로 쓰고 생성된 `*_templ.go`를 리포에 함께 둔다 — **빌드에 생성기가
+// 필요하지 않다.** 화면을 고치는 사람만 `make generate`를 돌린다.
 //
-// 자바스크립트는 htmx 한 파일뿐이고 바이너리에 박혀 나간다. 쓰는 자리는 「행 추가」처럼
+// 자바스크립트는 htmx 한 파일뿐이고 바이너리에 담겨 나간다. 쓰는 자리는 「행 추가」처럼
 // **페이지를 다시 띄우면 적던 것이 날아가는 자리**로 한정한다 — 화면의 뼈대는 여전히
 // 폼과 링크라, 스크립트가 막힌 환경에서도 읽고 고칠 수 있다.
 package ui
@@ -42,7 +42,7 @@ type Page struct {
 	Problem string
 	// Warnings — 하기는 했는데 사람이 알아야 하는 것.
 	//
-	// **Problem 과 다르다.** Problem 은 하지 않은 것이고, 이것은 한 것이다. 둘을 섞으면
+	// **Problem과 다르다.** Problem은 하지 않은 것이고, 이것은 한 것이다. 둘을 섞으면
 	// 「선언에 맞지 않는 자리가 있다」가 「저장이 안 됐다」로 읽힌다.
 	Warnings []string
 	// Nav — 화면 사이를 오가는 자리. 부르는 쪽이 무엇을 열었는지에 따라 다르다.
@@ -153,7 +153,7 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 	// 「무엇을 바꿀지는 사람이 정한다」가 무너진다. 비워 두는 것도 선택이라 그대로 넘긴다 —
 	// 상류가 그 빈칸을 이름으로 알리고 종료 상태로 구분한다.
 	// 제외 전용은 화면에서 고를 수 없지만(칸이 잠긴다) 폼을 손으로 보내면 올 수 있다 - 그때는
-	// 확정이 막는다(review.RequireDecisions). 여기서 조용히 지우면 사람이 왜 안 켜지는지 모른다.
+	// 확정이 막는다(review.RequireDecisions). 여기서 알리지 않고 지우면 사람이 왜 안 켜지는지 모른다.
 	apply := func(items []review.Item) {
 		for i, it := range items {
 			items[i].Plan = f.Get("plan:"+it.ID) != ""
@@ -172,7 +172,7 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 	return sf
 }
 
-// confCell — 신뢰도 칸. **미평가는 숫자로 보이지 않는다** - 0.30 은 「재 봤더니 낮다」로 읽히는데
+// confCell — 신뢰도 칸. **미평가는 숫자로 보이지 않는다** - 0.30은 「재 봤더니 낮다」로 읽히는데
 // 재지 않은 값이다. 옛 세션(v2 이하)은 칸이 없어도 평가된 값이다.
 func confCell(it review.Item, rulesetVersion string) string {
 	if !review.ConfidenceEvaluated(it, rulesetVersion) {
@@ -202,7 +202,7 @@ type DeclView struct {
 	Comment string
 	// Unmatched — 관측에는 있는데 **어느 선언 노드에도 붙지 않은** 노드 이름.
 	//
-	// 「관측 이름」 칸의 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 UNDECLARED 로
+	// 「관측 이름」 칸의 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 UNDECLARED로
 	// 오른다는 뜻이고, 그것은 선언이 틀려서가 아니라 이름이 서로 달라서다.
 	Unmatched []string
 }
@@ -219,7 +219,7 @@ type DeclNode struct {
 	//
 	// **옮겨 적다 틀리는 자리를 없앤다.** 대조는 컴포넌트가 글자 그대로 같을 때만
 	// 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 온다 — 화면에 보이는 대로 적으면 맞지
-	// 않고, 그것이 오류 없이 미관측·UNDECLARED 로 구분된다. 여기 있는 이름이 맞는 이름이다.
+	// 않고, 그것이 오류 없이 미관측·UNDECLARED로 구분된다. 여기 있는 이름이 맞는 이름이다.
 	Seen []DeclAsset
 }
 
@@ -264,7 +264,7 @@ func (v DeclView) WithObserved(seen map[string][]DeclAsset, unmatched []string) 
 // NewDeclView — 선언을 화면이 보는 모양으로 옮긴다.
 //
 // **앞뒤가 맞는지는 여기서 말하지 않는다.** 선언 화면은 적는 자리다 — 어긋남은
-// `decl.Check` 를 쓰는 검토 화면과 `pqcaton-report` 가 짚는다.
+// `decl.Check`를 쓰는 검토 화면과 `pqcaton-report`가 짚는다.
 func NewDeclView(d decl.Declaration, page Page) DeclView {
 	return DeclView{Page: page, Org: d.Org, Comment: d.Comment,
 		Nodes: groupByNode(d), Edges: d.Edges}
@@ -318,10 +318,10 @@ func RenderDecl(w io.Writer, v DeclView) error {
 
 // RenderRow — 「행 추가」가 돌려주는 조각: 빈 줄 하나와, 번호가 하나 오른 버튼.
 //
-// **화면과 같은 조각을 쓴다**(decl.templ 의 nodeBlock·assetRow·edgeRow). 폼 이름이 곧
-// 저장 경로라, 둘로 갈라지면 새로 넣은 줄만 조용히 저장되지 않는다.
+// **화면과 같은 조각을 쓴다**(decl.templ의 nodeBlock·assetRow·edgeRow). 폼 이름이 곧
+// 저장 경로라, 둘로 갈라지면 새로 넣은 줄만 오류 없이 저장되지 않는다.
 //
-// node 는 자산일 때만 쓴다 — 자산은 어느 노드의 것인지가 폼 이름에 들어간다.
+// node는 자산일 때만 쓴다 — 자산은 어느 노드의 것인지가 폼 이름에 들어간다.
 func RenderRow(w io.Writer, l Lang, kind string, node, i int) error {
 	return rowFragment(l, kind, node, i).Render(context.Background(), w)
 }
@@ -329,7 +329,7 @@ func RenderRow(w io.Writer, l Lang, kind string, node, i int) error {
 // ApplyDecl — 폼에서 온 값으로 선언을 다시 만든다.
 //
 // **얹는 것이 아니라 다시 만든다.** 표에서 줄을 지우는 방법이 「이름을 비우는 것」이므로,
-// 기존 것에 얹으면 지운 줄이 되살아난다. `_comment` 는 생성 도구가 남긴 머리말이라 그대로
+// 기존 것에 얹으면 지운 줄이 되살아난다. `_comment`는 생성 도구가 남긴 머리말이라 그대로
 // 들고 간다 — 사람이 편집할 자리가 아니다.
 //
 // dropped — IP를 적지 않아 관리 대상에서 뺀 이름. 화면이 그 사실을 말해야 한다 —
@@ -338,7 +338,7 @@ func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped
 	d = decl.Declaration{Comment: prev.Comment, Org: strings.TrimSpace(f.Get("org"))}
 
 	// **IP를 적은 줄만 관리 대상이 된다.** IP가 없으면 관측에 찍힌 주소를 이 이름과
-	// 이을 근거가 없어, 선언한 엣지는 미관측으로 관측된 엣지는 UNDECLARED 로 구분된다 —
+	// 이을 근거가 없어, 선언한 엣지는 미관측으로 관측된 엣지는 UNDECLARED로 구분된다 —
 	// 대조가 막히지 않은 채로 틀린다. 이름만 적어 두는 것은 관리가 아니다.
 	//
 	// **자산은 그 노드에 묶여 있다.** 노드가 빠지면 그 노드의 자산도 함께 빠진다 —

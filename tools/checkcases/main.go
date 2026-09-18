@@ -1,20 +1,20 @@
 // Command checkcases — **케이스 번호와 실제 테스트를 맞댄다.**
 //
-// docs/testcases.md 가 첫머리에서 「케이스 번호가 곧 테스트 파일 링크입니다」라고 약속하는데,
+// docs/testcases.md가 첫머리에서 「케이스 번호가 곧 테스트 파일 링크입니다」라고 약속하는데,
 // 실제로는 백일흔넷 가운데 링크가 하나도 없었다. 약속과 사실이 어긋난 것을 사람이 알아채기까지
 // 두 주가 걸렸다. 그래서 **약속을 지키는 일을 기계에 맡긴다.**
 //
 // 재는 것은 셋이다.
 //
-//  1. 문서가 ✅ 라고 적은 케이스는 **테스트에 그 번호가 적혀 있어야 한다.** 없으면 통과했다는
+//  1. 문서가 ✅라고 적은 케이스는 **테스트에 그 번호가 적혀 있어야 한다.** 없으면 통과했다는
 //     말의 근거가 없다.
 //  2. 테스트에 적힌 번호는 **문서에 있어야 한다.** 없으면 무엇을 재는 케이스인지 아무도 모른다.
-//  3. 문서가 ⏳·🔜 라고 적은 것에 테스트가 있으면 **표시가 낡은 것이다.**
+//  3. 문서가 ⏳·🔜라고 적은 것에 테스트가 있으면 **표시가 낡은 것이다.**
 //
-// 그리고 링크는 **손으로 붙이지 않는다.** `-write` 가 번호에서 파일로 가는 링크를 찍는다.
+// 그리고 링크는 **손으로 붙이지 않는다.** `-write`가 번호에서 파일로 가는 링크를 찍는다.
 // 손으로 붙이면 파일을 옮기는 날 백일흔아홉이 한꺼번에 썩는다.
 //
-// **문서가 하나가 아니다.** 인벤토리 케이스는 docs/testcases.md 에, 러너 케이스는 러너 옆에
+// **문서가 하나가 아니다.** 인벤토리 케이스는 docs/testcases.md에, 러너 케이스는 러너 옆에
 // 있다. 코드가 거기 있으니 케이스도 거기 있어야 한다. 문서마다 맡는 접두어를 적어 두고, 그
 // 접두어의 번호만 그 문서에서 찾는다.
 //
@@ -42,7 +42,7 @@ import (
 )
 
 // docs — 케이스 표가 있는 문서와 **그 문서가 맡는 접두어.** 목록에 없는 접두어는 그 문서에서
-// 읽지 않는다. 이 리포는 인벤토리(IC)와 러너(RUN) 둘을 갖는다.
+// 읽지 않는다. 이 리포는 인벤토리(IC)와 러너(RUN) 둘이 있다.
 var docs = []docSpec{
 	{path: "docs/testcases.md", kinds: []string{"IC"}},
 	{path: "saas/runner/README.md", kinds: []string{"RUN"}},
@@ -53,8 +53,8 @@ type docSpec struct {
 	kinds []string
 }
 
-// 번호 모양 셋. IC-R1 은 글자와 숫자가 붙고, CP-TOKEN-1 은 낱말이 하나 더 있고,
-// RUN-2 는 숫자만이다. 뒤의 괄호가 「·」로 이어 붙인 축약을 받는다.
+// 번호 모양 셋. IC-R1은 글자와 숫자가 붙고, CP-TOKEN-1은 낱말이 하나 더 있고,
+// RUN-2는 숫자만이다. 뒤의 괄호가 「·」로 이어 붙인 축약을 받는다.
 var shapes = []*regexp.Regexp{
 	regexp.MustCompile(`(IC)-([A-Z]+)(\d+(?:\s*[·,]\s*[A-Z]*\d+)*)`),
 	regexp.MustCompile(`(CP)-([A-Z]+)-(\d+(?:\s*[·,]\s*\d+)*)`),
@@ -198,7 +198,7 @@ func scanTests(root string) (map[string][]string, error) {
 		}
 		// **주석만 본다.** 이 도구의 테스트가 픽스처로 케이스 표의 한 줄을 문자열에 담고
 		// 있어, 파일 전체를 정규식으로 훑으면 그것이 표식으로 잡힌다. 실제로 미구현 케이스
-		// 하나가 이 도구의 테스트 파일로 링크됐다. checktext 가 반대 방향으로 겪은 것과
+		// 하나가 이 도구의 테스트 파일로 링크됐다. checktext가 반대 방향으로 겪은 것과
 		// 같은 일이라 같은 답을 쓴다: 정규식이 아니라 파서로 본다.
 		f, err := parser.ParseFile(token.NewFileSet(), p, nil, parser.ParseComments)
 		if err != nil {
@@ -291,7 +291,7 @@ func scanDoc(d docSpec) ([]docCase, []string, error) {
 }
 
 // rewrite — 번호 칸을 링크로 바꾼다. 굵게가 대괄호 밖이었는지 안이었는지, 상태 표시가
-// 있었는지를 그대로 지킨다. 모양이 달라지면 사람이 diff 를 못 읽는다.
+// 있었는지를 그대로 지킨다. 모양이 달라지면 사람이 diff를 못 읽는다.
 func rewrite(d docSpec, lines []string, all []docCase, tests map[string][]string) int {
 	n := 0
 	for _, c := range all {
@@ -332,8 +332,8 @@ func cell(c docCase, link string) string {
 	}
 }
 
-// linkTo — 문서마다 자리가 다르므로 그 문서에서 본 상대 경로로 적는다. docs/ 에 있는 문서는
-// `../pkg/…`, 테스트 옆에 있는 문서는 `runner_test.go` 가 된다.
+// linkTo — 문서마다 자리가 다르므로 그 문서에서 본 상대 경로로 적는다. docs/에 있는 문서는
+// `../pkg/…`, 테스트 옆에 있는 문서는 `runner_test.go`가 된다.
 func linkTo(doc, test string) string {
 	rel, err := filepath.Rel(filepath.Dir(doc), test)
 	if err != nil {

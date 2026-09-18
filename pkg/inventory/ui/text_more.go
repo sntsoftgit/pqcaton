@@ -8,7 +8,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 )
 
-// 관측 계층 이름의 한국어. **영어는 `report` 가 갖는다.**
+// 관측 계층 이름의 한국어. **영어는 `report`에 있다.**
 var koLayer = map[string]string{
 	"COLLECTION_LAYER_SOURCE":            "소스 코드(SOURCE)",
 	"COLLECTION_LAYER_ARTIFACT":          "빌드 산출물(바이너리·패키지, ARTIFACT)",
@@ -34,7 +34,7 @@ func layerName(l Lang, name string) string {
 	return name
 }
 
-// 세션을 세우며 나온 경고의 한국어. **영어는 `review` 가 갖는다.**
+// 세션을 세우며 나온 경고의 한국어. **영어는 `review`에 있다.**
 func warningText(l Lang, w review.Warning) string {
 	if l != KO {
 		return w.English()
@@ -49,7 +49,7 @@ func warningText(l Lang, w review.Warning) string {
 	return w.English()
 }
 
-// Warnings — 경고들을 그 말로. 부르는 쪽이 Page.Warnings 에 넣는다.
+// Warnings — 경고들을 그 말로. 부르는 쪽이 Page.Warnings에 넣는다.
 func Warnings(l Lang, ws []review.Warning) []string {
 	if len(ws) == 0 {
 		return nil

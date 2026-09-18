@@ -37,7 +37,7 @@ func main() {
 		return
 	}
 	if err != nil {
-		// **실패를 숨기지 않는다.** 조용히 0으로 끝내면 스케줄러가 잘 돈 것으로 읽는다.
+		// **실패를 숨기지 않는다.** 오류 없이 0으로 끝내면 스케줄러가 잘 돈 것으로 읽는다.
 		log.Error("the run failed", "err", err)
 		os.Exit(1)
 	}

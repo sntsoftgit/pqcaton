@@ -9,7 +9,7 @@ import (
 // 근거를 세는 자리가 하나인지 본다.
 //
 // 델타 리뷰(무엇을 다시 봐야 하나)와 서명 무효화(승인이 아직 유효한가)가 따로 세면 어긋난다.
-// 실제로 어긋나 있었다: 원장은 신뢰도를 근거에 넣었는데 서명 비교는 id 와 상태만 봐서,
+// 실제로 어긋나 있었다: 원장은 신뢰도를 근거에 넣었는데 서명 비교는 id와 상태만 봐서,
 // 다시 보라고 큐에 올라온 항목에 옛 승인 서명이 그대로 붙어 있었다.
 
 const rules = "pqcota-enrich/v1+pqcaton-plan/v1"
@@ -52,8 +52,8 @@ func TestEveryPartOfTheBasisMovesTheHash(t *testing.T) {
 
 // IC-D20 — ★ 같은 규칙 아래 관측 근거만 바뀌는 경우.
 //
-// 상류의 `finding_id` 는 `sha256(노드|이름|런타임|fork)` 라 **자산이 같으면 같다.** 버전이
-// 오르고 검출 방법이 바뀌고 강화가 낸 판정이 달라져도 id 는 그대로다. id 와 상태만 보던
+// 상류의 `finding_id`는 `sha256(노드|이름|런타임|fork)`라 **자산이 같으면 같다.** 버전이
+// 오르고 검출 방법이 바뀌고 강화가 낸 판정이 달라져도 id는 그대로다. id와 상태만 보던
 // 동안은 그 변화가 통째로 서명을 지나쳤다 — 승인자가 본 적 없는 근거에 이름이 남는다.
 func TestChangedEvidenceDropsTheSignatureEvenUnderTheSameRules(t *testing.T) {
 	prev := review.Session{RulesetVersion: rules, Reviewer: "보안팀", Signature: "sig",

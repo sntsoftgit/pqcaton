@@ -14,7 +14,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 )
 
-// 원장 행이 세션 id 를 들고 가고, 그것으로 찾을 수 있어야 「계획에서 원장으로 되짚는다」가
+// 원장 행이 세션 id를 들고 가고, 그것으로 찾을 수 있어야 「계획에서 원장으로 되짚는다」가
 // 기능이 된다. 저장만 하고 찾는 길이 없으면 가능성에 그친다.
 
 func sessionRows(prefix string) []*decision.Judgment {
@@ -31,7 +31,7 @@ func sessionRows(prefix string) []*decision.Judgment {
 	}
 }
 
-// 세 저장소가 같은 답을 내야 한다. 파일과 Postgres 가 갈리면 화면과 명령이 다른 원장을 본다.
+// 세 저장소가 같은 답을 내야 한다. 파일과 Postgres가 어긋나면 화면과 명령이 다른 원장을 본다.
 func checkBySession(t *testing.T, st decision.JudgmentStore, prefix string) {
 	t.Helper()
 	for _, j := range sessionRows(prefix) {
@@ -51,12 +51,12 @@ func checkBySession(t *testing.T, st decision.JudgmentStore, prefix string) {
 			t.Errorf("다른 세션의 판정이 섞였다: %+v", j)
 		}
 	}
-	// ★ 빈 id 로 찾으면 세션이 아니라 「세션을 모르는 판정 전부」가 나온다. 세션이 아닌 것을
+	// ★ 빈 id로 찾으면 세션이 아니라 「세션을 모르는 판정 전부」가 나온다. 세션이 아닌 것을
 	// 세션이라고 돌려주지 않는다.
 	if _, err := st.BySessionID(""); !errors.Is(err, decision.ErrNoSessionID) {
 		t.Errorf("빈 세션 id 를 거절하지 않았다: %v", err)
 	}
-	// 왕복. 저장한 세션 id 가 읽어도 그대로여야 한다.
+	// 왕복. 저장한 세션 id가 읽어도 그대로여야 한다.
 	all, _ := st.All()
 	for _, j := range all {
 		if j.ID == prefix+"#c" && j.SessionID != "sess-B" {
@@ -74,7 +74,7 @@ func TestMemLedgerFindsBySession(t *testing.T) {
 	checkBySession(t, st, "mem")
 }
 
-// IC-D22 — 파일 원장. JSON 줄에 세션 id 가 실려 나가고 다시 읽힌다.
+// IC-D22 — 파일 원장. JSON 줄에 세션 id가 실려 나가고 다시 읽힌다.
 func TestFileLedgerFindsBySession(t *testing.T) {
 	st, err := decision.NewFileJudgmentStore(org.ID("acme"), filepath.Join(t.TempDir(), "j.jsonl"))
 	if err != nil {
@@ -83,7 +83,7 @@ func TestFileLedgerFindsBySession(t *testing.T) {
 	checkBySession(t, st, "file")
 }
 
-// IC-D22 — Postgres 원장. 열과 (org, session_id, seq) 인덱스. PQCOTA_TEST_DSN 이 있을 때만.
+// IC-D22 — Postgres 원장. 열과 (org, session_id, seq) 인덱스. PQCOTA_TEST_DSN이 있을 때만.
 func TestPgLedgerFindsBySession(t *testing.T) {
 	dsn := os.Getenv("PQCOTA_TEST_DSN")
 	if dsn == "" {
@@ -94,8 +94,8 @@ func TestPgLedgerFindsBySession(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer st.Close()
-	// append-only 라 정리하지 않는다. 실행마다 유일한 접두어로 다른 실행의 행과 섞이지 않게 한다.
-	// 세션 id 도 실행마다 달라야 하므로 접두어를 붙인다.
+	// append-only라 정리하지 않는다. 실행마다 유일한 접두어로 다른 실행의 행과 섞이지 않게 한다.
+	// 세션 id도 실행마다 달라야 하므로 접두어를 붙인다.
 	prefix := "pgsess-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	rows := sessionRows(prefix)
 	for _, j := range rows {

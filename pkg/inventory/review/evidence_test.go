@@ -24,7 +24,7 @@ func withSources() review.Item {
 	return it
 }
 
-// ★ IC-P10 — 근거가 계약의 evidence_sources 로 나간다. 주 근거가 앞이고 finding_id(호환)와 같다.
+// ★ IC-P10 — 근거가 계약의 evidence_sources로 나간다. 주 근거가 앞이고 finding_id(호환)와 같다.
 // 참조는 내용 지문이고 원천 노드·규칙 판을 든다.
 func TestEvidenceReachesTheContract(t *testing.T) {
 	it := withSources()
@@ -81,7 +81,7 @@ func TestSecondaryEvidenceMovesTheBasis(t *testing.T) {
 	}
 }
 
-// IC-P10 — 지문이 비면(옛 세션) 참조 없이 finding 만 낸다. 상류가 모양이 틀렸다고 알린다 — 조용히
+// IC-P10 — 지문이 비면(옛 세션) 참조 없이 finding만 낸다. 상류가 모양이 틀렸다고 알린다 — 알리지 않고
 // 빼지 않는다.
 func TestEmptyDigestStillNamesTheFinding(t *testing.T) {
 	it := withSources()

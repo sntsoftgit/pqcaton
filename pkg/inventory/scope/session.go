@@ -24,10 +24,10 @@ type Session struct {
 	Reviewer  string `json:"reviewer"`
 	Signature string `json:"signature"`
 	// LayerDecisions — 계층 하나에 결론 하나가 기본이다(§3.4). 규칙 한 줄씩 승인하는 리뷰는
-	// 수천 대에서 끝나지 않는다. 개별 규칙의 conclusion 은 예외를 위한 자리다.
+	// 수천 대에서 끝나지 않는다. 개별 규칙의 conclusion은 예외를 위한 자리다.
 	LayerDecisions map[string]string `json:"layer_decisions"`
 	Changes        []ChangeItem      `json:"changes"`
-	// Merged — 확정되면 그대로 CSV 로 나갈 정책 전문. **바뀐 것만 리뷰하되 나가는 것은
+	// Merged — 확정되면 그대로 CSV로 나갈 정책 전문. **바뀐 것만 리뷰하되 나가는 것은
 	// 전문이다** — pqcota의 집행기는 정책 전체를 받는다.
 	Merged []Rule `json:"policy_on_finalize"`
 }
@@ -157,7 +157,7 @@ type FinalizeResult struct {
 //
 // 명령과 화면이 이 함수 하나를 쓴다.
 func Finalize(sf Session, orgName string) (*FinalizeResult, error) {
-	// **세션에 적힌 조직과 지금 준 조직이 다르면 끊는다.** 남의 조직 정책을 확정하는 것은
+	// **세션에 적힌 조직과 지금 준 조직이 다르면 중단한다.** 남의 조직 정책을 확정하는 것은
 	// 사고다 — 대조 엔진·판정 원장과 같은 규칙이다.
 	if sf.Org != "" && orgName != "" && sf.Org != orgName {
 		return nil, fmt.Errorf("the session belongs to organization %q but finalization was asked for %q", sf.Org, orgName)
@@ -232,7 +232,7 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 		j := &decision.Judgment{
 			ID: fmt.Sprintf("%s@%d", c.ID, now), Subject: c.ID, Conclusion: concl,
 			Reviewer: sf.Reviewer, Signature: sf.Signature,
-			// 근거는 규칙 그 자체다 — 규칙이 달라지면 대상 id 가 달라지므로 새 판정이 된다.
+			// 근거는 규칙 그 자체다 — 규칙이 달라지면 대상 id가 달라지므로 새 판정이 된다.
 			BasisHash: decision.HashBasis(c.ID), DecidedAt: now,
 		}
 		if err := store.Save(j); err != nil {
@@ -243,7 +243,7 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 	return n, nil
 }
 
-// LoadPolicyFile — 정책 CSV 를 읽는다. 형식과 판정은 상류 것을 그대로 쓴다.
+// LoadPolicyFile — 정책 CSV를 읽는다. 형식과 판정은 상류 것을 그대로 쓴다.
 func LoadPolicyFile(path string) (*kscope.AssetPolicy, error) {
 	f, err := os.Open(path)
 	if err != nil {

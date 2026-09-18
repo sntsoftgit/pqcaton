@@ -14,9 +14,9 @@ import (
 
 // IC-D26 — **v0.17 모양의 원장(record_kind · confidence_evaluated 열 없음)을 이 판이 열면**, 옛 행은
 // 평가된 판정으로 읽히고, 새 미평가 행과 계획 선택 행은 명시적으로 저장된다. 열의 기본값이
-// TRUE 라 기존 행이 그 자리에서 이행된다 - 그때는 미평가라는 개념이 없었다.
+// TRUE라 기존 행이 그 자리에서 이행된다 - 그때는 미평가라는 개념이 없었다.
 //
-// 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. PQCOTA_TEST_DSN 이 있을 때만.
+// 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. PQCOTA_TEST_DSN이 있을 때만.
 func TestPgUpgradeFromV017(t *testing.T) {
 	dsn := os.Getenv("PQCOTA_TEST_DSN")
 	if dsn == "" {
@@ -34,7 +34,7 @@ func TestPgUpgradeFromV017(t *testing.T) {
 	}
 	defer admin.Exec(ctx, "DROP SCHEMA "+schema+" CASCADE") //nolint:errcheck
 
-	// v0.17 의 표. 이 판이 더한 두 열이 없다.
+	// v0.17의 표. 이 판이 더한 두 열이 없다.
 	old := `CREATE TABLE ` + schema + `.pqcota_judgments (
 	    seq BIGSERIAL PRIMARY KEY, org TEXT NOT NULL, id TEXT NOT NULL, subject TEXT NOT NULL,
 	    conclusion TEXT NOT NULL, reviewer TEXT NOT NULL, signature TEXT NOT NULL, basis_hash TEXT NOT NULL,
@@ -46,7 +46,7 @@ func TestPgUpgradeFromV017(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 이 판으로 연다. search_path 로 전용 스키마를 보게 한다.
+	// 이 판으로 연다. search_path로 전용 스키마를 보게 한다.
 	st, err := decision.NewPgJudgmentStore(ctx, dsn+"&options=-csearch_path%3D"+schema, "acme")
 	if err != nil {
 		t.Fatalf("옛 표 위에 열리지 않는다: %v", err)

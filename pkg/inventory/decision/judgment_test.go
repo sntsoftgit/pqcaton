@@ -122,8 +122,8 @@ func TestMemJudgmentStore_appendOnly(t *testing.T) {
 
 // IC-D24 — **계획 선택 행을 더해도 최신 판정과 델타 판정의 결과가 달라지지 않는다.**
 //
-// 같은 자산에 판정 행 뒤에 계획 선택 행이 쌓여도 LatestPerSubject 는 판정 행을 돌려주고, DeltaReview
-// 는 계획 선택 행에 재검토 표시를 붙이지 않는다. 종류를 보지 않고 subject 로 덮으면 결론이 빈 행이
+// 같은 자산에 판정 행 뒤에 계획 선택 행이 쌓여도 LatestPerSubject는 판정 행을 돌려주고, DeltaReview는
+// 계획 선택 행에 재검토 표시를 붙이지 않는다. 종류를 보지 않고 subject로 덮으면 결론이 빈 행이
 // 사람의 판정을 덮는다.
 func TestPlanSelectionRowsDoNotPolluteDerivations(t *testing.T) {
 	js := []Judgment{

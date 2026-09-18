@@ -38,7 +38,7 @@ type InventoryView struct {
 	Subject string
 	History []JudgmentRow
 
-	// 재료를 주지 않은 절은 만들지 않는다.
+	// 입력을 주지 않은 절은 만들지 않는다.
 	HasLedger, HasPolicy bool
 }
 
@@ -219,7 +219,7 @@ func shortHash(h string) string {
 	return h
 }
 
-// reasonLabel — 다시 볼 사유를 그 말로. **영어는 scope 패키지가 갖는다.**
+// reasonLabel — 다시 볼 사유를 그 말로. **영어는 scope 패키지에 있다.**
 func reasonLabel(l Lang, code string) string {
 	switch code {
 	case "":
@@ -249,7 +249,7 @@ type InventorySummary struct {
 func (v InventoryView) Summary() InventorySummary {
 	s := InventorySummary{Assets: v.TotalAssets, Stale: len(v.Stale)}
 	for _, u := range v.Unseen {
-		// **살아 있는 승인이 있으면 다시 볼 것이 아니다**(Reason 이 빈다).
+		// **살아 있는 승인이 있으면 다시 볼 것이 아니다**(Reason이 빈다).
 		if u.Reason != "" {
 			s.Unseen++
 		}

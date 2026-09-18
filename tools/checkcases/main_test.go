@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// writeDoc — 케이스 표 한 조각을 임시 문서로 쓰고 읽어 온다. `kinds` 를 주지 않으면 셋 다 맡는다.
+// writeDoc — 케이스 표 한 조각을 임시 문서로 쓰고 읽어 온다. `kinds`를 주지 않으면 셋 다 맡는다.
 func writeDoc(t *testing.T, body string, kinds ...string) (docSpec, []docCase, []string) {
 	t.Helper()
 	if len(kinds) == 0 {
@@ -80,8 +80,8 @@ func TestEveryCellShapeIsRead(t *testing.T) {
 	}
 }
 
-// IC-M3 — **`-write` 는 굵게와 상태 표시를 지킨다.** 링크를 붙이면서 문서의 모양이 달라지면
-// 사람이 그 diff 를 읽지 못하고, 읽지 못하면 다음부터 돌리지 않는다.
+// IC-M3 — **`-write`는 굵게와 상태 표시를 지킨다.** 링크를 붙이면서 문서의 모양이 달라지면
+// 사람이 그 diff를 읽지 못하고, 읽지 못하면 다음부터 돌리지 않는다.
 func TestWriteKeepsBoldAndStatus(t *testing.T) {
 	d, cases, lines := writeDoc(t, strings.Join([]string{
 		"| IC-R1 ✅ | 선언 ∩ 관측 | CONFIRMED |",
@@ -194,7 +194,7 @@ func TestShippedDocsAndTestsAgree(t *testing.T) {
 //
 // 이 파일이 픽스처로 케이스 표의 한 줄을 문자열에 담고 있다. 파일 전체를 정규식으로 훑으면
 // 그 문자열의 번호가 표식으로 잡힌다. 실제로 그렇게 해서 미구현 케이스 하나가 이 도구의
-// 테스트 파일로 링크됐다. checktext 가 반대 방향으로 겪은 것과 같은 일이고 답도 같다:
+// 테스트 파일로 링크됐다. checktext가 반대 방향으로 겪은 것과 같은 일이고 답도 같다:
 // **정규식이 아니라 파서로 본다.**
 func TestStringLiteralsAreNotMarkers(t *testing.T) {
 	dir := t.TempDir()
@@ -235,7 +235,7 @@ func TestDocOnlyReadsItsOwnKinds(t *testing.T) {
 	}
 }
 
-// IC-M9 — **링크는 그 문서에서 본 상대 경로다.** 케이스 표가 docs/ 에도 있고 테스트 바로
+// IC-M9 — **링크는 그 문서에서 본 상대 경로다.** 케이스 표가 docs/에도 있고 테스트 바로
 // 옆에도 있다. 한 가지로 적으면 한쪽이 깨진다.
 func TestLinkIsRelativeToItsOwnDoc(t *testing.T) {
 	for _, c := range []struct{ doc, test, want string }{

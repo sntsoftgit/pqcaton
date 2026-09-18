@@ -9,7 +9,7 @@ import (
 
 // JudgmentStore — 판정 영속화(§3.6, 설계 §1.5). append-only — Save는 언제나 새 레코드를 쌓는다(§1.2).
 // All()은 판정 순서(오래된→최신)로 돌려준다. 최신 상태는 LatestPerSubject로 파생.
-// ErrNoSessionID — 빈 세션 id 로 원장을 찾으려 했다. 옛 행이 빈 값을 갖고 있어, 그것으로 찾으면
+// ErrNoSessionID — 빈 세션 id로 원장을 찾으려 했다. 옛 행의 값이 비어 있어, 그것으로 찾으면
 // 세션이 아니라 「세션을 모르는 판정 전부」가 나온다. 세션이 아닌 것을 세션이라고 돌려주지 않는다.
 var ErrNoSessionID = errors.New("cannot look up judgments by an empty session id")
 
@@ -17,16 +17,16 @@ type JudgmentStore interface {
 	Save(j *Judgment) error
 	Get(id string) (*Judgment, error)
 	BySubject(subject string) ([]*Judgment, error)
-	// BySessionID — 한 리뷰 세션에서 난 판정 전부. 계획 id 가 담은 세션 id 로 원장을 되짚는 길이다.
-	// 빈 id 는 아무것도 가리키지 않는다 — 옛 행이 빈 값을 갖고 있어, 빈 값으로 찾으면 세션이
+	// BySessionID — 한 리뷰 세션에서 난 판정 전부. 계획 id가 담은 세션 id로 원장을 되짚는 길이다.
+	// 빈 id는 아무것도 가리키지 않는다 — 옛 행의 값이 비어 있어, 빈 값으로 찾으면 세션이
 	// 아니라 「세션을 모르는 판정 전부」가 나온다.
 	BySessionID(sessionID string) ([]*Judgment, error)
 	All() ([]*Judgment, error)
 }
 
-// 조회의 범위. **Get·BySubject·BySessionID·All 은 감사 사건 전부를 돌려준다** - 판정 행과 계획 선택 행
+// 조회의 범위. **Get·BySubject·BySessionID·All은 감사 사건 전부를 돌려준다** - 판정 행과 계획 선택 행
 // 둘 다. append-only 로그를 그대로 읽는 자리라, 여기서 거르면 감사가 계획 선택 행을 볼 길이 없어진다.
-// 판정만 필요한 자리(최신·델타·만료)는 파생 함수가 [JudgmentsOnly] 로 거른다. 저장소 셋이 같은 규칙이다.
+// 판정만 필요한 자리(최신·델타·만료)는 파생 함수가 [JudgmentsOnly]로 거른다. 저장소 셋이 같은 규칙이다.
 
 // MemJudgmentStore — 인메모리 append-only 로그(테스트·데모용).
 //

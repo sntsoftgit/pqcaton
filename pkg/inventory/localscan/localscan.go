@@ -1,15 +1,15 @@
 // Package localscan — **이 기계를** 관측하는 지름길.
 //
-// collector 가 할 일을 로컬에서 흉내 낸 것이다. 원래 관측은 pqcota 의 collector 가 대상
+// collector가 할 일을 로컬에서 흉내 낸 것이다. 원래 관측은 pqcota의 collector가 대상
 // 노드에서 하고, 이 리포는 그 결과를 받아 대조한다 — 그 경로가 `pqcaton-report` 다.
 // 여기 있는 것은 **「체크아웃만으로 한 바퀴」를 위한 편의**이고, 그래서 두 가지 제약을
 // 물려받는다:
 //
-//   - `/proc` 을 읽으므로 **Linux 에서만** 된다
+//   - `/proc`을 읽으므로 **Linux에서만** 된다
 //   - 대상은 언제나 **이 기계**다. 노드 이름은 결과에 붙이는 이름표일 뿐이다
 //
-// 그 두 가지를 조용히 넘기면 **관측하지 못한 것이 「없는 것」으로 읽힌다** — 이 리포가
-// 내내 경계해 온 바로 그것이다. 그래서 여기서 말하고 끊는다.
+// 그 두 가지를 알리지 않고 넘기면 **관측하지 못한 것이 「없는 것」으로 읽힌다** — 이 리포가
+// 내내 경계해 온 바로 그것이다. 그래서 여기서 알리고 중단한다.
 package localscan
 
 import (
@@ -24,11 +24,11 @@ import (
 	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
 )
 
-// ErrNoProc — `/proc` 을 열 수 없다. 비-리눅스이거나 마운트되지 않았다.
+// ErrNoProc — `/proc`을 열 수 없다. 비-리눅스이거나 마운트되지 않았다.
 //
 // **관측이 0건인 것과 다르다.** 0건은 「아무것도 안 쓰고 있다」일 수 있지만, 이것은
-// 「볼 수가 없었다」다. 그 상태로 대조하면 선언한 자산이 전부 UNOBSERVED 로 나오고,
-// 리포트는 「못 본 것: 없습니다」라고까지 말한다 — **관측을 아예 못 한 기계에서.**
+// 「볼 수가 없었다」다. 그 상태로 대조하면 선언한 자산이 전부 UNOBSERVED로 나오고,
+// 리포트는 「못 본 것: 없습니다」라고까지 적는다 — **관측을 아예 못 한 기계에서.**
 var ErrNoProc = errors.New("cannot open /proc on this machine — local observation does not work on this OS")
 
 // DefaultNode — 이름을 주지 않았을 때 붙이는 이름.
@@ -36,7 +36,7 @@ const DefaultNode = "host://local"
 
 // Check — 스캔 통계를 보고 이 결과를 믿어도 되는지 정한다.
 //
-// **끊는 것과 경고하는 것을 가른다.** `/proc` 이 아예 없으면 결과가 무의미하므로 끊고,
+// **끊는 것과 경고하는 것을 가른다.** `/proc`이 아예 없으면 결과가 무의미하므로 끊고,
 // 열리긴 했는데 하나도 못 읽었으면(권한) 결과는 낼 수 있으니 말만 한다.
 func Check(procUnavailable bool, accessible, denied int) (warn string, err error) {
 	if procUnavailable {
@@ -55,9 +55,9 @@ func Check(procUnavailable bool, accessible, denied int) (warn string, err error
 
 // LabelWarning — 이 기계를 스캔해 놓고 다른 이름을 붙일 때의 경고.
 //
-// 노드 이름은 **이름표일 뿐 대상이 아니다.** `pqcaton-decide open decl.csv web-gw` 는
-// `web-gw` 를 관측하는 것이 아니라 **이 기계를 관측해 `web-gw` 라고 적는다** — 이름이
-// 맞으면 선언과 대조까지 되어 CONFIRMED 가 나온다. 다른 기계의 관측으로.
+// 노드 이름은 **이름표일 뿐 대상이 아니다.** `pqcaton-decide open decl.csv web-gw`는
+// `web-gw`를 관측하는 것이 아니라 **이 기계를 관측해 `web-gw`라고 적는다** — 이름이
+// 맞으면 선언과 대조까지 되어 CONFIRMED가 나온다. 다른 기계의 관측으로.
 func LabelWarning(node string) string {
 	if node == "" || node == DefaultNode {
 		return ""
@@ -71,7 +71,7 @@ func LabelWarning(node string) string {
 type Result struct {
 	// Snapshot — 정책을 건 스냅샷. 관리 근거는 여기서 나온다.
 	Snapshot *history.Snapshot
-	// All — 정책 없이 정규화한 스냅샷. **제외분을 찾는 데만 쓴다** - 정책이 없었으면 Snapshot 과
+	// All — 정책 없이 정규화한 스냅샷. **제외분을 찾는 데만 쓴다** - 정책이 없었으면 Snapshot과
 	// 같은 것이다. 결과 파일 경로(report.BuildWith)와 같은 모양이다: 같은 정책 파일을 주고도
 	// 한쪽만 제외를 모르면 같은 명령이 입력 경로에 따라 다른 관리 상태를 낸다.
 	All *history.Snapshot
@@ -81,7 +81,7 @@ type Result struct {
 	Accessible, Denied int
 }
 
-// Scan — 이 기계를 관측해 스냅샷으로 만든다. `node` 는 결과에 붙일 이름이다. policy 는 자산
+// Scan — 이 기계를 관측해 스냅샷으로 만든다. `node`는 결과에 붙일 이름이다. policy는 자산
 // 스코프 정책이고 nil 이면 전부 관리 대상이다.
 //
 // 스캔하는 자리는 여기 하나다 — 두 곳에 두면 한쪽만 고쳐지는 날이 온다.

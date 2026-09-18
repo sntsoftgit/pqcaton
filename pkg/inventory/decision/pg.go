@@ -43,10 +43,10 @@ CREATE INDEX IF NOT EXISTS idx_pqcota_judg_org_session ON pqcota_judgments(org, 
 
 // rlsSQL — 행 수준 보안. **핸들 격리가 뚫려도 DB가 막는 한 겹**이다.
 //
-// 질의에 org 를 다는 것은 우리가 안 틀린다는 전제 위에 서 있다. 여러 조직이 한 데이터베이스를
+// 질의에 org를 다는 것은 우리가 안 틀린다는 전제 위에 서 있다. 여러 조직이 한 데이터베이스를
 // 쓰는 배포에서는 그 전제 하나에 전부를 걸 수 없다 — 조건 하나를 빠뜨린 질의가 언젠가 들어온다.
 //
-// **FORCE 가 없으면 테이블 소유자는 예외가 된다.** 대개 앱이 소유자로 붙으므로, 그 한 줄이
+// **FORCE가 없으면 테이블 소유자는 예외가 된다.** 대개 앱이 소유자로 붙으므로, 그 한 줄이
 // 없으면 정책을 걸어 놓고도 아무 일도 일어나지 않는다.
 const rlsSQL = `
 ALTER TABLE pqcota_judgments ENABLE ROW LEVEL SECURITY;
@@ -60,9 +60,9 @@ CREATE POLICY pqcaton_org_isolation ON pqcota_judgments
 // OrgSetting — 정책이 읽는 세션 변수 이름. 연결마다 이 값이 조직으로 채워진다.
 const OrgSetting = "pqcaton.org"
 
-// RequireEnv — "1"이면 RLS 가 실제로 물지 않는 연결로는 **저장소를 열지 않는다.**
+// RequireEnv — "1"이면 RLS가 실제로 물지 않는 연결로는 **저장소를 열지 않는다.**
 //
-// pqcota의 `PQCOTA_REQUIRE_SIGNATURE` 와 같은 모양이다 — 조용히 통과하는 경로를 닫아야 하는
+// pqcota의 `PQCOTA_REQUIRE_SIGNATURE`와 같은 모양이다 — 알리지 않고 통과하는 경로를 닫아야 하는
 // 배포용이고, 두 리포를 오가는 사람이 같은 것을 같은 자리에서 찾게 한다.
 const RequireEnv = "PQCATON_REQUIRE_RLS"
 
@@ -71,8 +71,8 @@ func RequireRLS() bool { return os.Getenv(RequireEnv) == "1" }
 
 // ErrRLSInert — 정책은 걸렸지만 이 연결에서는 물지 않는다.
 //
-// 슈퍼유저와 BYPASSRLS 롤은 정책을 통째로 건너뛴다. **그런 롤로 붙으면 RLS 는 걸어 두어도
-// 아무 일도 하지 않는다** — 가장 위험한 종류의 거짓 안심이라, 조용히 넘기지 않는다.
+// 슈퍼유저와 BYPASSRLS 롤은 정책을 통째로 건너뛴다. **그런 롤로 붙으면 RLS는 걸어 두어도
+// 아무 일도 하지 않는다** — 가장 위험한 종류의 거짓 안심이라, 알리지 않고 넘기지 않는다.
 var ErrRLSInert = errors.New("RLS does not bite for this role (superuser or BYPASSRLS)")
 
 // PgJudgmentStore — Postgres append-only 판정 저장소(§3.6, 설계 §1.5, §1.2).
@@ -99,7 +99,7 @@ func NewPgJudgmentStore(ctx context.Context, dsn string, o org.ID) (*PgJudgmentS
 	}
 	// **연결마다 조직을 심는다.** 핸들 하나가 조직 하나이므로 세션 단위로 두면 되고,
 	// 질의마다 기억할 것이 없다. 값은 파라미터로 넘긴다 - 문자열을 이어 붙이면 조직
-	// 이름이 SQL 이 되는 길이 열린다.
+	// 이름이 SQL이 되는 길이 열린다.
 	cfg.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
 		_, err := c.Exec(ctx, "SELECT set_config($1, $2, false)", OrgSetting, string(o))
 		return err
@@ -127,9 +127,9 @@ func NewPgJudgmentStore(ctx context.Context, dsn string, o org.ID) (*PgJudgmentS
 
 // ensureSchema — 테이블과 정책을 갖춘다. **DDL 권한이 없어도 열린다.**
 //
-// RLS 가 실제로 물게 하려면 앱이 테이블 소유자로 붙지 않아야 한다 - 그러면 이 연결에는
+// RLS가 실제로 물게 하려면 앱이 테이블 소유자로 붙지 않아야 한다 - 그러면 이 연결에는
 // DDL 권한이 없는 것이 정상이다. 그때는 이미 갖춰져 있는지 확인하고 넘어간다. 갖춰지지도
-// 않았다면 **무엇을 소유자로 돌려야 하는지 말하고 멈춘다** - 조용히 빈 테이블을 만들거나
+// 않았다면 **무엇을 소유자로 돌려야 하는지 알리고 멈춘다** - 알리지 않고 빈 테이블을 만들거나
 // 정책 없이 여는 쪽이 훨씬 위험하다.
 func ensureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	_, ddlErr := pool.Exec(ctx, judgmentSchemaSQL)
@@ -152,9 +152,9 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 
 // schemaReady — 테이블이 있고 그 위에 행 수준 보안이 켜져 있으며, **이 판이 읽는 열이 다 있는가.**
 //
-// 테이블만 보고 넘어가면 **정책 없는 테이블에 조용히 붙는다** - 이 버전이 더하려던 한 겹이
+// 테이블만 보고 넘어가면 **정책 없는 테이블에 알리지 않고 붙는다** - 이 버전이 더하려던 한 겹이
 // 없는 채로 있다는 사실을 아무도 모르게 된다. 열도 본다: 소유자가 옛 스키마만 돌려 두었으면
-// 첫 SELECT 가 「열이 없다」로 터지는데, 그것보다 여기서 무엇을 돌려야 하는지 말하는 편이 낫다.
+// 첫 SELECT가 「열이 없다」로 터지는데, 그것보다 여기서 무엇을 돌려야 하는지 말하는 편이 낫다.
 func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 	var enabled bool
 	err := pool.QueryRow(ctx,
@@ -168,10 +168,10 @@ func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 	if !enabled {
 		return false, nil
 	}
-	// **이 연결이 실제로 보는 표의 열만 센다.** information_schema.columns 를 표 이름으로만 고르면 같은
+	// **이 연결이 실제로 보는 표의 열만 센다.** information_schema.columns를 표 이름으로만 고르면 같은
 	// 데이터베이스의 다른 스키마에 같은 이름의 표가 있을 때 그 열까지 세어, 지금 표에 열이 없어도
 	// 준비됐다고 하거나(다른 스키마의 열을 봄) 열이 다 있어도 준비되지 않았다고(4 이상) 오판한다.
-	// to_regclass 가 search_path 로 고른 바로 그 관계의 OID 를 pg_attribute 에 맞댄다.
+	// to_regclass가 search_path로 고른 바로 그 관계의 OID를 pg_attribute에 맞댄다.
 	var cols int
 	if err := pool.QueryRow(ctx,
 		`SELECT count(*) FROM pg_attribute
@@ -188,7 +188,7 @@ func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 // 버전이 더하려던 한 겹은 없는 것이다 - 부르는 쪽이 그 사실을 말할 수 있어야 한다.
 func (p *PgJudgmentStore) RLSActive() bool { return p.rls }
 
-// rlsBites — 지금 롤이 정책을 건너뛰는가. 슈퍼유저와 BYPASSRLS 가 그렇다.
+// rlsBites — 지금 롤이 정책을 건너뛰는가. 슈퍼유저와 BYPASSRLS가 그렇다.
 func rlsBites(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 	var bypass bool
 	err := pool.QueryRow(ctx,

@@ -25,9 +25,9 @@ type SurveyView struct {
 	Assets []AssetRow
 	Edges  []EdgeRow
 
-	// DOT — 토폴로지 원문. `dot` 이 없는 기계에서도 **무엇을 그리려 했는지는 보여 준다.**
+	// DOT — 토폴로지 원문. `dot`이 없는 기계에서도 **무엇을 그리려 했는지는 보여 준다.**
 	DOT string
-	// SVG — 그려진 토폴로지. `dot` 이 있으면 채운다. 우리가 만든 DOT 에서 `dot` 이
+	// SVG — 그려진 토폴로지. `dot`이 있으면 채운다. 우리가 만든 DOT에서 `dot`이
 	// 낸 것이라 밖에서 온 값이 아니다 — 그래서 그대로 내보낸다.
 	SVG string
 }
@@ -63,7 +63,7 @@ func NewSurveyView(r *report.Result, page Page) SurveyView {
 			State: string(rec.State), Conf: rec.Confidence, Rescan: rec.RescanCandidate,
 		})
 	}
-	// **필수 리뷰가 위로.** UNDECLARED 가 이 도구가 주는 첫 번째 쓸모라 맨 앞에 있어야 한다(§3.3②).
+	// **필수 리뷰가 위로.** UNDECLARED가 이 도구가 주는 첫 번째 쓸모라 맨 앞에 있어야 한다(§3.3②).
 	sort.SliceStable(v.Assets, func(i, j int) bool {
 		return statePriority(v.Assets[i].State) < statePriority(v.Assets[j].State)
 	})
@@ -82,7 +82,7 @@ func NewSurveyView(r *report.Result, page Page) SurveyView {
 	return v
 }
 
-// statePriority — 리뷰가 필요한 것부터. 자동으로 넘어가는 CONFIRMED 가 위에 오면 정작 볼
+// statePriority — 리뷰가 필요한 것부터. 자동으로 넘어가는 CONFIRMED가 위에 오면 정작 볼
 // 것이 아래로 밀린다.
 func statePriority(s string) int {
 	switch s {
@@ -140,7 +140,7 @@ type SurveySummary struct {
 	Confirmed, Undeclared, Unobserved int
 	// ToJudge — 사람이 확인해야 하는 항목. 확정된 것은 기계가 답을 냈으므로 빼고 센다.
 	ToJudge int
-	// Rescan — **다시 관측해 봐야 하는 자산.** 이 수가 0 이 아니면 UNOBSERVED 를 부재로
+	// Rescan — **다시 관측해 봐야 하는 자산.** 이 수가 0이 아니면 UNOBSERVED를 부재로
 	// 읽으면 안 된다 — 못 본 것인지 없는 것인지 아직 갈리지 않았다.
 	Rescan int
 }

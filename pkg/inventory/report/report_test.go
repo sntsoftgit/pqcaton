@@ -25,13 +25,13 @@ func completeness(covered, missing []commonv1.CollectionLayer) *discoveryv1.Coll
 
 // IC-R14 — **관측 노드를 선언 노드로 잇는다.**
 //
-// 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. 그런데 collector 는 자기가 붙인
-// id(`node:<해시>`)나 fqdn 으로 보냅니다 — 이름이 서로 다르면 선언한 자산은 전부 미관측으로,
-// 관측된 자산은 전부 UNDECLARED 로 오릅니다. **막히지 않고 그럴듯하게 틀리는 자리입니다.**
+// 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. 그런데 collector는 자기가 붙인
+// id(`node:<해시>`)나 fqdn으로 보냅니다 — 이름이 서로 다르면 선언한 자산은 전부 미관측으로,
+// 관측된 자산은 전부 UNDECLARED로 오릅니다. **막히지 않고 그럴듯하게 틀리는 자리입니다.**
 //
 // 호스트명이 이름과 같으면 알아서 잇고, 그것으로 안 되면 사람이 적어 둔 「관측 이름」으로
 // 잇는다. 어디에도 안 걸리면 **관측이 부른 이름을 그대로 둔다** — 억지로 하나를 고르면
-// 남의 노드 자산이 붙고, 그 이름으로 UNDECLARED 가 올라야 사람이 보고 적어 넣을 수 있다.
+// 남의 노드 자산이 붙고, 그 이름으로 UNDECLARED가 올라야 사람이 보고 적어 넣을 수 있다.
 func TestResolveAssetNode(t *testing.T) {
 	nodes := []decl.Node{
 		{Name: "web-gw", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"node:48596282fd2faf23"}},
@@ -61,7 +61,7 @@ func TestResolveAssetNode(t *testing.T) {
 
 // IC-R15 — **이름이 관측 이름을 이기고, 겹친 관측 이름은 먼저 적힌 쪽이 가진다.**
 //
-// 겹친다는 사실은 `decl.Check` 가 짚습니다(IC-D17). 그래도 잇기는 무엇 하나로 정해져야
+// 겹친다는 사실은 `decl.Check`가 짚습니다(IC-D17). 그래도 잇기는 무엇 하나로 정해져야
 // 합니다 — 뒤에 적힌 것으로 뒤집히면 **같은 파일이 순서만 바뀌어도** 자산이 다른 노드에
 // 붙습니다.
 func TestResolveAssetNodePrefersNamesAndFirstClaim(t *testing.T) {
@@ -72,7 +72,7 @@ func TestResolveAssetNodePrefersNamesAndFirstClaim(t *testing.T) {
 	}
 	for _, tc := range []struct{ id, want string }{
 		{"node:1a2b", "a"},   // 먼저 적힌 쪽
-		{"pay-db", "pay-db"}, // 이름이 관측 이름을 이긴다
+		{"pay-db", "pay-db"}, // 이름이 관측 이름보다 우선한다
 	} {
 		res := &discoveryv1.CollectionResult{Envelope: &commonv1.Envelope{TargetNodeId: tc.id}}
 		if got := report.ResolveAssetNode(res, nodes); got != tc.want {
@@ -83,7 +83,7 @@ func TestResolveAssetNodePrefersNamesAndFirstClaim(t *testing.T) {
 
 // IC-R8 — **관측 IP를 스코프 노드로 잇는다**(§1.4).
 //
-// 이어지지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED 여야 할 것이 UNDECLARED 로 올라온다** —
+// 이어지지 않으면 선언 엣지와 영영 맞지 않아 **CONFIRMED여야 할 것이 UNDECLARED로 올라온다** —
 // 틀린 답이 아니라 그럴듯한 답이라 눈으로는 안 잡힌다. 포트가 붙은 주소와 망 둘에 걸친
 // 노드가 그 자리다.
 func TestResolveEdgeDsts(t *testing.T) {
@@ -139,7 +139,7 @@ func TestUniqKeepsFirstOrder(t *testing.T) {
 	}
 }
 
-// IC-R11 — **못 읽은 파일을 조용히 넘기지 않는다.** 빠진 노드를 모르면 「관측 안 됨」과
+// IC-R11 — **못 읽은 파일을 알리지 않고 넘기지 않는다.** 빠진 노드를 모르면 「관측 안 됨」과
 // 「못 읽음」이 뒤섞인다.
 func TestLoadResultsReportsSkipped(t *testing.T) {
 	dir := t.TempDir()
@@ -182,18 +182,18 @@ func TestBuildWithNoResults(t *testing.T) {
 
 // IC-R13 — **상류 enum 상수를 화면에 그대로 내보내지 않는다.**
 //
-// `COLLECTION_LAYER_ARTIFACT` 가 화면에 뜨면 읽는 사람은 무엇을 못 봤다는 것인지 알 수
+// `COLLECTION_LAYER_ARTIFACT`가 화면에 뜨면 읽는 사람은 무엇을 못 봤다는 것인지 알 수
 // 없습니다. 계층은 「관측이 어디서 왔나」이므로 그것을 적되, **원래 이름을 괄호에 남깁니다** —
 // pqcota의 문서와 로그는 그 이름을 쓰므로 옮기기만 하면 두 쪽을 잇지 못합니다.
 //
-// **모르는 값은 그대로 냅니다.** 상류에 계층이 늘었을 때 조용히 뭉개면, 못 본 계층이
+// **모르는 값은 그대로 냅니다.** 상류에 계층이 늘었을 때 알리지 않고 뭉개면, 못 본 계층이
 // 화면에서 사라지는 것보다 나쁜 「본 것처럼 보이는」 상태가 됩니다.
 func TestLayerLabelIsReadableAndKeepsTheRawName(t *testing.T) {
 	for raw, want := range map[string]string{
 		"COLLECTION_LAYER_ARTIFACT": "ARTIFACT",
 		"COLLECTION_LAYER_NETWORK":  "NETWORK",
 		"COLLECTION_LAYER_PROCESS":  "PROCESS",
-		// 상류 v0.6.0 이 더한 계층. 이름이 없으면 화면에 enum 상수가 그대로 뜬다.
+		// 상류 v0.6.0이 더한 계층. 이름이 없으면 화면에 enum 상수가 그대로 뜬다.
 		"COLLECTION_LAYER_CNG_INTROSPECTION": "CNG_INTROSPECTION",
 	} {
 		got := report.LayerLabel(raw)
@@ -212,7 +212,7 @@ func TestLayerLabelIsReadableAndKeepsTheRawName(t *testing.T) {
 
 // ★ IC-R17 — JSON Lines 결과도 읽는다. **형식은 확장자가 아니라 내용으로 가린다.**
 //
-// JVM 수집기는 노드에 JVM 이 여럿일 수 있어 `.jsonl`(한 줄에 결과 하나)로 낸다. `*.json` 만 고르면
+// JVM 수집기는 노드에 JVM이 여럿일 수 있어 `.jsonl`(한 줄에 결과 하나)로 낸다. `*.json`만 고르면
 // 그 노드의 JCA 자산이 통째로 「관측 안 됨」이 된다 — 아무것도 실패하지 않은 채로. 실제로 그랬고,
 // 종단 데모를 돌려 보고서야 드러났다. 상류의 공식 디코더를 쓴 뒤로는 같은 파일을 같게 읽는다.
 func TestLoadResultsReadsJSONLines(t *testing.T) {
@@ -220,7 +220,7 @@ func TestLoadResultsReadsJSONLines(t *testing.T) {
 	one := func(node, collector string) string {
 		return `{"envelope":{"targetNodeId":"` + node + `","collectorId":"` + collector + `"}}`
 	}
-	// 단일 객체(들여쓰기 있는 .json)와 JSON Lines(.jsonl, 두 JVM) 를 나란히 둔다.
+	// 단일 객체(들여쓰기 있는 .json)와 JSON Lines(.jsonl, 두 JVM)를 나란히 둔다.
 	if err := os.WriteFile(filepath.Join(dir, "web-openssl.json"), []byte(one("web", "openssl-collector")), 0o644); err != nil {
 		t.Fatal(err)
 	}

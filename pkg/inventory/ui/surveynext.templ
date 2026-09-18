@@ -6,7 +6,7 @@ import "strconv"
 // surveyNextPage — 대조 화면의 다음 판.
 //
 // **이 화면의 급한 일은 「관측이 어디까지 닿았나」다.** 다시 관측해 봐야 하는 자산이
-// 남아 있으면 UNOBSERVED 는 아직 「없다」가 아니라 「못 봤다」이고, 그것을 부재로 확정하면
+// 남아 있으면 UNOBSERVED는 아직 「없다」가 아니라 「못 봤다」이고, 그것을 부재로 확정하면
 // 실재하는 자산이 장부에서 사라진다. 그래서 판정 수보다 그것을 먼저 띄운다.
 templ surveyNextPage(v SurveyView) {
 	@nextShell(v.Page) {

@@ -15,7 +15,7 @@ import (
 //
 // **Postgres 없이도 판정이 남아야 한다.** 이 리포를 체크아웃해서 한 바퀴 돌아 보는 사람에게
 // DB를 세우게 하면 거기서 멈춘다. 그렇다고 판정을 안 남기면 *"누가 언제 무엇을 근거로
-// 정했는지가 감사 근거로 남는다"* 는 말이 명령줄에서는 거짓이 된다.
+// 정했는지가 감사 근거로 남는다"*는 말이 명령줄에서는 거짓이 된다.
 //
 // **append-only를 파일이 강제한다** — `O_APPEND`로만 연다. 고치려면 새 줄을 쌓고, 최신 상태는
 // [LatestPerSubject]가 파생한다(Mem·Pg판과 같은 규칙).
@@ -51,10 +51,10 @@ type record struct {
 	J   judgmentWire `json:"judgment"`
 }
 
-// judgmentWire — Judgment 의 파일 모양. **ConfidenceEvaluated 를 포인터로 받는다.** Judgment 에는
-// json 태그가 없어 Go 이름으로 직렬화되는데, bool 로 두면 옛 줄의 칸 부재가 false 로 읽힌다. 옛 행은
-// 전부 평가된 값이었다(그때는 미평가라는 개념이 없었다). nil 이면 참, 명시적 false 만 미평가다.
-// 쓸 때는 언제나 명시적으로 쓴다 - 새 파일에는 부재가 없게. 나머지 칸은 Judgment 와 같은 이름이다.
+// judgmentWire — Judgment의 파일 모양. **ConfidenceEvaluated를 포인터로 받는다.** Judgment에는
+// json 태그가 없어 Go 이름으로 직렬화되는데, bool로 두면 옛 줄의 칸 부재가 false로 읽힌다. 옛 행은
+// 전부 평가된 값이었다(그때는 미평가라는 개념이 없었다). nil 이면 참, 명시적 false만 미평가다.
+// 쓸 때는 언제나 명시적으로 쓴다 - 새 파일에는 부재가 없게. 나머지 칸은 Judgment와 같은 이름이다.
 type judgmentWire struct {
 	ID                  string
 	Subject             string
@@ -136,7 +136,7 @@ func (f *FileJudgmentStore) All() ([]*Judgment, error) {
 			return nil, fmt.Errorf("%s:%d cannot be read: %w", f.path, n, err)
 		}
 		if r.Org != string(f.org) {
-			// **무엇이 어긋났는지 적는다.** 대개 -org 를 저장할 때와 다르게 준 것인데,
+			// **무엇이 어긋났는지 적는다.** 대개 -org를 저장할 때와 다르게 준 것인데,
 			// "다른 조직의 판정이 있다"만 보면 파일이 오염된 줄 안다.
 			return nil, fmt.Errorf("%w: %s:%d - this handle is %q but that line is %q",
 				ErrOrgMismatch, f.path, n, f.org, r.Org)

@@ -64,17 +64,17 @@ func declaredFromResults(results []*discoveryv1.CollectionResult) ([]AssetKey, e
 	return out, nil
 }
 
-// 런타임 이름. **대조가 낼 수 있는 이름이 이것뿐이다** — 관측의 `CryptoRuntime` 을
+// 런타임 이름. **대조가 낼 수 있는 이름이 이것뿐이다** — 관측의 `CryptoRuntime`을
 // 여기서 이 문자열로 옮기고, 선언도 같은 문자열로 적힌다. 다른 이름으로 선언하면 관측과
 // 영원히 맞지 않아 늘 미관측으로 남는다.
 const (
 	RuntimeOpenSSL = "openssl"
 	RuntimeJCA     = "jca"
-	// RuntimeCNG — Windows 의 CNG(pqcota v0.6.0). 이름은 상류가 쓰는 것을 그대로 쓴다.
+	// RuntimeCNG — Windows의 CNG(pqcota v0.6.0). 이름은 상류가 쓰는 것을 그대로 쓴다.
 	RuntimeCNG = "cng"
 )
 
-// 컴포넌트 이름. openssl 은 라이브러리 파일마다 하나지만, **JCA·CNG 는 머신에 하나뿐이라**
+// 컴포넌트 이름. openssl은 라이브러리 파일마다 하나지만, **JCA·CNG는 기계에 하나뿐이라**
 // 관측 결과에 고정된 이름으로 나온다 — 사람이 선언에 적을 이름도 그것이다.
 const (
 	ComponentJCA = "jca-provider-chain"
@@ -83,8 +83,8 @@ const (
 
 // Runtimes — 선언에 적을 수 있는 런타임. 화면의 고르는 칸이 이 목록을 쓴다.
 //
-// **아래 switch 에 갈래를 더하면 여기도 더한다.** 목록에 없는 이름은 화면에서 고를 수
-// 없고, switch 에 없는 이름은 관측에서 나오지 않는다 — 둘이 어긋나면 사람이 고를 수 있는
+// **아래 switch에 갈래를 더하면 여기도 더한다.** 목록에 없는 이름은 화면에서 고를 수
+// 없고, switch에 없는 이름은 관측에서 나오지 않는다 — 둘이 어긋나면 사람이 고를 수 있는
 // 이름으로 선언해도 대조가 되지 않는다.
 func Runtimes() []string { return []string{RuntimeOpenSSL, RuntimeJCA, RuntimeCNG} }
 
@@ -99,7 +99,7 @@ func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 		case commonv1.CryptoRuntime_CRYPTO_RUNTIME_JCA:
 			rt = RuntimeJCA
 			comp = ComponentJCA
-		// **CNG 도 자산이다**(pqcota v0.6.0). 여기서 걸러 내면 Windows 노드의 암호 자산이
+		// **CNG도 자산이다**(pqcota v0.6.0). 여기서 걸러 내면 Windows 노드의 암호 자산이
 		// 인벤토리에서 통째로 사라진다 — 없는 것과 못 본 것이 같은 얼굴이 되는 자리다.
 		case commonv1.CryptoRuntime_CRYPTO_RUNTIME_WIN_CNG:
 			rt = RuntimeCNG
@@ -142,14 +142,14 @@ func normalizeComponent(name string) string {
 
 // Fingerprint — 이 관측의 **내용** 지문. 동일성(`Finding.Id`)과 다른 것을 잰다.
 //
-// 상류의 id 는 `sha256(노드|이름|런타임|fork)` 라 **자산이 같으면 같다**. 그래서 버전이
-// 오르고, 검출 방법이 바뀌고, 강화가 낸 `pqc_readiness`·`remediation_class` 가 달라져도
-// 값이 그대로다. 판정의 근거가 달라졌는데 id 만 보면 그 사실을 알 수 없다.
+// 상류의 id는 `sha256(노드|이름|런타임|fork)`라 **자산이 같으면 같다**. 그래서 버전이
+// 오르고, 검출 방법이 바뀌고, 강화가 낸 `pqc_readiness`·`remediation_class`가 달라져도
+// 값이 그대로다. 판정의 근거가 달라졌는데 id만 보면 그 사실을 알 수 없다.
 //
-// **재수집마다 흔들리는 것은 뺀다.** `derived_from_snapshot_id` 는 돌릴 때마다 달라지므로
+// **재수집마다 흔들리는 것은 뺀다.** `derived_from_snapshot_id`는 돌릴 때마다 달라지므로
 // 넣으면 관측이 그대로여도 매번 근거가 바뀐 것처럼 보이고, 그런 델타 큐는 아무도 읽지 않는다.
-// `ruleset_version` 도 뺀다 — 규칙 판은 세션이 따로 들고 가므로 여기 넣으면 두 번 센다.
-// `id` 는 동일성이고, 동일성은 근거가 아니라 열쇠라 뺀다.
+// `ruleset_version`도 뺀다 — 규칙 판은 세션이 따로 들고 가므로 여기 넣으면 두 번 센다.
+// `id`는 동일성이고, 동일성은 근거가 아니라 식별자라 뺀다.
 func Fingerprint(f *discoveryv1.Finding) string {
 	if f == nil {
 		return ""
@@ -159,7 +159,7 @@ func Fingerprint(f *discoveryv1.Finding) string {
 		return ""
 	}
 	c.Id, c.DerivedFromSnapshotId, c.RulesetVersion = "", "", ""
-	// 정준 직렬화 — 맵이 없어 Deterministic 이 순서를 고정한다. 이 값이 흔들리면
+	// 정준 직렬화 — 맵이 없어 Deterministic이 순서를 고정한다. 이 값이 흔들리면
 	// 같은 관측에 매번 델타가 걸린다.
 	raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(c)
 	if err != nil {

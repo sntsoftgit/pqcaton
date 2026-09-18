@@ -247,7 +247,7 @@ func TestConfigNeedsTokenAndApi(t *testing.T) {
 	}
 }
 
-// RUN-8 — **깨진 파일 하나가 나머지를 막지 않는다.** 다만 조용히 넘기지도 않는다.
+// RUN-8 — **깨진 파일 하나가 나머지를 막지 않는다.** 다만 알리지 않고 넘기지도 않는다.
 //
 // 그대로 두면 다음 실행마다 같은 파일에 걸려 그 디렉터리가 영영 안 올라간다. 치우되
 // 지우지는 않는다 — **올라간 적이 없어 그 사본이 왜 깨졌는지의 유일한 증거다.**
@@ -318,7 +318,7 @@ func TestOldResultsAreSweptByAge(t *testing.T) {
 
 // RUN-10 — 보존 기간 설정. **0이면 지우지 않고, 음수는 거절한다.**
 //
-// 오타를 "지우지 않음"으로 삼키면 디스크가 조용히 찬다.
+// 오타를 "지우지 않음"으로 삼키면 디스크가 표시 없이 찬다.
 func TestKeepDaysConfig(t *testing.T) {
 	dir := t.TempDir()
 	write := func(body string) string {
@@ -364,7 +364,7 @@ func fakeAnsible(t *testing.T, dir, script string) string {
 
 // RUN-12 — **플레이북이 실패해도 생긴 결과는 올린다.** 다만 실패를 숨기지 않는다.
 //
-// 반쯤 나온 것을 버리면 그 관측은 사라진다. 그렇다고 조용히 0으로 끝내면 스케줄러가 잘 돈
+// 반쯤 나온 것을 버리면 그 관측은 사라진다. 그렇다고 오류 없이 0으로 끝내면 스케줄러가 잘 돈
 // 것으로 읽는다 — 무엇이 왜 안 됐는지는 완전성 맵에서 봐야 한다.
 func TestFailedPlaybookStillUploadsWhatExists(t *testing.T) {
 	p := &plane{}
@@ -486,7 +486,7 @@ func TestAddrBecomesATokenAndNeverLeaves(t *testing.T) {
 
 // RUN-20 — **붙었다는데 지문이 없으면 사유를 붙여 올린다.**
 //
-// 그대로 올리면 지문 없는 노드가 등재되어 클론 검출을 통째로 빠져나갑니다. 그렇다고 조용히
+// 그대로 올리면 지문 없는 노드가 등재되어 클론 검출을 통째로 빠져나갑니다. 그렇다고 알리지 않고
 // 버리면 운영자는 그 대상이 등재된 줄 압니다.
 func TestConnectedWithoutFingerprintIsReportedAsFailure(t *testing.T) {
 	p := &plane{}
@@ -551,7 +551,7 @@ func TestEnrollmentWithoutNodeIdIsSetAside(t *testing.T) {
 
 // RUN-23 — **컨트롤 플레인이 보낸 사유가 사람이 읽는 문장으로 나온다.**
 //
-// 응답 본문은 `{"error":"…"}` 입니다. 그대로 찍으면 러너 로그에 JSON 이 한 겹 더 끼어,
+// 응답 본문은 `{"error":"…"}`입니다. 그대로 찍으면 러너 로그에 JSON이 한 겹 더 끼어,
 // **제품이 보내는 가장 중요한 말**(무료 기간이 끝났습니다 …)이 잡음처럼 보입니다.
 // 운영자가 그것을 알아보지 못하면, 서비스가 멈춘 이유를 코드에서 찾게 됩니다.
 func TestServerReasonIsReadableInTheRunnerLog(t *testing.T) {

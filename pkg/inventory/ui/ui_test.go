@@ -58,7 +58,7 @@ func TestDeclRenderShowsEverything(t *testing.T) {
 }
 
 // IC-UI2 — **폼을 다시 읽으면 같은 선언이 나온다.** 그리기와 읽기가 어긋나면 저장할 때마다
-// 조용히 달라진다.
+// 표시 없이 달라진다.
 func TestApplyDeclRoundTrip(t *testing.T) {
 	in := sample()
 	f := url.Values{
@@ -197,7 +197,7 @@ func TestApplyScope(t *testing.T) {
 // IC-UI9 — **「행 추가」가 만드는 줄과 화면이 그리는 줄이 같은 폼 이름을 쓴다.**
 //
 // 폼 이름이 곧 저장 경로입니다. 둘이 어긋나면 화면은 멀쩡히 그려지고 새로 넣은
-// 줄만 조용히 저장되지 않습니다 — 오류도 나지 않습니다. 그래서 같은 조각을 쓰는지 잰다.
+// 줄만 오류 없이 저장되지 않습니다 — 오류도 나지 않습니다. 그래서 같은 조각을 쓰는지 잰다.
 func TestAddedRowUsesSameFormNames(t *testing.T) {
 	for _, tc := range []struct {
 		kind string
@@ -222,7 +222,7 @@ func TestAddedRowUsesSameFormNames(t *testing.T) {
 
 // IC-UI10 — **새 줄을 내줄 때마다 다음 번호가 하나 오른다.**
 //
-// `ApplyDecl` 은 번호가 끊기는 자리에서 읽기를 멈춥니다. 버튼이 같은 번호를 계속 주면
+// `ApplyDecl`은 번호가 끊기는 자리에서 읽기를 멈춥니다. 버튼이 같은 번호를 계속 주면
 // 새 줄이 앞의 것을 덮고, 번호를 건너뛰면 그 뒤가 통째로 저장되지 않습니다 — 둘 다
 // 오류 없이 틀리는 자리입니다.
 func TestAddedRowAdvancesTheButton(t *testing.T) {
@@ -253,9 +253,9 @@ func TestValidKindRefusesUnknown(t *testing.T) {
 	}
 }
 
-// IC-UI12 — **스타일과 htmx 는 같은 바이너리에서 나온다.**
+// IC-UI12 — **스타일과 htmx는 같은 바이너리에서 나온다.**
 //
-// CDN 을 걸면 망이 끊긴 기계에서 화면이 깨지고, 남의 서버에서 오는 스크립트는 우리
+// CDN을 걸면 망이 끊긴 기계에서 화면이 깨지고, 남의 서버에서 오는 스크립트는 우리
 // 라이선스 관문이 볼 수도 없습니다. 이 리포를 쓰는 곳에서 바깥으로 못 나가는 망은
 // 예외가 아니라 흔한 조건입니다.
 func TestStaticIsServedFromTheBinary(t *testing.T) {
@@ -278,7 +278,7 @@ func TestStaticIsServedFromTheBinary(t *testing.T) {
 	}
 }
 
-// IC-UI13 — 화면이 그 둘을 실제로 부른다. 박아 두고 부르지 않으면 아무 일도 일어나지 않는다.
+// IC-UI13 — 화면이 그 둘을 실제로 부른다. 넣어 두고 부르지 않으면 아무 일도 일어나지 않는다.
 func TestPageLoadsStatic(t *testing.T) {
 	var b strings.Builder
 	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언"})); err != nil {
@@ -291,7 +291,7 @@ func TestPageLoadsStatic(t *testing.T) {
 	}
 }
 
-// layerFiles — 계층 하나짜리 편집 재료.
+// layerFiles — 계층 하나짜리 편집 입력.
 func layerFiles() []scope.LayerFile {
 	return []scope.LayerFile{{Path: "/tmp/corp.csv", Layer: scope.Layer{Name: "corp",
 		Rules: []kscope.AssetRule{
@@ -301,7 +301,7 @@ func layerFiles() []scope.LayerFile {
 
 // IC-UI14 — **규칙 표를 그리고 다시 읽으면 같은 규칙이 나온다.**
 //
-// 그리기와 읽기가 어긋나면 저장할 때마다 규칙이 조용히 달라집니다. 그 규칙은 pqcota 가
+// 그리기와 읽기가 어긋나면 저장할 때마다 규칙이 표시 없이 달라집니다. 그 규칙은 pqcota가
 // 집행하는 것이라, 어긋난 만큼 인벤토리에서 무엇이 빠지는지가 달라집니다.
 func TestApplyLayersRoundTrip(t *testing.T) {
 	files := layerFiles()
@@ -324,14 +324,14 @@ func TestApplyLayersRoundTrip(t *testing.T) {
 
 // IC-UI15 — **세 칸이 모두 빈 줄은 규칙이 아니다.**
 //
-// pqcota 는 빈 칸을 `*`로 읽습니다. 그대로 만들면 `exclude,*,*,*` — **인벤토리가 통째로
-// 빕니다.** 미리 열어 둔 빈 줄에서 action 만 잘못 골라도 그렇게 됩니다. 「전부」를
+// pqcota는 빈 칸을 `*`로 읽습니다. 그대로 만들면 `exclude,*,*,*` — **인벤토리가 통째로
+// 빕니다.** 미리 열어 둔 빈 줄에서 action만 잘못 골라도 그렇게 됩니다. 「전부」를
 // 뜻하려면 `*`를 적어야 합니다.
 func TestApplyLayersDropsEmptyRows(t *testing.T) {
 	f := url.Values{
 		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {"openssl"},
 		"rule.0.0.lib": {"libssl.so.3"}, "rule.0.0.app_key": {"*"},
-		// 빈 줄인데 action 만 exclude 로 남았다
+		// 빈 줄인데 action만 exclude로 남았다
 		"rule.0.1.action": {"exclude"}, "rule.0.1.runtime": {""},
 		"rule.0.1.lib": {""}, "rule.0.1.app_key": {""}, "rule.0.1.note": {"적다 만 줄"},
 	}
@@ -339,7 +339,7 @@ func TestApplyLayersDropsEmptyRows(t *testing.T) {
 	if n := len(got[0].Layer.Rules); n != 1 {
 		t.Fatalf("규칙 %d개 — 빈 줄이 규칙이 됐다: %+v", n, got[0].Layer.Rules)
 	}
-	// 「전부」를 뜻하려면 * 를 적는다. 그건 그대로 규칙이 된다.
+	// 「전부」를 뜻하려면 *를 적는다. 그것은 그대로 규칙이 된다.
 	f.Set("rule.0.1.runtime", "*")
 	if n := len(ui.ApplyLayers(layerFiles(), f)[0].Layer.Rules); n != 2 {
 		t.Fatalf("`*` 를 적었는데 규칙이 되지 않았다: %d개", n)
@@ -373,7 +373,7 @@ func TestRuleRowFragment(t *testing.T) {
 			t.Errorf("새 규칙 줄에 %q 가 없다:\n%s", want, body)
 		}
 	}
-	// **빈 줄의 기본은 include 다.** exclude 가 기본이면 실수 한 번이 인벤토리를 지운다.
+	// **빈 줄의 기본은 include 다.** exclude가 기본이면 실수 한 번이 인벤토리를 지운다.
 	if !strings.Contains(body, `<option value="include" selected`) {
 		t.Error("빈 줄의 기본이 include 가 아니다")
 	}
@@ -474,7 +474,7 @@ func TestApplyDeclReadsPastRemovedRows(t *testing.T) {
 }
 
 // IC-UI32 — **제거는 묻고 지운다.** 잘못 누르면 적어 둔 것이 한 번에 사라지는 자리다.
-// 그리고 지우는 것은 화면일 뿐이라, 파일에 닿으려면 저장해야 한다는 것도 물음이 말한다.
+// 그리고 지우는 것은 화면일 뿐이라, 파일에 닿으려면 저장해야 한다는 것도 물음이 알린다.
 func TestRemoveButtonsAskFirst(t *testing.T) {
 	var b strings.Builder
 	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
@@ -496,7 +496,7 @@ func TestRemoveButtonsAskFirst(t *testing.T) {
 // 손으로 적으면 오타 하나로 영원히 맞지 않는 선언이 됩니다. 대조는 그것을 「선언했는데
 // 관측되지 않았다」로 올리고, 사람은 그 노드에서 그 모듈이 안 쓰인다고 읽습니다.
 //
-// 다만 파일에 있던 이름을 화면이 조용히 바꿔 쓰면 선언이 사람 몰래 달라집니다 — 상류에
+// 다만 파일에 있던 이름을 화면이 알리지 않고 바꿔 쓰면 선언이 사람 몰래 달라집니다 — 상류에
 // 런타임이 늘었을 수도 있으므로, 모르는 이름도 고른 채로 남긴다.
 func TestRuntimeIsPickedFromAList(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
@@ -525,11 +525,11 @@ func TestRuntimeIsPickedFromAList(t *testing.T) {
 	}
 }
 
-// IC-UI34 — **컴포넌트를 어떻게 적는지 화면이 말한다.**
+// IC-UI34 — **컴포넌트를 어떻게 적는지 화면이 알린다.**
 //
 // 맞대는 방식이 **글자 그대로 같은가**입니다. 앞뒤 일부 일치도, <code>*</code> 같은 것도 없습니다.
 // 그런데 관측 이름은 `.so` 뒤가 떼인 채로 오므로, 관측에 보이는 대로(`libssl.so.3`)
-// 적으면 맞지 않습니다 — 그리고 그것이 오류 없이 미관측·UNDECLARED 로 구분됩니다.
+// 적으면 맞지 않습니다 — 그리고 그것이 오류 없이 미관측·UNDECLARED로 구분됩니다.
 func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 	var b strings.Builder
 	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
@@ -551,7 +551,7 @@ func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 // IC-UI35 — **관측된 컴포넌트가 후보로 뜬다.**
 //
 // 컴포넌트는 글자 그대로 같아야 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 옵니다 —
-// 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류 없이 미관측·UNDECLARED 로 구분됩니다.
+// 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류 없이 미관측·UNDECLARED로 구분됩니다.
 // 관측 결과에 적힌 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 한다.
 func TestObservedComponentsAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
@@ -592,8 +592,8 @@ func TestNoObservationNoCandidates(t *testing.T) {
 
 // IC-UI37 — **관측 이름을 적으면 그 노드에 붙는다.**
 //
-// 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. collector 가 자기가 붙인
-// id 로 보내면 선언한 자산은 전부 미관측으로, 관측된 자산은 전부 UNDECLARED 로 오릅니다 —
+// 자산 대조는 노드 이름이 글자 그대로 같아야 맞습니다. collector가 자기가 붙인
+// id로 보내면 선언한 자산은 전부 미관측으로, 관측된 자산은 전부 UNDECLARED로 오릅니다 —
 // 선언이 틀려서가 아니라 이름이 서로 달라서입니다. 그 이름을 한 번 적어 두는 자리다.
 func TestObservedNameRoundTrips(t *testing.T) {
 	got, _ := ui.ApplyDecl(decl.Declaration{}, url.Values{
@@ -611,7 +611,7 @@ func TestObservedNameRoundTrips(t *testing.T) {
 }
 
 // IC-UI38 — **붙지 않은 관측 이름이 후보로 뜬다.** 어디에도 안 붙었다는 것은 그
-// 노드의 자산이 통째로 UNDECLARED 로 오른다는 뜻이라, 사람이 가장 먼저 볼 이름이다.
+// 노드의 자산이 통째로 UNDECLARED로 오른다는 뜻이라, 사람이 가장 먼저 볼 이름이다.
 func TestUnmatchedNodeNamesAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
 		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}
@@ -629,7 +629,7 @@ func TestUnmatchedNodeNamesAreOffered(t *testing.T) {
 	}
 }
 
-// IC-UI39 — **플랫폼 조치는 그렇다고 말한다.**
+// IC-UI39 — **플랫폼 조치는 그렇다고 알린다.**
 //
 // CNG 항목은 계획의 provider 칸이 빕니다 — 갈아 끼울 대상이 없고, FIPS 여부는 알 수
 // 없기 때문입니다(§2.5). 화면이 말하지 않으면 **빠뜨린 것으로 읽힙니다.**
@@ -655,7 +655,7 @@ func TestPlatformActionIsMarkedInTheQueue(t *testing.T) {
 // 넷에 문구가 200개 가까이 있고, 새 문구는 계속 늘어납니다. 그래서 **화면을 통째로
 // 영어로 그려 놓고 한글이 한 글자라도 있으면 막습니다.**
 //
-// 재료는 전부 아스키로 둡니다 — 노드 이름 같은 값까지 잡으면 이 케이스가 거짓으로 웁니다.
+// 입력은 전부 아스키로 둡니다 — 노드 이름 같은 값까지 잡으면 이 케이스가 거짓으로 웁니다.
 func TestEnglishScreensHaveNoKorean(t *testing.T) {
 	page := ui.Page{Title: "t", Subtitle: "s", Lang: ui.EN, LangHref: "/?lang=ko",
 		Nav: ui.NavFor(ui.EN, ui.ScreenScope, ui.Screens{Decl: true, Scope: true, Survey: true})}
@@ -792,7 +792,7 @@ func TestInventoryFilterMatchesAnyColumn(t *testing.T) {
 // 그것이 예전의 「스코프에만 있는 노드」입니다.
 func TestDeclMergesScopeAndAddressesIntoOneTable(t *testing.T) {
 	d := decl.Declaration{
-		Scope: []string{"web", "db"}, // db 는 주소 표에 없다
+		Scope: []string{"web", "db"}, // db는 주소 표에 없다
 		Nodes: []decl.Node{
 			{Name: "web", IPs: []string{"10.0.0.1"}},
 			{Name: "cache", IPs: []string{"10.0.0.9"}}, // 스코프에 없다
@@ -812,7 +812,7 @@ func TestDeclMergesScopeAndAddressesIntoOneTable(t *testing.T) {
 // IC-UI27 — **IP를 적은 줄만 관리 대상이 된다.**
 //
 // IP가 없으면 관측에 찍힌 주소를 이 이름과 이을 근거가 없습니다. 그런 이름을 관리
-// 대상에 넣어 두면 선언한 엣지는 미관측으로, 관측된 엣지는 UNDECLARED 로 구분됩니다 —
+// 대상에 넣어 두면 선언한 엣지는 미관측으로, 관측된 엣지는 UNDECLARED로 구분됩니다 —
 // 막히지 않으니 눈으로는 알 수 없습니다. 그래서 저장에서 뺍니다. 다만 **뺀 것은
 // 말해야 합니다** — 표에서 사라진 것만 보이면 지워진 것으로 읽힙니다.
 func TestApplyDeclDerivesScopeFromTheTable(t *testing.T) {
@@ -965,7 +965,7 @@ func TestDeclNextLinksToTheRightNode(t *testing.T) {
 			t.Errorf("%q 가 없다 — 카드가 제 노드로 보내지 않는다", want)
 		}
 	}
-	// web 은 관측이 붙었으니 건너뛰고 db 로 간다.
+	// web은 관측이 붙었으니 건너뛰고 db로 간다.
 	if got := v.FirstToLinkAnchor(); got != "node-1" {
 		t.Errorf("「연결 검토」가 %q 로 간다 — 관측이 붙은 노드는 건너뛰어야 한다", got)
 	}
@@ -978,7 +978,7 @@ func TestDeclNextLinksToTheRightNode(t *testing.T) {
 	}
 }
 
-// IC-U33 — **절차 카드가 지금 상태를 한 줄로 말한다.**
+// IC-U33 — **절차 카드가 지금 상태를 한 줄로 알린다.**
 //
 // 번호와 이름만 있는 탭은 어디부터 볼지 말해 주지 않습니다. 아직 세지 않는 화면은
 // **그렇다고 적습니다** — 빈 자리는 「할 일이 없다」로 읽힙니다.
@@ -1006,7 +1006,7 @@ func TestStepsCarryState(t *testing.T) {
 	}
 }
 
-// IC-U34 — **재료를 주지 않은 화면은 닫힌 카드다.**
+// IC-U34 — **입력을 주지 않은 화면은 닫힌 카드다.**
 //
 // 없는 것을 눌러 보게 하지 않는다는 선은 옛 이동 링크와 같습니다(`NavFor`). 다만 카드는
 // **자리를 비우지 않고 왜 닫혔는지 적습니다** — 넷이 늘 보여야 절차가 몇 걸음인지 읽힙니다.
@@ -1018,7 +1018,7 @@ func TestStepsMarkWhatIsClosed(t *testing.T) {
 	if steps[1].Open || steps[1].State != "입력 파일을 주지 않았습니다" {
 		t.Errorf("스코프 카드가 open=%v %q", steps[1].Open, steps[1].State)
 	}
-	// 판정은 재료가 따로 없어 늘 열린다.
+	// 판정은 입력이 따로 없어 늘 열린다.
 	if !steps[3].Open {
 		t.Error("판정 카드가 닫혔다")
 	}
@@ -1147,7 +1147,7 @@ func TestSurveySummaryCounts(t *testing.T) {
 // IC-U39 — **재관측 후보가 판정보다 앞선다.**
 //
 // 못 본 것을 없는 것으로 확정하는 실수가 이 도구가 막으려는 바로 그 자리입니다. 관측이
-// 아직 닿지 않았는데 UNOBSERVED 를 부재로 읽으면 **실재하는 자산이 장부에서 사라집니다.**
+// 아직 닿지 않았는데 UNOBSERVED를 부재로 읽으면 **실재하는 자산이 장부에서 사라집니다.**
 func TestSurveyNextWarnsBeforeJudging(t *testing.T) {
 	page := ui.Page{Title: "대조", Lang: ui.KO}
 
@@ -1178,7 +1178,7 @@ func TestSurveyNextWarnsBeforeJudging(t *testing.T) {
 // IC-U40 — **대조의 두 화면은 같은 표를 보여 준다.**
 //
 // 이 화면은 적는 자리가 없어서 두 판이 보여 주는 것도 같아야 합니다. 숫자만 얹고 근거가
-// 갈리면 요약이 어디서 나왔는지 확인할 수 없습니다.
+// 어긋나면 요약이 어디서 나왔는지 확인할 수 없습니다.
 func TestSurveyNextSharesTheBody(t *testing.T) {
 	page := ui.Page{Title: "대조", Lang: ui.KO}
 
@@ -1305,7 +1305,7 @@ func TestReviewNextSharesTheForm(t *testing.T) {
 
 // IC-U44 — **살아 있는 승인은 다시 볼 것이 아니다.**
 //
-// 제외분 재검토는 「승인이 없거나 만료된 것」만 셉니다(`Reason` 이 비면 승인이 살아
+// 제외분 재검토는 「승인이 없거나 만료된 것」만 셉니다(`Reason`이 비면 승인이 살아
 // 있다는 뜻입니다). 전부 세면 **뺄 때마다 재검토 수가 늘어** 아무도 그 숫자를 안 봅니다.
 func TestInventorySummaryCounts(t *testing.T) {
 	v := ui.NewInventoryView(surveyResult(false), ui.Filter{}, ui.Page{Title: "조회", Lang: ui.KO})

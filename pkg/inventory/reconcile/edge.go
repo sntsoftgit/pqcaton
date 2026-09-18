@@ -10,7 +10,7 @@ import (
 
 // EdgeKey — 통신 엣지 동일성(§2 CommunicationEdge.ID: src·dst·port·proto 정준).
 type EdgeKey struct {
-	// Org — 자산 열쇠와 같은 이유로 동일성의 일부다([AssetKey]).
+	// Org — 자산 식별자와 같은 이유로 동일성의 일부다([AssetKey]).
 	Org   org.ID
 	Src   string
 	Dst   string // 스코프 노드 ID(이어짐) 또는 원시 주소(못 이음=off-scope)

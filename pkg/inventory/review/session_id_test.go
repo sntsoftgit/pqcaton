@@ -14,7 +14,7 @@ import (
 )
 
 // 판정과 실행 승인은 다른 단계다. 이 리포가 내는 것은 판정이 끝난 계획이고, 실행 승인은 상류가
-// 한다. 그 경계를 계약의 상태가 표시하고, 세션 id 가 계획과 원장을 잇는다.
+// 한다. 그 경계를 계약의 상태가 표시하고, 세션 id가 계획과 원장을 잇는다.
 
 func judgedSession() review.Session {
 	return review.Session{
@@ -29,9 +29,9 @@ func judgedSession() review.Session {
 	}
 }
 
-// ★ IC-P8 — 계약으로 나가는 계획은 IN_REVIEW 이고 승인 칸과 확정 시각이 비어 있다.
+// ★ IC-P8 — 계약으로 나가는 계획은 IN_REVIEW이고 승인 칸과 확정 시각이 비어 있다.
 //
-// 전에는 판정자의 자유 문자열을 approval_signatures 에 넣고 FINALIZED 를 달았다. 그 이름표는
+// 전에는 판정자의 자유 문자열을 approval_signatures에 넣고 FINALIZED를 달았다. 그 이름표는
 // 검증되지 않는 것이라 아무것도 증명하지 않으면서, 상류 구조 관문의 「승인 항목 있음」을
 // 충족하는 모양이 됐다.
 func TestJudgedPlanLeavesApprovalToUpstream(t *testing.T) {
@@ -51,7 +51,7 @@ func TestJudgedPlanLeavesApprovalToUpstream(t *testing.T) {
 	}
 }
 
-// IC-P8 — 계획 id 는 세션 id 를 담고, 검토자가 적은 문자열은 들어가지 않는다.
+// IC-P8 — 계획 id는 세션 id를 담고, 검토자가 적은 문자열은 들어가지 않는다.
 func TestPlanIDIsTheSessionID(t *testing.T) {
 	sf := judgedSession()
 	res, err := review.Finalize(sf)
@@ -67,9 +67,9 @@ func TestPlanIDIsTheSessionID(t *testing.T) {
 	}
 }
 
-// IC-P9 — 세션 id 가 없는 세션(옛 빌드가 연 것)은 확정하지 않고 다시 열라고 말한다.
+// IC-P9 — 세션 id가 없는 세션(옛 빌드가 연 것)은 확정하지 않고 다시 열라고 알린다.
 //
-// 여기서 새로 찍으면 그 세션의 원장 행들은 빈 세션 id 를 갖고 있어, 계획은 세션을 가리키는데
+// 여기서 새로 찍으면 그 세션의 원장 행들은 세션 id가 비어 있어, 계획은 세션을 가리키는데
 // 원장에는 그 세션이 없는 상태가 된다.
 func TestSessionWithoutIDMustBeReopened(t *testing.T) {
 	sf := judgedSession()
@@ -83,7 +83,7 @@ func TestSessionWithoutIDMustBeReopened(t *testing.T) {
 	}
 }
 
-// IC-P9 — 다시 열면 같은 id 다. 새 세션이면 내용이 같아도 다른 id 다. 앞 세션에 id 가 없으면
+// IC-P9 — 다시 열면 같은 id 다. 새 세션이면 내용이 같아도 다른 id 다. 앞 세션에 id가 없으면
 // 새로 만든 것을 그대로 둔다 — 지금 여는 것이 곧 「다시 열기」다.
 func TestSessionIDSurvivesReopenButNotNewSessions(t *testing.T) {
 	prev := judgedSession()
@@ -104,7 +104,7 @@ func TestSessionIDSurvivesReopenButNotNewSessions(t *testing.T) {
 	}
 }
 
-// 세션 id 의 모양. UUID v4 이고 만들 때마다 다르다.
+// 세션 id의 모양. UUID v4이고 만들 때마다 다르다.
 func TestNewSessionIDShape(t *testing.T) {
 	re := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 	seen := map[string]bool{}
@@ -122,7 +122,7 @@ func TestNewSessionIDShape(t *testing.T) {
 
 // ★ IC-D22 — 계획에서 원장으로 실제로 되짚어진다.
 //
-// 계획 id 에서 세션 id 를 읽어 원장을 찾으면 그 세션의 판정이 나오고, 다른 세션의 것은 섞이지
+// 계획 id에서 세션 id를 읽어 원장을 찾으면 그 세션의 판정이 나오고, 다른 세션의 것은 섞이지
 // 않는다. 저장만 하고 찾는 길이 없으면 「원장에서 찾을 수 있다」가 기능이 아니라 가능성이다.
 func TestPlanTracesBackToItsJudgments(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "judgments.jsonl")

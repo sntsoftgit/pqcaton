@@ -5,7 +5,7 @@
 //
 // **문구 안에 태그가 있다.** 한국어와 영어는 어순이 달라서, 강조할 자리를 조각내 두면
 // 한쪽 말이 반드시 어색해진다. 여기 있는 것은 전부 우리가 쓴 상수이지 밖에서 온 값이
-// 아니므로, `templ.Raw` 로 그대로 화면에 나간다.
+// 아니므로, `templ.Raw`로 그대로 화면에 나간다.
 package ui
 
 // ── 이동 · 화면 이름 ────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ var (
 	tColName = T{KO: "이름", EN: "Name"}
 	tColIP   = T{KO: "IP", EN: "IP"}
 	// **관측이 이 노드를 뭐라고 부르는가.** 자산 대조는 노드 이름이 글자 그대로 같아야
-	// 맞는데, collector 는 자기가 붙인 id 나 호스트명으로 보낸다.
+	// 맞는데, collector는 자기가 붙인 id나 호스트명으로 보낸다.
 	tColObservedAs       = T{KO: "관측 이름", EN: "Observed as"}
 	tColObservedAsHolder = T{KO: "호스트명이 이름과 같으면 비워 둡니다", EN: "leave empty if the hostname matches the name"}
 	tColNode             = T{KO: "노드", EN: "Node"}
@@ -221,7 +221,7 @@ var (
 	tHookDeact     = T{KO: "되돌리기", EN: "deactivate"}
 	tHookRestart   = T{KO: "재시작", EN: "restart"}
 	tRescan        = T{KO: "재수집 후보", EN: "rescan candidate"}
-	// **provider 를 갈아 끼우는 조치가 아닌 자리.** 계획의 provider 칸이 비는데, 화면이
+	// **provider를 갈아 끼우는 조치가 아닌 자리.** 계획의 provider 칸이 비는데, 화면이
 	// 말하지 않으면 빠뜨린 것으로 읽힌다.
 	tPlatformFix = T{KO: "플랫폼 조치", EN: "platform action"}
 

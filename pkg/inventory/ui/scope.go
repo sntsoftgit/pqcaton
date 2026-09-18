@@ -75,7 +75,7 @@ func NewScopeView(sf scope.Session, page Page) ScopeView {
 
 // Editable — 계층 파일을 붙여 **고칠 수 있는 화면**으로 만든다.
 //
-// 이것을 나눠 둔 것은 재료를 주지 않은 자리를 만들지 않기 위해서다 — 계층 파일 없이
+// 이것을 나눠 둔 것은 입력을 주지 않은 자리를 만들지 않기 위해서다 — 계층 파일 없이
 // 편집 표를 그리면 저장할 곳이 없는 칸을 사람이 채우게 된다.
 func (v ScopeView) Editable(files []scope.LayerFile) ScopeView {
 	for i, f := range files {
@@ -101,8 +101,8 @@ func toRule(r kscope.AssetRule) scope.Rule {
 // 얹지 않고 다시 만드는 이유는 선언 편집과 같다 — 줄을 지우는 방법이 「칸을 비우는 것」
 // 이므로, 기존 것에 얹으면 지운 줄이 되살아난다.
 //
-// **세 칸이 모두 빈 줄은 규칙이 아니라 빈 줄이다.** pqcota 는 빈 칸을 `*`로 읽으므로,
-// 그대로 만들면 `exclude,*,*,*` — **전부 제외**가 된다. 미리 열어 둔 빈 줄에서 action 만
+// **세 칸이 모두 빈 줄은 규칙이 아니라 빈 줄이다.** pqcota는 빈 칸을 `*`로 읽으므로,
+// 그대로 만들면 `exclude,*,*,*` — **전부 제외**가 된다. 미리 열어 둔 빈 줄에서 action만
 // 잘못 골라도 인벤토리가 통째로 비는 규칙이 생긴다. 「전부」를 뜻하려면 `*`를 적는다.
 func ApplyLayers(files []scope.LayerFile, f url.Values) []scope.LayerFile {
 	out := make([]scope.LayerFile, 0, len(files))
@@ -171,10 +171,10 @@ func ApplyScope(sf scope.Session, f url.Values) scope.Session {
 
 // ScopeSummary — 스코프 요약 화면(`/scope-next`)이 쓰는 숫자.
 //
-// **세는 일을 뷰에 둔다**(DeclSummary 와 같은 선). templ 안에서 세면 같은 계산이
+// **세는 일을 뷰에 둔다**(DeclSummary와 같은 선). templ 안에서 세면 같은 계산이
 // 화면마다 흩어지고, 그러면 화면과 요약이 다른 답을 내는 날이 온다.
 type ScopeSummary struct {
-	// Layers — 화면에서 고칠 수 있는 계층. 계층 파일을 주지 않았으면 0 이고, 그때 화면은
+	// Layers — 화면에서 고칠 수 있는 계층. 계층 파일을 주지 않았으면 0이고, 그때 화면은
 	// 승인만 하는 자리가 된다.
 	Layers int
 	// Rules — 그 계층들에 적힌 규칙을 합친 수.

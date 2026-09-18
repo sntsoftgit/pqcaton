@@ -20,7 +20,7 @@ var ErrOrgMismatch = errors.New("the input contains something from another organ
 // Engine — 조직 하나에 묶인 대조 엔진.
 //
 // **조직을 인자로 받지 않고 핸들이 든다.** 인자로 받으면 부르는 자리마다 옳게 넘겼는지를
-// 다시 확인해야 하고, 한 군데만 빠져도 조용히 섞인다. 판정 저장소가 이미 같은 모양이다
+// 다시 확인해야 하고, 한 군데만 빠져도 표시 없이 섞인다. 판정 저장소가 이미 같은 모양이다
 // (`decision.NewFileJudgmentStore`).
 type Engine struct{ org org.ID }
 
@@ -37,7 +37,7 @@ func (e *Engine) Org() org.ID { return e.org }
 
 // AssetsFromSnapshot — 관측 레인의 자산을 뽑고 **이 엔진의 조직을 찍는다.**
 //
-// 스냅샷은 조직을 모른다. 찍는 자리를 여기 하나로 몰아 두면, 조직 없는 열쇠가 만들어질 수
+// 스냅샷은 조직을 모른다. 찍는 자리를 여기 하나로 몰아 두면, 조직 없는 식별자가 만들어질 수
 // 있는 곳이 테스트 말고는 남지 않는다.
 func (e *Engine) AssetsFromSnapshot(snap *history.Snapshot) []Observed {
 	return stampObserved(e.org, observedFromSnapshot(snap))
@@ -50,12 +50,12 @@ func (e *Engine) AssetsFromSnapshotAs(snap *history.Snapshot, node string) []Obs
 }
 
 // ExcludedFromSnapshotAs — **정책 없이** 정규화한 스냅샷(snapAll)에서, 정책이 관리 대상에서
-// 뺄 finding 을 제외 근거로 낸다. 선언 노드 이름(node)으로 열쇠를 만들고 조직을 찍는다.
+// 뺄 finding을 제외 근거로 낸다. 선언 노드 이름(node)으로 식별자를 만들고 조직을 찍는다.
 //
 // 관리 근거는 정책을 건 스냅샷에서 나와야 한다([AssetsFromSnapshotAs]) - 그것이 상류 이력과
 // 같은 지문을 내는 스냅샷이다. 여기 오는 스냅샷은 어디에도 적재되지 않은 것이라 지문을
 // 쓰지 않는다. 정책 판정은 상류 코드([scope.AssetPolicy.Managed])를 그대로 부른다 - 이
-// 리포가 정책을 다시 해석하지 않는다. policy 가 nil 이면 제외되는 것이 없다.
+// 리포가 정책을 다시 해석하지 않는다. policy가 nil 이면 제외되는 것이 없다.
 func (e *Engine) ExcludedFromSnapshotAs(snapAll *history.Snapshot, node string, policy *scope.AssetPolicy) []Excluded {
 	if snapAll == nil || policy == nil {
 		return nil
@@ -89,15 +89,15 @@ func (e *Engine) AssetsFromResults(results []*discoveryv1.CollectionResult) ([]A
 	return out, nil
 }
 
-// Reconcile — 3-상태 대조(§3.3①). **다른 조직이 섞였으면 대조하지 않고 끊는다.**
+// Reconcile — 3-상태 대조(§3.3①). **다른 조직이 섞였으면 대조하지 않고 중단한다.**
 //
-// 열쇠에 조직이 들어 있으므로 섞인 입력은 그냥 두면 서로 안 맞아 CONFIRMED가 UNDECLARED와
+// 식별자에 조직이 들어 있으므로 섞인 입력은 그냥 두면 서로 안 맞아 CONFIRMED가 UNDECLARED와
 // UNOBSERVED 한 쌍으로 구분된다 — 오류가 아니라 **그럴듯한 결과**로 나온다. 그래서 대조보다
 // 검사가 먼저다.
 //
-// excluded 는 정책이 뺀 관측이다([ExcludedFromSnapshotAs]). **인자로 받는 것은 잊지 못하게
+// excluded는 정책이 뺀 관측이다([ExcludedFromSnapshotAs]). **인자로 받는 것은 잊지 못하게
 // 하려는 것이다** - 선택 인자로 두면 로컬 스캔 같은 경로 하나가 빠뜨리고, 그 경로에서만
-// 제외가 미관측으로 읽힌다. 없으면 nil 을 넘긴다.
+// 제외가 미관측으로 읽힌다. 없으면 nil을 넘긴다.
 func (e *Engine) Reconcile(declared []AssetKey, observed []Observed, excluded []Excluded, gapLayers []string) ([]Reconciled, error) {
 	for _, k := range declared {
 		if err := e.want(k.Org, "declared", k.NodeID); err != nil {
@@ -117,7 +117,7 @@ func (e *Engine) Reconcile(declared []AssetKey, observed []Observed, excluded []
 	return reconcileAssets(declared, observed, excluded, gapLayers), nil
 }
 
-// ReconcileEdges — 통신 엣지의 3-상태 대조(IC-E1). 자산과 같은 규칙으로 끊는다.
+// ReconcileEdges — 통신 엣지의 3-상태 대조(IC-E1). 자산과 같은 규칙으로 중단한다.
 func (e *Engine) ReconcileEdges(declared []EdgeKey, observed []*discoveryv1.ObservedEdge,
 	scope map[string]bool, gapLayers []string) ([]ReconciledEdge, error) {
 	for _, k := range declared {

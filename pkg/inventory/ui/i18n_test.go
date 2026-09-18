@@ -20,10 +20,10 @@ func req(target string, header, cookie string) *http.Request {
 	return r
 }
 
-// IC-UI21 — **고른 것이 브라우저 설정을 이긴다.**
+// IC-UI21 — **고른 것이 브라우저 설정보다 우선한다.**
 //
 // 한국어 브라우저를 쓰면서 영어 화면을 보려는 사람이 있고, 그 반대도 있습니다. 브라우저가
-// 이기면 토글을 눌러도 다음 화면에서 되돌아갑니다 — 그러면 토글이 있으나 마나입니다.
+// 우선하면 토글을 눌러도 다음 화면에서 되돌아갑니다 — 그러면 토글이 있으나 마나입니다.
 func TestPickLangOrder(t *testing.T) {
 	for _, tc := range []struct {
 		name              string

@@ -56,7 +56,7 @@ func writeResults(t *testing.T, dir string, rs ...*discoveryv1.CollectionResult)
 
 // ★ IC-R18 — 이 리포의 스냅샷 지문이 상류 적재의 것과 같다.
 //
-// 상류 `ingest.IngestWith` 를 메모리 이력에 돌려 저장된 스냅샷의 v1 지문을 얻고, 같은 결과 디렉터리를
+// 상류 `ingest.IngestWith`를 메모리 이력에 돌려 저장된 스냅샷의 v1 지문을 얻고, 같은 결과 디렉터리를
 // 이 리포의 대조가 읽어 낸 근거의 지문과 비교한다. 다르면 계약으로 건너간 참조가 중앙 이력에서
 // 찾히지 않는다.
 func TestSnapshotDigestMatchesUpstreamIngest(t *testing.T) {
@@ -84,7 +84,7 @@ func TestSnapshotDigestMatchesUpstreamIngest(t *testing.T) {
 	}
 	want := history.ContentHashV1(snap)
 
-	// 이 리포의 대조. 선언은 봉투 이름과 다른 이름을 쓰고 observed_as 로 잇는다.
+	// 이 리포의 대조. 선언은 봉투 이름과 다른 이름을 쓰고 observed_as로 잇는다.
 	d := decl.Declaration{Org: "acme", Scope: []string{"web"},
 		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"web-01.corp"}}},
 		Assets: []decl.Asset{{Node: "web", Runtime: "openssl", Component: "libcrypto"}}}
@@ -159,7 +159,7 @@ func TestSnapshotDigestIsOrderInvariant(t *testing.T) {
 // 주 근거는 가장 강한 증거다. 전에는 첫 관측만 남아 둘째 원천의 근거가 사라졌다.
 func TestAliasedSourcesKeepEveryEvidence(t *testing.T) {
 	dir := t.TempDir()
-	// 두 원천. 둘째는 symbol-analysis 라 증거가 약하다(inferred). 파일 순서는 약한 쪽이 앞이다.
+	// 두 원천. 둘째는 symbol-analysis라 증거가 약하다(inferred). 파일 순서는 약한 쪽이 앞이다.
 	weak := resultFiles("web-b.corp", "openssl-collector", 100, "3.0.2")
 	weak.Envelope.DetectionMethod = commonv1.DetectionMethod_DETECTION_METHOD_SYMBOL_ANALYSIS
 	strong := resultFiles("web-a.corp", "openssl-collector", 200, "3.0.2")

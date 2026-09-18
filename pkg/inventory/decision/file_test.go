@@ -99,7 +99,7 @@ func countLines(b []byte) int {
 
 // IC-D25 — **옛 원장 줄(칸 없음)은 평가된 값으로 읽히고, 새 미평가 줄은 명시적 false 그대로다.**
 //
-// Judgment 에는 json 태그가 없어 bool 로 두면 옛 줄의 부재가 false 로 읽힌다. 그러면 옛 판정 전부가
+// Judgment에는 json 태그가 없어 bool로 두면 옛 줄의 부재가 false로 읽힌다. 그러면 옛 판정 전부가
 // 미평가로 둔갑해 만료 시 신뢰도가 감쇠되지 않는다. wire 형식이 포인터로 받아 부재를 참으로 읽는다.
 func TestFileStoreReadsMissingEvaluatedAsTrue(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "j.jsonl")

@@ -22,9 +22,9 @@ type Declaration struct {
 	// Comment — 사람이 읽는 머리말. 생성 도구가 남기는 자리다(데모의 declare.py).
 	Comment string `json:"_comment,omitempty"`
 	// Org — 이 선언이 어느 조직의 것인가. **선언 문서가 조직의 것이므로 여기 적힌다** —
-	// 대조 엔진이 이 값으로 열리고, 다른 조직의 자산이 섞이면 대조하지 않고 끊는다.
+	// 대조 엔진이 이 값으로 열리고, 다른 조직의 자산이 섞이면 대조하지 않고 중단한다.
 	Org string `json:"org,omitempty"`
-	// Scope — 등재된 노드 이름. 관측 상대가 여기 없으면 off-scope 로 표기된다(§1.4).
+	// Scope — 등재된 노드 이름. 관측 상대가 여기 없으면 off-scope로 표기된다(§1.4).
 	Scope []string `json:"scope"`
 	// Nodes — 스코프 마스터: 노드↔IP. **관측 IP를 노드로 잇는 유일한 근거다.**
 	Nodes []Node `json:"nodes"`
@@ -39,9 +39,9 @@ type Node struct {
 	Name string   `json:"name"`
 	IPs  []string `json:"ips"`
 	// ObservedAs — 관측이 이 노드를 부르는 이름. **자산 대조는 노드 이름이 글자 그대로
-	// 같아야 맞는다** — 그런데 collector 는 자기가 붙인 id(`node:<해시>`)나 호스트명으로
+	// 같아야 맞는다** — 그런데 collector는 자기가 붙인 id(`node:<해시>`)나 호스트명으로
 	// 보내는 일이 흔하다. 이름이 서로 다르면 선언한 자산은 전부 미관측으로, 관측된 자산은
-	// 전부 UNDECLARED 로 올라온다 — 막히지 않고 그럴듯하게 틀린다.
+	// 전부 UNDECLARED로 올라온다 — 막히지 않고 그럴듯하게 틀린다.
 	//
 	// 호스트명이 이름과 같으면 적지 않아도 이어진다. 여기는 **그것으로 안 될 때** 사람이
 	// 한 번 적어 두는 자리다.
@@ -98,11 +98,11 @@ func Save(path string, d Declaration) error {
 
 // Code — 무엇이 어긋났나. **문장이 아니라 코드다.**
 //
-// 같은 문제를 명령은 영어로 말하고 화면은 보는 사람의 말로 말해야 한다. 여기에 문장을
+// 같은 문제를 명령은 영어로 내고 화면은 보는 사람의 말로 내야 한다. 여기에 문장을
 // 담으면 그 둘 중 하나는 반드시 남의 말로 뜬다.
 //
 // 영어 문장은 이 패키지가 갖고(아래 [Problem.What] · [Problem.Why]), 한국어는 화면
-// 카탈로그가 갖는다 — **영어를 두 곳에 두지 않는 것**이 이 갈래의 요점이다.
+// 카탈로그에 있다 — **영어를 두 곳에 두지 않는 것**이 이 갈래의 요점이다.
 type Code string
 
 const (
@@ -169,7 +169,7 @@ func (p Problem) What() string { return fill(whatEN[p.Code], p.Detail) }
 // **이것이 없으면 사람은 고칠 이유를 모른다.**
 func (p Problem) Why() string { return whyEN[p.Code] }
 
-// fill — 값 자리가 있는 문장에만 값을 넣는다. 없는 문장에 넣으면 %!(EXTRA …) 가 붙는다.
+// fill — 값 자리가 있는 문장에만 값을 넣는다. 없는 문장에 넣으면 %!(EXTRA …)가 붙는다.
 func fill(tmpl, detail string) string {
 	if !strings.Contains(tmpl, "%s") {
 		return tmpl

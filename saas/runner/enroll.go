@@ -55,7 +55,7 @@ func addrToken(key, addr string) string {
 // toEnrollment — 파일 하나를 올릴 형태로 바꾼다. 주소는 여기서 토큰이 되고 버려진다.
 //
 // **붙었다는데 지문이 없으면 실패로 바꾼다.** 그대로 올리면 지문 없는 노드가 등재되어
-// 클론 검출을 통째로 빠져나간다 — 그렇다고 조용히 버리면 운영자는 그 대상이 등재된 줄
+// 클론 검출을 통째로 빠져나간다 — 그렇다고 알리지 않고 버리면 운영자는 그 대상이 등재된 줄
 // 안다. 사유를 붙여 올려야 **화면에서 보인다.**
 func (f enrollFile) toEnrollment(key string) Enrollment {
 	e := Enrollment{

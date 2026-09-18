@@ -38,9 +38,9 @@ func TestScanFindsStringsNotComments(t *testing.T) {
 
 // IC-T2 — **정규식이 놓치는 자리를 잡는다.**
 //
-// 이 검사를 만들기 전 즉석 스크립트로 훑었더니 URL 안의 `//` 에서 줄이 잘려
+// 이 검사를 만들기 전 즉석 스크립트로 훑었더니 URL 안의 `//`에서 줄이 잘려
 // `"화면: http://%s"` 하나를, 여러 줄 백틱 문자열에서 둘을 놓쳤습니다. **파서로 봐야
-// 하는 이유가 그것입니다** — 그래서 그 두 모양을 케이스로 박아 둔다.
+// 하는 이유가 그것입니다** — 그래서 그 두 모양을 케이스로 고정해 둔다.
 func TestScanCatchesWhatRegexMisses(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "b/b.go", "package b\n\n"+

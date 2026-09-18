@@ -43,7 +43,7 @@ func RenderView(recs []Reconciled) string {
 	return b.String()
 }
 
-// confText — 신뢰도를 글자로. **미평가는 숫자로 보이지 않는다** - 0.30 은 「재 봤더니 낮다」로
+// confText — 신뢰도를 글자로. **미평가는 숫자로 보이지 않는다** - 0.30은 「재 봤더니 낮다」로
 // 읽히는데, 재지 않은 값이다.
 func confText(r Reconciled) string {
 	if !r.ConfidenceEvaluated {
@@ -53,7 +53,7 @@ func confText(r Reconciled) string {
 }
 
 // mixedNote — 혼합 근거의 고지. 같은 자산의 관측 일부가 정책에 걸렸다는 것은 정책이 의도한
-// 만큼만 걸리지 않았다는 신호일 수 있다(공유 .so 를 여러 앱이 쓰는 경우).
+// 만큼만 걸리지 않았다는 신호일 수 있다(공유 .so를 여러 앱이 쓰는 경우).
 func mixedNote(r Reconciled) string {
 	if r.Managed == Managed && len(r.ExcludedSources) > 0 {
 		return fmt.Sprintf("  (managed by %d source(s), %d more excluded by the policy)", len(r.Sources), len(r.ExcludedSources))
@@ -63,10 +63,10 @@ func mixedNote(r Reconciled) string {
 
 // renderPolicyConflicts — 선언은 관리 대상으로 적었는데 정책이 뺀 자산(CONFIRMED + EXCLUDED_BY_POLICY).
 //
-// **둘이 어긋난 것이고, 어느 쪽을 고칠지는 기계가 정하지 않는다.** 값으로 말한다: 자산 열쇠 ·
-// 원천 노드 · 앱 열쇠 전부 · 그리고 같은 공용 정책 코드가 이 finding 을 제외했다는 사실.
-// 어느 규칙인지는 말하지 않는다 - 상류 Managed 는 bool 만 돌려준다. 앱 열쇠를 적으면 사람이
-// 정책 파일에서 그 열쇠에 걸리는 줄을 찾을 수 있다. 열쇠를 **전부** 적는 것은 공유 .so 하나를
+// **둘이 어긋난 것이고, 어느 쪽을 고칠지는 기계가 정하지 않는다.** 값으로 알린다: 자산 식별자 ·
+// 원천 노드 · 앱 식별자 전부 · 그리고 같은 공용 정책 코드가 이 finding을 제외했다는 사실.
+// 어느 규칙인지는 말하지 않는다 - 상류 Managed는 bool만 돌려준다. 앱 식별자를 적으면 사람이
+// 정책 파일에서 그 식별자에 걸리는 줄을 찾을 수 있다. 식별자를 **전부** 적는 것은 공유 .so 하나를
 // 여러 앱이 로드하면 그 목록 전부가 함께 빠진 것이기 때문이다 - 하나만 적으면 「이 앱만
 // 빠졌다」로 읽는다.
 func renderPolicyConflicts(b *strings.Builder, recs []Reconciled) {

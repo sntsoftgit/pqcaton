@@ -1,7 +1,7 @@
 // Command pqcaton-ui — 리뷰 큐와 선언을 사람이 다루는 화면.
 //
-// **파일에서 읽고 파일에 쓰는 껍데기다.** 화면 자체는 `pkg/inventory/ui` 에 있고, 확정
-// 관문은 `pkg/inventory/review` 에 있다 — 컨트롤 플레인이 같은 화면과 같은 관문을
+// **파일에서 읽고 파일에 쓰는 껍데기다.** 화면 자체는 `pkg/inventory/ui`에 있고, 확정
+// 관문은 `pkg/inventory/review`에 있다 — 컨트롤 플레인이 같은 화면과 같은 관문을
 // 쓰고, 다른 것은 「어디서 읽고 누가 들어오나」뿐이다.
 //
 //	pqcaton-ui <session.json> [-decl declaration.json] [-results 디렉터리]
@@ -10,14 +10,14 @@
 //	           [-plan 파일] [-scope-out 파일]
 //
 // **탭 순서가 절차 순서다** — 선언 → 스코프 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을
-// 할지 화면이 말해 준다. 재료를 주지 않은 자리는 만들지 않는다.
+// 할지 화면이 알려 준다. 입력을 주지 않은 자리는 만들지 않는다.
 //
 // **라우팅은 chi, 화면은 templ, 부분 갱신은 htmx 다.** 셋 다 허용적 라이선스이고
-// 링크되는 모듈은 둘만 는다(전이 의존이 없다). htmx 는 바이너리에 박혀 나가므로 망이
+// 링크되는 모듈은 둘만 는다(전이 의존이 없다). htmx는 바이너리에 담겨 나가므로 망이
 // 끊긴 기계에서도 그대로 뜬다 — 그리고 우리 라이선스 관문이 그 파일까지 본다.
 //
-// **기본은 127.0.0.1 이다.** 리뷰 큐에는 어느 노드가 무엇을 쓰는지가 그대로 있다 — 곧 그
-// 조직의 공격면이다. 밖으로 열려면 -addr 를 명시적으로 바꿔야 하고 그때 경고한다.
+// **기본은 127.0.0.1이다.** 리뷰 큐에는 어느 노드가 무엇을 쓰는지가 그대로 있다 — 곧 그
+// 조직의 공격면이다. 밖으로 열려면 -addr를 명시적으로 바꿔야 하고 그때 경고한다.
 //
 // **산출물은 여전히 파일이다.** 화면이 생겨도 무엇을 근거로 무엇을 정했는지가 사라지지
 // 않는다 — 편집한 세션 파일과 선언, 확정 계획, 판정 원장이 그대로 남는다.
@@ -67,8 +67,8 @@ func main() {
 	orgName := fs.String("org", "local", "organization the judgments are bound to")
 	planOut := fs.String("plan", "plan.json", "file to write the finalized plan to")
 
-	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag 는 첫 비플래그에서
-	// 파싱을 멈추므로, 그냥 두면 `pqcaton-ui session.json -addr ...` 의 -addr 이 조용히
+	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag는 첫 비플래그에서
+	// 파싱을 멈추므로, 그냥 두면 `pqcaton-ui session.json -addr ...`의 -addr이 표시 없이
 	// 무시되고 기본 주소로 뜬다. 다른 명령들과 같은 규칙이다.
 	pos, flags := splitArgs(os.Args[1:])
 	if err := fs.Parse(flags); err != nil {
@@ -80,7 +80,7 @@ func main() {
 	}
 	path := pos[0]
 	if _, err := review.Load(path); err != nil {
-		// **재료가 있으면 화면이 직접 연다.** 선언과 관측 결과가 곧 리뷰 큐의 재료다 —
+		// **입력이 있으면 화면이 직접 연다.** 선언과 관측 결과가 곧 리뷰 큐의 입력이다 —
 		// 그것을 손에 들고도 명령을 한 번 돌려야 화면이 열리는 것은, 화면을 두는 이유와
 		// 어긋난다.
 		if *declPath == "" || *resultsDir == "" {
@@ -93,7 +93,7 @@ func main() {
 	if *declPath != "" {
 		if _, err := decl.Load(*declPath); err != nil {
 			// 선언은 사람이 처음 쓰는 것이라 만들어 줄 명령이 없다 — 빈 파일에서
-			// 시작할 수 있다는 것을 말한다.
+			// 시작할 수 있다는 것을 알린다.
 			fmt.Fprintln(os.Stderr, "❌ cannot read the declaration file:", err)
 			fmt.Fprintln(os.Stderr, `   To start from an empty declaration: echo '{"scope":[],"nodes":[],"assets":[],"edges":[]}' > `+*declPath)
 			os.Exit(1)
@@ -101,7 +101,7 @@ func main() {
 	}
 
 	if *resultsDir != "" && *declPath == "" {
-		// **선언 없이는 대조할 것이 없다.** 조용히 빈 화면을 주면 사람이 무엇이 빠졌는지 모른다.
+		// **선언 없이는 대조할 것이 없다.** 이유 없이 빈 화면을 주면 사람이 무엇이 빠졌는지 모른다.
 		fmt.Fprintln(os.Stderr, "❌ -results needs -decl — reconciliation means matching against a declaration")
 		os.Exit(2)
 	}
@@ -113,7 +113,7 @@ func main() {
 	}
 	if *scopePath != "" && len(layers) == 0 {
 		if _, err := scope.LoadSession(*scopePath); err != nil {
-			// 계층을 주지 않았으면 화면은 세션을 만들 재료가 없다 — 어디서 나는지 말한다.
+			// 계층을 주지 않았으면 화면은 세션을 만들 입력이 없다 — 어디서 나는지 알린다.
 			fmt.Fprintln(os.Stderr, "❌ cannot read the scope session:", err)
 			fmt.Fprintln(os.Stderr, "   Give it the layer CSVs and the screen raises one itself: -layers corp.csv,prod.csv -base asset-scope.csv")
 			fmt.Fprintln(os.Stderr, "   To make one with a command: `pqcaton-scope open <layer.csv>... -base <in-force.csv> > "+*scopePath+"`")
@@ -135,7 +135,7 @@ func main() {
 	h := s.handler()
 
 	if !loopback(*addr) {
-		// **조용히 열지 않는다.** 리뷰 큐는 그 조직의 공격면이다.
+		// **묻지 않고 열지 않는다.** 리뷰 큐는 그 조직의 공격면이다.
 		fmt.Fprintf(os.Stderr,
 			"⚠ %s is not loopback — the screen is open on the network. Put authentication in front of it.\n", *addr)
 	}
@@ -209,10 +209,10 @@ type server struct {
 // handler — 주소와 처리기를 잇는다.
 //
 // **메서드를 라우터가 가른다.** 예전에는 처리기마다 `POST 인가`를 손으로 물었고, 그
-// 물음을 빠뜨린 자리는 GET 으로도 확정이 돌 수 있었다 — 새로고침 한 번에 확정이 다시
-// 타는 길이다. 여기서는 `r.Post` 로 등록하지 않은 주소에 POST 가 닿지 않는다.
+// 물음을 빠뜨린 자리는 GET으로도 확정이 돌 수 있었다 — 새로고침 한 번에 확정이 다시
+// 타는 길이다. 여기서는 `r.Post`로 등록하지 않은 주소에 POST가 닿지 않는다.
 //
-// Recoverer 를 두는 이유: 화면 하나가 터져도 나머지 절차는 계속 다뤄야 한다. 리뷰 중에
+// Recoverer를 두는 이유: 화면 하나가 터져도 나머지 절차는 계속 다뤄야 한다. 리뷰 중에
 // 서버가 죽으면 적던 판정이 통째로 날아간다.
 func (s *server) handler() http.Handler {
 	r := chi.NewRouter()
@@ -220,7 +220,7 @@ func (s *server) handler() http.Handler {
 	// 고른 말을 기억한다. 화면을 옮길 때마다 다시 고르게 하지 않는다.
 	r.Use(rememberLang)
 
-	// 화면이 브라우저로 내보내는 것(스타일 · htmx). 바이너리에 박혀 있다.
+	// 화면이 브라우저로 내보내는 것(스타일 · htmx). 바이너리에 담겨 있다.
 	r.Handle(ui.StaticPath+"*", ui.Static())
 
 	// **첫 화면은 절차의 첫 자리다.** 선언이 있으면 거기서 시작하고, 없으면 리뷰 큐다.
@@ -261,7 +261,7 @@ func uiNext(w http.ResponseWriter, _ *http.Request) {
 
 // rememberLang — 주소로 말을 고르면 쿠키에 남긴다.
 //
-// **주소에 실린 말이 쿠키를 이긴다**(ui.PickLang). 여기서는 그 선택을 기억만 한다 —
+// **주소에 실린 말이 쿠키보다 우선한다**(ui.PickLang). 여기서는 그 선택을 기억만 한다 —
 // 「행 추가」처럼 조각만 받아 오는 요청도 같은 말로 오게 하려는 것이다.
 func rememberLang(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -307,8 +307,8 @@ func sub(parts ...string) string { return strings.Join(parts, " · ") }
 // reviewSession — 리뷰 세션을 읽는다. **관측 결과가 있으면 그것이 정답지다.**
 //
 // 큐는 관측에서 파생된 것이라, 결과가 늘었는데 세션이 그대로면 화면이 옛 큐를 보여
-// 준다 — 방금 나타난 UNDECLARED 가 판정 대상에 없는 상태다. 그래서 읽을 때마다 다시 세우고,
-// 사람이 적은 판정은 [review.Carry] 가 들고 간다. 파일에 쓰는 것은 저장·확정할 때뿐이다.
+// 준다 — 방금 나타난 UNDECLARED가 판정 대상에 없는 상태다. 그래서 읽을 때마다 다시 세우고,
+// 사람이 적은 판정은 [review.Carry]가 들고 간다. 파일에 쓰는 것은 저장·확정할 때뿐이다.
 func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	prev, err := review.Load(s.path)
 	if err != nil && (s.results == "" || !os.IsNotExist(err)) {
@@ -348,7 +348,7 @@ func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render fun
 	if next {
 		got := v.Summary()
 		v.Page = s.nextPage(r, ui.ScreenReviewNext, s.path, ui.StepState{Review: &got})
-		// 세션의 스코프는 `org://이름` 이다. 위쪽 맥락 줄에는 다른 화면과 같은 모양으로
+		// 세션의 스코프는 `org://이름`이다. 위쪽 맥락 줄에는 다른 화면과 같은 모양으로
 		// 조직 이름만 적는다 — 한 껍데기에서 같은 자리가 화면마다 다르면 다른 값으로 읽힌다.
 		v.Page.Org = strings.TrimPrefix(sf.Scope, "org://")
 		v.Page.Warnings = ui.Warnings(ui.PickLang(r), warn)
@@ -646,7 +646,7 @@ func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render fun
 	html(w, func() error { return render(w, v) })
 }
 
-// renderDOT — `dot` 이 있으면 SVG 로 그린다. 없으면 빈 값을 돌려주고 화면이 원문을 보인다.
+// renderDOT — `dot`이 있으면 SVG로 그린다. 없으면 빈 값을 돌려주고 화면이 원문을 보인다.
 //
 // **의존성이 아니라 있으면 좋은 것이다.** 없다고 화면이 깨지면 표준 라이브러리만 쓴다는
 // 약속이 무의미해진다.
@@ -661,7 +661,7 @@ func renderDOT(dot string) string {
 	if err != nil {
 		return ""
 	}
-	// `dot` 이 낸 SVG 다. 우리가 만든 DOT 에서 나온 것이라 밖에서 온 값이 아니다.
+	// `dot`이 낸 SVG 다. 우리가 만든 DOT에서 나온 것이라 밖에서 온 값이 아니다.
 	return string(out)
 }
 
@@ -717,12 +717,12 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 	html(w, func() error { return render(w, v) })
 }
 
-// withPolicy — 「안 보고 있는 것」. 확정된 정책 CSV 가 있어야 셀 수 있다.
+// withPolicy — 「안 보고 있는 것」. 확정된 정책 CSV가 있어야 셀 수 있다.
 func (s *server) withPolicy(v ui.InventoryView) (ui.InventoryView, error) {
 	pol, err := scope.LoadPolicyFile(s.scopeOut)
 	if err != nil {
 		// **없는 것은 오류가 아니다.** 아직 정책을 확정하지 않았을 뿐이고, 화면은 그
-		// 절에서 무엇을 주면 열리는지 말한다.
+		// 절에서 무엇을 주면 열리는지 알린다.
 		if os.IsNotExist(err) {
 			return v, nil
 		}
@@ -753,8 +753,8 @@ func (s *server) withLedger(v ui.InventoryView, res *report.Result, subject stri
 	if err != nil {
 		return v, err
 	}
-	// 지금 관측이 만드는 근거. **명령의 delta 와 같은 계산이라야** 화면과 명령이 같은
-	// 것을 「바뀌었다」고 말한다.
+	// 지금 관측이 만드는 근거. **명령의 delta와 같은 계산이라야** 화면과 명령이 같은
+	// 것을 「바뀌었다」고 알린다.
 	basis := map[string]string{}
 	for _, rec := range res.Assets {
 		basis[review.Key(rec.Key)] = decision.HashBasis(string(rec.State), rec.Key.Runtime)
@@ -782,16 +782,16 @@ func (s *server) ledger() ([]decision.Judgment, error) {
 	return out, nil
 }
 
-// defaultTTLDays — 제외 승인의 유효기간. `pqcaton-scope` 와 같은 값이라야 화면과 명령이
-// 같은 것을 「오래됐다」고 말한다.
+// defaultTTLDays — 제외 승인의 유효기간. `pqcaton-scope`와 같은 값이라야 화면과 명령이
+// 같은 것을 「오래됐다」고 알린다.
 const defaultTTLDays = 180
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
 
 // declEdit · declNext — 같은 값을 서로 다른 판으로 그린다.
 //
-// **뷰를 하나만 만든다.** 두 화면이 각자 세면 숫자가 갈리는 날이 오고, 그날 어느 쪽이
-// 맞는지 아무도 모른다. 갈리는 것은 그리는 방식뿐이다.
+// **뷰를 하나만 만든다.** 두 화면이 각자 세면 숫자가 달라지는 날이 오고, 그날 어느 쪽이
+// 맞는지 아무도 모른다. 다른 것은 그리는 방식뿐이다.
 func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 	s.declScreen(w, r, ui.RenderDecl, false)
 }
@@ -851,7 +851,7 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 //
 // 결과를 읽지 못해도 선언 화면은 열려야 한다. 후보는 거들 뿐이고, 없으면 손으로 적는다.
 // unmatched — 관측에는 있는데 어느 선언 노드에도 붙지 않은 노드 이름. 「관측 이름」 칸의
-// 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 UNDECLARED 로 오른다는 뜻이고, 그것은
+// 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 UNDECLARED로 오른다는 뜻이고, 그것은
 // 선언이 틀려서가 아니라 이름이 서로 달라서다.
 func (s *server) observedAssets(d decl.Declaration) (map[string][]ui.DeclAsset, []string) {
 	if s.results == "" {
@@ -922,10 +922,10 @@ func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
 	html(w, func() error { return ui.RenderRow(w, ui.PickLang(r), kind, node, i) })
 }
 
-// declRemove — 「제거」. **빈 응답을 돌려준다** — 지우는 것은 브라우저가 하고(htmx 가
+// declRemove — 「제거」. **빈 응답을 돌려준다** — 지우는 것은 브라우저가 하고(htmx가
 // 그 줄을 빈 것으로 갈아 끼운다), 파일이 달라지는 것은 저장할 때뿐이다.
 //
-// 서버가 아무것도 바꾸지 않으므로 GET 이다. 새로고침으로 무엇이 다시 일어나지 않는다.
+// 서버가 아무것도 바꾸지 않으므로 GET이다. 새로고침으로 무엇이 다시 일어나지 않는다.
 func (s *server) declRemove(w http.ResponseWriter, r *http.Request) {
 	if s.decl == "" {
 		http.Error(w, "no declaration file was given", http.StatusNotFound)
@@ -959,12 +959,12 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	msg := ui.MsgDeclSaved(ui.PickLang(r), len(d.Nodes), len(d.Assets), len(d.Edges))
-	// **뺀 줄은 말한다.** IP 없는 줄은 관리 대상이 아니라 저장에서 빠지는데, 표에서
+	// **뺀 줄은 알린다.** IP 없는 줄은 관리 대상이 아니라 저장에서 빠지는데, 표에서
 	// 사라진 것만 보이면 지워진 것으로 읽힌다.
 	if len(dropped) > 0 {
 		msg += ui.MsgDeclDroppedNoIP(ui.PickLang(r), len(dropped))
 	}
-	// **저장은 됐지만 앞뒤가 안 맞으면 그 사실을 함께 말한다.** 막지는 않는다.
+	// **저장은 됐지만 앞뒤가 안 맞으면 그 사실을 함께 알린다.** 막지는 않는다.
 	if p := decl.Check(d); len(p) > 0 {
 		msg += ui.MsgDeclStillOff(ui.PickLang(r), len(p))
 	}
@@ -973,7 +973,7 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
 
-// redirect — POST 뒤에는 GET 으로 보낸다. 새로고침이 같은 확정을 다시 태우지 않게 한다.
+// redirect — POST 뒤에는 GET으로 보낸다. 새로고침이 같은 확정을 다시 태우지 않게 한다.
 func redirect(w http.ResponseWriter, r *http.Request, to, msg, problem string) {
 	u := to + "?msg=" + url.QueryEscape(msg)
 	if problem != "" {

@@ -3,7 +3,7 @@
 // **계산만 한다.** 명령은 이것을 글로 찍고 화면은 표로 그린다 — 계산이 두 곳에 있으면 화면과
 // 명령이 다른 답을 내는 날이 오고, 그때 어느 쪽이 맞는지 아무도 모른다.
 //
-// 대조 자체는 `reconcile` 이 한다. 여기가 맡는 것은 **여러 결과를 레인으로 가르고, 관측
+// 대조 자체는 `reconcile`이 한다. 여기가 맡는 것은 **여러 결과를 레인으로 가르고, 관측
 // IP를 노드로 잇고, 무엇을 못 봤는지 세는 것** — 한 대짜리 경로(`pqcaton-decide`)에는
 // 없고 여러 노드를 모을 때만 생기는 일이다.
 package report
@@ -35,19 +35,19 @@ type Result struct {
 	SeenBy map[string][]string
 	// Uncovered — 스코프에 있으나 네트워크 계층을 관측하지 못한 노드. **부재가 아니라 미관측**이다.
 	Uncovered map[string]bool
-	// AssetGaps — 완전성 맵의 미커버 계층. UNOBSERVED 를 재수집 후보로 가르는 입력이다.
+	// AssetGaps — 완전성 맵의 미커버 계층. UNOBSERVED를 재수집 후보로 가르는 입력이다.
 	AssetGaps []string
 
 	Assets []reconcile.Reconciled
 	Edges  []reconcile.ReconciledEdge
 	// PolicyConflicts — 선언은 관리 대상으로 적었는데 정책이 뺀 자산(CONFIRMED + EXCLUDED_BY_POLICY).
-	// **둘이 어긋난 것이고, 어느 쪽을 고칠지는 기계가 정하지 않는다.** 경고문이 자산 열쇠·원천 노드·
-	// 앱 열쇠 전부를 값으로 말한다 - 사람이 정책 파일에서 그 열쇠에 걸리는 줄을 찾는다.
+	// **둘이 어긋난 것이고, 어느 쪽을 고칠지는 기계가 정하지 않는다.** 경고문이 자산 식별자·원천 노드·
+	// 앱 식별자 전부를 값으로 알린다 - 사람이 정책 파일에서 그 식별자에 걸리는 줄을 찾는다.
 	PolicyConflicts []reconcile.Reconciled
 
 	// 센 것. 화면과 글이 같은 수를 말하게 한다.
 	//
-	// ObservedAssets — **관측된 자산 전부**(대조 축이 UNOBSERVED 가 아닌 것, 고유 자산 기준). 정책이
+	// ObservedAssets — **관측된 자산 전부**(대조 축이 UNOBSERVED가 아닌 것, 고유 자산 기준). 정책이
 	// 뺀 것도 든다 - 보았으므로. 관리 근거의 수로 세면 머리에서 「관측 2」라 하고 바로 아래에서
 	// 「openssl 4」라 하는 리포트가 나온다. 제외를 부재로 세는 것이고, 이 판이 닫으려는 바로 그 결함이다.
 	// ManagedAssets — 그 가운데 관리 대상(MANAGED). 계획에 들 수 있는 것의 수다.
@@ -58,7 +58,7 @@ type Result struct {
 	DeclaredEdges  int
 	Nodes          int
 
-	// Skipped — 읽지 못한 결과 파일. **조용히 넘기지 않는다** — 빠진 노드를 모르면
+	// Skipped — 읽지 못한 결과 파일. **알리지 않고 넘기지 않는다** — 빠진 노드를 모르면
 	// 「관측 안 됨」과 「못 읽음」이 뒤섞인다.
 	Skipped []string
 }
@@ -68,8 +68,8 @@ func Build(dir string, d decl.Declaration) (*Result, error) { return BuildWith(d
 
 // BuildWith — 자산 스코프 정책을 걸어 대조한다.
 //
-// **정책은 상류 적재와 같은 것을 건다.** 적재는 정책이 뺀 finding 을 스냅샷에서 제거하므로, 여기서
-// 정책 없이 정규화하면 스냅샷 지문이 상류와 갈려 되짚기가 실패한다. 정책 유무는 추정하지 않는다 —
+// **정책은 상류 적재와 같은 것을 건다.** 적재는 정책이 뺀 finding을 스냅샷에서 제거하므로, 여기서
+// 정책 없이 정규화하면 스냅샷 지문이 상류와 어긋나 되짚기가 실패한다. 정책 유무는 추정하지 않는다 —
 // 두 명령은 독립이라 「여기 없으면 저기도 없었을 것」이 서지 않는다. 그 정책 파일(scope-assets.csv)은
 // 이 리포의 자산 스코프 화면이 만드는 것이라 같은 것을 걸 수 있다.
 func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Result, error) {
@@ -123,7 +123,7 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 			}
 		}
 		// 상류 normalize.Normalize 그대로 — 파서를 따로 적으면 그중 하나는 반드시 다르게 읽는다.
-		// 스냅샷 id 는 상류 것을 흉내 내지 않는다. 되짚는 열쇠는 id 가 아니라 v1 지문이다.
+		// 스냅샷 id는 상류 것을 흉내 내지 않는다. 되짚는 기준은 id가 아니라 v1 지문이다.
 		snap, err := normalize.Normalize(group, "snap:"+src, src, normalize.RulesetVersion, history.NewMemStore(), policy)
 		if err != nil {
 			return nil, fmt.Errorf("normalizing %s: %w", src, err)
@@ -152,15 +152,15 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 	if out.Assets, err = eng.Reconcile(declaredAssets, observedAssets, excludedAssets, out.AssetGaps); err != nil {
 		return nil, err
 	}
-	// 선언과 정책이 어긋난 자산. 대조는 CONFIRMED 로 맞게 읽었고(보았다), 관리 축이 그것을 정책이
-	// 뺐다고 말한다. 여기서 모아 두면 리포트가 「보지 못했다」 대신 어긋남을 말한다.
+	// 선언과 정책이 어긋난 자산. 대조는 CONFIRMED로 맞게 읽었고(보았다), 관리 축이 그것을 정책이
+	// 뺐다고 알린다. 여기서 모아 두면 리포트가 「보지 못했다」 대신 어긋남을 알린다.
 	for _, r := range out.Assets {
 		if r.State == reconcile.Confirmed && r.Managed == reconcile.ExcludedByPolicy {
 			out.PolicyConflicts = append(out.PolicyConflicts, r)
 		}
 	}
 
-	// 관측 IP → 스코프 노드 잇기(§1.4). 이어지면 CONFIRMED 로 잡히고, 안 되면 off-scope 다.
+	// 관측 IP → 스코프 노드 잇기(§1.4). 이어지면 CONFIRMED로 잡히고, 안 되면 off-scope 다.
 	ResolveEdgeDsts(observedEdges, d.Nodes)
 
 	declaredEdges := make([]reconcile.EdgeKey, 0, len(d.Edges))
@@ -224,7 +224,7 @@ func (r *Result) Postures() (pqc, classical, unknown int) {
 	return
 }
 
-// SeenNodes — collector 가 본 노드 이름, 정렬해서.
+// SeenNodes — collector가 본 노드 이름, 정렬해서.
 func (r *Result) SeenNodes() []string {
 	out := make([]string, 0, len(r.SeenBy))
 	for n := range r.SeenBy {
@@ -244,7 +244,7 @@ func (r *Result) UncoveredNodes() []string {
 	return out
 }
 
-// ObservedByRuntime — 런타임별 관측 자산 수. 「무엇을 실제로 쓰고 있나」를 한 줄로 말한다.
+// ObservedByRuntime — 런타임별 관측 자산 수. 「무엇을 실제로 쓰고 있나」를 한 줄로 나타낸다.
 func (r *Result) ObservedByRuntime() map[string]int {
 	out := map[string]int{}
 	for _, rec := range r.Assets {
@@ -258,17 +258,17 @@ func (r *Result) ObservedByRuntime() map[string]int {
 // GapLayers — 못 본 계층, 중복 없이 정렬해서.
 func (r *Result) GapLayers() []string { return Uniq(r.AssetGaps) }
 
-// ── 재료 ───────────────────────────────────────────────────────────────────
+// ── 입력 ───────────────────────────────────────────────────────────────────
 
-// LoadResults — 노드들이 낸 CollectionResult 를 읽는다. **상류의 공식 디코더를 쓴다.**
+// LoadResults — 노드들이 낸 CollectionResult를 읽는다. **상류의 공식 디코더를 쓴다.**
 //
-// 전에는 `*.json` 만 골라 파일 하나를 객체 하나로 읽었다. 그래서 JVM 수집기가 내는
-// `*.jsonl`(한 줄에 결과 하나 — 노드에 JVM 이 여럿일 수 있다)을 통째로 못 봤고, 그 노드의
+// 전에는 `*.json`만 골라 파일 하나를 객체 하나로 읽었다. 그래서 JVM 수집기가 내는
+// `*.jsonl`(한 줄에 결과 하나 — 노드에 JVM이 여럿일 수 있다)을 통째로 못 봤고, 그 노드의
 // JCA 자산이 「관측 안 됨」으로 올라왔다. 아무것도 실패하지 않았다 — 종단을 돌려 보고서야
 // 드러났다. 상류가 「소비자마다 파서를 따로 적으면 그중 하나는 반드시 다르게 읽는다」며
 // 디코더를 리포 밖에서 쓰라고 공개해 두었는데, 이 리포가 바로 그 하나였다.
 //
-// **한 파일이 깨졌다고 전부 멈추지 않는다.** 다만 조용히 넘기지도 않는다 — 빠진 노드를
+// **한 파일이 깨졌다고 전부 멈추지 않는다.** 다만 알리지 않고 넘기지도 않는다 — 빠진 노드를
 // 모르면 「관측 안 됨」과 「못 읽음」이 뒤섞인다.
 func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []string, err error) {
 	out, flaws := resultio.LoadDir(dir)
@@ -278,21 +278,21 @@ func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []str
 	return out, skipped, nil
 }
 
-// ResolveEdgeDsts — 관측 상대의 IP 를 스코프 노드로 바꾼다(§1.4).
+// ResolveEdgeDsts — 관측 상대의 IP를 스코프 노드로 바꾼다(§1.4).
 //
-// **잘못 이으면 CONFIRMED 여야 할 통신이 UNDECLARED 로 올라온다** — 오류가 아니라 그럴듯한
+// **잘못 이으면 CONFIRMED여야 할 통신이 UNDECLARED로 올라온다** — 오류가 아니라 그럴듯한
 // 결과라 눈으로는 안 잡힌다(IC-R8). 이미 이어진 것은 덮지 않는다.
 // ResolveAssetNode — 관측 결과 하나가 **선언의 어느 노드**의 것인가.
 //
-// 자산 대조는 노드 이름이 글자 그대로 같아야 맞는다. 그런데 collector 는 자기가 붙인
+// 자산 대조는 노드 이름이 글자 그대로 같아야 맞는다. 그런데 collector는 자기가 붙인
 // id(`node:<해시>`)나 호스트명으로 보낸다 — 이름이 서로 다르면 선언한 자산은 전부 미관측으로,
-// 관측된 자산은 전부 UNDECLARED 로 올라온다. **막히지 않고 그럴듯하게 틀린다.**
+// 관측된 자산은 전부 UNDECLARED로 올라온다. **막히지 않고 그럴듯하게 틀린다.**
 //
 // 그래서 봉투가 들고 온 이름들(대상 노드 id · fqdn · 짧은 호스트명 · machine-id)을 선언의
 // 이름 및 「관측 이름」(`observed_as`)과 맞대 본다. 대소문자는 가리지 않는다 — 호스트명은
 // 오는 길에 대소문자가 곧잘 바뀐다.
 //
-// **어디에도 안 걸리면 관측이 부른 이름을 그대로 쓴다.** 화면이 그 이름으로 UNDECLARED 를
+// **어디에도 안 걸리면 관측이 부른 이름을 그대로 쓴다.** 화면이 그 이름으로 UNDECLARED를
 // 올리므로, 사람이 그것을 보고 「관측 이름」에 적어 넣을 수 있다. 여기서 억지로 하나를
 // 고르면 남의 노드 자산이 붙는다.
 func ResolveAssetNode(res *discoveryv1.CollectionResult, nodes []decl.Node) string {
@@ -300,8 +300,8 @@ func ResolveAssetNode(res *discoveryv1.CollectionResult, nodes []decl.Node) stri
 	m := res.GetEnvelope().GetMachine()
 	seen := []string{id, m.GetFqdn(), shortHost(m.GetFqdn()), m.GetMachineId(), m.GetSelfAssignedId()}
 
-	// **이름이 관측 이름을 이긴다.** 그리고 겹친 관측 이름은 먼저 적힌 노드가 가진다 —
-	// 겹친다는 사실 자체는 `decl.Check` 가 짚는다(ObservedAsTwice). 여기서 뒤에 적힌
+	// **이름이 관측 이름보다 우선한다.** 그리고 겹친 관측 이름은 먼저 적힌 노드가 가진다 —
+	// 겹친다는 사실 자체는 `decl.Check`가 짚는다(ObservedAsTwice). 여기서 뒤에 적힌
 	// 것으로 뒤집으면 같은 파일이 순서만 바뀌어도 자산이 다른 노드에 붙는다.
 	byName := map[string]string{}
 	claim := func(key, name string) {
@@ -332,7 +332,7 @@ func ResolveAssetNode(res *discoveryv1.CollectionResult, nodes []decl.Node) stri
 	return id
 }
 
-// shortHost — `web-gw.corp.example` 의 `web-gw`. 선언에는 짧은 이름을 적고 관측은 fqdn 으로
+// shortHost — `web-gw.corp.example`의 `web-gw`. 선언에는 짧은 이름을 적고 관측은 fqdn으로
 // 오는 것이 흔하다.
 func shortHost(fqdn string) string {
 	if i := strings.Index(fqdn, "."); i > 0 {
@@ -405,9 +405,9 @@ func Uniq(in []string) []string {
 // 사람은 무엇을 못 봤다는 것인지 알 수 없다. 계층은 **관측이 어디서 왔나**를 말하므로,
 // 그것을 그대로 적는다.
 //
-// **원래 이름을 괄호에 남긴다.** pqcota 의 문서와 로그는 그 이름을 쓰므로, 옮기기만
+// **원래 이름을 괄호에 남긴다.** pqcota의 문서와 로그는 그 이름을 쓰므로, 옮기기만
 // 하면 두 쪽을 잇지 못한다. 모르는 값은 그대로 낸다 — 상류에 계층이 늘었을 때
-// 조용히 「불명」으로 뭉개지 않는다.
+// 알리지 않고 「불명」으로 뭉개지 않는다.
 func LayerLabel(name string) string {
 	short := strings.TrimPrefix(name, "COLLECTION_LAYER_")
 	switch short {

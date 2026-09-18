@@ -23,7 +23,7 @@ func writeCSV(t *testing.T, dir, name, body string) string {
 	return p
 }
 
-// capture — 표준출력으로 나가는 산출물을 받는다. open·close 가 stdout 으로 내므로,
+// capture — 표준출력으로 나가는 산출물을 받는다. open·close가 stdout으로 내므로,
 // 그것을 잡지 않으면 무엇이 나왔는지 잴 수 없다.
 func capture(t *testing.T, fn func() error) (string, error) {
 	t.Helper()
@@ -81,8 +81,8 @@ exclude,openssl,libcrypto.so.*,/usr/bin/python*,python 런타임
 
 // IC-S8 — **exclude 추가는 결론 없이 확정되지 않는다.**
 //
-// 인벤토리에서 뺀 자산은 나중에 「왜 이건 안 봤나」에 답해야 한다. 관문이 명령에서 실제로
-// 닫히는지는 여기서만 잴 수 있다 — 상태기계 케이스는 상태기계가 옳은 것만 말한다.
+// 인벤토리에서 뺀 자산은 나중에 「왜 이것은 안 봤나」에 답해야 한다. 관문이 명령에서 실제로
+// 닫히는지는 여기서만 잴 수 있다 — 상태기계 케이스는 상태기계가 옳은 것만 보인다.
 func TestCloseRefusesExcludeWithoutConclusion(t *testing.T) {
 	dir := t.TempDir()
 	corp := writeCSV(t, dir, "corp.csv", corpCSV)
@@ -116,7 +116,7 @@ func TestCloseRefusesWithoutSignature(t *testing.T) {
 	}
 }
 
-// IC-S10 — **승인하면 pqcota의 집행기가 읽는 CSV 가 나온다.**
+// IC-S10 — **승인하면 pqcota의 집행기가 읽는 CSV가 나온다.**
 //
 // 계층 판정 하나로 그 계층의 규칙이 한 번에 판정되는 것(§3.4)도 여기서 함께 잰다.
 func TestCloseEmitsPolicyForUpstream(t *testing.T) {
@@ -151,7 +151,7 @@ func TestCloseEmitsPolicyForUpstream(t *testing.T) {
 
 // IC-S11 — **남의 조직 세션을 확정하지 않는다.**
 //
-// 세션 파일은 건네받는 것이라 어느 조직 것인지 파일이 말한다. 지금 준 조직과 다르면 끊는다 —
+// 세션 파일은 건네받는 것이라 어느 조직 것인지 파일에 적혀 있다. 지금 준 조직과 다르면 중단한다 —
 // 대조 엔진·판정 원장과 같은 규칙이다.
 func TestCloseRefusesAnotherOrgSession(t *testing.T) {
 	dir := t.TempDir()
@@ -168,7 +168,7 @@ func TestCloseRefusesAnotherOrgSession(t *testing.T) {
 	}
 }
 
-// IC-S12 — **-base 를 주면 이미 쓰는 규칙은 올라오지 않는다.** 매번 전부 다시 승인하게 하면
+// IC-S12 — **-base를 주면 이미 쓰는 규칙은 올라오지 않는다.** 매번 전부 다시 승인하게 하면
 // 아무도 안 본다.
 func TestOpenWithBaseRaisesOnlyDelta(t *testing.T) {
 	dir := t.TempDir()
@@ -200,7 +200,7 @@ func TestOpenRefusesEmptyOrg(t *testing.T) {
 	}
 }
 
-// IC-S14 — 계층 이름은 파일 이름에서 온다. 이름이 곧 일괄 판정의 열쇠라 여기가 어긋나면
+// IC-S14 — 계층 이름은 파일 이름에서 온다. 이름이 곧 일괄 판정의 기준이라 여기가 어긋나면
 // 승인 단위가 흩어진다.
 func TestLayerNameFromPath(t *testing.T) {
 	for path, want := range map[string]string{

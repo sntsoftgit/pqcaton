@@ -40,7 +40,7 @@ func TestForbiddenLicensesAllBlocked(t *testing.T) {
 // IC-X2 — **모르는 라이선스도 막는다.**
 //
 // 금지 목록에 없다고 통과시키면 관문이 아니라 블랙리스트가 된다 — 새 라이선스가 나오면
-// 그때마다 목록을 고쳐야 하고, 고치기 전까지는 조용히 통과한다.
+// 그때마다 목록을 고쳐야 하고, 고치기 전까지는 알리지 않고 통과한다.
 func TestUnknownLicenseIsBlocked(t *testing.T) {
 	_, bad := verdict(mods("example.com/dep"), map[string]string{"example.com/dep": "WTFPL"})
 	if len(bad) != 1 {
@@ -77,8 +77,8 @@ func TestAllowedLicensesPass(t *testing.T) {
 	}
 }
 
-// IC-X5 — 허용 목록 파일 형식. 주석과 빈 줄은 건너뛰고, 두 칸이 안 되는 줄은 **조용히
-// 넘기지 않고 끊는다** — 넘기면 그 모듈이 「모름」으로 빠지는 대신 아예 사라진다.
+// IC-X5 — 허용 목록 파일 형식. 주석과 빈 줄은 건너뛰고, 두 칸이 안 되는 줄은 **알리지 않고
+// 넘기지 않고 중단한다** — 넘기면 그 모듈이 「모름」으로 빠지는 대신 아예 사라진다.
 func TestLoadAllowlist(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "licenses.txt")
@@ -122,9 +122,9 @@ func TestMissingAllowlistBlocksEverything(t *testing.T) {
 //
 // 이 리포 자신을 대상으로 돈다. 메인 모듈이 섞이면 자기 자신을 「라이선스 모름」으로 막는다.
 //
-// **리포 루트에서 재는 것이 이 케이스의 절반이다.** `go list -deps ./...` 는 지금 디렉터리를
+// **리포 루트에서 재는 것이 이 케이스의 절반이다.** `go list -deps ./...`는 지금 디렉터리를
 // 기준으로 도므로, 이 도구가 있는 폴더에서 돌리면 stdlib 뿐이라 외부 모듈이 0개로 나온다 —
-// 그래서 main 은 0개를 통과로 보지 않는다.
+// 그래서 main은 0개를 통과로 보지 않는다.
 func TestLinkedModulesExcludesMain(t *testing.T) {
 	chdirRepoRoot(t)
 	got, err := linkedModules()
@@ -144,7 +144,7 @@ func TestLinkedModulesExcludesMain(t *testing.T) {
 	}
 }
 
-// chdirRepoRoot — go.mod 가 있는 곳까지 올라간다. 테스트가 끝나면 되돌린다.
+// chdirRepoRoot — go.mod가 있는 곳까지 올라간다. 테스트가 끝나면 되돌린다.
 func chdirRepoRoot(t *testing.T) {
 	t.Helper()
 	cwd, err := os.Getwd()
@@ -171,7 +171,7 @@ func chdirRepoRoot(t *testing.T) {
 // IC-X8 — **브라우저로 나가는 파일도 훑는다.**
 //
 // 화면이 생긴 뒤로 이 리포는 Go 코드만 배포하지 않습니다. `.js`·`.css`가 바이너리에
-// 박혀 브라우저로 나가고, 그것도 남의 코드일 수 있습니다. 확장자로 훑는지, 그리고
+// 담겨 브라우저로 나가고, 그것도 남의 코드일 수 있습니다. 확장자로 훑는지, 그리고
 // 배포물이 아닌 곳(`.git`·`node_modules`·`testdata`)은 빼는지 잰다.
 func TestWebAssetsWalksShippedFilesOnly(t *testing.T) {
 	root := t.TempDir()
@@ -227,7 +227,7 @@ func TestCopyleftWebAssetIsBlocked(t *testing.T) {
 	}
 }
 
-// IC-X11 — 이 리포가 실제로 싣고 있는 htmx 가 목록에 있고, 값이 그 옆 LICENSE 원문과
+// IC-X11 — 이 리포가 실제로 싣고 있는 htmx가 목록에 있고, 값이 그 옆 LICENSE 원문과
 // 맞는지 잰다. **파일을 갈아 끼우면서 목록을 안 고치는 날**을 여기서 잡는다.
 func TestVendoredHTMXIsRecorded(t *testing.T) {
 	known, err := loadAllowlist("../../licenses.txt")

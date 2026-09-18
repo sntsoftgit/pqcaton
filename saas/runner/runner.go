@@ -156,7 +156,7 @@ func LoadConfig(path string) (Config, error) {
 	return c, c.check()
 }
 
-// days — 보존 기간. 음수는 거절한다 — 오타를 "지우지 않음"으로 삼키면 디스크가 조용히 찬다.
+// days — 보존 기간. 음수는 거절한다 — 오타를 "지우지 않음"으로 삼키면 디스크가 표시 없이 찬다.
 func days(v string) (int, error) {
 	n, err := strconv.Atoi(strings.TrimSpace(v))
 	if err != nil {
@@ -244,7 +244,7 @@ func sendResults(c Config, cl *Client, rep *Report, log *slog.Logger) error {
 	}
 	payloads, good, bad := read(files)
 	if len(bad) > 0 {
-		// **하나가 깨졌다고 나머지를 버리지 않는다.** 다만 조용히 넘기지도 않는다 —
+		// **하나가 깨졌다고 나머지를 버리지 않는다.** 다만 알리지 않고 넘기지도 않는다 —
 		// 그대로 두면 다음 실행마다 같은 파일에 걸려 그 디렉터리가 영영 안 올라간다.
 		rep.Bad += len(bad)
 		log.Warn("setting aside an unreadable result — someone has to look at why it is broken",
@@ -287,7 +287,7 @@ func sendEnrollments(c Config, cl *Client, rep *Report, log *slog.Logger) error 
 		return fmt.Errorf("enrollment directory: %w", err)
 	}
 	if enr.SawAddr && c.AddrKey == "" {
-		// 조용히 넘기면, 영역 간 엣지를 이어 붙일 표가 없다는 것을 **몇 달 뒤에**
+		// 알리지 않고 넘기면, 영역 간 엣지를 이어 붙일 표가 없다는 것을 **몇 달 뒤에**
 		// 안다. 그때는 전 노드를 다시 등재해야 한다(§6.3.1).
 		log.Warn("an address is present but "+keyAddrKey+" is missing — enrolling without an address token",
 			"dir", filepath.Join(c.ResultsDir, enrollDir))
@@ -370,7 +370,7 @@ func move(dir, sub string, files []string) error {
 }
 
 // sweepBoth — 두 자리를 각자의 보존 기간으로 청소한다. **등재 쪽도 같이 본다** —
-// 빠뜨리면 그 디렉터리만 조용히 쌓여 디스크가 찬다.
+// 빠뜨리면 그 디렉터리만 표시 없이 쌓여 디스크가 찬다.
 func sweepBoth(c Config, log *slog.Logger) {
 	for _, base := range []string{c.ResultsDir, filepath.Join(c.ResultsDir, enrollDir)} {
 		sweep(filepath.Join(base, sentDir), c.SentKeepDays, log)
@@ -380,8 +380,8 @@ func sweepBoth(c Config, log *slog.Logger) {
 
 // sweep — 보존 기간이 지난 것을 지운다. 0이면 지우지 않는다.
 //
-// **지운 사실을 남긴다.** 조용히 사라지면, 나중에 그 결과를 찾는 사람이 *"올라가지 않았나"*
-// 와 *"보존 기간이 지났나"* 를 구분할 수 없다.
+// **지운 사실을 남긴다.** 표시 없이 사라지면, 나중에 그 결과를 찾는 사람이 *"올라가지 않았나"*와
+// *"보존 기간이 지났나"*를 구분할 수 없다.
 func sweep(dir string, keepDays int, log *slog.Logger) {
 	if keepDays <= 0 || dir == "" {
 		return

@@ -9,7 +9,7 @@ import (
 
 // 지문은 **동일성이 아니라 내용**을 잰다.
 //
-// 상류의 `Finding.Id` 는 `sha256(노드|이름|런타임|fork)` 라 자산이 같으면 같다. 그것만 보면
+// 상류의 `Finding.Id`는 `sha256(노드|이름|런타임|fork)`라 자산이 같으면 같다. 그것만 보면
 // 버전이 오르고 검출 방법이 바뀌고 강화 판정이 달라져도 「그대로」로 읽힌다.
 
 func finding() *discoveryv1.Finding {
@@ -35,7 +35,7 @@ func TestSameFindingSameFingerprint(t *testing.T) {
 
 // IC-R5 — ★ 재수집마다 달라지는 것은 근거가 아니다.
 //
-// `derived_from_snapshot_id` 는 돌릴 때마다 바뀐다. 지문에 넣으면 아무것도 안 바뀐 관측이
+// `derived_from_snapshot_id`는 돌릴 때마다 바뀐다. 지문에 넣으면 아무것도 안 바뀐 관측이
 // 매번 「근거가 바뀌었다」로 올라오고, 그런 큐는 아무도 읽지 않는다. 규칙 판은 세션이 따로
 // 들고 가므로 여기 넣으면 두 번 센다.
 func TestRescanningAloneDoesNotMoveTheFingerprint(t *testing.T) {
@@ -47,7 +47,7 @@ func TestRescanningAloneDoesNotMoveTheFingerprint(t *testing.T) {
 	}
 }
 
-// IC-R6 — id 가 같아도 내용이 달라졌으면 다른 근거다 — 이 검사가 있어야 하는 이유다.
+// IC-R6 — id가 같아도 내용이 달라졌으면 다른 근거다 — 이 검사가 있어야 하는 이유다.
 func TestSameIDButDifferentContentIsADifferentBasis(t *testing.T) {
 	was := Fingerprint(finding())
 	for _, tc := range []struct {
@@ -99,7 +99,7 @@ func TestSameIDButDifferentContentIsADifferentBasis(t *testing.T) {
 	}
 }
 
-// IC-R5 — 관측이 없으면 지문도 없다. UNOBSERVED 는 대조 상태가 이미 그 사실을 말한다.
+// IC-R5 — 관측이 없으면 지문도 없다. UNOBSERVED는 대조 상태가 이미 그 사실을 나타낸다.
 func TestNoFindingNoFingerprint(t *testing.T) {
 	if Fingerprint(nil) != "" {
 		t.Error("없는 관측에 지문이 붙었다")

@@ -975,7 +975,7 @@ func layerEditor(l Lang, e LayerEdit) templ.Component {
 
 // ruleRow — 규칙 한 줄. **화면과 「행 추가」가 같은 조각을 쓴다.**
 //
-// 칸 이름(action · runtime · lib · app_key · note)은 옮기지 않는다 — pqcota 의 CSV
+// 칸 이름(action · runtime · lib · app_key · note)은 옮기지 않는다 — pqcota의 CSV
 // 머리글 그대로라, 말을 바꾸면 화면과 파일이 다른 이름으로 같은 것을 가리키게 된다.
 func ruleRow(layer, i int, r scope.Rule) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -1143,7 +1143,7 @@ func ruleRow(layer, i int, r scope.Rule) templ.Component {
 	})
 }
 
-// addRuleRow — 계층마다 따로인 「행 추가」. 번호가 끊기면 ApplyLayers 가 거기서 읽기를
+// addRuleRow — 계층마다 따로인 「행 추가」. 번호가 끊기면 ApplyLayers가 거기서 읽기를
 // 멈추므로, 서버가 다음 번호를 쥐고 버튼을 갈아 끼운다.
 func addRuleRow(l Lang, layer, next int, oob bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

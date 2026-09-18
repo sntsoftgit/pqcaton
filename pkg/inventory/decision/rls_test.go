@@ -14,13 +14,13 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 )
 
-// appRole — RLS 를 재려면 **정책을 건너뛰지 않는 롤**이 있어야 한다. 슈퍼유저로는 무엇을
+// appRole — RLS를 재려면 **정책을 건너뛰지 않는 롤**이 있어야 한다. 슈퍼유저로는 무엇을
 // 걸어도 통과하므로, 통과하지 않는 롤을 만들어 그 롤로 다시 붙는다.
 const appRole = "pqcaton_app_test"
 
 const appPassword = "rls-test-only" // 테스트 컨테이너 전용. 배포 값이 아니다.
 
-// appDSN — 슈퍼유저 DSN 으로 앱 롤을 만들고, 그 롤로 붙는 DSN 을 돌려준다.
+// appDSN — 슈퍼유저 DSN으로 앱 롤을 만들고, 그 롤로 붙는 DSN을 돌려준다.
 func appDSN(t *testing.T, superDSN string) string {
 	t.Helper()
 	ctx := context.Background()
@@ -43,8 +43,8 @@ func appDSN(t *testing.T, superDSN string) string {
 		   END IF;
 		 END $$`,
 		`ALTER ROLE ` + appRole + ` NOSUPERUSER NOBYPASSRLS`,
-		// 스키마 사용 권한만 준다. **DDL 은 주지 않는다** - 앱이 소유자로 붙지 않는 것이
-		// RLS 가 실제로 무는 전제이고, 케이스도 그 조건에서 재야 한다.
+		// 스키마 사용 권한만 준다. **DDL은 주지 않는다** - 앱이 소유자로 붙지 않는 것이
+		// RLS가 실제로 무는 전제이고, 케이스도 그 조건에서 재야 한다.
 		`GRANT USAGE ON SCHEMA public TO ` + appRole,
 		`GRANT SELECT, INSERT ON pqcota_judgments TO ` + appRole,
 		`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ` + appRole,
@@ -60,7 +60,7 @@ func appDSN(t *testing.T, superDSN string) string {
 		t.Fatal(err)
 	}
 	dsn := superDSN
-	// user:password 만 바꿔 끼운다. 나머지(host·port·db·sslmode)는 그대로 둔다.
+	// user:password만 바꿔 끼운다. 나머지(host·port·db·sslmode)는 그대로 둔다.
 	if i := strings.Index(dsn, "://"); i >= 0 {
 		rest := dsn[i+3:]
 		if at := strings.Index(rest, "@"); at >= 0 {
@@ -86,7 +86,7 @@ func uniq(prefix string) string {
 	return prefix + strconv.FormatInt(time.Now().UnixNano(), 36)
 }
 
-// IC-L1 — **핸들 격리를 건너뛰어도 DB 가 막는다.**
+// IC-L1 — **핸들 격리를 건너뛰어도 DB가 막는다.**
 //
 // 우리 질의는 전부 org 조건을 달고 있다. 그 조건을 뺀 날것의 질의를 같은 연결로 던져 —
 // 곧 핸들 격리가 뚫린 상황을 흉내 내 — 그래도 남의 행이 보이지 않는지 잰다. **이 케이스가
@@ -123,8 +123,8 @@ func TestRLSBlocksRawQueryAcrossOrgs(t *testing.T) {
 
 // IC-L2 — **남의 조직 이름으로 쓰지도 못한다.**
 //
-// 읽기만 막으면 오염을 막지 못한다. 정책의 WITH CHECK 가 없으면 org 를 남의 것으로 적은
-// INSERT 가 그대로 들어가고, 그 행은 정작 우리 눈에는 안 보인다 - 가장 고약한 형태다.
+// 읽기만 막으면 오염을 막지 못한다. 정책의 WITH CHECK가 없으면 org를 남의 것으로 적은
+// INSERT가 그대로 들어가고, 그 행은 정작 우리 눈에는 안 보인다 - 가장 고약한 형태다.
 func TestRLSBlocksInsertForAnotherOrg(t *testing.T) {
 	dsn := appDSN(t, superDSN(t))
 	ctx := context.Background()
@@ -164,7 +164,7 @@ func TestRLSLetsOwnOrgThrough(t *testing.T) {
 	}
 }
 
-// IC-L4 — **무력한 연결을 조용히 넘기지 않는다.**
+// IC-L4 — **무력한 연결을 알리지 않고 넘기지 않는다.**
 //
 // 슈퍼유저는 정책을 통째로 건너뛴다. 걸어 놓고 아무 일도 안 하는 것이 가장 위험한 종류의
 // 거짓 안심이라, 필수 모드에서는 저장소가 열리지 않는다.

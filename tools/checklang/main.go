@@ -1,13 +1,13 @@
 // Command checklang — **공개 사이트의 한국어와 영어가 짝을 이루는지 막는다.**
 //
-// site/ 의 두 장은 문구를 두 벌 적어 두고 CSS 로 한쪽을 숨긴다. 규칙은 두 줄뿐이다.
+// site/의 두 장은 문구를 두 벌 적어 두고 CSS로 한쪽을 숨긴다. 규칙은 두 줄뿐이다.
 //
 //	html[data-lang="ko"] [lang="en"] { display: none; }
 //	html[data-lang="en"] [lang="ko"] { display: none; }
 //
-// **이 방식은 한쪽 말로 볼 때 멀쩡해 보이는 고장을 만든다.** 2026-08-27 에
-// `<span lang="ko">` 를 닫지 않은 자리가 아홉 곳 있었다. 닫는 태그가 없으니 파서가
-// 뒤따르는 `<span lang="en">` 을 **그 안으로** 넣었고, 영어로 열면 바깥 한국어가
+// **이 방식은 한쪽 말로 볼 때 멀쩡해 보이는 고장을 만든다.** 2026-08-27에
+// `<span lang="ko">`를 닫지 않은 자리가 아홉 곳 있었다. 닫는 태그가 없으니 파서가
+// 뒤따르는 `<span lang="en">`을 **그 안으로** 넣었고, 영어로 열면 바깥 한국어가
 // 숨겨질 때 안쪽 영어까지 함께 사라져 표 머리글 여섯과 표 셀 셋이 통째로 빈칸이
 // 됐다. 한국어로 보면 아홉 자리가 다 멀쩡해서 아무도 몰랐다.
 //
@@ -19,12 +19,12 @@
 //  1. **한 말 안에 다른 말이 들어간 자리.** 이번 고장의 모양이다. 바깥이 숨겨질 때
 //     안쪽도 함께 사라지므로 그 자리는 어느 말로도 읽을 수 없다.
 //  2. **짝이 없는 자리.** 두 말 가운데 하나만 적힌 자리는 다른 말로 열었을 때 빈다.
-//  3. **모르는 말.** `ko`·`en` 이 아닌 값은 CSS 두 줄 가운데 어느 것도 걸지 못해서,
+//  3. **모르는 말.** `ko`·`en`이 아닌 값은 CSS 두 줄 가운데 어느 것도 걸지 못해서,
 //     양쪽 말에서 모두 보인다.
 //
 // **정규식이 아니라 파서로 본다.** 이번 고장이 정확히 그 자리였다 — 닫는 태그가
 // 빠져도 글자는 그대로 남아 있어서, 문자열을 세는 검사는 아홉 자리를 모두 통과시킨다.
-// 고장은 브라우저가 그 HTML 을 **어떻게 읽는가**에서 생겼으므로 같은 규칙으로 읽는
+// 고장은 브라우저가 그 HTML을 **어떻게 읽는가**에서 생겼으므로 같은 규칙으로 읽는
 // 파서라야 보인다.
 //
 // usage: go run ./tools/checklang
@@ -84,7 +84,7 @@ func main() {
 	fmt.Printf("✓ lang check passed (%d pages, every phrase paired)\n", files)
 }
 
-// check — site/ 의 .html 을 모두 본다. **목록이 아니라 디렉터리로 잡는다** — 새로
+// check — site/의 .html을 모두 본다. **목록이 아니라 디렉터리로 잡는다** — 새로
 // 넣는 장이 목록에 안 적혀 슬그머니 빠지는 편이, 여기 없는 파일이 끼어드는 것보다
 // 위험하다.
 func check(root string) ([]finding, int, error) {
@@ -116,7 +116,7 @@ func check(root string) ([]finding, int, error) {
 	return out, len(paths), nil
 }
 
-// inspect — `lang` 이 붙은 요소를 문서 순서대로 모아 규칙 셋을 댄다.
+// inspect — `lang`이 붙은 요소를 문서 순서대로 모아 규칙 셋을 댄다.
 //
 // **중첩된 자리는 바깥만 짚는다.** 안쪽까지 세면 원인이 하나인 고장이 두 줄로 나와,
 // 무엇을 고쳐야 하는지 도리어 흐려진다. 바깥의 닫는 태그를 넣으면 둘 다 풀린다.
@@ -168,7 +168,7 @@ func inspect(doc *html.Node, rel, src string) []finding {
 	return out
 }
 
-// collect — `lang` 이 붙은 요소를 문서 순서대로. `<html lang="ko">` 는 문서 전체의
+// collect — `lang`이 붙은 요소를 문서 순서대로. `<html lang="ko">`는 문서 전체의
 // 초깃값이라 세지 않는다(스크립트가 막혀도 한국어가 보이게 하는 자리다).
 func collect(doc *html.Node) []*html.Node {
 	var out []*html.Node
@@ -231,7 +231,7 @@ func hasSibling(n *html.Node, want string) bool {
 	return false
 }
 
-// firstLang — 하위에서 `lang` 이 붙은 첫 요소. 있으면 그 자리가 중첩이다.
+// firstLang — 하위에서 `lang`이 붙은 첫 요소. 있으면 그 자리가 중첩이다.
 func firstLang(n *html.Node) *html.Node {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode {
@@ -271,7 +271,7 @@ func textOf(n *html.Node) string {
 	return b.String()
 }
 
-// lineIndex — 원본에서 `lang` 이 붙은 여는 태그의 줄을 **나온 순서대로** 모은다.
+// lineIndex — 원본에서 `lang`이 붙은 여는 태그의 줄을 **나온 순서대로** 모은다.
 //
 // 파서는 줄을 세어 주지 않는다. 그렇다고 품은 글자를 원본에서 되찾는 방식으로는 안
 // 된다 — 「정의」·「등급」처럼 짧고 흔한 낱말이 문서 앞쪽의 다른 자리에 먼저 걸려서
