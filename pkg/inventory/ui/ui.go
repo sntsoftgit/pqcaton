@@ -319,7 +319,7 @@ func RenderDecl(w io.Writer, v DeclView) error {
 // RenderRow — 「행 추가」가 돌려주는 조각: 빈 줄 하나와, 번호가 하나 오른 버튼.
 //
 // **화면과 같은 조각을 쓴다**(decl.templ의 nodeBlock·assetRow·edgeRow). 폼 이름이 곧
-// 저장 경로라, 둘로 갈라지면 새로 넣은 줄만 오류 없이 저장되지 않는다.
+// 저장 경로라, 둘로 갈라지면 새로 추가한 줄이 저장에서 빠져도 오류가 보고되지 않는다.
 //
 // node는 자산일 때만 쓴다 — 자산은 어느 노드의 것인지가 폼 이름에 들어간다.
 func RenderRow(w io.Writer, l Lang, kind string, node, i int) error {

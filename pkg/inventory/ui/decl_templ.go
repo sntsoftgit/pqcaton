@@ -676,7 +676,7 @@ func nodeBlock(l Lang, i int, n DeclNode) templ.Component {
 // assetRow · edgeRow — 표의 한 줄.
 //
 // **화면과 「행 추가」가 같은 조각을 쓴다.** 조각이 둘이면 이름이 어긋나는 날이 오고, 그러면
-// 새로 넣은 줄만 오류 없이 저장되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
+// 새로 추가한 줄이 저장에서 빠져도 오류가 보고되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
 func assetRow(l Lang, node, i int, runtime, component string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

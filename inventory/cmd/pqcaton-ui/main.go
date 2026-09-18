@@ -135,7 +135,7 @@ func main() {
 	h := s.handler()
 
 	if !loopback(*addr) {
-		// **묻지 않고 열지 않는다.** 리뷰 큐는 그 조직의 공격면이다.
+		// **외부 접속이 가능한 주소로 열 때는 경고한다.** 리뷰 큐는 그 조직의 공격면이다.
 		fmt.Fprintf(os.Stderr,
 			"⚠ %s is not loopback — the screen is open on the network. Put authentication in front of it.\n", *addr)
 	}
