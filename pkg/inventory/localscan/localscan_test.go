@@ -24,7 +24,7 @@ func TestCheckRefusesWithoutProc(t *testing.T) {
 	}
 }
 
-// IC-L6 — **접근 가능한 프로세스가 0이면 말하되 끊지는 않는다.**
+// IC-L6 — **접근 가능한 프로세스가 0이면 말하되 중단하지는 않는다.**
 //
 // `/proc`은 열렸으니 결과는 낼 수 있다. 다만 권한 때문에 하나도 못 읽었을 수 있으므로,
 // 그 결과를 완전한 관측으로 보지 말라고 알린다.
@@ -41,7 +41,7 @@ func TestCheckWarnsWhenNothingReadable(t *testing.T) {
 	}
 }
 
-// IC-L7 — 정상 스캔은 조용하다. 막는 것만 재면 전부 막아도 케이스는 통과한다.
+// IC-L7 — 정상 스캔은 경고가 없다. 막는 것만 재면 전부 막아도 케이스는 통과한다.
 func TestCheckQuietWhenFine(t *testing.T) {
 	warn, err := localscan.Check(false, 430, 68)
 	if err != nil || warn != "" {

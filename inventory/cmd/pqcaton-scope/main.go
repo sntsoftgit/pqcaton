@@ -148,7 +148,7 @@ func closeSession(path, judgmentPath, orgName string) error {
 		return err
 	}
 	// **관문은 scope.Finalize 하나다.** 화면도 같은 것을 쓴다 — 관문이 둘이면 언젠가 한쪽만
-	// 고쳐지고, 그날 화면과 명령의 확정이 갈린다.
+	// 고쳐지고, 그날 화면과 명령의 확정이 어긋난다.
 	res, err := scope.Finalize(sf, orgName)
 	if err != nil {
 		return err
@@ -182,7 +182,7 @@ func review(policyPath, dir, judgmentPath, orgName string, ttl int64) error {
 	}
 
 	// **화면과 같은 계산이다.** 따로 계산하면 화면에서 본 「안 보고 있는 것」과 여기 세는
-	// 것이 갈린다.
+	// 것이 어긋난다.
 	ex, err := scope.ExcludedFromResults(p, results)
 	if err != nil {
 		return err

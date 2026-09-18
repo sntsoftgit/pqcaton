@@ -184,7 +184,7 @@ func schemaReady(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 
 // RLSActive — 이 연결에서 행 수준 보안이 실제로 무는가.
 //
-// **false 면 격리는 질의의 org 조건 하나에만 기대고 있다.** 그것도 격리이긴 하지만, 이
+// **false면 격리는 질의의 org 조건 하나에만 기대고 있다.** 그것도 격리이긴 하지만, 이
 // 버전이 더하려던 한 겹은 없는 것이다 - 부르는 쪽이 그 사실을 말할 수 있어야 한다.
 func (p *PgJudgmentStore) RLSActive() bool { return p.rls }
 

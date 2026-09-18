@@ -61,7 +61,7 @@ func declPage(v DeclView) templ.Component {
 
 // declForm — 선언을 적는 폼. **껍데기와 갈라 둔다** — 요약을 얹은 새 화면이 같은 폼을
 // 그대로 쓴다. 폼 이름이 곧 저장 경로라(`node.name.0` → 선언의 그 자리) 두 벌로 두면
-// 어긋나는 날이 오고, 그날 저장이 오류 없이 틀린다.
+// 어긋나는 날이 오고, 그날 저장이 오류로 드러나지 않은 채 어긋난다.
 func declForm(v DeclView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -1044,7 +1044,7 @@ func removeButton(l Lang, target, ask string) templ.Component {
 // addRow — 「행 추가」 버튼. 다음에 쓸 번호를 자기 주소에 들고 있다.
 //
 // 번호가 촘촘해야 한다 — `ApplyDecl`은 번호가 끊기는 자리에서 읽기를 멈추므로, 건너뛴
-// 줄 뒤의 것은 **오류 없이 저장되지 않는다.** 그래서 서버가 다음 번호를 쥐고, 줄을 하나
+// 줄 뒤의 것은 **저장에서 빠져도 오류가 보고되지 않는다.** 그래서 서버가 다음 번호를 쥐고, 줄을 하나
 // 내줄 때마다 이 버튼을 자기 자신으로 갈아 끼운다(`hx-swap-oob`).
 //
 // 자산은 노드마다 표가 따로라 버튼도 노드마다 따로다 — node가 그 번호다.

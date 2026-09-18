@@ -53,7 +53,7 @@ type record struct {
 
 // judgmentWire — Judgment의 파일 모양. **ConfidenceEvaluated를 포인터로 받는다.** Judgment에는
 // json 태그가 없어 Go 이름으로 직렬화되는데, bool로 두면 옛 줄의 칸 부재가 false로 읽힌다. 옛 행은
-// 전부 평가된 값이었다(그때는 미평가라는 개념이 없었다). nil 이면 참, 명시적 false만 미평가다.
+// 전부 평가된 값이었다(그때는 미평가라는 개념이 없었다). nil이면 참, 명시적 false만 미평가다.
 // 쓸 때는 언제나 명시적으로 쓴다 - 새 파일에는 부재가 없게. 나머지 칸은 Judgment와 같은 이름이다.
 type judgmentWire struct {
 	ID                  string

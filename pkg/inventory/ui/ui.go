@@ -219,7 +219,7 @@ type DeclNode struct {
 	//
 	// **옮겨 적다 틀리는 자리를 없앤다.** 대조는 컴포넌트가 글자 그대로 같을 때만
 	// 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 온다 — 화면에 보이는 대로 적으면 맞지
-	// 않고, 그것이 오류 없이 미관측·UNDECLARED로 구분된다. 여기 있는 이름이 맞는 이름이다.
+	// 않고, 그것이 오류로 드러나지 않은 채 미관측·UNDECLARED로 구분된다. 여기 있는 이름이 맞는 이름이다.
 	Seen []DeclAsset
 }
 
@@ -384,8 +384,8 @@ func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped
 // formRows — 폼에 실제로 온 줄 번호를 차례대로.
 //
 // **번호가 끊겨도 읽는다.** 화면에서 「제거」로 가운데 줄을 지우면 그 번호가 빈 채로
-// 남는다. 예전처럼 끊기는 자리에서 읽기를 멈추면, 지운 줄 뒤의 것이 **오류 없이 저장되지
-// 않는다** — 사람은 지운 줄 하나만 사라졌다고 읽는다.
+// 남는다. 예전처럼 끊기는 자리에서 읽기를 멈추면, 지운 줄 뒤의 것이 **저장에서 빠져도 오류가
+// 보고되지 않는다** — 사람은 지운 줄 하나만 사라졌다고 읽는다.
 func formRows(f url.Values, prefix, suffix string) []int {
 	var rows []int
 	for k := range f {

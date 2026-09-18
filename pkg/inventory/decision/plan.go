@@ -11,8 +11,8 @@ var ErrNotJudged = errors.New("plan: a plan can only be built or handed over fro
 // PlanItem — 판정이 끝난 계획의 자산별 실행 항목(인벤토리 설계 §2). 스키마는 contracts 통제 어휘.
 type PlanItem struct {
 	NodeID                string
-	RemediationClass      string // taxonomy 분기(§4.3/§4.4)
-	DeployAutomationLevel string // L1/L2/L3 — 자산별 리뷰어 판정(§4.5, IC-P2)
+	RemediationClass      string // taxonomy 분기(프로비저닝 설계 §4.1·§4.2)
+	DeployAutomationLevel string // L1/L2/L3 — 자산별 리뷰어 판정(§4.3, IC-P2)
 	ProviderChoice        string // FIPS 라우팅 결과(프로비저닝 설계 §4.2)
 }
 
@@ -20,7 +20,7 @@ type PlanItem struct {
 //
 // 이 리포가 만드는 것은 여기까지다. 실행 근거(상류의 FINALIZED)가 되려면 상류에서 승인자가
 // 자기 키로 서명해야 하고(pqcota-approve), 그 단계는 이 리포 밖이다. 전에는 이 타입이
-// FinalizedPlan 이었고 주석이 「프로비저닝의 유일 실행 근거」라고 적혀 있었다 — 계약으로
+// FinalizedPlan이었고 주석이 「프로비저닝의 유일 실행 근거」라고 적혀 있었다 — 계약으로
 // IN_REVIEW를 내보내는 순간 그 이름은 자기가 하지 않는 일을 주장한다.
 type JudgedPlan struct {
 	Scope string

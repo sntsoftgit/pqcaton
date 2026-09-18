@@ -135,7 +135,7 @@ func TestSaveDoesNotFinalize(t *testing.T) {
 	}
 }
 
-// IC-U3 — **화면도 같은 같은 검사를 거친다.** 서명이 없으면 확정되지 않고, **무엇이 남았는지**
+// IC-U3 — **화면도 같은 검사를 거친다.** 서명이 없으면 확정되지 않고, **무엇이 남았는지**
 // 화면에 그대로 보인다 — 안 보여 주면 사람은 화면에서도 고칠 수 없다.
 func TestFinalizeRefusesWithoutSignature(t *testing.T) {
 	s, _ := newServer(t)
@@ -515,7 +515,7 @@ func TestScopeTabComesBeforeSurvey(t *testing.T) {
 	}
 }
 
-// IC-U17 — **화면도 같은 같은 검사를 거친다.** 근거 필수 변경에 결론이 없으면 정책이 안 나가고,
+// IC-U17 — **화면도 같은 검사를 거친다.** 근거 필수 변경에 결론이 없으면 정책이 안 나가고,
 // 무엇이 남았는지 화면에 그대로 보인다.
 func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 	s, _ := withScope(t)
@@ -593,7 +593,7 @@ func TestDeclRowRefusesBadInput(t *testing.T) {
 }
 
 // IC-U20 — 화면이 스타일과 htmx를 같은 서버에서 내준다. 주소가 어긋나면 화면은 뜨는데
-// 모양이 무너지고 「행 추가」가 오류 없이 안 듣는다.
+// 모양이 무너지고 「행 추가」가 아무 표시 없이 듣지 않는다.
 func TestStaticIsMounted(t *testing.T) {
 	s, _ := newServer(t)
 	mux := s.handler()
@@ -761,7 +761,7 @@ func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
 	if strings.Contains(old.Body.String(), `class="ui-next"`) {
 		t.Error("옛 화면에 요약이 붙었다 — 그대로 두기로 했다")
 	}
-	// 둘 다 같은 폼을 쓴다. 저장 경로가 다르면 한쪽 저장이 오류 없이 틀린다.
+	// 둘 다 같은 폼을 쓴다. 저장 경로가 다르면 한쪽 저장이 표시 없이 어긋난다.
 	for _, w := range []*httptest.ResponseRecorder{next, old} {
 		if !strings.Contains(w.Body.String(), `action="/decl/save"`) {
 			t.Error("두 화면이 같은 저장 경로를 쓰지 않는다")

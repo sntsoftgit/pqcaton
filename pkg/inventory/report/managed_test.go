@@ -32,7 +32,7 @@ func resultWithApps(src string, at int64, lib string, apps ...string) *discovery
 	}
 }
 
-// ★ IC-R23 — 정책이 뺀 선언 자산은 UNOBSERVED가 아니라 CONFIRMED + EXCLUDED_BY_POLICY 다.
+// ★ IC-R23 — 정책이 뺀 선언 자산은 UNOBSERVED가 아니라 CONFIRMED + EXCLUDED_BY_POLICY다.
 //
 // 데모에서 실제로 났던 모양이다. 선언은 openssl/libcrypto를 관리 대상으로 적었고, 정책은 그것을
 // 관측한 통로(sshd)를 앱 식별자로 뺐다. 전에는 제외된 finding이 정규화 안에서 사라져 대조가

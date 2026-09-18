@@ -83,7 +83,7 @@ func TestSessionWithoutIDMustBeReopened(t *testing.T) {
 	}
 }
 
-// IC-P9 — 다시 열면 같은 id 다. 새 세션이면 내용이 같아도 다른 id 다. 앞 세션에 id가 없으면
+// IC-P9 — 다시 열면 같은 id다. 새 세션이면 내용이 같아도 다른 id다. 앞 세션에 id가 없으면
 // 새로 만든 것을 그대로 둔다 — 지금 여는 것이 곧 「다시 열기」다.
 func TestSessionIDSurvivesReopenButNotNewSessions(t *testing.T) {
 	prev := judgedSession()

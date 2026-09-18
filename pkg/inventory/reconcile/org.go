@@ -55,7 +55,7 @@ func (e *Engine) AssetsFromSnapshotAs(snap *history.Snapshot, node string) []Obs
 // 관리 근거는 정책을 건 스냅샷에서 나와야 한다([AssetsFromSnapshotAs]) - 그것이 상류 이력과
 // 같은 지문을 내는 스냅샷이다. 여기 오는 스냅샷은 어디에도 적재되지 않은 것이라 지문을
 // 쓰지 않는다. 정책 판정은 상류 코드([scope.AssetPolicy.Managed])를 그대로 부른다 - 이
-// 리포가 정책을 다시 해석하지 않는다. policy가 nil 이면 제외되는 것이 없다.
+// 리포가 정책을 다시 해석하지 않는다. policy가 nil이면 제외되는 것이 없다.
 func (e *Engine) ExcludedFromSnapshotAs(snapAll *history.Snapshot, node string, policy *scope.AssetPolicy) []Excluded {
 	if snapAll == nil || policy == nil {
 		return nil

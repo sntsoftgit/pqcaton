@@ -13,9 +13,9 @@ import (
 
 // IC-P6 — **스코프가 URI인 노드도 그대로 겨눈다.**
 //
-// v0.1.0은 항목 id를 `/`로 쪼개 노드를 되찾았다. 스코프가 `host://local` 이면 첫 조각이
+// v0.1.0은 항목 id를 `/`로 쪼개 노드를 되찾았다. 스코프가 `host://local`이면 첫 조각이
 // `host:`가 되어 조치가 있지도 않은 노드를 겨누고, 런타임이 빈 문자열이 되어 기본값
-// openssl로 표시 없이 떨어졌다 — 관측이 jca 여도 그랬다. 되찾지 않고 들고 다니게 고쳤다.
+// openssl로 표시 없이 떨어졌다 — 관측이 jca여도 그랬다. 되찾지 않고 들고 다니게 고쳤다.
 func TestContractKeepsURINodeAndRuntime(t *testing.T) {
 	items := []Item{
 		{ID: "host://local/jca/provider", Node: "host://local", Runtime: "jca", Conclusion: "교체한다",

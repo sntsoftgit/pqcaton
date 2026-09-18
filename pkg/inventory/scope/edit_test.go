@@ -120,7 +120,7 @@ func TestReopenKeepsJudgmentsAcrossNoteEdit(t *testing.T) {
 //
 // 일괄 판정은 「이 계층의 변경들을 보고 내린 결론」입니다. 새 변경은 사람이 본 적이
 // 없는데 그대로 두면, 방금 넣은 exclude가 **누가 승인한 적 없는 근거를 달고** 확정을
-// 통과합니다 — 오류 없이 틀리는 자리입니다.
+// 통과합니다 — 오류로 드러나지 않은 채 틀리는 자리입니다.
 func TestReopenClearsLayerDecisionOnNewChange(t *testing.T) {
 	sf, layers := judgedSession(t)
 	edited := []scope.Layer{{Name: "corp", Rules: append(append([]kscope.AssetRule{}, layers[0].Rules...),

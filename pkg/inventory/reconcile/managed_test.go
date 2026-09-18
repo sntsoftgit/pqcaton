@@ -87,7 +87,7 @@ func TestManagedAxisDerivesFromSources(t *testing.T) {
 
 // IC-R21 — 혼합 근거: 같은 자산을 원천 노드 둘이 봤고 한쪽만 정책에 걸림.
 //
-// 관리 근거가 하나라도 있으면 MANAGED 다 - 관리할 근거가 있는데 관리하지 않으면 실재하는
+// 관리 근거가 하나라도 있으면 MANAGED다 - 관리할 근거가 있는데 관리하지 않으면 실재하는
 // 관리 대상을 놓친다. 대표값과 신뢰도는 **관리 근거에서만** 계산하고, 제외 근거는 따로
 // 보존해 리포트가 「관리 근거 n · 제외 근거 m」으로 알린다. 제외 근거의 순서는 입력이 아니라
 // 원천 노드·finding 순이다 - 근거 해시가 이 목록을 넣는다.
@@ -118,7 +118,7 @@ func TestMixedSourcesAreManagedAndKeepTheExcludedOnes(t *testing.T) {
 //
 // **정책 판정은 상류 코드(scope.AssetPolicy.Managed)가 한다** - 이 리포가 정책을 다시 해석하지
 // 않는다. Managed가 거짓인 finding만 나오고, 앱 식별자는 **전부** 실리며(공유 .so를 여러 앱이
-// 로드하면 그 목록 전부가 함께 빠진 것이다), 조직이 찍힌다. 정책이 nil 이면 아무것도 빠지지 않는다.
+// 로드하면 그 목록 전부가 함께 빠진 것이다), 조직이 찍힌다. 정책이 nil이면 아무것도 빠지지 않는다.
 func TestExcludedFromSnapshotUsesTheUpstreamPolicy(t *testing.T) {
 	lib := func(id, name string, keys ...string) *discoveryv1.Finding {
 		return &discoveryv1.Finding{Id: id, CryptoRuntime: commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL,

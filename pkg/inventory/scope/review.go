@@ -34,7 +34,7 @@ type Excluded struct {
 // ExcludedFrom — 한 노드의 관측 finding을 정책에 통과시켜 **빠지는 것을 이름으로** 낸다.
 //
 // 판정은 pqcota의 `Managed`가 한다 — 여기서 glob을 다시 구현하면 내려보낸 CSV를 pqcota가
-// 집행한 결과와 우리 화면이 갈라진다.
+// 집행한 결과와 우리 화면이 어긋난다.
 func ExcludedFrom(p *kscope.AssetPolicy, node string, findings []*discoveryv1.Finding) []Excluded {
 	var out []Excluded
 	for _, f := range findings {
@@ -84,7 +84,7 @@ func EnglishReason(code string) string {
 // ExcludedFromResults — 관측 결과 전부에서 **정책이 뺀 자산**을 모은다.
 //
 // 명령(`pqcaton-scope review`)과 화면이 같은 계산을 써야 한다 — 따로 계산하면 화면에서 본
-// 「안 보고 있는 것」과 명령이 세는 것이 갈린다.
+// 「안 보고 있는 것」과 명령이 세는 것이 어긋난다.
 func ExcludedFromResults(p *kscope.AssetPolicy, results []*discoveryv1.CollectionResult) ([]Excluded, error) {
 	var out []Excluded
 	for _, res := range results {

@@ -281,7 +281,7 @@ func TestFinalizingAnOldSessionWarnsButDoesNotBlock(t *testing.T) {
 	if !strings.Contains(out.String(), "warning") || !strings.Contains(out.String(), v2) || !strings.Contains(out.String(), review.RulesetVersion) {
 		t.Errorf("옛 규칙 판이라는 경고가 없거나 값이 빠졌다: %q", out.String())
 	}
-	// 같은 세션을 v3으로 다시 열어 Carry 하면 서명은 지워진다 - 근거 해시의 입력이 넓어졌다.
+	// 같은 세션을 v3으로 다시 열어 Carry하면 서명은 지워진다 - 근거 해시의 입력이 넓어졌다.
 	next := judgedSession()
 	next.RulesetVersion, next.Signature = review.RulesetVersion, ""
 	if review.Carry(sf, next).Signature != "" {

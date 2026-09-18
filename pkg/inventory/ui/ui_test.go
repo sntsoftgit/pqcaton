@@ -224,7 +224,7 @@ func TestAddedRowUsesSameFormNames(t *testing.T) {
 //
 // `ApplyDecl`은 번호가 끊기는 자리에서 읽기를 멈춥니다. 버튼이 같은 번호를 계속 주면
 // 새 줄이 앞의 것을 덮고, 번호를 건너뛰면 그 뒤가 통째로 저장되지 않습니다 — 둘 다
-// 오류 없이 틀리는 자리입니다.
+// 오류로 드러나지 않은 채 틀리는 자리입니다.
 func TestAddedRowAdvancesTheButton(t *testing.T) {
 	var b strings.Builder
 	if err := ui.RenderRow(&b, ui.KO, ui.KindNode, 0, 7); err != nil {
@@ -373,7 +373,7 @@ func TestRuleRowFragment(t *testing.T) {
 			t.Errorf("새 규칙 줄에 %q 가 없다:\n%s", want, body)
 		}
 	}
-	// **빈 줄의 기본은 include 다.** exclude가 기본이면 실수 한 번이 인벤토리를 지운다.
+	// **빈 줄의 기본은 include다.** exclude가 기본이면 실수 한 번이 인벤토리를 지운다.
 	if !strings.Contains(body, `<option value="include" selected`) {
 		t.Error("빈 줄의 기본이 include 가 아니다")
 	}
@@ -449,8 +449,8 @@ func TestEveryScreenFoldsItsExplanations(t *testing.T) {
 // IC-UI31 — **가운데 줄을 지워도 뒤의 줄이 살아 남는다.**
 //
 // 「제거」는 그 줄을 화면에서 지웁니다. 번호는 빈 채로 남습니다 — 예전처럼 끊기는
-// 자리에서 읽기를 멈추면 지운 줄 **뒤의 것이 통째로 저장되지 않습니다.** 오류도 나지
-// 않고, 사람은 지운 줄 하나만 사라졌다고 읽습니다.
+// 자리에서 읽기를 멈추면 지운 줄 **뒤의 것이 저장에서 통째로 빠져도 오류가 보고되지 않고,**
+// 사람은 지운 줄 하나만 사라졌다고 읽습니다.
 func TestApplyDeclReadsPastRemovedRows(t *testing.T) {
 	got, _ := ui.ApplyDecl(decl.Declaration{}, url.Values{
 		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},
@@ -529,7 +529,7 @@ func TestRuntimeIsPickedFromAList(t *testing.T) {
 //
 // 맞대는 방식이 **글자 그대로 같은가**입니다. 앞뒤 일부 일치도, <code>*</code> 같은 것도 없습니다.
 // 그런데 관측 이름은 `.so` 뒤가 떼인 채로 오므로, 관측에 보이는 대로(`libssl.so.3`)
-// 적으면 맞지 않습니다 — 그리고 그것이 오류 없이 미관측·UNDECLARED로 구분됩니다.
+// 적으면 맞지 않습니다 — 그리고 그것이 오류로 드러나지 않은 채 미관측·UNDECLARED로 구분됩니다.
 func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 	var b strings.Builder
 	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
@@ -551,7 +551,7 @@ func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 // IC-UI35 — **관측된 컴포넌트가 후보로 뜬다.**
 //
 // 컴포넌트는 글자 그대로 같아야 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 옵니다 —
-// 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류 없이 미관측·UNDECLARED로 구분됩니다.
+// 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류로 드러나지 않은 채 미관측·UNDECLARED로 구분됩니다.
 // 관측 결과에 적힌 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 한다.
 func TestObservedComponentsAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},

@@ -67,7 +67,7 @@ def main() -> int:
         sys.exit("usage: declare.py <topology.yaml>")
     nodes, edges = parse(sys.argv[1])
 
-    # **못 읽었으면 멈춘다.** 정규식으로 좁게 읽으므로 형식이 바뀌면 오류 없이 비어 나온다 -
+    # **못 읽었으면 멈춘다.** 정규식으로 좁게 읽으므로 형식이 바뀌면 알리지 않은 채 비어 나온다 -
     # 빈 선언으로 데모를 돌리면 전부 UNDECLARED가 되어 "그런 결과인가 보다" 하고 넘어간다.
     if not nodes or not edges:
         sys.exit(

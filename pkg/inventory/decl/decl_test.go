@@ -65,7 +65,7 @@ func TestCheckFlagsDuplicateIP(t *testing.T) {
 // IC-D17 — **같은 관측 이름을 둘이 주장하면 짚는다.**
 //
 // IP를 겹쳐 주장하는 것과 같은 사태입니다 — 이어지는 자리만 엣지에서 자산으로 옮겨
-// 갔을 뿐입니다. 한쪽만 이기므로 그 기계의 자산이 남의 노드에 붙고, 진 노드의 선언한
+// 갔을 뿐입니다. 한쪽에만 붙으므로 그 기계의 자산이 남의 노드에 붙고, 붙지 못한 노드의 선언한
 // 자산은 미관측으로 남습니다. 대소문자는 가리지 않습니다 — 잇는 쪽이 안 가립니다.
 func TestCheckFlagsDuplicateObservedName(t *testing.T) {
 	d := decl.Declaration{
@@ -147,7 +147,7 @@ func TestCheckFlagsZeroPort(t *testing.T) {
 	}
 }
 
-// IC-D14 — **맞는 선언은 조용하다.** 막는 것만 재고 통과를 안 재면, 전부 짚어도 케이스는
+// IC-D14 — **맞는 선언은 아무것도 짚지 않는다.** 막는 것만 재고 통과를 안 재면, 전부 짚어도 케이스는
 // 통과한다.
 func TestCheckQuietWhenSound(t *testing.T) {
 	d := decl.Declaration{

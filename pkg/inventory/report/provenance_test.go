@@ -22,7 +22,7 @@ import (
 )
 
 // 되짚기의 전제 — 같은 결과 집합을 이 리포와 상류 적재가 **같은 스냅샷**으로 만들어 같은 지문을
-// 낸다. 그 지문이 계약으로 건너가 상류 이력에서 찾힌다. 전에는 결과 하나마다 정규화하고 네트워크
+// 낸다. 그 지문이 계약으로 건너가 상류 이력에서 찾아진다. 전에는 결과 하나마다 정규화하고 네트워크
 // 결과를 비켜 두어, 어떤 경우에도 같은 지문이 나올 수 없었다.
 
 // 상류 수집기가 내는 모양 그대로: openssl 결과 하나와 네트워크 결과 하나가 같은 원천 노드에서.
@@ -58,7 +58,7 @@ func writeResults(t *testing.T, dir string, rs ...*discoveryv1.CollectionResult)
 //
 // 상류 `ingest.IngestWith`를 메모리 이력에 돌려 저장된 스냅샷의 v1 지문을 얻고, 같은 결과 디렉터리를
 // 이 리포의 대조가 읽어 낸 근거의 지문과 비교한다. 다르면 계약으로 건너간 참조가 중앙 이력에서
-// 찾히지 않는다.
+// 찾아지지 않는다.
 func TestSnapshotDigestMatchesUpstreamIngest(t *testing.T) {
 	dir := t.TempDir()
 	edge := &discoveryv1.ObservedEdge{SrcNodeId: "web-01.corp", DstNodeId: "db", Port: 5432,
@@ -112,7 +112,7 @@ func TestSnapshotDigestMatchesUpstreamIngest(t *testing.T) {
 	if !found {
 		t.Fatal("대조 결과에 근거가 없다")
 	}
-	// 조회 키로 실제로 찾힌다.
+	// 조회 키로 실제로 찾아진다.
 	if hit, _ := store.ByContentHashV1("web-01.corp", normalize.RulesetVersion, want); hit == nil {
 		t.Error("상류 이력이 이 지문으로 찾지 못한다")
 	}

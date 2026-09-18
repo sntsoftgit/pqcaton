@@ -39,7 +39,7 @@ type ChangeItem struct {
 	// Kind — [KindAdded] | [KindRemoved].
 	//
 	// **값은 코드다.** 화면이 두 언어라 여기에 사람이 읽는 말을 담으면, 파일에 담긴
-	// 말과 화면에 뜨는 말이 갈린다 — 그리고 그 파일은 다른 언어로 연 화면에서 읽힌다.
+	// 말과 화면에 뜨는 말이 어긋난다 — 그리고 그 파일은 다른 언어로 연 화면에서 읽힌다.
 	Kind string `json:"change"`
 	Rule string `json:"rule"`
 	Note string `json:"note,omitempty"`

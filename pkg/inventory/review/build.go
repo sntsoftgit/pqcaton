@@ -62,7 +62,7 @@ func (w Warning) English() string {
 }
 
 // LoadAssetPolicy — 자산 스코프 정책 파일(scope-assets.csv)을 읽는다. 빈 경로면 정책 없음(nil).
-// 상류 `pqcota-ingest -scope-assets`가 읽는 것과 같은 파서다 — 다르게 읽으면 스냅샷 지문이 갈린다.
+// 상류 `pqcota-ingest -scope-assets`가 읽는 것과 같은 파서다 — 다르게 읽으면 스냅샷 지문이 어긋난다.
 func LoadAssetPolicy(path string) (*scope.AssetPolicy, error) {
 	if path == "" {
 		return nil, nil
@@ -139,7 +139,7 @@ func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, poli
 //
 // **리뷰 항목과 자동통과를 합쳐 ID로 찾는다.** 확신이 0.8을 넘나들면 같은 자산이 두 컬렉션
 // 사이를 옮겨 다닌다 - 어느 컬렉션에 있었는지는 보지 않고, 사람이 고른 계획 칸은 따라간다.
-// 쓰는 자리는 [update] 다: [All] 이 준 복사본에 쓰면 아무 일도 일어나지 않는다.
+// 쓰는 자리는 [update]다: [All]이 준 복사본에 쓰면 아무 일도 일어나지 않는다.
 //
 // 옛 식별자 목록(LegacyAutopass)은 새 세션에 같은 ID의 구조화 후보가 있으면 그것으로 치환된
 // 셈이다(새 세션이 이미 들고 있다). 없으면 목록에 남기고 계획 불가를 알린다 - 알리지 않고 지우지 않는다.

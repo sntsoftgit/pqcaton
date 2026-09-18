@@ -66,7 +66,7 @@ type Observed struct {
 	// 근거가 있는데 실행 계획에는 없는 상태가 된다. UNOBSERVED는 관측이 없으니 빈다.
 	FindingID string
 	// Fingerprint — 그 관측의 **내용** 지문([Fingerprint]). id는 자산이 같으면 같으므로,
-	// 버전이 오르거나 강화 판정이 달라진 것을 id 로는 알 수 없다. 판정의 근거가 바뀌었는지는
+	// 버전이 오르거나 강화 판정이 달라진 것을 id로는 알 수 없다. 판정의 근거가 바뀌었는지는
 	// 이 값으로 가른다.
 	Fingerprint string
 	// appKeys — 이 finding에 걸린 앱 식별자 전부. 제외 근거의 경고문이 쓴다. 관리 근거에는

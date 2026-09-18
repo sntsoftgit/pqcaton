@@ -30,9 +30,9 @@ func finding(lib, app string) *discoveryv1.Finding {
 }
 
 // IC-S1 — **상속은 규칙 이어붙이기다.** pqcota의 「매치되는 마지막 규칙이 결정한다」를
-// 그대로 쓰므로 판정
-// 규칙이 세상에 하나만 존재한다. 우리가 잠금을 따로 두면 내려보낸 CSV를 pqcota가 집행한
-// 결과와 우리 화면이 갈라진다.
+// 그대로 쓰므로
+// 판정 규칙이 세상에 하나만 존재한다. 우리가 잠금을 따로 두면 내려보낸 CSV를 pqcota가 집행한
+// 결과와 우리 화면이 어긋난다.
 func TestMergeLetsLowerLayerWin(t *testing.T) {
 	조직 := scope.Layer{Name: "corp", Rules: []kscope.AssetRule{ex("openssl", "libcrypto*", "", "전사 제외")}}
 	노드군 := scope.Layer{Name: "pay", Rules: []kscope.AssetRule{inc("openssl", "libcrypto*", "", "결제는 본다")}}

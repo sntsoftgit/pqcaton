@@ -254,7 +254,7 @@ func closeSession(path, judgmentPath, orgName string) error {
 		return err
 	}
 	// **관문은 review.Finalize 하나다.** 화면도 같은 것을 쓴다 — 관문이 둘이면 언젠가
-	// 한쪽만 고쳐지고, 그날 화면과 명령의 확정이 갈린다.
+	// 한쪽만 고쳐지고, 그날 화면과 명령의 확정이 어긋난다.
 	res, err := review.Finalize(sf)
 	if err != nil {
 		return err

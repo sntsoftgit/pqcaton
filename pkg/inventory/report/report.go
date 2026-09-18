@@ -30,7 +30,7 @@ import (
 // Result — 대조 한 판의 결과.
 type Result struct {
 	Org string
-	// SeenBy — 노드 → 그 노드를 본 collector 들. **누가 무엇을 봤는지**가 없으면 「관측 안 됨」과
+	// SeenBy — 노드 → 그 노드를 본 collector들. **누가 무엇을 봤는지**가 없으면 「관측 안 됨」과
 	// 「관측하지 못함」을 가를 수 없다.
 	SeenBy map[string][]string
 	// Uncovered — 스코프에 있으나 네트워크 계층을 관측하지 못한 노드. **부재가 아니라 미관측**이다.
@@ -160,7 +160,7 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 		}
 	}
 
-	// 관측 IP → 스코프 노드 잇기(§1.4). 이어지면 CONFIRMED로 잡히고, 안 되면 off-scope 다.
+	// 관측 IP → 스코프 노드 잇기(§1.4). 이어지면 CONFIRMED로 잡히고, 안 되면 off-scope다.
 	ResolveEdgeDsts(observedEdges, d.Nodes)
 
 	declaredEdges := make([]reconcile.EdgeKey, 0, len(d.Edges))

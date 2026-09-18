@@ -12,7 +12,7 @@
 // **탭 순서가 절차 순서다** — 선언 → 스코프 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을
 // 할지 화면이 알려 준다. 입력을 주지 않은 자리는 만들지 않는다.
 //
-// **라우팅은 chi, 화면은 templ, 부분 갱신은 htmx 다.** 셋 다 허용적 라이선스이고
+// **라우팅은 chi, 화면은 templ, 부분 갱신은 htmx다.** 셋 다 허용적 라이선스이고
 // 링크되는 모듈은 둘만 는다(전이 의존이 없다). htmx는 바이너리에 담겨 나가므로 망이
 // 끊긴 기계에서도 그대로 뜬다 — 그리고 우리 라이선스 관문이 그 파일까지 본다.
 //
@@ -378,7 +378,7 @@ func (s *server) save(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/review", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
-// finalize — **명령과 같은 같은 검사를 거친다.** 여기서 따로 판정하지 않는다.
+// finalize — **명령과 같은 검사를 거친다.** 여기서 따로 판정하지 않는다.
 func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 	sf, err := s.applyReview(r)
 	if err != nil {
@@ -568,7 +568,7 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/scope", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
-// scopeFinalize — **명령과 같은 같은 검사를 거친다.**
+// scopeFinalize — **명령과 같은 검사를 거친다.**
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 	if s.scope == "" {
 		http.Error(w, "no scope session was given", http.StatusNotFound)
@@ -661,7 +661,7 @@ func renderDOT(dot string) string {
 	if err != nil {
 		return ""
 	}
-	// `dot`이 낸 SVG 다. 우리가 만든 DOT에서 나온 것이라 밖에서 온 값이 아니다.
+	// `dot`이 낸 SVG다. 우리가 만든 DOT에서 나온 것이라 밖에서 온 값이 아니다.
 	return string(out)
 }
 

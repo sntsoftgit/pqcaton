@@ -1,4 +1,4 @@
-// Package decision implements the Inventory 리뷰-확정 상태기계 (규정서 §3.3③, 설계 §1.4).
+// Package decision — 인벤토리 리뷰-확정 상태기계 (규정서 §3.3③, 설계 §1.4).
 //
 // pqcota가 만들지 않기로 한 계층이다 — 확정된 계획만 그쪽 프로비저닝의 입력이 된다.
 // draft → in-review → finalized. finalized 전에는 프로비저닝 실행 불가(§5 — 반드시 거쳐야 하는 관문).

@@ -1,7 +1,7 @@
 // Package localscan — **이 기계를** 관측하는 지름길.
 //
 // collector가 할 일을 로컬에서 흉내 낸 것이다. 원래 관측은 pqcota의 collector가 대상
-// 노드에서 하고, 이 리포는 그 결과를 받아 대조한다 — 그 경로가 `pqcaton-report` 다.
+// 노드에서 하고, 이 리포는 그 결과를 받아 대조한다 — 그 경로가 `pqcaton-report`다.
 // 여기 있는 것은 **「체크아웃만으로 한 바퀴」를 위한 편의**이고, 그래서 두 가지 제약을
 // 물려받는다:
 //
@@ -36,7 +36,7 @@ const DefaultNode = "host://local"
 
 // Check — 스캔 통계를 보고 이 결과를 믿어도 되는지 정한다.
 //
-// **끊는 것과 경고하는 것을 가른다.** `/proc`이 아예 없으면 결과가 무의미하므로 끊고,
+// **중단하는 것과 경고하는 것을 가른다.** `/proc`이 아예 없으면 결과가 무의미하므로 중단하고,
 // 열리긴 했는데 하나도 못 읽었으면(권한) 결과는 낼 수 있으니 말만 한다.
 func Check(procUnavailable bool, accessible, denied int) (warn string, err error) {
 	if procUnavailable {
@@ -82,7 +82,7 @@ type Result struct {
 }
 
 // Scan — 이 기계를 관측해 스냅샷으로 만든다. `node`는 결과에 붙일 이름이다. policy는 자산
-// 스코프 정책이고 nil 이면 전부 관리 대상이다.
+// 스코프 정책이고 nil이면 전부 관리 대상이다.
 //
 // 스캔하는 자리는 여기 하나다 — 두 곳에 두면 한쪽만 고쳐지는 날이 온다.
 func Scan(node string, policy *scope.AssetPolicy) (*Result, error) {

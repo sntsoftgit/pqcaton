@@ -364,7 +364,7 @@ func fakeAnsible(t *testing.T, dir, script string) string {
 
 // RUN-12 — **플레이북이 실패해도 생긴 결과는 올린다.** 다만 실패를 숨기지 않는다.
 //
-// 반쯤 나온 것을 버리면 그 관측은 사라진다. 그렇다고 오류 없이 0으로 끝내면 스케줄러가 잘 돈
+// 반쯤 나온 것을 버리면 그 관측은 사라진다. 그렇다고 실패했는데도 0으로 끝내면 스케줄러가 잘 돈
 // 것으로 읽는다 — 무엇이 왜 안 됐는지는 완전성 맵에서 봐야 한다.
 func TestFailedPlaybookStillUploadsWhatExists(t *testing.T) {
 	p := &plane{}

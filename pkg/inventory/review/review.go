@@ -72,7 +72,7 @@ type Item struct {
 	FindingID string `json:"finding_id,omitempty"`
 	// Fingerprint — 근거 관측의 **내용** 지문(`reconcile.Fingerprint`). 사람이 채우는 자리가
 	// 아니라 대조가 들고 온 사실이다. `finding_id`는 자산이 같으면 같으므로, 버전이 오르거나
-	// 강화 판정이 달라진 것을 id 로는 알 수 없다 — 그 자리를 이 값이 맡는다.
+	// 강화 판정이 달라진 것을 id로는 알 수 없다 — 그 자리를 이 값이 맡는다.
 	Fingerprint string `json:"evidence_fingerprint,omitempty"`
 	// Sources — 근거 전부. 같은 자산을 원천 노드 여럿이 봤으면 여럿이고 주 근거가 앞이다
 	// (`FindingID`·`Fingerprint`는 주 근거의 것). 계약의 `evidence_sources`로 나간다. 근거 해시에는
@@ -233,7 +233,7 @@ func ItemOf(r reconcile.Reconciled, mandatory bool) Item {
 	}
 }
 
-// ManagedOf — 항목의 관리 축. 옛 파일(빈 값)은 MANAGED 다 - 그 판에서 큐에 오른 항목은 전부
+// ManagedOf — 항목의 관리 축. 옛 파일(빈 값)은 MANAGED다 - 그 판에서 큐에 오른 항목은 전부
 // 관리 대상이었다.
 func ManagedOf(it Item) reconcile.ManagedState {
 	if it.Managed == "" {
@@ -243,7 +243,7 @@ func ManagedOf(it Item) reconcile.ManagedState {
 }
 
 // ConfidenceEvaluated — 항목의 신뢰도가 잰 값인가. 규칙 판이 v2 이하이면 칸의 부재를 평가됨으로
-// 읽는다 - 그 판에는 미평가라는 개념이 없었다. v3 부터는 칸의 값 그대로다.
+// 읽는다 - 그 판에는 미평가라는 개념이 없었다. v3부터는 칸의 값 그대로다.
 func ConfidenceEvaluated(it Item, rulesetVersion string) bool {
 	if it.ConfEvaluated {
 		return true
@@ -272,17 +272,17 @@ func SourcesOf(r reconcile.Reconciled) []EvidenceSource {
 // 검토 도중 도구가 올라가도 실제로 검토한 근거가 그대로 남아야 하기 때문이다.
 //
 // v2 — 주 근거를 입력 순서가 아니라 가장 강한 증거로 고르고, 계약 변환이 근거 여럿을 낸다. 같은 관측에서
-// 다른 판정·다른 계획이 나오므로 올렸다. 상류도 같은 이유(병합 규칙)로 v2 다.
+// 다른 판정·다른 계획이 나오므로 올렸다. 상류도 같은 이유(병합 규칙)로 v2다.
 //
 // v3 — 판정 축과 계획 축, 대조 축과 관리 축을 나눴다. 자동통과 자산이 계획에 들어올 수 있고, 정책이
 // 뺀 선언 자산이 리뷰 큐에서 빠진다 - 같은 관측에서 다른 계획이 나온다. 근거 해시가 관리 판정·제외
-// 근거·미평가 여부를 덮으므로 **v3으로 다시 열어 Carry 한 세션의 서명은 무효**다. 저장된 옛 세션을
+// 근거·미평가 여부를 덮으므로 **v3으로 다시 열어 Carry한 세션의 서명은 무효**다. 저장된 옛 세션을
 // 그대로 확정하면 서명은 살아 있고 경고만 난다([Finalize]) - 검토 중인 세션이 도구 교체로 버려지면
 // 사람이 한 일이 사라진다.
 const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v3"
 
 // planRulesetNumber — 결합 판 문자열에서 이 리포의 계획 규칙 판 번호를 꺼낸다. 없거나 못 읽으면
-// 0 이다(옛 빌드가 연 세션, 또는 규칙 판을 안 적은 것).
+// 0이다(옛 빌드가 연 세션, 또는 규칙 판을 안 적은 것).
 func planRulesetNumber(rulesetVersion string) int {
 	const tag = "+pqcaton-plan/v"
 	i := strings.LastIndex(rulesetVersion, tag)
@@ -301,7 +301,7 @@ func planRulesetNumber(rulesetVersion string) int {
 // 파일의 상수가 아니다. 검토 도중 도구가 올라갈 수 있다.
 func rulesetAtLeastV3(rulesetVersion string) bool { return planRulesetNumber(rulesetVersion) >= 3 }
 
-// NewSessionID — 세션을 **열 때** 한 번 만든다. UUID v4 다. 표준 라이브러리만 쓴다 — 식별자
+// NewSessionID — 세션을 **열 때** 한 번 만든다. UUID v4다. 표준 라이브러리만 쓴다 — 식별자
 // 하나를 위해 의존성을 들이지 않는다.
 //
 // 세션을 다시 열면 [Carry]가 앞 세션의 것을 옮기므로 새로 만들지 않는다. 새 세션이면 내용이
@@ -377,7 +377,7 @@ func Decode(raw []byte) (Session, error) {
 // Save — 세션 파일을 쓴다. 화면이 판정을 채워 넣는 자리다.
 //
 // **덮어쓰되 형식은 그대로다.** 화면으로 채운 파일을 명령이 그대로 읽을 수 있어야 한다 —
-// 아니면 두 길이 갈린다.
+// 아니면 두 길이 어긋난다.
 func Save(path string, sf Session) error {
 	raw, err := json.MarshalIndent(sf, "", "  ")
 	if err != nil {
@@ -461,7 +461,7 @@ func Finalize(sf Session) (*Result, error) {
 			"reopen the session from the results (`pqcaton-decide open -results …`) to make them selectable\n", len(sf.LegacyAutopass))
 	}
 	// 규칙 판은 **세션이 들고 있던 것**을 쓴다. 여기서 지금 실행 파일의 것을 찍으면, 검토 도중
-	// 도구가 올라갔을 때 실제로 검토한 근거가 아닌 판이 계획에 박힌다.
+	// 도구가 올라갔을 때 실제로 검토한 근거가 아닌 판이 계획에 적힌다.
 	if sf.RulesetVersion == "" {
 		return nil, fmt.Errorf("this session records no ruleset_version — it was raised by an older build. " +
 			"raise it again from the results (`pqcaton-decide open`) rather than stamping today's rules onto " +
@@ -765,7 +765,7 @@ func ToContract(p *decision.JudgedPlan, items []Item, rulesetVersion, sessionID 
 	return out, nil
 }
 
-// rollbackNoteOf — 계약의 rollback_note. v3 부터는 계획 칸 그대로이고 빈 값은 빈 값이다. v2 이하의
+// rollbackNoteOf — 계약의 rollback_note. v3부터는 계획 칸 그대로이고 빈 값은 빈 값이다. v2 이하의
 // 세션에서만 빈 값을 결론으로 채운다 - 그 판에는 이 칸이 없었다. 판단 기준은 **세션이 들고 있는
 // 규칙 판**이다. 지금 실행 파일의 상수로 보면 v3 사용자가 일부러 비운 자리에 결론이 다시 들어간다.
 func rollbackNoteOf(it Item, rulesetVersion string) string {
