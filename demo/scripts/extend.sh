@@ -194,9 +194,12 @@ open(p, "a").write("\n")
 PYFMT
 
 echo "▶ 5/8 render the topology SVG and collect it…"
+# **SVG 도 기대 산출물로 그대로 가져온다.** report.txt·plan.json 은 스크립트가 떴는데 SVG 만 손으로
+# 옮기던 자리라, 범례가 영어가 된 날에도 한국어인 채 남아 있었다(2026-09-18 에 고쳤다).
 if docker exec pqcota-ctl bash -lc 'command -v dot >/dev/null && dot -Tsvg /work/topology-governance.dot -o /work/topology-governance.svg'; then
   docker cp pqcota-ctl:/work/topology-governance.svg "$DEMO_DIR/topology-governance.svg"
-  echo "   → $DEMO_DIR/topology-governance.svg"
+  cp "$DEMO_DIR/topology-governance.svg" "$SAMPLE_DIR/topology-governance.svg"
+  echo "   → $DEMO_DIR/topology-governance.svg (and $SAMPLE_DIR/)"
 fi
 
 # 계약으로 나간 계획은 IN_REVIEW 이고 승인 칸이 비어 있어야 한다. 그렇지 않으면 이 리포가
