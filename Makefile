@@ -50,7 +50,7 @@ check-lang:
 # 하나도 없었다. 약속을 사람이 지키게 두면 이렇게 된다.
 #
 # 링크는 손으로 붙이지 않는다. `go run ./tools/checkcases -write`가 찍는다. 손으로 붙이면
-# 파일을 옮기는 날 백일흔넷이 한꺼번에 썩는다.
+# 파일을 옮기는 날 링크 전부가 한꺼번에 썩는다.
 check-cases:
 	@go run ./tools/checkcases
 
