@@ -1,4 +1,4 @@
-// Package reconcile implements the Inventory 3-state reconciliation engine (규정서 §3.3).
+// Package reconcile — 인벤토리 3-상태 대조 엔진(규정서 §3.3).
 //
 // pqcota가 만들지 않기로 한 계층이다 — 관측은 그쪽이 하고, 대조는 여기서 한다.
 // 선언(declared) 증거원과 관측(observed) 증거원을 대조해 각 자산·엣지를 3-상태로 분류한다.
