@@ -30,8 +30,8 @@ func completeness(covered, missing []commonv1.CollectionLayer) *discoveryv1.Coll
 // 관측된 자산은 전부 UNDECLARED로 오릅니다. **막히지 않고 그럴듯하게 틀리는 자리입니다.**
 //
 // 호스트명이 이름과 같으면 알아서 잇고, 그것으로 안 되면 사람이 적어 둔 「관측 이름」으로
-// 잇는다. 어디에도 안 걸리면 **관측이 부른 이름을 그대로 둔다** — 억지로 하나를 고르면
-// 남의 노드 자산이 붙고, 그 이름으로 UNDECLARED가 올라야 사람이 보고 적어 넣을 수 있다.
+// 잇습니다. 어디에도 안 걸리면 **관측이 부른 이름을 그대로 둡니다** — 억지로 하나를 고르면
+// 남의 노드 자산이 붙고, 그 이름으로 UNDECLARED가 올라야 사람이 보고 적어 넣을 수 있습니다.
 func TestResolveAssetNode(t *testing.T) {
 	nodes := []decl.Node{
 		{Name: "web-gw", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"node:48596282fd2faf23"}},

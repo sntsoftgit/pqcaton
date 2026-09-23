@@ -19,7 +19,7 @@ func mods(paths ...string) []mod {
 //
 // 링크하면 파생물 전체가 그 조건을 따라야 해서 BUSL로 내는 것도 Change Date의 Apache-2.0
 // 전환도 막힙니다. 금지 목록에 적어 두고 한 종류만 재면 나머지가 새는지 알 수 없어,
-// 목록에 있는 것을 **전부** 돌린다.
+// 목록에 있는 것을 **전부** 돌립니다.
 func TestForbiddenLicensesAllBlocked(t *testing.T) {
 	for lic, why := range forbidden {
 		known := map[string]string{"example.com/dep": lic}
@@ -172,7 +172,7 @@ func chdirRepoRoot(t *testing.T) {
 //
 // 화면이 생긴 뒤로 이 리포는 Go 코드만 배포하지 않습니다. `.js`·`.css`가 바이너리에
 // 담겨 브라우저로 나가고, 그것도 남의 코드일 수 있습니다. 확장자로 훑는지, 그리고
-// 배포물이 아닌 곳(`.git`·`node_modules`·`testdata`)은 빼는지 잰다.
+// 배포물이 아닌 곳(`.git`·`node_modules`·`testdata`)은 빼는지 잽니다.
 func TestWebAssetsWalksShippedFilesOnly(t *testing.T) {
 	root := t.TempDir()
 	write := func(rel string) {

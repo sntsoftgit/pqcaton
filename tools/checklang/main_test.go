@@ -152,7 +152,7 @@ func TestLineNumberIsTheRealLine(t *testing.T) {
 //
 // 트리에서 만난 순서와 원본의 태그 순서가 어긋나면 짝이 흔들립니다. 그때는 **어긋난
 // 줄을 내느니 파일 이름만** 보이는 편이 낫습니다. 표 밖의 텍스트처럼 파서가 태그를
-// 옮겨 놓는 자리가 그런 경우다.
+// 옮겨 놓는 자리가 그런 경우입니다.
 func TestLineDroppedWhenCountsDisagree(t *testing.T) {
 	src := "<p><span lang=\"ko\">가</span></p>"
 	if got := lineIndex(src); len(got) != 1 || got[0] != 1 {

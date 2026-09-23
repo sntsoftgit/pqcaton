@@ -184,8 +184,8 @@ func TestEngineStampsOrg(t *testing.T) {
 // 인벤토리에서 통째로 사라지고, 화면은 「없다」와 같은 얼굴로 그것을 보여 줍니다 —
 // 이 도구가 막으려는 바로 그 자리입니다(§2.6).
 //
-// **모르는 런타임은 그대로 버린다.** 이름을 지어내면 선언과 영영 맞지 않는 자산이
-// 인벤토리에 생긴다 — 상류가 새 런타임을 내면 여기에 갈래를 더하는 것이 그 답이다.
+// **모르는 런타임은 그대로 버립니다.** 이름을 지어내면 선언과 영영 맞지 않는 자산이
+// 인벤토리에 생깁니다 — 상류가 새 런타임을 내면 여기에 갈래를 더하는 것이 그 답입니다.
 func TestObservedFromTakesCNG(t *testing.T) {
 	findings := []*discoveryv1.Finding{
 		{CryptoRuntime: commonv1.CryptoRuntime_CRYPTO_RUNTIME_WIN_CNG,

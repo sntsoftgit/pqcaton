@@ -497,7 +497,7 @@ func TestRemoveButtonsAskFirst(t *testing.T) {
 // 관측되지 않았다」로 올리고, 사람은 그 노드에서 그 모듈이 안 쓰인다고 읽습니다.
 //
 // 다만 파일에 있던 이름을 화면이 알리지 않고 바꿔 쓰면 선언이 사람 몰래 달라집니다 — 상류에
-// 런타임이 늘었을 수도 있으므로, 모르는 이름도 고른 채로 남긴다.
+// 런타임이 늘었을 수도 있으므로, 모르는 이름도 고른 채로 남깁니다.
 func TestRuntimeIsPickedFromAList(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
 		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}},
@@ -552,7 +552,7 @@ func TestComponentMatchingRuleIsOnScreen(t *testing.T) {
 //
 // 컴포넌트는 글자 그대로 같아야 맞는데, 관측 이름은 `.so` 뒤가 떼인 채로 옵니다 —
 // 대조 화면에 보이는 대로 옮겨 적다 틀리면 그것이 오류로 드러나지 않은 채 미관측·UNDECLARED로 구분됩니다.
-// 관측 결과에 적힌 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 한다.
+// 관측 결과에 적힌 이름이 곧 맞는 이름이므로, 그것을 칸에서 고르게 합니다.
 func TestObservedComponentsAreOffered(t *testing.T) {
 	d := decl.Declaration{Scope: []string{"web"},
 		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}},
