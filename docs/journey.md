@@ -154,7 +154,7 @@ Grant이고, 평가·개발·테스트는 규모 제한도 없습니다([라이�
 
 | | |
 |---|---|
-| **pqcota** | 관측 도구. [pqcota 리포](https://github.com/randyinthedev-hash/pqcota)를 체크아웃합니다. 이 리포는 그 계약만 소비합니다 |
+| **pqcota** | 관측 도구. [pqcota 리포](https://github.com/randyinthedev-hash/pqcota)를 체크아웃합니다. 이 리포는 그 공개 모듈을 Go 패키지로 가져다 씁니다 |
 | **Go** | 두 리포를 빌드합니다. `make`가 라이선스 · 문구 · 문체 · 케이스 · 서식 관문 → 빌드 → 테스트를 차례로 실행합니다 |
 | **Ansible** | collector 반입·실행·회수를 pqcota의 참조 플레이북이 합니다. **자체 원격 실행 엔진을 두지 않습니다** |
 

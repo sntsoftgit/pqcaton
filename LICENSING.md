@@ -70,9 +70,9 @@ pqcaton은 조직의 암호 자산을 관측하고 전환 결정을 다룹니다
 
 ## 기반 프로젝트: pqcota
 
-pqcaton은 [pqcota](https://github.com/randyinthedev-hash/pqcota)(Apache-2.0)의 공개 계약을
-소비합니다. pqcota는 **관측하고 전환물을 생성**하고, pqcaton은 그 위에서 **대조·리뷰·확정**을
-맡습니다. 둘은 소유 주체가 다르며, 계약(pqcota-common의 `contracts/`)으로만 이어집니다.
+pqcaton은 [pqcota](https://github.com/randyinthedev-hash/pqcota)(Apache-2.0)의 공개 모듈(`pqcota-common`·`pqcota-inventory`·`pqcota-discovery`)을
+Go 패키지로 가져다 씁니다. pqcota는 **관측하고 전환물을 생성**하고, pqcaton은 그 위에서 **대조·리뷰·확정**을
+맡습니다. 둘은 소유 주체가 다르고, 의존은 한 방향입니다. pqcaton이 pqcota를 쓰고, 그 반대는 없습니다.
 
 Apache-2.0은 상용 다운스트림을 허용하므로 이 구조에 제약이 없습니다. 귀속 고지는
 [NOTICE](NOTICE)에 있습니다. **pqcota는 그 자체로 완결된 오픈소스이고, pqcaton 없이도 쓸 수
