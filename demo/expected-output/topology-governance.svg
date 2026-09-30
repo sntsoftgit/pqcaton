@@ -37,28 +37,28 @@
 <text text-anchor="middle" x="109.57" y="-46.3" font-family="sans" font-size="14.00">pay&#45;db</text>
 </g>
 <!-- web&#45;gw&#45;&gt;pay&#45;app -->
-<g id="edge4" class="edge">
+<g id="edge2" class="edge">
 <title>web&#45;gw&#45;&gt;pay&#45;app</title>
 <path fill="none" stroke="#22aa22" stroke-width="3" d="M109.57,-151.15C109.57,-161.78 109.57,-175.66 109.57,-187.77"/>
 <polygon fill="#22aa22" stroke="#22aa22" stroke-width="3" points="106.07,-187.82 109.57,-197.82 113.07,-187.82 106.07,-187.82"/>
 <text text-anchor="middle" x="215.07" y="-172" font-family="sans" font-size="10.00">🟢 SSH sntrup761x25519 &#160;⚠UNDECLARED</text>
 </g>
 <!-- web&#45;gw&#45;&gt;pay&#45;app -->
-<g id="edge5" class="edge">
+<g id="edge3" class="edge">
 <title>web&#45;gw&#45;&gt;pay&#45;app</title>
 <path fill="none" stroke="#22aa22" stroke-width="2" d="M145.27,-135.9C211.62,-140.12 345.17,-152.18 321.57,-180 300.89,-204.37 212.93,-211.8 157.01,-214.04"/>
 <polygon fill="#22aa22" stroke="#22aa22" stroke-width="2" points="156.83,-210.55 146.97,-214.41 157.09,-217.54 156.83,-210.55"/>
 <text text-anchor="middle" x="389.57" y="-172" font-family="sans" font-size="10.00">🟢 TLS X25519MLKEM768</text>
 </g>
 <!-- web&#45;gw&#45;&gt;pay&#45;db -->
-<g id="edge2" class="edge">
+<g id="edge4" class="edge">
 <title>web&#45;gw&#45;&gt;pay&#45;db</title>
 <path fill="none" stroke="#cc2222" stroke-width="3" d="M73.86,-130.36C50.01,-127.18 20.24,-118.75 4.57,-97 -13.78,-71.54 30.31,-59.99 66.88,-54.88"/>
 <polygon fill="#cc2222" stroke="#cc2222" stroke-width="3" points="67.46,-58.33 76.94,-53.6 66.58,-51.39 67.46,-58.33"/>
 <text text-anchor="middle" x="96.57" y="-89" font-family="sans" font-size="10.00">🔴 SSH curve25519 &#160;⚠UNDECLARED</text>
 </g>
 <!-- web&#45;gw&#45;&gt;pay&#45;db -->
-<g id="edge3" class="edge">
+<g id="edge5" class="edge">
 <title>web&#45;gw&#45;&gt;pay&#45;db</title>
 <path fill="none" stroke="#cc2222" stroke-width="2" d="M145.3,-125.63C161.71,-120.72 179.7,-112.1 189.57,-97 201.76,-78.36 177.11,-66.4 152.04,-59.36"/>
 <polygon fill="#cc2222" stroke="#cc2222" stroke-width="2" points="152.68,-55.91 142.12,-56.81 150.94,-62.69 152.68,-55.91"/>

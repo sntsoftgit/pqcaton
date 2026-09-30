@@ -33,10 +33,10 @@ mandatory review queue (by priority):
 
 ──────── ③ Communication edges + quantum-resistance grade ────────
   ⚪ pay-app    → web-gw             TLS    (unknown)                UNOBSERVED
-  🔴 web-gw     → pay-db             SSH    curve25519-sha256        UNDECLARED
-  🔴 web-gw     → pay-db             TLS    x25519                   CONFIRMED
   🟢 web-gw     → pay-app            SSH    sntrup761x25519-sha512@openssh.com UNDECLARED
   🟢 web-gw     → pay-app            TLS    X25519MLKEM768           CONFIRMED
+  🔴 web-gw     → pay-db             SSH    curve25519-sha256        UNDECLARED
+  🔴 web-gw     → pay-db             TLS    x25519                   CONFIRMED
 
   grade totals: 🟢 PQC 2 · 🔴 classical 2 · ⚪ unknown 1
 
