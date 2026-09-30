@@ -13,7 +13,7 @@
 > 않는지가 그 문서에 표로 있습니다.
 
 > **§ 표기**: 별도 언급이 없으면 pqcota
-> [규정서](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/regulation.md)의 절 번호입니다.
+> [규정서(v0.9.1)](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/docs/regulation.md)의 절 번호입니다.
 > 구조 그림은 [site/index.html](../site/index.html)에 있습니다.
 
 ---
@@ -21,7 +21,7 @@
 ## 한눈에
 
 **pqcota의 여정 그대로입니다.** 그림의 번호와 상자는 그쪽
-[여정](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/journey.md)의 것이라
+[여정](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/journey.md)의 것이라
 **아래 이 문서의 절 번호와 다릅니다.** 이 리포가 더하는 것은 **굵은 상자 하나**입니다.
 
 ```mermaid
@@ -198,7 +198,7 @@ declaration.json     scope · nodes · assets · edges
 | **자산 스코프** | 그 노드 **안에서 무엇**을 계속 볼 것인가 | 정책 CSV(glob 규칙) | ② 암호 자산 스코프 탭 |
 
 노드를 등재해도 그 안에서 관측되는 것이 전부 관리 대상은 아닙니다. 시스템 기본 라이브러리나
-패키지 매니저가 딸려 넣은 런타임이 섞이면 인벤토리가 잡음에 묻힙니다(§1.6). 그래서 층이 둘입니다.
+패키지 매니저가 딸려 넣은 런타임이 섞이면 인벤토리가 잡음에 묻힙니다([설계 §1.6](design.md#16-자산-스코프-거버넌스)). 그래서 층이 둘입니다.
 
 > 코드와 이 문서는 pqcota의 `scope.AssetPolicy`를 따라 **「자산 스코프」**라고 씁니다.
 > 화면은 무엇의 스코프인지가 드러나게 **「암호 자산 스코프」**로 적고, 선언 안의 노드
@@ -276,7 +276,7 @@ pqcaton-report <results-dir> <declaration.json> [topology.dot]
 못하게** 막는 자리입니다.
 
 산출은 둘입니다: **3-상태 뷰**와 **거버넌스 토폴로지**(DOT). 토폴로지는 색으로 양자내성
-등급을, 선으로 대조 상태를 나타냅니다. 정직성 규정을 그래프 문법으로 강제합니다([인벤토리 설계 §6.2](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/design.md)).
+등급을, 선으로 대조 상태를 나타냅니다. 정직성 규정을 그래프 문법으로 강제합니다([인벤토리 설계 §6.2](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)).
 
 ---
 
@@ -357,7 +357,7 @@ stateDiagram-v2
 |---|---|
 | **재관측 → 델타 리뷰**(`pqcaton-decide delta`) | 근거가 바뀐 판정만 다시 봅니다. **전면 재리뷰가 아닙니다** |
 | **오래된 판정 만료** | 오래된 판정은 신뢰도가 깎이고 주기적으로 다시 확인합니다 |
-| **제외분 재검토**(`pqcaton-scope review`) | "이 자산은 안 본다"는 제외는 영구 면제가 아닙니다. 주기적으로 다시 훑어 **빼 둔 사이 위험해진 것**을 리뷰 큐로 올립니다(§1.6) |
+| **제외분 재검토**(`pqcaton-scope review`) | "이 자산은 안 본다"는 제외는 영구 면제가 아닙니다. 주기적으로 다시 훑어 **빼 둔 사이 위험해진 것**을 리뷰 큐로 올립니다([설계 §1.6](design.md#16-자산-스코프-거버넌스)) |
 | **판정 이력** | 누가·언제·무엇을 근거로 정했는지가 append-only로 남습니다. 사고 뒤에 답해야 하는 것이 이것입니다 |
 
 ---
@@ -384,5 +384,5 @@ stateDiagram-v2
 | | 어디에 |
 |---|---|
 | 화면의 구조와 문구 | 이 문서에 없습니다. [설계](design.md)와 릴리스 노트에 있습니다 |
-| 관측의 내부 | pqcota의 [디스커버리 설계](https://github.com/randyinthedev-hash/pqcota/tree/main/discovery) |
+| 관측의 내부 | pqcota의 [디스커버리 설계](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/discovery/design.md) |
 | 무엇을 어떤 순서로 바꿀지 | **이 도구가 정하지 않습니다.** 판정 대상을 구조화할 뿐, 확정은 사람이 합니다 |

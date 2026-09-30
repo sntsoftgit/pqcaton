@@ -29,7 +29,7 @@
 더한 것이라, 그 절이 무엇을 만들고 무엇이 틀렸다고 말했는지는 한 글자도 바꾸지 않았습니다.**
 
 > **§ 표기**: 별도 언급이 없으면 pqcota
-> [규정서](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/regulation.md)의 절 번호입니다.
+> [규정서(v0.9.1)](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/docs/regulation.md)의 절 번호입니다.
 
 ---
 
@@ -66,7 +66,7 @@ Use Grant), 기능을 빼서 무료판을 약하게 만들지 않습니다. 5노
 |---|---|
 | **관측·수집** | pqcota가 합니다. 이 리포는 그 계약만 소비합니다 |
 | **전환물 생성·적용** | pqcota의 `provisioning`이 합니다. 우리는 확정된 계획을 넘길 뿐입니다 |
-| **자동 판정**: "이것은 위험하니 바꿔라" | 판정 대상을 구조화할 뿐, **확정은 사람**이 합니다([§3.1](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/regulation.md)) |
+| **자동 판정**: "이것은 위험하니 바꿔라" | 판정 대상을 구조화할 뿐, **확정은 사람**이 합니다([§3.1](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/docs/regulation.md)) |
 | **UNOBSERVED의 기계 확정** | 실재하는데 못 본 것인지 이미 없어진 것인지는 사람만 압니다 |
 
 ---

@@ -5,11 +5,11 @@
 pqcota가 **관측**하고, 이 리포가 **그 관측을 판정으로 잇습니다.**
 
 pqcota는 관측한 사실만 알려 줍니다. 무엇이 위험한지, 무엇을 먼저 바꿀지 판정하지 않습니다.
-[그 리포가 명시적으로 뺀 것](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/architecture.md)이
+[그 리포가 명시적으로 뺀 것](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/docs/architecture.md)이
 선언(CMDB) 대조·confidence 스코어링·리뷰 큐·확정 거버넌스이고, 이 문서가 그것을 다룹니다.
 
 > **§ 표기**: 별도 언급이 없으면 pqcota
-> [규정서](https://github.com/randyinthedev-hash/pqcota/blob/main/docs/regulation.md)의 절 번호입니다.
+> [규정서(v0.9.1)](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/docs/regulation.md)의 절 번호입니다.
 
 > **명령을 어떤 차례로 돌리는지, 무엇을 넣고 무엇이 나오는지는 [여정](journey.md)에
 > 있습니다.** 이 문서는 **왜 그렇게 만들었는지**만 답합니다.
@@ -125,7 +125,7 @@ draft ──▶ in-review ──▶ finalized
 - 오래된 판정 만료: 신뢰도가 깎이고 주기적으로 다시 확인합니다. 이 판정 이력이 provenance
   chain(§1.3)에서 **사람이 판단한 갈래**입니다.
 
-> 스키마(`Decision`·`FinalizedPlan`·`ReconState`)는 [pqcota의 계약](https://github.com/randyinthedev-hash/pqcota/tree/main/contracts)이 SSOT입니다.
+> 스키마(`Decision`·`FinalizedPlan`·`ReconState`)는 [pqcota-common의 계약](https://github.com/randyinthedev-hash/pqcota-common/tree/v0.10.0/contracts)이 SSOT입니다.
 > 이 리포는 그 어휘를 그대로 쓰고, 위 엔진만 여기서 만듭니다.
 
 ---
@@ -142,10 +142,10 @@ pqcota에 **메커니즘**이 있습니다: `scope.AssetPolicy`(CSV 규칙, glob
 
 | 축 | 이 리포가 더하는 것 | 왜 조직에서만 필요한가 |
 |---|---|---|
-| **리뷰-확정** | 스코프 변경(특히 exclude 추가)을 [§1.4 리뷰-확정 상태기계](#14-리뷰-확정-상태기계-33-manual)에 태워 제안→검토→승인 | "이 자산은 안 본다"는 결정은 **감사 대상**입니다. 혼자면 자기 책임이지만 조직은 근거·승인자를 남겨야 합니다 |
-| **감사 추적** | 누가·언제·왜 제외했고 그때 무엇이 빠졌는지 [§1.5 판정 영속화](#15-판정-영속화-36)에 기록 | 사고 뒤에 "왜 이게 인벤토리에 없었나"에 답해야 합니다 |
+| **리뷰-확정** | 스코프 변경(특히 exclude 추가)을 [이 문서의 §1.4 리뷰-확정 상태기계](#14-리뷰-확정-상태기계-33-manual)에 태워 제안→검토→승인 | "이 자산은 안 본다"는 결정은 **감사 대상**입니다. 혼자면 자기 책임이지만 조직은 근거·승인자를 남겨야 합니다 |
+| **감사 추적** | 누가·언제·왜 제외했고 그때 무엇이 빠졌는지 [이 문서의 §1.5 판정 영속화](#15-판정-영속화-36)에 기록 | 사고 뒤에 "왜 이게 인벤토리에 없었나"에 답해야 합니다 |
 | **정책 상속·일괄** | 조직→환경(prod/dev)→노드군 계층 정책, 수천 대에 일괄 적용 · 어긋난 것 찾기 | CSV 한 장은 20대까진 되지만 5000대에선 관리가 안 됩니다 |
-| **제외분 재검토** | 제외된 자산을 주기적으로 다시 훑어 "빼 둔 사이 위험해진 것"을 리뷰 큐로 | 제외는 영구 면제가 아닙니다. 이 판정이 곧 §1.1 대조의 확장입니다 |
+| **제외분 재검토** | 제외된 자산을 주기적으로 다시 훑어 "빼 둔 사이 위험해진 것"을 리뷰 큐로 | 제외는 영구 면제가 아닙니다. 이 판정이 곧 이 문서 §1.1 대조의 확장입니다 |
 
 **경계 요약**: 규칙의 **정의·집행은 pqcota**, 규칙 변경의 **승인·감사·규모 운영은 여기**입니다.
 이 리포는 pqcota의 `AssetPolicy`를 재구현하지 않고 **생성·배포**합니다. 거버넌스가 확정한

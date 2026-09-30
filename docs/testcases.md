@@ -12,7 +12,7 @@
 **실행 방침**: 대조·상태기계·관문은 순수 로직이라 실물이 필요 없고, 판정 영속화와 행 수준 보안은 Postgres 통합.
 
 > 적재·이력·보존·자산 스코프 등 **pqcota가 구현하는 부분**의 인수 기준은
-> [pqcota 인벤토리 테스트케이스](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/testcases.md)에 있습니다.
+> [pqcota 인벤토리 테스트케이스](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/testcases.md)에 있습니다.
 
 ---
 
@@ -132,12 +132,12 @@
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT`로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass`가 고른 관계의 OID를 `pg_attribute`에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN`이 있을 때만 |
 
-### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/design.md)) ✅
+### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
 |---|---|---|
 | [IC-P1](../pkg/inventory/decision/plan_test.go) ✅ | finalized 계획 생성 | PlanItem[]: node·remediation_class·**deploy_automation_level**·provider_choice |
-| [IC-P2](../pkg/inventory/decision/plan_test.go) ✅ | deploy_automation_level 판정 | 자산별로 리뷰어가 판정한다(§4.5 MANUAL). 전사 일괄이 아니다 |
-| [IC-P3](../pkg/inventory/decision/plan_test.go) ✅ | 규제 대상 자산(fips_validation 요구) | **FIPS 검증 provider로 라우팅 강제**([pqcota 프로비저닝 설계 §4.2](https://github.com/randyinthedev-hash/pqcota/blob/main/provisioning/design.md#42-jca-브랜치-jcago-jdk-세대와-provider가-kind를-결정한다), Java=BC-FJA) · **CNG는 빈 값이다**. 갈아 끼울 provider가 관측에 없고 FIPS 여부는 알 수 없다(§2.5). 이름을 지어내면 계획을 받는 쪽이 검증된 선택으로 읽는다 |
+| [IC-P2](../pkg/inventory/decision/plan_test.go) ✅ | deploy_automation_level 판정 | 자산별로 리뷰어가 판정한다(§4.7 MANUAL). 전사 일괄이 아니다 |
+| [IC-P3](../pkg/inventory/decision/plan_test.go) ✅ | 규제 대상 자산(fips_validation 요구) | **FIPS 검증 provider로 라우팅 강제**([pqcota 프로비저닝 설계 §4.2](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/provisioning/design.md#42-jca-브랜치-jcago-jdk-세대와-provider가-kind를-결정한다), Java=BC-FJA) · **CNG는 빈 값이다**. 갈아 끼울 provider가 관측에 없고 FIPS 여부는 알 수 없다(§2.5). 이름을 지어내면 계획을 받는 쪽이 검증된 선택으로 읽는다 |
 | **[IC-P4](../pkg/inventory/decision/plan_test.go) ✅** | **판정이 끝나지 않은 세션에서 계획을 만들거나, 판정자 표시 없는 계획을 넘기려 한다** | **거부한다**(`ErrNotJudged`, §5. 반드시 거쳐야 하는 관문). 이 관문은 실행을 허용하는 것이 아니라 **계약으로 넘길 수 있는지**를 본다(`ReadyForApproval`). 실행 허용은 상류의 `Executable`과 승인 검증이 한다 |
 | [IC-P5](../pkg/inventory/decision/plan_test.go) ✅ | 판정이 끝난 세션에서 계획 | 만들어진다(`JudgedPlan`). 실행 근거가 되는 것은 상류의 승인이 `FINALIZED`로 올린 뒤다(§3.7) |
 | **[IC-P6](../pkg/inventory/review/review_test.go) ✅** | 스코프가 URI인 노드(`host://local`)를 계약 형식으로 | **겨눈 노드와 런타임이 그대로 간다**. v0.1.0은 id를 쪼개 `host:`를 겨누고 런타임을 기본값으로 떨어뜨렸다 |
@@ -154,11 +154,11 @@
 | **[IC-P17](../pkg/inventory/review/axes_test.go) ✅** | 같은 ID가 리뷰 항목과 자동통과 양쪽에 있음 | **확정이 구조 오류로 중단한다**(판정 미완이 아니다) | 한 자산은 한 컬렉션에만 있다. 양쪽에 있으면 대조의 결함이고, 그대로 두면 `Carry`가 한쪽에만 쓰고 다른 쪽이 덮는다 |
 | **[IC-P18](../pkg/inventory/review/axes_test.go) ✅** | v2 규칙 판의 세션을 그대로 확정 · 같은 세션을 v3으로 다시 열어 `Carry` | 확정은 **막히지 않고** 계획의 규칙 판은 세션의 것(v2)이며, 옛 규칙 판이라는 **경고**가 두 판을 값으로 적어 난다. 다시 열어 `Carry` 하면 서명은 지워진다 | 막으면 검토 중인 세션이 도구 교체로 버려져 사람이 한 일이 사라진다. 다만 그 근거 해시와 서명은 옛 규칙의 것이다 |
 
-### E. 통신 엣지 대조와 토폴로지 ([인벤토리 설계 §6](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/design.md)) 🔶: 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector(§2.5)가 공급
+### E. 통신 엣지 대조와 토폴로지 ([인벤토리 설계 §6](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) 🔶: 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector([디스커버리 설계 §2.3](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/discovery/design.md))가 공급
 | TC | Given → When | Then |
 |---|---|---|
 | [IC-E1](../pkg/inventory/reconcile/edge_test.go) ✅ | 관측 엣지(TLS/SSH 협상) vs 선언 엣지 | 엣지 3-상태(CONFIRMED/UNDECLARED/UNOBSERVED) + 등급 부착 |
-| [IC-E2](../pkg/inventory/reconcile/topology_test.go) ✅ | 토폴로지 렌더 | 색=등급(🟢PQC/🔴취약/⚪불명), 미관측=점선(≠부재, [인벤토리 설계 §6.2](https://github.com/randyinthedev-hash/pqcota/blob/main/inventory/design.md) 정직성) |
+| [IC-E2](../pkg/inventory/reconcile/topology_test.go) ✅ | 토폴로지 렌더 | 색=등급(🟢PQC/🔴취약/⚪불명), 미관측=점선(≠부재, [인벤토리 설계 §6.2](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md) 정직성) |
 | [IC-E3](../pkg/inventory/reconcile/edge_test.go) ✅ | 스코프 밖 관측 상대 | off-scope 표기 "등재 판정 요청"(§1.4/§5) |
 
 ### X. 라이선스 관문 (`tools/checklicenses`) ✅
@@ -384,7 +384,7 @@
 | **[IC-R14](../pkg/inventory/report/report_test.go) ✅** | 관측 노드 id가 선언 이름과 다름 | **선언 노드로 잇는다**. 호스트명(짧은 이름 포함)이 같으면 알아서, 아니면 적어 둔 「관측 이름」으로. 대소문자는 가리지 않는다. **어디에도 안 걸리면 관측이 부른 이름을 그대로 둔다**. 억지로 고르면 남의 노드 자산이 붙는다 |
 | **[IC-R13](../pkg/inventory/report/report_test.go) ✅** | 못 본 계층을 화면·콘솔에 보여 줌 | 상류 enum 상수(`COLLECTION_LAYER_ARTIFACT`)를 그대로 보여 주지 않고 **관측이 어디서 오는지**를 적되 원래 이름을 괄호에 남긴다. **모르는 값은 바꾸지 않고 그대로 보여 준다**. 상류에 계층이 늘었을 때 뭉개면 못 본 것이 화면에서 사라진다 |
 
-> **구현 위치**: 이 리포에는 엣지 대조 `pkg/inventory/reconcile/edge.go`와 토폴로지 DOT `pkg/inventory/reconcile/topology.go`가 있습니다. 등급 분류 pqcota-common의 `pkg/kernel/posture/`, 저장 pqcota-inventory의 `pkg/inventory/history`(Snapshot.Edges, Postgres `edges` JSONB), 관측 엣지 스키마 pqcota-common 계약의 `ObservedEdge`(CollectionResult.observed_edges)는 pqcota에 있습니다. 이 계약을 채우는 **network-collector(디스커버리 §2.5, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
+> **구현 위치**: 이 리포에는 엣지 대조 `pkg/inventory/reconcile/edge.go`와 토폴로지 DOT `pkg/inventory/reconcile/topology.go`가 있습니다. 등급 분류 pqcota-common의 `pkg/kernel/posture/`, 저장 pqcota-inventory의 `pkg/inventory/history`(Snapshot.Edges, Postgres `edges` JSONB), 관측 엣지 스키마 pqcota-common 계약의 `ObservedEdge`(CollectionResult.observed_edges)는 pqcota에 있습니다. 이 계약을 채우는 **network-collector(디스커버리 설계 §2.3, AF_PACKET)가 라이브 관측을 공급합니다**(대조 엔진은 합성 데이터로도 검증됩니다).
 
 ---
 
