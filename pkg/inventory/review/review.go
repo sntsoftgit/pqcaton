@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
-	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
+	provisioningv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/provisioning/v1"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/normalize"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"

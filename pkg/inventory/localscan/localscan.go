@@ -16,12 +16,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/randyinthedev-hash/pqcota/discovery/collectors/openssl"
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
-	"github.com/randyinthedev-hash/pqcota/pkg/kernel/registry"
-	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/registry"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-discovery/collectors/openssl"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/normalize"
 )
 
 // ErrNoProc — `/proc`을 열 수 없다. 비-리눅스이거나 마운트되지 않았다.

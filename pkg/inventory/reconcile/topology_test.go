@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
 )
 
 // IC-E2: 토폴로지 렌더 — 색=등급, 선형=상태, 미관측=점선(≠부재), off-scope=판정요청.

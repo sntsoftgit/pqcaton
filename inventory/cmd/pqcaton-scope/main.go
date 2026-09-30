@@ -25,9 +25,9 @@ import (
 	"strings"
 	"time"
 
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"

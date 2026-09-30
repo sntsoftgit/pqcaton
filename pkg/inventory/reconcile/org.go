@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
-	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
 )
 
 // ErrOrgMismatch — 대조할 입력에 다른 조직의 것이 섞여 있다.

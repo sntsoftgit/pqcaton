@@ -25,8 +25,8 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/randyinthedev-hash/pqcota/pkg/inventory/declaration"
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/declaration"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"

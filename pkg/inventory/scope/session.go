@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 )

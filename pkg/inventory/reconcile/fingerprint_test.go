@@ -3,8 +3,8 @@ package reconcile
 import (
 	"testing"
 
-	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
+	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
 )
 
 // 지문은 **동일성이 아니라 내용**을 잰다.

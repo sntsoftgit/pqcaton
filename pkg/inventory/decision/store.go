@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 )
 
 // JudgmentStore — 판정 영속화(§3.6, 설계 §1.5). append-only — Save는 언제나 새 레코드를 쌓는다(§1.2).

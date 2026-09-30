@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 )
 
 // testOrg — 케이스가 쓰는 조직. 대조는 조직에 묶이므로 식별자에도 엔진에도 같은 값이 든다.

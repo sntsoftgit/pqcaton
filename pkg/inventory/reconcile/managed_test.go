@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
-	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
 )
 
 func exc(node, rt, comp, finding, src string, keys ...string) Excluded {

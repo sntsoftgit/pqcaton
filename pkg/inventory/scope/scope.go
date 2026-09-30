@@ -22,7 +22,7 @@ import (
 
 	// pqcota의 스코프 커널. **우리 패키지와 이름이 같아 별칭을 둔다** — 규칙 형식과 판정은
 	// 저쪽에 있고, 여기는 그 위의 거버넌스만 둔다.
-	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 )
 
 // Layer — 정책 계층 하나. 조직 → 환경(prod/dev) → 노드군 순으로 겹친다.

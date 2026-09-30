@@ -3,8 +3,8 @@ package review_test
 import (
 	"testing"
 
-	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/history"
+	provisioningv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/provisioning/v1"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )

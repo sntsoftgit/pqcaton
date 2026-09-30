@@ -352,29 +352,29 @@
   <span lang="en">Upstream this repository uses</span></th><th><span lang="ko">무엇을 위해</span>
   <span lang="en">What for</span></th></tr></thead>
   <tbody>
-    <tr><td><code>gen/…/common/v1</code></td><td><span lang="ko"><code>Envelope</code>·<code>CryptoRuntime</code> 등 공통 어휘</span>
+    <tr><td><code>pqcota-common/gen/…/common/v1</code></td><td><span lang="ko"><code>Envelope</code>·<code>CryptoRuntime</code> 등 공통 어휘</span>
     <span lang="en">Shared vocabulary such as <code>Envelope</code> and <code>CryptoRuntime</code></span></td></tr>
-    <tr><td><code>gen/…/discovery/v1</code></td><td><span lang="ko">관측 결과(<code>CollectionResult</code>)를 읽는다</span>
+    <tr><td><code>pqcota-common/gen/…/discovery/v1</code></td><td><span lang="ko">관측 결과(<code>CollectionResult</code>)를 읽는다</span>
     <span lang="en">Reads observation results (<code>CollectionResult</code>)</span></td></tr>
-    <tr><td><code>gen/…/inventory/v1</code></td><td><span lang="ko"><code>ReconState</code>·<code>Decision</code>. 3-상태와 판정의 SSOT</span>
+    <tr><td><code>pqcota-common/gen/…/inventory/v1</code></td><td><span lang="ko"><code>ReconState</code>·<code>Decision</code>. 3-상태와 판정의 SSOT</span>
     <span lang="en"><code>ReconState</code> and <code>Decision</code> — the SSOT for the three states and for judgments</span></td></tr>
-    <tr><td><code>pkg/discovery/history</code></td><td><span lang="ko">관측 이력 저장소를 그대로 쓴다</span>
+    <tr><td><code>pqcota-inventory/pkg/inventory/history</code></td><td><span lang="ko">관측 이력 저장소를 그대로 쓴다</span>
     <span lang="en">Uses the observation history store as it is</span></td></tr>
-    <tr><td><code>pkg/discovery/normalize</code></td><td><span lang="ko">정규화된 관측을 받는다</span>
+    <tr><td><code>pqcota-inventory/pkg/inventory/normalize</code></td><td><span lang="ko">정규화된 관측을 받는다</span>
     <span lang="en">Takes normalized observations</span></td></tr>
-    <tr><td><code>pkg/inventory/declaration</code></td><td><span lang="ko">선언(CMDB) 반입</span>
+    <tr><td><code>pqcota-inventory/pkg/inventory/declaration</code></td><td><span lang="ko">선언(CMDB) 반입</span>
     <span lang="en">Imports the declaration (CMDB)</span></td></tr>
-    <tr><td><code>pkg/kernel/posture</code></td><td><span lang="ko">양자내성 등급. 우리가 다시 판단하지 않는다</span>
+    <tr><td><code>pqcota-common/pkg/kernel/posture</code></td><td><span lang="ko">양자내성 등급. 우리가 다시 판단하지 않는다</span>
     <span lang="en">Quantum-resistance grading — we do not judge it again</span></td></tr>
-    <tr><td><code>pkg/kernel/registry</code></td><td><span lang="ko">결정론적 서명 매칭 데이터</span>
+    <tr><td><code>pqcota-common/pkg/kernel/registry</code></td><td><span lang="ko">결정론적 서명 매칭 데이터</span>
     <span lang="en">Deterministic signature-matching data</span></td></tr>
-    <tr><td><code>pkg/kernel/scope</code></td><td><span lang="ko">자산 스코프 규칙. 형식과 집행을 그대로 쓴다</span>
+    <tr><td><code>pqcota-common/pkg/kernel/scope</code></td><td><span lang="ko">자산 스코프 규칙. 형식과 집행을 그대로 쓴다</span>
     <span lang="en">Asset scope rules — both the format and the enforcement are used as they are</span></td></tr>
-    <tr><td><code>discovery/collectors/openssl</code></td><td><span lang="ko">로컬 스캔에서 호출한다</span>
+    <tr><td><code>pqcota-discovery/collectors/openssl</code></td><td><span lang="ko">로컬 스캔에서 호출한다</span>
     <span lang="en">Called by the shortcut that scans this machine</span></td></tr>
-    <tr><td><code>gen/…/provisioning/v1</code></td><td><span lang="ko">확정 계획(<code>FinalizedPlan</code>)의 형식</span>
+    <tr><td><code>pqcota-common/gen/…/provisioning/v1</code></td><td><span lang="ko">확정 계획(<code>FinalizedPlan</code>)의 형식</span>
     <span lang="en">The shape of a finalized plan (<code>FinalizedPlan</code>)</span></td></tr>
-    <tr><td><code>pkg/org</code></td><td><span lang="ko">조직 격리 축</span>
+    <tr><td><code>pqcota-common/pkg/org</code></td><td><span lang="ko">조직 격리 축</span>
     <span lang="en">The organization isolation axis</span></td></tr>
   </tbody>
 </table>

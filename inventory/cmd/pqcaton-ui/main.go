@@ -39,8 +39,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 )
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/normalize"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 )
 

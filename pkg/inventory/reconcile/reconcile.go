@@ -8,7 +8,7 @@ package reconcile
 import (
 	"sort"
 
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 )
 
 // State — 3-상태 reconciliation 결과(§3.3).

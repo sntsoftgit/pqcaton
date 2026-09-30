@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	provisioningv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/provisioning/v1"
+	provisioningv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/provisioning/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"

@@ -10,7 +10,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"

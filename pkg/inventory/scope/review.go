@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	commonv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/common/v1"
-	discoveryv1 "github.com/randyinthedev-hash/pqcota/gen/pqcota/discovery/v1"
-	"github.com/randyinthedev-hash/pqcota/pkg/discovery/normalize"
-	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
+	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/normalize"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"

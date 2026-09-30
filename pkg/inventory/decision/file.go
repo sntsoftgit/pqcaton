@@ -8,7 +8,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/randyinthedev-hash/pqcota/pkg/org"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 )
 
 // FileJudgmentStore — 파일 한 줄에 판정 하나(JSONL). append-only다.

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"

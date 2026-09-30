@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	kscope "github.com/randyinthedev-hash/pqcota/pkg/kernel/scope"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 )
 
 // LayerFile — 계층 하나와 **그것이 사는 파일**.
