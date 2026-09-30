@@ -160,6 +160,7 @@
 | [IC-E1](../pkg/inventory/reconcile/edge_test.go) ✅ | 관측 엣지(TLS/SSH 협상) vs 선언 엣지 | 엣지 3-상태(CONFIRMED/UNDECLARED/UNOBSERVED) + 등급 부착 |
 | [IC-E2](../pkg/inventory/reconcile/topology_test.go) ✅ | 토폴로지 렌더 | 색=등급(🟢PQC/🔴취약/⚪불명), 미관측=점선(≠부재, [인벤토리 설계 §6.2](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md) 정직성) |
 | [IC-E3](../pkg/inventory/reconcile/edge_test.go) ✅ | 스코프 밖 관측 상대 | off-scope 표기 "등재 판정 요청"(§1.4/§5) |
+| [IC-E4](../pkg/inventory/reconcile/edge_test.go) ✅ | 관측 엣지가 들어오는 순서만 다르다 · 출발지가 같은 엣지가 여럿이다 | 결과의 순서가 같다. 출발지 → 도착지 → 포트 → 프로토콜 순이고 선언만 있는 엣지도 한 줄로 섞인다(보고서와 토폴로지 SVG의 엣지 번호가 실행마다 달라지지 않는다) |
 
 ### X. 라이선스 관문 (`tools/checklicenses`) ✅
 | TC | Given → When | Then |

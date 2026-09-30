@@ -1,6 +1,8 @@
 package reconcile
 
 import (
+	"sort"
+
 	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
 	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
 	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/posture"
@@ -91,7 +93,27 @@ func reconcileEdges(o org.ID, declared []EdgeKey, observed []*discoveryv1.Observ
 			RescanCandidate: hasNetGap,
 		})
 	}
+	sortEdges(out)
 	return out
+}
+
+// sortEdges — 엣지를 키 전체(출발지 · 도착지 · 포트 · 프로토콜)로 정렬한다. 관측 엣지는 수집기가 낸 순서로
+// 들어오는데 그 순서는 실행마다 다를 수 있다. 출발지 하나로만 정렬하면 출발지가 같은 엣지끼리 순서가
+// 정해지지 않아, 보고서 줄과 토폴로지 SVG의 엣지 번호가 같은 입력에서도 달라진다.
+func sortEdges(es []ReconciledEdge) {
+	sort.SliceStable(es, func(i, j int) bool {
+		a, b := es[i].Key, es[j].Key
+		switch {
+		case a.Src != b.Src:
+			return a.Src < b.Src
+		case a.Dst != b.Dst:
+			return a.Dst < b.Dst
+		case a.Port != b.Port:
+			return a.Port < b.Port
+		default:
+			return a.Proto < b.Proto
+		}
+	})
 }
 
 // observedEdgeKey — ObservedEdge에서 EdgeKey를 만들고 off-scope 여부를 판정한다.

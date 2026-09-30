@@ -132,3 +132,41 @@ func TestObservedEdgeGetsOrg(t *testing.T) {
 		t.Errorf("관측 엣지의 조직이 %q다, want %q", got[0].Key.Org, testOrg)
 	}
 }
+
+// IC-E4: 관측 엣지가 들어오는 순서가 달라도 결과의 순서는 같다. 출발지가 같은 엣지는 도착지 · 포트 ·
+// 프로토콜 순으로 놓이고, 관측 엣지와 선언만 있는 엣지가 한 줄로 섞여 정렬된다.
+func TestReconcileEdges_orderIgnoresInputOrder(t *testing.T) {
+	tls, ssh := discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_TLS, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_SSH
+	declared := []EdgeKey{ek("app", "db", 5432, "TLS"), ek("web", "aaa", 9, "TLS")}
+	scope := map[string]bool{"web": true, "app": true, "db": true, "aaa": true}
+	edges := []*discoveryv1.ObservedEdge{
+		oe("web", "db", "", 5432, tls, "x25519"),
+		oe("web", "db", "", 22, ssh, "curve25519-sha256"), // 출발지·도착지가 같고 포트와 프로토콜만 다르다
+		oe("web", "db", "", 5432, ssh, "curve25519-sha256"),
+		oe("app", "web", "", 443, tls, "x25519"),
+	}
+	want := []EdgeKey{
+		ek("app", "db", 5432, "TLS"), // 선언만(UNOBSERVED)
+		ek("app", "web", 443, "TLS"),
+		ek("web", "aaa", 9, "TLS"), // 선언만
+		ek("web", "db", 22, "SSH"),
+		ek("web", "db", 5432, "SSH"),
+		ek("web", "db", 5432, "TLS"),
+	}
+	perms := [][]int{{0, 1, 2, 3}, {3, 2, 1, 0}, {1, 3, 0, 2}, {2, 0, 3, 1}, {1, 0, 3, 2}}
+	for _, p := range perms {
+		in := make([]*discoveryv1.ObservedEdge, len(p))
+		for i, k := range p {
+			in[i] = edges[k]
+		}
+		got := recEdges(t, declared, in, scope, nil)
+		if len(got) != len(want) {
+			t.Fatalf("순서 %v: 엣지 %d개, want %d", p, len(got), len(want))
+		}
+		for i := range want {
+			if got[i].Key != want[i] {
+				t.Errorf("순서 %v: [%d] = %v, want %v", p, i, got[i].Key, want[i])
+			}
+		}
+	}
+}

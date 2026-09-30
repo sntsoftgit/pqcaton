@@ -141,7 +141,8 @@ func printObservation(r *report.Result) {
 }
 
 func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Key.Src < recs[j].Key.Src })
+	// 안정 정렬: 엔진이 정한 키 전체의 순서를 출발지가 같은 것끼리 깨지 않는다.
+	sort.SliceStable(recs, func(i, j int) bool { return recs[i].Key.Src < recs[j].Key.Src })
 	pqc, classical, unknown := 0, 0, 0
 	for _, e := range recs {
 		sym := posture.Symbol(e.Posture)
