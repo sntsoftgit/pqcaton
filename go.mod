@@ -1,6 +1,6 @@
 module github.com/sntsoftgit/pqcaton
 
-go 1.26.4
+go 1.26.6
 
 // pqcota — 관측·정규화·전환물 생성. 이 리포는 그 가운데 세 모듈을 소비한다: 계약과 공통
 // 코드(common), 인벤토리 단계(inventory), 로컬 스캔이 부르는 수집기(discovery).
