@@ -7,21 +7,38 @@ import (
 	"testing"
 )
 
-// writeDoc — 케이스 표 한 조각을 임시 문서로 쓰고 읽어 온다. `kinds`를 주지 않으면 셋 다 맡는다.
-func writeDoc(t *testing.T, body string, kinds ...string) (docSpec, []docCase, []string) {
+// writeDoc — 케이스 표 한 조각을 임시 문서로 쓰고 읽어 온다. `owned`를 주지 않으면 셋 다 맡는다.
+func writeDoc(t *testing.T, body string, owned ...string) (docSpec, []docCase, []string) {
 	t.Helper()
-	if len(kinds) == 0 {
-		kinds = []string{"IC", "CP", "RUN"}
+	if len(owned) == 0 {
+		owned = kinds
 	}
-	d := docSpec{path: filepath.Join(t.TempDir(), "testcases.md"), kinds: kinds}
+	d, cases, lines, _ := scanBody(t, body, owned, nil)
+	return d, cases, lines
+}
+
+// scanBody — writeDoc 과 같되 external 을 주고, 어느 쪽에도 없는 접두어의 행까지 돌려받는다.
+func scanBody(t *testing.T, body string, owned, external []string) (docSpec, []docCase, []string, []string) {
+	t.Helper()
+	d := docSpec{path: filepath.Join(t.TempDir(), "testcases.md"), owned: owned, external: external}
 	if err := os.WriteFile(d.path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cases, lines, err := scanDoc(d)
+	cases, lines, strays, err := scanDoc("", d)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return d, cases, lines
+	return d, cases, lines, strays
+}
+
+// writeConf — docs.tsv 를 임시 자리에 쓰고 그 경로를 돌려준다.
+func writeConf(t *testing.T, body string) string {
+	t.Helper()
+	f := filepath.Join(t.TempDir(), "docs.tsv")
+	if err := os.WriteFile(f, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return f
 }
 
 // IC-M1 — **축약한 번호를 편다.**
@@ -157,18 +174,25 @@ func TestOneIdMayLiveInTwoFiles(t *testing.T) {
 // 재는 것이라, 진짜 리포에서도 맞는지는 여기서 잰다. 이 케이스가 이 도구의 존재 이유다.
 func TestShippedDocsAndTestsAgree(t *testing.T) {
 	root := filepath.Join("..", "..")
+	docs, err := loadDocs("docs.tsv")
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests, err := scanTests(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	owned, seen, total := map[string]bool{}, map[string]bool{}, 0
 	for _, d := range docs {
-		for _, k := range d.kinds {
+		for _, k := range d.owned {
 			owned[k] = true
 		}
-		cs, _, err := scanDoc(docSpec{path: filepath.Join(root, d.path), kinds: d.kinds})
+		cs, _, strays, err := scanDoc(root, d)
 		if err != nil {
 			t.Fatal(err)
+		}
+		for _, s := range strays {
+			t.Error(s)
 		}
 		total += len(cs)
 		for _, c := range cs {
@@ -216,11 +240,12 @@ func TestStringLiteralsAreNotMarkers(t *testing.T) {
 	}
 }
 
-// IC-M8 — **문서는 자기가 맡은 접두어만 읽는다.**
+// IC-M8 — **external 접두어의 행은 케이스로 읽지 않는다.**
 //
-// 러너 케이스의 테스트는 이 리포에 있고 컨트롤 플레인 케이스의 테스트는 비공개 리포에 있다.
-// 문서마다 맡는 접두어를 적어 두지 않으면, 남의 리포에 있는 테스트를 「없다」고 막게 된다.
-func TestDocOnlyReadsItsOwnKinds(t *testing.T) {
+// 컨트롤 플레인 명세의 러너 행은 테스트가 다른 리포에 있다. 그 행을 케이스로 읽으면 남의
+// 리포에 있는 테스트를 「없다」고 막게 된다. 그렇다고 목록에서 빼기만 하면 왜 재지 않는지가
+// 남지 않으므로, external 로 적고 건너뛴다.
+func TestDocSkipsExternalKinds(t *testing.T) {
 	body := strings.Join([]string{
 		"| [IC-R1](x) ✅ | 인벤토리 | CONFIRMED |",
 		"| [RUN-2](y) | 러너 | 묻지 않는다 |",
@@ -229,9 +254,12 @@ func TestDocOnlyReadsItsOwnKinds(t *testing.T) {
 	if len(both) != 2 {
 		t.Fatalf("둘 다 맡으면 둘 다 읽어야 한다: %v", both)
 	}
-	_, only, _ := writeDoc(t, body, "IC")
+	_, only, _, strays := scanBody(t, body, []string{"IC"}, []string{"RUN"})
 	if len(only) != 1 || only[0].id != "IC-R1" {
 		t.Fatalf("IC 만 맡으면 IC 만 읽어야 한다: %v", only)
+	}
+	if len(strays) != 0 {
+		t.Errorf("external 로 적은 행을 짚었다: %v", strays)
 	}
 }
 
@@ -246,5 +274,119 @@ func TestLinkIsRelativeToItsOwnDoc(t *testing.T) {
 		if got := linkTo(c.doc, c.test); got != c.want {
 			t.Errorf("%s → %s: %q, 기대 %q", c.doc, c.test, got, c.want)
 		}
+	}
+}
+
+// IC-M10 — **어느 쪽에도 없는 접두어의 행은 막는다.**
+//
+// 예전에는 문서가 맡지 않은 접두어의 행을 아무 표시 없이 건너뛰었다. 그러면 표에 새 접두어가
+// 들어와도 아무도 모르고, 그 행들은 처음부터 관문 밖에 있다.
+func TestUnclassifiedKindIsFlagged(t *testing.T) {
+	body := strings.Join([]string{
+		"| [IC-R1](x) ✅ | 인벤토리 | CONFIRMED |",
+		"| [RUN-2](y) | 러너 | 묻지 않는다 |",
+		"| [CP-PG-5](z) | 동시 확보 | 하나만 |",
+	}, "\n")
+	_, cases, _, strays := scanBody(t, body, []string{"IC"}, []string{"RUN"})
+	if len(cases) != 1 {
+		t.Fatalf("IC 행 하나만 케이스여야 한다: %v", cases)
+	}
+	if len(strays) != 1 || !strings.Contains(strays[0], ":3 ") || !strings.Contains(strays[0], "prefix CP") {
+		t.Fatalf("셋째 줄의 CP 를 짚어야 한다: %v", strays)
+	}
+}
+
+// IC-M11 — **docs.tsv 의 잘못된 행은 고쳐 읽지 않고 막는다.**
+//
+// 설정이 틀렸는데 관문이 통과하면, 그 통과는 아무것도 재지 않은 결과일 수 있다.
+func TestMalformedConfigIsRejected(t *testing.T) {
+	for _, c := range []struct{ name, body, want string }{
+		{"칸이 둘", "docs/a.md\tIC\n", "want 3"},
+		{"칸이 넷", "docs/a.md\tIC\t-\tRUN\n", "want 3"},
+		{"탭 대신 공백", "docs/a.md   IC   -\n", "want 3"},
+		{"절대 경로", "/etc/a.md\tIC\t-\n", "clean path"},
+		{"리포 밖", "../a.md\tIC\t-\n", "clean path"},
+		{"정규형이 아님", "docs/./a.md\tIC\t-\n", "clean path"},
+		{"같은 경로 둘", "docs/a.md\tIC\t-\ndocs/a.md\tRUN\t-\n", "listed twice"},
+		{"모르는 접두어", "docs/a.md\tIC,XY\t-\n", "unknown prefix"},
+		{"소문자", "docs/a.md\tic\t-\n", "unknown prefix"},
+		{"빈 항목", "docs/a.md\tIC,\t-\n", "empty prefix"},
+		{"중복 항목", "docs/a.md\tIC,IC\t-\n", "repeated"},
+		{"아무것도 안 다룸", "docs/a.md\t-\t-\n", "classifies no prefix"},
+		{"행이 없음", "# 주석만\n\n", "no case tables"},
+	} {
+		_, err := loadDocs(writeConf(t, c.body))
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: %q 로 막아야 한다: %v", c.name, c.want, err)
+		}
+	}
+	if _, err := loadDocs(filepath.Join(t.TempDir(), "docs.tsv")); err == nil {
+		t.Error("설정 파일이 없는데 막지 않았다")
+	}
+
+	docs, err := loadDocs(writeConf(t, "# 머리\n\ndocs/testcases.md\t\tCP,IC\t\tRUN\nsaas/runner/README.md\tRUN\t-\n"))
+	if err == nil {
+		t.Fatalf("RUN 이 두 행에서 owned·external 로 갈렸는데 통과했다: %v", docs)
+	}
+	docs, err = loadDocs(writeConf(t, "# 머리\n\ndocs/testcases.md\t\tCP,IC\t\tRUN\n"))
+	if err != nil {
+		t.Fatalf("맞는 설정을 막았다: %v", err)
+	}
+	if len(docs) != 1 || strings.Join(docs[0].owned, ",") != "CP,IC" || strings.Join(docs[0].external, ",") != "RUN" {
+		t.Errorf("탭을 여럿 써 맞춘 행을 잘못 읽었다: %+v", docs)
+	}
+}
+
+// IC-M12 — **한 접두어를 owned 와 external 에 함께 적으면 막는다.** 한 행 안이든 두 행에
+// 걸쳐서든 같다. 이 리포가 재는 접두어이면서 남이 잰다는 말은 둘 중 하나가 틀렸다는 뜻이다.
+func TestPrefixCannotBeBothOwnedAndExternal(t *testing.T) {
+	for _, body := range []string{
+		"docs/a.md\tIC,RUN\tRUN\n",
+		"docs/a.md\tRUN\t-\ndocs/b.md\tIC\tRUN\n",
+		"docs/a.md\tIC\tRUN\ndocs/b.md\tRUN\t-\n",
+	} {
+		_, err := loadDocs(writeConf(t, body))
+		if err == nil || !strings.Contains(err.Error(), "both owned and external") {
+			t.Errorf("%q 를 막아야 한다: %v", body, err)
+		}
+	}
+	if _, err := loadDocs(writeConf(t, "docs/a.md\t-\tRUN\ndocs/b.md\tIC\tRUN\n")); err != nil {
+		t.Errorf("두 문서가 같은 접두어를 external 로 적는 것은 된다: %v", err)
+	}
+}
+
+// IC-M13 — **docs.tsv 의 경로는 리포 루트 기준이다.** 설정 파일은 tools/checkcases/ 에
+// 있지만 거기서 이어 붙이면 문서를 못 찾는다. 링크도 리포 루트 기준 경로에서 계산해야
+// 문서에서 본 상대 경로가 맞는다.
+func TestConfigPathsAreRepoRootRelative(t *testing.T) {
+	root := t.TempDir()
+	for _, p := range []string{"docs", "tools/checkcases"} {
+		if err := os.MkdirAll(filepath.Join(root, p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "docs", "testcases.md"), []byte("| IC-R1 ✅ | 선언 | 맞다 |\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	conf := filepath.Join(root, "tools", "checkcases", "docs.tsv")
+	if err := os.WriteFile(conf, []byte("docs/testcases.md\tIC\t-\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	docs, err := loadDocs(conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if docs[0].path != "docs/testcases.md" {
+		t.Errorf("경로를 적힌 그대로 들고 있어야 한다: %q", docs[0].path)
+	}
+	cases, _, _, err := scanDoc(root, docs[0])
+	if err != nil {
+		t.Fatalf("리포 루트에서 문서를 못 찾았다: %v", err)
+	}
+	if len(cases) != 1 || cases[0].doc != "docs/testcases.md" {
+		t.Fatalf("케이스에 리포 루트 기준 경로가 적혀야 한다: %+v", cases)
+	}
+	if got := linkTo(cases[0].doc, "pkg/a/a_test.go"); got != "../pkg/a/a_test.go" {
+		t.Errorf("링크가 문서에서 본 상대 경로가 아니다: %q", got)
 	}
 }

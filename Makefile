@@ -51,6 +51,9 @@ check-lang:
 #
 # 링크는 손으로 붙이지 않는다. `go run ./tools/checkcases -write`가 찍는다. 손으로 붙이면
 # 파일을 옮기는 날 링크 전부가 한꺼번에 썩는다.
+#
+# **어느 문서가 어느 접두어를 맡는지는 tools/checkcases/docs.tsv에 있다.** 엔진은 리포마다
+# 같고 다른 것은 그 표뿐이다.
 check-cases:
 	@go run ./tools/checkcases
 
