@@ -38,3 +38,7 @@ jobs:
       # 화면(`.templ`)을 고쳐 놓고 `make generate`를 안 돌린 날을 잡는다. `make`에 넣지
       # 않은 것은 이것만 망을 타기 때문이다 — CI는 망이 있으므로 여기서 본다.
       - run: make verify-generated
+
+      # 모든 파일에 저작권과 라이선스가 적혀 있는지 본다(REUSE). Docker 와 망이 있어야 해서
+      # `make`에 넣지 않았고, CI 에는 둘 다 있으므로 여기서 본다.
+      - run: make check-reuse

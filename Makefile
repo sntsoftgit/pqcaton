@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
-.PHONY: all check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt build test generate verify-generated
+.PHONY: all check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt build test generate verify-generated check-reuse
 
 all: check-licenses check-text check-prose check-lang check-cases check-fmt build test
 
@@ -95,3 +95,15 @@ verify-generated:
 	@go run $(TEMPL) generate
 	@git diff --exit-code -- '*_templ.go' \
 		|| { echo "✗ .templ 을 고치고 make generate 를 안 돌렸다. 생성물을 함께 커밋할 것"; exit 1; }
+
+# 저작권 표기 관문: 모든 파일에 저작권과 라이선스가 적혀 있는지 REUSE 명세로 잰다.
+#
+# 소스(.go·.sh·.py·워크플로·Makefile)는 파일 안의 SPDX 머리말로만 표기하므로, 머리말 없는 새
+# 소스가 들어오면 여기서 막힌다. 문서·설정·생성물은 REUSE.toml 이 표기한다. 새 종류의 파일을
+# 더했으면 REUSE.toml 에도 적는다.
+#
+# 도구(reuse)는 Python 이라 판을 고정한 공식 이미지로 돌린다. all 에 넣지 않은 것은 Docker 와
+# 망이 있어야 하기 때문이다. verify-generated 와 같이 CI 가 따로 돌린다.
+REUSE_IMAGE := fsfe/reuse:6.2.0@sha256:85462a75c0f8efda09ddd190b92816b70e7662577c8427429e11e1b9f25a992e
+check-reuse:
+	@docker run --rm -v "$(CURDIR)":/data:ro $(REUSE_IMAGE) lint

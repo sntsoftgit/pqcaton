@@ -4,12 +4,32 @@
 # 머리말을 넣을 수 없는 파일(문서·설정·생성물·바이트로 견주는 샘플 등)의 저작권과 라이선스.
 # precedence = "closest": 파일 안에 SPDX 머리말이 있으면 그것이 우선한다(기존 고지를 덮어쓰지 않는다).
 #
+# **여기에 "**" 를 두지 않는다.** 모든 파일을 덮으면 머리말 없는 새 소스(.go·.sh·.py·워크플로·Makefile)도
+# 표기된 것으로 보여 make check-reuse 가 그것을 못 잡는다. 소스는 파일 안의 머리말로만 표기하고,
+# 머리말을 넣을 수 없는 종류만 아래에 적는다. 새 종류의 파일을 더하면 여기에도 적어야 관문을 지난다.
+#
 # *_templ.go 는 make generate 가 다시 쓰므로 머리말을 넣지 않고 여기서 표기한다.
 # LICENSES/BUSL-1.1.txt 는 LICENSE 와 바이트까지 같아야 한다. make check-licenses 가 견준다.
 version = 1
 
 [[annotations]]
-path = "**"
+path = [
+    "*.md",
+    "**/*.md",
+    ".gitignore",
+    "AUTHORS",
+    "NOTICE",
+    "go.mod",
+    "go.sum",
+    "licenses.txt",
+    "**/*.templ",
+    "**/*_templ.go",
+    "tools/**/*.tsv",
+    "tools/**/*.txt",
+    "demo/expected-output/**",
+    "site/**",
+    "pkg/inventory/ui/static/app.css",
+]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 SNT Soft Co., Ltd."
 SPDX-License-Identifier = "BUSL-1.1"
