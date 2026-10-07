@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Command checktext — **코드 안의 문자열에 한글이 남아 있는지** 막는다.
 //
 // 규칙은 하나다: 코드와 그 출력은 영어, 화면만 두 말. 문서와 주석은 한국어다.

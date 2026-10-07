@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Command checklicenses — 링크되는 의존성의 라이선스를 허용 목록으로 막는다.
 //
 // 왜 관문인가: pqcaton은 BUSL-1.1로 내고 Change Date에 Apache-2.0으로 전환한다.

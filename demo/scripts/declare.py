@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
 """pqcota 데모의 topology.yaml 에서 고객 선언(declaration.json)을 만든다.
 
 **환경을 정의하는 곳에서 선언을 끌어온다.** 노드 이름을 우리 파일에 박아 두면 상류가

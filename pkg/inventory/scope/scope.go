@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package scope — 자산 스코프 거버넌스 (설계 §1.6).
 //
 // **규칙의 정의와 집행은 pqcota가 한다.** pqcota의 `kscope.AssetPolicy`가 규칙 형식이고,

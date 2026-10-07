@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package decision — 인벤토리 리뷰-확정 상태기계 (규정서 §3.3③, 설계 §1.4).
 //
 // pqcota가 만들지 않기로 한 계층이다 — 확정된 계획만 그쪽 프로비저닝의 입력이 된다.

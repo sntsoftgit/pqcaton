@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package localscan — **이 기계를** 관측하는 지름길.
 //
 // collector가 할 일을 로컬에서 흉내 낸 것이다. 원래 관측은 pqcota의 collector가 대상

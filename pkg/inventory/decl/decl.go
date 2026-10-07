@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package decl — 선언 인벤토리의 파일 형식과 그 자체 검사.
 //
 // 선언은 **고객이 「있다」고 말하는 것**이다. 관측과 맞대는 한쪽 레인이라, 여기가 틀리면

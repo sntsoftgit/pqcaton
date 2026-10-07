@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Command pqcaton-runner — 스케줄이 부르는 러너.
 //
 // 조립만 한다. 판단은 saas/runner 패키지에 있다.

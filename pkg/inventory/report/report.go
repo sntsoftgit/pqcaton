@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package report — 여러 노드의 관측 결과를 모아 선언과 대조한 것.
 //
 // **계산만 한다.** 명령은 이것을 글로 찍고 화면은 표로 그린다 — 계산이 두 곳에 있으면 화면과

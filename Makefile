@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
 .PHONY: all check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt build test generate verify-generated
 
 all: check-licenses check-text check-prose check-lang check-cases check-fmt build test
@@ -6,6 +8,8 @@ all: check-licenses check-text check-prose check-lang check-cases check-fmt buil
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
 check-licenses:
 	@go run ./tools/checklicenses
+	@# REUSE 가 읽는 라이선스 원문은 LICENSE 와 바이트까지 같아야 한다. LICENSE 만 고치면 둘이 어긋난다.
+	@cmp -s LICENSE LICENSES/BUSL-1.1.txt || { echo "✗ LICENSES/BUSL-1.1.txt 가 LICENSE 와 다르다. cp LICENSE LICENSES/BUSL-1.1.txt"; exit 1; }
 
 # 코드와 그 출력은 영어, 화면만 두 말이다(CONTRIBUTING.md). 문자열 하나를 옮기지
 # 않으면 그 자리만 한국어로 뜨는데 눈으로는 못 찾는다. 그래서 파서로 본다.

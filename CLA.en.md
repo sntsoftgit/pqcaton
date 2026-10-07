@@ -3,7 +3,7 @@
 **pqcaton Individual Contributor License Agreement v1.0**
 
 This is the agreement you accept in order to contribute to pqcaton, a project managed by
-SNTSOFT Co., Ltd. (the "Company"). **It does not ask you to assign your copyright.** It
+SNT Soft Co., Ltd. (the "Company"). **It does not ask you to assign your copyright.** It
 grants the Company permission to ship your code under the project's license, and under
 Apache-2.0 after the Change Date. The copyright stays with you.
 

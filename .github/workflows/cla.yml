@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
 name: cla
 
 # CLA 관문 — 서명하지 않은 기여자의 PR을 막는다.

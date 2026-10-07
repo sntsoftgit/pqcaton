@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // 화면에 뜨는 모든 문구. **두 말이 한 줄 건너 나란히 있다.**
 //
 // 파일을 갈라 두면 한쪽만 고쳐지는 날이 오고, 그날 어느 쪽이 최신인지 아무도 모른다.

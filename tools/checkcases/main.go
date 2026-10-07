@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Command checkcases — **케이스 번호와 실제 테스트를 맞댄다.**
 //
 // docs/testcases.md가 첫머리에서 「케이스 번호가 곧 테스트 파일 링크입니다」라고 약속하는데,

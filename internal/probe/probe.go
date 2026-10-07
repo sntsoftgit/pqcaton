@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package probe — 계약이 실제로 소비되는지 확인하는 최소 코드.
 //
 // 이 리포의 첫 관심사는 "pqcota의 계약 타입을 import해서 쓸 수 있는가"다. 그것이

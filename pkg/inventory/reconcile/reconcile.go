@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package reconcile — 인벤토리 3-상태 대조 엔진(규정서 §3.3).
 //
 // pqcota가 만들지 않기로 한 계층이다 — 관측은 그쪽이 하고, 대조는 여기서 한다.

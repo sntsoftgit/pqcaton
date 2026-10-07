@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package runner — 고객망에서 도는 러너.
 //
 // 하는 일은 **연결확인과 관측 결과를 밖으로 올려 보내는 것 하나뿐**이다. 대상 노드에 붙어

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package ui — 화면을 그리고 폼을 읽는 것.
 //
 // **어디서 읽고 어디에 쓰는지, 누가 들어올 수 있는지는 부르는 쪽이 정한다.** 로컬 명령은

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Command checklang — **공개 사이트의 한국어와 영어가 짝을 이루는지 잰다.**
 //
 // site/의 두 장은 문구를 두 벌 적어 두고 CSS로 한쪽을 숨긴다. 규칙은 두 줄뿐이다.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package review — 사람이 판정하는 세션의 파일 형식과 **확정 관문**.
 //
 // 명령에서 떼어 둔 것은 관문이 둘이 되면 안 되기 때문이다. `pqcaton-decide close`와

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // Command pqcaton-scope — 자산 스코프 정책을 사람이 승인하고 배포하는 자리(설계 §1.6).
 //
 // **규칙을 다시 만들지 않는다.** 형식과 집행은 pqcota의 `scope.AssetPolicy`가 갖고, 여기는

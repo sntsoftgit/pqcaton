@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
 # 관문을 사람이 기억하지 않아도 걸리게 한다.
 #
 # 이 리포의 관문은 여럿인데(`Makefile`의 `all`이 목록이다) 전부 `make` 안에 있어,

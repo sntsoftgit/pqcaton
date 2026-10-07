@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
 #  확장 — 실행 중인 pqcota 디스커버리 데모에 3-상태 대조 + 거버넌스 토폴로지를 얹고,
 #  판정한 계획을 **상류의 승인 → 생성 → 적용 → 되돌림까지** 실제로 돌린다.
 # 전제: pqcota/demo/scripts/{up,demo}.sh로 환경이 떠 있고 디스커버리(/work/results)가 끝난 상태.

@@ -1,0 +1,24 @@
+# pqcaton authors
+#
+# The copyright holder of this repository: the company named by
+# SPDX-FileCopyrightText in the source headers and by the Licensor line in LICENSE.
+#
+# Contributors keep the copyright in their contributions and license them to the
+# company under the contributor agreement (CLA.en.md).
+#
+# pkg/inventory/ui/static/htmx.min.js is htmx, a separate work by different authors,
+# shipped unchanged under the Zero-Clause BSD license (LICENSE.htmx next to it).
+# pqcaton builds against the pqcota modules (Apache License 2.0) and does not
+# include their source; see NOTICE.
+#
+# pqcaton 작성자
+#
+# 이 리포의 저작권자. 소스 머리말의 SPDX-FileCopyrightText와 LICENSE의 Licensor 줄이 가리키는 회사다.
+#
+# 기여자는 자기 기여의 저작권을 가지고, 기여자 동의(CLA.md)에 따라 회사에 라이선스를 준다.
+#
+# pkg/inventory/ui/static/htmx.min.js는 다른 저작자의 별개 저작물인 htmx이고, 고치지 않은 채 Zero-Clause BSD로
+# 함께 배포한다(곁의 LICENSE.htmx). pqcaton은 pqcota 모듈(Apache License 2.0)을 받아 빌드하고 그 소스를 포함하지 않는다.
+# NOTICE를 보라.
+
+(주)에스앤티소프트 (SNT Soft Co., Ltd.)

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
 // 이 파일은 **관측 결과에서 리뷰 세션을 세우는 일** 하나만 한다.
 //
 // 명령(`pqcaton-decide open -results`)과 화면(`pqcaton-ui`)이 같은 세션을 만들어야 한다.
