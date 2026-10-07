@@ -390,3 +390,84 @@ func TestConfigPathsAreRepoRootRelative(t *testing.T) {
 		t.Errorf("링크가 문서에서 본 상대 경로가 아니다: %q", got)
 	}
 }
+
+// IC-M14 — **축약한 번호의 행도 `-write`가 링크를 찍는다.**
+//
+// 게이트는 링크를 행의 첫 번호로 걸고, `-write`는 행의 글자 전체로 테스트를 찾았다. 축약한 행은
+// 글자 전체로는 어느 테스트도 없어서, 링크를 벗기면 관문이 막고 `-write`는 0개를 찍은 채 끝났다.
+// 그 행만 사람이 손으로 붙여야 했는데, 손으로 붙이지 않는 것이 이 도구의 약속이다.
+func TestWriteRestoresShorthandRows(t *testing.T) {
+	d, cases, lines := writeDoc(t, strings.Join([]string{
+		"| CP-TOKEN-4·5·6 | 거절 셋 | 같은 응답 |",
+		"| [**CP-RUNNER-1·2**](틀린/링크) | 등록과 갱신 | 된다 |",
+		"| **CP-TOKEN-7 ✅** | 마지막 사용 | 기록한다 |",
+	}, "\n"))
+	tests := map[string][]string{
+		"CP-TOKEN-4":  {"internal/access/access_test.go"},
+		"CP-RUNNER-1": {"internal/access/access_test.go"},
+		"CP-TOKEN-7":  {"internal/access/access_test.go"},
+	}
+	if n := rewrite(d, lines, cases, tests); n != 3 {
+		t.Fatalf("축약한 행까지 셋을 다 찍어야 한다: %d\n%s", n, strings.Join(lines, "\n"))
+	}
+	for i, want := range []string{
+		"| [CP-TOKEN-4·5·6](internal/access/access_test.go) |",
+		"| [**CP-RUNNER-1·2**](internal/access/access_test.go) |",
+		"| **[CP-TOKEN-7](internal/access/access_test.go) ✅** |",
+	} {
+		if !strings.HasPrefix(lines[i], want) {
+			t.Errorf("%d번째 줄이 기대와 다르다: %s", i, lines[i])
+		}
+	}
+
+	d2, cases2, lines2 := writeDoc(t, strings.Join(lines, "\n"))
+	if n := rewrite(d2, lines2, cases2, tests); n != 0 {
+		t.Errorf("찍은 것을 다시 찍었다: %d", n)
+	}
+}
+
+// IC-M15 — **번호에 괄호만 씌운 행도 케이스 행이다.**
+//
+// 번호 칸은 세 모양으로 온다: 맨 번호, 괄호만 씌운 번호, 링크가 붙은 번호. 가운데 것을 못
+// 읽으면 그 행은 아무 표시 없이 관문 밖으로 나간다. 테스트가 없는 ✅ 행을 써 넣어도 막히지 않았다.
+// 괄호만 씌운 번호는 **아직 링크되지 않은 케이스**로 읽고, `-write`가 링크를 붙인다.
+func TestBracketedIdWithoutLinkIsARow(t *testing.T) {
+	d, cases, lines := writeDoc(t, strings.Join([]string{
+		"| CP-X-1 ✅ | 맨 번호 | 읽는다 |",
+		"| [CP-X-2] ✅ | 괄호만 | 읽는다 |",
+		"| [CP-X-3](t_test.go) ✅ | 링크까지 | 읽는다 |",
+		"| [**CP-X-4**] | 굵게가 괄호 안 | 읽는다 |",
+		"| **[CP-X-5] ✅** | 굵게가 괄호 밖 | 읽는다 |",
+	}, "\n"))
+	if len(cases) != 5 {
+		t.Fatalf("다섯 행을 모두 읽어야 한다: %d개 %v", len(cases), cases)
+	}
+	for i, linked := range []bool{false, false, true, false, false} {
+		if (cases[i].link != "") != linked {
+			t.Errorf("%d번째 행의 링크 유무가 다르다: %q", i, cases[i].link)
+		}
+	}
+	if !cases[3].boldIn || !cases[4].boldOut {
+		t.Error("괄호만 씌운 번호에서 굵게의 자리를 못 읽었다")
+	}
+	if cases[1].status != "✅" {
+		t.Errorf("괄호만 씌운 번호의 상태 표시를 못 읽었다: %q", cases[1].status)
+	}
+
+	tests := map[string][]string{}
+	for i := 1; i <= 5; i++ {
+		tests["CP-X-"+string(rune('0'+i))] = []string{"t_test.go"}
+	}
+	rewrite(d, lines, cases, tests)
+	for i, want := range []string{
+		"| [CP-X-1](t_test.go) ✅ |",
+		"| [CP-X-2](t_test.go) ✅ |",
+		"| [CP-X-3](t_test.go) ✅ |",
+		"| [**CP-X-4**](t_test.go) |",
+		"| **[CP-X-5](t_test.go) ✅** |",
+	} {
+		if !strings.HasPrefix(lines[i], want) {
+			t.Errorf("%d번째 줄을 링크로 못 바꿨다: %s", i, lines[i])
+		}
+	}
+}

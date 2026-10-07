@@ -78,9 +78,11 @@ var sep = regexp.MustCompile(`\s*[·,]\s*`)
 const idAlt = `IC-[A-Z]+\d+(?:\s*[·,]\s*[A-Z]*\d+)*|CP-[A-Z]+-\d+(?:\s*[·,]\s*\d+)*|RUN-\d+(?:\s*[·,]\s*\d+)*`
 
 // row — 케이스 표의 첫 칸. 굵게가 대괄호 밖일 수도 안일 수도 있고, 상태 표시는 없을 수도
-// 있다(컨트롤 플레인 명세가 그렇다). 이미 링크가 붙은 것도 같은 자리에서 읽는다.
+// 있다(컨트롤 플레인 명세가 그렇다). 번호는 세 모양으로 온다: 맨 번호, 괄호만 씌운 번호,
+// 링크가 붙은 번호. **앞의 둘은 아직 링크가 없는 케이스다.** 괄호만 씌운 것을 못 읽으면
+// 그 행이 아무 표시 없이 관문 밖으로 나간다.
 var row = regexp.MustCompile(
-	`^\|[ \t]*(\*\*)?(?:\[(\*\*)?(` + idAlt + `)(?:\*\*)?\]\(([^)]*)\)|(` + idAlt + `))[ \t]*(✅|🔜|⏳)?[ \t]*(\*\*)?[ \t]*\|`)
+	`^\|[ \t]*(\*\*)?(?:\[(\*\*)?(` + idAlt + `)(?:\*\*)?\](?:\(([^)]*)\))?|(` + idAlt + `))[ \t]*(✅|🔜|⏳)?[ \t]*(\*\*)?[ \t]*\|`)
 
 type docCase struct {
 	id      string
@@ -415,7 +417,9 @@ func rewrite(d docSpec, lines []string, all []docCase, tests map[string][]string
 		if c.doc != d.path {
 			continue
 		}
-		files := tests[c.id]
+		// **첫 번호로 찾는다.** 게이트가 링크를 첫 번호로 걸기 때문이다. 행의 글자 전체(축약한
+		// 번호)로 찾으면 축약한 행은 늘 비어 링크를 못 찍는다.
+		files := tests[c.covers[0]]
 		if len(files) == 0 {
 			continue
 		}
