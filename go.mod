@@ -1,6 +1,6 @@
 module github.com/sntsoftgit/pqcaton
 
-go 1.26.6
+go 1.26.10
 
 // pqcota — 관측·정규화·전환물 생성. 이 리포는 그 가운데 세 모듈을 소비한다: 계약과 공통
 // 코드(common), 인벤토리 단계(inventory), 로컬 스캔이 부르는 수집기(discovery).
@@ -21,16 +21,16 @@ require (
 require (
 	github.com/a-h/templ v0.3.1020
 	github.com/go-chi/chi/v5 v5.3.1
-	golang.org/x/net v0.58.0
+	golang.org/x/net v0.60.0
 )
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/grpc v1.83.2 // indirect
 )
