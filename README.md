@@ -65,7 +65,7 @@ pqcota                          pqcaton
 | [`pkg/inventory/localscan`](pkg/inventory/localscan) | **이 기계를 스캔하는 지름길**: 관측 없이 전체 절차를 한 번 돌려 보는 자리입니다. 못 본 것은 「없다」로 보고하지 않습니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐 판정과 종료**: 판정된 계획을 계약 형식으로 만들되 상태는 `IN_REVIEW`이고 승인 칸은 비웁니다. 실행 승인은 이 리포의 일이 아닙니다 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포**: 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
-| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 다섯**: 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회. 기본은 127.0.0.1이고, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
+| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 다섯**: 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회. **이 기계의 루프백에서만 열리고**, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
 **UNDECLARED가 이 도구가 주는 첫 번째 쓸모입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지, 곧 조직이
@@ -144,6 +144,14 @@ bin/pqcaton-ui session.json \
 # → http://127.0.0.1:8765 — 탭이 절차 순서입니다
 #   ① 선언(관리 대상 노드와 그 안의 암호 자산·통신 엣지) → ② 암호 자산 스코프
 #   → ③ 대조(3-상태·등급·토폴로지) → ④ 판정(리뷰 큐 — 판정·확정)
+```
+
+**화면은 이 기계 안에서만 열립니다.** 화면에는 로그인이 없어서 `-addr`가 루프백이 아니면
+시작하지 않습니다. 다른 기계에서 보려면 SSH로 포트를 넘겨 그 기계의 브라우저로 엽니다.
+
+```bash
+ssh -L 8765:127.0.0.1:8765 <화면을 띄운 기계>
+# → 내 기계에서 http://127.0.0.1:8765
 ```
 
 `session.json`이 없으면 **선언과 관측 결과로 화면이 세션을 만듭니다.** 자산 스코프도 계층 CSV를

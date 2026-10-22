@@ -18,6 +18,7 @@ templ reviewPage(v ReviewView) {
 // 화면이 같은 폼을 그대로 쓴다. 확정 관문이 두 벌이 되면 한쪽만 막는 날이 온다.
 templ reviewForm(v ReviewView) {
 	<form method="post">
+		@csrfField(v.Page)
 		@tip(v.Page.Lang, tReviewQueueHint.In(v.Page.Lang))
 		for _, g := range v.Policies {
 			<fieldset>

@@ -15,6 +15,7 @@ templ declPage(v DeclView) {
 // 어긋나는 날이 오고, 그날 저장이 오류로 드러나지 않은 채 어긋난다.
 templ declForm(v DeclView) {
 	<form method="post" action="/decl/save">
+		@csrfField(v.Page)
 		<fieldset>
 			<legend>{ tDeclOrg.In(v.Page.Lang) }</legend>
 			@tip(v.Page.Lang, tDeclOrgHint.In(v.Page.Lang))

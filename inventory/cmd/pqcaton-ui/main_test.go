@@ -4,6 +4,9 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -53,6 +56,20 @@ func newServer(t *testing.T) (*server, string) {
 	return &server{path: path, org: "acme", planOut: filepath.Join(dir, "plan.json")}, dir
 }
 
+// testHost · testToken: 테스트 요청이 들고 가는 이름과 토큰. 이름은 화면이 받는 루프백이고,
+// 토큰은 쿠키와 숨은 필드에 같은 값으로 싣는다.
+const testHost = "127.0.0.1:8765"
+
+var testToken = base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{7}, csrfBytes))
+
+// newReq: httptest 요청에 루프백 Host를 단다. httptest의 기본 Host(example.com)는 화면이
+// 받지 않는다(hostGuard).
+func newReq(method, target string, body io.Reader) *http.Request {
+	req := httptest.NewRequest(method, target, body)
+	req.Host = testHost
+	return req
+}
+
 func postForm(t *testing.T, s *server, target string, form url.Values) *httptest.ResponseRecorder {
 	return postFormLang(t, s, target, "", form)
 }
@@ -68,8 +85,18 @@ func postFormLang(t *testing.T, s *server, target, lang string, form url.Values)
 			target += "?lang=" + lang
 		}
 	}
-	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(form.Encode()))
+	// 화면이 보내는 그대로 보낸다: 같은 출처, 쿠키와 숨은 필드에 같은 토큰(guard.go).
+	sent := url.Values{}
+	for k, v := range form {
+		sent[k] = v
+	}
+	if _, ok := sent[ui.CSRFField]; !ok {
+		sent.Set(ui.CSRFField, testToken)
+	}
+	req := newReq(http.MethodPost, target, strings.NewReader(sent.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", "http://"+testHost)
+	req.AddCookie(&http.Cookie{Name: csrfCookieName, Value: testToken})
 	w := httptest.NewRecorder()
 	mux := s.handler()
 	mux.ServeHTTP(w, req)
@@ -96,7 +123,7 @@ func TestIndexGroupsByPolicy(t *testing.T) {
 	mux := s.handler()
 	w := httptest.NewRecorder()
 	// 화면은 두 말을 쓴다 — 이 케이스는 한국어로 잰다.
-	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/review?lang=ko", nil))
+	mux.ServeHTTP(w, newReq(http.MethodGet, "/review?lang=ko", nil))
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("상태 %d", w.Code)
@@ -244,7 +271,7 @@ func TestSavedSessionStaysReadable(t *testing.T) {
 }
 
 // IC-U6 — **루프백을 가려낸다.** 리뷰 큐에는 어느 노드가 무엇을 쓰는지가 그대로 있다 —
-// 실수로 밖에 열리는 쪽이 편의보다 훨씬 비싸므로, 밖으로 열리면 경고한다.
+// 실수로 밖에 열리는 쪽이 편의보다 훨씬 비싸므로, 루프백이 아니면 시작하지 않는다(checkBind).
 func TestLoopback(t *testing.T) {
 	for addr, want := range map[string]bool{
 		"127.0.0.1:8765": true,
@@ -285,7 +312,7 @@ func TestMethodGuards(t *testing.T) {
 	mux := s.handler()
 	for _, path := range []string{"/save", "/finalize"} {
 		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		mux.ServeHTTP(w, newReq(http.MethodGet, path, nil))
 		if w.Code != http.StatusMethodNotAllowed {
 			t.Errorf("GET %s = %d, want 405", path, w.Code)
 		}
@@ -313,7 +340,7 @@ func get(t *testing.T, s *server, target string) *httptest.ResponseRecorder {
 	t.Helper()
 	mux := s.handler()
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, target, nil))
+	mux.ServeHTTP(w, newReq(http.MethodGet, target, nil))
 	return w
 }
 
@@ -579,14 +606,14 @@ func TestDeclRowRefusesBadInput(t *testing.T) {
 	for _, q := range []string{"?kind=policy&i=1", "?kind=&i=1", "?kind=node&i=-1", "?kind=node&i=x",
 		"?kind=node&i=99999999", "?kind=asset&node=-1&i=0", "?kind=asset&node=x&i=0"} {
 		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/decl/row"+q, nil))
+		mux.ServeHTTP(w, newReq(http.MethodGet, "/decl/row"+q, nil))
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("GET /decl/row%s = %d, want 400", q, w.Code)
 		}
 	}
 
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/decl/row?kind=node&i=3", nil))
+	mux.ServeHTTP(w, newReq(http.MethodGet, "/decl/row?kind=node&i=3", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /decl/row?kind=node&i=3 = %d", w.Code)
 	}
@@ -602,7 +629,7 @@ func TestStaticIsMounted(t *testing.T) {
 	mux := s.handler()
 	for _, name := range []string{"htmx.min.js", "app.css"} {
 		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, ui.StaticPath+name, nil))
+		mux.ServeHTTP(w, newReq(http.MethodGet, ui.StaticPath+name, nil))
 		if w.Code != http.StatusOK {
 			t.Errorf("GET %s%s = %d", ui.StaticPath, name, w.Code)
 		}
@@ -616,7 +643,7 @@ func TestStaticIsMounted(t *testing.T) {
 func TestUINextIsMounted(t *testing.T) {
 	s, _ := newServer(t)
 	w := httptest.NewRecorder()
-	s.handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ui-next.html", nil))
+	s.handler().ServeHTTP(w, newReq(http.MethodGet, "/ui-next.html", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /ui-next.html = %d", w.Code)
 	}
@@ -655,7 +682,7 @@ func TestScopeOpensFromLayersWithoutSessionFile(t *testing.T) {
 	}
 	mux := s.handler()
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/scope", nil))
+	mux.ServeHTTP(w, newReq(http.MethodGet, "/scope", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /scope = %d", w.Code)
 	}
@@ -731,7 +758,7 @@ func TestReviewOpensFromResultsWithoutSessionFile(t *testing.T) {
 	}
 	mux := s.handler()
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/review", nil))
+	mux.ServeHTTP(w, newReq(http.MethodGet, "/review", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /review = %d — 세션 파일 없이 열리지 않았다\n%s", w.Code, w.Body.String())
 	}

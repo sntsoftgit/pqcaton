@@ -185,7 +185,7 @@
 | **[IC-U3](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | 서명 없이 「확정」 | **막고 무엇이 남았는지 화면에 그대로 보인다**. `close`와 같은 관문(`review.Finalize`)를 탄다 |
 | [IC-U4](../inventory/cmd/pqcaton-ui/main_test.go) ✅ | 필수 결론·서명을 채우고 확정 | 계약 형식 계획이 파일로 나오고 판정이 조직에 묶여 원장에 남는다 |
 | **[IC-U5](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | 화면으로 채운 세션 파일 | **명령이 그대로 읽고 확정한다**. 기계가 채운 `node`·`runtime`이 왕복에서 사라지지 않는다 |
-| [IC-U6](../inventory/cmd/pqcaton-ui/main_test.go) ✅ | 바인드 주소 | 루프백을 가려낸다. 밖으로 열리면 경고한다 |
+| [IC-U6](../inventory/cmd/pqcaton-ui/main_test.go) ✅ | 바인드 주소 | 루프백을 가려낸다. 루프백이 아니면 화면을 열지 않는다(IC-U54) |
 | [IC-U7](../inventory/cmd/pqcaton-ui/main_test.go) ✅ | `/save`·`/finalize`에 GET | 405를 낸다. 새로고침으로 확정이 다시 돌지 않게 POST 뒤엔 리다이렉트한다 |
 | **[IC-U8](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | `pqcaton-ui session.json -addr ...` | 위치 인자 뒤의 플래그도 먹는다. 표준 flag는 거기서 멈춰 **-addr이 아무 표시 없이 무시된다** |
 | [IC-U9](../inventory/cmd/pqcaton-ui/main_test.go) ✅ | `-decl` 없이 / 주고 | 없으면 이동 링크도 `/decl`도 없다(404). **없는 것을 눌러 보게 하지 않는다** |
@@ -238,6 +238,15 @@
 | **[IC-U44](../pkg/inventory/ui/ui_test.go) ✅** | 승인이 살아 있는 제외와 만료된 제외 | **살아 있는 승인은 빼고** 센다. 전부 세면 뺄 때마다 재검토 수가 늘어 아무도 그 숫자를 안 본다 |
 | [IC-U45](../pkg/inventory/ui/ui_test.go) ✅ | 걸리는 것이 없을 때 · 있을 때 | 없으면 **없다고 적는다.** 이 화면은 아무 때나 들어오는 자리라, 빈 자리를 두면 「아직 안 불러온 것」으로 읽힌다 |
 | **[IC-U46](../pkg/inventory/ui/ui_test.go) ✅** | 조회 화면에서 절차 카드를 셈 | 넷뿐이다. 조회는 단계가 아니라 아무 때나 들어오는 자리라, 번호를 달면 ④ 다음에 하는 일로 읽힌다 |
+| **[IC-U47](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 루프백 이름(`127.0.0.1` · `localhost` · `[::1]`, 포트는 아무것)으로 온 읽기 요청 | 지나간다. **포트는 보지 않는다.** SSH로 다른 포트에 넘겨 들어오면 Host의 포트가 바뀌는데, 그때 막히면 원격에서 쓰는 길이 막힌다 |
+| **[IC-U48](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 다른 이름(`evil.example`, LAN 주소, 빈 Host)으로 온 GET과 POST | **둘 다 막는다**(403). DNS rebinding을 막는 자리라 읽기 요청도 막아야 리뷰 큐가 읽히지 않는다. 막힌 요청에는 쿠키를 내주지 않는다 |
+| **[IC-U49](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 같은 출처에서 같은 토큰을 들고 온 POST | 여섯 주소(선언 저장 · 규칙 저장 · 스코프 저장 · 스코프 확정 · 판정 저장 · 판정 확정) 모두 처리기에 닿는다. 막는 것만 재면 전부 막아도 통과한다 |
+| **[IC-U50](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 다른 이름 · 다른 포트 · https · 없음 · `null` · 빈 값 · 둘 · 경로나 사용자 정보나 질의가 붙은 Origin | 모두 막고 처리기에 닿지 않는다. 같은 기계의 다른 포트도 다른 출처다. 쿠키와 SameSite는 포트를 가르지 않으므로 그 몫을 Origin이 한다. **대소문자만 다른 호스트 이름은 같은 출처로 받는다.** 브라우저는 Origin을 소문자로 보내므로, 막으면 `LOCALHOST`로 연 화면에서 저장이 늘 막힌다 |
+| **[IC-U51](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 쿠키 없음 · 모양이 틀린 쿠키 · 필드 없음 · 빈 필드 · 다른 토큰 · 한 글자 바뀐 토큰 · 필드 둘 | 모두 막고 처리기에 닿지 않는다. 빈 값끼리 같다고 지나가면 토큰을 채우지 않은 실수가 그대로 통과한다 |
+| **[IC-U52](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 라우터에 등록된 POST 전부 | 토큰 없이 보내면 모두 막힌다. 보호 목록을 사람이 따로 적으면 새 주소를 더한 날 넣는 것을 잊는다. 그래서 라우터를 훑어 모은다 |
+| **[IC-U53](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 막힌 요청(Host · Origin · 쿠키 · 토큰) | **아무것도 바꾸지 않는다.** 가짜 처리기는 한 번도 불리지 않고, 실제 여섯 주소에서는 막힌 뒤 파일이 한 바이트도 바뀌지 않는다. 403을 냈는데 처리기가 먼저 돌았다면 막은 것이 아니다 |
+| **[IC-U54](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | `-addr`가 루프백이 아님(`:8765` · `0.0.0.0` · `[::]` · LAN 주소 · 이름) | **화면을 열지 않는다.** 이 화면에는 인증이 없다. 거부하면서 다른 기계에서 쓰는 길(SSH 포트 포워딩)을 함께 알린다 |
+| **[IC-U55](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 화면 · 새 화면 · 조각 · 막힌 요청 · 정적 CSS와 JS의 응답 | 보안 머리글(프레임 금지 · 형식 추측 금지 · 리퍼러 없음)이 모두에 붙는다. 저장 금지(`no-store`)는 정적 파일에만 빠진다. 화면과 오류에는 리뷰 큐와 토큰이 담긴다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |
@@ -370,6 +379,7 @@
 | **[IC-UI27](../pkg/inventory/ui/ui_test.go) ✅** | 합친 표를 저장한다. IP를 비운 줄이 섞여 있다 | **IP를 적은 줄만 관리 대상**이 된다. 이을 근거가 없는 이름을 관리 대상에 두면 대조 결과가 오류 없이 틀린다. **뺀 것은 알림에 적는다**. 표에서 사라진 것만 보이면 지워진 것으로 읽힌다 |
 | **[IC-UI39](../pkg/inventory/ui/ui_test.go) ✅** | 리뷰 큐의 CNG 항목 | **「플랫폼 조치」**가 붙는다. 계획의 provider 칸이 비는 자리라, 말하지 않으면 빠뜨린 것으로 읽힌다 |
 | **[IC-UI40](../pkg/inventory/ui/ui_test.go) ✅** | 자동통과 항목의 계획 칸(포함·종류·목표·수준·되돌림 메모)을 폼으로 보냄 · 결론 칸도 함께 보냄 | 계획 칸은 **세션의 자동통과 항목에 얹히고**, 결론은 얹히지 않는다. 리뷰 항목과 같은 이름의 칸이다 | 두 벌로 만들면 한쪽만 고쳐지는 날이 오고, 그날 한쪽 항목은 계획에 넣을 수 없는 칸을 든다 |
+| **[IC-UI42](../pkg/inventory/ui/ui_test.go) ✅** | 바꾸는 양식(선언 · 스코프 · 판정과 그 새 화면) | 모두 CSRF 토큰 필드를 싣는다. **값이 비어도 필드는 그린다.** 비었다고 빼면 토큰을 채우지 않은 실수가 화면에서 감춰진다 |
 | **[IC-UI41](../pkg/inventory/ui/ui_test.go) ✅** | 같은 자산에 판정 행과 계획 선택 행이 있는 원장을 조회 화면에 얹음 | 이력에 **두 행이 다 보이되** 계획 선택 행은 「계획에 넣기로 한 기록」으로 서고 판정으로 보이지 않는다 | 결론 칸이 빈 것을 판정으로 읽으면 사람이 판정을 안 적은 줄 안다 |
 | **[IC-UI37](../pkg/inventory/ui/ui_test.go) ✅** | 「관측 이름」을 적고 저장 | 선언에 남고 다시 그려도 그대로다. collector가 자기 id로 보내는 흔한 자리를 사람이 한 번 적어 두는 곳이다 |
 | **[IC-UI38](../pkg/inventory/ui/ui_test.go) ✅** | 어느 노드에도 안 붙은 관측 이름 | **「관측 이름」 칸에 후보로 뜬다**. 안 붙었다는 것은 그 노드의 자산이 통째로 UNDECLARED로 오른다는 뜻이다 |

@@ -19,8 +19,10 @@
 // 링크되는 모듈은 둘만 는다(전이 의존이 없다). htmx는 바이너리에 담겨 나가므로 망이
 // 끊긴 기계에서도 그대로 뜬다 — 그리고 우리 라이선스 관문이 그 파일까지 본다.
 //
-// **기본은 127.0.0.1이다.** 리뷰 큐에는 어느 노드가 무엇을 쓰는지가 그대로 있다 — 곧 그
-// 조직의 공격면이다. 밖으로 열려면 -addr를 명시적으로 바꿔야 하고 그때 경고한다.
+// **루프백에서만 열린다.** 리뷰 큐에는 어느 노드가 무엇을 쓰는지가 그대로 있다 — 곧 그
+// 조직의 공격면이다. 이 화면에는 인증이 없으므로 -addr가 루프백이 아니면 시작하지 않는다
+// (checkBind). 다른 기계에서 쓰려면 SSH로 포트를 넘긴다. 열린 뒤에도 요청은 출처를 본다
+// (guard.go): Host는 모든 요청에서, Origin과 CSRF 토큰은 바꾸는 요청에서 본다.
 //
 // **산출물은 여전히 파일이다.** 화면이 생겨도 무엇을 근거로 무엇을 정했는지가 사라지지
 // 않는다 — 편집한 세션 파일과 선언, 확정 계획, 판정 원장이 그대로 남는다.
@@ -75,6 +77,11 @@ func main() {
 	// 무시되고 기본 주소로 뜬다. 다른 명령들과 같은 규칙이다.
 	pos, flags := splitArgs(os.Args[1:])
 	if err := fs.Parse(flags); err != nil {
+		os.Exit(2)
+	}
+	// **주소부터 본다.** 파일을 읽기 전에 막아야 열리지 않을 화면 때문에 입력을 건드리지 않는다.
+	if err := checkBind(*addr); err != nil {
+		fmt.Fprintln(os.Stderr, "❌", err)
 		os.Exit(2)
 	}
 	if len(pos) < 1 {
@@ -137,11 +144,6 @@ func main() {
 		judgments: *judgments, org: *orgName, planOut: *planOut, scopeOut: *scopeOut}
 	h := s.handler()
 
-	if !loopback(*addr) {
-		// **외부 접속이 가능한 주소로 열 때는 경고한다.** 리뷰 큐는 그 조직의 공격면이다.
-		fmt.Fprintf(os.Stderr,
-			"⚠ %s is not loopback — the screen is open on the network. Put authentication in front of it.\n", *addr)
-	}
 	fmt.Fprintf(os.Stderr, "screen: http://%s  (session %s", *addr, path)
 	if *declPath != "" {
 		fmt.Fprintf(os.Stderr, " · declaration %s", *declPath)
@@ -164,7 +166,7 @@ func splitArgs(args []string) (pos, flags []string) {
 	return pos, nil
 }
 
-// loopback — 이 주소가 이 기계 밖에서 닿는가.
+// loopback — 이 주소가 이 기계 안에서만 닿는가.
 func loopback(addr string) bool {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
@@ -219,7 +221,13 @@ type server struct {
 // 서버가 죽으면 적던 판정이 통째로 날아간다.
 func (s *server) handler() http.Handler {
 	r := chi.NewRouter()
+	// **순서가 곧 보호다**(guard.go). 머리글이 맨 바깥이라 403과 panic 응답에도 붙는다. 쿠키
+	// 둘(CSRF · 말)은 Host 검사를 지난 요청에만 낸다.
+	r.Use(securityHeaders)
 	r.Use(middleware.Recoverer)
+	r.Use(hostGuard)
+	r.Use(csrfCookie)
+	r.Use(postGuard)
 	// 고른 말을 기억한다. 화면을 옮길 때마다 다시 고르게 하지 않는다.
 	r.Use(rememberLang)
 
@@ -299,6 +307,7 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 		}),
 		Lang: l, LangHref: ui.SwitchHref(r, l.Other()),
 		Message: r.URL.Query().Get("msg"), Problem: r.URL.Query().Get("problem"),
+		CSRF: csrfToken(r),
 	}
 }
 

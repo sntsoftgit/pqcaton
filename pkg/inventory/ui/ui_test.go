@@ -1429,3 +1429,51 @@ func TestLedgerMarksPlanSelectionRows(t *testing.T) {
 		t.Error("화면이 계획 선택 행을 판정처럼 보인다")
 	}
 }
+
+// IC-UI42 — **바꾸는 양식은 모두 CSRF 토큰을 싣는다.**
+//
+// 서버는 쿠키와 숨은 필드가 같아야 받는다. 양식 하나라도 필드를 빠뜨리면 그 화면의 저장이
+// 늘 막힌다. 새 화면도 같은 양식을 쓰므로 함께 본다. **값이 비어도 필드는 그린다.** 비었다고
+// 빼면 토큰을 채우지 않은 실수가 화면에서 감춰진다.
+func TestEveryPostFormCarriesTheCSRFToken(t *testing.T) {
+	form := regexp.MustCompile(`(?s)<form method="post"[^>]*>(.*?)</form>`)
+	renders := map[string]func(io.Writer, ui.Page) error{
+		"선언": func(w io.Writer, p ui.Page) error { return ui.RenderDecl(w, ui.NewDeclView(sample(), p)) },
+		"새 선언": func(w io.Writer, p ui.Page) error {
+			return ui.RenderDeclNext(w, ui.NewDeclView(sample(), p))
+		},
+		"스코프 승인": func(w io.Writer, p ui.Page) error {
+			return ui.RenderScope(w, ui.NewScopeView(scopeSession(), p))
+		},
+		"스코프 편집": func(w io.Writer, p ui.Page) error {
+			return ui.RenderScope(w, ui.NewScopeView(scopeSession(), p).Editable(layerFiles()))
+		},
+		"새 스코프": func(w io.Writer, p ui.Page) error {
+			return ui.RenderScopeNext(w, ui.NewScopeView(scopeSession(), p).Editable(layerFiles()))
+		},
+		"판정": func(w io.Writer, p ui.Page) error {
+			return ui.RenderReview(w, ui.NewReviewView(reviewSession("", "", ""), p))
+		},
+		"새 판정": func(w io.Writer, p ui.Page) error {
+			return ui.RenderReviewNext(w, ui.NewReviewView(reviewSession("", "", ""), p))
+		},
+	}
+	for name, render := range renders {
+		for _, tok := range []string{"tok-123", ""} {
+			var b strings.Builder
+			if err := render(&b, ui.Page{Title: name, Lang: ui.KO, CSRF: tok}); err != nil {
+				t.Fatal(err)
+			}
+			forms := form.FindAllStringSubmatch(b.String(), -1)
+			if len(forms) == 0 {
+				t.Errorf("%s: 바꾸는 양식이 없다. 이 케이스가 재는 것이 없다", name)
+			}
+			want := `<input type="hidden" name="` + ui.CSRFField + `" value="` + tok + `">`
+			for i, f := range forms {
+				if !strings.Contains(f[1], want) {
+					t.Errorf("%s (토큰 %q): %d번째 양식에 토큰 필드가 없다", name, tok, i)
+				}
+			}
+		}
+	}
+}

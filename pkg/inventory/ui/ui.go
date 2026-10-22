@@ -67,7 +67,16 @@ type Page struct {
 	// 단계가 아니라 아무 때나 들어오는 자리라, 번호를 달면 ④ 다음에 하는 일로 읽힌다.
 	InventoryHref string
 	InventoryText string
+
+	// CSRF — 바꾸는 양식에 숨겨 실을 토큰. 서버는 쿠키와 이 값이 같은지 본다.
+	//
+	// **비어 있어도 필드는 그린다**(csrfField). 비었다고 필드를 빼면 토큰을 채우지 않은 실수가
+	// 화면에서 감춰진다. 빈 값은 서버가 거부하므로 그 실수는 저장할 때 바로 드러난다.
+	CSRF string
 }
+
+// CSRFField — 바꾸는 양식이 토큰을 싣는 필드 이름.
+const CSRFField = "csrf_token"
 
 // Link — 위쪽 이동 링크.
 type Link struct {

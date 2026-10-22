@@ -19,6 +19,7 @@ templ scopePage(v ScopeView) {
 templ scopeForm(v ScopeView) {
 	@tip(v.Page.Lang, tScopeIntro.In(v.Page.Lang)+" "+tScopeDelta.In(v.Page.Lang)+" "+tScopeConclusionHint.In(v.Page.Lang))
 	<form method="post" action="/scope/finalize">
+		@csrfField(v.Page)
 		if len(v.Editing) > 0 {
 			@ruleLegend(v.Page.Lang)
 			for _, e := range v.Editing {
