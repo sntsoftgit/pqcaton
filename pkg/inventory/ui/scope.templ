@@ -7,13 +7,6 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 )
 
-// scopePage — 자산 스코프. **exclude 추가만 근거 필수**라, 그 무게 차이가 화면에 보여야 한다.
-templ scopePage(v ScopeView) {
-	@shell(v.Page) {
-		@scopeForm(v)
-	}
-}
-
 // scopeForm — 스코프를 승인하는 폼. **껍데기와 갈라 둔다** — 요약을 얹은 새 화면이
 // 같은 폼을 그대로 쓴다. 확정 경로가 두 벌이 되면 한쪽이 어긋나는 날이 온다.
 templ scopeForm(v ScopeView) {

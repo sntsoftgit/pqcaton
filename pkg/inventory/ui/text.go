@@ -13,11 +13,6 @@ package ui
 
 // ── 이동 · 화면 이름 ────────────────────────────────────────────────────────
 var (
-	tNavDecl   = T{KO: "① 선언", EN: "① Declaration"}
-	tNavScope  = T{KO: "② 암호 자산 스코프", EN: "② Crypto asset scope"}
-	tNavSurvey = T{KO: "③ 대조", EN: "③ Reconciliation"}
-	tNavReview = T{KO: "④ 판정(리뷰 큐)", EN: "④ Judgment (review queue)"}
-
 	tTitleDecl   = T{KO: "선언", EN: "Declaration"}
 	tTitleScope  = T{KO: "암호 자산 스코프", EN: "Crypto asset scope"}
 	tTitleSurvey = T{KO: "대조", EN: "Reconciliation"}
@@ -683,11 +678,6 @@ var (
 	tDeclCreateDo  = T{KO: "선언 만들기", EN: "Create the declaration"}
 	tWbSelfHost    = T{KO: "직접 설치", EN: "self-hosted"}
 	tWbStepsAria   = T{KO: "거버넌스 절차", EN: "Governance steps"}
-
-	// 옛 판(/classic)의 안내와 새 화면의 보조 링크. v0.23.0에서 없앤다.
-	tClassicBanner  = T{KO: "이 화면은 v0.23.0에서 없어집니다. 같은 작업은 새 화면에서 할 수 있습니다.", EN: "This screen will be removed in v0.23.0. You can do the same work on the new screen."}
-	tClassicOpenNew = T{KO: "새 화면 열기", EN: "Open the new screen"}
-	tClassicLink    = T{KO: "옛 화면(v0.23.0에서 제거)", EN: "Old screen (removed in v0.23.0)"}
 
 	// 접근성: 건너뛰기 링크와 표 칸의 이름에 쓰는 행 이름.
 	tSkipToMain = T{KO: "본문으로 건너뛰기", EN: "Skip to main content"}

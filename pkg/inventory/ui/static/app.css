@@ -232,17 +232,11 @@ body.wb .inventory-tab.active { color: var(--navy); border-color: var(--blue);
   body.wb .inventory-tab { grid-column: auto; }
 }
 
-/* 옛 판(/classic) 안내와 새 화면의 보조 링크. v0.23.0에서 없앤다.
-   고정 위치로 띄우지 않는다: 확대한 화면에서 본문을 덮는다. */
-.classic-banner { margin: 0 0 1rem; padding: .6rem .8rem; border: 1px solid var(--line);
-  border-radius: 6px; background: var(--amber-soft); color: inherit; }
-.classic-link { margin: 2rem 0 1rem; font-size: .85rem; opacity: .75; }
-
 /* ── 표와 좁은 화면(v0.22.0) ────────────────────────────────────────────────
    읽기 표는 가로 스크롤 상자에 넣고 첫 열을 고정한다. 페이지 전체는 가로로 넘치지 않는다.
    편집 표는 650px 이하에서 행 하나를 카드 하나로 접고, 칸 이름은 data-label이 단다. 표의
    역할은 마크업에 적어 두었다(role): display를 바꾸면 브라우저가 표의 의미를 지우기 때문이다.
-   새 껍데기에만 건다. 옛 화면(/classic)의 모양은 바꾸지 않는다. */
+   화면 껍데기(body.wb)에만 건다. */
 body.wb .table-wrap { overflow-x: auto; max-width: 100%; }
 /* fieldset은 기본으로 안의 표 너비만큼 넓어진다(min-width: min-content). 그러면 스크롤 상자가 있어도
    페이지가 옆으로 넘친다. */

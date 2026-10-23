@@ -13,10 +13,6 @@ const (
 	ScreenSurvey    = "/survey"
 	ScreenReview    = "/review"
 	ScreenInventory = "/inventory"
-
-	// ClassicPrefix — 옛 화면(한 판만 남긴다). v0.23.0에서 없앤다. 옛 이동 링크는 이 안에서만
-	// 오간다 — 옛 화면에서 누른 링크가 새 화면으로 가면 둘을 견주던 사람이 길을 잃는다.
-	ClassicPrefix = "/classic"
 )
 
 // screens5 — 화면 다섯. 순서는 절차 순서다.
@@ -25,33 +21,13 @@ var screens5 = []string{ScreenDecl, ScreenScope, ScreenSurvey, ScreenReview, Scr
 // AllScreens — 새 화면 다섯의 주소.
 func AllScreens() []string { return append([]string(nil), screens5...) }
 
-// Classic — 그 화면의 옛 판 주소.
-func Classic(screen string) string { return ClassicPrefix + screen }
-
-// IsClassic — 옛 판 주소인가.
-func IsClassic(path string) bool {
-	for _, sc := range screens5 {
-		if path == Classic(sc) {
-			return true
-		}
-	}
-	return false
-}
-
-// Current — 옛 판 주소가 가리키는 새 화면. 옛 판이 아니면 그대로 돌려준다.
-func Current(path string) string {
-	if IsClassic(path) {
-		return path[len(ClassicPrefix):]
-	}
-	return path
-}
-
-// MovedNext — v0.21의 `-next` 주소와 지금 주소. 북마크가 죽지 않게 한 판 동안 301로 넘긴다.
-// v0.23.0에서 없앤다.
-func MovedNext() map[string]string {
+// MovedScreens — 옛 주소와 지금 주소. v0.21의 `-next`와 v0.22의 `/classic/…`이다. 옛 화면은 v0.23.0에서
+// 없어졌고, 북마크가 죽지 않게 301로 넘긴다(질의는 부르는 쪽이 보존한다).
+func MovedScreens() map[string]string {
 	out := map[string]string{}
 	for _, sc := range screens5 {
 		out[sc+"-next"] = sc
+		out["/classic"+sc] = sc
 	}
 	return out
 }
@@ -65,42 +41,9 @@ type Screens struct {
 	NoReview bool
 }
 
-// NavFor — 위쪽 이동 링크. **절차 순서로 둔다** — 선언 → 자산 스코프 → 대조 → 판정.
-// 쓰는 사람이 다음에 무엇을 할지 순서 자체가 말해 준다.
-//
-// 조립을 여기 둔 것은 컨트롤 플레인도 같은 화면을 쓰기 때문이다 — 거기서 탭 순서가
-// 달라지면 같은 제품이 두 절차를 가르치게 된다.
-//
-// **옛 판의 이동 링크다.** 주소는 모두 `/classic` 안을 가리키고, here도 옛 판 주소로 받는다.
-func NavFor(l Lang, here string, s Screens) []Link {
-	var links []Link
-	link := func(screen string, t T) Link {
-		return Link{Href: Classic(screen), Text: t.In(l), Here: here == Classic(screen)}
-	}
-	if s.Decl {
-		links = append(links, link(ScreenDecl, tNavDecl))
-	}
-	// **자산 스코프는 대조 앞이다.** 무엇을 계속 볼지가 정해져야 관측이 적재되고, 그 뒤에
-	// 대조한다 — 절차가 그 순서다.
-	if s.Scope {
-		links = append(links, link(ScreenScope, tNavScope))
-	}
-	if s.Survey {
-		links = append(links, link(ScreenSurvey, tNavSurvey))
-	}
-	links = append(links, link(ScreenReview, tNavReview))
-	// **번호를 붙이지 않는다.** 조회는 절차의 한 단계가 아니라 아무 때나 들어오는
-	// 자리다 — 번호를 달면 ④ 다음에 해야 하는 일로 읽힌다.
-	if s.Inventory {
-		links = append(links, link(ScreenInventory, tNavInventory))
-	}
-	return links
-}
-
 // ScreenTitle — 그 화면의 이름. 탭 이름과 같게 둔다(번호만 뺀다).
 func ScreenTitle(here string, l Lang) string {
-	// 옛 판도 같은 화면이다 — 제목이 다르면 브라우저 기록에서 둘이 다른 것으로 남는다.
-	switch Current(here) {
+	switch here {
 	case ScreenDecl:
 		return tTitleDecl.In(l)
 	case ScreenScope:

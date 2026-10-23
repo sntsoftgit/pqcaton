@@ -253,17 +253,6 @@ func refusedKind(err error) (string, int) {
 	return "", 0
 }
 
-// returnTo: 저장 · 확정 뒤 돌아갈 화면. 양식이 실어 온 return_to가 **그 화면의 옛 판 주소와 글자
-// 그대로 같을 때만** 옛 판으로 돌아가고, 그 밖에는 모두 새 판이다. 질의 · fragment · 스킴 · 호스트가 붙은
-// 값과 다른 화면의 주소는 버린다 — 숨은 필드는 사람이 고칠 수 있어서, 받은 값으로 아무 데나 보내면
-// 열린 리다이렉트가 된다. 말은 쿠키가 들고 간다.
-func returnTo(r *http.Request, screen string) string {
-	if r.PostForm.Get(ui.ReturnField) == ui.Classic(screen) {
-		return ui.Classic(screen)
-	}
-	return screen
-}
-
 // fail: 저장이 되지 않았을 때. 저장소가 거절했으면 거절 페이지를, 아니면 화면으로 돌려보낸다.
 func (s *server) fail(w http.ResponseWriter, r *http.Request, back string, err error, files ...ui.FileRef) {
 	kind, code := refusedKind(err)

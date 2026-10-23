@@ -133,11 +133,6 @@ func ApplyLayers(files []scope.LayerFile, f url.Values) []scope.LayerFile {
 	return out
 }
 
-// RenderScope — 자산 스코프 화면을 쓴다.
-func RenderScope(w io.Writer, v ScopeView) error {
-	return scopePage(v).Render(context.Background(), w)
-}
-
 // kindLabel — 변경의 종류를 그 말로. 파일에는 코드(added · removed)가 담기고, 사람이
 // 읽는 말은 화면이 고른다.
 func kindLabel(l Lang, kind string) string {
@@ -203,7 +198,7 @@ func (v ScopeView) Summary() ScopeSummary {
 // scopeEditAnchor — 요약에서 승인 폼으로 보내는 자리.
 const scopeEditAnchor = "scope-edit"
 
-// RenderScopeNext — 요약을 얹은 스코프 화면(`/scope-next`).
-func RenderScopeNext(w io.Writer, v ScopeView) error {
+// RenderScope — 자산 스코프 화면(`/scope`).
+func RenderScope(w io.Writer, v ScopeView) error {
 	return scopeNextPage(v).Render(context.Background(), w)
 }

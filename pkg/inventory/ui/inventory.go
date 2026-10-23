@@ -161,11 +161,6 @@ func (v InventoryView) WithLedger(all []decision.Judgment, currentBasis map[stri
 	return v
 }
 
-// RenderInventory — 조회 화면을 쓴다.
-func RenderInventory(w io.Writer, v InventoryView) error {
-	return inventoryPage(v).Render(context.Background(), w)
-}
-
 // judgmentRow — 판정 하나를 화면이 보는 모양으로.
 //
 // **시각을 사람이 읽는 꼴로 옮긴다.** 원장에는 unix 초로 들어 있는데, 그대로 두면
@@ -271,7 +266,7 @@ func (v InventoryView) Summary() InventorySummary {
 // inventoryEditAnchor — 요약에서 원본 표로 보내는 자리.
 const inventoryEditAnchor = "inventory-detail"
 
-// RenderInventoryNext — 요약을 얹은 조회 화면(`/inventory-next`).
-func RenderInventoryNext(w io.Writer, v InventoryView) error {
+// RenderInventory — 조회 화면(`/inventory`).
+func RenderInventory(w io.Writer, v InventoryView) error {
 	return inventoryNextPage(v).Render(context.Background(), w)
 }

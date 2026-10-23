@@ -404,7 +404,7 @@ func TestScopeScreenIsReadOnlyWithoutLayers(t *testing.T) {
 
 // langToggle — 말 바꾸기 링크. **여기만 다른 말로 적는 것이 맞다** — 지금 말을 못 읽는
 // 사람도 자기 말은 알아봐야 하므로, 영어 화면의 토글은 「한국어」라고 적힌다.
-var langToggle = regexp.MustCompile(`<a class="lang"[^>]*>[^<]*</a>`)
+var langToggle = regexp.MustCompile(`<a class="(?:lang|langbtn)"[^>]*>[^<]*</a>`)
 
 // hasHangul — 화면에 한글이 남아 있나. 토글은 덜어내고 본다.
 func hasHangul(s string) string {
@@ -661,7 +661,7 @@ func TestPlatformActionIsMarkedInTheQueue(t *testing.T) {
 // 입력은 전부 아스키로 둡니다 — 노드 이름 같은 값까지 잡으면 이 케이스가 거짓으로 웁니다.
 func TestEnglishScreensHaveNoKorean(t *testing.T) {
 	page := ui.Page{Title: "t", Subtitle: "s", Lang: ui.EN, LangHref: "/?lang=ko",
-		Nav: ui.NavFor(ui.EN, ui.ScreenScope, ui.Screens{Decl: true, Scope: true, Survey: true})}
+		Steps: ui.StepsFor(ui.EN, ui.ScreenScope, ui.Screens{Decl: true, Scope: true, Survey: true}, ui.StepState{})}
 
 	d := decl.Declaration{Org: "acme", Scope: []string{"web"},
 		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}},
@@ -857,7 +857,7 @@ func TestScopeOnlyNameStillShowsForFixing(t *testing.T) {
 // 빠지면 가리키기만 하고 고칠 자리가 없는 화면이 됩니다.
 func TestDeclNextCarriesSummaryAndForm(t *testing.T) {
 	var b strings.Builder
-	if err := ui.RenderDeclNext(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
+	if err := ui.RenderDecl(&b, ui.NewDeclView(sample(), ui.Page{Title: "선언", Lang: ui.KO})); err != nil {
 		t.Fatal(err)
 	}
 	body := b.String()
@@ -882,7 +882,7 @@ func TestDeclNextTellsWhenNothingIsLeft(t *testing.T) {
 	page := ui.Page{Title: "선언", Lang: ui.KO}
 
 	var quiet strings.Builder
-	if err := ui.RenderDeclNext(&quiet, ui.NewDeclView(sample(), page)); err != nil {
+	if err := ui.RenderDecl(&quiet, ui.NewDeclView(sample(), page)); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(quiet.String(), "연결할 관측 이름이 없습니다") {
@@ -894,7 +894,7 @@ func TestDeclNextTellsWhenNothingIsLeft(t *testing.T) {
 
 	v := ui.NewDeclView(sample(), page).WithObserved(nil, []string{"node:1a2b", "node:3c4d"})
 	var loud strings.Builder
-	if err := ui.RenderDeclNext(&loud, v); err != nil {
+	if err := ui.RenderDecl(&loud, v); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"관측 이름이 2개 있습니다", "node:1a2b", "node:3c4d"} {
@@ -959,7 +959,7 @@ func TestDeclNextLinksToTheRightNode(t *testing.T) {
 	v := ui.NewDeclView(d, page).WithObserved(
 		map[string][]ui.DeclAsset{"web": {{Runtime: "openssl", Component: "libssl"}}},
 		[]string{"node:1a2b"})
-	if err := ui.RenderDeclNext(&b, v); err != nil {
+	if err := ui.RenderDecl(&b, v); err != nil {
 		t.Fatal(err)
 	}
 	body := b.String()
@@ -1011,7 +1011,7 @@ func TestStepsCarryState(t *testing.T) {
 
 // IC-U34 — **입력을 주지 않은 화면은 닫힌 카드다.**
 //
-// 없는 것을 눌러 보게 하지 않는다는 선은 옛 이동 링크와 같습니다(`NavFor`). 다만 카드는
+// 없는 것을 눌러 보게 하지 않습니다. 다만 카드는
 // **자리를 비우지 않고 왜 닫혔는지 적습니다** — 넷이 늘 보여야 절차가 몇 걸음인지 읽힙니다.
 func TestStepsMarkWhatIsClosed(t *testing.T) {
 	steps := ui.StepsFor(ui.KO, ui.ScreenDecl, ui.Screens{Decl: true}, ui.StepState{})
@@ -1024,35 +1024,6 @@ func TestStepsMarkWhatIsClosed(t *testing.T) {
 	// 판정은 입력이 따로 없어 늘 열린다.
 	if !steps[3].Open {
 		t.Error("판정 카드가 닫혔다")
-	}
-}
-
-// IC-U35 — **새 껍데기는 새 화면에만 붙는다.**
-//
-// 옛 껍데기(`shell`)를 고치면 지금 쓰는 화면 넷이 함께 움직입니다. 옮기는 동안 두 판이
-// 나란히 서야 비교가 됩니다.
-func TestNextShellDoesNotTouchTheOldScreens(t *testing.T) {
-	page := ui.Page{Title: "선언", Lang: ui.KO,
-		Steps: ui.StepsFor(ui.KO, ui.ScreenDecl, ui.Screens{Decl: true}, ui.StepState{})}
-
-	var next strings.Builder
-	if err := ui.RenderDeclNext(&next, ui.NewDeclView(sample(), page)); err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{`class="wb"`, `class="topbar"`, `class="steps"`, "무엇을 먼저 판단할까요?"} {
-		if !strings.Contains(next.String(), want) {
-			t.Errorf("새 화면에 %q 가 없다", want)
-		}
-	}
-
-	var old strings.Builder
-	if err := ui.RenderDecl(&old, ui.NewDeclView(sample(), page)); err != nil {
-		t.Fatal(err)
-	}
-	for _, unwanted := range []string{`class="wb"`, `class="topbar"`, `class="steps"`} {
-		if strings.Contains(old.String(), unwanted) {
-			t.Errorf("옛 화면에 %q 가 샜다", unwanted)
-		}
 	}
 }
 
@@ -1081,36 +1052,6 @@ func TestScopeSummaryCounts(t *testing.T) {
 	}
 	if got.Audited > got.Changes {
 		t.Errorf("근거 필요 %d 가 변경 %d 보다 많다", got.Audited, got.Changes)
-	}
-}
-
-// IC-U37 — **스코프의 두 화면도 같은 폼을 쓴다.**
-//
-// 확정 경로가 두 벌이 되면 한쪽이 어긋나는 날이 오고, 그날 승인한 것과 확정된 것이
-// 달라집니다. 선언에서 정한 선과 같습니다(IC-U30).
-func TestScopeNextSharesTheForm(t *testing.T) {
-	page := ui.Page{Title: "스코프", Lang: ui.KO}
-
-	var next strings.Builder
-	if err := ui.RenderScopeNext(&next, ui.NewScopeView(scopeSession(), page)); err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{`class="ui-next"`, "관리하지 않을 자산을 승인합니다",
-		`id="scope-edit"`, `action="/scope/finalize/confirm"`} {
-		if !strings.Contains(next.String(), want) {
-			t.Errorf("%q 가 없다", want)
-		}
-	}
-
-	var old strings.Builder
-	if err := ui.RenderScope(&old, ui.NewScopeView(scopeSession(), page)); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(old.String(), `class="ui-next"`) {
-		t.Error("옛 화면에 요약이 붙었다")
-	}
-	if !strings.Contains(old.String(), `action="/scope/finalize/confirm"`) {
-		t.Error("두 화면이 같은 확정 경로를 쓰지 않는다")
 	}
 }
 
@@ -1155,7 +1096,7 @@ func TestSurveyNextWarnsBeforeJudging(t *testing.T) {
 	page := ui.Page{Title: "대조", Lang: ui.KO}
 
 	var loud strings.Builder
-	if err := ui.RenderSurveyNext(&loud, ui.NewSurveyView(surveyResult(true), page)); err != nil {
+	if err := ui.RenderSurvey(&loud, ui.NewSurveyView(surveyResult(true), page)); err != nil {
 		t.Fatal(err)
 	}
 	body := loud.String()
@@ -1170,39 +1111,11 @@ func TestSurveyNextWarnsBeforeJudging(t *testing.T) {
 
 	// 재관측할 것이 없으면 그 경고는 뜨지 않는다. 늘 뜨는 경고는 아무도 안 읽는다.
 	var quiet strings.Builder
-	if err := ui.RenderSurveyNext(&quiet, ui.NewSurveyView(surveyResult(false), page)); err != nil {
+	if err := ui.RenderSurvey(&quiet, ui.NewSurveyView(surveyResult(false), page)); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(quiet.String(), "관측 범위가 부족합니다") {
 		t.Error("재관측할 것이 없는데 경고를 띄웠다")
-	}
-}
-
-// IC-U40 — **대조의 두 화면은 같은 표를 보여 준다.**
-//
-// 이 화면은 적는 자리가 없어서 두 판이 보여 주는 것도 같아야 합니다. 숫자만 얹고 근거가
-// 어긋나면 요약이 어디서 나왔는지 확인할 수 없습니다.
-func TestSurveyNextSharesTheBody(t *testing.T) {
-	page := ui.Page{Title: "대조", Lang: ui.KO}
-
-	var next, old strings.Builder
-	if err := ui.RenderSurveyNext(&next, ui.NewSurveyView(surveyResult(false), page)); err != nil {
-		t.Fatal(err)
-	}
-	if err := ui.RenderSurvey(&old, ui.NewSurveyView(surveyResult(false), page)); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(next.String(), `id="survey-detail"`) {
-		t.Error("새 화면에 원본 표로 보내는 자리가 없다")
-	}
-	if strings.Contains(old.String(), `class="ui-next"`) {
-		t.Error("옛 화면에 요약이 붙었다")
-	}
-	// 두 판 모두 같은 자산을 적는다.
-	for _, w := range []*strings.Builder{&next, &old} {
-		if !strings.Contains(w.String(), "libcrypto") {
-			t.Error("자산 표가 빠졌다")
-		}
 	}
 }
 
@@ -1251,7 +1164,7 @@ func TestReviewNextSaysWhatBlocksFinalizing(t *testing.T) {
 	page := ui.Page{Title: "판정", Lang: ui.KO}
 	render := func(sf review.Session) string {
 		var b strings.Builder
-		if err := ui.RenderReviewNext(&b, ui.NewReviewView(sf, page)); err != nil {
+		if err := ui.RenderReview(&b, ui.NewReviewView(sf, page)); err != nil {
 			t.Fatal(err)
 		}
 		return b.String()
@@ -1276,33 +1189,6 @@ func TestReviewNextSaysWhatBlocksFinalizing(t *testing.T) {
 	}
 	if strings.Contains(got, "남았습니다") {
 		t.Error("다 찼는데 아직 남았다고 말한다")
-	}
-}
-
-// IC-U43 — **판정의 두 화면은 같은 폼을 쓴다.**
-//
-// 확정 관문이 두 벌이 되면 한쪽만 막는 날이 오고, 그날 결론 없이 확정된 계획이 나갑니다.
-func TestReviewNextSharesTheForm(t *testing.T) {
-	page := ui.Page{Title: "판정", Lang: ui.KO}
-	sf := reviewSession("교체한다", "", "")
-
-	var next, old strings.Builder
-	if err := ui.RenderReviewNext(&next, ui.NewReviewView(sf, page)); err != nil {
-		t.Fatal(err)
-	}
-	if err := ui.RenderReview(&old, ui.NewReviewView(sf, page)); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(next.String(), `id="review-edit"`) {
-		t.Error("새 화면에 폼으로 보내는 자리가 없다")
-	}
-	if strings.Contains(old.String(), `class="ui-next"`) {
-		t.Error("옛 화면에 요약이 붙었다")
-	}
-	for _, w := range []*strings.Builder{&next, &old} {
-		if !strings.Contains(w.String(), `action="/finalize/confirm"`) {
-			t.Error("두 화면이 같은 확정 경로를 쓰지 않는다")
-		}
 	}
 }
 
@@ -1339,7 +1225,7 @@ func TestInventoryNextTellsWhenNothingIsFlagged(t *testing.T) {
 	page := ui.Page{Title: "조회", Lang: ui.KO}
 
 	var quiet strings.Builder
-	if err := ui.RenderInventoryNext(&quiet, ui.NewInventoryView(surveyResult(false), ui.Filter{}, page)); err != nil {
+	if err := ui.RenderInventory(&quiet, ui.NewInventoryView(surveyResult(false), ui.Filter{}, page)); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(quiet.String(), "지금 걸리는 것이 없습니다") {
@@ -1349,7 +1235,7 @@ func TestInventoryNextTellsWhenNothingIsFlagged(t *testing.T) {
 	v := ui.NewInventoryView(surveyResult(false), ui.Filter{}, page)
 	v.Unseen = []ui.UnseenRow{{Subject: "a", Reason: "never_judged"}}
 	var loud strings.Builder
-	if err := ui.RenderInventoryNext(&loud, v); err != nil {
+	if err := ui.RenderInventory(&loud, v); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(loud.String(), "제외분 재검토") {
@@ -1440,7 +1326,7 @@ func TestEveryPostFormCarriesTheCSRFToken(t *testing.T) {
 	renders := map[string]func(io.Writer, ui.Page) error{
 		"선언": func(w io.Writer, p ui.Page) error { return ui.RenderDecl(w, ui.NewDeclView(sample(), p)) },
 		"새 선언": func(w io.Writer, p ui.Page) error {
-			return ui.RenderDeclNext(w, ui.NewDeclView(sample(), p))
+			return ui.RenderDecl(w, ui.NewDeclView(sample(), p))
 		},
 		"스코프 승인": func(w io.Writer, p ui.Page) error {
 			return ui.RenderScope(w, ui.NewScopeView(scopeSession(), p))
@@ -1449,13 +1335,13 @@ func TestEveryPostFormCarriesTheCSRFToken(t *testing.T) {
 			return ui.RenderScope(w, ui.NewScopeView(scopeSession(), p).Editable(layerFiles()))
 		},
 		"새 스코프": func(w io.Writer, p ui.Page) error {
-			return ui.RenderScopeNext(w, ui.NewScopeView(scopeSession(), p).Editable(layerFiles()))
+			return ui.RenderScope(w, ui.NewScopeView(scopeSession(), p).Editable(layerFiles()))
 		},
 		"판정": func(w io.Writer, p ui.Page) error {
 			return ui.RenderReview(w, ui.NewReviewView(reviewSession("", "", ""), p))
 		},
 		"새 판정": func(w io.Writer, p ui.Page) error {
-			return ui.RenderReviewNext(w, ui.NewReviewView(reviewSession("", "", ""), p))
+			return ui.RenderReview(w, ui.NewReviewView(reviewSession("", "", ""), p))
 		},
 	}
 	for name, render := range renders {

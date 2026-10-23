@@ -107,7 +107,7 @@ func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, actio
 
 // finalizeConfirm — 리뷰 확정 전 확인. 아무것도 쓰지 않는다.
 func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
-	back := returnTo(r, ui.ScreenReview)
+	back := ui.ScreenReview
 	if !s.writable(w, r, back) {
 		return
 	}
@@ -147,7 +147,7 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 // scopeConfirm — 스코프 확정 전 확인. 아무것도 쓰지 않는다.
 func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
-	back := returnTo(r, ui.ScreenScope)
+	back := ui.ScreenScope
 	if s.scope == "" || s.scopeMissing() {
 		missingInput(w, r, "scope-session")
 		return

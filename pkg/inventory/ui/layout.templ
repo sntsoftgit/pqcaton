@@ -1,62 +1,5 @@
 package ui
 
-// shell — 화면 넷이 쓰는 같은 껍데기.
-//
-// **머리글·이동 링크·알림 상자가 화면마다 달라지면 쓰는 사람이 다른 프로그램으로 여긴다.**
-// 그래서 한 자리에 두고, 화면은 가운데 내용만 채운다.
-//
-// 스타일과 htmx는 `/static/`에서 받는다 — 둘 다 바이너리에 담겨 나가므로 망이 없는
-// 기계에서도 그대로 뜬다.
-templ shell(p Page) {
-	<!DOCTYPE html>
-	<html lang={ string(p.Lang) }>
-		<head>
-			<meta charset="utf-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>{ p.Title } — pqcaton</title>
-			<link rel="stylesheet" href={ StaticPath + "app.css" }/>
-			<script src={ StaticPath + "htmx.min.js" } defer></script>
-		</head>
-		<body>
-			if p.NewHref != "" {
-				// **본문을 덮지 않는다.** 고정 위치로 띄우면 확대한 화면에서 칸을 가린다.
-				<p class="classic-banner">
-					{ tClassicBanner.In(p.Lang) + " " }
-					<a href={ templ.SafeURL(p.NewHref) }>{ tClassicOpenNew.In(p.Lang) }</a>
-				</p>
-			}
-			<h1>{ p.Title }</h1>
-			<p class="sub">{ p.Subtitle }</p>
-			if len(p.Nav) > 0 {
-				<nav>
-					for _, l := range p.Nav {
-						<a href={ templ.SafeURL(l.Href) } class={ templ.KV("here", l.Here) }>{ l.Text }</a>
-					}
-					if p.LangHref != "" {
-						<a class="lang" href={ templ.SafeURL(p.LangHref) } rel="nofollow">{ p.Lang.Other().Label() }</a>
-					}
-				</nav>
-			}
-			if p.Message != "" {
-				<p class="msg ok">{ p.Message }</p>
-			}
-			if len(p.Warnings) > 0 {
-				<div class="warn-list">
-					<ul>
-						for _, w := range p.Warnings {
-							<li>{ w }</li>
-						}
-					</ul>
-				</div>
-			}
-			if p.Problem != "" {
-				<div class="msg bad"><strong>{ tRefused.In(p.Lang) }</strong><pre>{ p.Problem }</pre></div>
-			}
-			{ children... }
-		</body>
-	</html>
-}
-
 // tip · tipBlock — 접어 둔 설명. **화면은 적는 자리를 먼저 내준다** — 날마다 쓰는
 // 사람에게 설명은 한 번 읽으면 끝이고, 펼쳐 두면 그만큼 표가 아래로 밀린다. 필요하면
 // 펴서 본다. 표처럼 문장 하나로 안 되는 것은 tipBlock으로 통째로 접는다.
@@ -78,8 +21,4 @@ templ tipBlock(label string) {
 templ csrfField(p Page) {
 	<input type="hidden" name={ CSRFField } value={ p.CSRF }/>
 	<input type="hidden" name={ RevField } value={ p.Rev }/>
-	// 확인 페이지는 자리가 없다(Self가 빈다). 받은 폼의 return_to를 그대로 다시 싣는다(CarryForm).
-	if p.Self != "" {
-		<input type="hidden" name={ ReturnField } value={ p.Self }/>
-	}
 }

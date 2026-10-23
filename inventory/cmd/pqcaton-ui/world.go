@@ -56,8 +56,8 @@ type world struct {
 	reviewFinal, scopeFinal ui.Final
 }
 
-// load: 입력을 한 번씩 읽는다. cards면 확정 상태까지 본다.
-func (s *server) load(cards bool) *world {
+// load: 입력을 한 번씩 읽는다. 카드에 적을 확정 상태까지 본다.
+func (s *server) load() *world {
 	wd := &world{}
 	wd.decl, wd.declErr = decl.Load(s.decl)
 	if s.results != "" {
@@ -97,13 +97,11 @@ func (s *server) load(cards bool) *world {
 	if s.scope != "" && !wd.scopeMissing {
 		wd.scope, wd.scopeFiles, wd.scopeErr = s.scopeSession()
 	}
-	if cards {
-		wd.reviewFinal = s.final(kindReview, wd.reviewID, s.reviewTargets(), wd.reviewErr)
-		if wd.scopeMissing {
-			wd.scopeFinal = ui.FinalNone
-		} else if s.scope != "" {
-			wd.scopeFinal = s.final(kindScope, wd.scope.SessionID, s.scopeTargets(), wd.scopeErr)
-		}
+	wd.reviewFinal = s.final(kindReview, wd.reviewID, s.reviewTargets(), wd.reviewErr)
+	if wd.scopeMissing {
+		wd.scopeFinal = ui.FinalNone
+	} else if s.scope != "" {
+		wd.scopeFinal = s.final(kindScope, wd.scope.SessionID, s.scopeTargets(), wd.scopeErr)
 	}
 	return wd
 }
@@ -229,14 +227,11 @@ func (s *server) scopeTargets() []string {
 	return t
 }
 
-// snapshotScreen: 화면 모델을 만들고, 그 모델과 같은 시점의 양식 rev를 돌려준다. cards면 카드가 읽는
-// 입력의 지문도 함께 재어 둘 다 같을 때만 짝짓는다. 세 번 해도 맞지 않으면 빈 rev다(snapshot과 같다).
-func (s *server) snapshotScreen(here string, cards bool, build func() error) (string, error) {
+// snapshotScreen: 화면 모델을 만들고, 그 모델과 같은 시점의 양식 rev를 돌려준다. 카드가 읽는 입력의
+// 지문도 함께 재어 둘 다 같을 때만 짝짓는다. 세 번 해도 맞지 않으면 빈 rev다(snapshot과 같다).
+func (s *server) snapshotScreen(here string, build func() error) (string, error) {
 	form := s.inputsFor(here)
-	var card []store.Input
-	if cards {
-		card = s.cardInputs()
-	}
+	card := s.cardInputs()
 	if form == nil && card == nil {
 		return "", build()
 	}

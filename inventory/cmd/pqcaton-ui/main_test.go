@@ -509,11 +509,11 @@ func TestNavFollowsProcedure(t *testing.T) {
 func TestTabsNameWhatTheScreensCall(t *testing.T) {
 	s, dir := withDecl(t)
 	s.results = filepath.Join(dir, "results")
-	body := get(t, s, ui.Classic(ui.ScreenReview)+"?lang=ko").Body.String()
+	body := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
 
 	for _, want := range []string{
-		`>④ 판정(리뷰 큐)<`, // 판정을 하는 자리
-		`>인벤토리·판정 이력<`, // 지난 판정을 보는 자리
+		`<span class="step-title">판정(리뷰 큐)</span>`, // 판정을 하는 자리
+		`>인벤토리·판정 이력<`,                             // 지난 판정을 보는 자리
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("탭에 %q 가 없다:\n%s", want, body)
@@ -801,54 +801,5 @@ func TestReviewOpensFromResultsWithoutSessionFile(t *testing.T) {
 	// 선언한 자산이 관측되지 않았으므로 UNOBSERVED로 올라온다.
 	if !strings.Contains(w.Body.String(), "UNOBSERVED") {
 		t.Errorf("리뷰 큐가 비었다:\n%s", w.Body.String())
-	}
-}
-
-// IC-U30 — **새 화면을 두어도 옛 화면은 그대로다.**
-//
-// v0.22.0에서 새 화면이 기본 주소(`/decl`)가 되고 옛 화면은 한 판 동안 `/classic/decl`에
-// 남습니다. 새 스타일이 울타리(`.ui-next`) 없이 새면 옛 화면의 버튼까지 함께 바뀝니다.
-func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
-	s, _ := withDecl(t)
-
-	next := get(t, s, ui.ScreenDecl)
-	if next.Code != http.StatusOK {
-		t.Fatalf("새 화면이 %d", next.Code)
-	}
-	if !strings.Contains(next.Body.String(), `class="ui-next"`) {
-		t.Error("새 화면에 울타리가 없다 — 스타일이 옛 화면으로 샌다")
-	}
-
-	old := get(t, s, ui.Classic(ui.ScreenDecl))
-	if old.Code != http.StatusOK {
-		t.Fatalf("옛 화면이 %d", old.Code)
-	}
-	if strings.Contains(old.Body.String(), `class="ui-next"`) {
-		t.Error("옛 화면에 요약이 붙었다 — 그대로 두기로 했다")
-	}
-	// 둘 다 같은 폼을 쓴다. 저장 경로가 다르면 한쪽 저장이 표시 없이 어긋난다.
-	for _, w := range []*httptest.ResponseRecorder{next, old} {
-		if !strings.Contains(w.Body.String(), `action="/decl/save"`) {
-			t.Error("두 화면이 같은 저장 경로를 쓰지 않는다")
-		}
-	}
-}
-
-// IC-U31 — **옛 화면의 이동 링크는 옛 판 안에서만 오간다.**
-//
-// 옛 화면에서 누른 탭이 새 화면으로 가면 둘을 견주던 사람이 어느 판에 있는지 잃습니다.
-// 새 화면으로 가는 길은 위쪽 안내의 링크 하나뿐입니다.
-func TestClassicNavStaysInClassic(t *testing.T) {
-	s, _ := withDecl(t)
-	body := get(t, s, ui.Classic(ui.ScreenDecl)).Body.String()
-	for _, sc := range []string{ui.ScreenDecl, ui.ScreenReview} {
-		if !strings.Contains(body, `href="`+ui.Classic(sc)+`"`) {
-			t.Errorf("옛 이동 링크에 %s 가 없다", ui.Classic(sc))
-		}
-	}
-	nav := body[strings.Index(body, "<nav>"):]
-	nav = nav[:strings.Index(nav, "</nav>")]
-	if strings.Contains(nav, `href="/decl"`) || strings.Contains(nav, `href="/review"`) {
-		t.Errorf("옛 이동 링크가 새 화면을 가리킨다:\n%s", nav)
 	}
 }

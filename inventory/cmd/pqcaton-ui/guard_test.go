@@ -352,7 +352,7 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 		noStore bool
 	}{
 		{"화면", newReq(http.MethodGet, "/review", nil), true},
-		{"옛 화면", newReq(http.MethodGet, ui.Classic(ui.ScreenReview), nil), true},
+		{"옛 주소", newReq(http.MethodGet, "/classic/review", nil), true},
 		{"조각", newReq(http.MethodGet, "/decl/row?kind=node&i=1", nil), true},
 		{"막힌 요청", foreign, true},
 		{"막힌 POST", withForm(goodPost("/save"), url.Values{}), true},

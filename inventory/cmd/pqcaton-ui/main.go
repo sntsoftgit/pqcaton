@@ -443,14 +443,9 @@ func (s *server) handler() http.Handler {
 	r.Post("/finalize/confirm", s.finalizeConfirm)
 	r.Post("/finalize", s.finalize)
 
-	// 옛 판(한 판만). 화면 GET만 둔다 — 저장 · 확정 · 조각은 두 판이 같은 주소를 쓴다.
-	r.Get(ui.Classic(ui.ScreenDecl), s.declClassic)
-	r.Get(ui.Classic(ui.ScreenScope), s.scopeClassic)
-	r.Get(ui.Classic(ui.ScreenSurvey), s.surveyClassic)
-	r.Get(ui.Classic(ui.ScreenInventory), s.inventoryClassic)
-	r.Get(ui.Classic(ui.ScreenReview), s.reviewClassic)
-	// v0.21의 `-next` 주소. 북마크가 죽지 않게 301로 넘긴다.
-	for from, to := range ui.MovedNext() {
+	// 옛 주소(v0.21의 `-next`, v0.22의 `/classic/…`). 옛 화면은 v0.23.0에서 없어졌고, 북마크가 죽지 않게
+	// 301로 지금 화면에 넘긴다.
+	for from, to := range ui.MovedScreens() {
 		r.Get(from, moved(to))
 	}
 	return r
@@ -504,23 +499,14 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 	case s.st == nil:
 		mode = ui.ModeViewOnly
 	}
-	var newer string
-	if ui.IsClassic(here) {
-		newer = ui.Current(here)
-	}
 	return ui.Page{
 		Title: ui.ScreenTitle(here, l), Subtitle: subtitle,
-		Nav: ui.NavFor(l, here, ui.Screens{
-			Decl: s.decl != "", Scope: s.scope != "", Survey: s.results != "",
-			// 조회는 관측 결과가 있어야 볼 것이 있다. 원장과 정책은 있으면 절이 더 열린다.
-			Inventory: s.results != "",
-		}),
 		Lang: l, LangHref: ui.SwitchHref(r, l.Other()),
 		// 알림은 코드로 온다. 문장은 여기서 그 말로 만든다(주소에 실려 온 글을 그대로 보이지 않는다).
 		Message: ui.NoticeLines(l, ui.DecodeNotices(r.URL.Query().Get(ui.MsgParam)), s.fileName, ""),
 		Problem: ui.NoticeLines(l, ui.DecodeNotices(r.URL.Query().Get(ui.ProblemParam)), s.fileName, "\n"),
 		CSRF:    csrfToken(r),
-		Self:    here, NewHref: newer, Mode: mode,
+		Self:    here, Mode: mode,
 		// rev는 여기서 재지 않는다. 화면 모델과 같은 시점에 잰 값(snapshot)을 처리기가 넣는다.
 	}
 }
@@ -558,21 +544,13 @@ func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	return review.Carry(prev, b.Session), b.Warnings, nil
 }
 
-func (s *server) reviewClassic(w http.ResponseWriter, r *http.Request) {
-	s.reviewScreen(w, r, ui.RenderReview, false)
-}
-
 func (s *server) review(w http.ResponseWriter, r *http.Request) {
 	if s.needsDecl(w, r) {
 		return
 	}
-	s.reviewScreen(w, r, ui.RenderReviewNext, true)
-}
-
-func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.ReviewView) error, next bool) {
 	var wd *world
-	rev, err := s.snapshotScreen(ui.ScreenReview, next, func() error {
-		wd = s.load(next)
+	rev, err := s.snapshotScreen(ui.ScreenReview, func() error {
+		wd = s.load()
 		return wd.reviewErr
 	})
 	if err != nil {
@@ -580,18 +558,14 @@ func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render fun
 		return
 	}
 	sf, warn := wd.review, wd.reviewWarn
-	page := s.page(r, ui.Classic(ui.ScreenReview), sub(sf.Scope, ui.LabelSession(ui.PickLang(r))+" "+s.path))
-	page.Warnings = ui.Warnings(ui.PickLang(r), warn)
+	page := s.nextPage(r, ui.ScreenReview, s.path, s.steps(wd))
+	// 세션의 스코프는 `org://이름`이다. 위쪽 맥락 줄에는 다른 화면과 같은 모양으로
+	// 조직 이름만 적는다 — 한 껍데기에서 같은 자리가 화면마다 다르면 다른 값으로 읽힌다.
+	page.Org = strings.TrimPrefix(sf.Scope, "org://")
+	page.Warnings = ui.Warnings(page.Lang, warn)
+	page.Rev = rev
 	v := ui.NewReviewView(sf, page)
-	if next {
-		v.Page = s.nextPage(r, ui.ScreenReview, s.path, s.steps(wd))
-		// 세션의 스코프는 `org://이름`이다. 위쪽 맥락 줄에는 다른 화면과 같은 모양으로
-		// 조직 이름만 적는다 — 한 껍데기에서 같은 자리가 화면마다 다르면 다른 값으로 읽힌다.
-		v.Page.Org = strings.TrimPrefix(sf.Scope, "org://")
-		v.Page.Warnings = ui.Warnings(ui.PickLang(r), warn)
-	}
-	v.Page.Rev = rev
-	html(w, r, func(out io.Writer) error { return render(out, v) })
+	html(w, r, func(out io.Writer) error { return ui.RenderReview(out, v) })
 }
 
 // applyReview — 폼 값을 지금 세션에 얹는다. **읽고 얹는다** — 화면이 자기 사본을 들고 있으면 그 사이
@@ -611,7 +585,7 @@ func (s *server) reviewID() store.Identity {
 }
 
 func (s *server) save(w http.ResponseWriter, r *http.Request) {
-	back := returnTo(r, ui.ScreenReview)
+	back := ui.ScreenReview
 	if !s.writable(w, r, back) {
 		return
 	}
@@ -636,7 +610,7 @@ func (s *server) save(w http.ResponseWriter, r *http.Request) {
 // 세션 · 계획(앞 판은 .prev로) · 판정 원장 · 영수증이 한 트랜잭션이다. 같은 세션을 같은 내용으로
 // 다시 확정하면 아무것도 다시 쓰지 않는다.
 func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
-	back := returnTo(r, ui.ScreenReview)
+	back := ui.ScreenReview
 	l := ui.PickLang(r)
 	files := []ui.FileRef{file(l, "session", s.path), file(l, "plan", s.planOut)}
 	if !s.writable(w, r, back) {
@@ -722,29 +696,21 @@ func (s *server) scopeSession() (scope.Session, []scope.LayerFile, error) {
 	return scope.Reopen(sf, scope.Layers(files), base, s.org), files, nil
 }
 
-func (s *server) scopeClassic(w http.ResponseWriter, r *http.Request) {
-	s.scopeScreen(w, r, ui.RenderScope, false)
-}
-
 func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
-	s.scopeScreen(w, r, ui.RenderScopeNext, true)
-}
-
-func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.ScopeView) error, next bool) {
 	if s.scope == "" {
 		missingInput(w, r, "scope-session")
 		return
 	}
-	if next && s.scopeMissing() {
+	if s.scopeMissing() {
 		// **GET은 만들지 않는다.** 만들기 폼만 보이고, 만드는 것은 그 POST다(layerCreate).
-		wd := s.load(true)
+		wd := s.load()
 		p := s.nextPage(r, ui.ScreenScope, s.scope, s.steps(wd))
 		html(w, r, func(out io.Writer) error { return ui.RenderLayerCreate(out, ui.LayerCreateView{Page: p}) })
 		return
 	}
 	var wd *world
-	rev, err := s.snapshotScreen(ui.ScreenScope, next, func() error {
-		wd = s.load(next)
+	rev, err := s.snapshotScreen(ui.ScreenScope, func() error {
+		wd = s.load()
 		return wd.scopeErr
 	})
 	if err != nil {
@@ -752,17 +718,14 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 		return
 	}
 	sf, files := wd.scope, wd.scopeFiles
-	page := s.page(r, ui.Classic(ui.ScreenScope), sub(ui.LabelOrg(ui.PickLang(r))+" "+sf.Org, s.scope))
+	page := s.nextPage(r, ui.ScreenScope, s.scope, s.steps(wd))
+	page.Org = sf.Org
+	page.Rev = rev
 	v := ui.NewScopeView(sf, page)
 	if len(files) > 0 {
 		v = v.Editable(files)
 	}
-	if next {
-		v.Page = s.nextPage(r, ui.ScreenScope, s.scope, s.steps(wd))
-		v.Page.Org = sf.Org
-	}
-	v.Page.Rev = rev
-	html(w, r, func(out io.Writer) error { return render(out, v) })
+	html(w, r, func(out io.Writer) error { return ui.RenderScope(out, v) })
 }
 
 // scopeRules — 화면에서 고친 규칙을 계층 파일에 쓴다.
@@ -770,7 +733,7 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 // **판정을 먼저 얹고 규칙을 쓴다.** 같은 폼에서 온 값이라, 규칙만 저장하면 그 사이에
 // 적어 둔 결론이 날아간다. 계층 파일들과 세션이 한 트랜잭션이다.
 func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
-	back := returnTo(r, ui.ScreenScope)
+	back := ui.ScreenScope
 	layers := s.layerFiles()
 	if len(layers) == 0 {
 		missingInput(w, r, "layer")
@@ -871,7 +834,7 @@ func (s *server) scopeID() store.Identity {
 }
 
 func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
-	back := returnTo(r, ui.ScreenScope)
+	back := ui.ScreenScope
 	if s.scope == "" || s.scopeMissing() {
 		missingInput(w, r, "scope-session")
 		return
@@ -897,7 +860,7 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 // scopeFinalize — **명령과 같은 검사를 거친다.** 세션 · 정책 CSV(앞 판은 .prev로) · 판정 원장 ·
 // 영수증이 한 트랜잭션이다.
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
-	back := returnTo(r, ui.ScreenScope)
+	back := ui.ScreenScope
 	if s.scope == "" || s.scopeMissing() {
 		missingInput(w, r, "scope-session")
 		return
@@ -961,39 +924,28 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 
 // survey — 관측을 모아 선언과 대조한 것을 보여 준다. **계산은 report 패키지가 한다** —
 // 명령(`pqcaton-report`)이 글로 찍는 것과 같은 것을 표로 그린다.
-func (s *server) surveyClassic(w http.ResponseWriter, r *http.Request) {
-	s.surveyScreen(w, r, ui.RenderSurvey, false)
-}
-
 func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	if s.needsDecl(w, r) {
 		return
 	}
-	s.surveyScreen(w, r, ui.RenderSurveyNext, true)
-}
-
-func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.SurveyView) error, next bool) {
 	if s.results == "" {
 		missingInput(w, r, "results")
 		return
 	}
 	var wd *world
-	if _, err := s.snapshotScreen(ui.ScreenSurvey, next, func() error {
-		wd = s.load(next)
+	if _, err := s.snapshotScreen(ui.ScreenSurvey, func() error {
+		wd = s.load()
 		return wd.resErr
 	}); err != nil {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
 	res := wd.res
-	v := ui.NewSurveyView(res, s.page(r, ui.Classic(ui.ScreenSurvey),
-		sub(ui.LabelOrg(ui.PickLang(r))+" "+res.Org, ui.LabelResults(ui.PickLang(r))+" "+s.results)))
+	page := s.nextPage(r, ui.ScreenSurvey, s.results, s.steps(wd))
+	page.Org = res.Org
+	v := ui.NewSurveyView(res, page)
 	v.SVG = renderDOT(v.DOT)
-	if next {
-		v.Page = s.nextPage(r, ui.ScreenSurvey, s.results, s.steps(wd))
-		v.Page.Org = res.Org
-	}
-	html(w, r, func(out io.Writer) error { return render(out, v) })
+	html(w, r, func(out io.Writer) error { return ui.RenderSurvey(out, v) })
 }
 
 // renderDOT — `dot`이 있으면 SVG로 그린다. 없으면 빈 값을 돌려주고 화면이 원문을 보인다.
@@ -1022,18 +974,10 @@ func renderDOT(dot string) string {
 // 대조 화면은 지금 대조한 것을 전부 늘어놓는다 — 수천 대에서는 그 자체가 못 쓰는
 // 화면이다. 여기서는 조건을 걸어 찾고, 자산 하나의 판정 이력을 열고, 정책이 뺀 것과 근거가
 // 바뀐 판정을 본다. **전부 손에 든 파일에서 나온다.**
-func (s *server) inventoryClassic(w http.ResponseWriter, r *http.Request) {
-	s.inventoryScreen(w, r, ui.RenderInventory, false)
-}
-
 func (s *server) inventory(w http.ResponseWriter, r *http.Request) {
 	if s.needsDecl(w, r) {
 		return
 	}
-	s.inventoryScreen(w, r, ui.RenderInventoryNext, true)
-}
-
-func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.InventoryView) error, next bool) {
 	if s.results == "" {
 		missingInput(w, r, "results")
 		return
@@ -1042,15 +986,18 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		wd *world
 		v  ui.InventoryView
 	)
-	l := ui.PickLang(r)
 	// **본문도 묶음 안에서 만든다.** 정책 · 원장은 조회 본문만 읽는 파일이라, 묶음 밖에서 읽으면 카드와
 	// 본문이 다른 시점을 보인다.
-	if _, err := s.snapshotScreen(ui.ScreenInventory, next, func() (err error) {
-		wd = s.load(next)
+	if _, err := s.snapshotScreen(ui.ScreenInventory, func() (err error) {
+		wd = s.load()
 		if wd.resErr != nil {
 			return wd.resErr
 		}
-		page := s.page(r, ui.Classic(ui.ScreenInventory), sub(ui.LabelOrg(l)+" "+wd.res.Org, ui.LabelResults(l)+" "+s.results))
+		// **조회는 절차 카드에 넣지 않는다** — 단계가 아니라 아무 때나 들어오는 자리다.
+		// 그래도 위쪽 카드는 그대로 세워 둔다. 어디서 들어왔든 절차가 어디까지 왔는지는
+		// 보여야 한다.
+		page := s.nextPage(r, ui.ScreenInventory, s.results, s.steps(wd))
+		page.Org = wd.res.Org
 		v = ui.NewInventoryView(wd.res, ui.FilterFrom(r.URL.Query()), page)
 		if v, err = s.withPolicy(v); err != nil {
 			return err
@@ -1061,15 +1008,7 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
-	res := wd.res
-	if next {
-		// **조회는 절차 카드에 넣지 않는다** — 단계가 아니라 아무 때나 들어오는 자리다.
-		// 그래도 위쪽 카드는 그대로 세워 둔다. 어디서 들어왔든 절차가 어디까지 왔는지는
-		// 보여야 한다.
-		v.Page = s.nextPage(r, ui.ScreenInventory, s.results, s.steps(wd))
-		v.Page.Org = res.Org
-	}
-	html(w, r, func(out io.Writer) error { return render(out, v) })
+	html(w, r, func(out io.Writer) error { return ui.RenderInventory(out, v) })
 }
 
 // withPolicy — 「안 보고 있는 것」. 확정된 정책 CSV가 있어야 셀 수 있다.
@@ -1143,14 +1082,7 @@ const defaultTTLDays = 180
 
 // ── 선언 ───────────────────────────────────────────────────────────────────
 
-// declEdit · declNext — 같은 값을 서로 다른 판으로 그린다.
-//
-// **뷰를 하나만 만든다.** 두 화면이 각자 세면 숫자가 달라지는 날이 오고, 그날 어느 쪽이
-// 맞는지 아무도 모른다. 다른 것은 그리는 방식뿐이다.
-func (s *server) declClassic(w http.ResponseWriter, r *http.Request) {
-	s.declScreen(w, r, ui.RenderDecl, false)
-}
-
+// declEdit — 선언 화면.
 func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 	// 작업 폴더에 선언이 아직 없으면 만들기를 낸다. GET은 아무것도 만들지 않는다.
 	if s.workspace != "" && !s.declReady() {
@@ -1158,7 +1090,7 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 		html(w, r, func(out io.Writer) error { return ui.RenderDeclCreate(out, ui.DeclCreateView{Page: p, Org: s.org}) })
 		return
 	}
-	s.declScreen(w, r, ui.RenderDeclNext, true)
+	s.declScreen(w, r)
 }
 
 // nextPage — 다음 판 껍데기가 쓰는 값을 얹는다.
@@ -1167,7 +1099,6 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 // 카드 하나를 채우려면 그 화면의 계산을 매 요청마다 돌려야 하고, 대조는 계산이 무겁다.
 func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepState) ui.Page {
 	p := s.page(r, here, subtitle)
-	p.ClassicHref = ui.Classic(here)
 	p.Org = s.org
 	p.Results = s.results
 	p.Steps = ui.StepsFor(p.Lang, here, s.screens(), st)
@@ -1198,14 +1129,14 @@ func (s *server) resultsEmpty() bool {
 	return true
 }
 
-func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.DeclView) error, next bool) {
+func (s *server) declScreen(w http.ResponseWriter, r *http.Request) {
 	if s.decl == "" {
 		missingInput(w, r, "declaration")
 		return
 	}
 	var wd *world
-	rev, err := s.snapshotScreen(ui.ScreenDecl, next, func() error {
-		wd = s.load(next)
+	rev, err := s.snapshotScreen(ui.ScreenDecl, func() error {
+		wd = s.load()
 		return wd.declErr
 	})
 	if err != nil {
@@ -1213,18 +1144,13 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		return
 	}
 	d, seen, unmatched := wd.decl, wd.seen, wd.unmatched
-	sub := sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)
-	v := ui.NewDeclView(d, s.page(r, ui.Classic(ui.ScreenDecl), sub))
-	v = v.WithObserved(seen, unmatched)
-	// **카드는 요약이 나온 뒤에 채운다** — 붙지 않은 이름을 세어야 선언 카드가 설 수 있다.
-	if next {
-		// **부제에는 파일만 적는다.** 조직은 위쪽 맥락 줄에 이미 있어서, 그대로 두면
-		// 같은 값이 한 화면에 두 번 나온다.
-		v.Page = s.nextPage(r, ui.ScreenDecl, s.decl, s.steps(wd))
-		v.Page.Org = d.OrgOrDefault()
-	}
-	v.Page.Rev = rev
-	html(w, r, func(out io.Writer) error { return render(out, v) })
+	// **부제에는 파일만 적는다.** 조직은 위쪽 맥락 줄에 이미 있어서, 그대로 두면
+	// 같은 값이 한 화면에 두 번 나온다.
+	page := s.nextPage(r, ui.ScreenDecl, s.decl, s.steps(wd))
+	page.Org = d.OrgOrDefault()
+	page.Rev = rev
+	v := ui.NewDeclView(d, page).WithObserved(seen, unmatched)
+	html(w, r, func(out io.Writer) error { return ui.RenderDecl(out, v) })
 }
 
 // observedFrom — 노드마다 **관측된** 자산. 컴포넌트 칸의 후보다. 대조 결과는 부르는 쪽이 이미 만든 것을 받는다.
@@ -1316,7 +1242,7 @@ func (s *server) declRemove(w http.ResponseWriter, r *http.Request) {
 const maxRows = 10000
 
 func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
-	back := returnTo(r, ui.ScreenDecl)
+	back := ui.ScreenDecl
 	if s.decl == "" {
 		missingInput(w, r, "declaration")
 		return

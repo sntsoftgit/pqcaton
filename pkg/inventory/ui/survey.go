@@ -133,11 +133,6 @@ func gradeLabel(l Lang, grade string) string {
 	return grade
 }
 
-// RenderSurvey — 대조 결과 화면을 쓴다.
-func RenderSurvey(w io.Writer, v SurveyView) error {
-	return surveyPage(v).Render(context.Background(), w)
-}
-
 // SurveySummary — 대조 요약 화면(`/survey-next`)이 쓰는 숫자.
 type SurveySummary struct {
 	Confirmed, Undeclared, Unobserved int
@@ -165,7 +160,7 @@ func (v SurveyView) Summary() SurveySummary {
 // surveyEditAnchor — 요약에서 원본 표로 보내는 자리.
 const surveyEditAnchor = "survey-detail"
 
-// RenderSurveyNext — 요약을 얹은 대조 화면(`/survey-next`).
-func RenderSurveyNext(w io.Writer, v SurveyView) error {
+// RenderSurvey — 대조 화면(`/survey`).
+func RenderSurvey(w io.Writer, v SurveyView) error {
 	return surveyNextPage(v).Render(context.Background(), w)
 }

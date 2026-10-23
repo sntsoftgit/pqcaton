@@ -122,7 +122,7 @@ func TestOneBrokenInputDimsOneCard(t *testing.T) {
 }
 
 // IC-U85 — **카드만 읽는 파일이 모델을 만드는 사이에 바뀌면 다시 만든다.** 양식의 rev는 그 화면
-// 입력만 덮으므로 지금 파일의 rev와 같다. 옛 화면(카드 없음)은 카드만 읽는 파일을 재지 않는다.
+// 입력만 덮으므로 지금 파일의 rev와 같다.
 func TestSnapshotCoversCardInputs(t *testing.T) {
 	s, dir := newServer(t)
 	s.judgments = filepath.Join(dir, "judgments.jsonl")
@@ -143,15 +143,6 @@ func TestSnapshotCoversCardInputs(t *testing.T) {
 		t.Errorf("rev = %q, want the rev of the review inputs", got)
 	}
 
-	calls = 0
-	s.afterModel = func() {
-		calls++
-		os.WriteFile(s.judgments, []byte(strings.Repeat("{}\n", calls+1)), 0o600)
-	}
-	get(t, s, ui.Classic(ui.ScreenReview))
-	if calls != 1 {
-		t.Errorf("the old screen built its model %d times, want 1", calls)
-	}
 }
 
 // IC-U86 — **조회 본문도 스냅샷 안에서 만든다.** 스냅샷이 짝을 지은 뒤에 원장을 망가뜨려도 화면은

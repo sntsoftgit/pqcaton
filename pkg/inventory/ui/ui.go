@@ -48,8 +48,6 @@ type Page struct {
 	// **Problem과 다르다.** Problem은 하지 않은 것이고, 이것은 한 것이다. 둘을 섞으면
 	// 「선언에 맞지 않는 자리가 있다」가 「저장이 안 됐다」로 읽힌다.
 	Warnings []string
-	// Nav — 화면 사이를 오가는 자리. 부르는 쪽이 무엇을 열었는지에 따라 다르다.
-	Nav []Link
 	// Lang — 이 화면을 그릴 말. **화면만 두 말을 쓴다** — 명령의 출력과 로그는 영어다.
 	Lang Lang
 	// LangHref — 지금 자리 그대로 말만 바꾸는 주소.
@@ -68,13 +66,8 @@ type Page struct {
 	InventoryHref string
 	InventoryText string
 
-	// Self — 이 화면의 주소. 「다시 불러오기」처럼 자기 화면을 다시 받는 조각이 쓴다. 옛 판이면
-	// `/classic/…`이다 — 새 주소를 받으면 옛 화면 안에 새 양식이 끼어든다.
+	// Self — 이 화면의 주소. 「다시 불러오기」처럼 자기 화면을 다시 받는 조각이 쓴다.
 	Self string
-	// ClassicHref — 새 화면 아래쪽의 보조 링크(옛 판). NewHref — 옛 판 위쪽 안내의 새 화면 링크.
-	// 둘 다 v0.23.0에서 없앤다.
-	ClassicHref string
-	NewHref     string
 
 	// CSRF — 바꾸는 양식에 숨겨 실을 토큰. 서버는 쿠키와 이 값이 같은지 본다.
 	//
@@ -97,18 +90,6 @@ const CSRFField = "csrf_token"
 // RevField — 바꾸는 양식이 rev(화면이 그려질 때 본 입력의 지문)를 싣는 필드 이름. 서버는 저장
 // 잠금 안에서 rev를 다시 계산해 견주고, 다르면 저장하지 않는다.
 const RevField = "rev"
-
-// ReturnField — 저장 · 확정 뒤 돌아갈 화면(그 화면의 주소). 서버는 같은 화면의 새 판 · 옛 판 주소와
-// 글자 그대로 같을 때만 따른다. 숨은 필드라 사람이 고칠 수 있는 값이다 — 믿지 않는다.
-const ReturnField = "return_to"
-
-// Link — 위쪽 이동 링크.
-type Link struct {
-	Href string
-	Text string
-	// Here — 지금 보고 있는 화면인가.
-	Here bool
-}
 
 // ── 리뷰 큐 ────────────────────────────────────────────────────────────────
 
@@ -161,11 +142,6 @@ func NewReviewView(sf review.Session, page Page) ReviewView {
 		v.Policies = append(v.Policies, *byPolicy[name])
 	}
 	return v
-}
-
-// RenderReview — 리뷰 큐 화면을 쓴다.
-func RenderReview(w io.Writer, v ReviewView) error {
-	return reviewPage(v).Render(context.Background(), w)
 }
 
 // ApplyReview — 폼에서 온 값을 세션에 얹는다.
@@ -393,11 +369,6 @@ func groupByNode(d decl.Declaration) []DeclNode {
 	return out
 }
 
-// RenderDecl — 선언 편집 화면을 쓴다.
-func RenderDecl(w io.Writer, v DeclView) error {
-	return declPage(v).Render(context.Background(), w)
-}
-
 // RenderRow — 「행 추가」가 돌려주는 조각: 빈 줄 하나와, 번호가 하나 오른 버튼.
 //
 // **화면과 같은 조각을 쓴다**(decl.templ의 nodeBlock·assetRow·edgeRow). 폼 이름이 곧
@@ -568,11 +539,8 @@ func (v DeclView) ObservedText(n DeclNode) string {
 // 새 주소로 보내면 고치다 만 것이 날아간다.
 const declEditAnchor = "decl-edit"
 
-// RenderDeclNext — 요약을 얹은 선언 화면(`/decl-next`).
-//
-// 지금 화면(RenderDecl)과 **같은 뷰를 받는다.** 값을 따로 만들면 두 화면이 다른 답을
-// 내는 날이 오고, 그날 어느 쪽이 맞는지 아무도 모른다.
-func RenderDeclNext(w io.Writer, v DeclView) error {
+// RenderDecl — 선언 화면(`/decl`).
+func RenderDecl(w io.Writer, v DeclView) error {
 	return declNextPage(v).Render(context.Background(), w)
 }
 
@@ -626,8 +594,8 @@ func (s ReviewSummary) Ready() bool { return s.Open == 0 && s.Signed }
 // reviewEditAnchor — 요약에서 판정 폼으로 보내는 자리.
 const reviewEditAnchor = "review-edit"
 
-// RenderReviewNext — 요약을 얹은 판정 화면(`/review-next`).
-func RenderReviewNext(w io.Writer, v ReviewView) error {
+// RenderReview — 판정 화면(`/review`).
+func RenderReview(w io.Writer, v ReviewView) error {
 	return reviewNextPage(v).Render(context.Background(), w)
 }
 

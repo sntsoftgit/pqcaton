@@ -87,11 +87,6 @@ templ nextShell(p Page) {
 				}
 				{ children... }
 			</main>
-			if p.ClassicHref != "" {
-				<footer class="classic-link">
-					<a href={ templ.SafeURL(p.ClassicHref) }>{ tClassicLink.In(p.Lang) }</a>
-				</footer>
-			}
 		</body>
 	</html>
 }

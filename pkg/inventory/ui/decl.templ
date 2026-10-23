@@ -2,14 +2,6 @@ package ui
 
 import "strconv"
 
-// declPage — 선언 편집. 화면은 적는 자리만 보여 준다 — 앞뒤가 맞는지는 저장한 뒤
-// 명령(`pqcaton-report`)과 검토 화면이 짚는다.
-templ declPage(v DeclView) {
-	@shell(v.Page) {
-		@declForm(v)
-	}
-}
-
 // declForm — 선언을 적는 폼. **껍데기와 갈라 둔다** — 요약을 얹은 새 화면이 같은 폼을
 // 그대로 쓴다. 폼 이름이 곧 저장 경로라(`node.name.0` → 선언의 그 자리) 두 벌로 두면
 // 어긋나는 날이 오고, 그날 저장이 오류로 드러나지 않은 채 어긋난다.
