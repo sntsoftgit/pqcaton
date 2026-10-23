@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"time"
 
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
@@ -85,11 +87,23 @@ func (s *server) scopeInputs() []store.Input {
 	return in
 }
 
+// assetPolicy: 자산 스코프 정책(-scope-assets)을 **지금** 읽는다. 상류 적재와 같은 것이어야 지문이 맞는다.
+//
+// 시작할 때 읽어 둔 사본을 쓰면, 서버가 떠 있는 동안 파일이 바뀌어도 화면과 확정은 옛 정책으로 대조한다.
+// rev는 이 파일을 덮으므로 모델도 같은 시점의 파일을 읽어야 「모델과 rev가 같은 입력을 본다」가 선다.
+// 리뷰 · 선언 · 확인 경로에서는 snapshot 콜백 안에서 불린다.
+func (s *server) assetPolicy() (*kscope.AssetPolicy, error) {
+	return review.LoadAssetPolicy(s.scopeAssets)
+}
+
 // declInputs: 선언 화면이 그려질 때 읽는 것 전부. 관측 결과는 후보 칸에 쓰인다.
 func (s *server) declInputs() []store.Input {
 	in := []store.Input{{Name: "declaration", Path: s.decl}}
 	if s.results != "" {
 		in = append(in, store.Input{Name: "results", Path: s.results, Dir: true})
+	}
+	if s.scopeAssets != "" {
+		in = append(in, store.Input{Name: "scope-assets", Path: s.scopeAssets})
 	}
 	return in
 }

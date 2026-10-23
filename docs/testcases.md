@@ -308,6 +308,7 @@
 | **[IC-U70](../inventory/cmd/pqcaton-ui/startup_test.go) ✅** | 복구 필요가 남은 채로 화면을 시작 | **일반 화면도 503이다.** 정적 파일만 나가고 화면 · 조각 · 저장은 모두 503 복구 페이지로 가며 `-recover-status`를 안내한다. 실행 잠금은 쥔 채라 명령도 막힌다 |
 | **[IC-U71](../inventory/cmd/pqcaton-ui/startup_test.go) ✅** | 입력에서 세운 세션의 준비 파일을 쓰는 단계에서 실패 | 서버가 뜨지 않는다. 그대로 열면 읽을 때마다 세션 ID가 새로 난다. 실행 잠금을 놓고 세션 파일도 준비 파일도 남기지 않는다 |
 | **[IC-U72](../inventory/cmd/pqcaton-ui/snapshot_test.go) ✅** | 화면 모델을 만든 직후에 다른 탭이나 손 편집이 세션을 바꿈 | **화면에 그린 내용과 양식의 rev는 같은 시점이다.** 모델을 만들기 전과 뒤의 rev가 같을 때만 짝짓고, 다르면 다시 만든다. 확인 페이지도 같아서, 미리 보는 사이에 바뀌면 폼의 rev와 맞지 않아 409다 |
+| **[IC-U73](../inventory/cmd/pqcaton-ui/policy_test.go) ✅** | 서버가 떠 있는 동안 자산 스코프 정책(`-scope-assets`)을 바꿈 | **화면 모델 · rev · 확인 결과가 모두 새 정책을 쓴다.** 정책은 시작할 때 읽을 수 있는지만 보고, 쓸 때마다 읽는다. 선언 화면의 rev도 정책 파일을 덮는다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |

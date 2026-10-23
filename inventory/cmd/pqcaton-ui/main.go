@@ -157,12 +157,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "❌ cannot read the layer CSVs:", err)
 		os.Exit(1)
 	}
-	policy, err := review.LoadAssetPolicy(*scopeAssets)
-	if err != nil {
+	// 정책은 읽을 수 있는지만 본다. **보관하지 않는다** - 쓸 때마다 읽는다(assetPolicy).
+	if _, err := review.LoadAssetPolicy(*scopeAssets); err != nil {
 		fmt.Fprintln(os.Stderr, "❌", err)
 		os.Exit(2)
 	}
-	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath, policy: policy,
+	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath,
 		layers: layers, base: *basePath, scopeAssets: *scopeAssets,
 		judgments: *judgments, org: *orgName, planOut: *planOut, scopeOut: *scopeOut}
 	if err := s.openState(*stateDir); err != nil {
@@ -288,7 +288,6 @@ type server struct {
 	path    string
 	decl    string
 	results string
-	policy  *kscope.AssetPolicy // 자산 스코프 정책. 상류 적재와 같은 것이어야 지문이 맞는다
 	scope   string
 	// layers — 자산 스코프 계층 CSV들, 준 순서대로. 있으면 화면에서 규칙을 고친다.
 	layers    []string
@@ -442,7 +441,11 @@ func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	if err != nil {
 		return prev, nil, err
 	}
-	b, err := review.FromResultsWith(s.results, d, s.org, s.policy)
+	policy, err := s.assetPolicy()
+	if err != nil {
+		return prev, nil, err
+	}
+	b, err := review.FromResultsWith(s.results, d, s.org, policy)
 	if err != nil {
 		return prev, nil, err
 	}
@@ -860,7 +863,12 @@ func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render fun
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res, err := report.BuildWith(s.results, d, s.policy)
+	policy, err := s.assetPolicy()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res, err := report.BuildWith(s.results, d, policy)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -920,7 +928,12 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res, err := report.BuildWith(s.results, d, s.policy)
+	policy, err := s.assetPolicy()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res, err := report.BuildWith(s.results, d, policy)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -1098,7 +1111,11 @@ func (s *server) observedAssets(d decl.Declaration) (map[string][]ui.DeclAsset, 
 	if s.results == "" {
 		return nil, nil
 	}
-	res, err := report.BuildWith(s.results, d, s.policy)
+	policy, err := s.assetPolicy()
+	if err != nil {
+		return nil, nil
+	}
+	res, err := report.BuildWith(s.results, d, policy)
 	if err != nil {
 		return nil, nil
 	}
