@@ -27,6 +27,9 @@ var noticeText = map[string]noticeSpec{
 	NoticeDeclCreated: {T{
 		KO: "빈 선언을 만들었습니다. 아래에서 노드와 자산을 적으십시오",
 		EN: "An empty declaration was created. Write the nodes and assets below"}, ""},
+	NoticeLayerCreated: {T{
+		KO: "빈 계층을 만들었습니다: %s. 아래에서 규칙을 적으십시오",
+		EN: "An empty layer was created: %s. Write its rules below"}, "i"},
 
 	// 확정 관문이 막은 까닭. 머리 하나에 빠진 것들이 「 · 」 줄로 붙는다.
 	ProblemCannotFinalize: {T{

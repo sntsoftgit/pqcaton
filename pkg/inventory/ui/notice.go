@@ -42,6 +42,7 @@ const (
 	NoticeFinalizedAlready    = "finalized-already"
 	NoticeFinalizedSuperseded = "finalized-superseded"
 	NoticeDeclCreated         = "decl-created"
+	NoticeLayerCreated        = "layer-created"
 
 	ProblemCannotFinalize      = "gate-cannot-finalize"
 	ProblemMandatory           = "gate-mandatory"

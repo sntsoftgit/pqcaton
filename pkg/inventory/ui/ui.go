@@ -83,6 +83,9 @@ type Page struct {
 	CSRF string
 	// Mode — 이 서버가 지금 저장하는가. 화면 머리에 그대로 적는다(비면 적지 않는다).
 	Mode Mode
+	// EmptyResults — 관측 결과 폴더가 비어 있으면 그 경로. 대조 · 판정 화면이 「어디에 넣나」를 보인다.
+	// 운영자 자신의 기계 경로라 보인다(오류 페이지와 다르다). 비면 적지 않는다.
+	EmptyResults string
 	// Rev — 이 화면이 그려질 때 본 입력의 지문. 바꾸는 양식에 숨겨 싣는다. CSRF와 같은 까닭으로
 	// 비어 있어도 필드를 그린다. 빈 rev는 서버가 「화면이 오래됐다」로 거부한다.
 	Rev string
@@ -238,6 +241,53 @@ type DeclView struct {
 	// 「관측 이름」 칸의 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 UNDECLARED로
 	// 오른다는 뜻이고, 그것은 선언이 틀려서가 아니라 이름이 서로 달라서다.
 	Unmatched []string
+	// Problems — 선언이 스스로 앞뒤가 안 맞는 자리(decl.Check). **막지는 않고 짚는다.**
+	Problems []DeclProblem
+}
+
+// DeclProblem — 선언 문제 하나. 어느 자리(노드 · 자산 · 엣지)의 어느 칸이, 무엇이 어긋났고 그대로 두면
+// 무슨 일이 생기는지.
+type DeclProblem struct {
+	Where, Field, What, Why string
+}
+
+// declProblems: decl.Check의 문제를 화면이 보는 모양으로. 자리 표기(`nodes/이름` 등)는 그 말의 행 이름으로 옮긴다.
+func declProblems(l Lang, ps []decl.Problem) []DeclProblem {
+	var out []DeclProblem
+	for _, p := range ps {
+		kind, rest, _ := strings.Cut(p.Where, "/")
+		var where string
+		switch kind {
+		case "nodes", "scope":
+			where = tRowNode.In(l) + " " + strings.ReplaceAll(rest, "+", " · ")
+		case "assets":
+			where = tRowAsset.In(l) + " " + strings.Replace(rest, "/", " · ", 1)
+		case "edges":
+			where = tRowEdge.In(l) + " " + strings.ReplaceAll(rest, "→", " → ")
+		default:
+			where = p.Where
+		}
+		what, why := declProblemText(l, p)
+		out = append(out, DeclProblem{Where: where, Field: declProblemField(p.Code).In(l), What: what, Why: why})
+	}
+	return out
+}
+
+// declProblemField: 문제가 걸린 칸. 선언 화면의 칸 이름과 같다.
+func declProblemField(c decl.Code) T {
+	switch c {
+	case decl.NodeHasNoIP, decl.IPMalformed, decl.IPClaimedTwice, decl.NodeMissingIP:
+		return tColIP
+	case decl.ObservedAsTwice:
+		return tColObservedAs
+	case decl.AssetOffScope:
+		return tColNode
+	case decl.EdgeSrcOffScope:
+		return tColSrc
+	case decl.EdgePortZero:
+		return tColPort
+	}
+	return tColName
 }
 
 // DeclNode — 노드 한 대와 그 안의 자산.
@@ -296,11 +346,10 @@ func (v DeclView) WithObserved(seen map[string][]DeclAsset, unmatched []string) 
 
 // NewDeclView — 선언을 화면이 보는 모양으로 옮긴다.
 //
-// **앞뒤가 맞는지는 여기서 말하지 않는다.** 선언 화면은 적는 자리다 — 어긋남은
-// `decl.Check`를 쓰는 검토 화면과 `pqcaton-report`가 짚는다.
+// 앞뒤가 안 맞는 자리(decl.Check)도 함께 옮긴다. 화면이 칸 단위로 짚는다(v0.23.0).
 func NewDeclView(d decl.Declaration, page Page) DeclView {
 	return DeclView{Page: page, Org: d.Org, Comment: d.Comment,
-		Nodes: groupByNode(d), Edges: d.Edges}
+		Nodes: groupByNode(d), Edges: d.Edges, Problems: declProblems(page.Lang, decl.Check(d))}
 }
 
 // groupByNode — 파일의 세 목록(scope · nodes · assets)을 노드마다 한 덩어리로 묶는다.
@@ -477,11 +526,13 @@ type DeclSummary struct {
 	Unlinked int
 	// Assets — 선언한 암호 자산. 노드에 흩어져 있어 합쳐 센다.
 	Assets int
+	// Problems — 앞뒤가 안 맞는 자리.
+	Problems int
 }
 
 // Summary — 요약의 숫자 셋.
 func (v DeclView) Summary() DeclSummary {
-	s := DeclSummary{Nodes: len(v.Nodes), Unlinked: len(v.Unmatched)}
+	s := DeclSummary{Nodes: len(v.Nodes), Unlinked: len(v.Unmatched), Problems: len(v.Problems)}
 	for _, n := range v.Nodes {
 		s.Assets += len(n.Assets)
 	}
@@ -584,6 +635,19 @@ func RenderReviewNext(w io.Writer, v ReviewView) error {
 type DeclCreateView struct {
 	Page
 	Org string
+}
+
+// LayerCreateView — 계층 만들기 화면.
+type LayerCreateView struct {
+	Page
+}
+
+// LayerNamePattern — 계층 이름(곧 파일 이름). 서버도 같은 식으로 다시 본다.
+const LayerNamePattern = "[a-z0-9][a-z0-9_-]{0,39}"
+
+// RenderLayerCreate — 계층 만들기 화면을 그린다.
+func RenderLayerCreate(w io.Writer, v LayerCreateView) error {
+	return layerCreatePage(v).Render(context.Background(), w)
 }
 
 // RenderDeclCreate — 선언 만들기 화면을 그린다.

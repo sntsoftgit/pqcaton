@@ -50,6 +50,8 @@ type world struct {
 	scope      scope.Session
 	scopeFiles []scope.LayerFile
 	scopeErr   error
+	// scopeMissing — 작업 폴더에 계층도 스코프 세션도 아직 없다.
+	scopeMissing bool
 
 	reviewFinal, scopeFinal ui.Final
 }
@@ -91,12 +93,15 @@ func (s *server) load(cards bool) *world {
 		wd.review, wd.reviewWarn = review.Carry(prev, b.Session), b.Warnings
 	}
 
-	if s.scope != "" {
+	wd.scopeMissing = s.scopeMissing()
+	if s.scope != "" && !wd.scopeMissing {
 		wd.scope, wd.scopeFiles, wd.scopeErr = s.scopeSession()
 	}
 	if cards {
 		wd.reviewFinal = s.final(kindReview, wd.reviewID, s.reviewTargets(), wd.reviewErr)
-		if s.scope != "" {
+		if wd.scopeMissing {
+			wd.scopeFinal = ui.FinalNone
+		} else if s.scope != "" {
 			wd.scopeFinal = s.final(kindScope, wd.scope.SessionID, s.scopeTargets(), wd.scopeErr)
 		}
 	}
@@ -143,7 +148,9 @@ func (s *server) steps(wd *world) ui.StepState {
 			st.Decl = &got
 		}
 	}
-	if s.scope != "" {
+	if wd.scopeMissing {
+		st.LayersMissing = true
+	} else if s.scope != "" {
 		if wd.scopeErr != nil {
 			unavailable("scope", wd.scopeErr)
 		} else {
@@ -187,7 +194,7 @@ func (s *server) cardInputs() []store.Input {
 	add("scope-assets", s.scopeAssets, false)
 	add("session", s.path, false)
 	add("scope-session", s.scope, false)
-	for i, l := range s.layers {
+	for i, l := range s.layerFiles() {
 		add(fmt.Sprintf("layer:%d", i), l, false)
 	}
 	add("base", s.base, false)

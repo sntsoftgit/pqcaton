@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 )
 
 func hangul(s string) bool {
@@ -85,6 +86,32 @@ func TestNoticesRoundTrip(t *testing.T) {
 	} {
 		if got := n.Text(EN, nil); got != unknown {
 			t.Errorf("%+v drew %q, want the unknown notice", n, got)
+		}
+	}
+}
+
+// IC-UI51 — **선언 문제는 코드마다 두 말의 문장과 칸이 있다.** 한국어 문장이 비거나 값 자리가 남지 않고, 영어는
+// 강조 표시(**) 없이 `decl`의 문장이다. 자리 표기는 그 말의 행 이름으로 옮긴다.
+func TestDeclProblemsHaveBothLanguages(t *testing.T) {
+	codes := []decl.Code{decl.NodeNotInScope, decl.NodeHasNoIP, decl.IPMalformed, decl.IPClaimedTwice,
+		decl.ObservedAsTwice, decl.NodeMissingIP, decl.AssetOffScope, decl.EdgeSrcOffScope, decl.EdgePortZero}
+	for _, c := range codes {
+		p := decl.Problem{Where: "nodes/a+b", Code: c, Detail: "10.0.0.9"}
+		for _, l := range []Lang{KO, EN} {
+			got := declProblems(l, []decl.Problem{p})[0]
+			if got.What == "" || got.Why == "" || got.Field == "" || strings.Contains(got.What, "%") || strings.Contains(got.Why, "**") {
+				t.Errorf("%s (%s): %+v", c, l, got)
+			}
+			if (l == EN) == hangul(got.What+got.Why+got.Field+got.Where) {
+				t.Errorf("%s (%s): wrong language: %+v", c, l, got)
+			}
+		}
+	}
+	for where, want := range map[string]string{
+		"nodes/a+b": "노드 a · b", "scope/a": "노드 a", "assets/a/openssl": "자산 a · openssl", "edges/a→b": "엣지 a → b",
+	} {
+		if got := declProblems(KO, []decl.Problem{{Where: where, Code: decl.EdgePortZero}})[0].Where; got != want {
+			t.Errorf("%s → %q, want %q", where, got, want)
 		}
 	}
 }

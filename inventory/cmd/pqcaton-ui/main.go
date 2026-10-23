@@ -37,6 +37,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -382,6 +383,7 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.RemovePath, s.declRemove)
 	r.Post("/decl/save", s.declSave)
 	r.Post(ui.DeclCreatePath, s.declCreate)
+	r.Post(ui.LayerCreatePath, s.layerCreate)
 	r.Get(ui.ScreenScope, s.scopeEdit)
 	r.Get(ui.ScopeRowPath, s.scopeRow)
 	r.Post("/scope/rules", s.scopeRules)
@@ -653,14 +655,15 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 // 보여 준다. 그래서 읽을 때마다 계층에서 다시 세운다 — 사람이 적은 판정은 [scope.Reopen]
 // 이 들고 간다. 파일에 쓰는 것은 저장·확정할 때뿐이다.
 func (s *server) scopeSession() (scope.Session, []scope.LayerFile, error) {
+	layers := s.layerFiles()
 	sf, err := scope.LoadSession(s.scope)
-	if err != nil && (len(s.layers) == 0 || !os.IsNotExist(err)) {
+	if err != nil && (len(layers) == 0 || !os.IsNotExist(err)) {
 		return sf, nil, err
 	}
-	if len(s.layers) == 0 {
+	if len(layers) == 0 {
 		return sf, nil, nil
 	}
-	files, err := scope.LoadLayers(s.layers)
+	files, err := scope.LoadLayers(layers)
 	if err != nil {
 		return sf, nil, err
 	}
@@ -684,6 +687,13 @@ func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.ScopeView) error, next bool) {
 	if s.scope == "" {
 		missingInput(w, r, "scope-session")
+		return
+	}
+	if next && s.scopeMissing() {
+		// **GET은 만들지 않는다.** 만들기 폼만 보이고, 만드는 것은 그 POST다(layerCreate).
+		wd := s.load(true)
+		p := s.nextPage(r, ui.ScreenScope, s.scope, s.steps(wd))
+		html(w, r, func(out io.Writer) error { return ui.RenderLayerCreate(out, ui.LayerCreateView{Page: p}) })
 		return
 	}
 	var wd *world
@@ -715,7 +725,8 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 // 적어 둔 결론이 날아간다. 계층 파일들과 세션이 한 트랜잭션이다.
 func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenScope)
-	if len(s.layers) == 0 {
+	layers := s.layerFiles()
+	if len(layers) == 0 {
 		missingInput(w, r, "layer")
 		return
 	}
@@ -723,9 +734,9 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	l := ui.PickLang(r)
-	targets := append([]string{s.scope}, s.layers...)
+	targets := append([]string{s.scope}, layers...)
 	files := []ui.FileRef{file(l, "scope-session", s.scope)}
-	for _, p := range s.layers {
+	for _, p := range layers {
 		files = append(files, file(l, "layer", p))
 	}
 	var (
@@ -780,12 +791,13 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 
 // scopeRow — 규칙 표의 「행 추가」.
 func (s *server) scopeRow(w http.ResponseWriter, r *http.Request) {
-	if len(s.layers) == 0 {
+	n := len(s.layerFiles())
+	if n == 0 {
 		missingInput(w, r, "layer")
 		return
 	}
 	layer, err := strconv.Atoi(r.URL.Query().Get("layer"))
-	if err != nil || layer < 0 || layer >= len(s.layers) {
+	if err != nil || layer < 0 || layer >= n {
 		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
 		return
 	}
@@ -814,7 +826,7 @@ func (s *server) scopeID() store.Identity {
 
 func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenScope)
-	if s.scope == "" {
+	if s.scope == "" || s.scopeMissing() {
 		missingInput(w, r, "scope-session")
 		return
 	}
@@ -840,7 +852,7 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 // 영수증이 한 트랜잭션이다.
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenScope)
-	if s.scope == "" {
+	if s.scope == "" || s.scopeMissing() {
 		missingInput(w, r, "scope-session")
 		return
 	}
@@ -1117,7 +1129,27 @@ func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepStat
 		p.InventoryHref = ui.ScreenInventory
 		p.InventoryText = ui.InventoryLabel(p.Lang)
 	}
+	if (here == ui.ScreenSurvey || here == ui.ScreenReview) && s.resultsEmpty() {
+		p.EmptyResults = s.results
+	}
 	return p
+}
+
+// resultsEmpty: 관측 결과 폴더에 파일이 하나도 없는가(숨은 파일은 세지 않는다). 읽지 못하면 비었다고 하지 않는다.
+func (s *server) resultsEmpty() bool {
+	if s.results == "" {
+		return false
+	}
+	ents, err := os.ReadDir(s.results)
+	if err != nil {
+		return false
+	}
+	for _, e := range ents {
+		if !strings.HasPrefix(e.Name(), ".") {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.DeclView) error, next bool) {
@@ -1276,6 +1308,46 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 	}
 	redirect(w, r, back, msg, nil)
 }
+
+// layerCreate: 작업 폴더에 빈 계층 CSV를 만든다. 같은 이름의 파일이 있으면 덮어쓰지 않고 409다. 만든 뒤 같은
+// 요청에서 스코프 세션을 세운다(materialize).
+func (s *server) layerCreate(w http.ResponseWriter, r *http.Request) {
+	if s.workspace == "" {
+		notFound(w, r)
+		return
+	}
+	if !s.writable(w, r, ui.ScreenScope) {
+		return
+	}
+	name := strings.TrimSpace(r.PostForm.Get("name"))
+	if !layerName.MatchString(name) {
+		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
+		return
+	}
+	l := ui.PickLang(r)
+	p := filepath.Join(s.workspace, wsLayers, name+".csv")
+	b, err := scope.EncodeLayer(scope.LayerFile{Path: p, Layer: scope.Layer{Name: name}})
+	if err != nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, err)
+		return
+	}
+	if err := s.st.Create([]store.Change{{Path: p, Content: b}}, s.waitTime()); err != nil {
+		if errors.Is(err, store.ErrExists) {
+			s.refuse(w, r, http.StatusConflict, ui.RefusedExists, ui.ScreenScope, []ui.FileRef{file(l, "layer", p)})
+			return
+		}
+		s.fail(w, r, ui.ScreenScope, err, file(l, "layer", p))
+		return
+	}
+	if err := s.materialize(); err != nil {
+		s.fail(w, r, ui.ScreenScope, err, file(l, "scope-session", s.scope))
+		return
+	}
+	redirect(w, r, ui.ScreenScope, []ui.Notice{ui.N(ui.NoticeLayerCreated, name)}, nil)
+}
+
+// layerName: 계층 이름. 화면의 입력 칸과 같은 식이다(ui.LayerNamePattern).
+var layerName = regexp.MustCompile("^" + ui.LayerNamePattern + "$")
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,21 @@
+package ui
+
+// layerCreatePage — 작업 폴더에 계층이 아직 없을 때의 스코프 화면. **GET은 아무것도 만들지 않는다**: 만들기는
+// 이 폼의 POST(CSRF로 보호)가 하고, 같은 이름의 파일이 그 사이 생겼으면 덮어쓰지 않는다.
+templ layerCreatePage(v LayerCreateView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			<h2>{ tLayerCreateHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tLayerCreateLede.In(v.Page.Lang) }</p>
+			<form method="post" action={ templ.SafeURL(LayerCreatePath) }>
+				@csrfField(v.Page)
+				<label for="layer-create-name">{ tLayerCreateName.In(v.Page.Lang) }</label>
+				<input type="text" id="layer-create-name" name="name" value="corp" required pattern={ LayerNamePattern } aria-describedby="layer-create-hint"/>
+				<p class="hint" id="layer-create-hint">{ tLayerCreateHint.In(v.Page.Lang) }</p>
+				<div class="actions">
+					<button class="primary">{ tLayerCreateDo.In(v.Page.Lang) }</button>
+				</div>
+			</form>
+		</div>
+	}
+}

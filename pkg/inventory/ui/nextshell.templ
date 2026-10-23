@@ -70,6 +70,18 @@ templ nextShell(p Page) {
 						</ul>
 					</div>
 				}
+				if p.EmptyResults != "" {
+					<div class="ui-next">
+						<div class="next" role="status">
+							<div class="next-icon">i</div>
+							<div>
+								<strong>{ tEmptyResultsHead.In(p.Lang) }</strong>
+								<span><code>{ p.EmptyResults }</code></span>
+								<span>{ tEmptyResultsBody.In(p.Lang) }</span>
+							</div>
+						</div>
+					</div>
+				}
 				if p.Problem != "" {
 					<div class="msg bad" role="alert"><strong>{ tRefused.In(p.Lang) }</strong><pre>{ p.Problem }</pre></div>
 				}

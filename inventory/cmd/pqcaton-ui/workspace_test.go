@@ -89,8 +89,8 @@ func TestWorkspaceFixesEveryPath(t *testing.T) {
 			t.Errorf("%s = %q, want %q", k, got[k], filepath.Join(ws, name))
 		}
 	}
-	if c.base != "" || c.scope != "" || len(c.layers) != 0 {
-		t.Errorf("an empty workspace opened scope files: base %q scope %q layers %v", c.base, c.scope, c.layers)
+	if c.base != "" || c.scope != filepath.Join(ws, "scope-session.json") || len(c.layers) != 0 {
+		t.Errorf("an empty workspace: base %q scope %q layers %v", c.base, c.scope, c.layers)
 	}
 
 	for _, f := range []string{"layers/b-prod.csv", "layers/a-corp.csv", "layers/notes.txt", "asset-scope.csv"} {
@@ -265,5 +265,137 @@ func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 	}
 	if body := do(h, newReq(http.MethodGet, "/decl?lang=ko", nil)).Body.String(); !strings.Contains(body, `action="/decl/save"`) {
 		t.Error("after creating, the declaration screen is not the editor")
+	}
+}
+
+// IC-U99 — **선언의 앞뒤가 안 맞는 자리를 01 화면이 칸 단위로 짚는다.** 어느 노드 · 엣지의 어느 칸이, 무엇이,
+// 그대로 두면 어떻게 되는지를 두 말로 보인다. 01 카드에 그 수가 오르고, 판정 화면의 경고는 `pqcaton-report`로
+// 보내지 않고 01 화면을 가리킨다.
+func TestDeclProblemsAreListedByField(t *testing.T) {
+	ws := t.TempDir()
+	d := decl.Declaration{Org: "acme", Scope: []string{"web", "db"},
+		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1:443"}}, {Name: "db", IPs: []string{"10.0.0.2"}}},
+		Assets: []decl.Asset{}, Edges: []decl.Edge{{Src: "web", Dst: "db", Port: 0, Proto: "tcp"}}}
+	b, err := decl.Encode(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ws, "declaration.json"), b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h, code, _, stderr := started(t, "-workspace", ws, "-no-browser")
+	if code != 0 {
+		t.Fatalf("code %d\n%s", code, stderr)
+	}
+	for _, c := range []struct{ lang, head, ip, port, why, warn string }{
+		{"ko", "앞뒤가 맞지 않는 자리", "노드 web</strong> · IP: IP 주소가 아닙니다", "엣지 web → db</strong> · 포트: 포트가 0입니다", "그대로 두면", "01 선언 화면이 보여 줍니다"},
+		{"en", "Places that do not add up", "Node web</strong> · IP: not an IP address", "Edge web → db</strong> · Port: the port is 0", "If left as is", "The 01 declaration screen shows where"},
+	} {
+		body := do(h, newReq(http.MethodGet, "/decl?lang="+c.lang, nil)).Body.String()
+		for _, want := range []string{c.head, c.ip, c.port, c.why} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s: no %q in the declaration screen", c.lang, want)
+			}
+		}
+		if strings.Contains(body, "**") || strings.Contains(body, "pqcaton-report") {
+			t.Errorf("%s: the declaration screen shows emphasis marks or sends people to pqcaton-report", c.lang)
+		}
+		if c.lang == "en" && hasHangul(visible(body)) {
+			t.Error("en: Korean on the English declaration screen")
+		}
+		if got := cards(t, body)["01"]; !strings.Contains(got, "2") {
+			t.Errorf("%s: the 01 card does not count the problems: %q", c.lang, got)
+		}
+		review := do(h, newReq(http.MethodGet, "/review?lang="+c.lang, nil)).Body.String()
+		if strings.Contains(review, "pqcaton-report") || !strings.Contains(review, c.warn) {
+			t.Errorf("%s: the review warning does not point at the 01 screen", c.lang)
+		}
+	}
+}
+
+// IC-U100 — **관측 결과 폴더가 비어 있으면 대조 · 판정 화면이 그 폴더를 가리킨다.** 결과 파일을 넣으면 다시
+// 불러오는 것만으로 안내가 사라진다(GET은 아무것도 쓰지 않는다).
+func TestEmptyResultsPointAtTheFolder(t *testing.T) {
+	ws := t.TempDir()
+	h, _, _, _ := started(t, "-workspace", ws, "-no-browser")
+	if w := do(h, posted(ui.DeclCreatePath, url.Values{"org": {"acme"}})); w.Code != http.StatusSeeOther {
+		t.Fatalf("create: %d", w.Code)
+	}
+	results := filepath.Join(ws, "results")
+	for _, path := range []string{"/survey", "/review"} {
+		for _, c := range []struct{ lang, want string }{{"ko", "아직 관측 결과가 없습니다"}, {"en", "No observed results yet"}} {
+			body := do(h, newReq(http.MethodGet, path+"?lang="+c.lang, nil)).Body.String()
+			if !strings.Contains(body, c.want) || !strings.Contains(body, "<code>"+results+"</code>") {
+				t.Errorf("%s (%s): no guidance to the results folder", path, c.lang)
+			}
+		}
+	}
+	session, _ := os.ReadFile(filepath.Join(ws, "session.json"))
+	if err := os.WriteFile(filepath.Join(results, "node-a.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/survey", "/review"} {
+		if body := do(h, newReq(http.MethodGet, path+"?lang=ko", nil)).Body.String(); strings.Contains(body, "아직 관측 결과가 없습니다") {
+			t.Errorf("%s: the guidance stays after a result arrived", path)
+		}
+	}
+	if after, _ := os.ReadFile(filepath.Join(ws, "session.json")); string(after) != string(session) {
+		t.Error("a GET rewrote the review session")
+	}
+}
+
+// IC-U101 — **계층이 없는 작업 폴더에서 화면으로 계층을 만든다.** GET은 만들기 폼만 보이고 아무것도 만들지 않는다.
+// 02 카드는 「아직 계층이 없습니다」다. POST가 `layers/<이름>.csv`와 스코프 세션을 만들고 화면은 규칙 편집이
+// 된다. 같은 이름을 다시 보내면 덮어쓰지 않고 409, 틀린 이름은 400이다. 계층이 생기기 전의 스코프 저장 · 확정은
+// 404다. 명시 모드에는 이 주소가 없다.
+func TestLayerIsCreatedFromTheScreen(t *testing.T) {
+	ws := t.TempDir()
+	h, _, _, _ := started(t, "-workspace", ws, "-no-browser")
+	body := do(h, newReq(http.MethodGet, "/scope?lang=ko", nil)).Body.String()
+	if !strings.Contains(body, `action="`+ui.LayerCreatePath+`"`) {
+		t.Fatalf("no create form:\n%s", body)
+	}
+	if got := cards(t, body)["02"]; !strings.HasPrefix(got, "아직 계층이 없습니다") {
+		t.Errorf("02 card %q", got)
+	}
+	if ents, _ := os.ReadDir(filepath.Join(ws, "layers")); len(ents) != 0 {
+		t.Fatal("GET created a layer")
+	}
+	if _, err := os.Stat(filepath.Join(ws, "scope-session.json")); err == nil {
+		t.Fatal("GET created the scope session")
+	}
+	for _, path := range []string{"/scope/save", "/scope/finalize/confirm", "/scope/finalize"} {
+		if w := do(h, posted(path+"?lang=ko", url.Values{})); w.Code != http.StatusNotFound {
+			t.Errorf("%s before a layer: %d, want 404", path, w.Code)
+		}
+	}
+	if w := do(h, posted(ui.LayerCreatePath+"?lang=ko", url.Values{"name": {"../evil"}})); w.Code != http.StatusBadRequest {
+		t.Errorf("bad name: %d, want 400", w.Code)
+	}
+	w := do(h, posted(ui.LayerCreatePath+"?lang=ko", url.Values{"name": {"corp"}}))
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("create: %d\n%s", w.Code, w.Body.String())
+	}
+	layer := filepath.Join(ws, "layers", "corp.csv")
+	before, err := os.ReadFile(layer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(ws, "scope-session.json")); err != nil {
+		t.Errorf("the scope session was not raised in the same request: %v", err)
+	}
+	if body := do(h, newReq(http.MethodGet, "/scope?lang=ko", nil)).Body.String(); strings.Contains(body, `action="`+ui.LayerCreatePath+`"`) || !strings.Contains(body, `action="/scope/rules"`) {
+		t.Error("after creating, the scope screen is not the rule editor")
+	}
+	if w := do(h, posted(ui.LayerCreatePath+"?lang=ko", url.Values{"name": {"corp"}})); w.Code != http.StatusConflict {
+		t.Errorf("second create: %d, want 409", w.Code)
+	}
+	if after, _ := os.ReadFile(layer); string(after) != string(before) {
+		t.Error("the second create overwrote the layer")
+	}
+
+	s, _ := newServer(t)
+	if w := serve(s.handler(), posted(ui.LayerCreatePath, url.Values{"name": {"corp"}})); w.Code != http.StatusNotFound {
+		t.Errorf("explicit mode: %d, want 404", w.Code)
 	}
 }

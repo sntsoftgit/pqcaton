@@ -180,9 +180,8 @@ func (c startConfig) inWorkspace() (startConfig, error) {
 		}
 	}
 	sort.Strings(c.layers)
-	if len(c.layers) > 0 || exists(at(wsScopeSession)) {
-		c.scope = at(wsScopeSession)
-	}
+	// 스코프 화면은 늘 연다. 계층이 없으면 화면이 계층 만들기를 낸다.
+	c.scope = at(wsScopeSession)
 	if exists(at(wsPolicy)) {
 		c.base = at(wsPolicy)
 	}
@@ -216,7 +215,7 @@ func (s *server) diagInputs() []diagProblem {
 	check("scope-session", s.scope, func(p string) error { _, err := scope.LoadSession(p); return err })
 	check("policy", s.base, func(p string) error { _, err := scope.LoadPolicyFile(p); return err })
 	check("scope-assets", s.scopeAssets, func(p string) error { _, err := review.LoadAssetPolicy(p); return err })
-	for _, l := range s.layers {
+	for _, l := range s.layerFiles() {
 		check("layer", l, func(p string) error { _, err := scope.LoadLayers([]string{p}); return err })
 	}
 	return out
@@ -226,6 +225,36 @@ func (s *server) diagInputs() []diagProblem {
 type diagProblem struct {
 	role, path string
 	err        error
+}
+
+// layerFiles: 지금의 계층 CSV. 작업 폴더 모드에서는 화면이 계층을 만들 수 있으므로 읽을 때마다 `layers/`를 다시
+// 훑는다(이름 순). 명시 모드는 시작할 때 받은 그대로다.
+func (s *server) layerFiles() []string {
+	if s.workspace == "" {
+		return s.layers
+	}
+	dir := filepath.Join(s.workspace, wsLayers)
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range ents {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".csv") {
+			out = append(out, filepath.Join(dir, e.Name()))
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// scopeMissing: 작업 폴더에 계층도 스코프 세션도 아직 없다. 스코프 화면은 계층 만들기를 낸다.
+func (s *server) scopeMissing() bool {
+	if s.workspace == "" || len(s.layerFiles()) > 0 {
+		return false
+	}
+	_, err := os.Stat(s.scope)
+	return errors.Is(err, fs.ErrNotExist)
 }
 
 // declReady: 선언 파일이 있는가. 작업 폴더 모드에서는 없을 수 있다(화면이 만들기를 낸다).

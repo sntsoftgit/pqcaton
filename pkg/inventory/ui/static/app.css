@@ -92,6 +92,10 @@ tr.htmx-added td { animation: settle .5s ease-out; }
                  align-items: center; margin: 22px 0; padding: 16px;
                  background: var(--amber-soft); border: 1px solid #f1d39a; border-radius: 12px; }
 .ui-next .next.done { background: var(--green-soft); border-color: #c1e8ce; }
+.ui-next .problems { margin: 22px 0; padding: 16px; border: 1px solid var(--amber); border-radius: 12px; }
+.ui-next .problems ul { margin: .5rem 0 0; padding-left: 1.2rem; }
+.ui-next .problems li { margin: .5rem 0; overflow-wrap: anywhere; }
+.ui-next .problems li span { color: var(--dim); font-size: .9rem; }
 .ui-next .next-icon { display: grid; place-items: center; width: 36px; height: 36px;
                       border-radius: 10px; background: #fff; color: var(--amber); font-weight: 800; }
 .ui-next .next.done .next-icon { color: var(--green); }

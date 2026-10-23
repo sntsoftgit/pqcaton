@@ -40,6 +40,8 @@ const (
 	ScopeRowPath = "/scope/row"
 	// DeclCreatePath — 작업 폴더에 빈 선언을 만든다(POST). 이미 있으면 덮어쓰지 않는다.
 	DeclCreatePath = "/decl/create"
+	// LayerCreatePath — 작업 폴더에 빈 계층 CSV를 만드는 POST.
+	LayerCreatePath = "/scope/layer/create"
 )
 
 // 표의 종류. 「행 추가」가 무엇을 한 줄 더 낼지 고르는 값이다.

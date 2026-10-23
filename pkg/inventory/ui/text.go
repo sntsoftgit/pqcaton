@@ -209,10 +209,21 @@ var (
 
 	tDeclSave     = T{KO: "저장", EN: "Save"}
 	tDeclSaveHint = T{
-		KO: "저장하면 <code>pqcaton-report</code>가 읽는 바로 그 파일에 씁니다. " +
-			"화면 위에 경로가 적혀 있습니다.",
-		EN: "Saving writes to the very file <code>pqcaton-report</code> reads — " +
-			"its path is shown at the top of this page."}
+		KO: "저장하면 화면 위에 적힌 선언 파일에 씁니다.",
+		EN: "Saving writes to the declaration file named at the top of this page."}
+
+	// 관측 결과 폴더가 비어 있을 때. 결과를 넣으면 화면을 다시 불러오는 것만으로 대조에 들어간다(세션은 읽을 때마다 다시 세운다).
+	tEmptyResultsHead = T{KO: "아직 관측 결과가 없습니다", EN: "No observed results yet"}
+	tEmptyResultsBody = T{
+		KO: "pqcota 수집이 이 폴더에 결과를 씁니다. 결과 파일을 넣은 뒤 이 화면을 다시 불러오면 대조와 판정에 들어갑니다.",
+		EN: "pqcota collection writes its results to this folder. Put the result files there and reload this screen: they go into reconciliation and review."}
+
+	// 선언 문제 목록(decl.Check). 막지 않고 짚는다.
+	tDeclProblemsHead = T{KO: "앞뒤가 맞지 않는 자리", EN: "Places that do not add up"}
+	tDeclProblemsLede = T{
+		KO: "저장은 막지 않습니다. 다만 그대로 두면 대조 결과가 오류 없이 틀리므로, 아래 칸을 고친 뒤 저장하십시오.",
+		EN: "Saving is not blocked. Left as is, though, reconciliation is wrong without any error, so fix these fields and save."}
+	tDeclProblemsIf = T{KO: "그대로 두면", EN: "If left as is"}
 
 	tColName = T{KO: "이름", EN: "Name"}
 	tColIP   = T{KO: "IP", EN: "IP"}
@@ -658,6 +669,16 @@ var (
 	tDeclCreateLede  = T{
 		KO: "조직 이름을 적고 만들면 작업 폴더에 빈 선언이 생깁니다. 노드 · 자산 · 엣지는 만든 뒤에 이 화면에서 적습니다.",
 		EN: "Enter the organization name and create it: an empty declaration appears in the workspace. Write the nodes, assets and edges on this screen afterwards."}
+	// 작업 폴더에 계층이 아직 없을 때.
+	tLayerCreateHead = T{KO: "아직 계층이 없습니다", EN: "There is no layer yet"}
+	tLayerCreateLede = T{
+		KO: "자산 스코프 규칙은 계층 CSV에 적습니다. 이름을 정해 만들면 작업 폴더의 layers 폴더에 빈 계층이 생기고, 그다음 이 화면에서 규칙을 적습니다. 계층이 여럿이면 이름 순으로 겹치고, 같은 자산에 규칙이 겹치면 뒤의 계층을 따릅니다.",
+		EN: "Asset scope rules are written in layer CSVs. Name one and create it: an empty layer appears in the layers folder of the workspace, and you write its rules on this screen. Several layers stack in name order, and where rules clash on the same asset the later layer applies."}
+	tLayerCreateName   = T{KO: "계층 이름", EN: "Layer name"}
+	tLayerCreateHint   = T{KO: "영문 소문자와 숫자, 「-」, 「_」를 써서 40자까지 적습니다. 이 이름이 파일 이름이 됩니다(예: corp → corp.csv).", EN: "Lowercase letters, digits, - and _, up to 40. It becomes the file name (corp → corp.csv)."}
+	tLayerCreateDo     = T{KO: "계층 만들기", EN: "Create the layer"}
+	tStepLayersMissing = T{KO: "아직 계층이 없습니다", EN: "no layer yet"}
+
 	tDeclCreateOrg = T{KO: "조직 이름", EN: "Organization name"}
 	tDeclCreateDo  = T{KO: "선언 만들기", EN: "Create the declaration"}
 	tWbSelfHost    = T{KO: "직접 설치", EN: "self-hosted"}
@@ -678,9 +699,10 @@ var (
 	tStepDeclOpen = T{
 		KO: "연결할 관측 이름 %d개",
 		EN: "%d observed names to link"}
-	tStepDeclDone = T{KO: "연결할 이름 없음", EN: "nothing left to link"}
-	tStepClosed   = T{KO: "입력 파일을 주지 않았습니다", EN: "no input was given"}
-	tStepUnknown  = T{KO: "확인할 수 없음", EN: "Unavailable"}
+	tStepDeclDone     = T{KO: "연결할 이름 없음", EN: "nothing left to link"}
+	tStepDeclProblems = T{KO: "앞뒤가 맞지 않는 자리 %d곳", EN: "%d places that do not add up"}
+	tStepClosed       = T{KO: "입력 파일을 주지 않았습니다", EN: "no input was given"}
+	tStepUnknown      = T{KO: "확인할 수 없음", EN: "Unavailable"}
 
 	// 확정 상태. 영수증과 지금 파일을 견준 결과다(store.VerifyFinalized).
 	tFinalNone       = T{KO: "미확정", EN: "Not finalized"}

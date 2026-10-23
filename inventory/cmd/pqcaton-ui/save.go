@@ -78,7 +78,7 @@ func (s *server) reviewInputs() []store.Input {
 // scopeInputs: 스코프 화면이 그려질 때 읽는 것 전부.
 func (s *server) scopeInputs() []store.Input {
 	in := []store.Input{{Name: "scope-session", Path: s.scope}}
-	for i, l := range s.layers {
+	for i, l := range s.layerFiles() {
 		in = append(in, store.Input{Name: fmt.Sprintf("layer:%d", i), Path: l})
 	}
 	if s.base != "" {
@@ -171,10 +171,14 @@ func (s *server) check(r *http.Request) store.Check {
 // targetDirs: 이 화면이 쓰는 파일의 디렉토리. 시작할 때 남은 준비 파일을 여기서 찾는다.
 func (s *server) targetDirs() []string {
 	var out []string
-	for _, p := range append([]string{s.path, s.planOut, s.judgments, s.decl, s.scope, s.scopeOut}, s.layers...) {
+	for _, p := range append([]string{s.path, s.planOut, s.judgments, s.decl, s.scope, s.scopeOut}, s.layerFiles()...) {
 		if p != "" {
 			out = append(out, filepath.Dir(p))
 		}
+	}
+	// 계층을 만들다 멈춘 준비 파일은 계층이 아직 없어도 `layers/`에 남는다.
+	if s.workspace != "" {
+		out = append(out, filepath.Join(s.workspace, wsLayers))
 	}
 	return out
 }
@@ -199,7 +203,7 @@ func (s *server) materialize() error {
 			return err
 		}
 	}
-	if s.scope == "" || len(s.layers) == 0 {
+	if s.scope == "" || len(s.layerFiles()) == 0 {
 		return nil
 	}
 	prev, err := scope.LoadSession(s.scope)

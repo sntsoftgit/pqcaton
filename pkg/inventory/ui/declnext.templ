@@ -21,6 +21,7 @@ templ declNextPage(v DeclView) {
 			<h2>{ tNextDeclHead.In(v.Page.Lang) }</h2>
 			<p class="lede">{ tNextDeclLede.In(v.Page.Lang) }</p>
 			@declNextTodo(v)
+			@declProblemList(v)
 			@declNextMetrics(v)
 			<div class="section-label">
 				<h3>{ tNextLinkSection.In(v.Page.Lang) }</h3>
@@ -66,6 +67,25 @@ templ declNextTodo(v DeclView) {
 				<span>{ tNextAllLinkedBody.In(v.Page.Lang) }</span>
 			</div>
 		</div>
+	}
+}
+
+// declProblemList — 앞뒤가 안 맞는 자리(decl.Check). 어느 자리의 어느 칸이, 무엇이, 그대로 두면 어떻게 되는지.
+templ declProblemList(v DeclView) {
+	if len(v.Problems) > 0 {
+		<section class="problems" aria-labelledby="decl-problems">
+			<h3 id="decl-problems">{ tDeclProblemsHead.In(v.Page.Lang) }</h3>
+			<p class="lede">{ tDeclProblemsLede.In(v.Page.Lang) }</p>
+			<ul>
+				for _, p := range v.Problems {
+					<li>
+						<strong>{ p.Where }</strong> · { p.Field }: { p.What }
+						<br/>
+						<span>{ tDeclProblemsIf.In(v.Page.Lang) }: { p.Why }</span>
+					</li>
+				}
+			</ul>
+		</section>
 	}
 }
 

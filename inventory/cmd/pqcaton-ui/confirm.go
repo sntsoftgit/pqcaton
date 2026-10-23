@@ -148,7 +148,7 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 // scopeConfirm — 스코프 확정 전 확인. 아무것도 쓰지 않는다.
 func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenScope)
-	if s.scope == "" {
+	if s.scope == "" || s.scopeMissing() {
 		missingInput(w, r, "scope-session")
 		return
 	}

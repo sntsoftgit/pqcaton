@@ -180,6 +180,8 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 			steps[i].State = tStepClosed.In(l)
 		case i == 0 && st.DeclMissing:
 			steps[i].State, steps[i].Dot = tStepDeclMissing.In(l), "warn"
+		case i == 1 && st.LayersMissing:
+			steps[i].State, steps[i].Dot = tStepLayersMissing.In(l), "warn"
 		case i == 0 && st.Decl != nil:
 			steps[i].State, steps[i].Dot = declState(l, *st.Decl)
 		case i == 1 && st.Scope != nil:
@@ -212,6 +214,8 @@ type StepState struct {
 	Review *ReviewSummary
 	// DeclMissing — 작업 폴더에 선언이 아직 없다(만들기를 낸다).
 	DeclMissing bool
+	// LayersMissing — 작업 폴더에 계층도 스코프 세션도 아직 없다(만들기를 낸다).
+	LayersMissing bool
 	// ScopeFinal · ReviewFinal — 확정하는 두 단계의 확정 상태.
 	ScopeFinal, ReviewFinal Final
 }
@@ -254,6 +258,9 @@ func scopeState(l Lang, s ScopeSummary) (string, string) {
 
 // declState — 선언 카드의 한 줄. 붙지 않은 이름이 그 화면의 급한 일이다.
 func declState(l Lang, s DeclSummary) (string, string) {
+	if s.Problems > 0 {
+		return fmt.Sprintf(tStepDeclProblems.In(l), s.Problems), "warn"
+	}
 	if s.Unlinked == 0 {
 		return tStepDeclDone.In(l), "ok"
 	}
