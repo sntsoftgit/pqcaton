@@ -132,6 +132,20 @@
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT`로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass`가 고른 관계의 OID를 `pg_attribute`에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN`이 있을 때만 |
 
+### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 상태 디렉토리와 잠금까지
+화면과 명령이 파일을 바꿀 때 지나가는 한 길입니다. 상용 지원은 Linux 로컬 파일시스템뿐입니다.
+
+| TC | Given → When | Then |
+|---|---|---|
+| [IC-W1](../pkg/inventory/store/state_test.go) ✅ | 상태 디렉토리를 처음 엶 | 디렉토리(0700)와 무작위 상태 ID(0600)를 만든다. 다시 열면 같은 ID를 읽고, 다른 상태 디렉토리는 다른 ID를 받는다 |
+| [IC-W2](../pkg/inventory/store/state_test.go) ✅ | 상태 디렉토리가 0700보다, 안의 파일이 0600보다 넓음 | **열지 않고 `chmod`를 안내한다.** 권한을 고쳐 주지도 않는다. 넓은 권한은 이미 누가 읽었을 수 있다는 뜻이라 아무 표시 없이 좁히면 그 사실이 묻힌다 |
+| [IC-W3](../pkg/inventory/store/state_test.go) ✅ | 심볼릭 링크인 상태 디렉토리 · 하드 링크가 둘인 상태 파일 · 안에 든 심볼릭 링크 | 모두 거부한다. 다른 이름을 거쳐 바뀌면 이쪽이 모르는 변경이 된다 |
+| [IC-W4](../pkg/inventory/store/state_test.go) ✅ | 다른 사용자가 소유한 상태 디렉토리 | 거부한다. rename으로 교체하면 소유자가 바뀐다 |
+| [IC-W5](../pkg/inventory/store/state_test.go) ✅ | 서버가 실행 잠금을 쥔 채 명령이 같은 상태 디렉토리를 씀 | 명령은 **기다리지 않고** 거부된다. 서버가 놓으면 잡힌다. 같은 상태 디렉토리로 서버 둘도 같은 이유로 막힌다 |
+| [IC-W6](../pkg/inventory/store/state_test.go) ✅ | 대상 디렉토리를 다른 상태 디렉토리로 씀 · 상태 디렉토리와 함께 옮긴 데이터 | 잠금 파일에 적힌 상태 ID가 다르면 거부하고 `-state-dir`를 안내한다. 함께 옮긴 데이터는 그대로 열린다. 경로가 아니라 ID로 본다 |
+| [IC-W7](../pkg/inventory/store/state_test.go) ✅ | 다른 요청이 대상 잠금을 쥠 | 정해진 시간까지 기다린다. 그 안에 풀리면 잡고, 못 잡으면 「다른 저장이 진행 중」으로 끝나며 그동안 잡은 잠금도 놓는다 |
+| [IC-W8](../pkg/inventory/store/state_test.go) ✅ | NFS · CIFS · SMB 위의 상태 디렉토리 | 시작하지 않는다. 잠금과 rename의 원자성을 믿을 수 없다. 로컬 파일시스템은 지나간다 |
+
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
 |---|---|---|
