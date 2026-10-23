@@ -117,15 +117,16 @@ var (
 	tErrInternal     = T{
 		KO: "예상하지 못한 문제로 멈췄습니다. 파일은 바꾸지 않았습니다. 운영자가 서버 기록에서 참조 번호를 찾아 원인을 확인할 수 있습니다.",
 		EN: "Stopped by an unexpected problem. No file was changed. An operator can find the reference in the server log to see why."}
-	tErrRef = T{KO: "참조 번호", EN: "Reference"}
+	tErrRef  = T{KO: "참조 번호", EN: "Reference"}
+	tErrCode = T{KO: "오류 코드(운영자 안내서의 오류 표)", EN: "Error code (the error table in the operator guide)"}
 
 	// 저장소가 막은 까닭 가운데 운영자가 손봐야 하는 것.
 	tRefusedUnsafe = T{
-		KO: "파일의 권한이나 링크가 안전하지 않아 멈췄습니다. 운영자 안내서의 「파일 권한」 절대로 바로잡은 뒤 다시 하십시오.",
-		EN: "Stopped: a file's permissions or links are not safe. Fix them as the \"File permissions\" section of the operator guide says, then try again."}
+		KO: "파일의 권한이나 링크가 안전하지 않아 멈췄습니다. 운영자 안내서의 「오류 표」 절대로 바로잡은 뒤 다시 하십시오.",
+		EN: "Stopped: a file's permissions or links are not safe. Fix them as the \"Error table\" section of the operator guide says, then try again."}
 	tRefusedMismatch = T{
-		KO: "이 파일들은 다른 상태 디렉토리가 관리하고 있어 저장하지 않았습니다. 운영자 안내서의 「상태 디렉토리」 절을 보십시오.",
-		EN: "Not saved: these files are managed by another state directory. See the \"State directory\" section of the operator guide."}
+		KO: "이 파일들은 다른 상태 디렉토리가 관리하고 있어 저장하지 않았습니다. 운영자 안내서의 「오류 표」 절을 보십시오.",
+		EN: "Not saved: these files are managed by another state directory. See the \"Error table\" section of the operator guide."}
 	tRefusedDiagnostic = T{
 		KO: "작업 폴더의 아래 파일을 읽지 못해 화면이 진단 전용으로 열렸습니다. 저장은 하지 않습니다. 파일을 고치거나 백업에서 되돌린 뒤 화면을 다시 띄우십시오. 운영자가 서버 기록에서 참조 번호를 찾아 원인을 확인할 수 있습니다.",
 		EN: "The screen opened for diagnostics only because the workspace files below could not be read. Nothing is saved. Fix them or restore them from a backup, then start the screen again. An operator can find the reference in the server log to see why."}

@@ -80,6 +80,8 @@ type RefusedView struct {
 	// Ref — 서버 표준오류에 원문과 함께 남긴 참조 번호. 원인을 화면 말로 옮길 수 없을 때만 있다.
 	Ref     string
 	RefText string
+	// Code — 오류 코드(종류). 운영자 안내서의 오류 표가 이 코드로 할 일을 적는다.
+	Code, CodeText string
 }
 
 // maxShown: 칸 하나에 보일 글자 수.
@@ -92,14 +94,14 @@ func NewRefused(p Page, kind, back string, files []FileRef) RefusedView {
 	}
 	txt, ok := refusedText[kind]
 	if !ok {
-		txt = refusedText[ErrInternal]
+		kind, txt = ErrInternal, refusedText[ErrInternal]
 	}
 	head := tNotSaved
 	if txt.head.EN != "" {
 		head = txt.head
 	}
 	v := RefusedView{Page: p, Head: head.In(p.Lang), Body: txt.body.In(p.Lang), Back: back,
-		BackText: tBackToScreen.In(p.Lang), RefText: tErrRef.In(p.Lang)}
+		BackText: tBackToScreen.In(p.Lang), RefText: tErrRef.In(p.Lang), Code: kind, CodeText: tErrCode.In(p.Lang)}
 	v.Page.Title = head.In(p.Lang)
 	v.Page.Message, v.Page.Problem, v.Page.Warnings = "", "", nil
 	for _, f := range files {

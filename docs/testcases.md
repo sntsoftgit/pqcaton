@@ -173,7 +173,7 @@
 | **[IC-W34](../inventory/cmd/pqcaton-decide/main_test.go) ✅** | `close -o plan.json -judgments …`를 두 번 | 세션 · 계획 · 판정 원장 · 영수증을 화면과 같은 트랜잭션으로 쓴다. 두 번째는 아무것도 다시 쓰지 않는다. 표준출력은 비어 있다 |
 | [IC-W35](../inventory/cmd/pqcaton-decide/main_test.go) ✅ | 화면이 떠 있는 동안 `close -o` | 기다리지 않고 거부되며 아무것도 쓰지 않는다 |
 | [IC-W36](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | `pqcaton-scope close`(`-judgments`만 · `-o`로 두 번) | 리뷰 확정과 같은 규칙이다. `open`이 세션 ID를 박는다 |
-| [IC-W37](../inventory/cmd/pqcaton-ui/recover_test.go) ✅ | `pqcaton-ui -recover-status [-diagnostics 파일]` | 고치지 않고 보여 준다. 남은 기록마다 전체 경로 · 기대 해시 · 지금 해시 · 준비 파일 상태 · 판정을 보이고, 진단 묶음을 0600으로 새로 낸다. 남은 기록이 없으면 없다고 알린다 |
+| [IC-W37](../inventory/cmd/pqcaton-ui/recover_test.go) ✅ | `pqcaton-ui -recover-status [-diagnostics 파일]` | 고치지 않고 보여 준다. 남은 기록마다 전체 경로 · 기대 해시 · 지금 해시 · 준비 파일의 상태와 경로 · 판정을 보이고, 진단 묶음을 0600으로 새로 낸다. 남은 기록이 없으면 없다고 알린다 |
 | **[IC-W38](../pkg/inventory/store/check_test.go) ✅** | 처음 rev를 견준 뒤, 저장 · 확정이 입력을 읽는 사이에 손 편집이 입력을 바꿈 | 첫 기록을 쓰기 직전에 다시 견주어 「화면이 오래됐다」로 멈춘다. 기록도 쓰지 않고, 밖에서 바꾼 내용은 그대로 남는다. 그 뒤에 바뀐 대상 파일은 기록의 적용 전 해시가 막는다 |
 | **[IC-W39](../pkg/inventory/store/verify_test.go) ✅** | 확정 전 · 확정 뒤 · 계획을 손으로 고침 · 원장 구간을 잘라 냄 | **확정 상태는 영수증이 있는지가 아니라 출력 해시와 원장 구간으로 판정한다**(`VerifyFinalized`). 미확정 · 확정됨 · 복구 필요 · 복구 필요다. 판정은 아무 파일도 바꾸지 않고 기록도 남기지 않는다 |
 | [IC-W40](../pkg/inventory/store/verify_test.go) ✅ | 출력 디렉토리에 잠금 파일이 없음 | 만들지 않고 잠그지 않은 채 판정한다. 읽기가 남의 디렉토리에 파일을 남기면 안 된다 |
@@ -350,7 +350,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 
 | TC | Given → When | Then |
 |---|---|---|
-| **[IC-U88](../inventory/cmd/pqcaton-ui/errors_test.go) ✅** | 없는 주소 · 받지 않는 방식 · 잘못된 요청 · 필요한 파일 없음 · 입력을 읽지 못함 · 요청 보호 · 처리 중 panic을 두 말로 | 모두 새 껍데기의 오류 페이지(`role="alert"`)다. 상태 코드가 맞고, 경로 · 오류 원문 · 플래그 이름이 없고, 영어 페이지에 한글이 없다. 원인을 화면 말로 옮길 수 없는 것만 참조 번호를 보인다 |
+| **[IC-U88](../inventory/cmd/pqcaton-ui/errors_test.go) ✅** | 없는 주소 · 받지 않는 방식 · 잘못된 요청 · 필요한 파일 없음 · 입력을 읽지 못함 · 요청 보호 · 처리 중 panic을 두 말로 | 모두 새 껍데기의 오류 페이지(`role="alert"`)다. 상태 코드가 맞고, 경로 · 오류 원문 · 플래그 이름이 없고, 영어 페이지에 한글이 없다. 원인을 화면 말로 옮길 수 없는 것만 참조 번호를 보인다. 페이지마다 운영자 안내서의 오류 표가 쓰는 오류 코드가 있다 |
 | **[IC-U89](../inventory/cmd/pqcaton-ui/errors_test.go) ✅** | 주소의 `msg` · `problem`에 임의의 글 · 경로 · 스크립트 · 맞지 않는 인자 · 확정 관문이 막은 까닭 | 임의의 값은 보이지 않고 「알 수 없는 알림」이다. 관문의 까닭은 코드로 실려 가서 그 말의 문장으로 그려진다 |
 | [IC-U90](../inventory/cmd/pqcaton-ui/errors_test.go) ✅ | 화면 서버의 시험이 아닌 소스 | 평문 `http.Error`가 없다 |
 | **[IC-U91](../inventory/cmd/pqcaton-ui/errors_test.go) ✅** | 저장소 센티널(안전하지 않은 파일 · 상태 불일치 · 손상 · 진행 중 · 실행 잠금 · 대상 잠금 · 오래된 화면 · 복구 필요)과 모르는 오류 | 값으로 거절 종류와 상태를 가린다. 거절 페이지는 두 말 모두 경로를 싣지 않는다. 모르는 오류는 참조 번호를 붙인 내부 오류다 |
@@ -370,6 +370,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U96](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 같은 작업 폴더로 이미 떠 있는데 다시 실행 | 두 번째 서버를 띄우지 않고 적어 둔 주소를 연다. 그 주소가 루프백이 아니면 열지 않고 실패한다 |
 | **[IC-U97](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 작업 폴더의 선언 파일이 깨짐 | 서버는 뜨고, 화면과 저장 요청 모두 503 진단 페이지다. 「진단 전용」 모드와 파일 이름, 표준오류와 같은 참조 번호를 보이고 경로는 보이지 않는다 |
 | **[IC-U98](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 선언이 없는 작업 폴더 | GET은 만들기 폼만 보이고 아무것도 만들지 않는다. 대조 · 판정은 닫혀 있다. POST가 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다 |
+| **[IC-U106](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 떠 있는 화면에 Ctrl+C(또는 SIGTERM)를 보냄 | 적어 둔 주소(`screen.addr`)를 지우고 0으로 끝난다. 실행 잠금도 풀려 같은 작업 폴더로 다시 띄울 수 있다 |
 | **[IC-U99](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 선언에 형식이 틀린 IP와 포트 0인 엣지가 있음 | 01 화면이 어느 노드 · 엣지의 어느 칸이, 무엇이, 그대로 두면 어떻게 되는지를 두 말로 보인다. 01 카드에 그 수가 오르고, 판정 화면의 경고는 `pqcaton-report` 대신 01 화면을 가리킨다 |
 | **[IC-U100](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 관측 결과 폴더가 빔 → 결과 파일을 넣고 다시 불러옴 | 대조 · 판정 화면이 두 말로 그 폴더의 경로를 보인다. 파일을 넣으면 안내가 사라지고, GET은 리뷰 세션을 다시 쓰지 않는다 |
 | **[IC-U101](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 계층이 없는 작업 폴더 · 명시 모드 | GET은 만들기 폼만 보이고 아무것도 만들지 않는다(02 카드 「아직 계층이 없습니다」). POST가 `layers/<이름>.csv`와 스코프 세션을 만들고 화면은 규칙 편집이 된다. 같은 이름은 409로 덮어쓰지 않고, 틀린 이름은 400이다. 계층이 생기기 전의 스코프 저장 · 확정과 명시 모드의 만들기는 404다 |
@@ -391,6 +392,15 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 |---|---|---|
 | **[IC-U104](../inventory/cmd/pqcaton-ui/e2e_test.go) ✅** | 빈 작업 폴더에서 선언 만들기 → 노드 저장 → 결과 파일 도착 → 판정 · 서명 → 확인 → 확정, 두 말 | 04 카드가 「확정됨」이다. 계획 파일은 pqcota가 읽는 계약 형식(FinalizedPlan, IN_REVIEW)이고, 판정 원장은 선언의 조직에 묶인다. 영어 화면에 한글이 없다 |
 | **[IC-U105](../inventory/cmd/pqcaton-ui/e2e_test.go) ✅** | 선언이 이미 있는 작업 폴더로 `-org` 없이 시작해 확정 · `-org acme`로 시작해 다른 조직의 선언 만들기 | 원장이 선언의 조직에 묶인다. `-org`를 준 서버는 그 조직의 선언만 만든다(다르면 400). 명시 모드는 `-org` 그대로다 |
+
+#### 운영자 안내서 (v0.23.0)
+
+[운영자 안내서](operator-guide.md)와 [영어판](operator-guide.en.md)의 명령은 시험이 실제로 돌린다.
+
+| TC | Given → When | Then |
+|---|---|---|
+| **[IC-U107](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 두 판의 명령 블록과 인라인 코드에 적힌 `pqcaton-ui`의 플래그 | 모두 `-h`가 찍는 목록에 있다 |
+| **[IC-U108](../inventory/cmd/pqcaton-ui/guide_run_test.go) ✅** | 두 판에서 실행 표시가 붙은 명령을 빈 홈 폴더에서 차례대로 돌림 | 띄우기 · 떠 있는 화면 다시 열기 · 끝내기 · 루프백이 아닌 주소 거부 · 끈 상태의 백업과 복원 · 저장 도중 멈추고 밖에서 바뀐 파일의 복구가 안내서에 적힌 명령으로 끝난다. 멈춘 상태는 시험 도구(`testdata/guidetool`)가 저장소의 실패 주입으로 만든다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 
@@ -526,6 +536,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-UI49](../pkg/inventory/ui/notice_test.go) ✅** | 알림 · 거절 · 오류 · 계획 칸 사유의 문구 목록 | 코드마다 두 말이 있고, 영어에 한글이 없고, 두 말의 자리표시자 수가 인자 종류 수와 같다. `decision.Plan*` 사유마다 문구가 있다 |
 | [IC-UI50](../pkg/inventory/ui/notice_test.go) ✅ | 쉼표 · 물결 · 퍼센트 · 한글이 든 인자, 인자 수 · 종류 · 역할이 맞지 않는 알림 | 인코딩했다 되돌려도 같다. 맞지 않으면 「알 수 없는 알림」이다 |
 | [IC-UI51](../pkg/inventory/ui/notice_test.go) ✅ | 선언 문제 코드 아홉 가지를 두 말로 | 코드마다 문장 · 그대로 두면 · 칸이 있고 값 자리나 강조 표시가 남지 않는다. 자리 표기는 그 말의 행 이름으로 옮긴다 |
+| **[IC-UI52](../pkg/inventory/ui/guide_test.go) ✅** | 운영자 안내서 두 판 · 화면 문구가 가리키는 안내서의 절 | 절의 번호와 개수, 명령 블록과 실행 표시의 차례가 같고, 오류 표의 코드가 화면의 오류 코드 전부와 같다. 화면 문구가 가리키는 절은 그 판에 실제로 있다 |
 | **[IC-UI41](../pkg/inventory/ui/ui_test.go) ✅** | 같은 자산에 판정 행과 계획 선택 행이 있는 원장을 조회 화면에 얹음 | 이력에 **두 행이 다 보이되** 계획 선택 행은 「계획에 넣기로 한 기록」으로 서고 판정으로 보이지 않는다 | 결론 칸이 빈 것을 판정으로 읽으면 사람이 판정을 안 적은 줄 안다 |
 | **[IC-UI37](../pkg/inventory/ui/ui_test.go) ✅** | 「관측 이름」을 적고 저장 | 선언에 남고 다시 그려도 그대로다. collector가 자기 id로 보내는 흔한 자리를 사람이 한 번 적어 두는 곳이다 |
 | **[IC-UI38](../pkg/inventory/ui/ui_test.go) ✅** | 어느 노드에도 안 붙은 관측 이름 | **「관측 이름」 칸에 후보로 뜬다**. 안 붙었다는 것은 그 노드의 자산이 통째로 UNDECLARED로 오른다는 뜻이다 |

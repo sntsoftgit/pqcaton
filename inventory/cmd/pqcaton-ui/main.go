@@ -36,12 +36,14 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -150,11 +152,42 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if !c.noBrowser {
 		openBrowser(url, stderr)
 	}
-	if err := serveHTTP(ln, s.handler()); err != nil {
+	// **끝낼 때(Ctrl+C · systemctl stop) 적어 둔 주소를 지운다.** 남겨 두면 다시 띄울 때 실행기가 아직 열리지
+	// 않은 낡은 주소를 먼저 연다. 실행 잠금은 프로세스가 끝나면 풀린다.
+	stopped := make(chan struct{})
+	sig := stopSignal()
+	go func() {
+		if _, ok := <-sig; !ok {
+			return
+		}
+		if s.st != nil {
+			_ = os.Remove(filepath.Join(s.st.Dir, addrFile))
+		}
+		close(stopped)
+		_ = ln.Close()
+	}()
+	err = serveHTTP(ln, s.handler())
+	select {
+	case <-stopped:
+		if s.st != nil {
+			s.st.Close()
+		}
+		fmt.Fprintln(stderr, "screen stopped")
+		return 0
+	default:
+	}
+	if err != nil {
 		fmt.Fprintln(stderr, "❌", err)
 		return 1
 	}
 	return 0
+}
+
+// stopSignal: 화면을 끝내는 신호(Ctrl+C · SIGTERM). 시험이 바꿔 낀다.
+var stopSignal = func() <-chan os.Signal {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	return c
 }
 
 // checkExplicit: 명시 모드의 입력 검사. v0.22까지와 같다 — 터미널에서 띄우는 길이라 표준오류로 알리고 멈춘다.

@@ -57,7 +57,8 @@ func plainPage(t *testing.T, name, lang, dir string, w *httptest.ResponseRecorde
 
 // IC-U88 — **브라우저로 가는 오류는 모두 새 껍데기의 오류 페이지다.** 없는 주소 · 받지 않는 방식 · 잘못된 요청 ·
 // 이 화면에 필요한 파일 없음 · 입력을 읽지 못함 · 요청 보호 · 처리 중 panic을 두 말로 잰다. 오류 원문과 경로,
-// 플래그 이름은 화면에 없고, 원인을 화면 말로 옮길 수 없는 것은 참조 번호를 보인다.
+// 플래그 이름은 화면에 없고, 원인을 화면 말로 옮길 수 없는 것은 참조 번호를 보인다. 페이지마다 운영자 안내서의
+// 오류 표가 쓰는 오류 코드가 있다.
 func TestEveryErrorIsAPage(t *testing.T) {
 	for _, lang := range []string{"ko", "en"} {
 		s := everyScreen(t)
@@ -78,12 +79,12 @@ func TestEveryErrorIsAPage(t *testing.T) {
 			want   string
 			ref    bool
 		}{
-			{"not found", s, dir, newReq(http.MethodGet, "/nope?lang="+lang, nil), 404, "이 주소에는 화면이 없습니다", false},
-			{"method", s, dir, newReq(http.MethodGet, "/save?lang="+lang, nil), 405, "이 방식의 요청을 받지 않습니다", false},
-			{"bad request", s, dir, newReq(http.MethodGet, ui.RowPath+"?kind=bogus&lang="+lang, nil), 400, "요청을 처리할 수 없습니다", false},
-			{"input missing", bare, bareDir, newReq(http.MethodGet, "/survey?lang="+lang, nil), 404, "관측 결과", false},
-			{"input broken", broken, brokenDir, newReq(http.MethodGet, "/review?lang="+lang, nil), 500, "파일을 읽지 못했습니다", true},
-			{"forbidden", s, dir, foreign, 403, "이 요청을 받지 않았습니다", false},
+			{ui.ErrNotFound, s, dir, newReq(http.MethodGet, "/nope?lang="+lang, nil), 404, "이 주소에는 화면이 없습니다", false},
+			{ui.ErrMethod, s, dir, newReq(http.MethodGet, "/save?lang="+lang, nil), 405, "이 방식의 요청을 받지 않습니다", false},
+			{ui.ErrBadRequest, s, dir, newReq(http.MethodGet, ui.RowPath+"?kind=bogus&lang="+lang, nil), 400, "요청을 처리할 수 없습니다", false},
+			{ui.ErrInputMissing, bare, bareDir, newReq(http.MethodGet, "/survey?lang="+lang, nil), 404, "관측 결과", false},
+			{ui.ErrInputBroken, broken, brokenDir, newReq(http.MethodGet, "/review?lang="+lang, nil), 500, "파일을 읽지 못했습니다", true},
+			{ui.ErrForbidden, s, dir, foreign, 403, "이 요청을 받지 않았습니다", false},
 		}
 		for _, c := range cases {
 			w := serve(c.srv.handler(), c.req)
@@ -91,6 +92,9 @@ func TestEveryErrorIsAPage(t *testing.T) {
 				t.Errorf("%s (%s): status %d, want %d", c.name, lang, w.Code, c.status)
 			}
 			plainPage(t, c.name, lang, c.dir, w, c.want)
+			if !strings.Contains(w.Body.String(), "<code>"+c.name+"</code>") {
+				t.Errorf("%s (%s): the page does not show its error code", c.name, lang)
+			}
 			if c.ref != (strings.Contains(w.Body.String(), "참조 번호") || strings.Contains(w.Body.String(), "Reference")) {
 				t.Errorf("%s (%s): reference shown = %v, want %v", c.name, lang, !c.ref, c.ref)
 			}

@@ -21,6 +21,7 @@ templ refusedPage(v RefusedView) {
 				}
 			</ul>
 		}
+		<p class="hint">{ v.CodeText }: <code>{ v.Code }</code></p>
 		if v.Ref != "" {
 			<p class="hint">{ v.RefText }: <code>{ v.Ref }</code></p>
 		}

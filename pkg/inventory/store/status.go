@@ -27,9 +27,11 @@ const (
 // ItemStatus: 항목 하나의 지금 상태.
 type ItemStatus struct {
 	Item
-	AbsPath         string `json:"abs_path"`
-	Current         string `json:"current"`
-	Size            int64  `json:"size"`
+	AbsPath string `json:"abs_path"`
+	Current string `json:"current"`
+	Size    int64  `json:"size"`
+	// AbsPrepared: 준비 파일(이 항목에 쓰려던 내용)의 전체 경로. 복구 절차가 이 파일을 대상 자리에 둔다.
+	AbsPrepared     string `json:"abs_prepared"`
 	PreparedPresent bool   `json:"prepared_present"`
 	PreparedMatches bool   `json:"prepared_matches"`
 	Verdict         string `json:"verdict"`
@@ -77,7 +79,8 @@ func (s *State) itemStatus(it Item) (ItemStatus, error) {
 		return st, err
 	}
 	st.Current, st.Size = cur, size
-	prep, _, err := currentHash(s.abs(it.Prepared))
+	st.AbsPrepared = s.abs(it.Prepared)
+	prep, _, err := currentHash(st.AbsPrepared)
 	if err != nil {
 		return st, err
 	}

@@ -15,7 +15,7 @@ import (
 )
 
 // IC-W37 — **-recover-status는 고치지 않고 보여 준다.** 남은 기록마다 파일의 전체 경로 · 기대 해시 ·
-// 지금 해시 · 준비 파일의 상태와 판정(mismatch 같은)을 보이고, 진단 묶음을 0600으로 새로 낸다. 남은
+// 지금 해시 · 준비 파일의 상태와 경로 · 판정(mismatch 같은)을 보이고, 진단 묶음을 0600으로 새로 낸다. 남은
 // 기록이 없으면 그렇다고 말한다. 파일은 한 바이트도 바뀌지 않는다.
 func TestRecoverStatus(t *testing.T) {
 	dir := t.TempDir()
@@ -61,7 +61,8 @@ func TestRecoverStatus(t *testing.T) {
 	}
 	out := b.String()
 	for _, want := range []string{"mismatch", target, "review/local/s-1", store.Sum([]byte("{\"new\":1}\n"))[:12],
-		store.Sum([]byte("edited by hand\n"))[:12], "present, matches", "keep a copy"} {
+		store.Sum([]byte("edited by hand\n"))[:12], "present, matches", "keep a copy",
+		"prepared copy at " + filepath.Join(dir, ".session.json.pqcaton-")} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the status does not show %q:\n%s", want, out)
 		}

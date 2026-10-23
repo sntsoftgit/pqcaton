@@ -24,8 +24,9 @@ import (
 // started: run을 돌려 처리기를 받아 온다. 서버는 띄우지 않는다(serveHTTP를 바꿔 낀다). 브라우저를 연 주소도 돌려준다.
 func started(t *testing.T, args ...string) (h http.Handler, code int, opened []string, stderr string) {
 	t.Helper()
-	oldServe, oldOpen := serveHTTP, openBrowser
-	t.Cleanup(func() { serveHTTP, openBrowser = oldServe, oldOpen })
+	oldServe, oldOpen, oldStop := serveHTTP, openBrowser, stopSignal
+	t.Cleanup(func() { serveHTTP, openBrowser, stopSignal = oldServe, oldOpen, oldStop })
+	stopSignal = func() <-chan os.Signal { c := make(chan os.Signal); close(c); return c }
 	serveHTTP = func(ln net.Listener, handler http.Handler) error {
 		h = handler
 		return ln.Close()
@@ -398,5 +399,45 @@ func TestLayerIsCreatedFromTheScreen(t *testing.T) {
 	s, _ := newServer(t)
 	if w := serve(s.handler(), posted(ui.LayerCreatePath, url.Values{"name": {"corp"}})); w.Code != http.StatusNotFound {
 		t.Errorf("explicit mode: %d, want 404", w.Code)
+	}
+}
+
+// IC-U106 — **화면을 끝내면(Ctrl+C · systemctl stop) 적어 둔 주소를 지우고 0으로 끝난다.** 남겨 두면 다시 띄울 때
+// 실행기가 아직 열리지 않은 낡은 주소를 먼저 연다. 끝난 뒤에는 실행 잠금도 풀려 다시 띄울 수 있다.
+func TestStopRemovesTheRecordedAddress(t *testing.T) {
+	ws := t.TempDir()
+	sig := make(chan os.Signal, 1)
+	oldStop, oldOpen := stopSignal, openBrowser
+	t.Cleanup(func() { stopSignal, openBrowser = oldStop, oldOpen })
+	stopSignal = func() <-chan os.Signal { return sig }
+	openBrowser = func(string, io.Writer) {}
+	done := make(chan int)
+	var errb bytes.Buffer
+	go func() { done <- run([]string{"-workspace", ws, "-addr", "127.0.0.1:0"}, io.Discard, &errb) }()
+	addr := filepath.Join(ws, ".pqcaton", addrFile)
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if b, err := os.ReadFile(addr); err == nil && len(b) > 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the screen did not record its address")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	sig <- os.Interrupt
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Errorf("stopped with code %d\n%s", code, errb.String())
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the screen did not stop")
+	}
+	if _, err := os.Stat(addr); !os.IsNotExist(err) {
+		t.Errorf("the recorded address is still there: %v", err)
+	}
+	if _, code, _, stderr := started(t, "-workspace", ws, "-no-browser"); code != 0 {
+		t.Errorf("could not start again after stopping: %d\n%s", code, stderr)
 	}
 }

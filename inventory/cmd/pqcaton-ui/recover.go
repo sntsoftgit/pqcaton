@@ -54,6 +54,9 @@ func printRecoverStatus(w io.Writer, dir, diag string) error {
 			fmt.Fprintf(w, "  %-8s %-7s %s\n", it.Verdict, it.Kind, it.AbsPath)
 			fmt.Fprintf(w, "           expected %s  before %s  now %s  prepared copy: %s\n",
 				short(it.After), short(it.Before), short(it.Current), prep)
+			if it.PreparedPresent {
+				fmt.Fprintf(w, "           prepared copy at %s\n", it.AbsPrepared)
+			}
 		}
 	}
 	if len(rep.Records) > 0 {
