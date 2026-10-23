@@ -59,7 +59,6 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
-	publicsite "github.com/sntsoftgit/pqcaton/site"
 )
 
 func main() {
@@ -341,40 +340,45 @@ func (s *server) handler() http.Handler {
 
 	// **첫 화면은 절차의 첫 자리다.** 선언이 있으면 거기서 시작하고, 없으면 리뷰 큐다.
 	r.Get("/", s.home)
-	// 비교 화면은 제품의 파일을 읽거나 쓰지 않는다. 같은 정적 원본을 Pages와 이 바이너리에
-	// 함께 싣는다. 현행 절차 화면과 헷갈리지 않게 별도 주소로만 연다.
-	r.Get("/ui-next.html", uiNext)
-	r.Get("/decl", s.declEdit)
-	r.Get(ui.ScreenDeclNext, s.declNext)
+	r.Get(ui.ScreenDecl, s.declEdit)
 	r.Get(ui.RowPath, s.declRow)
 	r.Get(ui.RemovePath, s.declRemove)
 	r.Post("/decl/save", s.declSave)
-	r.Get("/scope", s.scopeEdit)
-	r.Get(ui.ScreenScopeNext, s.scopeNext)
+	r.Get(ui.ScreenScope, s.scopeEdit)
 	r.Get(ui.ScopeRowPath, s.scopeRow)
 	r.Post("/scope/rules", s.scopeRules)
 	r.Post("/scope/save", s.scopeSave)
 	r.Post("/scope/finalize/confirm", s.scopeConfirm)
 	r.Post("/scope/finalize", s.scopeFinalize)
-	r.Get("/survey", s.survey)
-	r.Get(ui.ScreenSurveyNext, s.surveyNext)
+	r.Get(ui.ScreenSurvey, s.survey)
 	r.Get(ui.ScreenInventory, s.inventory)
-	r.Get(ui.ScreenInventoryNext, s.inventoryNext)
-	r.Get("/review", s.review)
-	r.Get(ui.ScreenReviewNext, s.reviewNext)
+	r.Get(ui.ScreenReview, s.review)
 	r.Post("/save", s.save)
 	r.Post("/finalize/confirm", s.finalizeConfirm)
 	r.Post("/finalize", s.finalize)
+
+	// 옛 판(한 판만). 화면 GET만 둔다 — 저장 · 확정 · 조각은 두 판이 같은 주소를 쓴다.
+	r.Get(ui.Classic(ui.ScreenDecl), s.declClassic)
+	r.Get(ui.Classic(ui.ScreenScope), s.scopeClassic)
+	r.Get(ui.Classic(ui.ScreenSurvey), s.surveyClassic)
+	r.Get(ui.Classic(ui.ScreenInventory), s.inventoryClassic)
+	r.Get(ui.Classic(ui.ScreenReview), s.reviewClassic)
+	// v0.21의 `-next` 주소. 북마크가 죽지 않게 301로 넘긴다.
+	for from, to := range ui.MovedNext() {
+		r.Get(from, moved(to))
+	}
 	return r
 }
 
-// uiNext — 현재 UI와 나란히 검토할 읽기 전용 정적 프로토타입.
-//
-// ServeFile로 소스 트리를 읽으면 설치된 바이너리에서는 404가 된다. site.UINext를 쓰면
-// Pages의 원본과 같은 바이트를 망이 끊긴 기계에서도 낸다.
-func uiNext(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write(publicsite.UINext)
+// moved — 옮긴 주소. **질의 문자열은 그대로 붙인다** — `?lang=en`으로 저장한 북마크가 말을 잃지 않게.
+func moved(to string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		dst := to
+		if r.URL.RawQuery != "" {
+			dst += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, dst, http.StatusMovedPermanently)
+	}
 }
 
 // rememberLang — 주소로 말을 고르면 쿠키에 남긴다.
@@ -405,6 +409,10 @@ func (s *server) home(w http.ResponseWriter, r *http.Request) {
 // 이 명령이 표준오류로 찍는 것은 영어 하나다.
 func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 	l := ui.PickLang(r)
+	var newer string
+	if ui.IsClassic(here) {
+		newer = ui.Current(here)
+	}
 	return ui.Page{
 		Title: ui.ScreenTitle(here, l), Subtitle: subtitle,
 		Nav: ui.NavFor(l, here, ui.Screens{
@@ -415,6 +423,7 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 		Lang: l, LangHref: ui.SwitchHref(r, l.Other()),
 		Message: r.URL.Query().Get("msg"), Problem: r.URL.Query().Get("problem"),
 		CSRF: csrfToken(r),
+		Self: here, NewHref: newer,
 		// rev는 여기서 재지 않는다. 화면 모델과 같은 시점에 잰 값(snapshot)을 처리기가 넣는다.
 	}
 }
@@ -452,11 +461,11 @@ func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	return review.Carry(prev, b.Session), b.Warnings, nil
 }
 
-func (s *server) review(w http.ResponseWriter, r *http.Request) {
+func (s *server) reviewClassic(w http.ResponseWriter, r *http.Request) {
 	s.reviewScreen(w, r, ui.RenderReview, false)
 }
 
-func (s *server) reviewNext(w http.ResponseWriter, r *http.Request) {
+func (s *server) review(w http.ResponseWriter, r *http.Request) {
 	s.reviewScreen(w, r, ui.RenderReviewNext, true)
 }
 
@@ -473,12 +482,12 @@ func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render fun
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	page := s.page(r, ui.ScreenReview, sub(sf.Scope, ui.LabelSession(ui.PickLang(r))+" "+s.path))
+	page := s.page(r, ui.Classic(ui.ScreenReview), sub(sf.Scope, ui.LabelSession(ui.PickLang(r))+" "+s.path))
 	page.Warnings = ui.Warnings(ui.PickLang(r), warn)
 	v := ui.NewReviewView(sf, page)
 	if next {
 		got := v.Summary()
-		v.Page = s.nextPage(r, ui.ScreenReviewNext, s.path, ui.StepState{Review: &got})
+		v.Page = s.nextPage(r, ui.ScreenReview, s.path, ui.StepState{Review: &got})
 		// 세션의 스코프는 `org://이름`이다. 위쪽 맥락 줄에는 다른 화면과 같은 모양으로
 		// 조직 이름만 적는다 — 한 껍데기에서 같은 자리가 화면마다 다르면 다른 값으로 읽힌다.
 		v.Page.Org = strings.TrimPrefix(sf.Scope, "org://")
@@ -614,11 +623,11 @@ func (s *server) scopeSession() (scope.Session, []scope.LayerFile, error) {
 	return scope.Reopen(sf, scope.Layers(files), base, s.org), files, nil
 }
 
-func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
+func (s *server) scopeClassic(w http.ResponseWriter, r *http.Request) {
 	s.scopeScreen(w, r, ui.RenderScope, false)
 }
 
-func (s *server) scopeNext(w http.ResponseWriter, r *http.Request) {
+func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 	s.scopeScreen(w, r, ui.RenderScopeNext, true)
 }
 
@@ -639,14 +648,14 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	page := s.page(r, ui.ScreenScope, sub(ui.LabelOrg(ui.PickLang(r))+" "+sf.Org, s.scope))
+	page := s.page(r, ui.Classic(ui.ScreenScope), sub(ui.LabelOrg(ui.PickLang(r))+" "+sf.Org, s.scope))
 	v := ui.NewScopeView(sf, page)
 	if len(files) > 0 {
 		v = v.Editable(files)
 	}
 	if next {
 		got := v.Summary()
-		v.Page = s.nextPage(r, ui.ScreenScopeNext, s.scope, ui.StepState{Scope: &got})
+		v.Page = s.nextPage(r, ui.ScreenScope, s.scope, ui.StepState{Scope: &got})
 		v.Page.Org = sf.Org
 	}
 	v.Page.Rev = rev
@@ -845,11 +854,11 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 
 // survey — 관측을 모아 선언과 대조한 것을 보여 준다. **계산은 report 패키지가 한다** —
 // 명령(`pqcaton-report`)이 글로 찍는 것과 같은 것을 표로 그린다.
-func (s *server) survey(w http.ResponseWriter, r *http.Request) {
+func (s *server) surveyClassic(w http.ResponseWriter, r *http.Request) {
 	s.surveyScreen(w, r, ui.RenderSurvey, false)
 }
 
-func (s *server) surveyNext(w http.ResponseWriter, r *http.Request) {
+func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	s.surveyScreen(w, r, ui.RenderSurveyNext, true)
 }
 
@@ -873,12 +882,12 @@ func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render fun
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	v := ui.NewSurveyView(res, s.page(r, ui.ScreenSurvey,
+	v := ui.NewSurveyView(res, s.page(r, ui.Classic(ui.ScreenSurvey),
 		sub(ui.LabelOrg(ui.PickLang(r))+" "+res.Org, ui.LabelResults(ui.PickLang(r))+" "+s.results)))
 	v.SVG = renderDOT(v.DOT)
 	if next {
 		got := v.Summary()
-		v.Page = s.nextPage(r, ui.ScreenSurveyNext, s.results, ui.StepState{Survey: &got})
+		v.Page = s.nextPage(r, ui.ScreenSurvey, s.results, ui.StepState{Survey: &got})
 		v.Page.Org = res.Org
 	}
 	html(w, func() error { return render(w, v) })
@@ -910,11 +919,11 @@ func renderDOT(dot string) string {
 // 대조 화면은 지금 대조한 것을 전부 늘어놓는다 — 수천 대에서는 그 자체가 못 쓰는
 // 화면이다. 여기서는 조건을 걸어 찾고, 자산 하나의 판정 이력을 열고, 정책이 뺀 것과 근거가
 // 바뀐 판정을 본다. **전부 손에 든 파일에서 나온다.**
-func (s *server) inventory(w http.ResponseWriter, r *http.Request) {
+func (s *server) inventoryClassic(w http.ResponseWriter, r *http.Request) {
 	s.inventoryScreen(w, r, ui.RenderInventory, false)
 }
 
-func (s *server) inventoryNext(w http.ResponseWriter, r *http.Request) {
+func (s *server) inventory(w http.ResponseWriter, r *http.Request) {
 	s.inventoryScreen(w, r, ui.RenderInventoryNext, true)
 }
 
@@ -939,7 +948,7 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		return
 	}
 	l := ui.PickLang(r)
-	page := s.page(r, ui.ScreenInventory, sub(ui.LabelOrg(l)+" "+res.Org, ui.LabelResults(l)+" "+s.results))
+	page := s.page(r, ui.Classic(ui.ScreenInventory), sub(ui.LabelOrg(l)+" "+res.Org, ui.LabelResults(l)+" "+s.results))
 	v := ui.NewInventoryView(res, ui.FilterFrom(r.URL.Query()), page)
 
 	if v, err = s.withPolicy(v); err != nil {
@@ -954,7 +963,7 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		// **조회는 절차 카드에 넣지 않는다** — 단계가 아니라 아무 때나 들어오는 자리다.
 		// 그래도 위쪽 카드는 그대로 세워 둔다. 어디서 들어왔든 절차가 어디까지 왔는지는
 		// 보여야 한다.
-		v.Page = s.nextPage(r, ui.ScreenInventoryNext, s.results, ui.StepState{})
+		v.Page = s.nextPage(r, ui.ScreenInventory, s.results, ui.StepState{})
 		v.Page.Org = res.Org
 	}
 	html(w, func() error { return render(w, v) })
@@ -1035,11 +1044,11 @@ const defaultTTLDays = 180
 //
 // **뷰를 하나만 만든다.** 두 화면이 각자 세면 숫자가 달라지는 날이 오고, 그날 어느 쪽이
 // 맞는지 아무도 모른다. 다른 것은 그리는 방식뿐이다.
-func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
+func (s *server) declClassic(w http.ResponseWriter, r *http.Request) {
 	s.declScreen(w, r, ui.RenderDecl, false)
 }
 
-func (s *server) declNext(w http.ResponseWriter, r *http.Request) {
+func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 	s.declScreen(w, r, ui.RenderDeclNext, true)
 }
 
@@ -1049,6 +1058,7 @@ func (s *server) declNext(w http.ResponseWriter, r *http.Request) {
 // 카드 하나를 채우려면 그 화면의 계산을 매 요청마다 돌려야 하고, 대조는 계산이 무겁다.
 func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepState) ui.Page {
 	p := s.page(r, here, subtitle)
+	p.ClassicHref = ui.Classic(here)
 	p.Org = s.org
 	p.Results = s.results
 	p.Steps = ui.StepsFor(p.Lang, here, ui.Screens{
@@ -1056,7 +1066,7 @@ func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepStat
 		Inventory: s.results != "",
 	}, st)
 	if s.results != "" {
-		p.InventoryHref = ui.ScreenInventoryNext
+		p.InventoryHref = ui.ScreenInventory
 		p.InventoryText = ui.InventoryLabel(p.Lang)
 	}
 	return p
@@ -1084,14 +1094,14 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		return
 	}
 	sub := sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)
-	v := ui.NewDeclView(d, s.page(r, ui.ScreenDecl, sub))
+	v := ui.NewDeclView(d, s.page(r, ui.Classic(ui.ScreenDecl), sub))
 	v = v.WithObserved(seen, unmatched)
 	// **카드는 요약이 나온 뒤에 채운다** — 붙지 않은 이름을 세어야 선언 카드가 설 수 있다.
 	if next {
 		got := v.Summary()
 		// **부제에는 파일만 적는다.** 조직은 위쪽 맥락 줄에 이미 있어서, 그대로 두면
 		// 같은 값이 한 화면에 두 번 나온다.
-		v.Page = s.nextPage(r, ui.ScreenDeclNext, s.decl, ui.StepState{Decl: &got})
+		v.Page = s.nextPage(r, ui.ScreenDecl, s.decl, ui.StepState{Decl: &got})
 		v.Page.Org = d.OrgOrDefault()
 	}
 	v.Page.Rev = rev

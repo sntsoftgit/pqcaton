@@ -53,7 +53,7 @@ func TestRecoveryModeBlocksEveryScreen(t *testing.T) {
 	if !s.recovering {
 		t.Fatal("the server did not enter recovery mode")
 	}
-	for _, path := range []string{"/", "/review", "/decl", ui.ScreenDeclNext, ui.ScreenInventory} {
+	for _, path := range []string{"/", "/review", "/decl", ui.Classic(ui.ScreenDecl), "/review-next", ui.ScreenInventory} {
 		w := get(t, s, path+"?lang=ko")
 		if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "-recover-status") {
 			t.Errorf("GET %s: status %d, want 503 naming -recover-status", path, w.Code)

@@ -3,7 +3,7 @@ package ui
 // refusedPage — 저장하지 않았다는 페이지(409 · 503). **보이는 칸은 RefusedView에 있는 것뿐이다.**
 // 오류 원문과 전체 경로는 싣지 않는다. 무엇을 하면 되는지가 본문이다.
 templ refusedPage(v RefusedView) {
-	@shell(v.Page) {
+	@nextShell(v.Page) {
 		<div class="msg bad">
 			<strong>{ v.Head }</strong>
 			<p>{ v.Body }</p>

@@ -199,7 +199,15 @@ func (v InventoryView) query(extra map[string]string) string {
 		}
 		q.Set(k, val)
 	}
-	return "/inventory?" + q.Encode()
+	return v.self() + "?" + q.Encode()
+}
+
+// self — 이 조회 화면의 주소. 옛 판에서 누른 정렬 · 거르기가 새 화면으로 넘어가지 않게 한다.
+func (v InventoryView) self() string {
+	if v.Page.Self != "" {
+		return v.Page.Self
+	}
+	return ScreenInventory
 }
 
 func subjectHref(v InventoryView, subject string) string {

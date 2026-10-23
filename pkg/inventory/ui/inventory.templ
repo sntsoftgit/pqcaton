@@ -18,7 +18,7 @@ templ inventoryBody(v InventoryView) {
 	@tip(v.Page.Lang, tInventoryIntro.In(v.Page.Lang)+" "+tInventoryBounds.In(v.Page.Lang))
 	<fieldset>
 		<legend>{ tSearch.In(v.Page.Lang) }</legend>
-		<form method="get" action="/inventory">
+		<form method="get" action={ templ.SafeURL(v.self()) }>
 			<input type="hidden" name={ LangParam } value={ string(v.Page.Lang) }/>
 			<table>
 				<tr>
@@ -40,7 +40,7 @@ templ inventoryBody(v InventoryView) {
 					</td>
 					<td style="width:12rem">
 						<button class="primary">{ tSearchGo.In(v.Page.Lang) }</button>
-						<a href={ templ.SafeURL("/inventory?" + LangParam + "=" + string(v.Page.Lang)) }>{ tSearchClear.In(v.Page.Lang) }</a>
+						<a href={ templ.SafeURL(v.self() + "?" + LangParam + "=" + string(v.Page.Lang)) }>{ tSearchClear.In(v.Page.Lang) }</a>
 					</td>
 				</tr>
 			</table>

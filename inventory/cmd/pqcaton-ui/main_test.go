@@ -497,7 +497,7 @@ func TestNavFollowsProcedure(t *testing.T) {
 func TestTabsNameWhatTheScreensCall(t *testing.T) {
 	s, dir := withDecl(t)
 	s.results = filepath.Join(dir, "results")
-	body := get(t, s, "/review?lang=ko").Body.String()
+	body := get(t, s, ui.Classic(ui.ScreenReview)+"?lang=ko").Body.String()
 
 	for _, want := range []string{
 		`>④ 판정(리뷰 큐)<`, // 판정을 하는 자리
@@ -670,22 +670,12 @@ func TestStaticIsMounted(t *testing.T) {
 	}
 }
 
-// IC-U25 — **비교 화면은 자료를 건드리지 않는 별도 주소다.**
-//
-// 배포본에도 들어 있어야 하므로 site/의 단일 원본을 바이너리에서 그대로 내보낸다.
-// ServeFile로 소스 트리를 읽으면 설치된 바이너리에서 404가 된다.
-func TestUINextIsMounted(t *testing.T) {
+// IC-U25 — **비교용 정적 원본은 바이너리에서 뺐다**(v0.22.0). 새 화면이 기본 주소가 됐으므로
+// 견줄 대상이 화면 자체다. 공개 사이트의 원본(site/ui-next.html)은 그대로 둔다.
+func TestUINextIsGone(t *testing.T) {
 	s, _ := newServer(t)
-	w := httptest.NewRecorder()
-	s.handler().ServeHTTP(w, newReq(http.MethodGet, "/ui-next.html", nil))
-	if w.Code != http.StatusOK {
-		t.Fatalf("GET /ui-next.html = %d", w.Code)
-	}
-	if got := w.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
-		t.Errorf("Content-Type = %q", got)
-	}
-	if !strings.Contains(w.Body.String(), "pqcaton UI next") {
-		t.Error("비교 화면을 내보내지 않는다")
+	if w := get(t, s, "/ui-next.html"); w.Code != http.StatusNotFound {
+		t.Fatalf("GET /ui-next.html = %d, want 404", w.Code)
 	}
 }
 
@@ -804,13 +794,12 @@ func TestReviewOpensFromResultsWithoutSessionFile(t *testing.T) {
 
 // IC-U30 — **새 화면을 두어도 옛 화면은 그대로다.**
 //
-// 옮기는 동안 둘을 나란히 두기로 했습니다(`/decl`과 `/decl-next`). 새 스타일이 울타리
-// (`.ui-next`) 없이 새면 옛 화면의 버튼까지 함께 바뀌는데, 그러면 무엇을 비교하는지
-// 알 수 없게 됩니다.
+// v0.22.0에서 새 화면이 기본 주소(`/decl`)가 되고 옛 화면은 한 판 동안 `/classic/decl`에
+// 남습니다. 새 스타일이 울타리(`.ui-next`) 없이 새면 옛 화면의 버튼까지 함께 바뀝니다.
 func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
 	s, _ := withDecl(t)
 
-	next := get(t, s, ui.ScreenDeclNext)
+	next := get(t, s, ui.ScreenDecl)
 	if next.Code != http.StatusOK {
 		t.Fatalf("새 화면이 %d", next.Code)
 	}
@@ -818,7 +807,7 @@ func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
 		t.Error("새 화면에 울타리가 없다 — 스타일이 옛 화면으로 샌다")
 	}
 
-	old := get(t, s, "/decl")
+	old := get(t, s, ui.Classic(ui.ScreenDecl))
 	if old.Code != http.StatusOK {
 		t.Fatalf("옛 화면이 %d", old.Code)
 	}
@@ -833,14 +822,21 @@ func TestDeclNextIsServedBesideTheOldScreen(t *testing.T) {
 	}
 }
 
-// IC-U31 — **이동 링크에는 넣지 않는다.**
+// IC-U31 — **옛 화면의 이동 링크는 옛 판 안에서만 오간다.**
 //
-// 지금 쓰는 절차 화면과 나란히 두면 어느 쪽이 진짜인지 헷갈립니다. 옮기는 동안만 주소로
-// 엽니다. `/ui-next.html`을 그렇게 다룬 것과 같은 선입니다(IC-U25).
-func TestDeclNextIsNotInTheNav(t *testing.T) {
+// 옛 화면에서 누른 탭이 새 화면으로 가면 둘을 견주던 사람이 어느 판에 있는지 잃습니다.
+// 새 화면으로 가는 길은 위쪽 안내의 링크 하나뿐입니다.
+func TestClassicNavStaysInClassic(t *testing.T) {
 	s, _ := withDecl(t)
-	body := get(t, s, "/decl").Body.String()
-	if strings.Contains(body, `href="`+ui.ScreenDeclNext+`"`) {
-		t.Error("이동 링크에 새 화면이 들어갔다")
+	body := get(t, s, ui.Classic(ui.ScreenDecl)).Body.String()
+	for _, sc := range []string{ui.ScreenDecl, ui.ScreenReview} {
+		if !strings.Contains(body, `href="`+ui.Classic(sc)+`"`) {
+			t.Errorf("옛 이동 링크에 %s 가 없다", ui.Classic(sc))
+		}
+	}
+	nav := body[strings.Index(body, "<nav>"):]
+	nav = nav[:strings.Index(nav, "</nav>")]
+	if strings.Contains(nav, `href="/decl"`) || strings.Contains(nav, `href="/review"`) {
+		t.Errorf("옛 이동 링크가 새 화면을 가리킨다:\n%s", nav)
 	}
 }

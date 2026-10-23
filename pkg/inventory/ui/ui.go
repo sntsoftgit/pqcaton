@@ -68,6 +68,14 @@ type Page struct {
 	InventoryHref string
 	InventoryText string
 
+	// Self — 이 화면의 주소. 「다시 불러오기」처럼 자기 화면을 다시 받는 조각이 쓴다. 옛 판이면
+	// `/classic/…`이다 — 새 주소를 받으면 옛 화면 안에 새 양식이 끼어든다.
+	Self string
+	// ClassicHref — 새 화면 아래쪽의 보조 링크(옛 판). NewHref — 옛 판 위쪽 안내의 새 화면 링크.
+	// 둘 다 v0.23.0에서 없앤다.
+	ClassicHref string
+	NewHref     string
+
 	// CSRF — 바꾸는 양식에 숨겨 실을 토큰. 서버는 쿠키와 이 값이 같은지 본다.
 	//
 	// **비어 있어도 필드는 그린다**(csrfField). 비었다고 필드를 빼면 토큰을 채우지 않은 실수가

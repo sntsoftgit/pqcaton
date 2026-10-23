@@ -3,7 +3,7 @@ package ui
 // confirmPage — 확정 전 확인. **이 페이지를 그리는 요청은 아무것도 바꾸지 않는다.** 받은 폼 값을
 // 숨은 필드로 다시 싣고, 확정 버튼은 서명된 확인 토큰과 함께 보낸다.
 templ confirmPage(v ConfirmView) {
-	@shell(v.Page) {
+	@nextShell(v.Page) {
 		<p>{ tConfirmBody.In(v.Lang) }</p>
 		if len(v.Lines) > 0 {
 			<ul>

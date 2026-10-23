@@ -18,6 +18,13 @@ templ shell(p Page) {
 			<script src={ StaticPath + "htmx.min.js" } defer></script>
 		</head>
 		<body>
+			if p.NewHref != "" {
+				// **본문을 덮지 않는다.** 고정 위치로 띄우면 확대한 화면에서 칸을 가린다.
+				<p class="classic-banner">
+					{ tClassicBanner.In(p.Lang) + " " }
+					<a href={ templ.SafeURL(p.NewHref) }>{ tClassicOpenNew.In(p.Lang) }</a>
+				</p>
+			}
 			<h1>{ p.Title }</h1>
 			<p class="sub">{ p.Subtitle }</p>
 			if len(p.Nav) > 0 {

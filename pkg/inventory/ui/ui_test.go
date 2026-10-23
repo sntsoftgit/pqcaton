@@ -987,7 +987,7 @@ func TestDeclNextLinksToTheRightNode(t *testing.T) {
 // **그렇다고 적습니다** — 빈 자리는 「할 일이 없다」로 읽힙니다.
 func TestStepsCarryState(t *testing.T) {
 	open := ui.Screens{Decl: true, Scope: true, Survey: true, Inventory: true}
-	steps := ui.StepsFor(ui.KO, ui.ScreenDeclNext, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3, Unlinked: 2}})
+	steps := ui.StepsFor(ui.KO, ui.ScreenDecl, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3, Unlinked: 2}})
 	if len(steps) != 4 {
 		t.Fatalf("카드가 %d개 — 절차는 넷이다", len(steps))
 	}
@@ -1003,7 +1003,7 @@ func TestStepsCarryState(t *testing.T) {
 		}
 	}
 
-	done := ui.StepsFor(ui.KO, ui.ScreenDeclNext, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3}})
+	done := ui.StepsFor(ui.KO, ui.ScreenDecl, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3}})
 	if done[0].Dot != "ok" {
 		t.Errorf("붙일 이름이 없는데 점이 %q 다", done[0].Dot)
 	}
@@ -1014,7 +1014,7 @@ func TestStepsCarryState(t *testing.T) {
 // 없는 것을 눌러 보게 하지 않는다는 선은 옛 이동 링크와 같습니다(`NavFor`). 다만 카드는
 // **자리를 비우지 않고 왜 닫혔는지 적습니다** — 넷이 늘 보여야 절차가 몇 걸음인지 읽힙니다.
 func TestStepsMarkWhatIsClosed(t *testing.T) {
-	steps := ui.StepsFor(ui.KO, ui.ScreenDeclNext, ui.Screens{Decl: true}, ui.StepState{})
+	steps := ui.StepsFor(ui.KO, ui.ScreenDecl, ui.Screens{Decl: true}, ui.StepState{})
 	if len(steps) != 4 {
 		t.Fatalf("닫혔다고 카드를 뺐다: %d개", len(steps))
 	}
@@ -1033,7 +1033,7 @@ func TestStepsMarkWhatIsClosed(t *testing.T) {
 // 나란히 서야 비교가 됩니다.
 func TestNextShellDoesNotTouchTheOldScreens(t *testing.T) {
 	page := ui.Page{Title: "선언", Lang: ui.KO,
-		Steps: ui.StepsFor(ui.KO, ui.ScreenDeclNext, ui.Screens{Decl: true}, ui.StepState{})}
+		Steps: ui.StepsFor(ui.KO, ui.ScreenDecl, ui.Screens{Decl: true}, ui.StepState{})}
 
 	var next strings.Builder
 	if err := ui.RenderDeclNext(&next, ui.NewDeclView(sample(), page)); err != nil {
@@ -1365,13 +1365,13 @@ func TestInventoryNextTellsWhenNothingIsFlagged(t *testing.T) {
 // 단계가 아니라 아무 때나 들어오는 자리라, 번호를 달면 ④ 다음에 하는 일로 읽힙니다.
 // 옛 이동 링크가 조회에만 번호를 안 붙인 것과 같은 선입니다.
 func TestInventoryIsNotAStep(t *testing.T) {
-	steps := ui.StepsFor(ui.KO, ui.ScreenInventoryNext,
+	steps := ui.StepsFor(ui.KO, ui.ScreenInventory,
 		ui.Screens{Decl: true, Scope: true, Survey: true, Inventory: true}, ui.StepState{})
 	if len(steps) != 4 {
 		t.Fatalf("절차 카드가 %d개 — 조회가 섞였다", len(steps))
 	}
 	for _, st := range steps {
-		if st.Href == ui.ScreenInventoryNext {
+		if st.Href == ui.ScreenInventory {
 			t.Error("조회가 절차 카드에 들어갔다")
 		}
 	}

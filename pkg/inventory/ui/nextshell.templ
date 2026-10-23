@@ -48,7 +48,7 @@ templ nextShell(p Page) {
 						@stepCard(st)
 					}
 					if p.InventoryHref != "" {
-						<a class={ "inventory-tab", templ.KV("active", p.InventoryHref == ScreenInventoryNext && p.Title == tTitleInventory.In(p.Lang)) } href={ templ.SafeURL(p.InventoryHref) }>{ p.InventoryText }</a>
+						<a class={ "inventory-tab", templ.KV("active", p.InventoryHref == ScreenInventory && p.Title == tTitleInventory.In(p.Lang)) } href={ templ.SafeURL(p.InventoryHref) }>{ p.InventoryText }</a>
 					}
 				</nav>
 			}
@@ -68,6 +68,11 @@ templ nextShell(p Page) {
 				<div class="msg bad"><strong>{ tRefused.In(p.Lang) }</strong><pre>{ p.Problem }</pre></div>
 			}
 			{ children... }
+			if p.ClassicHref != "" {
+				<footer class="classic-link">
+					<a href={ templ.SafeURL(p.ClassicHref) }>{ tClassicLink.In(p.Lang) }</a>
+				</footer>
+			}
 		</body>
 	</html>
 }

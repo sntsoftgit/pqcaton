@@ -226,3 +226,9 @@ body.wb .inventory-tab.active { color: var(--navy); border-color: var(--blue);
   body.wb .steps { grid-template-columns: 1fr; }
   body.wb .inventory-tab { grid-column: auto; }
 }
+
+/* 옛 판(/classic) 안내와 새 화면의 보조 링크. v0.23.0에서 없앤다.
+   고정 위치로 띄우지 않는다: 확대한 화면에서 본문을 덮는다. */
+.classic-banner { margin: 0 0 1rem; padding: .6rem .8rem; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--amber-soft); color: inherit; }
+.classic-link { margin: 2rem 0 1rem; font-size: .85rem; opacity: .75; }

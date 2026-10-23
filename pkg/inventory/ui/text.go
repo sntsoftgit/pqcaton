@@ -650,6 +650,11 @@ var (
 	tWbSelfHost  = T{KO: "직접 설치", EN: "self-hosted"}
 	tWbStepsAria = T{KO: "거버넌스 절차", EN: "Governance steps"}
 
+	// 옛 판(/classic)의 안내와 새 화면의 보조 링크. v0.23.0에서 없앤다.
+	tClassicBanner  = T{KO: "이 화면은 v0.23.0에서 없어집니다. 같은 작업은 새 화면에서 할 수 있습니다.", EN: "This screen will be removed in v0.23.0. You can do the same work on the new screen."}
+	tClassicOpenNew = T{KO: "새 화면 열기", EN: "Open the new screen"}
+	tClassicLink    = T{KO: "옛 화면(v0.23.0에서 제거)", EN: "Old screen (removed in v0.23.0)"}
+
 	tStepDeclOpen = T{
 		KO: "연결할 관측 이름 %d개",
 		EN: "%d observed names to link"}

@@ -61,7 +61,7 @@ templ declForm(v DeclView) {
 		</fieldset>
 		<div class="actions">
 			<button class="primary">{ tDeclSave.In(v.Page.Lang) }</button>
-			@reloadButton(v.Page.Lang)
+			@reloadButton(v.Page.Lang, v.Page.Self)
 			@tip(v.Page.Lang, tDeclSaveHint.In(v.Page.Lang))
 		</div>
 	</form>
@@ -210,11 +210,13 @@ templ rowFragment(l Lang, kind string, node, i int) {
 //
 // htmx가 막힌 환경에서는 그냥 링크로 동작한다(묻지는 못한다) — 화면의 뼈대는 여전히
 // 폼과 링크다.
-templ reloadButton(l Lang) {
+//
+// self는 이 화면의 주소다. 옛 판이면 옛 판을 다시 받는다.
+templ reloadButton(l Lang, self string) {
 	<a
 		class="button"
-		href={ templ.SafeURL(ScreenDecl + "?" + LangParam + "=" + string(l)) }
-		hx-get={ ScreenDecl + "?" + LangParam + "=" + string(l) }
+		href={ templ.SafeURL(reloadHref(l, self)) }
+		hx-get={ reloadHref(l, self) }
 		hx-select="form"
 		hx-target="closest form"
 		hx-swap="outerHTML"
