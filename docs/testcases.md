@@ -322,6 +322,9 @@ v0.21의 `-next` 주소는 북마크가 죽지 않게 301로 넘긴다.
 | **[IC-U76](../inventory/cmd/pqcaton-ui/classic_test.go) ✅** | `-next` 주소 다섯을 질의 문자열과 함께 거듭 연다 | 301로 기본 주소에 넘기고 **질의 문자열을 그대로 붙인다.** `?lang=en`으로 저장한 북마크가 말을 잃지 않고, 거듭 받아도 질의가 쌓이지 않는다 |
 | [IC-U77](../inventory/cmd/pqcaton-ui/classic_test.go) ✅ | 확인 페이지 · 409 거절 · 복구 503 | 셋 다 새 껍데기다. 복구 503은 입력을 읽지 않으므로 단계 카드를 그리지 않는다 |
 | **[IC-U78](../inventory/cmd/pqcaton-ui/classic_test.go) ✅** | 선언의 「다시 불러오기」 · 조회의 검색 양식 | 자기 판의 주소를 가리킨다. 서로 다르면 옛 화면 안에 새 양식이 끼어들거나 검색 한 번에 판이 바뀐다 |
+| **[IC-U79](../inventory/cmd/pqcaton-ui/returnto_test.go) ✅** | 두 판의 선언 · 스코프 · 판정 양식 | CSRF · rev · `return_to`를 싣는다. `return_to`는 그 양식을 그린 화면의 주소다 |
+| **[IC-U80](../inventory/cmd/pqcaton-ui/returnto_test.go) ✅** | 각 판에서 저장 · 확정 · 오래된 확인 | 저장한 판으로 돌아온다. 확인 페이지가 `return_to`를 다시 실어 확정 뒤에도 같은 판으로 오고, 확인 페이지와 거절 페이지의 「돌아가기」도 그 판을 가리킨다 |
+| **[IC-U81](../inventory/cmd/pqcaton-ui/returnto_test.go) ✅** | `return_to`에 바깥 주소 · 스킴 없는 바깥 주소 · 질의나 fragment가 붙은 주소 · 다른 화면의 주소 | 버리고 그 화면의 새 판으로 보낸다. 숨은 필드는 사람이 고칠 수 있어서, 받은 값을 그대로 따르면 열린 리다이렉트가 된다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |

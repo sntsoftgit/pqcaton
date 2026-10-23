@@ -93,6 +93,10 @@ const CSRFField = "csrf_token"
 // 잠금 안에서 rev를 다시 계산해 견주고, 다르면 저장하지 않는다.
 const RevField = "rev"
 
+// ReturnField — 저장 · 확정 뒤 돌아갈 화면(그 화면의 주소). 서버는 같은 화면의 새 판 · 옛 판 주소와
+// 글자 그대로 같을 때만 따른다. 숨은 필드라 사람이 고칠 수 있는 값이다 — 믿지 않는다.
+const ReturnField = "return_to"
+
 // Link — 위쪽 이동 링크.
 type Link struct {
 	Href string

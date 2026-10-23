@@ -106,7 +106,8 @@ func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, actio
 
 // finalizeConfirm — 리뷰 확정 전 확인. 아무것도 쓰지 않는다.
 func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
-	if !s.writable(w, r, "/review") {
+	back := returnTo(r, ui.ScreenReview)
+	if !s.writable(w, r, back) {
 		return
 	}
 	l := ui.PickLang(r)
@@ -131,7 +132,7 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		// 확정되지 않을 이유가 있으면 미리 보지 않고 화면에 그 이유를 보인다.
-		redirect(w, r, "/review", "", ui.Refusal(l, err))
+		redirect(w, r, back, "", ui.Refusal(l, err))
 		return
 	}
 	lines := []string{ui.LinePlanActions(l, len(o.Result.Plan.GetActions()))}
@@ -140,16 +141,17 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 		lines = append(lines, ui.LineJudgments(l, o.Judged))
 		files = append(files, file(l, "ledger", s.judgments))
 	}
-	s.confirmPage(w, r, kindReview, "/finalize", "/save", "/review", id, cur, payload, lines, files)
+	s.confirmPage(w, r, kindReview, "/finalize", "/save", back, id, cur, payload, lines, files)
 }
 
 // scopeConfirm — 스코프 확정 전 확인. 아무것도 쓰지 않는다.
 func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
+	back := returnTo(r, ui.ScreenScope)
 	if s.scope == "" {
 		http.Error(w, "no scope session was given", http.StatusNotFound)
 		return
 	}
-	if !s.writable(w, r, "/scope") {
+	if !s.writable(w, r, back) {
 		return
 	}
 	l := ui.PickLang(r)
@@ -172,7 +174,7 @@ func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 		return err
 	})
 	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(l, err))
+		redirect(w, r, back, "", ui.Refusal(l, err))
 		return
 	}
 	lines := []string{ui.LinePolicyRules(l, len(o.Result.Policy.Rules))}
@@ -181,5 +183,5 @@ func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 		lines = append(lines, ui.LineJudgments(l, o.Judged))
 		files = append(files, file(l, "ledger", s.judgments))
 	}
-	s.confirmPage(w, r, kindScope, "/scope/finalize", "/scope/save", "/scope", id, cur, payload, lines, files)
+	s.confirmPage(w, r, kindScope, "/scope/finalize", "/scope/save", back, id, cur, payload, lines, files)
 }

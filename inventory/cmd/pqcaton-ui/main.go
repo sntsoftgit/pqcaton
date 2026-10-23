@@ -514,7 +514,8 @@ func (s *server) reviewID() store.Identity {
 }
 
 func (s *server) save(w http.ResponseWriter, r *http.Request) {
-	if !s.writable(w, r, "/review") {
+	back := returnTo(r, ui.ScreenReview)
+	if !s.writable(w, r, back) {
 		return
 	}
 	err := s.st.SaveChecked(s.reviewID(), []string{s.path}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
@@ -526,10 +527,10 @@ func (s *server) save(w http.ResponseWriter, r *http.Request) {
 		return []store.Change{{Path: s.path, Content: b}}, err
 	})
 	if err != nil {
-		s.fail(w, r, "/review", err, file(ui.PickLang(r), "session", s.path))
+		s.fail(w, r, back, err, file(ui.PickLang(r), "session", s.path))
 		return
 	}
-	redirect(w, r, "/review", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
+	redirect(w, r, back, ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
 // finalize — **명령과 같은 검사를 거친다.** 여기서 따로 판정하지 않는다(review.Outputs가
@@ -538,9 +539,10 @@ func (s *server) save(w http.ResponseWriter, r *http.Request) {
 // 세션 · 계획(앞 판은 .prev로) · 판정 원장 · 영수증이 한 트랜잭션이다. 같은 세션을 같은 내용으로
 // 다시 확정하면 아무것도 다시 쓰지 않는다.
 func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
+	back := returnTo(r, ui.ScreenReview)
 	l := ui.PickLang(r)
 	files := []ui.FileRef{file(l, "session", s.path), file(l, "plan", s.planOut)}
-	if !s.writable(w, r, "/review") {
+	if !s.writable(w, r, back) {
 		return
 	}
 	withJudg := s.judgments != ""
@@ -551,7 +553,7 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 	}
 	// 확인 페이지가 서명한 지문. 잠금 안에서 다시 만들어 견준다 - 그 사이 파일이 바뀌었으면 쓰지 않는다.
 	id := s.reviewID()
-	payload, ok := s.confirmed(w, r, kindReview, "/review", id)
+	payload, ok := s.confirmed(w, r, kindReview, back, id)
 	if !ok {
 		return
 	}
@@ -578,20 +580,20 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		return parts, nil
 	})
 	if err != nil {
-		s.fail(w, r, "/review", err, files...)
+		s.fail(w, r, back, err, files...)
 		return
 	}
 	switch out.Status {
 	case store.OutcomeAlready:
-		redirect(w, r, "/review", ui.MsgFinalizedAlready(l), "")
+		redirect(w, r, back, ui.MsgFinalizedAlready(l), "")
 	case store.OutcomeSuperseded:
-		redirect(w, r, "/review", ui.MsgFinalizedSuperseded(l), "")
+		redirect(w, r, back, ui.MsgFinalizedSuperseded(l), "")
 	default:
 		msg := ui.MsgFinalizedPlan(l, len(written.Result.Plan.GetActions()), filepath.Base(s.planOut))
 		if withJudg {
 			msg += ui.MsgJudgmentsSaved(l, written.Judged, filepath.Base(s.judgments))
 		}
-		redirect(w, r, "/review", msg, "")
+		redirect(w, r, back, msg, "")
 	}
 }
 
@@ -667,11 +669,12 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 // **판정을 먼저 얹고 규칙을 쓴다.** 같은 폼에서 온 값이라, 규칙만 저장하면 그 사이에
 // 적어 둔 결론이 날아간다. 계층 파일들과 세션이 한 트랜잭션이다.
 func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
+	back := returnTo(r, ui.ScreenScope)
 	if len(s.layers) == 0 {
 		http.Error(w, "no layer CSVs were given — pass -layers", http.StatusNotFound)
 		return
 	}
-	if !s.writable(w, r, "/scope") {
+	if !s.writable(w, r, back) {
 		return
 	}
 	l := ui.PickLang(r)
@@ -715,7 +718,7 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 		return append(changes, store.Change{Path: s.scope, Content: b}), nil
 	})
 	if err != nil {
-		s.fail(w, r, "/scope", err, files...)
+		s.fail(w, r, back, err, files...)
 		return
 	}
 	n := 0
@@ -727,7 +730,7 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 		// **말하지 않으면 사람은 서명이 남아 있다고 여긴다.**
 		msg += ui.MsgSignatureCleared(l)
 	}
-	redirect(w, r, "/scope", msg, "")
+	redirect(w, r, back, msg, "")
 }
 
 // scopeRow — 규칙 표의 「행 추가」.
@@ -765,11 +768,12 @@ func (s *server) scopeID() store.Identity {
 }
 
 func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
+	back := returnTo(r, ui.ScreenScope)
 	if s.scope == "" {
 		http.Error(w, "no scope session was given", http.StatusNotFound)
 		return
 	}
-	if !s.writable(w, r, "/scope") {
+	if !s.writable(w, r, back) {
 		return
 	}
 	err := s.st.SaveChecked(s.scopeID(), []string{s.scope}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
@@ -781,20 +785,21 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 		return []store.Change{{Path: s.scope, Content: b}}, err
 	})
 	if err != nil {
-		s.fail(w, r, "/scope", err, file(ui.PickLang(r), "scope-session", s.scope))
+		s.fail(w, r, back, err, file(ui.PickLang(r), "scope-session", s.scope))
 		return
 	}
-	redirect(w, r, "/scope", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
+	redirect(w, r, back, ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
 // scopeFinalize — **명령과 같은 검사를 거친다.** 세션 · 정책 CSV(앞 판은 .prev로) · 판정 원장 ·
 // 영수증이 한 트랜잭션이다.
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
+	back := returnTo(r, ui.ScreenScope)
 	if s.scope == "" {
 		http.Error(w, "no scope session was given", http.StatusNotFound)
 		return
 	}
-	if !s.writable(w, r, "/scope") {
+	if !s.writable(w, r, back) {
 		return
 	}
 	l := ui.PickLang(r)
@@ -806,7 +811,7 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 		files = append(files, file(l, "ledger", s.judgments))
 	}
 	id := s.scopeID()
-	payload, ok := s.confirmed(w, r, kindScope, "/scope", id)
+	payload, ok := s.confirmed(w, r, kindScope, back, id)
 	if !ok {
 		return
 	}
@@ -833,20 +838,20 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 		return parts, nil
 	})
 	if err != nil {
-		s.fail(w, r, "/scope", err, files...)
+		s.fail(w, r, back, err, files...)
 		return
 	}
 	switch out.Status {
 	case store.OutcomeAlready:
-		redirect(w, r, "/scope", ui.MsgFinalizedAlready(l), "")
+		redirect(w, r, back, ui.MsgFinalizedAlready(l), "")
 	case store.OutcomeSuperseded:
-		redirect(w, r, "/scope", ui.MsgFinalizedSuperseded(l), "")
+		redirect(w, r, back, ui.MsgFinalizedSuperseded(l), "")
 	default:
 		msg := ui.MsgFinalizedPolicy(l, len(written.Result.Policy.Rules), filepath.Base(s.scopeOut))
 		if withJudg {
 			msg += ui.MsgJudgmentsSaved(l, written.Judged, filepath.Base(s.judgments))
 		}
-		redirect(w, r, "/scope", msg, "")
+		redirect(w, r, back, msg, "")
 	}
 }
 
@@ -1208,11 +1213,12 @@ func (s *server) declRemove(w http.ResponseWriter, r *http.Request) {
 const maxRows = 10000
 
 func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
+	back := returnTo(r, ui.ScreenDecl)
 	if s.decl == "" {
 		http.Error(w, "no declaration file was given", http.StatusNotFound)
 		return
 	}
-	if !s.writable(w, r, "/decl") {
+	if !s.writable(w, r, back) {
 		return
 	}
 	var (
@@ -1230,7 +1236,7 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		return []store.Change{{Path: s.decl, Content: b}}, err
 	})
 	if err != nil {
-		s.fail(w, r, "/decl", err, file(ui.PickLang(r), "declaration", s.decl))
+		s.fail(w, r, back, err, file(ui.PickLang(r), "declaration", s.decl))
 		return
 	}
 	msg := ui.MsgDeclSaved(ui.PickLang(r), len(d.Nodes), len(d.Assets), len(d.Edges))
@@ -1243,7 +1249,7 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 	if p := decl.Check(d); len(p) > 0 {
 		msg += ui.MsgDeclStillOff(ui.PickLang(r), len(p))
 	}
-	redirect(w, r, "/decl", msg, "")
+	redirect(w, r, back, msg, "")
 }
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
