@@ -126,7 +126,8 @@ bin/pqcaton-decide open decl.csv local > session.json
 
 # ④ 확정 — 전 필수 판정과 승인 서명이 있어야 통과하고,
 #    판정은 append-only로 남습니다 (감사 기록)
-bin/pqcaton-decide close session.json -judgments judgments.jsonl -org acme > plan.json
+#    세션 · 계획 · 판정 원장을 한 번에 씁니다. 같은 세션을 다시 확정해도 다시 쓰지 않습니다
+bin/pqcaton-decide close session.json -o plan.json -judgments judgments.jsonl -org acme
 
 # ⑤ 재관측한 뒤 — 근거가 바뀐 판정만 다시 봅니다 (전면 재리뷰가 아닙니다)
 bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
@@ -186,7 +187,7 @@ bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scop
 bin/pqcaton-scope open corp.csv prod.csv pay.csv -org acme > scope-session.json
 
 # 승인 — exclude 추가는 결론이 없으면 확정되지 않습니다
-bin/pqcaton-scope close scope-session.json -judgments judgments.jsonl -org acme > asset-scope.csv
+bin/pqcaton-scope close scope-session.json -o asset-scope.csv -judgments judgments.jsonl -org acme
 
 # 나온 CSV가 그대로 pqcota 집행기의 입력입니다
 pqcota-ingest -scope-assets asset-scope.csv results/

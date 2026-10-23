@@ -297,7 +297,7 @@ pqcaton-report <results-dir> <declaration.json> [topology.dot]
 ```bash
 pqcaton-decide open declaration.json -results results/ -org acme > session.json
 #  … 사람이 정책별 결론 · 승인자 · 서명을 채운다
-pqcaton-decide close session.json -judgments j.jsonl -org acme > plan.json
+pqcaton-decide close session.json -o plan.json -judgments j.jsonl -org acme
 pqcaton-decide delta j.jsonl declaration.json -results results/ -org acme   # 근거가 바뀐 것만
 ```
 
