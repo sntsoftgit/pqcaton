@@ -132,7 +132,7 @@
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT`로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass`가 고른 관계의 OID를 `pg_attribute`에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN`이 있을 때만 |
 
-### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 상태 디렉토리 · 잠금 · 원자적 교체 · 트랜잭션 복구 · 영수증까지
+### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 저장소 계층 완료, 화면 연결 전
 화면과 명령이 파일을 바꿀 때 지나가는 한 길입니다. 상용 지원은 Linux 로컬 파일시스템뿐입니다.
 
 | TC | Given → When | Then |
@@ -163,6 +163,9 @@
 | [IC-W24](../pkg/inventory/store/receipt_test.go) ✅ | 확정한 출력을 손으로 고침 · 원장 구간이 영수증과 다름 | 복구 필요로 알리고 다시 쓰지 않는다 |
 | **[IC-W25](../pkg/inventory/store/receipt_test.go) ✅** | 영수증을 쓰기 직전에 멈춤 · 같은 세션을 동시에 두 번 확정 | 다시 열어 복구하면 영수증까지 끝나고, 그 뒤 같은 확정은 이전 결과다. 동시에 두 번이면 한쪽만 쓰고 다른 쪽은 이전 결과를 받는다. 어느 쪽이든 판정은 원장에 한 번만 들어간다 |
 | [IC-W26](../pkg/inventory/store/receipt_test.go) ✅ | 종류 · 조직 · 세션 ID에 경로 구분자 · 「..」 · 빈 값 | 받지 않는다. 영수증 경로가 상태 디렉토리 밖으로 나가지 않는다 |
+| **[IC-W27](../pkg/inventory/store/rev_test.go) ✅** | 세션 · 레이어 · 관측 파일의 한 바이트, 관측 파일의 추가 · 이름 바꿈, 입력의 자리, 「없음」과 「빈 파일」 | 하나라도 다르면 rev(화면이 본 입력의 지문)가 다르다. 입력이 같으면 rev가 같다. 저장 요청의 rev가 지금과 다르면 화면이 오래된 것이다 |
+| [IC-W28](../pkg/inventory/store/rev_test.go) ✅ | 읽는 동안 입력이 바뀜 | 다시 읽어 바뀐 뒤의 rev를 낸다. 계속 바뀌면 「읽는 동안 바뀌었다」로 끝난다. 반쯤 바뀐 상태의 rev는 내지 않는다 |
+| [IC-W29](../pkg/inventory/store/rev_test.go) ✅ | 크기와 수정 시각은 그대로 두고 내용만 바꿈 | rev가 바뀐다. 캐시하지 않고 매번 내용을 읽는다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
