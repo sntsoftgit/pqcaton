@@ -75,6 +75,8 @@ func main() {
 	judgments := fs.String("judgments", "", "file to append judgments to on finalize (JSONL, append-only)")
 	orgName := fs.String("org", "local", "organization the judgments are bound to")
 	planOut := fs.String("plan", "plan.json", "file to write the finalized plan to")
+	recoverStatus := fs.Bool("recover-status", false, "print what unfinished transactions left behind (files, expected and current hashes, prepared copies) and exit. Changes nothing")
+	diagnostics := fs.String("diagnostics", "", "with -recover-status: also write the report as JSON to this new file (0600)")
 	stateDir := fs.String("state-dir", "", "state directory holding transaction records and receipts (default: .pqcaton next to the session file). Commands that change the same files must use the same one")
 
 	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag는 첫 비플래그에서
@@ -83,6 +85,22 @@ func main() {
 	pos, flags := splitArgs(os.Args[1:])
 	if err := fs.Parse(flags); err != nil {
 		os.Exit(2)
+	}
+	// 복구 상태 보기는 화면을 열지 않는다. 서버가 떠 있어도 볼 수 있다(읽기만 한다).
+	if *recoverStatus {
+		dir := *stateDir
+		if dir == "" && len(pos) > 0 {
+			dir = store.DefaultDir(pos[0])
+		}
+		if dir == "" {
+			fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> -recover-status [-state-dir <dir>] [-diagnostics <file>]")
+			os.Exit(2)
+		}
+		if err := printRecoverStatus(os.Stdout, dir, *diagnostics); err != nil {
+			fmt.Fprintln(os.Stderr, "❌", err)
+			os.Exit(1)
+		}
+		return
 	}
 	// **주소부터 본다.** 파일을 읽기 전에 막아야 열리지 않을 화면 때문에 입력을 건드리지 않는다.
 	if err := checkBind(*addr); err != nil {

@@ -169,6 +169,11 @@
 | **[IC-W30](../pkg/inventory/store/check_test.go) ✅** | 같은 오래된 화면에서 동시에 저장 · rev 없음 · 확인한 것과 다른 확정 내용 · 잠근 대상 밖의 파일 | **rev는 저장 잠금 안에서 견준다.** 동시에 저장하면 하나만 쓰이고 나머지는 「화면이 오래됐다」로 거부된다. rev가 없거나 다르면, 확정 내용이 확인한 것과 다르면, 잠그지 않은 파일을 쓰려 하면 쓰지 않는다. 이미 같은 내용으로 확정됐으면 rev가 낡았어도 이전 결과다 |
 | [IC-W31](../pkg/inventory/store/check_test.go) ✅ | 링크는 그대로인 채 대상 파일만 바뀜 · 링크가 끊김 · 입력 디렉토리 자체가 링크 · 안쪽의 디렉토리 링크 | 앞의 셋은 rev가 바뀐다. 링크가 가리키는 파일의 내용까지 본다. 안쪽의 디렉토리 링크는 따라가지 않고 거부한다 |
 | [IC-W32](../pkg/inventory/store/check_test.go) ✅ | 영수증의 벽시각이 거꾸로 적힘 | 확정의 앞뒤는 영수증 순번으로 가린다. 뒤에 확정한 세션이 대체한 쪽이다 |
+| **[IC-W33](../inventory/cmd/pqcaton-decide/main_test.go) ✅** | `pqcaton-decide close`에 `-judgments`만 주고 `-o`는 안 줌 | 거부하고 아무것도 쓰지 않는다. 원장과 표준출력은 한 트랜잭션으로 묶이지 않는다. 둘 다 없으면 예전처럼 표준출력으로만 계획을 내고 원장 · 영수증은 쓰지 않는다 |
+| **[IC-W34](../inventory/cmd/pqcaton-decide/main_test.go) ✅** | `close -o plan.json -judgments …`를 두 번 | 세션 · 계획 · 판정 원장 · 영수증을 화면과 같은 트랜잭션으로 쓴다. 두 번째는 아무것도 다시 쓰지 않는다. 표준출력은 비어 있다 |
+| [IC-W35](../inventory/cmd/pqcaton-decide/main_test.go) ✅ | 화면이 떠 있는 동안 `close -o` | 기다리지 않고 거부되며 아무것도 쓰지 않는다 |
+| [IC-W36](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | `pqcaton-scope close`(`-judgments`만 · `-o`로 두 번) | 리뷰 확정과 같은 규칙이다. `open`이 세션 ID를 박는다 |
+| [IC-W37](../inventory/cmd/pqcaton-ui/recover_test.go) ✅ | `pqcaton-ui -recover-status [-diagnostics 파일]` | 고치지 않고 보여 준다. 남은 기록마다 전체 경로 · 기대 해시 · 지금 해시 · 준비 파일 상태 · 판정을 보이고, 진단 묶음을 0600으로 새로 낸다. 남은 기록이 없으면 없다고 알린다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |

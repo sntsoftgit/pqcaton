@@ -8,7 +8,7 @@
 //
 //	pqcaton-scope open   <계층.csv>... [-base 현재.csv] [-org 이름] > session.json
 //	  … 사람이 session.json을 편집한다 (결론 · 승인자 · 서명)
-//	pqcaton-scope close  <session.json> [-judgments 파일] [-org 이름] > asset-scope.csv
+//	pqcaton-scope close  <session.json> -o asset-scope.csv [-judgments 파일] [-org 이름]
 //	pqcaton-scope review <정책.csv> <results-dir> [-judgments 파일] [-org 이름]
 //
 // 계층은 준 순서대로 겹친다 — 조직, 환경, 노드군 순으로 준다. 같은 자산에 규칙이 여럿
@@ -35,6 +35,7 @@ import (
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 )
 
 const usage = `usage:
@@ -43,9 +44,12 @@ const usage = `usage:
         Layers stack in the order given - pass them org, environment, node group.
         When several rules match one asset, the later layer wins
 
-  pqcaton-scope close  <session.json> [-judgments <file>] [-org <name>]
-        Check the approval and emit **the CSV pqcota's enforcer reads**.
-        An added exclude is not finalized without a conclusion - dropping an asset is auditable
+  pqcaton-scope close  <session.json> -o <asset-scope.csv> [-judgments <file>] [-org <name>] [-state-dir <dir>]
+        Check the approval and write **the CSV pqcota's enforcer reads** to -o.
+        An added exclude is not finalized without a conclusion - dropping an asset is auditable.
+        The session, the policy (the previous one kept as .prev), the judgments and a receipt
+        are written as one transaction, through the same state directory as pqcaton-ui.
+        Without -o the CSV goes to stdout and nothing else is written; -judgments then is refused
 
   pqcaton-scope review <policy.csv> <results-dir> [-judgments <file>] [-org <name>] [-ttl <days>]
         Name the assets the policy dropped, and raise again only the ones whose approval
@@ -68,6 +72,8 @@ func main() {
 	judgments := fs.String("judgments", "", "file to append judgments to (JSONL, append-only)")
 	orgName := fs.String("org", "local", "organization the policy and judgments are bound to")
 	ttlDays := fs.Int("ttl", defaultTTLDays, "how long an exclusion approval stays valid (days)")
+	out := fs.String("o", "", "close: file to write the finalized policy CSV to (needed with -judgments)")
+	stateDir := fs.String("state-dir", "", "close -o: state directory (default: .pqcaton next to the session file). Use the one pqcaton-ui uses")
 
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - pqcaton-decide와 같은 규칙이다.
 	var pos, flags []string
@@ -95,7 +101,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, usage)
 			os.Exit(2)
 		}
-		err = closeSession(pos[0], *judgments, *orgName)
+		err = closeSession(pos[0], *judgments, *orgName, *out, *stateDir)
 	case "review":
 		if len(pos) < 2 {
 			fmt.Fprintln(os.Stderr, usage)
@@ -145,7 +151,14 @@ func open(layerPaths []string, basePath, orgName string) error {
 
 // ── close ──────────────────────────────────────────────────────────────────
 
-func closeSession(path, judgmentPath, orgName string) error {
+func closeSession(path, judgmentPath, orgName, out, stateDir string) error {
+	if out != "" {
+		return closeToFile(path, judgmentPath, orgName, out, stateDir)
+	}
+	// **원장과 표준출력은 한 트랜잭션으로 묶이지 않는다.** 원장에 쓰려면 -o로 파일에 낸다.
+	if judgmentPath != "" {
+		return fmt.Errorf("%w: the ledger and stdout cannot be written as one transaction - pass -o asset-scope.csv", store.ErrNeedOutput)
+	}
 	sf, err := scope.LoadSession(path)
 	if err != nil {
 		return err
@@ -159,17 +172,79 @@ func closeSession(path, judgmentPath, orgName string) error {
 	for layer, n := range res.Batched {
 		fmt.Fprintf(os.Stderr, "layer %s: %d judged in one batch\n", layer, n)
 	}
-	// **관문을 지난 뒤에만 남긴다.**
-	if judgmentPath != "" {
-		n, err := scope.SaveJudgments(judgmentPath, orgName, sf, res.Decided)
-		if err != nil {
-			return fmt.Errorf("recording judgments: %w", err)
-		}
-		fmt.Fprintf(os.Stderr, "%d judgments appended to %s (append-only)\n", n, judgmentPath)
-	}
-	fmt.Fprintf(os.Stderr, "finalized: %d rules — this is the input to `pqcota-ingest -scope-assets`\n",
+	fmt.Fprintf(os.Stderr, "finalized (stdout only, no ledger, no receipt): %d rules — this is the input to `pqcota-ingest -scope-assets`\n",
 		len(res.Policy.Rules))
 	return scope.WriteCSV(os.Stdout, res.Policy)
+}
+
+// closeToFile — **M1이 보장하는 확정의 길이다.** 세션 · 정책 CSV(앞 판은 .prev) · 판정 원장 · 영수증이
+// 한 트랜잭션이고, 화면과 같은 상태 디렉토리와 같은 잠금을 쓴다.
+func closeToFile(path, judgmentPath, orgName, out, stateDir string) error {
+	if stateDir == "" {
+		stateDir = store.DefaultDir(path)
+	}
+	targets := []string{path, out}
+	withJudg := judgmentPath != ""
+	if withJudg {
+		targets = append(targets, judgmentPath)
+	}
+	st, err := store.OpenCommand(stateDir, targets, store.Options{})
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	sf, err := scope.LoadSession(path)
+	if err != nil {
+		return err
+	}
+	// 확정은 세션 ID로 한 번만 일어난다. 옛 빌드가 연 세션에는 없다.
+	if sf.SessionID == "" {
+		return fmt.Errorf("this session records no session_id - it was raised by an older build. " +
+			"raise it again (`pqcaton-scope open`) so a finalize can be recognized when it is repeated")
+	}
+	payload, err := scope.PayloadSHA256(sf, orgName, withJudg)
+	if err != nil {
+		return err
+	}
+	id := store.Identity{Kind: "scope", Org: orgName, SessionID: sf.SessionID}
+	var written scope.Output
+	res, err := st.FinalizeChecked(id, targets, store.Check{}, payload, store.CommandWait, func() (store.Parts, error) {
+		sf, err := scope.LoadSession(path)
+		if err != nil {
+			return store.Parts{}, err
+		}
+		o, err := scope.Outputs(sf, orgName, withJudg, time.Now().Unix())
+		if err != nil {
+			return store.Parts{}, err
+		}
+		p, err := scope.PayloadSHA256(sf, orgName, withJudg)
+		if err != nil {
+			return store.Parts{}, err
+		}
+		written = o
+		parts := store.Parts{PayloadSHA256: p, Replace: []store.Change{
+			{Path: path, Content: o.Session}, {Path: out, Content: o.Policy, Backup: true}}}
+		if withJudg && len(o.Judgments) > 0 {
+			parts.Append = []store.Addition{{Path: judgmentPath, Data: o.Judgments}}
+		}
+		return parts, nil
+	})
+	if err != nil {
+		return err
+	}
+	if res.Status != store.OutcomeDone {
+		fmt.Fprintln(os.Stderr, res.Describe())
+		return nil
+	}
+	for layer, n := range written.Result.Batched {
+		fmt.Fprintf(os.Stderr, "layer %s: %d judged in one batch\n", layer, n)
+	}
+	if withJudg {
+		fmt.Fprintf(os.Stderr, "%d judgments appended to %s (append-only)\n", written.Judged, judgmentPath)
+	}
+	fmt.Fprintf(os.Stderr, "finalized: %d rules written to %s — this is the input to `pqcota-ingest -scope-assets`\n",
+		len(written.Result.Policy.Rules), out)
+	return nil
 }
 
 // ── review ─────────────────────────────────────────────────────────────────

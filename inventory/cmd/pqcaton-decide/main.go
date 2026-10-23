@@ -9,7 +9,7 @@
 //	pqcaton-decide open  <declaration.json> -results <results-dir> [-org 이름] > session.json
 //	pqcaton-decide open  <declaration.csv> [이-기계에-붙일-이름] [-org 이름] > session.json
 //	  … 사람이 session.json을 편집한다 (결론 · 승인자 · 서명)
-//	pqcaton-decide close <session.json> [-judgments 파일] [-org 이름] > plan.json
+//	pqcaton-decide close <session.json> -o plan.json [-judgments 파일] [-org 이름]
 //	pqcaton-decide delta <judgments.jsonl> <declaration.csv> [node]
 //
 // **파일이 곧 감사 기록이다.** 대화형으로 물어보면 무엇을 근거로 무엇을 정했는지가 화면에서
@@ -25,8 +25,7 @@ import (
 	"os"
 	"sort"
 	"strings"
-
-	"google.golang.org/protobuf/encoding/protojson"
+	"time"
 
 	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/declaration"
@@ -36,6 +35,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/localscan"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 )
 
 const usage = `usage:
@@ -53,9 +53,13 @@ const usage = `usage:
         to observe another node, run pqcota's collector there and gather the results
         with pqcaton-report. Without /proc (non-Linux) this refuses
 
-  pqcaton-decide close <session.json> [-judgments <file>] [-org <name>]
-        Check the judgments and emit the finalized plan. With -judgments, the judgments
-        are appended to that file (audit record)
+  pqcaton-decide close <session.json> -o <plan.json> [-judgments <file>] [-org <name>] [-state-dir <dir>]
+        Check the judgments and write the finalized plan to -o. The session, the plan
+        (the previous one kept as .prev), the judgments (-judgments, audit record) and a
+        receipt are written as one transaction, through the same state directory as
+        pqcaton-ui. Finalizing the same session again writes nothing.
+        Without -o the plan goes to stdout and nothing else is written; -judgments then
+        is refused, as the ledger and stdout cannot be one transaction
 
   pqcaton-decide delta <judgments.jsonl> <declaration> [node] [-org <name>] [-results <dir>]
         Compare recorded judgments against the current observation and pick out
@@ -78,6 +82,8 @@ func main() {
 	scopeAssets := fs.String("scope-assets", "", "asset-scope policy (scope-assets.csv) — give the SAME file pqcota-ingest was given, or the snapshot fingerprints will not match the central history and the plan's evidence cannot be traced back")
 	view := fs.Bool("view", false, "also print the reconciliation as a table (the session still goes to stdout)")
 	orgName := fs.String("org", "local", "organization the reconciliation and judgments are bound to")
+	out := fs.String("o", "", "close: file to write the finalized plan to (needed with -judgments)")
+	stateDir := fs.String("state-dir", "", "close -o: state directory (default: .pqcaton next to the session file). Use the one pqcaton-ui uses")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
 	var pos []string
 	var flags []string
@@ -109,7 +115,7 @@ func main() {
 		err = open(pos[0], node, *orgName, *results, *scopeAssets, *view)
 	case "close":
 		need(1)
-		err = closeSession(pos[0], *judgments, *orgName)
+		err = closeSession(pos[0], *judgments, *orgName, *out, *stateDir)
 	case "delta":
 		need(2)
 		node := localscan.DefaultNode
@@ -251,7 +257,15 @@ func sessionFromResults(declPath, orgName, resultsDir, scopeAssets string) (revi
 
 // ── close ──────────────────────────────────────────────────────────────────
 
-func closeSession(path, judgmentPath, orgName string) error {
+func closeSession(path, judgmentPath, orgName, out, stateDir string) error {
+	if out != "" {
+		return closeToFile(path, judgmentPath, orgName, out, stateDir)
+	}
+	// **원장과 표준출력은 한 트랜잭션으로 묶이지 않는다.** 출력 도중 파이프가 끊기면 원장에만 판정이
+	// 남는다. 원장에 쓰려면 -o로 파일에 낸다.
+	if judgmentPath != "" {
+		return fmt.Errorf("%w: the ledger and stdout cannot be written as one transaction - pass -o plan.json", store.ErrNeedOutput)
+	}
 	sf, err := review.Load(path)
 	if err != nil {
 		return err
@@ -265,24 +279,81 @@ func closeSession(path, judgmentPath, orgName string) error {
 	for pol, n := range res.Batched {
 		fmt.Fprintf(os.Stderr, "policy %s: %d judged in one batch\n", pol, n)
 	}
-
-	raw, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(res.Plan)
+	raw, err := review.PlanJSON(res)
 	if err != nil {
 		return err
 	}
-	// **관문을 지난 뒤에만 남긴다.** 확정되지 않은 것을 판정 이력에 쌓으면 그 기록이
-	// "누가 무엇을 확정했나"를 더는 답하지 못한다.
-	if judgmentPath != "" {
-		n, err := review.SaveJudgments(judgmentPath, orgName, sf, res.Decided)
-		if err != nil {
-			return fmt.Errorf("recording judgments: %w", err)
-		}
-		fmt.Fprintf(os.Stderr, "%d judgments appended to %s (append-only)\n", n, judgmentPath)
-	}
-	fmt.Fprintf(os.Stderr, "finalized: %s · %d actions — this is the input to `pqcota-provision plan.json`\n",
+	fmt.Fprintf(os.Stderr, "finalized (stdout only, no ledger, no receipt): %s · %d actions — this is the input to `pqcota-provision plan.json`\n",
 		res.Scope, len(res.Plan.GetActions()))
-	_, err = os.Stdout.Write(append(raw, '\n'))
+	_, err = os.Stdout.Write(raw)
 	return err
+}
+
+// closeToFile — **M1이 보장하는 확정의 길이다.** 세션 · 계획(앞 판은 .prev) · 판정 원장 · 영수증이 한
+// 트랜잭션이고, 화면과 같은 상태 디렉토리와 같은 잠금을 쓴다. 같은 세션을 같은 내용으로 다시 확정하면
+// 아무것도 다시 쓰지 않는다.
+func closeToFile(path, judgmentPath, orgName, out, stateDir string) error {
+	if stateDir == "" {
+		stateDir = store.DefaultDir(path)
+	}
+	targets := []string{path, out}
+	withJudg := judgmentPath != ""
+	if withJudg {
+		targets = append(targets, judgmentPath)
+	}
+	st, err := store.OpenCommand(stateDir, targets, store.Options{})
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	sf, err := review.Load(path)
+	if err != nil {
+		return err
+	}
+	payload, err := review.PayloadSHA256(sf, orgName, withJudg)
+	if err != nil {
+		return err
+	}
+	id := store.Identity{Kind: "review", Org: orgName, SessionID: sf.SessionID}
+	var written review.Output
+	res, err := st.FinalizeChecked(id, targets, store.Check{}, payload, store.CommandWait, func() (store.Parts, error) {
+		// 잠금 안에서 다시 읽는다. 그 사이 세션이 바뀌었으면 지문이 달라 쓰지 않는다.
+		sf, err := review.Load(path)
+		if err != nil {
+			return store.Parts{}, err
+		}
+		o, err := review.Outputs(sf, orgName, withJudg, time.Now().Unix())
+		if err != nil {
+			return store.Parts{}, err
+		}
+		p, err := review.PayloadSHA256(sf, orgName, withJudg)
+		if err != nil {
+			return store.Parts{}, err
+		}
+		written = o
+		parts := store.Parts{PayloadSHA256: p, Replace: []store.Change{
+			{Path: path, Content: o.Session}, {Path: out, Content: o.Plan, Backup: true}}}
+		if withJudg && len(o.Judgments) > 0 {
+			parts.Append = []store.Addition{{Path: judgmentPath, Data: o.Judgments}}
+		}
+		return parts, nil
+	})
+	if err != nil {
+		return err
+	}
+	if res.Status != store.OutcomeDone {
+		fmt.Fprintln(os.Stderr, res.Describe())
+		return nil
+	}
+	for pol, n := range written.Result.Batched {
+		fmt.Fprintf(os.Stderr, "policy %s: %d judged in one batch\n", pol, n)
+	}
+	if withJudg {
+		fmt.Fprintf(os.Stderr, "%d judgments appended to %s (append-only)\n", written.Judged, judgmentPath)
+	}
+	fmt.Fprintf(os.Stderr, "finalized: %s · %d actions written to %s — this is the input to `pqcota-provision`\n",
+		written.Result.Scope, len(written.Result.Plan.GetActions()), out)
+	return nil
 }
 
 // ── delta ──────────────────────────────────────────────────────────────────

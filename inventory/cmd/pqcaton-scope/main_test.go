@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 )
 
 // 세션을 만들고 사람이 편집한 뒤 확정하는 왕복을 파일로 흉내 낸다. 실제 조작이 파일 왕복이라
@@ -96,7 +98,7 @@ func TestCloseRefusesExcludeWithoutConclusion(t *testing.T) {
 	}
 	sf.Reviewer, sf.Signature = "보안팀", "sig" // 결론만 비워 둔다
 
-	_, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "acme") })
+	_, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "acme", "", "") })
 	if err == nil {
 		t.Fatal("결론 없이 확정됐다 — 관문이 열려 있다")
 	}
@@ -113,7 +115,7 @@ func TestCloseRefusesWithoutSignature(t *testing.T) {
 	sf := openSession(t, []string{writeCSV(t, dir, "corp.csv", corpCSV)}, "", "acme")
 	sf.LayerDecisions["corp"] = "OS 패치로 관리한다"
 
-	_, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "acme") })
+	_, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "acme", "", "") })
 	if err == nil {
 		t.Fatal("서명 없이 확정됐다")
 	}
@@ -134,7 +136,7 @@ func TestCloseEmitsPolicyForUpstream(t *testing.T) {
 		sf.LayerDecisions[l] = "계층 일괄 승인"
 	}
 
-	out, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "acme") })
+	out, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "acme", "", "") })
 	if err != nil {
 		t.Fatalf("확정되지 않았다: %v", err)
 	}
@@ -162,7 +164,7 @@ func TestCloseRefusesAnotherOrgSession(t *testing.T) {
 	sf.Reviewer, sf.Signature = "보안팀", "sig"
 	sf.LayerDecisions["corp"] = "승인"
 
-	_, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "beta") })
+	_, err := capture(t, func() error { return closeSession(saveSession(t, dir, sf), "", "beta", "", "") })
 	if err == nil {
 		t.Fatal("남의 조직 세션이 확정됐다")
 	}
@@ -214,5 +216,50 @@ func TestLayerNameFromPath(t *testing.T) {
 		if got := layerName(path); got != want {
 			t.Errorf("layerName(%q) = %q, want %q", path, got, want)
 		}
+	}
+}
+
+// IC-W36 — **스코프 확정도 같은 규칙이다.** -o 없이 -judgments는 거부하고, close -o는 세션 · 정책 CSV ·
+// 판정 원장 · 영수증을 한 트랜잭션으로 쓰며, 다시 확정하면 아무것도 다시 쓰지 않는다.
+func TestScopeCloseToFileIsOnce(t *testing.T) {
+	dir := t.TempDir()
+	corp := writeCSV(t, dir, "corp.csv", corpCSV)
+	sf := openSession(t, []string{corp}, "", "acme")
+	if sf.SessionID == "" {
+		t.Fatal("open raised a session without an id")
+	}
+	sf.Reviewer, sf.Signature = "보안팀", "sig"
+	for l := range sf.LayerDecisions {
+		sf.LayerDecisions[l] = "계층 일괄 승인"
+	}
+	sess := saveSession(t, dir, sf)
+	ledger := filepath.Join(dir, "judgments.jsonl")
+	policy := filepath.Join(dir, "asset-scope.csv")
+
+	if _, err := capture(t, func() error { return closeSession(sess, ledger, "acme", "", "") }); !errors.Is(err, store.ErrNeedOutput) {
+		t.Fatalf("-judgments without -o: err = %v, want ErrNeedOutput", err)
+	}
+	if _, err := os.Stat(ledger); !os.IsNotExist(err) {
+		t.Fatal("a refused close wrote the ledger")
+	}
+
+	out, err := capture(t, func() error { return closeSession(sess, ledger, "acme", policy, "") })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "" {
+		t.Errorf("close -o wrote to stdout: %q", out)
+	}
+	p, err := scope.LoadPolicyFile(policy)
+	if err != nil || len(p.Rules) != 1 {
+		t.Fatalf("policy: %v %+v", err, p)
+	}
+	led, _ := os.ReadFile(ledger)
+	if _, err := capture(t, func() error { return closeSession(sess, ledger, "acme", policy, "") }); err != nil {
+		t.Fatal(err)
+	}
+	again, _ := os.ReadFile(ledger)
+	if string(again) != string(led) || len(led) == 0 {
+		t.Error("closing the same scope session again appended to the ledger")
 	}
 }
