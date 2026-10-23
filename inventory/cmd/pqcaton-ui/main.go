@@ -305,6 +305,9 @@ type server struct {
 	storeOpts store.Options
 	// afterModel: 화면 모델을 만든 직후에 불린다(snapshot). 테스트가 그 틈에 파일을 바꾼다.
 	afterModel func()
+	// afterSnapshot: 스냅샷이 짝을 지은 직후(화면을 그리기 전)에 불린다. 테스트가 그 뒤에 파일을 바꿔,
+	// 화면이 묶음 밖에서 다시 읽지 않는지 본다.
+	afterSnapshot func()
 	// wait: 대상 잠금을 기다리는 시간. 0이면 lockWait.
 	wait time.Duration
 	// key: 확인 토큰의 서명 키(confirm.go). clock: 지금 시각. 테스트가 바꾼다.
@@ -543,9 +546,8 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	withJudg := s.judgments != ""
-	targets := []string{s.path, s.planOut}
+	targets := s.reviewTargets()
 	if withJudg {
-		targets = append(targets, s.judgments)
 		files = append(files, file(l, "ledger", s.judgments))
 	}
 	// 확인 페이지가 서명한 지문. 잠금 안에서 다시 만들어 견준다 - 그 사이 파일이 바뀌었으면 쓰지 않는다.
@@ -798,10 +800,9 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 	}
 	l := ui.PickLang(r)
 	withJudg := s.judgments != ""
-	targets := []string{s.scope, s.scopeOut}
+	targets := s.scopeTargets()
 	files := []ui.FileRef{file(l, "scope-session", s.scope), file(l, "policy", s.scopeOut)}
 	if withJudg {
-		targets = append(targets, s.judgments)
 		files = append(files, file(l, "ledger", s.judgments))
 	}
 	id := s.scopeID()
@@ -924,28 +925,30 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
 		return
 	}
-	var wd *world
-	if _, err := s.snapshotScreen(ui.ScreenInventory, next, func() error {
+	var (
+		wd *world
+		v  ui.InventoryView
+	)
+	l := ui.PickLang(r)
+	// **본문도 묶음 안에서 만든다.** 정책 · 원장은 조회 본문만 읽는 파일이라, 묶음 밖에서 읽으면 카드와
+	// 본문이 다른 시점을 보인다.
+	if _, err := s.snapshotScreen(ui.ScreenInventory, next, func() (err error) {
 		wd = s.load(next)
-		return wd.resErr
+		if wd.resErr != nil {
+			return wd.resErr
+		}
+		page := s.page(r, ui.Classic(ui.ScreenInventory), sub(ui.LabelOrg(l)+" "+wd.res.Org, ui.LabelResults(l)+" "+s.results))
+		v = ui.NewInventoryView(wd.res, ui.FilterFrom(r.URL.Query()), page)
+		if v, err = s.withPolicy(v); err != nil {
+			return err
+		}
+		v, err = s.withLedger(v, wd.res, r.URL.Query().Get("subject"))
+		return err
 	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	res := wd.res
-	var err error
-	l := ui.PickLang(r)
-	page := s.page(r, ui.Classic(ui.ScreenInventory), sub(ui.LabelOrg(l)+" "+res.Org, ui.LabelResults(l)+" "+s.results))
-	v := ui.NewInventoryView(res, ui.FilterFrom(r.URL.Query()), page)
-
-	if v, err = s.withPolicy(v); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if v, err = s.withLedger(v, res, r.URL.Query().Get("subject")); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	if next {
 		// **조회는 절차 카드에 넣지 않는다** — 단계가 아니라 아무 때나 들어오는 자리다.
 		// 그래도 위쪽 카드는 그대로 세워 둔다. 어디서 들어왔든 절차가 어디까지 왔는지는

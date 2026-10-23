@@ -6,16 +6,21 @@ package store
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
 
+// targets: 확정이 쓰는 파일들. 확정을 부를 때 주는 목록과 같다.
+func (w world) targets() []string { return []string{w.plan, w.session, w.ledger} }
+
 // verdict: 오류 없이 판정되어야 하는 자리.
 func verdict(t *testing.T, s *State, id Identity) string {
 	t.Helper()
-	v, err := s.VerifyFinalized(id, time.Second)
+	v, err := s.VerifyFinalized(id, []string{filepath.Join(filepath.Dir(s.Dir), "plan.json"),
+		filepath.Join(filepath.Dir(s.Dir), "judgments.jsonl")}, time.Second)
 	if err != nil {
 		t.Fatalf("VerifyFinalized(%s): %v", id, err)
 	}
@@ -101,7 +106,7 @@ func TestVerifyFinalizedDoesNotGuessMidway(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v, err := s.VerifyFinalized(sessA, 50*time.Millisecond); !errors.Is(err, ErrTargetBusy) {
+	if v, err := s.VerifyFinalized(sessA, w.targets(), 50*time.Millisecond); !errors.Is(err, ErrTargetBusy) {
 		t.Errorf("while another request holds the lock: %q, %v; want ErrTargetBusy", v, err)
 	}
 	release()
@@ -113,7 +118,7 @@ func TestVerifyFinalizedDoesNotGuessMidway(t *testing.T) {
 	if _, err := w.finalize(s, sessB, "plan-b\n", "{\"b\":1}\n"); !errors.Is(err, errStop) {
 		t.Fatalf("the stopped finalize: %v", err)
 	}
-	if v, err := s.VerifyFinalized(sessA, time.Second); !errors.Is(err, ErrInProgress) {
+	if v, err := s.VerifyFinalized(sessA, w.targets(), time.Second); !errors.Is(err, ErrInProgress) {
 		t.Errorf("with an unfinished record: %q, %v; want ErrInProgress", v, err)
 	}
 }
@@ -150,6 +155,80 @@ func TestVerifyFinalizedSupersededNeedsALaterReceipt(t *testing.T) {
 	}
 	if v := verdict(t, s, sessA); v != FinalRecovery {
 		t.Errorf("a with b's sequence before it: %s, want %s", v, FinalRecovery)
+	}
+}
+
+// IC-W43: 대상 잠금은 영수증을 처음 읽기 전에 잡는다. 다른 요청이 그 디렉토리를 쥐고 있으면 영수증이
+// 아직 없어도 기다리다 ErrTargetBusy다. 읽고 나서 잠그면 그 사이 끝난 확정을 놓친 「미확정」이 나간다.
+func TestVerifyFinalizedLocksBeforeReading(t *testing.T) {
+	w := newWorld(t)
+	s := w.open(t, nil)
+	release, err := s.LockTargets([]string{w.data}, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if v, err := s.VerifyFinalized(sessA, w.targets(), 50*time.Millisecond); !errors.Is(err, ErrTargetBusy) {
+		t.Errorf("no receipt yet, the targets are held: %q, %v; want ErrTargetBusy", v, err)
+	}
+}
+
+// IC-W44: 확정이 계속 도는 동안 판정을 거듭해도 「복구 필요」가 나오지 않는다. 두 세션이 같은 계획을
+// 번갈아 확정하므로 답은 확정됨 · 대체됨뿐이고, 잠금을 오래 기다리면 확인할 수 없음(ErrTargetBusy)이다.
+func TestVerifyFinalizedDuringFinalizes(t *testing.T) {
+	w := newWorld(t)
+	s := w.open(t, nil)
+	if _, err := w.finalize(s, sessA, planV2, ledgerAdd); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	errs := make(chan error, 1)
+	go func() {
+		defer close(done)
+		for i := 0; i < 40; i++ {
+			id := Identity{Kind: "review", Org: "local", SessionID: fmt.Sprintf("session-%d", i)}
+			// 판정이 잠금을 잠깐씩 쥐므로, 확정도 실제 서버처럼 「다른 저장 중」이면 다시 시도한다.
+			for {
+				_, err := w.finalize(s, id, fmt.Sprintf("plan-%d\n", i), fmt.Sprintf("{\"i\":%d}\n", i))
+				if errors.Is(err, ErrTargetBusy) {
+					continue
+				}
+				if err != nil {
+					errs <- err
+					return
+				}
+				break
+			}
+		}
+	}()
+	seen := map[string]int{}
+	for running := true; running; {
+		select {
+		case <-done:
+			running = false
+		default:
+		}
+		v, err := s.VerifyFinalized(sessA, w.targets(), 2*time.Second)
+		time.Sleep(time.Millisecond) // 화면 요청은 쉬지 않고 몰려오지 않는다. 확정에 잠금을 넘길 틈을 둔다.
+		switch {
+		case errors.Is(err, ErrTargetBusy):
+			seen["busy"]++
+		case err != nil:
+			t.Fatalf("verify during finalizes: %v", err)
+		default:
+			seen[v]++
+		}
+	}
+	select {
+	case err := <-errs:
+		t.Fatal(err)
+	default:
+	}
+	if seen[FinalRecovery] > 0 || seen[FinalNone] > 0 {
+		t.Errorf("verdicts during finalizes: %v; recovery or none must not appear", seen)
+	}
+	if seen[FinalDone]+seen[FinalSuperseded] == 0 {
+		t.Errorf("no verdict was reached: %v", seen)
 	}
 }
 

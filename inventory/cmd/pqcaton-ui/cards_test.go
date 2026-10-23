@@ -153,3 +153,60 @@ func TestSnapshotCoversCardInputs(t *testing.T) {
 		t.Errorf("the old screen built its model %d times, want 1", calls)
 	}
 }
+
+// IC-U86 — **조회 본문도 스냅샷 안에서 만든다.** 스냅샷이 짝을 지은 뒤에 원장을 망가뜨려도 화면은
+// 이미 만든 본문을 그린다. 본문이 정책 · 원장을 묶음 밖에서 다시 읽으면 카드와 다른 시점을 보이고,
+// 이 경우에는 500이 된다.
+func TestInventoryBodyIsInsideTheSnapshot(t *testing.T) {
+	s := everyScreen(t)
+	calls := 0
+	s.afterSnapshot = func() {
+		calls++
+		if err := os.WriteFile(s.judgments, []byte("{not json\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w := get(t, s, ui.ScreenInventory+"?lang=ko")
+	if calls == 0 {
+		t.Fatal("the snapshot hook did not run")
+	}
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /inventory after the snapshot = %d: the body read the ledger again outside the snapshot\n%s", w.Code, w.Body.String())
+	}
+}
+
+// IC-U87 — **확정 상태를 정하는 영수증도 스냅샷이 잰다.** 모델을 만든 직후에 영수증만 사라지면(출력은
+// 그대로) 모델을 다시 만들고, 카드는 지금 상태(미확정)를 적는다. 영수증을 재지 않으면 카드가 사라진
+// 영수증으로 판정한 「확정됨」을 싣고 나간다.
+func TestSnapshotCoversTheReceipt(t *testing.T) {
+	s, _ := newServer(t)
+	if q := location(t, finalizeVia(t, s, "", "/finalize/confirm", signed())); q.Get("problem") != "" {
+		t.Fatalf("finalize: %s", q.Get("problem"))
+	}
+	var receipt string
+	for _, in := range s.st.StateInputs(s.reviewID()) {
+		if !in.Dir {
+			receipt = in.Path
+		}
+	}
+	if _, err := os.Stat(receipt); err != nil {
+		t.Fatalf("no receipt after finalizing: %v", err)
+	}
+	calls := 0
+	s.afterModel = func() {
+		calls++
+		if calls == 1 {
+			if err := os.Remove(receipt); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	body := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
+	if calls != 2 {
+		t.Errorf("the model was built %d times, want 2 (the receipt went away under the first)", calls)
+	}
+	line := cards(t, body)["04"]
+	if got := line[strings.LastIndex(line, " | ")+3:]; got != "미확정" {
+		t.Errorf("review card = %q, want the state after the receipt went away (미확정)", got)
+	}
+}

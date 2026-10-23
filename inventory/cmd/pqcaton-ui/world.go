@@ -95,21 +95,21 @@ func (s *server) load(cards bool) *world {
 		wd.scope, wd.scopeFiles, wd.scopeErr = s.scopeSession()
 	}
 	if cards {
-		wd.reviewFinal = s.final(kindReview, wd.reviewID, wd.reviewErr)
+		wd.reviewFinal = s.final(kindReview, wd.reviewID, s.reviewTargets(), wd.reviewErr)
 		if s.scope != "" {
-			wd.scopeFinal = s.final(kindScope, wd.scope.SessionID, wd.scopeErr)
+			wd.scopeFinal = s.final(kindScope, wd.scope.SessionID, s.scopeTargets(), wd.scopeErr)
 		}
 	}
 	return wd
 }
 
 // final: 카드에 적을 확정 상태. 판정하지 못하면 FinalUnknown이고 원인은 표준오류에 남긴다.
-func (s *server) final(kind, session string, loadErr error) ui.Final {
+func (s *server) final(kind, session string, targets []string, loadErr error) ui.Final {
 	if loadErr != nil || s.st == nil {
 		return ui.FinalUnknown
 	}
 	id := store.Identity{Kind: kind, Org: s.org, SessionID: sessionName(session)}
-	v, err := s.st.VerifyFinalized(id, min(cardWait, s.waitTime()))
+	v, err := s.st.VerifyFinalized(id, targets, min(cardWait, s.waitTime()))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "step card %s: the finalize state is unavailable: %v\n", kind, err)
 		return ui.FinalUnknown
@@ -192,7 +192,32 @@ func (s *server) cardInputs() []store.Input {
 	add("plan", s.planOut, false)
 	add("policy", s.scopeOut, false)
 	add("ledger", s.judgments, false)
+	// 확정 상태는 상태 디렉토리의 영수증과 기록이 정한다. 출력이 같은 채로 영수증만 바뀌어도 다시 잰다.
+	if s.st != nil {
+		ids := []store.Identity{s.reviewID()}
+		if s.scope != "" {
+			ids = append(ids, s.scopeID())
+		}
+		in = append(in, s.st.StateInputs(ids...)...)
+	}
 	return in
+}
+
+// reviewTargets · scopeTargets: 확정이 쓰는 파일들. 확정 처리기와 카드의 확정 상태 확인이 같은 목록을 쓴다.
+func (s *server) reviewTargets() []string {
+	t := []string{s.path, s.planOut}
+	if s.judgments != "" {
+		t = append(t, s.judgments)
+	}
+	return t
+}
+
+func (s *server) scopeTargets() []string {
+	t := []string{s.scope, s.scopeOut}
+	if s.judgments != "" {
+		t = append(t, s.judgments)
+	}
+	return t
 }
 
 // snapshotScreen: 화면 모델을 만들고, 그 모델과 같은 시점의 양식 rev를 돌려준다. cards면 카드가 읽는
@@ -237,6 +262,9 @@ func (s *server) snapshotScreen(here string, cards bool, build func() error) (st
 			return "", err
 		}
 		if f0 == f1 && c0 == c1 {
+			if s.afterSnapshot != nil {
+				s.afterSnapshot()
+			}
 			return f1, nil
 		}
 	}

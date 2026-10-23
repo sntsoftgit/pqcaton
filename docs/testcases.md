@@ -177,8 +177,10 @@
 | **[IC-W38](../pkg/inventory/store/check_test.go) ✅** | 처음 rev를 견준 뒤, 저장 · 확정이 입력을 읽는 사이에 손 편집이 입력을 바꿈 | 첫 기록을 쓰기 직전에 다시 견주어 「화면이 오래됐다」로 멈춘다. 기록도 쓰지 않고, 밖에서 바꾼 내용은 그대로 남는다. 그 뒤에 바뀐 대상 파일은 기록의 적용 전 해시가 막는다 |
 | **[IC-W39](../pkg/inventory/store/verify_test.go) ✅** | 확정 전 · 확정 뒤 · 계획을 손으로 고침 · 원장 구간을 잘라 냄 | **확정 상태는 영수증이 있는지가 아니라 출력 해시와 원장 구간으로 판정한다**(`VerifyFinalized`). 미확정 · 확정됨 · 복구 필요 · 복구 필요다. 판정은 아무 파일도 바꾸지 않고 기록도 남기지 않는다 |
 | [IC-W40](../pkg/inventory/store/verify_test.go) ✅ | 출력 디렉토리에 잠금 파일이 없음 | 만들지 않고 잠그지 않은 채 판정한다. 읽기가 남의 디렉토리에 파일을 남기면 안 된다 |
-| **[IC-W41](../pkg/inventory/store/verify_test.go) ✅** | 다른 요청이 대상 잠금을 쥠 · 끝나지 않은 기록이 그 디렉토리를 건드림 | 기다리다 `ErrTargetBusy` · `ErrInProgress`다. 어느 쪽도 「복구 필요」로 단정하지 않는다 |
+| **[IC-W41](../pkg/inventory/store/verify_test.go) ✅** | 확정 뒤 다른 요청이 대상 잠금을 쥠 · 끝나지 않은 기록이 그 디렉토리를 건드림 | 기다리다 `ErrTargetBusy` · `ErrInProgress`다. 어느 쪽도 「복구 필요」로 단정하지 않는다 |
 | **[IC-W42](../pkg/inventory/store/verify_test.go) ✅** | 뒤 세션이 같은 계획을 다시 확정 · 뒤 영수증의 순번을 앞보다 작게 고침 | 앞 세션은 대체됨, 뒤 세션은 확정됨이다. 순번이 설명되지 않으면 앞 세션은 복구 필요다 |
+| **[IC-W43](../pkg/inventory/store/verify_test.go) ✅** | 영수증이 아직 없는데 다른 요청이 대상 디렉토리를 쥠 | **대상 잠금은 영수증을 처음 읽기 전에 잡는다.** 기다리다 `ErrTargetBusy`다. 읽고 나서 잠그면 그 사이 끝난 확정을 놓친 「미확정」이 나간다 |
+| **[IC-W44](../pkg/inventory/store/verify_test.go) ✅** | 두 세션이 같은 계획을 번갈아 확정하는 동안 판정을 거듭함 | 확정됨 · 대체됨 · 확인할 수 없음만 나온다. 「복구 필요」나 「미확정」으로 잘못 판정하지 않는다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
@@ -333,6 +335,8 @@ v0.21의 `-next` 주소는 북마크가 죽지 않게 301로 넘긴다.
 | **[IC-U83](../inventory/cmd/pqcaton-ui/cards_test.go) ✅** | 확정 전 · 확정 뒤 · 다른 요청이 잠금을 쥠 · 계획을 손으로 고침 | 판정 카드가 미확정 · 확정됨 · 확인할 수 없음 · 복구 필요다. 잠금 대기를 넘어도 화면은 선다 |
 | [IC-U84](../inventory/cmd/pqcaton-ui/cards_test.go) ✅ | 판정 화면을 여는데 스코프 세션이 깨짐 | 스코프 카드만 「확인할 수 없음」이고 화면과 다른 카드는 그대로다 |
 | **[IC-U85](../inventory/cmd/pqcaton-ui/cards_test.go) ✅** | 모델을 만든 직후에 카드만 읽는 파일(원장)이 바뀜 | 모델을 다시 만든다. 양식의 rev는 그 화면 입력만 덮어 지금 파일의 rev와 같다. 옛 화면은 카드가 없어 그 파일을 재지 않는다 |
+| **[IC-U86](../inventory/cmd/pqcaton-ui/cards_test.go) ✅** | 스냅샷이 짝을 지은 뒤에 원장을 망가뜨림 | **조회 본문도 스냅샷 안에서 만든다.** 화면은 이미 만든 본문을 그리고 200이다. 본문이 정책 · 원장을 묶음 밖에서 다시 읽으면 카드와 다른 시점을 보인다 |
+| **[IC-U87](../inventory/cmd/pqcaton-ui/cards_test.go) ✅** | 확정 뒤, 모델을 만든 직후에 영수증만 사라짐 | **확정 상태를 정하는 영수증과 기록도 스냅샷이 잰다.** 모델을 다시 만들고 카드는 「미확정」이다. 출력이 그대로여도 영수증이 바뀌면 다시 잰다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |
