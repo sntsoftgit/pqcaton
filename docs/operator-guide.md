@@ -85,6 +85,7 @@ chmod +x ~/Desktop/pqcaton-ui.command
 | `plan.json` | 확정한 계획(pqcota가 읽는 계약 형식) | 화면(04 확정) |
 | `judgments.jsonl` | 판정 원장. 덧붙이기만 합니다 | 화면(확정) |
 | `.pqcaton/` | 저장 기록 · 영수증 · 잠금 · 떠 있는 화면의 주소(`screen.addr`) | 화면 |
+| `.pqcaton.lock` | 이 폴더가 어느 상태 폴더에 묶였는지 적은 잠금 파일. `.pqcaton/`과 짝을 이룹니다 | 화면 |
 
 **조직.** `-org`를 주지 않으면 판정은 선언에 적힌 조직에 묶입니다. `-org`를 주면 그 조직의 선언만 만들 수 있습니다.
 

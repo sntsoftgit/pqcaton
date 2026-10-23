@@ -91,8 +91,8 @@ var tNoticeUnknown = T{KO: "알 수 없는 알림입니다", EN: "Unknown notice
 var (
 	tErrNotFoundHead = T{KO: "이 주소에는 화면이 없습니다", EN: "There is no screen at this address"}
 	tErrNotFound     = T{
-		KO: "위쪽 단계 카드에서 화면을 고르십시오.",
-		EN: "Pick a screen from the step cards at the top."}
+		KO: "아래 「화면으로 돌아가기」로 첫 화면에 가서 단계 카드에서 화면을 고르십시오.",
+		EN: "Use \"Back to the screen\" below to go to the first screen, and pick a screen from the step cards there."}
 	tErrMethodHead = T{KO: "이 주소는 이 방식의 요청을 받지 않습니다", EN: "This address does not take this kind of request"}
 	tErrMethod     = T{
 		KO: "화면의 버튼과 링크로 다시 하십시오.",

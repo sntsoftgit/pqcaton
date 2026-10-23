@@ -291,7 +291,7 @@
 | **[IC-U52](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 라우터에 등록된 POST 전부 | 토큰 없이 보내면 모두 막힌다. 보호 목록을 사람이 따로 적으면 새 주소를 더한 날 넣는 것을 잊는다. 그래서 라우터를 훑어 모은다 |
 | **[IC-U53](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 막힌 요청(Host · Origin · 쿠키 · 토큰) | **아무것도 바꾸지 않는다.** 가짜 처리기는 한 번도 불리지 않고, 실제 여섯 주소에서는 막힌 뒤 파일이 한 바이트도 바뀌지 않는다. 403을 냈는데 처리기가 먼저 돌았다면 막은 것이 아니다 |
 | **[IC-U54](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | `-addr`가 루프백이 아님(`:8765` · `0.0.0.0` · `[::]` · LAN 주소 · 이름) | **화면을 열지 않는다.** 이 화면에는 인증이 없다. 거부하면서 다른 기계에서 쓰는 길(SSH 포트 포워딩)을 함께 알린다 |
-| **[IC-U55](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 화면 · 새 화면 · 조각 · 막힌 요청 · 정적 CSS와 JS의 응답 | 보안 머리글(프레임 금지 · 형식 추측 금지 · 리퍼러 없음)이 모두에 붙는다. 저장 금지(`no-store`)는 정적 파일에만 빠진다. 화면과 오류에는 리뷰 큐와 토큰이 담긴다 |
+| **[IC-U55](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 화면 · 새 화면 · 조각 · 막힌 요청 · 정적 CSS와 JS의 응답 | 보안 머리글(프레임 금지 · 형식 추측 금지 · 리퍼러는 같은 출처에만)이 모두에 붙는다. 리퍼러를 아예 막으면(`no-referrer`) 브라우저가 양식 POST에 `Origin: null`을 실어 저장이 모두 막힌다(v0.23.0에서 고침). 저장 금지(`no-store`)는 정적 파일에만 빠진다. 화면과 오류에는 리뷰 큐와 토큰이 담긴다 |
 | **[IC-U56](../inventory/cmd/pqcaton-ui/save_test.go) ✅** | 화면을 연 뒤에 파일이 바뀐 상태에서 리뷰 · 스코프 · 선언 저장 | **409이고 쓰지 않는다.** rev는 저장소가 저장 잠금 안에서 견준다(IC-W30). 거절 페이지는 역할과 파일 이름만 보이고 전체 경로와 오류 원문은 싣지 않는다 |
 | [IC-U57](../inventory/cmd/pqcaton-ui/save_test.go) ✅ | 확정된 세션을 고쳐 저장 · 다른 내용으로 다시 확정 | 409이고 새 세션을 열라고 알린다. 계획과 세션은 바뀌지 않는다 |
 | **[IC-U58](../inventory/cmd/pqcaton-ui/save_test.go) ✅** | 같은 확정을 다시 누름 | 「이미 확정됨」으로 화면에 돌아간다. 판정 원장에는 한 번만 쌓이고, 확정 전의 계획은 `plan.json.prev`로 남는다. 알림에는 파일 이름만 적는다 |
@@ -369,7 +369,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U95](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 작업 폴더로 시작 · `-no-browser` · 브라우저 명령이 없음 | 브라우저를 부를 때 그 주소에 이미 접속된다. `-no-browser`면 열지 않는다. 열지 못하면 경고만 한다 |
 | **[IC-U96](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 같은 작업 폴더로 이미 떠 있는데 다시 실행 | 두 번째 서버를 띄우지 않고 적어 둔 주소를 연다. 그 주소가 루프백이 아니면 열지 않고 실패한다 |
 | **[IC-U97](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 작업 폴더의 선언 파일이 깨짐 | 서버는 뜨고, 화면과 저장 요청 모두 503 진단 페이지다. 「진단 전용」 모드와 파일 이름, 표준오류와 같은 참조 번호를 보이고 경로는 보이지 않는다 |
-| **[IC-U98](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 선언이 없는 작업 폴더 | GET은 만들기 폼만 보이고 아무것도 만들지 않는다. 대조 · 판정은 닫혀 있다. POST가 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다 |
+| **[IC-U98](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 선언이 없는 작업 폴더 | GET은 만들기 폼만 보이고 아무것도 만들지 않는다. 대조 · 판정은 닫혀 있고 02 카드는 「아직 계층이 없습니다」다. POST가 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다 |
 | **[IC-U106](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 떠 있는 화면에 Ctrl+C(또는 SIGTERM)를 보냄 | 적어 둔 주소(`screen.addr`)를 지우고 0으로 끝난다. 실행 잠금도 풀려 같은 작업 폴더로 다시 띄울 수 있다 |
 | **[IC-U99](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 선언에 형식이 틀린 IP와 포트 0인 엣지가 있음 | 01 화면이 어느 노드 · 엣지의 어느 칸이, 무엇이, 그대로 두면 어떻게 되는지를 두 말로 보인다. 01 카드에 그 수가 오르고, 판정 화면의 경고는 `pqcaton-report` 대신 01 화면을 가리킨다 |
 | **[IC-U100](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 관측 결과 폴더가 빔 → 결과 파일을 넣고 다시 불러옴 | 대조 · 판정 화면이 두 말로 그 폴더의 경로를 보인다. 파일을 넣으면 안내가 사라지고, GET은 리뷰 세션을 다시 쓰지 않는다 |

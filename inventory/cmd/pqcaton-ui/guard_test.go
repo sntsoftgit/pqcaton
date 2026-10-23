@@ -341,6 +341,9 @@ func TestNonLoopbackBindIsRefused(t *testing.T) {
 //
 // 막힌 응답에도 붙어야 한다. 그래서 머리글은 울타리보다 바깥에 둔다. 화면·조각·오류에는
 // 리뷰 큐와 토큰이 담기므로 저장하지 않게 하고, CSS·JS는 담긴 것이 없으므로 그대로 둔다.
+//
+// Referrer-Policy는 same-origin이다. no-referrer면 브라우저가 이 화면의 양식 POST에 `Origin: null`을 실어
+// 요청 보호가 모든 저장을 막는다. 그래도 `Origin: null`은 계속 거절한다(아래).
 func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 	s, _ := fullServer(t)
 	h := s.handler()
@@ -365,7 +368,7 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 			"Content-Security-Policy": "frame-ancestors 'none'",
 			"X-Frame-Options":         "DENY",
 			"X-Content-Type-Options":  "nosniff",
-			"Referrer-Policy":         "no-referrer",
+			"Referrer-Policy":         "same-origin",
 		} {
 			if got := hd.Get(k); got != want {
 				t.Errorf("%s (%d): %s = %q, want %q", c.name, w.Code, k, got, want)

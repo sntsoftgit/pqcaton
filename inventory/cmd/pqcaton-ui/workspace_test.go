@@ -224,7 +224,7 @@ func TestBrokenWorkspaceOpensForDiagnostics(t *testing.T) {
 }
 
 // IC-U98 — **선언이 없는 작업 폴더에서 화면으로 선언을 만든다.** GET은 만들기 폼만 보이고 아무것도 만들지 않는다.
-// 대조 · 판정 · 조회는 닫혀 있다. POST가 빈 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다.
+// 대조 · 판정 · 조회는 닫혀 있고, 02 카드는 「아직 계층이 없습니다」다. POST가 빈 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다.
 func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 	ws := t.TempDir()
 	h, code, _, stderr := started(t, "-workspace", ws, "-no-browser")
@@ -245,6 +245,9 @@ func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 	got := cards(t, body)
 	if !strings.HasPrefix(got["03"], "입력 파일을 주지 않았습니다") || !strings.HasPrefix(got["04"], "입력 파일을 주지 않았습니다") {
 		t.Errorf("survey and review are not closed: %v", got)
+	}
+	if !strings.HasPrefix(got["02"], "아직 계층이 없습니다") {
+		t.Errorf("the scope card on the create page is %q, want it to say there is no layer yet", got["02"])
 	}
 
 	w := do(h, posted(ui.DeclCreatePath+"?lang=ko", url.Values{"org": {"acme"}}))

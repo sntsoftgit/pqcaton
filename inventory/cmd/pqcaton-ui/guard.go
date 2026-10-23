@@ -68,7 +68,12 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("X-Content-Type-Options", "nosniff")
 		// 주소에 파일 이름과 거절 사유가 실린다. 다른 곳으로 따라 나가지 않게 한다.
-		h.Set("Referrer-Policy", "no-referrer")
+		//
+		// **no-referrer로 두면 저장이 막힌다.** 그 정책의 페이지가 보내는 양식 POST에 브라우저는
+		// `Origin: null`을 싣고(Fetch 명세의 요청 출처 직렬화), postGuard는 그것을 거절한다. v0.20.0부터
+		// v0.22.0까지 실제 브라우저에서 저장 · 확정이 모두 403이었다(v0.23.0 브라우저 검증에서 찾음).
+		// same-origin은 이 화면 자신에게만 출처를 싣고 다른 곳에는 아무것도 보내지 않는다.
+		h.Set("Referrer-Policy", "same-origin")
 		if !strings.HasPrefix(r.URL.Path, ui.StaticPath) {
 			h.Set("Cache-Control", "no-store")
 		}

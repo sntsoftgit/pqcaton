@@ -168,8 +168,9 @@ body.wb .topbar { display: flex; align-items: center; justify-content: space-bet
 body.wb .brand { font-weight: 760; letter-spacing: -.02em; font-size: 1.1rem; }
 body.wb .brand span { color: var(--blue); }
 /* 경로는 길다. **줄을 먹게 두면 절차 카드가 아래로 밀린다** — 한 줄로 자르고 전체는
-   마우스를 올려 본다(title 속성). */
-body.wb .context { color: var(--muted); font-size: .9rem; min-width: 0;
+   마우스를 올려 본다(title 속성). 좁은 화면에서 머리가 세로로 쌓이면 줄바꿈하지 않는 글이
+   제 길이만큼 넓어지므로 폭을 부모로 묶는다(영어 320px에서 16px 넘쳤다, v0.23.0). */
+body.wb .context { color: var(--muted); font-size: .9rem; min-width: 0; max-width: 100%;
                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.wb .context strong { color: var(--ink); }
 body.wb .mode { border: 1px solid var(--line); background: var(--surface);

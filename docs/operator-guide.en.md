@@ -91,6 +91,7 @@ can.
 | `plan.json` | The finalized plan (the contract format pqcota reads) | Screen (04 finalize) |
 | `judgments.jsonl` | The judgment ledger. Only appended to | Screen (finalize) |
 | `.pqcaton/` | Save records, receipts, locks, and the address of the running screen (`screen.addr`) | Screen |
+| `.pqcaton.lock` | The lock file saying which state folder this folder is bound to. It goes together with `.pqcaton/` | Screen |
 
 **Organization.** Without `-org`, judgments are bound to the organization written in the declaration. With `-org`, only a
 declaration for that organization can be created.

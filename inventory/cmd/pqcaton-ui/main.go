@@ -1128,7 +1128,7 @@ const defaultTTLDays = 180
 func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 	// 작업 폴더에 선언이 아직 없으면 만들기를 낸다. GET은 아무것도 만들지 않는다.
 	if s.workspace != "" && !s.declReady() {
-		p := s.nextPage(r, ui.ScreenDecl, s.decl, ui.StepState{DeclMissing: true})
+		p := s.nextPage(r, ui.ScreenDecl, s.decl, s.steps(s.load()))
 		html(w, r, func(out io.Writer) error {
 			return ui.RenderDeclCreate(out, ui.DeclCreateView{Page: p, Org: s.orgName()})
 		})
