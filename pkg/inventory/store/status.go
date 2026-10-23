@@ -135,14 +135,23 @@ func (s *State) appendVerdict(it Item, path string) (string, error) {
 	return VerdictMismatch, nil
 }
 
+// Diagnostics: 진단 묶음(복구 상태의 JSON). ExportDiagnostics와 화면의 내려받기가 같은 것을 낸다.
+func (s *State) Diagnostics() ([]byte, error) {
+	rep, err := s.Status()
+	if err != nil {
+		return nil, err
+	}
+	b, err := json.MarshalIndent(rep, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(b, '\n'), nil
+}
+
 // ExportDiagnostics: 복구 상태를 JSON으로 내보낸다. 0600으로 새로 만들고, 있는 파일은 덮지 않는다.
 // 내용에는 경로와 해시만 있고 파일 내용은 없다.
 func (s *State) ExportDiagnostics(path string) error {
-	rep, err := s.Status()
-	if err != nil {
-		return err
-	}
-	b, err := json.MarshalIndent(rep, "", "  ")
+	b, err := s.Diagnostics()
 	if err != nil {
 		return err
 	}
@@ -154,7 +163,7 @@ func (s *State) ExportDiagnostics(path string) error {
 		f.Close()
 		return err
 	}
-	if _, err := f.Write(append(b, '\n')); err != nil {
+	if _, err := f.Write(b); err != nil {
 		f.Close()
 		return err
 	}

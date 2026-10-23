@@ -274,3 +274,8 @@ body.wb .skip:focus { left: 12px; top: 12px; z-index: 10; padding: .5rem .8rem;
 
 /* 저장 모드. 저장하지 않는 모드는 눈에 띄게 둔다. */
 body.wb .mode-view-only, body.wb .mode-recovery { border-color: var(--amber); background: var(--amber-soft); }
+
+/* 복구 필요 화면. 밖에서 바뀐 파일의 줄을 눈에 띄게 한다. */
+.recovery-steps li { margin: .3rem 0; }
+.recovery-record { margin: 1.2rem 0; overflow-x: auto; }
+.recovery-record tr.mismatch td { color: var(--warn); font-weight: 600; }

@@ -42,6 +42,8 @@ const (
 	DeclCreatePath = "/decl/create"
 	// LayerCreatePath — 작업 폴더에 빈 계층 CSV를 만드는 POST.
 	LayerCreatePath = "/scope/layer/create"
+	// RecoveryDiagPath — 복구 필요 상태에서 진단 파일(JSON)을 내려받는 주소. 그 상태에서만 있다.
+	RecoveryDiagPath = "/recovery/diagnostics"
 )
 
 // 표의 종류. 「행 추가」가 무엇을 한 줄 더 낼지 고르는 값이다.

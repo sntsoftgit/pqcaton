@@ -4,6 +4,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -111,5 +112,88 @@ func TestStartupFailsWhenTheSessionCannotBeWritten(t *testing.T) {
 	defer st.Close()
 	if err := st.AcquireRun(); err != nil {
 		t.Errorf("the run lock was not released: %v", err)
+	}
+}
+
+// recoveringServer: 저장하다 멈춘 기록을 남기고 그 파일을 밖에서 고친 뒤 연 서버(복구 필요 상태).
+func recoveringServer(t *testing.T) (*server, string) {
+	t.Helper()
+	s, dir := withDecl(t)
+	s.st.Close()
+	s.st = nil
+	stop := errors.New("stopped")
+	st, err := store.Open(filepath.Join(dir, store.DirName), store.Options{Fault: func(point, path string) error {
+		if point == store.FaultApply && path == "0" {
+			return stop
+		}
+		return nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AcquireRun(); err != nil {
+		t.Fatal(err)
+	}
+	id := store.Identity{Kind: kindReview, Org: s.org, SessionID: "other"}
+	if err := st.Save(id, []store.Change{{Path: s.path, Content: []byte("{}\n")}}, time.Second); !errors.Is(err, stop) {
+		t.Fatalf("err = %v, want the injected stop", err)
+	}
+	st.Close()
+	if err := os.WriteFile(s.path, []byte("edited by hand\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.openState(""); err != nil {
+		t.Fatalf("openState: %v", err)
+	}
+	t.Cleanup(func() { s.st.Close() })
+	if !s.recovering {
+		t.Fatal("the server did not enter recovery mode")
+	}
+	return s, dir
+}
+
+// IC-U102 — **복구 필요 화면은 무엇이 남았는지 보이고 진단 파일을 내려받게 한다.** 남은 기록마다 파일 이름 ·
+// 하려던 일 · 지금 상태(밖에서 바뀜)를 두 말로 보이고, 전체 경로와 해시는 화면에 없다. 진단 파일은
+// `-recover-status -diagnostics`와 같은 JSON이고(전체 경로가 든다) 내려받아도 파일은 바뀌지 않는다. 고치는
+// 버튼은 없고, 복구 상태가 아니면 내려받는 주소도 없다.
+func TestRecoveryScreenShowsStateAndDiagnostics(t *testing.T) {
+	s, dir := recoveringServer(t)
+	for _, c := range []struct{ lang, head, verdict string }{
+		{"ko", "복구가 필요합니다", "<td>pqcaton 밖에서 바뀜: 덮어쓰지 않습니다</td>"},
+		{"en", "Recovery required", "<td>changed outside pqcaton: nothing will overwrite it</td>"},
+	} {
+		w := get(t, s, "/review?lang="+c.lang)
+		body := w.Body.String()
+		if w.Code != http.StatusServiceUnavailable {
+			t.Errorf("%s: status %d", c.lang, w.Code)
+		}
+		for _, want := range []string{c.head, c.verdict, "<code>" + filepath.Base(s.path) + "</code>", `href="` + ui.RecoveryDiagPath + `"`} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s: no %q", c.lang, want)
+			}
+		}
+		if strings.Contains(body, dir) || strings.Contains(body, "<form") {
+			t.Errorf("%s: the recovery screen shows a path or offers a form", c.lang)
+		}
+		if c.lang == "en" && hasHangul(visible(body)) {
+			t.Error("en: Korean on the English recovery screen")
+		}
+	}
+	w := get(t, s, ui.RecoveryDiagPath)
+	if w.Code != http.StatusOK || !strings.HasPrefix(w.Header().Get("Content-Disposition"), "attachment;") {
+		t.Fatalf("diagnostics: %d %v", w.Code, w.Header())
+	}
+	var rep store.Report
+	if err := json.Unmarshal(w.Body.Bytes(), &rep); err != nil || len(rep.Records) != 1 || rep.Records[0].Items[0].AbsPath != s.path ||
+		rep.Records[0].Items[0].Verdict != store.VerdictMismatch {
+		t.Errorf("diagnostics: %v %+v", err, rep)
+	}
+	if b, _ := os.ReadFile(s.path); string(b) != "edited by hand\n" {
+		t.Error("the recovery screen changed the file")
+	}
+
+	ok, _ := newServer(t)
+	if w := get(t, ok, ui.RecoveryDiagPath); w.Code != http.StatusNotFound {
+		t.Errorf("diagnostics outside recovery: %d, want 404", w.Code)
 	}
 }

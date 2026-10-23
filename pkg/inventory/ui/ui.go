@@ -637,6 +637,46 @@ type DeclCreateView struct {
 	Org string
 }
 
+// RecoveryView — 복구 필요 화면. 서버가 저장소의 복구 상태를 값으로 옮겨 넣는다(ui는 저장소를 모른다).
+// Ref는 복구 상태를 읽지 못했을 때의 참조 번호다.
+type RecoveryView struct {
+	Page
+	Records  []RecoveryRecord
+	DiagHref string
+	Ref      string
+}
+
+// RecoveryRecord — 남은 기록 하나. Kind는 기록의 종류 코드(review · scope · create), Started는 시작 시각이다.
+type RecoveryRecord struct {
+	Kind, Started string
+	Items         []RecoveryItem
+}
+
+// RecoveryItem — 기록의 항목 하나. File은 파일 이름뿐이다(전체 경로는 진단 파일에). Kind는 replace · append ·
+// create, Verdict는 done · pending · partial · mismatch다.
+type RecoveryItem struct {
+	File, Kind, Verdict string
+}
+
+// 항목 판정 코드. 저장소(store.Verdict*)와 같은 값이다.
+const (
+	VerdictDone     = "done"
+	VerdictPending  = "pending"
+	VerdictPartial  = "partial"
+	VerdictMismatch = "mismatch"
+)
+
+// NewRecovery — 복구 필요 화면의 틀. 제목을 그 말로 채운다.
+func NewRecovery(p Page) RecoveryView {
+	p.Title = tRecoveryHead.In(p.Lang)
+	return RecoveryView{Page: p}
+}
+
+// RenderRecovery — 복구 필요 화면을 그린다.
+func RenderRecovery(w io.Writer, v RecoveryView) error {
+	return recoveryPage(v).Render(context.Background(), w)
+}
+
 // LayerCreateView — 계층 만들기 화면.
 type LayerCreateView struct {
 	Page

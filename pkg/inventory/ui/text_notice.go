@@ -136,3 +136,67 @@ var (
 		KO: "상태 디렉토리의 기록을 읽지 못해 멈췄습니다. 운영자 안내서의 「복구」 절대로 확인해야 합니다.",
 		EN: "Stopped: a record in the state directory could not be read. An operator needs to check it as the \"Recovery\" section of the operator guide says."}
 )
+
+// 복구 필요 화면. 푸는 버튼은 없고, 안내서의 「복구」 절과 진단 파일로 보낸다.
+var (
+	tRecoveryHead = T{KO: "복구가 필요합니다", EN: "Recovery required"}
+	tRecoveryLede = T{
+		KO: "저장하다 멈춘 기록이 남아 있는데, 그 기록의 파일 가운데 pqcaton 밖에서 바뀐 것이 있어 저장을 멈췄습니다. 어느 파일이 옳은지는 화면이 정하지 않으므로 자동으로 고치지 않습니다.",
+		EN: "A save stopped part way left a record, and a file in it was changed outside pqcaton, so saving is stopped. The screen does not decide which file is right, so it does not fix anything by itself."}
+	tRecoveryStep1 = T{
+		KO: "아래 「진단 파일 내려받기」로 지금 상태를 받아 둡니다. 파일의 전체 경로와 해시는 이 파일에 있습니다.",
+		EN: "Download the diagnostics file below and keep it. The full paths and hashes of the files are in it."}
+	tRecoveryStep2 = T{
+		KO: "「pqcaton 밖에서 바뀜」인 파일은 지금 상태 그대로 따로 복사해 보존합니다.",
+		EN: "Copy each file marked \"changed outside pqcaton\" somewhere else, as it is now."}
+	tRecoveryStep3 = T{
+		KO: "운영자 안내서의 「복구」 절을 따라, 기록이 기대하는 상태로 파일을 맞춥니다.",
+		EN: "Follow the \"Recovery\" section of the operator guide to put the files in the state the record expects."}
+	tRecoveryStep4 = T{
+		KO: "화면을 끄고 다시 띄웁니다. 시작할 때 남은 기록을 끝까지 적용합니다.",
+		EN: "Stop the screen and start it again. On start it carries the remaining record through."}
+	tRecoveryDiag       = T{KO: "진단 파일 내려받기", EN: "Download the diagnostics file"}
+	tRecoveryUnreadable = T{KO: "복구 상태를 읽지 못했습니다. 서버 로그에 같은 참조 번호로 원인이 남아 있습니다.", EN: "The recovery state could not be read. The server log has the cause under the same reference."}
+	tRecoveryColFile    = T{KO: "파일", EN: "File"}
+	tRecoveryColChange  = T{KO: "하려던 일", EN: "Intended change"}
+	tRecoveryColNow     = T{KO: "지금 상태", EN: "Now"}
+)
+
+// recordKindText · itemKindText · verdictText: 저장소 코드를 그 말로. 모르는 코드는 그대로 보인다.
+func recordKindText(l Lang, kind string) string {
+	switch kind {
+	case "review":
+		return T{KO: "판정(리뷰 세션)", EN: "Review"}.In(l)
+	case "scope":
+		return T{KO: "자산 스코프", EN: "Asset scope"}.In(l)
+	case "create":
+		return T{KO: "새 파일 만들기", EN: "Creating a file"}.In(l)
+	}
+	return kind
+}
+
+func itemKindText(l Lang, kind string) string {
+	switch kind {
+	case "replace":
+		return T{KO: "내용 바꾸기", EN: "Replace the content"}.In(l)
+	case "append":
+		return T{KO: "원장에 덧붙이기", EN: "Append to the ledger"}.In(l)
+	case "create":
+		return T{KO: "새로 만들기", EN: "Create"}.In(l)
+	}
+	return kind
+}
+
+func verdictText(l Lang, v string) string {
+	switch v {
+	case VerdictDone:
+		return T{KO: "적용됨", EN: "applied"}.In(l)
+	case VerdictPending:
+		return T{KO: "아직 적용하지 않음: 다시 띄우면 끝까지 적용합니다", EN: "not applied yet: the next start finishes it"}.In(l)
+	case VerdictPartial:
+		return T{KO: "원장에 일부만 씀: 다시 띄우면 나머지를 씁니다", EN: "half written to the ledger: the next start writes the rest"}.In(l)
+	case VerdictMismatch:
+		return T{KO: "pqcaton 밖에서 바뀜: 덮어쓰지 않습니다", EN: "changed outside pqcaton: nothing will overwrite it"}.In(l)
+	}
+	return v
+}

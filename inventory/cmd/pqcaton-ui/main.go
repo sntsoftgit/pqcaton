@@ -256,15 +256,61 @@ func (s *server) openState(dir string) error {
 	return nil
 }
 
-// recoveryGate — 복구 상태면 정적 파일(CSS · JS)을 뺀 모든 요청에 503 복구 페이지를 낸다.
+// recoveryGate — 복구 상태면 정적 파일(CSS · JS)을 뺀 모든 요청이 처리기에 닿지 않는다. 화면(GET)은 복구 상태
+// 화면(503)이고, 진단 파일만 내려받을 수 있다. 저장 요청은 503 거절이다.
 func (s *server) recoveryGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.recovering && !strings.HasPrefix(r.URL.Path, ui.StaticPath) {
+		switch {
+		case !s.recovering || strings.HasPrefix(r.URL.Path, ui.StaticPath):
+			next.ServeHTTP(w, r)
+		case r.Method == http.MethodGet && r.URL.Path == ui.RecoveryDiagPath:
+			s.recoveryDiagnostics(w, r)
+		case r.Method == http.MethodGet:
+			s.recoveryPage(w, r)
+		default:
 			s.refuse(w, r, http.StatusServiceUnavailable, ui.RefusedRecovery, "/", nil)
-			return
 		}
-		next.ServeHTTP(w, r)
 	})
+}
+
+// recoveryPage — 남은 기록마다 파일 이름 · 하려던 일 · 지금 상태를 보인다. 전체 경로와 해시는 싣지 않는다
+// (진단 파일에 있다). 고치는 버튼은 없다.
+func (s *server) recoveryPage(w http.ResponseWriter, r *http.Request) {
+	v := ui.NewRecovery(s.page(r, "", ""))
+	if s.st != nil {
+		rep, err := s.st.Status()
+		if err != nil {
+			v.Ref = logRef(r, err)
+		} else {
+			v.DiagHref = ui.RecoveryDiagPath
+			for _, rec := range rep.Records {
+				rr := ui.RecoveryRecord{Kind: rec.Record.Kind, Started: rec.Record.Created.UTC().Format("2006-01-02 15:04 UTC")}
+				for _, it := range rec.Items {
+					rr.Items = append(rr.Items, ui.RecoveryItem{File: filepath.Base(it.AbsPath), Kind: it.Kind, Verdict: it.Verdict})
+				}
+				v.Records = append(v.Records, rr)
+			}
+		}
+	}
+	writePage(w, http.StatusServiceUnavailable, func(out io.Writer) error { return ui.RenderRecovery(out, v) })
+}
+
+// recoveryDiagnostics — 진단 파일(-recover-status -diagnostics와 같은 JSON)을 내려받게 한다. 아무것도 쓰지 않는다.
+func (s *server) recoveryDiagnostics(w http.ResponseWriter, r *http.Request) {
+	if s.st == nil {
+		notFound(w, r)
+		return
+	}
+	b, err := s.st.Diagnostics()
+	if err != nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, err)
+		return
+	}
+	name := "pqcaton-diagnostics-" + time.Now().UTC().Format("20060102-150405") + ".json"
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(b)
 }
 
 // splitArgs — 위치 인자와 플래그를 가른다. 첫 플래그부터 뒤는 전부 플래그로 넘긴다.
