@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>pqcaton UI next — static comparison prototype</title>
+  <title>pqcaton UI: past static mockup of the v0.22.0 screens</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -161,7 +161,7 @@
         <h1><span lang="ko">무엇을 먼저 판단할까요?</span><span lang="en">What should you judge first?</span></h1>
         <p><span lang="ko">원본은 보존하고, 지금 확정에 필요한 일만 먼저 보여 줍니다.</span><span lang="en">The originals stay untouched, and only what this finalization needs comes first.</span></p>
       </div>
-      <div class="source"><span lang="ko">UI next 프로토타입 · 현재 demo-corp 화면을 재구성한 정적 예시</span><span lang="en">UI next prototype · a static example recomposing the current demo-corp screens</span></div>
+      <div class="source"><span lang="ko">v0.22.0 화면 설계의 과거 정적 시안 · 2026-08-26의 demo-corp 화면을 재구성했습니다. 이 설계는 v0.22.0부터 pqcaton-ui의 기본 화면입니다</span><span lang="en">Past static mockup of the v0.22.0 screen design · recomposed from the demo-corp screens of 2026-08-26. Since v0.22.0 this design is the default screen of pqcaton-ui</span></div>
     </section>
 
     <nav class="steps" aria-label-ko="거버넌스 절차" aria-label-en="Governance steps" aria-label="거버넌스 절차">
@@ -225,7 +225,7 @@
           <div class="eyebrow"><span lang="ko">04 · 판정</span><span lang="en">04 · Judgment</span></div>
           <h2><span lang="ko">정책별로 결론을 남기고, 예외만 개별로 봅니다</span><span lang="en">Leave a conclusion per policy and look at exceptions one by one</span></h2>
           <p class="lede"><span lang="ko">확정은 모든 필수 결론과 승인 서명이 채워진 뒤에만 가능합니다.</span><span lang="en">Finalization opens only after every required conclusion and the approval signature are filled in.</span></p>
-          <div class="next"><div class="next-icon">!</div><div><strong><span lang="ko">필수 판정 5개와 승인 서명이 남았습니다</span><span lang="en">5 required judgments and the approval signature are left</span></strong><span><span lang="ko">아래 정책 두 개에 결론을 남긴 뒤, 필요한 항목만 계획에 넣습니다.</span><span lang="en">Leave a conclusion on the two policies below, then put only what you need into the plan.</span></span></div><button class="primary" data-toast-ko="현재 제품의 동일한 Finalize 관문을 호출하는 자리입니다." data-toast-en="This is where the current product's own finalize gate is called." data-toast="현재 제품의 동일한 Finalize 관문을 호출하는 자리입니다."><span lang="ko">확정 준비</span><span lang="en">Prepare to finalize</span></button></div>
+          <div class="next"><div class="next-icon">!</div><div><strong><span lang="ko">필수 판정 5개와 승인 서명이 남았습니다</span><span lang="en">5 required judgments and the approval signature are left</span></strong><span><span lang="ko">아래 정책 두 개에 결론을 남긴 뒤, 필요한 항목만 계획에 넣습니다.</span><span lang="en">Leave a conclusion on the two policies below, then put only what you need into the plan.</span></span></div><button class="primary" data-toast-ko="제품의 확정 관문을 부르는 자리입니다." data-toast-en="This is where the product's own finalize gate is called." data-toast="제품의 확정 관문을 부르는 자리입니다."><span lang="ko">확정 준비</span><span lang="en">Prepare to finalize</span></button></div>
           <div class="card-list">
             <article class="policy-card"><div class="policy-head"><span class="tag danger"><span lang="ko">2 필수</span><span lang="en">2 required</span></span><div class="grow"><h3>openssl / libcrypto</h3><p><span lang="ko">동일 정책의 UNDECLARED 자산 2개</span><span lang="en">2 UNDECLARED assets under the same policy</span></p></div><button class="quiet" data-toast-ko="정책 단위 결론을 저장하는 자리입니다." data-toast-en="This is where a per-policy conclusion is saved." data-toast="정책 단위 결론을 저장하는 자리입니다."><span lang="ko">저장</span><span lang="en">Save</span></button></div><div class="policy-body"><label><span lang="ko">이 정책의 결론</span><span lang="en">Conclusion for this policy</span></label><textarea placeholder-ko="예: 관측 이름을 연결한 뒤 대상 버전의 교체 계획을 확정한다" placeholder-en="e.g. link the observed name first, then finalize the replacement plan for that version" placeholder="예: 관측 이름을 연결한 뒤 대상 버전의 교체 계획을 확정한다"></textarea><details><summary><span lang="ko">개별 항목 2개와 계획 포함 선택 보기</span><span lang="en">Show the 2 items and the plan check boxes</span></summary><table class="evidence-table"><tr><th><span lang="ko">대상</span><span lang="en">Target</span></th><th><span lang="ko">상태</span><span lang="en">State</span></th><th><span lang="ko">계획</span><span lang="en">Plan</span></th><th><span lang="ko">예외</span><span lang="en">Exception</span></th></tr><tr><td><code>node:…/openssl/libcrypto</code></td><td>UNDECLARED</td><td><input type="checkbox"></td><td><span lang="ko">없음</span><span lang="en">none</span></td></tr><tr><td><code>node:…/openssl/libcrypto-fbc9a285</code></td><td>UNDECLARED</td><td><input type="checkbox"></td><td><span lang="ko">없음</span><span lang="en">none</span></td></tr></table></details></div></article>
             <article class="policy-card"><div class="policy-head"><span class="tag danger"><span lang="ko">3 필수</span><span lang="en">3 required</span></span><div class="grow"><h3>openssl / libssl</h3><p><span lang="ko">UNDECLARED 2개 · 재수집 후보 1개</span><span lang="en">2 UNDECLARED · 1 candidate for re-collection</span></p></div><button class="quiet" data-toast-ko="정책 단위 결론을 저장하는 자리입니다." data-toast-en="This is where a per-policy conclusion is saved." data-toast="정책 단위 결론을 저장하는 자리입니다."><span lang="ko">저장</span><span lang="en">Save</span></button></div><div class="policy-body"><label><span lang="ko">이 정책의 결론</span><span lang="en">Conclusion for this policy</span></label><textarea placeholder-ko="예: 재수집을 먼저 수행하고, 확인된 자산만 계획에 넣는다" placeholder-en="e.g. re-collect first, and put only the confirmed assets into the plan" placeholder="예: 재수집을 먼저 수행하고, 확인된 자산만 계획에 넣는다"></textarea><details><summary><span lang="ko">개별 항목 3개와 예외 보기</span><span lang="en">Show the 3 items and their exceptions</span></summary><table class="evidence-table"><tr><th><span lang="ko">대상</span><span lang="en">Target</span></th><th><span lang="ko">상태</span><span lang="en">State</span></th><th><span lang="ko">신뢰도</span><span lang="en">Confidence</span></th></tr><tr><td><code>node:…/openssl/libssl</code></td><td>UNDECLARED</td><td>0.60</td></tr><tr><td><code>web-gw/openssl/libssl</code></td><td><span lang="ko">UNOBSERVED · 재수집 후보</span><span lang="en">UNOBSERVED · candidate for re-collection</span></td><td>0.30</td></tr></table></details></div></article>
@@ -248,7 +248,7 @@
       <aside class="side">
         <section class="panel"><div class="eyebrow"><span lang="ko">오늘의 작업</span><span lang="en">Today</span></div><h3><span lang="ko">확정 전 남은 것</span><span lang="en">Left before finalizing</span></h3><div class="work-item"><span class="dot warn"></span><div><b><span lang="ko">관측 이름 연결</span><span lang="en">Link the observed name</span></b><span><span lang="ko">선언 대조가 가능한 상태로 만듭니다.</span><span lang="en">Gets it ready to reconcile against the declaration.</span></span></div></div><div class="work-item"><span class="dot danger"></span><div><b><span lang="ko">정책 결론 2개</span><span lang="en">2 policy conclusions</span></b><span><span lang="ko">필수 항목 5개를 정책 단위로 판정합니다.</span><span lang="en">Judge the 5 required items one policy at a time.</span></span></div></div><div class="work-item"><span class="dot"></span><div><b><span lang="ko">승인 서명</span><span lang="en">Approval signature</span></b><span><span lang="ko">최종 확정 직전에만 필요합니다.</span><span lang="en">Needed only just before you finalize.</span></span></div></div></section>
         <section class="panel"><div class="eyebrow"><span lang="ko">상태 범례</span><span lang="en">Legend</span></div><h3><span lang="ko">무엇을 뜻하나</span><span lang="en">What they mean</span></h3><div class="key"><span class="tag ok">CONFIRMED</span><span class="tag danger">UNDECLARED</span><span class="tag warn">UNOBSERVED</span></div><p style="margin-top:10px"><span lang="ko">UNOBSERVED는 “없음”이 아닙니다. 관측 범위를 먼저 확인합니다.</span><span lang="en">UNOBSERVED does not mean “absent”. Check how far the observation reached first.</span></p></section>
-        <section class="panel"><div class="eyebrow"><span lang="ko">원칙</span><span lang="en">Principles</span></div><h3><span lang="ko">이 프로토타입이 바꾸지 않는 것</span><span lang="en">What this prototype does not change</span></h3><p><span lang="ko">원본 파일, 판정 원장, 정책 상속, 확정 관문은 현재 제품의 구조를 그대로 전제합니다.</span><span lang="en">The original files, the judgment ledger, policy inheritance and the finalize gate all assume the current product as it is.</span></p></section>
+        <section class="panel"><div class="eyebrow"><span lang="ko">원칙</span><span lang="en">Principles</span></div><h3><span lang="ko">이 시안이 바꾸지 않은 것</span><span lang="en">What this mockup did not change</span></h3><p><span lang="ko">원본 파일, 판정 원장, 정책 상속, 확정 관문은 제품의 구조를 그대로 전제했습니다.</span><span lang="en">The original files, the judgment ledger, policy inheritance and the finalize gate all assumed the product as it was.</span></p></section>
       </aside>
     </div>
   </div>
@@ -277,8 +277,8 @@
       const root = document.documentElement;
       const KEY = 'pqcaton-site-lang';
       const titles = {
-        ko: 'pqcaton UI next: 비교용 정적 프로토타입',
-        en: 'pqcaton UI next — static comparison prototype',
+        ko: 'pqcaton UI: v0.22.0 화면 설계의 과거 정적 시안',
+        en: 'pqcaton UI: past static mockup of the v0.22.0 screens',
       };
 
       function apply(lang) {
