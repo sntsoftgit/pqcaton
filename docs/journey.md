@@ -118,12 +118,12 @@ flowchart TB
 **화면은 사용자가 준 파일만 엽니다.** 세션 파일이 없어도 됩니다. 아래 항목을 주면 화면이 세션까지
 만듭니다. 왜 그렇게 했는지는 [설계 §0](design.md)에 있습니다.
 
-| 화면 탭 | 무엇에서 나오나 | 화면에 무엇을 주면 되나 |
+| 화면 단계 카드 | 무엇에서 나오나 | 화면에 무엇을 주면 되나 |
 |---|---|---|
-| ① 선언 | 사람이 처음 씁니다(데모는 `declare.py`) | `-decl declaration.json` |
-| ② 암호 자산 스코프 | **계층 CSV**를 `-base`와 맞대 **바뀐 규칙만** | `-layers corp.csv,prod.csv -base asset-scope.csv` |
-| ③ 대조 | 만들 것이 없습니다. 결과 디렉터리를 읽습니다 | `-results <디렉터리>` |
-| ④ 판정(리뷰 큐) | **선언 + 관측 결과** | `-decl`과 `-results` |
+| 01 선언 | 사람이 처음 씁니다(데모는 `declare.py`) | `-decl declaration.json` |
+| 02 암호 자산 스코프 | **계층 CSV**를 `-base`와 맞대 **바뀐 규칙만** | `-layers corp.csv,prod.csv -base asset-scope.csv` |
+| 03 대조 | 만들 것이 없습니다. 결과 디렉터리를 읽습니다 | `-results <디렉터리>` |
+| 04 판정(리뷰 큐) | **선언 + 관측 결과** | `-decl`과 `-results` |
 | 인벤토리·판정 이력 | 만들 것이 없습니다. 지금 있는 파일을 읽습니다 | `-results` · `-judgments` · `-scope-out` |
 
 ---
