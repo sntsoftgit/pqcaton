@@ -18,7 +18,7 @@ import (
 )
 
 // IC-U70 — **복구 필요 상태로 시작하면 일반 화면도 503이다.** 정적 파일(CSS · JS)만 나가고, 화면 ·
-// 조각 · 저장은 모두 503 복구 페이지로 가며 `-recover-status`를 안내한다. 실행 잠금은 쥔 채라
+// 조각 · 저장은 모두 503 복구 페이지로 가며 운영자 안내서의 「복구」 절을 안내한다. 실행 잠금은 쥔 채라
 // 명령도 막힌다. 파일은 바뀌지 않는다.
 func TestRecoveryModeBlocksEveryScreen(t *testing.T) {
 	s, dir := withDecl(t)
@@ -55,8 +55,8 @@ func TestRecoveryModeBlocksEveryScreen(t *testing.T) {
 	}
 	for _, path := range []string{"/", "/review", "/decl", ui.Classic(ui.ScreenDecl), "/review-next", ui.ScreenInventory} {
 		w := get(t, s, path+"?lang=ko")
-		if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "-recover-status") {
-			t.Errorf("GET %s: status %d, want 503 naming -recover-status", path, w.Code)
+		if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "「복구」") {
+			t.Errorf("GET %s: status %d, want 503 pointing at the recovery section", path, w.Code)
 		}
 	}
 	if w := get(t, s, ui.StaticPath+"app.css"); w.Code != http.StatusOK {

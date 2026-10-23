@@ -224,6 +224,5 @@ func safeMethod(m string) bool {
 // 왜 막혔는지 화면 밖에서도 보이게 한다.
 func reject(w http.ResponseWriter, r *http.Request, why string) {
 	fmt.Fprintf(os.Stderr, "rejected %s %s: %s\n", r.Method, r.URL.Path, why)
-	http.Error(w, "forbidden: "+why+"\nOpen the screen again from http://127.0.0.1 (or localhost) on this machine, reload it, and try again.",
-		http.StatusForbidden)
+	errorPage(w, r, http.StatusForbidden, ui.ErrForbidden, nil)
 }

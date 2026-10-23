@@ -32,12 +32,12 @@ import (
 // allowed — 한글이 있어도 되는 파일. **경로로 적는다** — 규약이 아니라 목록이라야
 // 새 파일이 슬그머니 예외가 되지 않는다.
 var allowed = map[string]bool{
-	"pkg/inventory/ui/text.go":         true,
-	"pkg/inventory/ui/text_decl.go":    true,
-	"pkg/inventory/ui/text_msg.go":     true,
-	"pkg/inventory/ui/text_more.go":    true,
-	"pkg/inventory/ui/text_refusal.go": true,
-	"pkg/inventory/ui/i18n.go":         true,
+	"pkg/inventory/ui/text.go":        true,
+	"pkg/inventory/ui/text_decl.go":   true,
+	"pkg/inventory/ui/text_msg.go":    true,
+	"pkg/inventory/ui/text_more.go":   true,
+	"pkg/inventory/ui/text_notice.go": true,
+	"pkg/inventory/ui/i18n.go":        true,
 }
 
 type hit struct {

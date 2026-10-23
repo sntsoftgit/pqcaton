@@ -13,6 +13,7 @@ package review
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -519,7 +520,8 @@ func Pending(sf Session) []decision.Missing {
 	// 계획 칸은 **고른 것만** 본다. 자동통과에는 결론을 요구하지 않는다.
 	for _, it := range Selected(sf) {
 		if err := RequireDecisions(it); err != nil {
-			out = append(out, decision.Missing{Code: decision.MissingPlanField, Subject: it.ID, Detail: err.Error()})
+			out = append(out, decision.Missing{Code: decision.MissingPlanField, Subject: it.ID, Detail: err.Error(),
+				Reason: planReason(err)})
 		}
 	}
 	return out
@@ -552,27 +554,27 @@ func RequireDecisions(it Item) error {
 	// 동안 뺀 자산에 조치 계획을 세우고 있었다. 화면에서 고를 수 없고, 세션 파일을 손으로 고쳐
 	// 켜도 여기서 막힌다. 관리 축이 세션 파일에 있어야 이 검사가 가능하다.
 	if ManagedOf(it) == reconcile.ExcludedByPolicy {
-		return fmt.Errorf("item %s is excluded by the asset-scope policy — it was observed, but it is not managed, "+
-			"so no action can be planned for it. Change the policy or the declaration first", it.ID)
+		return planErr(decision.PlanExcluded, fmt.Errorf("item %s is excluded by the asset-scope policy — it was observed, but it is not managed, "+
+			"so no action can be planned for it. Change the policy or the declaration first", it.ID))
 	}
 	if it.Level == "" {
-		return fmt.Errorf("item %s: no deploy level — pick L1, L2 or L3. "+
-			"an older session has none recorded, so it has to be chosen again", it.ID)
+		return planErr(decision.PlanNoLevel, fmt.Errorf("item %s: no deploy level — pick L1, L2 or L3. "+
+			"an older session has none recorded, so it has to be chosen again", it.ID))
 	}
 	if _, err := levelOf(it.Level); err != nil {
-		return fmt.Errorf("item %s: %w", it.ID, err)
+		return planErr(decision.PlanBadLevel, fmt.Errorf("item %s: %w", it.ID, err))
 	}
 	if it.Kind == "" {
-		return fmt.Errorf("item %s: no remediation kind — what to do is a review decision, not a default", it.ID)
+		return planErr(decision.PlanNoKind, fmt.Errorf("item %s: no remediation kind — what to do is a review decision, not a default", it.ID))
 	}
 	if _, err := kindOf(it.Kind); err != nil {
-		return fmt.Errorf("item %s: %w", it.ID, err)
+		return planErr(decision.PlanBadKind, fmt.Errorf("item %s: %w", it.ID, err))
 	}
 	switch it.Kind {
 	case "REMEDIATION_KIND_CONFIG_ONLY", "REMEDIATION_KIND_PROVIDER_INJECT":
 		if strings.TrimSpace(it.TargetAlgorithm) == "" {
-			return fmt.Errorf("item %s: %s delivers its change through a config fragment, "+
-				"so it needs a target_algorithm — without one the fragment turns nothing on", it.ID, it.Kind)
+			return planErr(decision.PlanNoTarget, fmt.Errorf("item %s: %s delivers its change through a config fragment, "+
+				"so it needs a target_algorithm — without one the fragment turns nothing on", it.ID, it.Kind))
 		}
 	}
 	// L3는 활성화까지 간다. 상류가 무엇이 **일어나지 않는지** 알리는 자리를 여기서 먼저 막는다:
@@ -587,7 +589,7 @@ func RequireDecisions(it Item) error {
 			{"activation.deactivate", it.Deactivate, "rollback cannot undo the activation"},
 		} {
 			if strings.TrimSpace(h.cmd) == "" {
-				return fmt.Errorf("item %s is L3 but has no %s — %s", it.ID, h.name, h.why)
+				return planErr(decision.PlanL3+h.name, fmt.Errorf("item %s is L3 but has no %s — %s", it.ID, h.name, h.why))
 			}
 		}
 	}
@@ -866,4 +868,25 @@ func hooksOf(it Item) *provisioningv1.ActivationHooks {
 	return &provisioningv1.ActivationHooks{
 		Pre: it.Pre, Activate: it.Activate, Deactivate: it.Deactivate, Restart: it.Restart,
 	}
+}
+
+// planFieldError — 계획 칸 거절. 영어 문장(명령이 읽는 것)과 함께 **사유 코드**를 든다. 화면은 문장을
+// 해석하지 않고 코드로 그 말의 문구를 고른다.
+type planFieldError struct {
+	reason string
+	err    error
+}
+
+func (e *planFieldError) Error() string { return e.err.Error() }
+func (e *planFieldError) Unwrap() error { return e.err }
+
+func planErr(reason string, err error) error { return &planFieldError{reason: reason, err: err} }
+
+// planReason — 계획 칸 거절의 사유 코드. 사유를 모르면 빈 값이다.
+func planReason(err error) string {
+	var pe *planFieldError
+	if errors.As(err, &pe) {
+		return pe.reason
+	}
+	return ""
 }

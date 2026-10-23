@@ -136,7 +136,7 @@ func TestCurrentPlaceIsMarked(t *testing.T) {
 // 페이지는 `role="alert"`로 곧바로 읽힌다.
 func TestNoticesHaveRoles(t *testing.T) {
 	s := observedServer(t)
-	if body := get(t, s, ui.ScreenReview+"?msg=saved").Body.String(); !strings.Contains(body, `<p class="msg ok" role="status">saved</p>`) {
+	if body := get(t, s, ui.ScreenReview+"?msg=saved").Body.String(); !strings.Contains(body, `<p class="msg ok" role="status">`) {
 		t.Error("the success notice has no status role")
 	}
 	if body := get(t, s, ui.ScreenReview+"?problem=no").Body.String(); !strings.Contains(body, `<div class="msg bad" role="alert">`) {

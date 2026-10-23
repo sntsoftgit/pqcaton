@@ -56,6 +56,9 @@ var (
 	ErrUnsafeFile = errors.New("unsafe file")
 	// ErrUnsupported: 이 플랫폼이나 파일시스템에서는 바꾸는 일을 하지 않는다.
 	ErrUnsupported = errors.New("not supported here")
+	// ErrDamaged: 상태 디렉토리의 파일(상태 문서 · 잠금 파일 · 기록 · 영수증)을 읽을 수 없다. 화면은 이 값으로
+	// 종류를 가리고 문장을 해석하지 않는다.
+	ErrDamaged = errors.New("damaged")
 )
 
 // State: 열어 둔 상태 디렉토리.
@@ -181,7 +184,7 @@ func (s *State) ensureID() error {
 	}
 	var doc stateDoc
 	if err := json.Unmarshal(b, &doc); err != nil || doc.Format != stateFormat || !idPattern.MatchString(doc.StateID) {
-		return fmt.Errorf("%s is damaged or from another version; restore it from a backup of this state directory", p)
+		return fmt.Errorf("%w: %s is damaged or from another version; restore it from a backup of this state directory", ErrDamaged, p)
 	}
 	s.ID = doc.StateID
 	return nil

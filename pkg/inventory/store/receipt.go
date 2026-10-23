@@ -486,7 +486,7 @@ func (s *State) parseReceipt(p string) (*Receipt, error) {
 	}
 	var r Receipt
 	if err := json.Unmarshal(b, &r); err != nil || r.Format != receiptFormat {
-		return nil, fmt.Errorf("receipt %s is damaged; keep a copy and run pqcaton-ui -recover-status", p)
+		return nil, fmt.Errorf("%w: receipt %s; keep a copy and run pqcaton-ui -recover-status", ErrDamaged, p)
 	}
 	return &r, nil
 }

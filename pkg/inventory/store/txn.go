@@ -579,7 +579,7 @@ func (s *State) Records() ([]*Record, error) {
 		var r Record
 		if err := json.Unmarshal(b, &r); err != nil || r.Format != txnFormat || !idPattern.MatchString(r.TxID) ||
 			name != r.TxID+".json" {
-			return nil, fmt.Errorf("transaction record %s is damaged; keep a copy and run pqcaton-ui -recover-status", filepath.Join(dir, name))
+			return nil, fmt.Errorf("%w: transaction record %s; keep a copy and run pqcaton-ui -recover-status", ErrDamaged, filepath.Join(dir, name))
 		}
 		out = append(out, &r)
 	}

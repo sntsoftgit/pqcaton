@@ -18,7 +18,20 @@ type Missing struct {
 	Code string
 	// Subject · Detail — 무엇이 빠졌나. 항목 id와, 그 항목을 알아볼 곁말(상태·계층).
 	Subject, Detail string
+	// Reason — [MissingPlanField]의 사유 코드(Plan*). 화면은 Detail(영어 문장)이 아니라 이것으로 말을 고른다.
+	Reason string
 }
+
+// 계획 칸 거절의 사유. PlanL3 뒤에는 빠진 칸 이름(activation.activate 등)이 붙는다.
+const (
+	PlanExcluded = "excluded"
+	PlanNoLevel  = "no-level"
+	PlanBadLevel = "bad-level"
+	PlanNoKind   = "no-kind"
+	PlanBadKind  = "bad-kind"
+	PlanNoTarget = "no-target"
+	PlanL3       = "l3:"
+)
 
 const (
 	// MissingSignature — 서명만 본다(리뷰 큐). MissingApproval — 승인자까지 본다(자산 스코프).

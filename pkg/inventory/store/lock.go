@@ -183,7 +183,7 @@ func (s *State) checkLockOwner(f *os.File, p, dir string) error {
 	got := strings.TrimSpace(string(b[:n]))
 	id := strings.TrimPrefix(got, lockPrefix)
 	if got == id || !idPattern.MatchString(id) {
-		return fmt.Errorf("%s is damaged; it should name a pqcaton state directory", p)
+		return fmt.Errorf("%w: %s should name a pqcaton state directory", ErrDamaged, p)
 	}
 	if id != s.ID {
 		return fmt.Errorf("%w: %s is used with state %s, this command uses state %s (%s); run it with the -state-dir the screen uses",

@@ -70,8 +70,8 @@ var (
 		KO: "다른 저장이 아직 끝나지 않았습니다. 잠시 뒤 다시 시도하십시오.",
 		EN: "Another save has not finished yet. Try again in a moment."}
 	tRefusedRecovery = T{
-		KO: "파일이 저장 기록과 맞지 않아 멈췄습니다. 운영자가 `pqcaton-ui -recover-status`로 확인해야 합니다.",
-		EN: "Stopped: the files do not match the save record. An operator needs to check them with `pqcaton-ui -recover-status`."}
+		KO: "파일이 저장 기록과 맞지 않아 멈췄습니다. 운영자가 운영자 안내서의 「복구」 절대로 확인해야 합니다.",
+		EN: "Stopped: the files do not match the save record. An operator needs to check them as the \"Recovery\" section of the operator guide says."}
 	tRefusedViewOnly = T{
 		KO: "이 플랫폼에서는 화면을 보기만 할 수 있습니다. 저장은 Linux에서 합니다.",
 		EN: "On this platform the screen is view-only. Saving runs on Linux."}

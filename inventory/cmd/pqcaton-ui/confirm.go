@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -101,7 +102,7 @@ func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, actio
 	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files,
 		Hidden: ui.CarryForm(r.PostForm), Exp: exp, Payload: payload, SessionID: id.SessionID,
 		Token: s.confirmToken(kind, id.SessionID, rev, payload, exp)}
-	html(w, func() error { return ui.RenderConfirm(w, v) })
+	html(w, r, func(out io.Writer) error { return ui.RenderConfirm(out, v) })
 }
 
 // finalizeConfirm — 리뷰 확정 전 확인. 아무것도 쓰지 않는다.
@@ -132,7 +133,7 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		// 확정되지 않을 이유가 있으면 미리 보지 않고 화면에 그 이유를 보인다.
-		redirect(w, r, back, "", ui.Refusal(l, err))
+		redirect(w, r, back, nil, problemsFor(r, err))
 		return
 	}
 	lines := []string{ui.LinePlanActions(l, len(o.Result.Plan.GetActions()))}
@@ -148,7 +149,7 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenScope)
 	if s.scope == "" {
-		http.Error(w, "no scope session was given", http.StatusNotFound)
+		missingInput(w, r, "scope-session")
 		return
 	}
 	if !s.writable(w, r, back) {
@@ -174,7 +175,7 @@ func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 		return err
 	})
 	if err != nil {
-		redirect(w, r, back, "", ui.Refusal(l, err))
+		redirect(w, r, back, nil, problemsFor(r, err))
 		return
 	}
 	lines := []string{ui.LinePolicyRules(l, len(o.Result.Policy.Rules))}

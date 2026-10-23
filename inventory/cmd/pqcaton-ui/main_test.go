@@ -150,6 +150,18 @@ func location(t *testing.T, w *httptest.ResponseRecorder) url.Values {
 	return u.Query()
 }
 
+// followed: 303이 보내는 화면을 그 말로 연다. 알림은 질의에 코드로 실려 있고 화면이 문장으로 그린다.
+func followed(t *testing.T, s *server, w *httptest.ResponseRecorder, lang string) string {
+	t.Helper()
+	to := w.Header().Get("Location")
+	if strings.Contains(to, "?") {
+		to += "&lang=" + lang
+	} else {
+		to += "?lang=" + lang
+	}
+	return get(t, s, to).Body.String()
+}
+
 // IC-U1 — **정책으로 묶어 보여 준다.** 그것이 판정의 기본 단위다(§3.4) — 항목을 한 줄씩
 // 늘어놓으면 화면이 있어도 수천 대에서 리뷰가 끝나지 않는다.
 func TestIndexGroupsByPolicy(t *testing.T) {
@@ -583,14 +595,14 @@ func TestScopeTabComesBeforeSurvey(t *testing.T) {
 // 무엇이 남았는지 화면에 그대로 보인다.
 func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 	s, _ := withScope(t)
-	q := location(t, postFormLang(t, s, "/scope/finalize/confirm", "ko", url.Values{
+	w := postFormLang(t, s, "/scope/finalize/confirm", "ko", url.Values{
 		"reviewer": {"보안팀"}, "signature": {"sig"}, // 결론 없음
-	}))
-	if q.Get("problem") == "" {
+	})
+	if location(t, w).Get("problem") == "" {
 		t.Fatal("근거 없이 확정됐다")
 	}
-	if !strings.Contains(q.Get("problem"), "왜 이렇게 정했는지를 적지 않았습니다") {
-		t.Errorf("무엇이 남았는지 말하지 않는다: %s", q.Get("problem"))
+	if body := followed(t, s, w, "ko"); !strings.Contains(body, "왜 이렇게 정했는지를 적지 않았습니다") {
+		t.Errorf("무엇이 남았는지 말하지 않는다:\n%s", body)
 	}
 	if _, err := os.Stat(s.scopeOut); !os.IsNotExist(err) {
 		t.Error("확정되지 않았는데 정책 파일이 생겼다")

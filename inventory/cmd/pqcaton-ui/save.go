@@ -236,6 +236,14 @@ func refusedKind(err error) (string, int) {
 		return ui.RefusedRecovery, http.StatusServiceUnavailable
 	case errors.Is(err, store.ErrChanged):
 		return ui.RefusedStale, http.StatusConflict
+	case errors.Is(err, store.ErrInProgress), errors.Is(err, store.ErrBusy):
+		return ui.RefusedBusy, http.StatusConflict
+	case errors.Is(err, store.ErrUnsafeFile):
+		return ui.RefusedUnsafe, http.StatusServiceUnavailable
+	case errors.Is(err, store.ErrStateMismatch):
+		return ui.RefusedMismatch, http.StatusServiceUnavailable
+	case errors.Is(err, store.ErrDamaged):
+		return ui.RefusedDamaged, http.StatusServiceUnavailable
 	}
 	return "", 0
 }
@@ -255,7 +263,7 @@ func returnTo(r *http.Request, screen string) string {
 func (s *server) fail(w http.ResponseWriter, r *http.Request, back string, err error, files ...ui.FileRef) {
 	kind, code := refusedKind(err)
 	if kind == "" {
-		redirect(w, r, back, "", ui.Refusal(ui.PickLang(r), err))
+		redirect(w, r, back, nil, problemsFor(r, err))
 		return
 	}
 	// 전체 경로와 원래 오류는 여기에만 남긴다.

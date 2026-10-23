@@ -1,6 +1,6 @@
 package ui
 
-// refusedPage — 저장하지 않았다는 페이지(409 · 503). **보이는 칸은 RefusedView에 있는 것뿐이다.**
+// refusedPage — 저장하지 않았다는 페이지(409 · 503)이자 모든 오류 페이지(400 · 403 · 404 · 405 · 500). **보이는 칸은 RefusedView에 있는 것뿐이다.**
 // 오류 원문과 전체 경로는 싣지 않는다. 무엇을 하면 되는지가 본문이다.
 templ refusedPage(v RefusedView) {
 	@nextShell(v.Page) {
@@ -12,9 +12,17 @@ templ refusedPage(v RefusedView) {
 			<p>{ tFilesInvolved.In(v.Lang) }</p>
 			<ul class="refused-files">
 				for _, f := range v.Files {
-					<li>{ f.Role } <code>{ f.Name }</code></li>
+					<li>
+						{ f.Role }
+						if f.Name != "" {
+							<code>{ f.Name }</code>
+						}
+					</li>
 				}
 			</ul>
+		}
+		if v.Ref != "" {
+			<p class="hint">{ v.RefText }: <code>{ v.Ref }</code></p>
 		}
 		<p><a href={ templ.SafeURL(v.Back) }>{ v.BackText }</a></p>
 	}

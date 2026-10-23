@@ -35,7 +35,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,7 +45,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 
 	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
@@ -329,7 +327,7 @@ func (s *server) handler() http.Handler {
 	// **순서가 곧 보호다**(guard.go). 머리글이 맨 바깥이라 403과 panic 응답에도 붙는다. 쿠키
 	// 둘(CSRF · 말)은 Host 검사를 지난 요청에만 낸다.
 	r.Use(securityHeaders)
-	r.Use(middleware.Recoverer)
+	r.Use(recoverPanic)
 	r.Use(hostGuard)
 	r.Use(csrfCookie)
 	r.Use(postGuard)
@@ -337,6 +335,10 @@ func (s *server) handler() http.Handler {
 	r.Use(rememberLang)
 	// 복구 상태면 정적 파일 말고는 처리기에 닿지 않는다.
 	r.Use(s.recoveryGate)
+
+	// 라우터에 없는 주소와 방식도 새 껍데기의 오류 페이지로 그린다.
+	r.NotFound(notFound)
+	r.MethodNotAllowed(methodNotAllowed)
 
 	// 화면이 브라우저로 내보내는 것(스타일 · htmx). 바이너리에 담겨 있다.
 	r.Handle(ui.StaticPath+"*", ui.Static())
@@ -424,9 +426,11 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 			Inventory: s.results != "",
 		}),
 		Lang: l, LangHref: ui.SwitchHref(r, l.Other()),
-		Message: r.URL.Query().Get("msg"), Problem: r.URL.Query().Get("problem"),
-		CSRF: csrfToken(r),
-		Self: here, NewHref: newer,
+		// 알림은 코드로 온다. 문장은 여기서 그 말로 만든다(주소에 실려 온 글을 그대로 보이지 않는다).
+		Message: ui.NoticeLines(l, ui.DecodeNotices(r.URL.Query().Get(ui.MsgParam)), s.fileName, ""),
+		Problem: ui.NoticeLines(l, ui.DecodeNotices(r.URL.Query().Get(ui.ProblemParam)), s.fileName, "\n"),
+		CSRF:    csrfToken(r),
+		Self:    here, NewHref: newer,
 		// rev는 여기서 재지 않는다. 화면 모델과 같은 시점에 잰 값(snapshot)을 처리기가 넣는다.
 	}
 }
@@ -479,7 +483,7 @@ func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render fun
 		return wd.reviewErr
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
 	sf, warn := wd.review, wd.reviewWarn
@@ -494,7 +498,7 @@ func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render fun
 		v.Page.Warnings = ui.Warnings(ui.PickLang(r), warn)
 	}
 	v.Page.Rev = rev
-	html(w, func() error { return render(w, v) })
+	html(w, r, func(out io.Writer) error { return render(out, v) })
 }
 
 // applyReview — 폼 값을 지금 세션에 얹는다. **읽고 얹는다** — 화면이 자기 사본을 들고 있으면 그 사이
@@ -530,7 +534,7 @@ func (s *server) save(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, back, err, file(ui.PickLang(r), "session", s.path))
 		return
 	}
-	redirect(w, r, back, ui.MsgSavedNotFinal(ui.PickLang(r)), "")
+	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeSaved)}, nil)
 }
 
 // finalize — **명령과 같은 검사를 거친다.** 여기서 따로 판정하지 않는다(review.Outputs가
@@ -584,15 +588,15 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 	}
 	switch out.Status {
 	case store.OutcomeAlready:
-		redirect(w, r, back, ui.MsgFinalizedAlready(l), "")
+		redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeFinalizedAlready)}, nil)
 	case store.OutcomeSuperseded:
-		redirect(w, r, back, ui.MsgFinalizedSuperseded(l), "")
+		redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeFinalizedSuperseded)}, nil)
 	default:
-		msg := ui.MsgFinalizedPlan(l, len(written.Result.Plan.GetActions()), filepath.Base(s.planOut))
+		msg := []ui.Notice{ui.N(ui.NoticeFinalizedPlan, len(written.Result.Plan.GetActions()), "plan")}
 		if withJudg {
-			msg += ui.MsgJudgmentsSaved(l, written.Judged, filepath.Base(s.judgments))
+			msg = append(msg, ui.N(ui.NoticeJudgmentsSaved, written.Judged, "ledger"))
 		}
-		redirect(w, r, back, msg, "")
+		redirect(w, r, back, msg, nil)
 	}
 }
 
@@ -634,7 +638,7 @@ func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.ScopeView) error, next bool) {
 	if s.scope == "" {
-		http.Error(w, "no scope session was given — pass -scope or -layers", http.StatusNotFound)
+		missingInput(w, r, "scope-session")
 		return
 	}
 	var wd *world
@@ -643,7 +647,7 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 		return wd.scopeErr
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
 	sf, files := wd.scope, wd.scopeFiles
@@ -657,7 +661,7 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 		v.Page.Org = sf.Org
 	}
 	v.Page.Rev = rev
-	html(w, func() error { return render(w, v) })
+	html(w, r, func(out io.Writer) error { return render(out, v) })
 }
 
 // scopeRules — 화면에서 고친 규칙을 계층 파일에 쓴다.
@@ -667,7 +671,7 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenScope)
 	if len(s.layers) == 0 {
-		http.Error(w, "no layer CSVs were given — pass -layers", http.StatusNotFound)
+		missingInput(w, r, "layer")
 		return
 	}
 	if !s.writable(w, r, back) {
@@ -721,31 +725,31 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 	for _, lf := range edited {
 		n += len(lf.Layer.Rules)
 	}
-	msg := ui.MsgRulesSaved(l, len(edited), n, len(next.Changes), next.AuditedCount())
+	msg := []ui.Notice{ui.N(ui.NoticeRulesSaved, n, len(edited), len(next.Changes), next.AuditedCount())}
 	if next.Signature == "" && was.Signature != "" {
 		// **말하지 않으면 사람은 서명이 남아 있다고 여긴다.**
-		msg += ui.MsgSignatureCleared(l)
+		msg = append(msg, ui.N(ui.NoticeSignatureCleared))
 	}
-	redirect(w, r, back, msg, "")
+	redirect(w, r, back, msg, nil)
 }
 
 // scopeRow — 규칙 표의 「행 추가」.
 func (s *server) scopeRow(w http.ResponseWriter, r *http.Request) {
 	if len(s.layers) == 0 {
-		http.Error(w, "no layer CSVs were given", http.StatusNotFound)
+		missingInput(w, r, "layer")
 		return
 	}
 	layer, err := strconv.Atoi(r.URL.Query().Get("layer"))
 	if err != nil || layer < 0 || layer >= len(s.layers) {
-		http.Error(w, "no such layer", http.StatusBadRequest)
+		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
 		return
 	}
 	i, err := strconv.Atoi(r.URL.Query().Get("i"))
 	if err != nil || i < 0 || i > maxRows {
-		http.Error(w, "the row number is out of range", http.StatusBadRequest)
+		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
 		return
 	}
-	html(w, func() error { return ui.RenderRuleRow(w, ui.PickLang(r), layer, i) })
+	html(w, r, func(out io.Writer) error { return ui.RenderRuleRow(out, ui.PickLang(r), layer, i) })
 }
 
 // applyScope — 폼 값을 지금 세션에 얹는다. 저장소의 잠금 안에서 불린다.
@@ -766,7 +770,7 @@ func (s *server) scopeID() store.Identity {
 func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenScope)
 	if s.scope == "" {
-		http.Error(w, "no scope session was given", http.StatusNotFound)
+		missingInput(w, r, "scope-session")
 		return
 	}
 	if !s.writable(w, r, back) {
@@ -784,7 +788,7 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, back, err, file(ui.PickLang(r), "scope-session", s.scope))
 		return
 	}
-	redirect(w, r, back, ui.MsgSavedNotFinal(ui.PickLang(r)), "")
+	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeSaved)}, nil)
 }
 
 // scopeFinalize — **명령과 같은 검사를 거친다.** 세션 · 정책 CSV(앞 판은 .prev로) · 판정 원장 ·
@@ -792,7 +796,7 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenScope)
 	if s.scope == "" {
-		http.Error(w, "no scope session was given", http.StatusNotFound)
+		missingInput(w, r, "scope-session")
 		return
 	}
 	if !s.writable(w, r, back) {
@@ -838,15 +842,15 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 	}
 	switch out.Status {
 	case store.OutcomeAlready:
-		redirect(w, r, back, ui.MsgFinalizedAlready(l), "")
+		redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeFinalizedAlready)}, nil)
 	case store.OutcomeSuperseded:
-		redirect(w, r, back, ui.MsgFinalizedSuperseded(l), "")
+		redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeFinalizedSuperseded)}, nil)
 	default:
-		msg := ui.MsgFinalizedPolicy(l, len(written.Result.Policy.Rules), filepath.Base(s.scopeOut))
+		msg := []ui.Notice{ui.N(ui.NoticeFinalizedPolicy, len(written.Result.Policy.Rules), "policy")}
 		if withJudg {
-			msg += ui.MsgJudgmentsSaved(l, written.Judged, filepath.Base(s.judgments))
+			msg = append(msg, ui.N(ui.NoticeJudgmentsSaved, written.Judged, "ledger"))
 		}
-		redirect(w, r, back, msg, "")
+		redirect(w, r, back, msg, nil)
 	}
 }
 
@@ -864,7 +868,7 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.SurveyView) error, next bool) {
 	if s.results == "" {
-		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
+		missingInput(w, r, "results")
 		return
 	}
 	var wd *world
@@ -872,7 +876,7 @@ func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render fun
 		wd = s.load(next)
 		return wd.resErr
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
 	res := wd.res
@@ -883,7 +887,7 @@ func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render fun
 		v.Page = s.nextPage(r, ui.ScreenSurvey, s.results, s.steps(wd))
 		v.Page.Org = res.Org
 	}
-	html(w, func() error { return render(w, v) })
+	html(w, r, func(out io.Writer) error { return render(out, v) })
 }
 
 // renderDOT — `dot`이 있으면 SVG로 그린다. 없으면 빈 값을 돌려주고 화면이 원문을 보인다.
@@ -922,7 +926,7 @@ func (s *server) inventory(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.InventoryView) error, next bool) {
 	if s.results == "" {
-		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
+		missingInput(w, r, "results")
 		return
 	}
 	var (
@@ -945,7 +949,7 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		v, err = s.withLedger(v, wd.res, r.URL.Query().Get("subject"))
 		return err
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
 	res := wd.res
@@ -956,7 +960,7 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		v.Page = s.nextPage(r, ui.ScreenInventory, s.results, s.steps(wd))
 		v.Page.Org = res.Org
 	}
-	html(w, func() error { return render(w, v) })
+	html(w, r, func(out io.Writer) error { return render(out, v) })
 }
 
 // withPolicy — 「안 보고 있는 것」. 확정된 정책 CSV가 있어야 셀 수 있다.
@@ -1064,7 +1068,7 @@ func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepStat
 
 func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.DeclView) error, next bool) {
 	if s.decl == "" {
-		http.Error(w, "no declaration file was given — pass -decl", http.StatusNotFound)
+		missingInput(w, r, "declaration")
 		return
 	}
 	var wd *world
@@ -1073,7 +1077,7 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		return wd.declErr
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
 	d, seen, unmatched := wd.decl, wd.seen, wd.unmatched
@@ -1088,7 +1092,7 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		v.Page.Org = d.OrgOrDefault()
 	}
 	v.Page.Rev = rev
-	html(w, func() error { return render(w, v) })
+	html(w, r, func(out io.Writer) error { return render(out, v) })
 }
 
 // observedFrom — 노드마다 **관측된** 자산. 컴포넌트 칸의 후보다. 대조 결과는 부르는 쪽이 이미 만든 것을 받는다.
@@ -1138,28 +1142,28 @@ func observedFrom(d decl.Declaration, res *report.Result) (map[string][]ui.DeclA
 // 번호는 밖에서 오는 값이라 받는 대로 믿지 않는다.
 func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
 	if s.decl == "" {
-		http.Error(w, "no declaration file was given", http.StatusNotFound)
+		missingInput(w, r, "declaration")
 		return
 	}
 	kind := r.URL.Query().Get("kind")
 	if !ui.ValidKind(kind) {
-		http.Error(w, "unknown table name: "+kind, http.StatusBadRequest)
+		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
 		return
 	}
 	i, err := strconv.Atoi(r.URL.Query().Get("i"))
 	if err != nil || i < 0 || i > maxRows {
-		http.Error(w, "the row number is out of range", http.StatusBadRequest)
+		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
 		return
 	}
 	// 자산은 어느 노드의 것인지가 함께 온다 — 그 번호도 밖에서 오는 값이다.
 	node := 0
 	if v := r.URL.Query().Get("node"); v != "" {
 		if node, err = strconv.Atoi(v); err != nil || node < 0 || node > maxRows {
-			http.Error(w, "the node number is out of range", http.StatusBadRequest)
+			errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
 			return
 		}
 	}
-	html(w, func() error { return ui.RenderRow(w, ui.PickLang(r), kind, node, i) })
+	html(w, r, func(out io.Writer) error { return ui.RenderRow(out, ui.PickLang(r), kind, node, i) })
 }
 
 // declRemove — 「제거」. **빈 응답을 돌려준다** — 지우는 것은 브라우저가 하고(htmx가
@@ -1168,7 +1172,7 @@ func (s *server) declRow(w http.ResponseWriter, r *http.Request) {
 // 서버가 아무것도 바꾸지 않으므로 GET이다. 새로고침으로 무엇이 다시 일어나지 않는다.
 func (s *server) declRemove(w http.ResponseWriter, r *http.Request) {
 	if s.decl == "" {
-		http.Error(w, "no declaration file was given", http.StatusNotFound)
+		missingInput(w, r, "declaration")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -1182,7 +1186,7 @@ const maxRows = 10000
 func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 	back := returnTo(r, ui.ScreenDecl)
 	if s.decl == "" {
-		http.Error(w, "no declaration file was given", http.StatusNotFound)
+		missingInput(w, r, "declaration")
 		return
 	}
 	if !s.writable(w, r, back) {
@@ -1206,33 +1210,34 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, back, err, file(ui.PickLang(r), "declaration", s.decl))
 		return
 	}
-	msg := ui.MsgDeclSaved(ui.PickLang(r), len(d.Nodes), len(d.Assets), len(d.Edges))
+	msg := []ui.Notice{ui.N(ui.NoticeDeclSaved, len(d.Nodes), len(d.Assets), len(d.Edges))}
 	// **뺀 줄은 알린다.** IP 없는 줄은 관리 대상이 아니라 저장에서 빠지는데, 표에서
 	// 사라진 것만 보이면 지워진 것으로 읽힌다.
 	if len(dropped) > 0 {
-		msg += ui.MsgDeclDroppedNoIP(ui.PickLang(r), len(dropped))
+		msg = append(msg, ui.N(ui.NoticeDeclDropped, len(dropped)))
 	}
 	// **저장은 됐지만 앞뒤가 안 맞으면 그 사실을 함께 알린다.** 막지는 않는다.
 	if p := decl.Check(d); len(p) > 0 {
-		msg += ui.MsgDeclStillOff(ui.PickLang(r), len(p))
+		msg = append(msg, ui.N(ui.NoticeDeclStillOff, len(p)))
 	}
-	redirect(w, r, back, msg, "")
+	redirect(w, r, back, msg, nil)
 }
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
 
 // redirect — POST 뒤에는 GET으로 보낸다. 새로고침이 같은 확정을 다시 태우지 않게 한다.
-func redirect(w http.ResponseWriter, r *http.Request, to, msg, problem string) {
-	u := to + "?msg=" + url.QueryEscape(msg)
-	if problem != "" {
-		u += "&problem=" + url.QueryEscape(problem)
+
+// fileName: 알림 · 거절에 적을 파일 이름(역할 → 이 서버의 파일). 전체 경로는 싣지 않는다.
+func (s *server) fileName(role string) string {
+	p := map[string]string{"plan": s.planOut, "ledger": s.judgments, "policy": s.scopeOut, "session": s.path,
+		"scope-session": s.scope, "declaration": s.decl, "results": s.results}[role]
+	if p == "" {
+		return ""
 	}
-	http.Redirect(w, r, u, http.StatusSeeOther)
+	return filepath.Base(p)
 }
 
-func html(w http.ResponseWriter, render func() error) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := render(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+// missingInput: 이 화면에 필요한 파일을 주지 않았다(404). 역할만 보인다.
+func missingInput(w http.ResponseWriter, r *http.Request, role string) {
+	errorPage(w, r, http.StatusNotFound, ui.ErrInputMissing, nil, ui.FileRef{Role: ui.RoleLabel(ui.PickLang(r), role)})
 }

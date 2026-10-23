@@ -136,7 +136,7 @@ func TestRepeatedFinalizeWritesOnce(t *testing.T) {
 	ledger := readFile(t, s.judgments)
 	again := finalizeVia(t, s, "ko", "/finalize/confirm", signed())
 	q := location(t, again)
-	if q.Get("msg") != ui.MsgFinalizedAlready(ui.KO) {
+	if q.Get("msg") != ui.EncodeNotices([]ui.Notice{ui.N(ui.NoticeFinalizedAlready)}) {
 		t.Errorf("second finalize says %q, want the already-finalized message", q.Get("msg"))
 	}
 	if readFile(t, s.judgments) != ledger {
@@ -216,7 +216,7 @@ func TestNeedsRecoveryIsRefused(t *testing.T) {
 	}
 	s.st = openStore(t, dir)
 	w := postFormLang(t, s, "/save", "ko", url.Values{"reviewer": {"보안팀"}})
-	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "-recover-status") {
+	if w.Code != http.StatusServiceUnavailable || !(strings.Contains(w.Body.String(), "「복구」") || strings.Contains(w.Body.String(), `"Recovery"`)) {
 		t.Fatalf("status %d\n%s", w.Code, w.Body.String())
 	}
 	if readFile(t, s.path) != "edited by hand\n" {

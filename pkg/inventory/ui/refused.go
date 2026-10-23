@@ -20,7 +20,44 @@ const (
 	RefusedViewOnly  = "view-only"
 	RefusedExpired   = "expired"
 	RefusedConfirm   = "confirm"
+	// 저장소가 막은 까닭 가운데 운영자가 손봐야 하는 것(503).
+	RefusedUnsafe   = "unsafe-file"
+	RefusedMismatch = "state-mismatch"
+	RefusedDamaged  = "damaged"
+
+	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
+	ErrNotFound     = "not-found"     // 404
+	ErrMethod       = "method"        // 405
+	ErrBadRequest   = "bad-request"   // 400
+	ErrInputMissing = "input-missing" // 404: 이 화면에 필요한 파일을 주지 않았다
+	ErrInputBroken  = "input-broken"  // 500: 입력 파일을 읽지 못했다
+	ErrForbidden    = "forbidden"     // 403: 요청 보호
+	ErrInternal     = "internal"      // 500
 )
+
+// refusedText — 종류마다 머리와 본문. 머리가 비면 「저장하지 않았습니다」다.
+var refusedText = map[string]struct{ head, body T }{
+	RefusedStale: {body: tRefusedStale}, RefusedFinalized: {body: tRefusedFinalized}, RefusedBusy: {body: tRefusedBusy},
+	RefusedRecovery: {body: tRefusedRecovery}, RefusedViewOnly: {body: tRefusedViewOnly},
+	RefusedExpired: {body: tRefusedExpired}, RefusedConfirm: {body: tRefusedConfirmBad},
+	RefusedUnsafe: {body: tRefusedUnsafe}, RefusedMismatch: {body: tRefusedMismatch}, RefusedDamaged: {body: tRefusedDamaged},
+	ErrNotFound:     {tErrNotFoundHead, tErrNotFound},
+	ErrMethod:       {tErrMethodHead, tErrMethod},
+	ErrBadRequest:   {tErrBadRequestHead, tErrBadRequest},
+	ErrInputMissing: {tErrInputMissingHead, tErrInputMissing},
+	ErrInputBroken:  {tErrInputBrokenHead, tErrInputBroken},
+	ErrForbidden:    {tErrForbiddenHead, tErrForbidden},
+	ErrInternal:     {tErrInternalHead, tErrInternal},
+}
+
+// RefusedKinds — 알려진 종류 전부(시험이 문구 목록과 견준다).
+func RefusedKinds() []string {
+	out := make([]string, 0, len(refusedText))
+	for k := range refusedText {
+		out = append(out, k)
+	}
+	return out
+}
 
 // FileRef: 거절 페이지에 보일 파일. **역할과 파일 이름뿐이다.** 같은 이름이 여럿일 수 있어 역할을
 // 함께 적고, 전체 경로는 싣지 않는다(서버 표준오류와 -recover-status에만 있다).
@@ -35,6 +72,9 @@ type RefusedView struct {
 	Files      []FileRef
 	Back       string
 	BackText   string
+	// Ref — 서버 표준오류에 원문과 함께 남긴 참조 번호. 원인을 화면 말로 옮길 수 없을 때만 있다.
+	Ref     string
+	RefText string
 }
 
 // maxShown: 칸 하나에 보일 글자 수.
@@ -45,14 +85,17 @@ func NewRefused(p Page, kind, back string, files []FileRef) RefusedView {
 	if !strings.HasPrefix(back, "/") || strings.HasPrefix(back, "//") {
 		back = "/"
 	}
-	body := map[string]T{
-		RefusedStale: tRefusedStale, RefusedFinalized: tRefusedFinalized, RefusedBusy: tRefusedBusy,
-		RefusedRecovery: tRefusedRecovery, RefusedViewOnly: tRefusedViewOnly,
-		RefusedExpired: tRefusedExpired, RefusedConfirm: tRefusedConfirmBad,
-	}[kind]
-	v := RefusedView{Page: p, Head: tNotSaved.In(p.Lang), Body: body.In(p.Lang), Back: back,
-		BackText: tBackToScreen.In(p.Lang)}
-	v.Page.Title = tNotSaved.In(p.Lang)
+	txt, ok := refusedText[kind]
+	if !ok {
+		txt = refusedText[ErrInternal]
+	}
+	head := tNotSaved
+	if txt.head.EN != "" {
+		head = txt.head
+	}
+	v := RefusedView{Page: p, Head: head.In(p.Lang), Body: txt.body.In(p.Lang), Back: back,
+		BackText: tBackToScreen.In(p.Lang), RefText: tErrRef.In(p.Lang)}
+	v.Page.Title = head.In(p.Lang)
 	v.Page.Message, v.Page.Problem, v.Page.Warnings = "", "", nil
 	for _, f := range files {
 		v.Files = append(v.Files, FileRef{Role: clip(f.Role), Name: clip(filepath.Base(f.Name))})

@@ -1,0 +1,126 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
+package ui
+
+// 알림 · 거절 · 오류의 문구 목록. 화면 위 알림은 요청 사이를 코드와 인자로만 오가고(notice.go), 문장은
+// 여기서 그 말로 만든다. 인자 종류: n 숫자, r 파일 역할(그 서버의 파일 이름으로 바뀐다), i 식별자(항목 ID 등).
+
+type noticeSpec struct {
+	t     T
+	kinds string
+}
+
+var noticeText = map[string]noticeSpec{
+	// 성공 알림. 「 · 」로 시작하는 것은 앞 알림에 이어 붙는다.
+	NoticeSaved:               {tSavedNotFinal, ""},
+	NoticeFinalizedPlan:       {tFinalizedPlan, "nr"},
+	NoticeFinalizedPolicy:     {tFinalizedPolicy, "nr"},
+	NoticeJudgmentsSaved:      {tJudgmentsSaved, "nr"},
+	NoticeRulesSaved:          {tRulesSaved, "nnnn"},
+	NoticeSignatureCleared:    {tSignatureCleared, ""},
+	NoticeDeclSaved:           {tDeclSaved, "nnn"},
+	NoticeDeclDropped:         {tDeclDroppedNoIP, "n"},
+	NoticeDeclStillOff:        {tDeclStillOff, "n"},
+	NoticeFinalizedAlready:    {tFinalizedAlready, ""},
+	NoticeFinalizedSuperseded: {tFinalizedSuperseded, ""},
+
+	// 확정 관문이 막은 까닭. 머리 하나에 빠진 것들이 「 · 」 줄로 붙는다.
+	ProblemCannotFinalize: {T{
+		KO: "확정할 수 없습니다. 아래 칸을 채우십시오",
+		EN: "Cannot finalize: fill in the fields below"}, ""},
+	ProblemMandatory: {T{
+		KO: "확정할 수 없습니다. 아직 판정하지 않은 필수 항목이 남아 있습니다. 필수 항목은 하나도 빠짐없이 판정해야 합니다",
+		EN: "Cannot finalize: mandatory items are still unjudged. Every mandatory item must be judged"}, ""},
+	ProblemNoSignature: {T{
+		KO: "확정할 수 없습니다. 승인 서명이 없습니다",
+		EN: "Cannot finalize: there is no reviewer's signature"}, ""},
+	ProblemNotInReview: {T{
+		KO: "확정할 수 없습니다. 세션이 검토 중(in-review) 상태가 아닙니다",
+		EN: "Cannot finalize: the session is not in review"}, ""},
+	ProblemNotDraft: {T{
+		KO: "리뷰를 시작할 수 없습니다. 세션이 초안(draft) 상태가 아닙니다",
+		EN: "Cannot start the review: the session is not in draft"}, ""},
+	ProblemMissingSignature: {T{
+		KO: "   · 서명을 채우십시오",
+		EN: "   · fill in the signature"}, ""},
+	ProblemMissingApproval: {T{
+		KO: "   · 승인자와 서명을 채우십시오",
+		EN: "   · fill in the approver and the signature"}, ""},
+	ProblemMissingConclusion: {T{
+		KO: "   · 왜 이렇게 정했는지를 적지 않았습니다: %s",
+		EN: "   · no record of why this was decided: %s"}, "i"},
+	ProblemMissingConclusionOf: {T{
+		KO: "   · 왜 이렇게 정했는지를 적지 않았습니다: %s (%s)",
+		EN: "   · no record of why this was decided: %s (%s)"}, "ii"},
+	ProblemPlanField: {T{
+		KO: "   · 계획에 넣은 대로는 낼 수 없습니다: %s (%s)",
+		EN: "   · cannot be planned as selected: %s (%s)"}, "ip"},
+	// ProblemInternal — 까닭을 화면 말로 옮길 수 없는 실패. 원문은 서버 표준오류에 참조 번호와 함께 있다.
+	ProblemInternal: {T{
+		KO: "처리하지 못했습니다. 운영자가 서버 기록에서 참조 번호 %s를 찾아 원인을 확인할 수 있습니다",
+		EN: "This could not be done. An operator can find reference %s in the server log to see why"}, "i"},
+}
+
+// 계획 칸 거절의 사유(decision.Plan*). ProblemPlanField의 둘째 인자로 들어간다.
+var planReasonText = map[string]T{
+	"excluded":                 {KO: "자산 스코프 정책이 관리하지 않는 항목입니다. 정책이나 선언을 먼저 고치십시오", EN: "the asset-scope policy does not manage this item; change the policy or the declaration first"},
+	"no-level":                 {KO: "위임 수준(L1 · L2 · L3)을 고르십시오", EN: "pick a delegation level (L1, L2 or L3)"},
+	"bad-level":                {KO: "위임 수준이 L1 · L2 · L3 가운데 하나가 아닙니다", EN: "the delegation level is not one of L1, L2 or L3"},
+	"no-kind":                  {KO: "조치 종류를 고르십시오", EN: "pick a remediation kind"},
+	"bad-kind":                 {KO: "조치 종류가 계약에 없는 값입니다", EN: "the remediation kind is not one the contract knows"},
+	"no-target":                {KO: "이 조치 종류는 목표 알고리즘이 있어야 합니다", EN: "this remediation kind needs a target algorithm"},
+	"l3:activation.activate":   {KO: "L3는 활성화 명령(activate)이 있어야 합니다", EN: "L3 needs an activate command"},
+	"l3:activation.restart":    {KO: "L3는 재시작 명령(restart)이 있어야 합니다", EN: "L3 needs a restart command"},
+	"l3:activation.deactivate": {KO: "L3는 비활성화 명령(deactivate)이 있어야 합니다", EN: "L3 needs a deactivate command"},
+}
+
+var tPlanReasonUnknown = T{KO: "계획 칸을 다시 확인하십시오", EN: "check the plan fields again"}
+
+// tNoticeUnknown — 모르는 코드나 맞지 않는 인자. 주소에 실려 온 값을 그대로 보이지 않는다.
+var tNoticeUnknown = T{KO: "알 수 없는 알림입니다", EN: "Unknown notice"}
+
+// 오류 페이지(거절 페이지와 같은 틀)의 머리와 본문. 본문은 「다음에 할 일」을 적는다. 플래그 이름이나 경로를
+// 적지 않는다.
+var (
+	tErrNotFoundHead = T{KO: "이 주소에는 화면이 없습니다", EN: "There is no screen at this address"}
+	tErrNotFound     = T{
+		KO: "위쪽 단계 카드에서 화면을 고르십시오.",
+		EN: "Pick a screen from the step cards at the top."}
+	tErrMethodHead = T{KO: "이 주소는 이 방식의 요청을 받지 않습니다", EN: "This address does not take this kind of request"}
+	tErrMethod     = T{
+		KO: "화면의 버튼과 링크로 다시 하십시오.",
+		EN: "Use the buttons and links on the screen instead."}
+	tErrBadRequestHead = T{KO: "요청을 처리할 수 없습니다", EN: "The request cannot be handled"}
+	tErrBadRequest     = T{
+		KO: "화면을 새로 고친 뒤 다시 하십시오.",
+		EN: "Reload the screen and try again."}
+	tErrInputMissingHead = T{KO: "이 화면에 필요한 파일이 없습니다", EN: "A file this screen needs is not there"}
+	tErrInputMissing     = T{
+		KO: "이 화면은 아래 파일이 있어야 열립니다. 운영자 안내서의 「작업 폴더」 절을 보십시오.",
+		EN: "This screen opens only with the file below. See the \"Workspace\" section of the operator guide."}
+	tErrInputBrokenHead = T{KO: "파일을 읽지 못했습니다", EN: "A file could not be read"}
+	tErrInputBroken     = T{
+		KO: "아래 파일을 읽지 못해 화면을 그리지 않았습니다. 파일이 망가졌거나 형식이 맞지 않습니다. 운영자가 서버 기록에서 참조 번호를 찾아 원인을 확인할 수 있습니다.",
+		EN: "The screen was not drawn because the file below could not be read: it is damaged or not in the expected format. An operator can find the reference in the server log to see why."}
+	tErrForbiddenHead = T{KO: "이 요청을 받지 않았습니다", EN: "This request was refused"}
+	tErrForbidden     = T{
+		KO: "요청 보호에 걸렸습니다. 화면을 띄운 기계의 브라우저에서 화면을 처음부터 다시 여십시오. 다른 기계에서 보려면 운영자 안내서의 「다른 기계에서 보기」 절을 따르십시오.",
+		EN: "The request protection refused it. Open the screen again from the start in a browser on the machine running it. To view it from another machine, follow the \"Viewing from another machine\" section of the operator guide."}
+	tErrInternalHead = T{KO: "처리하지 못했습니다", EN: "This could not be done"}
+	tErrInternal     = T{
+		KO: "예상하지 못한 문제로 멈췄습니다. 파일은 바꾸지 않았습니다. 운영자가 서버 기록에서 참조 번호를 찾아 원인을 확인할 수 있습니다.",
+		EN: "Stopped by an unexpected problem. No file was changed. An operator can find the reference in the server log to see why."}
+	tErrRef = T{KO: "참조 번호", EN: "Reference"}
+
+	// 저장소가 막은 까닭 가운데 운영자가 손봐야 하는 것.
+	tRefusedUnsafe = T{
+		KO: "파일의 권한이나 링크가 안전하지 않아 멈췄습니다. 운영자 안내서의 「파일 권한」 절대로 바로잡은 뒤 다시 하십시오.",
+		EN: "Stopped: a file's permissions or links are not safe. Fix them as the \"File permissions\" section of the operator guide says, then try again."}
+	tRefusedMismatch = T{
+		KO: "이 파일들은 다른 상태 디렉토리가 관리하고 있어 저장하지 않았습니다. 운영자 안내서의 「상태 디렉토리」 절을 보십시오.",
+		EN: "Not saved: these files are managed by another state directory. See the \"State directory\" section of the operator guide."}
+	tRefusedDamaged = T{
+		KO: "상태 디렉토리의 기록을 읽지 못해 멈췄습니다. 운영자 안내서의 「복구」 절대로 확인해야 합니다.",
+		EN: "Stopped: a record in the state directory could not be read. An operator needs to check it as the \"Recovery\" section of the operator guide says."}
+)
