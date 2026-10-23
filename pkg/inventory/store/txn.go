@@ -141,28 +141,15 @@ func (e *RecoveryError) Error() string {
 func (e *RecoveryError) Unwrap() error { return ErrNeedsRecovery }
 
 // Do: 트랜잭션 하나를 끝까지 한다. 대상 디렉토리 잠금을 wait까지 기다려 잡고, 그 안에서 이 디렉토리에
-// 걸린 남은 기록을 먼저 복구한 뒤 쓴다.
+// 걸린 남은 기록을 먼저 복구한 뒤 쓴다. 세션에 묶인 저장과 확정은 Save와 Finalize를 쓴다.
 func (s *State) Do(tx Tx, wait time.Duration) error {
-	if s.run == nil {
-		return errors.New("store: Do before AcquireRun")
-	}
-	dirs := tx.dirs()
-	if len(dirs) == 0 {
-		return errors.New("store: a transaction must change at least one file outside the state directory")
-	}
-	release, err := s.LockTargets(dirs, wait)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if err := s.recoverIn(dirs); err != nil {
-		return err
-	}
-	rec, err := s.plan(tx)
-	if err != nil {
-		return err
-	}
-	return s.run1(rec, tx)
+	return s.withLocks(tx.dirs(), wait, func() error {
+		rec, err := s.plan(tx)
+		if err != nil {
+			return err
+		}
+		return s.run1(rec, tx)
+	})
 }
 
 func (tx Tx) dirs() []string {

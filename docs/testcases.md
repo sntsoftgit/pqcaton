@@ -132,7 +132,7 @@
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT`로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass`가 고른 관계의 OID를 `pg_attribute`에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN`이 있을 때만 |
 
-### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 상태 디렉토리 · 잠금 · 원자적 교체 · 트랜잭션 복구까지
+### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 상태 디렉토리 · 잠금 · 원자적 교체 · 트랜잭션 복구 · 영수증까지
 화면과 명령이 파일을 바꿀 때 지나가는 한 길입니다. 상용 지원은 Linux 로컬 파일시스템뿐입니다.
 
 | TC | Given → When | Then |
@@ -156,6 +156,13 @@
 | [IC-W17](../pkg/inventory/store/txn_test.go) ✅ | 반만 쓰인 원장의 넘친 바이트가 다름 · 기준 길이 앞부분이 바뀜 · 추가분 뒤에 남의 바이트 | 복구 필요로 멈춘다. 원장은 한 바이트도 바뀌지 않는다 |
 | **[IC-W18](../pkg/inventory/store/txn_test.go) ✅** | 확정 도중 대상이 밖에서 바뀜 | 덮어쓰지 않고 복구 필요로 멈추며, 뒤의 항목(원장, 영수증)도 적용하지 않는다. 상태 보기는 파일 · 기대 해시 · 지금 해시 · 준비 파일을 보이고, 진단 묶음을 0600으로 새로 내보낸다(파일 내용은 담지 않는다). 그동안 그 디렉토리의 다른 저장은 막힌다 |
 | [IC-W19](../pkg/inventory/store/txn_test.go) ✅ | 같은 원장에 동시에 쓰는 요청 여럿 | 차례로 들어간다. 줄이 섞이거나 빠지거나 두 번 들어가지 않는다 |
+| **[IC-W20](../pkg/inventory/store/receipt_test.go) ✅** | 같은 세션을 같은 내용으로 다시 확정 · 서버를 다시 띄운 뒤 다시 확정 | 첫 확정이 영수증(0600)을 남긴다. 다시 확정하면 아무것도 다시 쓰지 않고 이전 결과를 돌려준다. **원장에 판정이 두 번 쌓이지 않는다.** 동일성은 종류 · 조직 · 세션 ID이고 내용은 영수증에 해시로만 적는다 |
+| [IC-W21](../pkg/inventory/store/receipt_test.go) ✅ | 같은 세션을 다른 내용으로 다시 확정 | 거부하고 새 세션을 열라고 알린다. 아무것도 바뀌지 않는다 |
+| [IC-W22](../pkg/inventory/store/receipt_test.go) ✅ | 확정된 세션의 일반 저장 | 막는다. 확정한 뒤에 세션이 바뀌면 영수증이 가리키는 것과 화면이 다르다. 다른 세션의 저장은 지나간다 |
+| [IC-W23](../pkg/inventory/store/receipt_test.go) ✅ | 다른 세션이 뒤에 같은 출력을 확정한 뒤 앞 세션을 다시 확정 | 「다른 세션의 후속 확정으로 대체됨」으로 알리고 다시 쓰지 않는다. 오류가 아니다 |
+| [IC-W24](../pkg/inventory/store/receipt_test.go) ✅ | 확정한 출력을 손으로 고침 · 원장 구간이 영수증과 다름 | 복구 필요로 알리고 다시 쓰지 않는다 |
+| **[IC-W25](../pkg/inventory/store/receipt_test.go) ✅** | 영수증을 쓰기 직전에 멈춤 · 같은 세션을 동시에 두 번 확정 | 다시 열어 복구하면 영수증까지 끝나고, 그 뒤 같은 확정은 이전 결과다. 동시에 두 번이면 한쪽만 쓰고 다른 쪽은 이전 결과를 받는다. 어느 쪽이든 판정은 원장에 한 번만 들어간다 |
+| [IC-W26](../pkg/inventory/store/receipt_test.go) ✅ | 종류 · 조직 · 세션 ID에 경로 구분자 · 「..」 · 빈 값 | 받지 않는다. 영수증 경로가 상태 디렉토리 밖으로 나가지 않는다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
