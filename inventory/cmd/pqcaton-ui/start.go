@@ -57,6 +57,7 @@ var pathFlags = []string{"decl", "results", "layers", "base", "scope", "scope-as
 type startConfig struct {
 	addr, org, stateDir  string
 	noBrowser            bool
+	orgGiven             bool // -org를 직접 주었나
 	recoverStatus        bool
 	diagnostics          string
 	workspace            string // 작업 폴더 모드면 그 절대 경로
@@ -99,9 +100,16 @@ func parseStart(args []string, stderr io.Writer) (startConfig, error) {
 	if err := fs.Parse(flags); err != nil {
 		return c, errUsage
 	}
+	// **플래그 뒤에 남은 인자는 받지 않는다.** 표준 flag는 첫 비플래그에서 멈추므로 `-addr x session.json
+	// -decl …`의 세션과 그 뒤는 버려진다. 그대로 두면 인자가 없는 것으로 보고 작업 폴더로 뜬다.
+	if fs.NArg() > 0 {
+		fmt.Fprintf(stderr, "❌ %q comes after a flag; put the session file first: pqcaton-ui <session.json> -decl …\n", fs.Arg(0))
+		return c, errUsage
+	}
 	c.layers = splitPaths(*layerList)
 	set := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+	c.orgGiven = set["org"]
 
 	if *ws == "" && len(pos) > 0 {
 		c.session = pos[0]
@@ -192,7 +200,26 @@ func (c startConfig) inWorkspace() (startConfig, error) {
 func (c startConfig) server() *server {
 	return &server{path: c.session, decl: c.decl, results: c.results, scope: c.scope,
 		layers: c.layers, base: c.base, scopeAssets: c.scopeAssets, judgments: c.judgments,
-		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace}
+		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace,
+		orgFromDecl: c.workspace != "" && !c.orgGiven}
+}
+
+// orgName: 판정이 묶이는 조직.
+func (s *server) orgName() string {
+	s.orgMu.RLock()
+	defer s.orgMu.RUnlock()
+	return s.org
+}
+
+// adoptOrg: 작업 폴더 모드에서 -org를 주지 않았으면 선언의 조직을 서버의 조직으로 삼는다. 세션이 쓰는 규칙
+// (선언에 적힌 조직)과 원장 · 계획 출력이 같은 조직을 말하게 한다. 그 밖에는 아무것도 하지 않는다.
+func (s *server) adoptOrg(org string) {
+	if !s.orgFromDecl || strings.TrimSpace(org) == "" {
+		return
+	}
+	s.orgMu.Lock()
+	s.org = strings.TrimSpace(org)
+	s.orgMu.Unlock()
 }
 
 // diagInputs: 작업 폴더 모드에서 입력 파일을 읽어 본다. 읽지 못한 것을 역할과 함께 돌려준다. **있는데 깨진 것만**

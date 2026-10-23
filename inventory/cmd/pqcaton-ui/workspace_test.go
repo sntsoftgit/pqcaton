@@ -43,7 +43,7 @@ func started(t *testing.T, args ...string) (h http.Handler, code int, opened []s
 		opened = append(opened, u)
 	}
 	var out, errb bytes.Buffer
-	code = run(append([]string{"-addr", "127.0.0.1:0"}, args...), &out, &errb)
+	code = run(append(append([]string(nil), args...), "-addr", "127.0.0.1:0"), &out, &errb)
 	return h, code, opened, errb.String()
 }
 
@@ -111,13 +111,14 @@ func TestWorkspaceFixesEveryPath(t *testing.T) {
 }
 
 // IC-U94 — **두 시작 모드를 섞지 않는다.** 작업 폴더와 경로 플래그를 함께 주거나, 세션 파일과 작업 폴더를 함께 주면
-// 시작하지 않는다(사용법 오류). 동작 플래그는 함께 쓸 수 있고, 세션 파일과 경로 플래그(명시 모드)는 그대로다.
+// 시작하지 않는다(사용법 오류). 플래그 뒤에 세션 파일을 두어도 작업 폴더로 뜨지 않고 사용법 오류다. 동작 플래그는 함께 쓸 수 있고, 세션 파일과 경로 플래그(명시 모드)는 그대로다.
 func TestStartModesDoNotMix(t *testing.T) {
 	ws := t.TempDir()
 	for _, args := range [][]string{
 		{"-workspace", ws, "-decl", "x.json"},
 		{"-workspace", ws, "-state-dir", "s"},
 		{"session.json", "-workspace", ws},
+		{"-addr", "127.0.0.1:0", "session.json", "-decl", "d.json"},
 	} {
 		var errb bytes.Buffer
 		if _, err := parseStart(args, &errb); err != errUsage {

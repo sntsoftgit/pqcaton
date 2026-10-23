@@ -85,7 +85,7 @@ func (s *server) load() *world {
 	case wd.resErr != nil:
 		wd.reviewErr = wd.resErr
 	default:
-		b, err := review.FromReport(wd.res, wd.decl, s.org)
+		b, err := review.FromReport(wd.res, wd.decl, s.orgName())
 		if err != nil {
 			wd.reviewErr = err
 			break
@@ -111,7 +111,7 @@ func (s *server) final(kind, session string, targets []string, loadErr error) ui
 	if loadErr != nil || s.st == nil {
 		return ui.FinalUnknown
 	}
-	id := store.Identity{Kind: kind, Org: s.org, SessionID: sessionName(session)}
+	id := store.Identity{Kind: kind, Org: s.orgName(), SessionID: sessionName(session)}
 	v, err := s.st.VerifyFinalized(id, targets, min(cardWait, s.waitTime()))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "step card %s: the finalize state is unavailable: %v\n", kind, err)

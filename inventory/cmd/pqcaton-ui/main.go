@@ -105,6 +105,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		// 작업 폴더 모드: 깨진 입력은 시작을 막지 않고 진단 전용 화면으로 연다. 데스크톱에서 띄운 사람은
 		// 표준오류를 볼 수 없다.
 		s.diag = s.diagInputs()
+		if s.orgFromDecl && len(s.diag) == 0 {
+			if d, err := decl.Load(s.decl); err == nil {
+				s.adoptOrg(d.Org)
+			}
+		}
 	}
 	if err := s.openState(c.stateDir); err != nil {
 		if errors.Is(err, store.ErrBusy) {
@@ -363,9 +368,13 @@ type server struct {
 	layers    []string
 	base      string
 	judgments string
-	org       string
-	planOut   string
-	scopeOut  string
+	// org — 판정이 묶이는 조직. 요청이 동시에 읽으므로 orgName으로 읽는다. orgFromDecl이면 선언의 조직을
+	// 따른다(작업 폴더 모드에서 -org를 주지 않았을 때). 명시 모드는 -org 그대로다(v0.22와 같다).
+	org         string
+	orgMu       sync.RWMutex
+	orgFromDecl bool
+	planOut     string
+	scopeOut    string
 	// scopeAssets: 자산 스코프 정책 파일의 경로. rev가 덮는 입력이다.
 	scopeAssets string
 	// st: 상태 디렉토리. nil이면 보기 전용이다(저장을 지원하지 않는 플랫폼).
@@ -537,7 +546,7 @@ func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	if err != nil {
 		return prev, nil, err
 	}
-	b, err := review.FromResultsWith(s.results, d, s.org, policy)
+	b, err := review.FromResultsWith(s.results, d, s.orgName(), policy)
 	if err != nil {
 		return prev, nil, err
 	}
@@ -581,7 +590,7 @@ func (s *server) applyReview(r *http.Request) (review.Session, error) {
 // reviewID: 리뷰 세션의 동일성. 파일에 적힌 세션 ID다.
 func (s *server) reviewID() store.Identity {
 	sf, _ := review.Load(s.path)
-	return store.Identity{Kind: kindReview, Org: s.org, SessionID: sessionName(sf.SessionID)}
+	return store.Identity{Kind: kindReview, Org: s.orgName(), SessionID: sessionName(sf.SessionID)}
 }
 
 func (s *server) save(w http.ResponseWriter, r *http.Request) {
@@ -633,11 +642,11 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return store.Parts{}, err
 		}
-		o, err := review.Outputs(sf, s.org, withJudg, time.Now().Unix())
+		o, err := review.Outputs(sf, s.orgName(), withJudg, time.Now().Unix())
 		if err != nil {
 			return store.Parts{}, err
 		}
-		p, err := review.PayloadSHA256(sf, s.org, withJudg)
+		p, err := review.PayloadSHA256(sf, s.orgName(), withJudg)
 		if err != nil {
 			return store.Parts{}, err
 		}
@@ -693,7 +702,7 @@ func (s *server) scopeSession() (scope.Session, []scope.LayerFile, error) {
 			return sf, nil, err
 		}
 	}
-	return scope.Reopen(sf, scope.Layers(files), base, s.org), files, nil
+	return scope.Reopen(sf, scope.Layers(files), base, s.orgName()), files, nil
 }
 
 func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
@@ -775,7 +784,7 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 				return nil, err
 			}
 		}
-		next = scope.Reopen(sf, scope.Layers(edited), base, s.org)
+		next = scope.Reopen(sf, scope.Layers(edited), base, s.orgName())
 		b, err := scope.EncodeSession(next)
 		if err != nil {
 			return nil, err
@@ -830,7 +839,7 @@ func (s *server) applyScope(r *http.Request) (scope.Session, error) {
 // scopeID: 스코프 세션의 동일성.
 func (s *server) scopeID() store.Identity {
 	sf, _ := scope.LoadSession(s.scope)
-	return store.Identity{Kind: kindScope, Org: s.org, SessionID: sessionName(sf.SessionID)}
+	return store.Identity{Kind: kindScope, Org: s.orgName(), SessionID: sessionName(sf.SessionID)}
 }
 
 func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
@@ -886,11 +895,11 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return store.Parts{}, err
 		}
-		o, err := scope.Outputs(sf, s.org, withJudg, time.Now().Unix())
+		o, err := scope.Outputs(sf, s.orgName(), withJudg, time.Now().Unix())
 		if err != nil {
 			return store.Parts{}, err
 		}
-		p, err := scope.PayloadSHA256(sf, s.org, withJudg)
+		p, err := scope.PayloadSHA256(sf, s.orgName(), withJudg)
 		if err != nil {
 			return store.Parts{}, err
 		}
@@ -1061,7 +1070,7 @@ func (s *server) ledger() ([]decision.Judgment, error) {
 	if s.judgments == "" {
 		return nil, nil
 	}
-	store, err := decision.NewFileJudgmentStore(org.ID(s.org), s.judgments)
+	store, err := decision.NewFileJudgmentStore(org.ID(s.orgName()), s.judgments)
 	if err != nil {
 		return nil, err
 	}
@@ -1087,7 +1096,9 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 	// 작업 폴더에 선언이 아직 없으면 만들기를 낸다. GET은 아무것도 만들지 않는다.
 	if s.workspace != "" && !s.declReady() {
 		p := s.nextPage(r, ui.ScreenDecl, s.decl, ui.StepState{DeclMissing: true})
-		html(w, r, func(out io.Writer) error { return ui.RenderDeclCreate(out, ui.DeclCreateView{Page: p, Org: s.org}) })
+		html(w, r, func(out io.Writer) error {
+			return ui.RenderDeclCreate(out, ui.DeclCreateView{Page: p, Org: s.orgName()})
+		})
 		return
 	}
 	s.declScreen(w, r)
@@ -1099,7 +1110,7 @@ func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
 // 카드 하나를 채우려면 그 화면의 계산을 매 요청마다 돌려야 하고, 대조는 계산이 무겁다.
 func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepState) ui.Page {
 	p := s.page(r, here, subtitle)
-	p.Org = s.org
+	p.Org = s.orgName()
 	p.Results = s.results
 	p.Steps = ui.StepsFor(p.Lang, here, s.screens(), st)
 	if s.screens().Inventory {
@@ -1254,7 +1265,7 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		d       decl.Declaration
 		dropped []string
 	)
-	id := store.Identity{Kind: kindDecl, Org: s.org, SessionID: "declaration"}
+	id := store.Identity{Kind: kindDecl, Org: s.orgName(), SessionID: "declaration"}
 	err := s.st.SaveChecked(id, []string{s.decl}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
 		prev, err := decl.Load(s.decl)
 		if err != nil {
@@ -1268,6 +1279,7 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, back, err, file(ui.PickLang(r), "declaration", s.decl))
 		return
 	}
+	s.adoptOrg(d.Org)
 	msg := []ui.Notice{ui.N(ui.NoticeDeclSaved, len(d.Nodes), len(d.Assets), len(d.Edges))}
 	// **뺀 줄은 알린다.** IP 없는 줄은 관리 대상이 아니라 저장에서 빠지는데, 표에서
 	// 사라진 것만 보이면 지워진 것으로 읽힌다.
@@ -1388,7 +1400,8 @@ func (s *server) declCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	org := strings.TrimSpace(r.PostForm.Get("org"))
-	if org == "" || len(org) > 100 || strings.ContainsAny(org, "\r\n\t/\\") {
+	// -org를 준 서버는 그 조직의 선언만 만든다. 다르면 세션이 서지 않는다(선언과 -org가 다른 조직을 말한다).
+	if org == "" || len(org) > 100 || strings.ContainsAny(org, "\r\n\t/\\") || (!s.orgFromDecl && org != s.orgName()) {
 		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
 		return
 	}
@@ -1406,6 +1419,7 @@ func (s *server) declCreate(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, ui.ScreenDecl, err, file(l, "declaration", s.decl))
 		return
 	}
+	s.adoptOrg(org)
 	if err := s.materialize(); err != nil {
 		s.fail(w, r, ui.ScreenDecl, err, file(l, "session", s.path))
 		return

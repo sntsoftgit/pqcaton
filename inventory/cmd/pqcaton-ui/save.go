@@ -198,7 +198,7 @@ func (s *server) materialize() error {
 		if err != nil {
 			return err
 		}
-		id := store.Identity{Kind: kindReview, Org: s.org, SessionID: sessionName(sf.SessionID)}
+		id := store.Identity{Kind: kindReview, Org: s.orgName(), SessionID: sessionName(sf.SessionID)}
 		if err := s.st.Save(id, []store.Change{{Path: s.path, Content: b}}, s.waitTime()); err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ func (s *server) materialize() error {
 	if err != nil {
 		return err
 	}
-	id := store.Identity{Kind: kindScope, Org: s.org, SessionID: sessionName(sf.SessionID)}
+	id := store.Identity{Kind: kindScope, Org: s.orgName(), SessionID: sessionName(sf.SessionID)}
 	return s.st.Save(id, []store.Change{{Path: s.scope, Content: b}}, s.waitTime())
 }
 

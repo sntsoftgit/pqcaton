@@ -124,10 +124,10 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		if o, err = review.Outputs(sf, s.org, withJudg, 0); err != nil {
+		if o, err = review.Outputs(sf, s.orgName(), withJudg, 0); err != nil {
 			return err
 		}
-		payload, err = review.PayloadSHA256(sf, s.org, withJudg)
+		payload, err = review.PayloadSHA256(sf, s.orgName(), withJudg)
 		id = s.reviewID()
 		return err
 	})
@@ -167,10 +167,10 @@ func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		if o, err = scope.Outputs(sf, s.org, withJudg, 0); err != nil {
+		if o, err = scope.Outputs(sf, s.orgName(), withJudg, 0); err != nil {
 			return err
 		}
-		payload, err = scope.PayloadSHA256(sf, s.org, withJudg)
+		payload, err = scope.PayloadSHA256(sf, s.orgName(), withJudg)
 		id = s.scopeID()
 		return err
 	})
