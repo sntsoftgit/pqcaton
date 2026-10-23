@@ -23,6 +23,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
@@ -53,7 +54,23 @@ func newServer(t *testing.T) (*server, string) {
 	if err := review.Save(path, session()); err != nil {
 		t.Fatal(err)
 	}
-	return &server{path: path, org: "acme", planOut: filepath.Join(dir, "plan.json")}, dir
+	s := &server{path: path, org: "acme", planOut: filepath.Join(dir, "plan.json")}
+	s.st = openStore(t, dir)
+	return s, dir
+}
+
+// openStore: 화면 옆의 상태 디렉토리를 열고 실행 잠금을 잡는다. 서버가 시작할 때 하는 것과 같다.
+func openStore(t *testing.T, dir string) *store.State {
+	t.Helper()
+	st, err := store.Open(filepath.Join(dir, store.DirName), store.Options{Warn: func(string) {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AcquireRun(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	return st
 }
 
 // testHost · testToken: 테스트 요청이 들고 가는 이름과 토큰. 이름은 화면이 받는 루프백이고,
@@ -92,6 +109,10 @@ func postFormLang(t *testing.T, s *server, target, lang string, form url.Values)
 	}
 	if _, ok := sent[ui.CSRFField]; !ok {
 		sent.Set(ui.CSRFField, testToken)
+	}
+	// rev도 화면이 싣는 그대로: 지금 파일로 그린 화면의 rev다.
+	if _, ok := sent[ui.RevField]; !ok {
+		sent.Set(ui.RevField, s.revFor(strings.SplitN(target, "?", 2)[0]))
 	}
 	req := newReq(http.MethodPost, target, strings.NewReader(sent.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

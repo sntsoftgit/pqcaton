@@ -80,7 +80,8 @@ type Options struct {
 	// Warn: 막지는 않지만 알려야 할 것(검증하지 않은 플랫폼, 남이 읽을 수 있는 파일)을 받는다.
 	// 비우면 표준오류로 낸다.
 	Warn func(string)
-	// UID: 파일 소유자로 인정할 사용자. 테스트만 바꾼다. 음수면 현재 프로세스다.
+	// UID: 파일 소유자로 인정할 사용자. 테스트만 바꾼다. 0 이하면 현재 프로세스다(root로 돌면
+	// 현재 프로세스가 곧 0이다).
 	UID int
 	// Fault: 실패 주입. 정해진 자리(Fault* 상수)에서 불리고, 오류를 돌려주면 거기서 멈춘다.
 	// 테스트만 쓴다. 전역 변수가 아니라 객체에 두어 테스트끼리 섞이지 않는다.
@@ -108,7 +109,7 @@ func Open(dir string, opt Options) (*State, error) {
 		return nil, err
 	}
 	s := &State{Dir: abs, uid: opt.UID, warn: opt.Warn, faultFn: opt.Fault}
-	if s.uid < 0 {
+	if s.uid <= 0 {
 		s.uid = os.Getuid()
 	}
 	if s.warn == nil {

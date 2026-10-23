@@ -1,0 +1,21 @@
+package ui
+
+// refusedPage — 저장하지 않았다는 페이지(409 · 503). **보이는 칸은 RefusedView에 있는 것뿐이다.**
+// 오류 원문과 전체 경로는 싣지 않는다. 무엇을 하면 되는지가 본문이다.
+templ refusedPage(v RefusedView) {
+	@shell(v.Page) {
+		<div class="msg bad">
+			<strong>{ v.Head }</strong>
+			<p>{ v.Body }</p>
+		</div>
+		if len(v.Files) > 0 {
+			<p>{ tFilesInvolved.In(v.Lang) }</p>
+			<ul class="refused-files">
+				for _, f := range v.Files {
+					<li>{ f.Role } <code>{ f.Name }</code></li>
+				}
+			</ul>
+		}
+		<p><a href={ templ.SafeURL(v.Back) }>{ v.BackText }</a></p>
+	}
+}

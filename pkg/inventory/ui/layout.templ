@@ -70,4 +70,5 @@ templ tipBlock(label string) {
 // 쓴다.** 새 화면도 같은 양식을 쓰므로 따로 넣을 자리가 없다(IC-UI42).
 templ csrfField(p Page) {
 	<input type="hidden" name={ CSRFField } value={ p.CSRF }/>
+	<input type="hidden" name={ RevField } value={ p.Rev }/>
 }

@@ -105,12 +105,25 @@ func (f *FileJudgmentStore) Save(j *Judgment) error {
 		return err
 	}
 	defer fh.Close()
-	line, err := json.Marshal(record{Org: string(f.org), J: toWire(*j)})
+	line, err := EncodeJudgment(f.org, *j)
 	if err != nil {
 		return err
 	}
-	_, err = fh.Write(append(line, '\n'))
+	_, err = fh.Write(line)
 	return err
+}
+
+// EncodeJudgment — 원장 한 줄(끝의 줄바꿈 포함). Save가 쓰는 것과 같은 바이트다. 트랜잭션으로
+// 원장에 더할 때(store)도 이것을 쓴다 - 모양이 둘이면 한쪽만 읽히는 날이 온다.
+func EncodeJudgment(o org.ID, j Judgment) ([]byte, error) {
+	if o == "" {
+		return nil, org.ErrEmpty
+	}
+	line, err := json.Marshal(record{Org: string(o), J: toWire(j)})
+	if err != nil {
+		return nil, err
+	}
+	return append(line, '\n'), nil
 }
 
 func (f *FileJudgmentStore) All() ([]*Judgment, error) {

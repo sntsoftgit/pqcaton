@@ -12,7 +12,6 @@
 package review
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -309,17 +308,7 @@ func rulesetAtLeastV3(rulesetVersion string) bool { return planRulesetNumber(rul
 //
 // 세션을 다시 열면 [Carry]가 앞 세션의 것을 옮기므로 새로 만들지 않는다. 새 세션이면 내용이
 // 같아도 다른 값이다.
-func NewSessionID() string {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		// crypto/rand가 실패하는 환경은 이 도구가 돌 수 없는 환경이다. 알리지 않고 약한 값을
-		// 내느니 여기서 멈춘다 — 식별자가 겹치면 감사 기록이 겹친다.
-		panic("session id: " + err.Error())
-	}
-	b[6] = (b[6] & 0x0f) | 0x40 // version 4
-	b[8] = (b[8] & 0x3f) | 0x80 // variant RFC 4122
-	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
-}
+func NewSessionID() string { return decision.NewSessionID() }
 
 // Note — 세션 파일 첫 줄에 적히는 사용법.
 const Note = "Write one conclusion per policy under policy_decisions and every item in that " +
@@ -382,11 +371,20 @@ func Decode(raw []byte) (Session, error) {
 // **덮어쓰되 형식은 그대로다.** 화면으로 채운 파일을 명령이 그대로 읽을 수 있어야 한다 —
 // 아니면 두 길이 어긋난다.
 func Save(path string, sf Session) error {
-	raw, err := json.MarshalIndent(sf, "", "  ")
+	raw, err := Encode(sf)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(raw, '\n'), 0o644)
+	return os.WriteFile(path, raw, 0o644)
+}
+
+// Encode — 세션 파일의 바이트. Save가 쓰는 것과 같다.
+func Encode(sf Session) ([]byte, error) {
+	raw, err := json.MarshalIndent(sf, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(raw, '\n'), nil
 }
 
 // Result — 확정이 통과한 결과.
@@ -605,25 +603,32 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 	if err != nil {
 		return 0, err
 	}
-	now := time.Now().Unix()
 	n := 0
+	for _, j := range judgmentsOf(sf, decided, time.Now().Unix()) {
+		if err := store.Save(j); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
+// judgmentsOf — 확정이 원장에 남길 행. now만 다르면 같은 행이 나온다.
+func judgmentsOf(sf Session, decided map[string]string, now int64) []*decision.Judgment {
+	var out []*decision.Judgment
 	// **판정 행은 리뷰 항목에서만 난다.** 자동통과는 판정을 다시 받지 않는다.
 	for _, it := range sf.Items {
 		c, ok := decided[it.ID]
 		if !ok {
 			continue
 		}
-		j := &decision.Judgment{
+		out = append(out, &decision.Judgment{
 			ID: fmt.Sprintf("%s@%d", it.ID, now), Subject: it.ID, Conclusion: c,
 			Reviewer: sf.Reviewer, Signature: sf.Signature,
 			BasisHash: BasisOf(it, sf.RulesetVersion), Confidence: it.Conf,
 			ConfidenceEvaluated: ConfidenceEvaluated(it, sf.RulesetVersion), DecidedAt: now,
 			SessionID: sf.SessionID, RecordKind: decision.RecordJudgment,
-		}
-		if err := store.Save(j); err != nil {
-			return n, err
-		}
-		n++
+		})
 	}
 	// **계획 선택 행은 계획에 고른 항목마다 난다** - 리뷰 항목이든 자동통과든. 「이 자산을 이렇게
 	// 판정했다」와 「이 자산을 이 계획에 넣기로 했다」는 다른 사실이라, 결론이 있는 리뷰 항목을
@@ -633,19 +638,15 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 	// Reviewer·Signature는 세션에 적힌 자유 문자열이다. 이 행이 답하는 것은 「누가 넣었나」가
 	// 아니라 「누가 넣었다고 기록됐나」다. 검증된 신원은 상류의 실행 승인에만 있다.
 	for _, it := range Selected(sf) {
-		j := &decision.Judgment{
+		out = append(out, &decision.Judgment{
 			ID: fmt.Sprintf("%s@%d#plan", it.ID, now), Subject: it.ID,
 			Reviewer: sf.Reviewer, Signature: sf.Signature,
 			BasisHash: BasisOf(it, sf.RulesetVersion), Confidence: it.Conf,
 			ConfidenceEvaluated: ConfidenceEvaluated(it, sf.RulesetVersion), DecidedAt: now,
 			SessionID: sf.SessionID, RecordKind: decision.RecordPlanSelection,
-		}
-		if err := store.Save(j); err != nil {
-			return n, err
-		}
-		n++
+		})
 	}
-	return n, nil
+	return out
 }
 
 // BasisOf — 이 판정이 무엇을 보고 내려졌나. **근거를 세는 자리는 여기 하나다.**

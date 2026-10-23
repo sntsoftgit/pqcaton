@@ -22,8 +22,11 @@ import (
 // 하나다 — 관문이 둘이면 언젠가 한쪽만 고쳐지고, 그날 화면으로는 확정되는데 명령으로는 안 되는
 // 정책이 생긴다.
 type Session struct {
-	Note      string `json:"_how_to_read"`
-	Org       string `json:"org"`
+	Note string `json:"_how_to_read"`
+	Org  string `json:"org"`
+	// SessionID — 이 세션의 동일성. **열 때 만들고, 다시 세워도 그대로다**([Reopen]). 확정은 이
+	// 값으로 한 번만 일어난다(영수증). 옛 빌드가 쓴 파일에는 없다.
+	SessionID string `json:"session_id,omitempty"`
 	Reviewer  string `json:"reviewer"`
 	Signature string `json:"signature"`
 	// LayerDecisions — 계층 하나에 결론 하나가 기본이다(§3.4). 규칙 한 줄씩 승인하는 리뷰는
@@ -77,7 +80,7 @@ const SessionNote = "Write one conclusion per layer under layer_decisions and ev
 // NewSession — 계층을 겹치고 지금 정책과 견줘 리뷰 세션을 만든다.
 func NewSession(layers []Layer, base *kscope.AssetPolicy, orgName string) Session {
 	merged := Merge(layers...)
-	sf := Session{Note: SessionNote, Org: orgName, LayerDecisions: map[string]string{}}
+	sf := Session{Note: SessionNote, Org: orgName, SessionID: decision.NewSessionID(), LayerDecisions: map[string]string{}}
 	for _, c := range Diff(base, layers) {
 		kind := KindAdded
 		if !c.Added {
@@ -117,11 +120,20 @@ func LoadSession(path string) (Session, error) {
 
 // SaveSession — 세션 파일을 쓴다. 화면이 판정을 채워 넣는 자리다.
 func SaveSession(path string, sf Session) error {
-	raw, err := json.MarshalIndent(sf, "", "  ")
+	raw, err := EncodeSession(sf)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(raw, '\n'), 0o644)
+	return os.WriteFile(path, raw, 0o644)
+}
+
+// EncodeSession — 세션 파일의 바이트. SaveSession이 쓰는 것과 같다.
+func EncodeSession(sf Session) ([]byte, error) {
+	raw, err := json.MarshalIndent(sf, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(raw, '\n'), nil
 }
 
 // AuditedCount — 근거 없이 확정할 수 없는 변경 수.
@@ -225,25 +237,32 @@ func SaveJudgments(path, orgName string, sf Session, decided map[string]string) 
 	if err != nil {
 		return 0, err
 	}
-	now := time.Now().Unix()
 	n := 0
-	for _, c := range sf.Changes {
-		concl, ok := decided[c.ID]
-		if !ok {
-			continue
-		}
-		j := &decision.Judgment{
-			ID: fmt.Sprintf("%s@%d", c.ID, now), Subject: c.ID, Conclusion: concl,
-			Reviewer: sf.Reviewer, Signature: sf.Signature,
-			// 근거는 규칙 그 자체다 — 규칙이 달라지면 대상 id가 달라지므로 새 판정이 된다.
-			BasisHash: decision.HashBasis(c.ID), DecidedAt: now,
-		}
+	for _, j := range judgmentsOf(sf, decided, time.Now().Unix()) {
 		if err := store.Save(j); err != nil {
 			return n, err
 		}
 		n++
 	}
 	return n, nil
+}
+
+// judgmentsOf — 확정이 원장에 남길 행. now만 다르면 같은 행이 나온다.
+func judgmentsOf(sf Session, decided map[string]string, now int64) []*decision.Judgment {
+	var out []*decision.Judgment
+	for _, c := range sf.Changes {
+		concl, ok := decided[c.ID]
+		if !ok {
+			continue
+		}
+		out = append(out, &decision.Judgment{
+			ID: fmt.Sprintf("%s@%d", c.ID, now), Subject: c.ID, Conclusion: concl,
+			Reviewer: sf.Reviewer, Signature: sf.Signature,
+			// 근거는 규칙 그 자체다 — 규칙이 달라지면 대상 id가 달라지므로 새 판정이 된다.
+			BasisHash: decision.HashBasis(c.ID), DecidedAt: now,
+		})
+	}
+	return out
 }
 
 // LoadPolicyFile — 정책 CSV를 읽는다. 형식과 판정은 상류 것을 그대로 쓴다.

@@ -4,6 +4,7 @@
 package scope
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,6 +47,15 @@ func LoadLayers(paths []string) ([]LayerFile, error) {
 //
 // **덮어쓰기 전에 임시 파일에 쓰고 옮긴다.** 계층 파일은 사람이 손으로도 고치는 것이고,
 // 쓰다 만 CSV가 남으면 다음에 열 때 규칙이 통째로 사라진 것처럼 보인다.
+// EncodeLayer — 계층 CSV의 바이트. SaveLayer가 쓰는 것과 같다.
+func EncodeLayer(lf LayerFile) ([]byte, error) {
+	var b bytes.Buffer
+	if err := WriteCSV(&b, &kscope.AssetPolicy{Rules: lf.Layer.Rules}); err != nil {
+		return nil, fmt.Errorf("%s: %w", lf.Path, err)
+	}
+	return b.Bytes(), nil
+}
+
 func SaveLayer(lf LayerFile) error {
 	tmp := lf.Path + ".tmp"
 	f, err := os.Create(tmp)
@@ -87,6 +97,10 @@ func Layers(files []LayerFile) []Layer {
 //     이름은 남긴다 — 그것은 사람이지 확인이 아니다.
 func Reopen(prev Session, layers []Layer, base *kscope.AssetPolicy, orgName string) Session {
 	next := NewSession(layers, base, orgName)
+	// 세션의 동일성은 들고 간다. 다시 세울 때마다 새 값이면 같은 세션을 두 번 확정할 수 있다.
+	if prev.SessionID != "" {
+		next.SessionID = prev.SessionID
+	}
 
 	was := map[string]string{}
 	for _, c := range prev.Changes {

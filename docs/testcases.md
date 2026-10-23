@@ -285,6 +285,14 @@
 | **[IC-U53](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 막힌 요청(Host · Origin · 쿠키 · 토큰) | **아무것도 바꾸지 않는다.** 가짜 처리기는 한 번도 불리지 않고, 실제 여섯 주소에서는 막힌 뒤 파일이 한 바이트도 바뀌지 않는다. 403을 냈는데 처리기가 먼저 돌았다면 막은 것이 아니다 |
 | **[IC-U54](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | `-addr`가 루프백이 아님(`:8765` · `0.0.0.0` · `[::]` · LAN 주소 · 이름) | **화면을 열지 않는다.** 이 화면에는 인증이 없다. 거부하면서 다른 기계에서 쓰는 길(SSH 포트 포워딩)을 함께 알린다 |
 | **[IC-U55](../inventory/cmd/pqcaton-ui/guard_test.go) ✅** | 화면 · 새 화면 · 조각 · 막힌 요청 · 정적 CSS와 JS의 응답 | 보안 머리글(프레임 금지 · 형식 추측 금지 · 리퍼러 없음)이 모두에 붙는다. 저장 금지(`no-store`)는 정적 파일에만 빠진다. 화면과 오류에는 리뷰 큐와 토큰이 담긴다 |
+| **[IC-U56](../inventory/cmd/pqcaton-ui/save_test.go) ✅** | 화면을 연 뒤에 파일이 바뀐 상태에서 리뷰 · 스코프 · 선언 저장 | **409이고 쓰지 않는다.** rev는 저장소가 저장 잠금 안에서 견준다(IC-W30). 거절 페이지는 역할과 파일 이름만 보이고 전체 경로와 오류 원문은 싣지 않는다 |
+| [IC-U57](../inventory/cmd/pqcaton-ui/save_test.go) ✅ | 확정된 세션을 고쳐 저장 · 다른 내용으로 다시 확정 | 409이고 새 세션을 열라고 알린다. 계획과 세션은 바뀌지 않는다 |
+| **[IC-U58](../inventory/cmd/pqcaton-ui/save_test.go) ✅** | 같은 확정을 다시 누름 | 「이미 확정됨」으로 화면에 돌아간다. 판정 원장에는 한 번만 쌓이고, 확정 전의 계획은 `plan.json.prev`로 남는다. 알림에는 파일 이름만 적는다 |
+| [IC-U59](../inventory/cmd/pqcaton-ui/save_test.go) ✅ | 저장을 지원하지 않는 플랫폼(보기 전용) | 화면은 열리고 저장은 503이다 |
+| [IC-U60](../inventory/cmd/pqcaton-ui/save_test.go) ✅ | 다른 저장이 대상 디렉토리를 쥐고 있음 | 정해진 시간까지 기다리다 409이고 쓰지 않는다 |
+| [IC-U61](../inventory/cmd/pqcaton-ui/save_test.go) ✅ | 저장 기록과 파일이 어긋남 | 503이고 `-recover-status`를 안내한다. 밖에서 바뀐 파일을 덮어쓰지 않는다 |
+| **[IC-U62](../inventory/cmd/pqcaton-ui/save_test.go) ✅** | 같은 상태 디렉토리로 서버 둘 · 기록에 없는 준비 파일 · 계층만 주고 시작 | 둘째 서버는 열리지 않는다. 기록에 없는 준비 파일은 지우지 않고 열지 않는다. 입력에서 세운 세션은 시작할 때 파일로 남겨 세션 ID가 선다 |
+| [IC-U63](../inventory/cmd/pqcaton-ui/save_test.go) ✅ | 리뷰 · 스코프 · 선언 화면 | 양식이 지금 파일로 잰 rev를 숨은 필드로 싣는다. 세션이 바뀌면 rev도 바뀐다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |

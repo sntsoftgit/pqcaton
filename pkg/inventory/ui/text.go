@@ -56,6 +56,31 @@ var (
 		KO: " · 맞지 않는 자리 %d곳이 남아 있습니다",
 		EN: " · %d places still do not add up"}
 
+	// 저장하지 않은 까닭(409 · 503 페이지). 내부 경로와 오류 원문은 싣지 않는다.
+	tNotSaved      = T{KO: "저장하지 않았습니다", EN: "Not saved"}
+	tBackToScreen  = T{KO: "화면으로 돌아가기", EN: "Back to the screen"}
+	tFilesInvolved = T{KO: "관련 파일", EN: "Files involved"}
+	tRefusedStale  = T{
+		KO: "화면을 연 뒤에 파일이 바뀌어 저장하지 않았습니다. 화면을 새로 고친 뒤 다시 적용하십시오.",
+		EN: "The files changed after this screen was opened, so nothing was saved. Reload the screen and apply your changes again."}
+	tRefusedFinalized = T{
+		KO: "이 세션은 이미 확정되었습니다. 바꾸려면 새 세션을 여십시오.",
+		EN: "This session is already finalized. Open a new session to make changes."}
+	tRefusedBusy = T{
+		KO: "다른 저장이 아직 끝나지 않았습니다. 잠시 뒤 다시 시도하십시오.",
+		EN: "Another save has not finished yet. Try again in a moment."}
+	tRefusedRecovery = T{
+		KO: "파일이 저장 기록과 맞지 않아 멈췄습니다. 운영자가 `pqcaton-ui -recover-status`로 확인해야 합니다.",
+		EN: "Stopped: the files do not match the save record. An operator needs to check them with `pqcaton-ui -recover-status`."}
+	tRefusedViewOnly = T{
+		KO: "이 플랫폼에서는 화면을 보기만 할 수 있습니다. 저장은 Linux에서 합니다.",
+		EN: "On this platform the screen is view-only. Saving runs on Linux."}
+	tFinalizedAlready = T{
+		KO: "같은 내용으로 이미 확정되어 있어 다시 쓰지 않았습니다.",
+		EN: "Already finalized with the same content; nothing was written again."}
+	tFinalizedSuperseded = T{
+		KO: "이 세션이 만든 출력 경로에는 현재 다른 세션의 확정 결과가 있습니다. 이전 결과를 다시 쓰지 않았습니다.",
+		EN: "The output paths this session produced now hold another session's finalized result. The earlier result was not written again."}
 	tRefused = T{KO: "요청하신 것을 하지 않았습니다. 이유는 이렇습니다.",
 		EN: "Not done — here is why."}
 	// 제거는 **묻고 지운다.** 잘못 누르면 적어 둔 것이 한 번에 사라지는 자리다.

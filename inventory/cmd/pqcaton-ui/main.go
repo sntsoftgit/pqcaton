@@ -29,6 +29,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -37,6 +38,8 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -46,7 +49,6 @@ import (
 
 	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
@@ -54,6 +56,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 	publicsite "github.com/sntsoftgit/pqcaton/site"
 )
@@ -71,6 +74,7 @@ func main() {
 	judgments := fs.String("judgments", "", "file to append judgments to on finalize (JSONL, append-only)")
 	orgName := fs.String("org", "local", "organization the judgments are bound to")
 	planOut := fs.String("plan", "plan.json", "file to write the finalized plan to")
+	stateDir := fs.String("state-dir", "", "state directory holding transaction records and receipts (default: .pqcaton next to the session file). Commands that change the same files must use the same one")
 
 	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag는 첫 비플래그에서
 	// 파싱을 멈추므로, 그냥 두면 `pqcaton-ui session.json -addr ...`의 -addr이 표시 없이
@@ -140,8 +144,12 @@ func main() {
 		os.Exit(2)
 	}
 	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath, policy: policy,
-		layers: layers, base: *basePath,
+		layers: layers, base: *basePath, scopeAssets: *scopeAssets,
 		judgments: *judgments, org: *orgName, planOut: *planOut, scopeOut: *scopeOut}
+	if err := s.openState(*stateDir); err != nil {
+		fmt.Fprintln(os.Stderr, "❌", err)
+		os.Exit(1)
+	}
 	h := s.handler()
 
 	fmt.Fprintf(os.Stderr, "screen: http://%s  (session %s", *addr, path)
@@ -153,6 +161,46 @@ func main() {
 		fmt.Fprintln(os.Stderr, "❌", err)
 		os.Exit(1)
 	}
+}
+
+// openState — 상태 디렉토리를 열고 이 서버가 유일한 작성자가 된다. 그다음 남은 준비 파일을 보고,
+// 남은 트랜잭션을 복구하고, 입력에서 세운 세션을 파일로 남긴다.
+//
+// 저장을 지원하지 않는 플랫폼이면 보기 전용으로 연다. 네트워크 파일시스템 같은 다른 거절은 열지
+// 않는다. 복구 필요가 남아 있으면 열되 알린다 - 그 디렉토리의 저장은 503으로 막힌다.
+func (s *server) openState(dir string) error {
+	if dir == "" {
+		dir = store.DefaultDir(s.path)
+	}
+	st, err := store.Open(dir, store.Options{})
+	if errors.Is(err, store.ErrUnsupported) && runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		fmt.Fprintln(os.Stderr, "warning: saving is not supported on this platform; the screen is view-only")
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := st.AcquireRun(); err != nil {
+		st.Close()
+		return err
+	}
+	if err := st.CheckOrphans(s.targetDirs()); err != nil {
+		st.Close()
+		return err
+	}
+	if err := st.Recover(lockWait); err != nil {
+		if !errors.Is(err, store.ErrNeedsRecovery) {
+			st.Close()
+			return err
+		}
+		fmt.Fprintln(os.Stderr, "warning:", err)
+	}
+	s.st = st
+	if err := s.materialize(); err != nil {
+		fmt.Fprintln(os.Stderr, "warning: could not write the session raised from the inputs:", err)
+	}
+	fmt.Fprintf(os.Stderr, "state: %s\n", st.Dir)
+	return nil
 }
 
 // splitArgs — 위치 인자와 플래그를 가른다. 첫 플래그부터 뒤는 전부 플래그로 넘긴다.
@@ -209,6 +257,12 @@ type server struct {
 	org       string
 	planOut   string
 	scopeOut  string
+	// scopeAssets: 자산 스코프 정책 파일의 경로. rev가 덮는 입력이다.
+	scopeAssets string
+	// st: 상태 디렉토리. nil이면 보기 전용이다(저장을 지원하지 않는 플랫폼).
+	st *store.State
+	// wait: 대상 잠금을 기다리는 시간. 0이면 lockWait.
+	wait time.Duration
 }
 
 // handler — 주소와 처리기를 잇는다.
@@ -308,6 +362,7 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 		Lang: l, LangHref: ui.SwitchHref(r, l.Other()),
 		Message: r.URL.Query().Get("msg"), Problem: r.URL.Query().Get("problem"),
 		CSRF: csrfToken(r),
+		Rev:  s.revFor(here),
 	}
 }
 
@@ -368,61 +423,108 @@ func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render fun
 	html(w, func() error { return render(w, v) })
 }
 
-// applyReview — 폼 값을 얹어 파일에 쓴다. **읽고 얹고 쓴다** — 화면이 자기 사본을 들고
-// 있으면 그 사이 파일을 고친 사람의 편집이 사라진다.
+// applyReview — 폼 값을 지금 세션에 얹는다. **읽고 얹는다** — 화면이 자기 사본을 들고 있으면 그 사이
+// 파일을 고친 사람의 편집이 사라진다. 저장소의 잠금 안에서 불린다.
 func (s *server) applyReview(r *http.Request) (review.Session, error) {
 	sf, _, err := s.reviewSession()
 	if err != nil {
 		return sf, err
 	}
-	if err := r.ParseForm(); err != nil {
-		return sf, err
-	}
-	sf = ui.ApplyReview(sf, r.PostForm)
-	return sf, review.Save(s.path, sf)
+	return ui.ApplyReview(sf, r.PostForm), nil
+}
+
+// reviewID: 리뷰 세션의 동일성. 파일에 적힌 세션 ID다.
+func (s *server) reviewID() store.Identity {
+	sf, _ := review.Load(s.path)
+	return store.Identity{Kind: kindReview, Org: s.org, SessionID: sessionName(sf.SessionID)}
 }
 
 func (s *server) save(w http.ResponseWriter, r *http.Request) {
-	if _, err := s.applyReview(r); err != nil {
-		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
+	if !s.writable(w, r, "/review") {
+		return
+	}
+	err := s.st.SaveChecked(s.reviewID(), []string{s.path}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
+		sf, err := s.applyReview(r)
+		if err != nil {
+			return nil, err
+		}
+		b, err := review.Encode(sf)
+		return []store.Change{{Path: s.path, Content: b}}, err
+	})
+	if err != nil {
+		s.fail(w, r, "/review", err, file(ui.PickLang(r), "session", s.path))
 		return
 	}
 	redirect(w, r, "/review", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
-// finalize — **명령과 같은 검사를 거친다.** 여기서 따로 판정하지 않는다.
+// finalize — **명령과 같은 검사를 거친다.** 여기서 따로 판정하지 않는다(review.Outputs가
+// review.Finalize를 부른다).
+//
+// 세션 · 계획(앞 판은 .prev로) · 판정 원장 · 영수증이 한 트랜잭션이다. 같은 세션을 같은 내용으로
+// 다시 확정하면 아무것도 다시 쓰지 않는다.
 func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
+	l := ui.PickLang(r)
+	files := []ui.FileRef{file(l, "session", s.path), file(l, "plan", s.planOut)}
+	if !s.writable(w, r, "/review") {
+		return
+	}
+	withJudg := s.judgments != ""
+	targets := []string{s.path, s.planOut}
+	if withJudg {
+		targets = append(targets, s.judgments)
+		files = append(files, file(l, "ledger", s.judgments))
+	}
+	// 확정할 내용의 지문. 잠금 안에서 다시 만들어 견준다 - 그 사이 파일이 바뀌었으면 쓰지 않는다.
 	sf, err := s.applyReview(r)
 	if err != nil {
-		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
+		redirect(w, r, "/review", "", ui.Refusal(l, err))
 		return
 	}
-	res, err := review.Finalize(sf)
+	payload, err := review.PayloadSHA256(sf, s.org, withJudg)
 	if err != nil {
 		// 확정되지 않은 이유를 그대로 보여 준다 — 무엇이 남았는지가 거기 적혀 있다.
-		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
+		redirect(w, r, "/review", "", ui.Refusal(l, err))
 		return
 	}
-	raw, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(res.Plan)
-	if err != nil {
-		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
-		return
-	}
-	if err := os.WriteFile(s.planOut, append(raw, '\n'), 0o644); err != nil {
-		redirect(w, r, "/review", "", ui.Refusal(ui.PickLang(r), err))
-		return
-	}
-	msg := ui.MsgFinalizedPlan(ui.PickLang(r), len(res.Plan.GetActions()), s.planOut)
-	// **관문을 지난 뒤에만 남긴다.**
-	if s.judgments != "" {
-		n, err := review.SaveJudgments(s.judgments, s.org, sf, res.Decided)
+	var written review.Output
+	out, err := s.st.FinalizeChecked(s.reviewID(), targets, s.check(r), payload, s.waitTime(), func() (store.Parts, error) {
+		sf, err := s.applyReview(r)
 		if err != nil {
-			redirect(w, r, "/review", msg, "recording judgments: "+err.Error())
-			return
+			return store.Parts{}, err
 		}
-		msg += ui.MsgJudgmentsSaved(ui.PickLang(r), n, s.judgments)
+		o, err := review.Outputs(sf, s.org, withJudg, time.Now().Unix())
+		if err != nil {
+			return store.Parts{}, err
+		}
+		p, err := review.PayloadSHA256(sf, s.org, withJudg)
+		if err != nil {
+			return store.Parts{}, err
+		}
+		written = o
+		parts := store.Parts{PayloadSHA256: p, Replace: []store.Change{
+			{Path: s.path, Content: o.Session}, {Path: s.planOut, Content: o.Plan, Backup: true}}}
+		if withJudg && len(o.Judgments) > 0 {
+			parts.Append = []store.Addition{{Path: s.judgments, Data: o.Judgments}}
+		}
+		return parts, nil
+	})
+	if err != nil {
+		s.fail(w, r, "/review", err, files...)
+		return
 	}
-	redirect(w, r, "/review", msg, "")
+	switch out.Status {
+	case store.OutcomeAlready:
+		redirect(w, r, "/review", ui.MsgFinalizedAlready(l), "")
+	case store.OutcomeSuperseded:
+		redirect(w, r, "/review", ui.MsgFinalizedSuperseded(l), "")
+	default:
+		msg := ui.MsgFinalizedPlan(l, len(written.Result.Plan.GetActions()), filepath.Base(s.planOut))
+		if withJudg {
+			msg += ui.MsgJudgmentsSaved(l, written.Judged, filepath.Base(s.judgments))
+		}
+		redirect(w, r, "/review", msg, "")
+	}
 }
 
 // ── 자산 스코프 ────────────────────────────────────────────────────────────
@@ -487,51 +589,67 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 // scopeRules — 화면에서 고친 규칙을 계층 파일에 쓴다.
 //
 // **판정을 먼저 얹고 규칙을 쓴다.** 같은 폼에서 온 값이라, 규칙만 저장하면 그 사이에
-// 적어 둔 결론이 날아간다.
+// 적어 둔 결론이 날아간다. 계층 파일들과 세션이 한 트랜잭션이다.
 func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 	if len(s.layers) == 0 {
 		http.Error(w, "no layer CSVs were given — pass -layers", http.StatusNotFound)
 		return
 	}
-	sf, files, err := s.scopeSession()
+	if !s.writable(w, r, "/scope") {
+		return
+	}
+	l := ui.PickLang(r)
+	targets := append([]string{s.scope}, s.layers...)
+	files := []ui.FileRef{file(l, "scope-session", s.scope)}
+	for _, p := range s.layers {
+		files = append(files, file(l, "layer", p))
+	}
+	var (
+		was, next scope.Session
+		edited    []scope.LayerFile
+	)
+	err := s.st.SaveChecked(s.scopeID(), targets, s.check(r), s.waitTime(), func() ([]store.Change, error) {
+		sf, files, err := s.scopeSession()
+		if err != nil {
+			return nil, err
+		}
+		was = sf
+		sf = ui.ApplyScope(sf, r.PostForm)
+		edited = ui.ApplyLayers(files, r.PostForm)
+		var changes []store.Change
+		for _, lf := range edited {
+			b, err := scope.EncodeLayer(lf)
+			if err != nil {
+				return nil, err
+			}
+			changes = append(changes, store.Change{Path: lf.Path, Content: b})
+		}
+		// 규칙이 달라졌으니 변경을 다시 센다. 적어 둔 판정은 규칙 동일성으로 따라온다.
+		var base *kscope.AssetPolicy
+		if s.base != "" {
+			if base, err = scope.LoadPolicyFile(s.base); err != nil {
+				return nil, err
+			}
+		}
+		next = scope.Reopen(sf, scope.Layers(edited), base, s.org)
+		b, err := scope.EncodeSession(next)
+		if err != nil {
+			return nil, err
+		}
+		return append(changes, store.Change{Path: s.scope, Content: b}), nil
+	})
 	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
-		return
-	}
-	sf = ui.ApplyScope(sf, r.PostForm)
-
-	edited := ui.ApplyLayers(files, r.PostForm)
-	for _, lf := range edited {
-		if err := scope.SaveLayer(lf); err != nil {
-			redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
-			return
-		}
-	}
-	// 규칙이 달라졌으니 변경을 다시 센다. 적어 둔 판정은 규칙 동일성으로 따라온다.
-	var base *kscope.AssetPolicy
-	if s.base != "" {
-		if base, err = scope.LoadPolicyFile(s.base); err != nil {
-			redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
-			return
-		}
-	}
-	next := scope.Reopen(sf, scope.Layers(edited), base, s.org)
-	if err := scope.SaveSession(s.scope, next); err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
+		s.fail(w, r, "/scope", err, files...)
 		return
 	}
 	n := 0
 	for _, lf := range edited {
 		n += len(lf.Layer.Rules)
 	}
-	msg := ui.MsgRulesSaved(ui.PickLang(r), len(edited), n, len(next.Changes), next.AuditedCount())
-	if next.Signature == "" && sf.Signature != "" {
+	msg := ui.MsgRulesSaved(l, len(edited), n, len(next.Changes), next.AuditedCount())
+	if next.Signature == "" && was.Signature != "" {
 		// **말하지 않으면 사람은 서명이 남아 있다고 여긴다.**
-		msg += ui.MsgSignatureCleared(ui.PickLang(r))
+		msg += ui.MsgSignatureCleared(l)
 	}
 	redirect(w, r, "/scope", msg, "")
 }
@@ -555,17 +673,19 @@ func (s *server) scopeRow(w http.ResponseWriter, r *http.Request) {
 	html(w, func() error { return ui.RenderRuleRow(w, ui.PickLang(r), layer, i) })
 }
 
-// applyScope — 폼 값을 얹어 파일에 쓴다. 읽고 얹고 쓴다.
+// applyScope — 폼 값을 지금 세션에 얹는다. 저장소의 잠금 안에서 불린다.
 func (s *server) applyScope(r *http.Request) (scope.Session, error) {
 	sf, _, err := s.scopeSession()
 	if err != nil {
 		return sf, err
 	}
-	if err := r.ParseForm(); err != nil {
-		return sf, err
-	}
-	sf = ui.ApplyScope(sf, r.PostForm)
-	return sf, scope.SaveSession(s.scope, sf)
+	return ui.ApplyScope(sf, r.PostForm), nil
+}
+
+// scopeID: 스코프 세션의 동일성.
+func (s *server) scopeID() store.Identity {
+	sf, _ := scope.LoadSession(s.scope)
+	return store.Identity{Kind: kindScope, Org: s.org, SessionID: sessionName(sf.SessionID)}
 }
 
 func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
@@ -573,51 +693,90 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no scope session was given", http.StatusNotFound)
 		return
 	}
-	if _, err := s.applyScope(r); err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
+	if !s.writable(w, r, "/scope") {
+		return
+	}
+	err := s.st.SaveChecked(s.scopeID(), []string{s.scope}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
+		sf, err := s.applyScope(r)
+		if err != nil {
+			return nil, err
+		}
+		b, err := scope.EncodeSession(sf)
+		return []store.Change{{Path: s.scope, Content: b}}, err
+	})
+	if err != nil {
+		s.fail(w, r, "/scope", err, file(ui.PickLang(r), "scope-session", s.scope))
 		return
 	}
 	redirect(w, r, "/scope", ui.MsgSavedNotFinal(ui.PickLang(r)), "")
 }
 
-// scopeFinalize — **명령과 같은 검사를 거친다.**
+// scopeFinalize — **명령과 같은 검사를 거친다.** 세션 · 정책 CSV(앞 판은 .prev로) · 판정 원장 ·
+// 영수증이 한 트랜잭션이다.
 func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 	if s.scope == "" {
 		http.Error(w, "no scope session was given", http.StatusNotFound)
 		return
 	}
+	if !s.writable(w, r, "/scope") {
+		return
+	}
+	l := ui.PickLang(r)
+	withJudg := s.judgments != ""
+	targets := []string{s.scope, s.scopeOut}
+	files := []ui.FileRef{file(l, "scope-session", s.scope), file(l, "policy", s.scopeOut)}
+	if withJudg {
+		targets = append(targets, s.judgments)
+		files = append(files, file(l, "ledger", s.judgments))
+	}
 	sf, err := s.applyScope(r)
 	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
+		redirect(w, r, "/scope", "", ui.Refusal(l, err))
 		return
 	}
-	res, err := scope.Finalize(sf, s.org)
+	payload, err := scope.PayloadSHA256(sf, s.org, withJudg)
 	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
+		redirect(w, r, "/scope", "", ui.Refusal(l, err))
 		return
 	}
-	f, err := os.Create(s.scopeOut)
-	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
-		return
-	}
-	err = scope.WriteCSV(f, res.Policy)
-	f.Close()
-	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(ui.PickLang(r), err))
-		return
-	}
-	msg := ui.MsgFinalizedPolicy(ui.PickLang(r), len(res.Policy.Rules), s.scopeOut)
-	// **관문을 지난 뒤에만 남긴다.**
-	if s.judgments != "" {
-		n, err := scope.SaveJudgments(s.judgments, s.org, sf, res.Decided)
+	var written scope.Output
+	out, err := s.st.FinalizeChecked(s.scopeID(), targets, s.check(r), payload, s.waitTime(), func() (store.Parts, error) {
+		sf, err := s.applyScope(r)
 		if err != nil {
-			redirect(w, r, "/scope", msg, "recording judgments: "+err.Error())
-			return
+			return store.Parts{}, err
 		}
-		msg += ui.MsgJudgmentsSaved(ui.PickLang(r), n, s.judgments)
+		o, err := scope.Outputs(sf, s.org, withJudg, time.Now().Unix())
+		if err != nil {
+			return store.Parts{}, err
+		}
+		p, err := scope.PayloadSHA256(sf, s.org, withJudg)
+		if err != nil {
+			return store.Parts{}, err
+		}
+		written = o
+		parts := store.Parts{PayloadSHA256: p, Replace: []store.Change{
+			{Path: s.scope, Content: o.Session}, {Path: s.scopeOut, Content: o.Policy, Backup: true}}}
+		if withJudg && len(o.Judgments) > 0 {
+			parts.Append = []store.Addition{{Path: s.judgments, Data: o.Judgments}}
+		}
+		return parts, nil
+	})
+	if err != nil {
+		s.fail(w, r, "/scope", err, files...)
+		return
 	}
-	redirect(w, r, "/scope", msg, "")
+	switch out.Status {
+	case store.OutcomeAlready:
+		redirect(w, r, "/scope", ui.MsgFinalizedAlready(l), "")
+	case store.OutcomeSuperseded:
+		redirect(w, r, "/scope", ui.MsgFinalizedSuperseded(l), "")
+	default:
+		msg := ui.MsgFinalizedPolicy(l, len(written.Result.Policy.Rules), filepath.Base(s.scopeOut))
+		if withJudg {
+			msg += ui.MsgJudgmentsSaved(l, written.Judged, filepath.Base(s.judgments))
+		}
+		redirect(w, r, "/scope", msg, "")
+	}
 }
 
 // ── 대조 ───────────────────────────────────────────────────────────────────
@@ -956,18 +1115,25 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no declaration file was given", http.StatusNotFound)
 		return
 	}
-	prev, err := decl.Load(s.decl)
+	if !s.writable(w, r, "/decl") {
+		return
+	}
+	var (
+		d       decl.Declaration
+		dropped []string
+	)
+	id := store.Identity{Kind: kindDecl, Org: s.org, SessionID: "declaration"}
+	err := s.st.SaveChecked(id, []string{s.decl}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
+		prev, err := decl.Load(s.decl)
+		if err != nil {
+			return nil, err
+		}
+		d, dropped = ui.ApplyDecl(prev, r.PostForm)
+		b, err := decl.Encode(d)
+		return []store.Change{{Path: s.decl, Content: b}}, err
+	})
 	if err != nil {
-		redirect(w, r, "/decl", "", ui.Refusal(ui.PickLang(r), err))
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		redirect(w, r, "/decl", "", ui.Refusal(ui.PickLang(r), err))
-		return
-	}
-	d, dropped := ui.ApplyDecl(prev, r.PostForm)
-	if err := decl.Save(s.decl, d); err != nil {
-		redirect(w, r, "/decl", "", ui.Refusal(ui.PickLang(r), err))
+		s.fail(w, r, "/decl", err, file(ui.PickLang(r), "declaration", s.decl))
 		return
 	}
 	msg := ui.MsgDeclSaved(ui.PickLang(r), len(d.Nodes), len(d.Assets), len(d.Edges))

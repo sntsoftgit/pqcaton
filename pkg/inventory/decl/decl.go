@@ -92,11 +92,20 @@ func Load(path string) (Declaration, error) {
 
 // Save — 선언 파일을 쓴다. 화면이 편집한 것을 되돌려 놓는 자리다.
 func Save(path string, d Declaration) error {
-	raw, err := json.MarshalIndent(d, "", "  ")
+	raw, err := Encode(d)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(raw, '\n'), 0o644)
+	return os.WriteFile(path, raw, 0o644)
+}
+
+// Encode — 선언 파일의 바이트. Save가 쓰는 것과 같다.
+func Encode(d Declaration) ([]byte, error) {
+	raw, err := json.MarshalIndent(d, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(raw, '\n'), nil
 }
 
 // Code — 무엇이 어긋났나. **문장이 아니라 코드다.**

@@ -73,10 +73,17 @@ type Page struct {
 	// **비어 있어도 필드는 그린다**(csrfField). 비었다고 필드를 빼면 토큰을 채우지 않은 실수가
 	// 화면에서 감춰진다. 빈 값은 서버가 거부하므로 그 실수는 저장할 때 바로 드러난다.
 	CSRF string
+	// Rev — 이 화면이 그려질 때 본 입력의 지문. 바꾸는 양식에 숨겨 싣는다. CSRF와 같은 까닭으로
+	// 비어 있어도 필드를 그린다. 빈 rev는 서버가 「화면이 오래됐다」로 거부한다.
+	Rev string
 }
 
 // CSRFField — 바꾸는 양식이 토큰을 싣는 필드 이름.
 const CSRFField = "csrf_token"
+
+// RevField — 바꾸는 양식이 rev(화면이 그려질 때 본 입력의 지문)를 싣는 필드 이름. 서버는 저장
+// 잠금 안에서 rev를 다시 계산해 견주고, 다르면 저장하지 않는다.
+const RevField = "rev"
 
 // Link — 위쪽 이동 링크.
 type Link struct {
