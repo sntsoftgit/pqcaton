@@ -133,7 +133,7 @@ Use Grant), 기능을 빼서 무료판을 약하게 만들지 않습니다. 5노
 
 - **`close`에 `-judgments`를 주려면 `-o`가 있어야 합니다.** `pqcaton-decide close session.json -o plan.json -judgments …`,
   `pqcaton-scope close scope-session.json -o asset-scope.csv -judgments …`. 원장과 표준출력은 한 트랜잭션으로 묶을 수
-  없으므로, `-o` 없이 `-judgments`를 주면 거부합니다(출력 도중 파이프가 끊기면 한쪽만 남습니다). `-o` 없이 표준출력으로 내는 `close`는 그대로 되지만 원장과
+  없으므로, `-o` 없이 `-judgments`를 주면 거부합니다. `-o` 없이 표준출력으로 내는 `close`는 그대로 되지만 원장과
   영수증을 쓰지 않습니다. `open`처럼 파일을 바꾸지 않는 출력은 그대로입니다.
 - **세션 파일 옆에 `.pqcaton/`이 생깁니다.** 화면과 명령이 같은 상태 디렉토리를 써야 합니다. 세션 파일이 다른 곳에
   있으면 `-state-dir`로 맞춥니다. 대상 디렉토리마다 `.pqcaton.lock`이 생깁니다.

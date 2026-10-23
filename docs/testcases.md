@@ -305,7 +305,7 @@
 | [IC-U68](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅ | 확인 페이지에서 「저장만」 | 확정하지 않고 실어 온 편집을 저장한다. 계획과 영수증은 생기지 않는다 |
 | [IC-U69](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅ | 오래된 화면에서 리뷰 · 스코프 확정 버튼 | 409이고 확인 페이지를 그리지 않는다(확인 토큰을 내주지 않는다) |
 | **[IC-U70](../inventory/cmd/pqcaton-ui/startup_test.go) ✅** | 복구 필요가 남은 채로 화면을 시작 | **일반 화면도 503이다.** 정적 파일만 나가고 화면 · 조각 · 저장은 모두 503 복구 페이지로 가며 `-recover-status`를 안내한다. 실행 잠금은 쥔 채라 명령도 막힌다 |
-| **[IC-U71](../inventory/cmd/pqcaton-ui/startup_test.go) ✅** | 입력에서 세운 세션을 파일로 남기지 못함 | 서버가 뜨지 않는다. 그대로 열면 읽을 때마다 세션 ID가 새로 난다. 실행 잠금을 놓고 세션 파일도 준비 파일도 남기지 않는다 |
+| **[IC-U71](../inventory/cmd/pqcaton-ui/startup_test.go) ✅** | 입력에서 세운 세션의 준비 파일을 쓰는 단계에서 실패 | 서버가 뜨지 않는다. 그대로 열면 읽을 때마다 세션 ID가 새로 난다. 실행 잠금을 놓고 세션 파일도 준비 파일도 남기지 않는다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |
