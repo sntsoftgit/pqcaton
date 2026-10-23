@@ -20,15 +20,17 @@ templ surveyBody(v SurveyView) {
 	<fieldset>
 		<legend>{ tSurveyObserved.In(v.Page.Lang) }</legend>
 		@tip(v.Page.Lang, tSurveyObservedHint.In(v.Page.Lang))
-		<table>
-			<tr>
-				<th style="width:14rem">{ tColNode.In(v.Page.Lang) }</th>
-				<th>{ tColCollector.In(v.Page.Lang) }</th>
-			</tr>
-			for _, n := range v.R.SeenNodes() {
-				<tr><td><code>{ n }</code></td><td>{ strings.Join(v.R.SeenBy[n], ", ") }</td></tr>
-			}
-		</table>
+		<div class="table-wrap">
+			<table>
+				<tr>
+					<th style="width:14rem">{ tColNode.In(v.Page.Lang) }</th>
+					<th>{ tColCollector.In(v.Page.Lang) }</th>
+				</tr>
+				for _, n := range v.R.SeenNodes() {
+					<tr><td><code>{ n }</code></td><td>{ strings.Join(v.R.SeenBy[n], ", ") }</td></tr>
+				}
+			</table>
+		</div>
 		<p style="margin-top:.8rem">
 			@templ.Raw(fmt.Sprintf(tObservedCount.In(v.Page.Lang), v.R.ObservedAssets, v.R.ObservedEdges))
 		</p>
@@ -68,78 +70,82 @@ templ surveyBody(v SurveyView) {
 			UNDECLARED <b>{ strconv.Itoa(v.Undeclared) }</b> ·
 			UNOBSERVED <b>{ strconv.Itoa(v.Unobserved) }</b>
 		</p>
-		<table>
-			<tr>
-				<th>{ tColState.In(v.Page.Lang) }</th>
-				<th>{ tColConfidence.In(v.Page.Lang) }</th>
-				<th>{ tColNode.In(v.Page.Lang) }</th>
-				<th>{ tColRuntime.In(v.Page.Lang) }</th>
-				<th>{ tColComponent.In(v.Page.Lang) }</th>
-			</tr>
-			for _, a := range v.Assets {
+		<div class="table-wrap">
+			<table>
 				<tr>
-					<td class={ templ.KV("must", a.State != "CONFIRMED") }>{ a.State }</td>
-					<td>{ fmt.Sprintf("%.2f", a.Conf) }</td>
-					<td><code>{ a.Node }</code></td>
-					<td>{ a.Runtime }</td>
-					<td>
-						{ a.Component }
-						if a.Rescan {
-							<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
-						}
-					</td>
+					<th>{ tColState.In(v.Page.Lang) }</th>
+					<th>{ tColConfidence.In(v.Page.Lang) }</th>
+					<th>{ tColNode.In(v.Page.Lang) }</th>
+					<th>{ tColRuntime.In(v.Page.Lang) }</th>
+					<th>{ tColComponent.In(v.Page.Lang) }</th>
 				</tr>
-			}
-			if len(v.Assets) == 0 {
-				<tr><td colspan="5">{ tSurveyNoAssets.In(v.Page.Lang) }</td></tr>
-			}
-		</table>
+				for _, a := range v.Assets {
+					<tr>
+						<td class={ templ.KV("must", a.State != "CONFIRMED") }>{ a.State }</td>
+						<td>{ fmt.Sprintf("%.2f", a.Conf) }</td>
+						<td><code>{ a.Node }</code></td>
+						<td>{ a.Runtime }</td>
+						<td>
+							{ a.Component }
+							if a.Rescan {
+								<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
+							}
+						</td>
+					</tr>
+				}
+				if len(v.Assets) == 0 {
+					<tr><td colspan="5">{ tSurveyNoAssets.In(v.Page.Lang) }</td></tr>
+				}
+			</table>
+		</div>
 	</fieldset>
 	<fieldset>
 		<legend>{ tSurveyEdges.In(v.Page.Lang) }</legend>
 		@tip(v.Page.Lang, tSurveyEdgesHint.In(v.Page.Lang))
 		<p>@templ.Raw(fmt.Sprintf(tPostures.In(v.Page.Lang), v.PQC, v.Classical, v.Unknown))</p>
-		<table>
-			<tr>
-				<th style="width:2rem"></th>
-				<th>{ tColSrc.In(v.Page.Lang) }</th>
-				<th>{ tColDst.In(v.Page.Lang) }</th>
-				<th>{ tColPort.In(v.Page.Lang) }</th>
-				<th>{ tColProto.In(v.Page.Lang) }</th>
-				<th>{ tColGroup.In(v.Page.Lang) }</th>
-				<th>{ tColReconcile.In(v.Page.Lang) }</th>
-			</tr>
-			for _, e := range v.Edges {
+		<div class="table-wrap">
+			<table>
 				<tr>
-					<td>{ e.Mark }</td>
-					<td>
-						<code>{ e.Src }</code>
-						if e.Uncovered {
-							<span class="hint">{ tUncoveredSrc.In(v.Page.Lang) }</span>
-						}
-					</td>
-					<td>
-						<code>{ e.Dst }</code>
-						if e.OffScope {
-							<span class="hint">{ tOffScope.In(v.Page.Lang) }</span>
-						}
-					</td>
-					<td>{ portText(e.Port) }</td>
-					<td>{ e.Proto }</td>
-					<td>
-						if e.Group != "" {
-							{ e.Group }
-						} else {
-							<span class="hint">{ gradeLabel(v.Page.Lang, e.Grade) }</span>
-						}
-					</td>
-					<td class={ templ.KV("must", e.State != "CONFIRMED") }>{ e.State }</td>
+					<th style="width:2rem"></th>
+					<th>{ tColSrc.In(v.Page.Lang) }</th>
+					<th>{ tColDst.In(v.Page.Lang) }</th>
+					<th>{ tColPort.In(v.Page.Lang) }</th>
+					<th>{ tColProto.In(v.Page.Lang) }</th>
+					<th>{ tColGroup.In(v.Page.Lang) }</th>
+					<th>{ tColReconcile.In(v.Page.Lang) }</th>
 				</tr>
-			}
-			if len(v.Edges) == 0 {
-				<tr><td colspan="7">{ tSurveyNoEdges.In(v.Page.Lang) }</td></tr>
-			}
-		</table>
+				for _, e := range v.Edges {
+					<tr>
+						<td>{ e.Mark }</td>
+						<td>
+							<code>{ e.Src }</code>
+							if e.Uncovered {
+								<span class="hint">{ tUncoveredSrc.In(v.Page.Lang) }</span>
+							}
+						</td>
+						<td>
+							<code>{ e.Dst }</code>
+							if e.OffScope {
+								<span class="hint">{ tOffScope.In(v.Page.Lang) }</span>
+							}
+						</td>
+						<td>{ portText(e.Port) }</td>
+						<td>{ e.Proto }</td>
+						<td>
+							if e.Group != "" {
+								{ e.Group }
+							} else {
+								<span class="hint">{ gradeLabel(v.Page.Lang, e.Grade) }</span>
+							}
+						</td>
+						<td class={ templ.KV("must", e.State != "CONFIRMED") }>{ e.State }</td>
+					</tr>
+				}
+				if len(v.Edges) == 0 {
+					<tr><td colspan="7">{ tSurveyNoEdges.In(v.Page.Lang) }</td></tr>
+				}
+			</table>
+		</div>
 	</fieldset>
 	<fieldset>
 		<legend>{ tTopology.In(v.Page.Lang) }</legend>

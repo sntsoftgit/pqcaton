@@ -41,22 +41,24 @@ templ declForm(v DeclView) {
 		<fieldset>
 			<legend>{ tDeclEdges.In(v.Page.Lang) }</legend>
 			@tip(v.Page.Lang, tDeclEdgesHint.In(v.Page.Lang))
-			<table>
-				<thead>
-					<tr>
-						<th style="width:11rem">{ tColSrc.In(v.Page.Lang) }</th>
-						<th style="width:11rem">{ tColDst.In(v.Page.Lang) }</th>
-						<th style="width:6rem">{ tColPort.In(v.Page.Lang) }</th>
-						<th>{ tColProto.In(v.Page.Lang) }</th>
-						<th style="width:5rem"></th>
-					</tr>
-				</thead>
-				<tbody id={ rowsID(KindEdge) }>
-					for i, e := range v.Edges {
-						@edgeRow(v.Page.Lang, i, e.Src, e.Dst, portText(e.Port), e.Proto)
-					}
-				</tbody>
-			</table>
+			<div class="table-wrap">
+				<table class="editable" role="table">
+					<thead role="rowgroup">
+						<tr role="row">
+							<th role="columnheader" style="width:11rem">{ tColSrc.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:11rem">{ tColDst.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:6rem">{ tColPort.In(v.Page.Lang) }</th>
+							<th role="columnheader">{ tColProto.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:5rem"></th>
+						</tr>
+					</thead>
+					<tbody role="rowgroup" id={ rowsID(KindEdge) }>
+						for i, e := range v.Edges {
+							@edgeRow(v.Page.Lang, i, e.Src, e.Dst, portText(e.Port), e.Proto)
+						}
+					</tbody>
+				</table>
+			</div>
 			@addRow(v.Page.Lang, KindEdge, 0, len(v.Edges), false)
 		</fieldset>
 		<div class="actions">
@@ -72,32 +74,34 @@ templ declForm(v DeclView) {
 // 오타 하나면 선언은 있는데 아무 노드에도 붙지 않는 자산이 된다.
 templ nodeBlock(l Lang, i int, n DeclNode) {
 	<div class="node" id={ nodeBlockID(i) }>
-		<table class="node-head">
-			<thead>
-				<tr>
-					<th style="width:12rem">{ tColName.In(l) }</th>
-					<th style="width:14rem">{ tColIP.In(l) }</th>
-					<th>{ tColObservedAs.In(l) }</th>
-					<th style="width:5rem"></th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ n.Name }/></td>
-					<td><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ n.IPText() }/></td>
-					<td>
-						<input
-							type="text"
-							name={ "node.seen." + strconv.Itoa(i) }
-							value={ n.ObservedAsText() }
-							list={ unmatchedListID }
-							placeholder={ tColObservedAsHolder.In(l) }
-						/>
-					</td>
-					<td>@removeButton(l, ".node", tRemoveNodeAsk.In(l))</td>
-				</tr>
-			</tbody>
-		</table>
+		<div class="table-wrap">
+			<table class="node-head editable" role="table">
+				<thead role="rowgroup">
+					<tr role="row">
+						<th role="columnheader" style="width:12rem">{ tColName.In(l) }</th>
+						<th role="columnheader" style="width:14rem">{ tColIP.In(l) }</th>
+						<th role="columnheader">{ tColObservedAs.In(l) }</th>
+						<th role="columnheader" style="width:5rem"></th>
+					</tr>
+				</thead>
+				<tbody role="rowgroup">
+					<tr role="row">
+						<td role="cell" data-label={ tColName.In(l) }><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ n.Name }/></td>
+						<td role="cell" data-label={ tColIP.In(l) }><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ n.IPText() }/></td>
+						<td role="cell" data-label={ tColObservedAs.In(l) }>
+							<input
+								type="text"
+								name={ "node.seen." + strconv.Itoa(i) }
+								value={ n.ObservedAsText() }
+								list={ unmatchedListID }
+								placeholder={ tColObservedAsHolder.In(l) }
+							/>
+						</td>
+						<td role="cell" data-label="">@removeButton(l, ".node", tRemoveNodeAsk.In(l))</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
 		<div class="assets">
 			<span class="n">{ tDeclAssets.In(l) }</span>
 			if len(n.Seen) > 0 {
@@ -107,20 +111,22 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 					}
 				</datalist>
 			}
-			<table>
-				<thead>
-					<tr>
-						<th style="width:8rem">{ tColRuntime.In(l) }</th>
-						<th>{ tColComponent.In(l) }</th>
-						<th style="width:5rem"></th>
-					</tr>
-				</thead>
-				<tbody id={ assetRowsID(i) }>
-					for j, a := range n.Assets {
-						@assetRow(l, i, j, a.Runtime, a.Component)
-					}
-				</tbody>
-			</table>
+			<div class="table-wrap">
+				<table class="editable" role="table">
+					<thead role="rowgroup">
+						<tr role="row">
+							<th role="columnheader" style="width:8rem">{ tColRuntime.In(l) }</th>
+							<th role="columnheader">{ tColComponent.In(l) }</th>
+							<th role="columnheader" style="width:5rem"></th>
+						</tr>
+					</thead>
+					<tbody role="rowgroup" id={ assetRowsID(i) }>
+						for j, a := range n.Assets {
+							@assetRow(l, i, j, a.Runtime, a.Component)
+						}
+					</tbody>
+				</table>
+			</div>
 			@addRow(l, KindAsset, i, len(n.Assets), false)
 		</div>
 	</div>
@@ -132,26 +138,26 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 // 새로 추가한 줄이 저장에서 빠져도 오류가 보고되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
 templ assetRow(l Lang, node, i int, runtime, component string) {
 	{{ list := seenListID(node) }}
-	<tr>
-		<td>
+	<tr role="row">
+		<td role="cell" data-label={ tColRuntime.In(l) }>
 			<select name={ assetField(node, i, "runtime") }>
 				for _, rt := range runtimeOptions(runtime) {
 					<option value={ rt } selected?={ rt == runtime }>{ rt }</option>
 				}
 			</select>
 		</td>
-		<td><input type="text" name={ assetField(node, i, "component") } value={ component } placeholder="libssl" list={ list }/></td>
-		<td>@removeButton(l, "tr", tRemoveAssetAsk.In(l))</td>
+		<td role="cell" data-label={ tColComponent.In(l) }><input type="text" name={ assetField(node, i, "component") } value={ component } placeholder="libssl" list={ list }/></td>
+		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveAssetAsk.In(l))</td>
 	</tr>
 }
 
 templ edgeRow(l Lang, i int, src, dst, port, proto string) {
-	<tr>
-		<td><input type="text" name={ "edge.src." + strconv.Itoa(i) } value={ src }/></td>
-		<td><input type="text" name={ "edge.dst." + strconv.Itoa(i) } value={ dst }/></td>
-		<td><input type="text" name={ "edge.port." + strconv.Itoa(i) } value={ port }/></td>
-		<td><input type="text" name={ "edge.proto." + strconv.Itoa(i) } value={ proto } placeholder="TLS | SSH"/></td>
-		<td>@removeButton(l, "tr", tRemoveEdgeAsk.In(l))</td>
+	<tr role="row">
+		<td role="cell" data-label={ tColSrc.In(l) }><input type="text" name={ "edge.src." + strconv.Itoa(i) } value={ src }/></td>
+		<td role="cell" data-label={ tColDst.In(l) }><input type="text" name={ "edge.dst." + strconv.Itoa(i) } value={ dst }/></td>
+		<td role="cell" data-label={ tColPort.In(l) }><input type="text" name={ "edge.port." + strconv.Itoa(i) } value={ port }/></td>
+		<td role="cell" data-label={ tColProto.In(l) }><input type="text" name={ "edge.proto." + strconv.Itoa(i) } value={ proto } placeholder="TLS | SSH"/></td>
+		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveEdgeAsk.In(l))</td>
 	</tr>
 }
 

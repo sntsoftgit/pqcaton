@@ -40,62 +40,66 @@ templ reviewForm(v ReviewView) {
 						placeholder={ tReviewPlaceholder.In(v.Page.Lang) }
 					/>
 				</label>
-				<table>
-					<tr>
-						<th>{ tColTarget.In(v.Page.Lang) }</th>
-						<th>{ tColState.In(v.Page.Lang) }</th>
-						<th>{ tColConfidence.In(v.Page.Lang) }</th>
-						<th>{ tColInPlan.In(v.Page.Lang) }</th>
-						<th>{ tColKind.In(v.Page.Lang) }</th>
-						<th>{ tColTarget2.In(v.Page.Lang) }</th>
-						<th>{ tColLevel.In(v.Page.Lang) }</th>
-						<th>{ tColException.In(v.Page.Lang) }</th>
-					</tr>
-					for _, it := range g.Items {
+				<div class="table-wrap">
+					<table>
 						<tr>
-							<td>
-								<code>{ it.ID }</code>
-								if it.Rescan {
-									<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
-								}
-								if platformFix(it.Runtime) {
-									<span class="hint">{ tPlatformFix.In(v.Page.Lang) }</span>
-								}
-							</td>
-							<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
-							<td>{ confCell(it, v.RulesetVersion) }</td>
-							@planCells(v.Page.Lang, it)
-							<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
+							<th>{ tColTarget.In(v.Page.Lang) }</th>
+							<th>{ tColState.In(v.Page.Lang) }</th>
+							<th>{ tColConfidence.In(v.Page.Lang) }</th>
+							<th>{ tColInPlan.In(v.Page.Lang) }</th>
+							<th>{ tColKind.In(v.Page.Lang) }</th>
+							<th>{ tColTarget2.In(v.Page.Lang) }</th>
+							<th>{ tColLevel.In(v.Page.Lang) }</th>
+							<th>{ tColException.In(v.Page.Lang) }</th>
 						</tr>
-						@hooksRow(v.Page.Lang, it, 8)
-					}
-				</table>
+						for _, it := range g.Items {
+							<tr>
+								<td>
+									<code>{ it.ID }</code>
+									if it.Rescan {
+										<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
+									}
+									if platformFix(it.Runtime) {
+										<span class="hint">{ tPlatformFix.In(v.Page.Lang) }</span>
+									}
+								</td>
+								<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
+								<td>{ confCell(it, v.RulesetVersion) }</td>
+								@planCells(v.Page.Lang, it)
+								<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
+							</tr>
+							@hooksRow(v.Page.Lang, it, 8)
+						}
+					</table>
+				</div>
 			</fieldset>
 		}
 		if len(v.Autopass) > 0 {
 			<fieldset>
 				<legend>{ tAutopassLegend.In(v.Page.Lang) }</legend>
 				@tip(v.Page.Lang, tAutopassHint.In(v.Page.Lang))
-				<table>
-					<tr>
-						<th>{ tColTarget.In(v.Page.Lang) }</th>
-						<th>{ tColState.In(v.Page.Lang) }</th>
-						<th>{ tColConfidence.In(v.Page.Lang) }</th>
-						<th>{ tColInPlan.In(v.Page.Lang) }</th>
-						<th>{ tColKind.In(v.Page.Lang) }</th>
-						<th>{ tColTarget2.In(v.Page.Lang) }</th>
-						<th>{ tColLevel.In(v.Page.Lang) }</th>
-					</tr>
-					for _, it := range v.Autopass {
+				<div class="table-wrap">
+					<table>
 						<tr>
-							<td><code>{ it.ID }</code></td>
-							<td>{ it.State }</td>
-							<td>{ confCell(it, v.RulesetVersion) }</td>
-							@planCells(v.Page.Lang, it)
+							<th>{ tColTarget.In(v.Page.Lang) }</th>
+							<th>{ tColState.In(v.Page.Lang) }</th>
+							<th>{ tColConfidence.In(v.Page.Lang) }</th>
+							<th>{ tColInPlan.In(v.Page.Lang) }</th>
+							<th>{ tColKind.In(v.Page.Lang) }</th>
+							<th>{ tColTarget2.In(v.Page.Lang) }</th>
+							<th>{ tColLevel.In(v.Page.Lang) }</th>
 						</tr>
-						@hooksRow(v.Page.Lang, it, 7)
-					}
-				</table>
+						for _, it := range v.Autopass {
+							<tr>
+								<td><code>{ it.ID }</code></td>
+								<td>{ it.State }</td>
+								<td>{ confCell(it, v.RulesetVersion) }</td>
+								@planCells(v.Page.Lang, it)
+							</tr>
+							@hooksRow(v.Page.Lang, it, 7)
+						}
+					</table>
+				</div>
 			</fieldset>
 		}
 		if len(v.LegacyAutopass) > 0 {

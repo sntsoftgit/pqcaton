@@ -51,22 +51,24 @@ templ scopeForm(v ScopeView) {
 						placeholder={ tLayerPlaceholder.In(v.Page.Lang) }
 					/>
 				</label>
-				<table>
-					<tr>
-						<th style="width:4rem">{ tColChange.In(v.Page.Lang) }</th>
-						<th>{ tColRule.In(v.Page.Lang) }</th>
-						<th>{ tColNote.In(v.Page.Lang) }</th>
-						<th>{ tColException.In(v.Page.Lang) }</th>
-					</tr>
-					for _, c := range g.Changes {
+				<div class="table-wrap">
+					<table>
 						<tr>
-							<td class={ templ.KV("must", c.Audited) }>{ kindLabel(v.Page.Lang, c.Kind) }</td>
-							<td><code>{ c.Rule }</code></td>
-							<td class="hint">{ c.Note }</td>
-							<td><input type="text" name={ "change:" + c.ID } value={ c.Conclusion }/></td>
+							<th style="width:4rem">{ tColChange.In(v.Page.Lang) }</th>
+							<th>{ tColRule.In(v.Page.Lang) }</th>
+							<th>{ tColNote.In(v.Page.Lang) }</th>
+							<th>{ tColException.In(v.Page.Lang) }</th>
 						</tr>
-					}
-				</table>
+						for _, c := range g.Changes {
+							<tr>
+								<td class={ templ.KV("must", c.Audited) }>{ kindLabel(v.Page.Lang, c.Kind) }</td>
+								<td><code>{ c.Rule }</code></td>
+								<td class="hint">{ c.Note }</td>
+								<td><input type="text" name={ "change:" + c.ID } value={ c.Conclusion }/></td>
+							</tr>
+						}
+					</table>
+				</div>
 			</fieldset>
 		}
 		if len(v.Layers) == 0 {
@@ -90,21 +92,23 @@ templ scopeForm(v ScopeView) {
 				<span class="n">— { fmt.Sprintf(tPolicyRulesAll.In(v.Page.Lang), len(v.Session.Merged)) }</span>
 			</legend>
 			@tip(v.Page.Lang, tPolicyWholeHint.In(v.Page.Lang))
-			<table>
-				<tr>
-					<th style="width:6rem">action</th><th style="width:6rem">runtime</th>
-					<th>lib</th><th>app_key</th><th>note</th>
-				</tr>
-				for _, r := range v.Session.Merged {
+			<div class="table-wrap">
+				<table>
 					<tr>
-						<td class={ templ.KV("must", r.Action == "exclude") }>{ r.Action }</td>
-						<td>{ r.Runtime }</td>
-						<td><code>{ r.Lib }</code></td>
-						<td><code>{ r.AppKey }</code></td>
-						<td class="hint">{ r.Note }</td>
+						<th style="width:6rem">action</th><th style="width:6rem">runtime</th>
+						<th>lib</th><th>app_key</th><th>note</th>
 					</tr>
-				}
-			</table>
+					for _, r := range v.Session.Merged {
+						<tr>
+							<td class={ templ.KV("must", r.Action == "exclude") }>{ r.Action }</td>
+							<td>{ r.Runtime }</td>
+							<td><code>{ r.Lib }</code></td>
+							<td><code>{ r.AppKey }</code></td>
+							<td class="hint">{ r.Note }</td>
+						</tr>
+					}
+				</table>
+			</div>
 		</fieldset>
 		<div class="actions">
 			<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
@@ -118,14 +122,16 @@ templ scopeForm(v ScopeView) {
 // 규칙을 적는 자리에서 읽히고, 화면이 바뀌면 같이 바뀐다.
 templ ruleLegend(l Lang) {
 	@tipBlock(tRuleLegend.In(l)) {
-		<table>
-			<tr><th style="width:7rem">{ tColMeaning.In(l) }</th><th>{ tColMeans.In(l) }</th></tr>
-			<tr><td><code>action</code></td><td>@templ.Raw(tRuleAction.In(l))</td></tr>
-			<tr><td><code>runtime</code></td><td>@templ.Raw(tRuleRuntime.In(l))</td></tr>
-			<tr><td><code>lib</code></td><td>@templ.Raw(tRuleLib.In(l))</td></tr>
-			<tr><td><code>app_key</code></td><td>@templ.Raw(tRuleAppKey.In(l))</td></tr>
-			<tr><td><code>note</code></td><td>@templ.Raw(tRuleNote.In(l))</td></tr>
-		</table>
+		<div class="table-wrap">
+			<table>
+				<tr><th style="width:7rem">{ tColMeaning.In(l) }</th><th>{ tColMeans.In(l) }</th></tr>
+				<tr><td><code>action</code></td><td>@templ.Raw(tRuleAction.In(l))</td></tr>
+				<tr><td><code>runtime</code></td><td>@templ.Raw(tRuleRuntime.In(l))</td></tr>
+				<tr><td><code>lib</code></td><td>@templ.Raw(tRuleLib.In(l))</td></tr>
+				<tr><td><code>app_key</code></td><td>@templ.Raw(tRuleAppKey.In(l))</td></tr>
+				<tr><td><code>note</code></td><td>@templ.Raw(tRuleNote.In(l))</td></tr>
+			</table>
+		</div>
 		<p class="hint">@templ.Raw(tRuleEmptyWarn.In(l))</p>
 		<p class="hint">@templ.Raw(tRuleLayerOrder.In(l))</p>
 		<p class="hint">@templ.Raw(tScopeTableOrder.In(l))</p>
@@ -140,19 +146,21 @@ templ layerEditor(l Lang, e LayerEdit) {
 			{ tLayer.In(l) } { e.Name }
 			<span class="n">— { e.Path } · { strconv.Itoa(len(e.Rules)) } { tLayerRules.In(l) }</span>
 		</legend>
-		<table>
-			<thead>
-				<tr>
-					<th style="width:7rem">action</th><th style="width:7rem">runtime</th>
-					<th>lib</th><th>app_key</th><th>note</th>
-				</tr>
-			</thead>
-			<tbody id={ ruleRowsID(e.Index) }>
-				for i, r := range e.Rules {
-					@ruleRow(e.Index, i, r)
-				}
-			</tbody>
-		</table>
+		<div class="table-wrap">
+			<table class="editable" role="table">
+				<thead role="rowgroup">
+					<tr role="row">
+						<th role="columnheader" style="width:7rem">action</th><th role="columnheader" style="width:7rem">runtime</th>
+						<th role="columnheader">lib</th><th role="columnheader">app_key</th><th role="columnheader">note</th>
+					</tr>
+				</thead>
+				<tbody role="rowgroup" id={ ruleRowsID(e.Index) }>
+					for i, r := range e.Rules {
+						@ruleRow(e.Index, i, r)
+					}
+				</tbody>
+			</table>
+		</div>
 		@addRuleRow(l, e.Index, len(e.Rules), false)
 	</fieldset>
 }
@@ -162,17 +170,17 @@ templ layerEditor(l Lang, e LayerEdit) {
 // 칸 이름(action · runtime · lib · app_key · note)은 옮기지 않는다 — pqcota의 CSV
 // 머리글 그대로라, 말을 바꾸면 화면과 파일이 다른 이름으로 같은 것을 가리키게 된다.
 templ ruleRow(layer, i int, r scope.Rule) {
-	<tr>
-		<td>
+	<tr role="row">
+		<td role="cell" data-label="action">
 			<select name={ ruleField(layer, i, "action") }>
 				<option value="include" selected?={ r.Action != "exclude" }>include</option>
 				<option value="exclude" selected?={ r.Action == "exclude" }>exclude</option>
 			</select>
 		</td>
-		<td><input type="text" name={ ruleField(layer, i, "runtime") } value={ r.Runtime } placeholder="*"/></td>
-		<td><input type="text" name={ ruleField(layer, i, "lib") } value={ r.Lib } placeholder="*"/></td>
-		<td><input type="text" name={ ruleField(layer, i, "app_key") } value={ r.AppKey } placeholder="*"/></td>
-		<td><input type="text" name={ ruleField(layer, i, "note") } value={ r.Note }/></td>
+		<td role="cell" data-label="runtime"><input type="text" name={ ruleField(layer, i, "runtime") } value={ r.Runtime } placeholder="*"/></td>
+		<td role="cell" data-label="lib"><input type="text" name={ ruleField(layer, i, "lib") } value={ r.Lib } placeholder="*"/></td>
+		<td role="cell" data-label="app_key"><input type="text" name={ ruleField(layer, i, "app_key") } value={ r.AppKey } placeholder="*"/></td>
+		<td role="cell" data-label="note"><input type="text" name={ ruleField(layer, i, "note") } value={ r.Note }/></td>
 	</tr>
 }
 

@@ -20,30 +20,32 @@ templ inventoryBody(v InventoryView) {
 		<legend>{ tSearch.In(v.Page.Lang) }</legend>
 		<form method="get" action={ templ.SafeURL(v.self()) }>
 			<input type="hidden" name={ LangParam } value={ string(v.Page.Lang) }/>
-			<table>
-				<tr>
-					<td style="width:60%">
-						<input
-							type="text"
-							name="q"
-							value={ v.Filter.Q }
-							placeholder={ tSearchQ.In(v.Page.Lang) }
-						/>
-					</td>
-					<td>
-						<select name="state">
-							<option value="" selected?={ v.Filter.State == "" }>{ tSearchState.In(v.Page.Lang) } — { tSearchAll.In(v.Page.Lang) }</option>
-							for _, st := range []string{"CONFIRMED", "UNDECLARED", "UNOBSERVED"} {
-								<option value={ st } selected?={ v.Filter.State == st }>{ st }</option>
-							}
-						</select>
-					</td>
-					<td style="width:12rem">
-						<button class="primary">{ tSearchGo.In(v.Page.Lang) }</button>
-						<a href={ templ.SafeURL(v.self() + "?" + LangParam + "=" + string(v.Page.Lang)) }>{ tSearchClear.In(v.Page.Lang) }</a>
-					</td>
-				</tr>
-			</table>
+			<div class="table-wrap">
+				<table>
+					<tr>
+						<td style="width:60%">
+							<input
+								type="text"
+								name="q"
+								value={ v.Filter.Q }
+								placeholder={ tSearchQ.In(v.Page.Lang) }
+							/>
+						</td>
+						<td>
+							<select name="state">
+								<option value="" selected?={ v.Filter.State == "" }>{ tSearchState.In(v.Page.Lang) } — { tSearchAll.In(v.Page.Lang) }</option>
+								for _, st := range []string{"CONFIRMED", "UNDECLARED", "UNOBSERVED"} {
+									<option value={ st } selected?={ v.Filter.State == st }>{ st }</option>
+								}
+							</select>
+						</td>
+						<td style="width:12rem">
+							<button class="primary">{ tSearchGo.In(v.Page.Lang) }</button>
+							<a href={ templ.SafeURL(v.self() + "?" + LangParam + "=" + string(v.Page.Lang)) }>{ tSearchClear.In(v.Page.Lang) }</a>
+						</td>
+					</tr>
+				</table>
+			</div>
 		</form>
 	</fieldset>
 	if v.Subject != "" {
@@ -57,38 +59,40 @@ templ inventoryBody(v InventoryView) {
 				@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalAssets, len(v.Assets)))
 			</span>
 		</legend>
-		<table>
-			<tr>
-				<th>{ tColState.In(v.Page.Lang) }</th>
-				<th>{ tColConfidence.In(v.Page.Lang) }</th>
-				<th>{ tColNode.In(v.Page.Lang) }</th>
-				<th>{ tColRuntime.In(v.Page.Lang) }</th>
-				<th>{ tColComponent.In(v.Page.Lang) }</th>
-				if v.HasLedger {
-					<th style="width:5rem"></th>
-				}
-			</tr>
-			for _, a := range v.Assets {
+		<div class="table-wrap">
+			<table>
 				<tr>
-					<td class={ templ.KV("must", a.State != "CONFIRMED") }>{ a.State }</td>
-					<td>{ fmt.Sprintf("%.2f", a.Conf) }</td>
-					<td><code>{ a.Node }</code></td>
-					<td>{ a.Runtime }</td>
-					<td>
-						{ a.Component }
-						if a.Rescan {
-							<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
-						}
-					</td>
+					<th>{ tColState.In(v.Page.Lang) }</th>
+					<th>{ tColConfidence.In(v.Page.Lang) }</th>
+					<th>{ tColNode.In(v.Page.Lang) }</th>
+					<th>{ tColRuntime.In(v.Page.Lang) }</th>
+					<th>{ tColComponent.In(v.Page.Lang) }</th>
 					if v.HasLedger {
-						<td><a href={ templ.SafeURL(historyHref(v, a)) }>{ tOpenHistory.In(v.Page.Lang) }</a></td>
+						<th style="width:5rem"></th>
 					}
 				</tr>
-			}
-			if len(v.Assets) == 0 {
-				<tr><td colspan="6">{ tNoMatch.In(v.Page.Lang) }</td></tr>
-			}
-		</table>
+				for _, a := range v.Assets {
+					<tr>
+						<td class={ templ.KV("must", a.State != "CONFIRMED") }>{ a.State }</td>
+						<td>{ fmt.Sprintf("%.2f", a.Conf) }</td>
+						<td><code>{ a.Node }</code></td>
+						<td>{ a.Runtime }</td>
+						<td>
+							{ a.Component }
+							if a.Rescan {
+								<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
+							}
+						</td>
+						if v.HasLedger {
+							<td><a href={ templ.SafeURL(historyHref(v, a)) }>{ tOpenHistory.In(v.Page.Lang) }</a></td>
+						}
+					</tr>
+				}
+				if len(v.Assets) == 0 {
+					<tr><td colspan="6">{ tNoMatch.In(v.Page.Lang) }</td></tr>
+				}
+			</table>
+		</div>
 	</fieldset>
 	<fieldset>
 		<legend>
@@ -98,37 +102,39 @@ templ inventoryBody(v InventoryView) {
 				@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalEdges, len(v.Edges)))
 			</span>
 		</legend>
-		<table>
-			<tr>
-				<th style="width:2rem"></th>
-				<th>{ tColSrc.In(v.Page.Lang) }</th>
-				<th>{ tColDst.In(v.Page.Lang) }</th>
-				<th>{ tColPort.In(v.Page.Lang) }</th>
-				<th>{ tColProto.In(v.Page.Lang) }</th>
-				<th>{ tColGroup.In(v.Page.Lang) }</th>
-				<th>{ tColReconcile.In(v.Page.Lang) }</th>
-			</tr>
-			for _, e := range v.Edges {
+		<div class="table-wrap">
+			<table>
 				<tr>
-					<td>{ e.Mark }</td>
-					<td><code>{ e.Src }</code></td>
-					<td><code>{ e.Dst }</code></td>
-					<td>{ portText(e.Port) }</td>
-					<td>{ e.Proto }</td>
-					<td>
-						if e.Group != "" {
-							{ e.Group }
-						} else {
-							<span class="hint">{ gradeLabel(v.Page.Lang, e.Grade) }</span>
-						}
-					</td>
-					<td class={ templ.KV("must", e.State != "CONFIRMED") }>{ e.State }</td>
+					<th style="width:2rem"></th>
+					<th>{ tColSrc.In(v.Page.Lang) }</th>
+					<th>{ tColDst.In(v.Page.Lang) }</th>
+					<th>{ tColPort.In(v.Page.Lang) }</th>
+					<th>{ tColProto.In(v.Page.Lang) }</th>
+					<th>{ tColGroup.In(v.Page.Lang) }</th>
+					<th>{ tColReconcile.In(v.Page.Lang) }</th>
 				</tr>
-			}
-			if len(v.Edges) == 0 {
-				<tr><td colspan="7">{ tNoMatch.In(v.Page.Lang) }</td></tr>
-			}
-		</table>
+				for _, e := range v.Edges {
+					<tr>
+						<td>{ e.Mark }</td>
+						<td><code>{ e.Src }</code></td>
+						<td><code>{ e.Dst }</code></td>
+						<td>{ portText(e.Port) }</td>
+						<td>{ e.Proto }</td>
+						<td>
+							if e.Group != "" {
+								{ e.Group }
+							} else {
+								<span class="hint">{ gradeLabel(v.Page.Lang, e.Grade) }</span>
+							}
+						</td>
+						<td class={ templ.KV("must", e.State != "CONFIRMED") }>{ e.State }</td>
+					</tr>
+				}
+				if len(v.Edges) == 0 {
+					<tr><td colspan="7">{ tNoMatch.In(v.Page.Lang) }</td></tr>
+				}
+			</table>
+		</div>
 	</fieldset>
 	@unseenSection(v)
 	@staleSection(v)
@@ -142,26 +148,28 @@ templ historySection(v InventoryView) {
 		if len(v.History) == 0 {
 			<p>{ tHistoryNone.In(v.Page.Lang) }</p>
 		} else {
-			<table>
-				<tr>
-					<th style="width:13rem">{ tColDecided.In(v.Page.Lang) }</th>
-					<th>{ tColConclusion.In(v.Page.Lang) }</th>
-					<th style="width:9rem">{ tReviewer.In(v.Page.Lang) }</th>
-					<th style="width:11rem">{ tColBasis.In(v.Page.Lang) }</th>
-				</tr>
-				for _, j := range v.History {
+			<div class="table-wrap">
+				<table>
 					<tr>
-						<td>{ j.DecidedAt }</td>
-						if j.PlanSelection {
-							<td class="hint">{ tPlanSelectionRow.In(v.Page.Lang) }</td>
-						} else {
-							<td>{ j.Conclusion }</td>
-						}
-						<td>{ j.Reviewer }</td>
-						<td class="hint"><code>{ shortHash(j.Basis) }</code></td>
+						<th style="width:13rem">{ tColDecided.In(v.Page.Lang) }</th>
+						<th>{ tColConclusion.In(v.Page.Lang) }</th>
+						<th style="width:9rem">{ tReviewer.In(v.Page.Lang) }</th>
+						<th style="width:11rem">{ tColBasis.In(v.Page.Lang) }</th>
 					</tr>
-				}
-			</table>
+					for _, j := range v.History {
+						<tr>
+							<td>{ j.DecidedAt }</td>
+							if j.PlanSelection {
+								<td class="hint">{ tPlanSelectionRow.In(v.Page.Lang) }</td>
+							} else {
+								<td>{ j.Conclusion }</td>
+							}
+							<td>{ j.Reviewer }</td>
+							<td class="hint"><code>{ shortHash(j.Basis) }</code></td>
+						</tr>
+					}
+				</table>
+			</div>
 		}
 		<p class="hint">
 			<a href={ templ.SafeURL(clearSubjectHref(v)) }>{ tBackToAll.In(v.Page.Lang) }</a>
@@ -179,26 +187,28 @@ templ unseenSection(v InventoryView) {
 		} else if len(v.Unseen) == 0 {
 			<p class="hint">{ tUnseenNone.In(v.Page.Lang) }</p>
 		} else {
-			<table>
-				<tr>
-					<th>{ tColTarget.In(v.Page.Lang) }</th>
-					<th style="width:9rem">{ tColEvidence.In(v.Page.Lang) }</th>
-					<th style="width:8rem">{ tColStillSeen.In(v.Page.Lang) }</th>
-					<th>{ tColWhyAgain.In(v.Page.Lang) }</th>
-				</tr>
-				for _, u := range v.Unseen {
+			<div class="table-wrap">
+				<table>
 					<tr>
-						<td><code>{ u.Subject }</code></td>
-						<td class="hint">{ u.Evidence }</td>
-						<td>
-							if u.StillObserved {
-								✔
-							}
-						</td>
-						<td class={ templ.KV("must", u.Reason != "") }>{ reasonLabel(v.Page.Lang, u.Reason) }</td>
+						<th>{ tColTarget.In(v.Page.Lang) }</th>
+						<th style="width:9rem">{ tColEvidence.In(v.Page.Lang) }</th>
+						<th style="width:8rem">{ tColStillSeen.In(v.Page.Lang) }</th>
+						<th>{ tColWhyAgain.In(v.Page.Lang) }</th>
 					</tr>
-				}
-			</table>
+					for _, u := range v.Unseen {
+						<tr>
+							<td><code>{ u.Subject }</code></td>
+							<td class="hint">{ u.Evidence }</td>
+							<td>
+								if u.StillObserved {
+									✔
+								}
+							</td>
+							<td class={ templ.KV("must", u.Reason != "") }>{ reasonLabel(v.Page.Lang, u.Reason) }</td>
+						</tr>
+					}
+				</table>
+			</div>
 		}
 	</fieldset>
 }
@@ -213,22 +223,24 @@ templ staleSection(v InventoryView) {
 		} else if len(v.Stale) == 0 {
 			<p class="hint">{ tStaleNone.In(v.Page.Lang) }</p>
 		} else {
-			<table>
-				<tr>
-					<th>{ tColTarget.In(v.Page.Lang) }</th>
-					<th>{ tColConclusion.In(v.Page.Lang) }</th>
-					<th style="width:13rem">{ tColDecided.In(v.Page.Lang) }</th>
-					<th style="width:5rem"></th>
-				</tr>
-				for _, j := range v.Stale {
+			<div class="table-wrap">
+				<table>
 					<tr>
-						<td><code>{ j.Subject }</code></td>
-						<td>{ j.Conclusion }</td>
-						<td>{ j.DecidedAt }</td>
-						<td><a href={ templ.SafeURL(subjectHref(v, j.Subject)) }>{ tOpenHistory.In(v.Page.Lang) }</a></td>
+						<th>{ tColTarget.In(v.Page.Lang) }</th>
+						<th>{ tColConclusion.In(v.Page.Lang) }</th>
+						<th style="width:13rem">{ tColDecided.In(v.Page.Lang) }</th>
+						<th style="width:5rem"></th>
 					</tr>
-				}
-			</table>
+					for _, j := range v.Stale {
+						<tr>
+							<td><code>{ j.Subject }</code></td>
+							<td>{ j.Conclusion }</td>
+							<td>{ j.DecidedAt }</td>
+							<td><a href={ templ.SafeURL(subjectHref(v, j.Subject)) }>{ tOpenHistory.In(v.Page.Lang) }</a></td>
+						</tr>
+					}
+				</table>
+			</div>
 		}
 	</fieldset>
 }
