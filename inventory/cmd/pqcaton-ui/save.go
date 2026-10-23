@@ -184,7 +184,8 @@ func (s *server) targetDirs() []string {
 // 화면은 세션 파일이 없어도 선언과 관측(또는 계층)에서 세션을 세워 연다. 그런데 파일로 남기지
 // 않으면 읽을 때마다 세션 ID가 새로 나고, 확정의 동일성(영수증)이 설 자리가 없다.
 func (s *server) materialize() error {
-	if _, err := os.Stat(s.path); os.IsNotExist(err) && s.results != "" {
+	// 작업 폴더 모드에서 선언이 아직 없으면 세울 것이 없다. 선언을 만드는 요청(POST)이 그 자리에서 다시 부른다.
+	if _, err := os.Stat(s.path); os.IsNotExist(err) && s.results != "" && (s.workspace == "" || s.declReady()) {
 		sf, _, err := s.reviewSession()
 		if err != nil {
 			return err

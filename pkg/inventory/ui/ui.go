@@ -579,3 +579,14 @@ const reviewEditAnchor = "review-edit"
 func RenderReviewNext(w io.Writer, v ReviewView) error {
 	return reviewNextPage(v).Render(context.Background(), w)
 }
+
+// DeclCreateView — 선언 만들기 화면. Org는 처음 칸에 넣어 둘 조직 이름(서버의 -org)이다.
+type DeclCreateView struct {
+	Page
+	Org string
+}
+
+// RenderDeclCreate — 선언 만들기 화면을 그린다.
+func RenderDeclCreate(w io.Writer, v DeclCreateView) error {
+	return declCreatePage(v).Render(context.Background(), w)
+}

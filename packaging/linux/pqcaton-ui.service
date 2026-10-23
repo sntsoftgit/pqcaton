@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
+#
+# pqcaton 화면을 systemd 사용자 서비스로 띄운다. 작업 폴더는 ~/pqcaton이다.
+# 설치와 사용은 docs/operator-guide.md 의 「설치」 절을 따른다.
+[Unit]
+Description=pqcaton screen (workspace ~/pqcaton)
+
+[Service]
+ExecStart=%h/.local/bin/pqcaton-ui -no-browser
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

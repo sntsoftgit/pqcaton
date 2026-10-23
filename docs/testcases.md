@@ -181,6 +181,7 @@
 | **[IC-W42](../pkg/inventory/store/verify_test.go) ✅** | 뒤 세션이 같은 계획을 다시 확정 · 뒤 영수증의 순번을 앞보다 작게 고침 | 앞 세션은 대체됨, 뒤 세션은 확정됨이다. 순번이 설명되지 않으면 앞 세션은 복구 필요다 |
 | **[IC-W43](../pkg/inventory/store/verify_test.go) ✅** | 영수증이 아직 없는데 다른 요청이 대상 디렉토리를 쥠 | **대상 잠금은 영수증을 처음 읽기 전에 잡는다.** 기다리다 `ErrTargetBusy`다. 읽고 나서 잠그면 그 사이 끝난 확정을 놓친 「미확정」이 나간다 |
 | **[IC-W44](../pkg/inventory/store/verify_test.go) ✅** | 두 세션이 같은 계획을 번갈아 확정하는 동안 판정을 거듭함 | 확정됨 · 대체됨 · 확인할 수 없음만 나온다. 「복구 필요」나 「미확정」으로 잘못 판정하지 않는다 |
+| **[IC-W45](../pkg/inventory/store/txn_test.go) ✅** | 없는 파일만 만들기(Create)에 이미 있는 파일을 섞음 | `ErrExists`이고 아무것도 쓰지 않는다. 있는 파일은 그대로, 없던 파일도 생기지 않는다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
@@ -350,6 +351,21 @@ v0.21의 `-next` 주소는 북마크가 죽지 않게 301로 넘긴다.
 | [IC-U90](../inventory/cmd/pqcaton-ui/errors_test.go) ✅ | 화면 서버의 시험이 아닌 소스 | 평문 `http.Error`가 없다 |
 | **[IC-U91](../inventory/cmd/pqcaton-ui/errors_test.go) ✅** | 저장소 센티널(안전하지 않은 파일 · 상태 불일치 · 손상 · 진행 중 · 실행 잠금 · 대상 잠금 · 오래된 화면 · 복구 필요)과 모르는 오류 | 값으로 거절 종류와 상태를 가린다. 거절 페이지는 두 말 모두 경로를 싣지 않는다. 모르는 오류는 참조 번호를 붙인 내부 오류다 |
 | **[IC-U92](../inventory/cmd/pqcaton-ui/mode_test.go) ✅** | 저장하는 서버 · 저장을 지원하지 않는 플랫폼 · 복구가 남은 서버를 두 말로 | 화면 머리의 모드가 「저장 가능」 · 「보기 전용」 · 「복구 필요」로 실제 동작과 같다. 「읽기·검토 모드」 · 「원본은 보존」 문구는 어느 화면에도 없고, 보기 전용 거절은 macOS(검증하지 않음)도 적는다 |
+
+#### 작업 폴더와 시작 (v0.23.0)
+
+인자 없이 띄우면 홈의 `pqcaton` 작업 폴더를 쓴다. 파일 위치는 정해져 있고, 경로 플래그와 섞지 않는다. 포트를 연
+뒤에 브라우저를 열고, 이미 떠 있으면 그 화면을 연다. 입력이 깨졌으면 진단 전용으로 열고, 선언이 없으면 화면에서
+만든다.
+
+| TC | Given → When | Then |
+|---|---|---|
+| [IC-U93](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅ | 인자 없이 시작 · 계층 CSV와 확정 정책 파일을 둔 작업 폴더 | 홈의 `pqcaton`과 `results/` · `layers/`를 0700으로 만든다. 모든 파일이 정해진 이름에 있고, 계층은 `layers/`의 CSV만 이름 순으로 겹치고, 확정 정책 파일이 있으면 그것이 기준이다 |
+| [IC-U94](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅ | 작업 폴더와 경로 플래그 · 세션 파일을 함께 줌 | 사용법 오류로 시작하지 않는다. 동작 플래그(`-addr` · `-no-browser` · `-org`)는 함께 쓸 수 있고, 세션 파일과 경로 플래그(명시 모드)는 그대로다 |
+| **[IC-U95](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 작업 폴더로 시작 · `-no-browser` · 브라우저 명령이 없음 | 브라우저를 부를 때 그 주소에 이미 접속된다. `-no-browser`면 열지 않는다. 열지 못하면 경고만 한다 |
+| **[IC-U96](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 같은 작업 폴더로 이미 떠 있는데 다시 실행 | 두 번째 서버를 띄우지 않고 적어 둔 주소를 연다. 그 주소가 루프백이 아니면 열지 않고 실패한다 |
+| **[IC-U97](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 작업 폴더의 선언 파일이 깨짐 | 서버는 뜨고, 화면과 저장 요청 모두 503 진단 페이지다. 「진단 전용」 모드와 파일 이름, 표준오류와 같은 참조 번호를 보이고 경로는 보이지 않는다 |
+| **[IC-U98](../inventory/cmd/pqcaton-ui/workspace_test.go) ✅** | 선언이 없는 작업 폴더 | GET은 만들기 폼만 보이고 아무것도 만들지 않는다. 대조 · 판정은 닫혀 있다. POST가 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |

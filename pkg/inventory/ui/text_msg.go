@@ -13,4 +13,5 @@ var roleText = map[string]T{
 	"policy":        {KO: "정책", EN: "policy"},
 	"layer":         {KO: "계층", EN: "layer"},
 	"results":       {KO: "관측 결과", EN: "observed results"},
+	"scope-assets":  {KO: "적재 정책", EN: "ingest policy"},
 }

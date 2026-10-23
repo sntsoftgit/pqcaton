@@ -59,7 +59,11 @@ func MovedNext() map[string]string {
 // Screens — 입력을 받아 열린 화면들.
 //
 // **입력을 주지 않은 자리는 만들지 않는다** — 없는 것을 눌러 보게 하지 않는다.
-type Screens struct{ Decl, Scope, Survey, Inventory bool }
+type Screens struct {
+	Decl, Scope, Survey, Inventory bool
+	// NoReview — 판정 화면을 닫는다. 작업 폴더에 선언이 아직 없으면 판정할 것이 없다(기본은 연다).
+	NoReview bool
+}
 
 // NavFor — 위쪽 이동 링크. **절차 순서로 둔다** — 선언 → 자산 스코프 → 대조 → 판정.
 // 쓰는 사람이 다음에 무엇을 할지 순서 자체가 말해 준다.
@@ -167,13 +171,15 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDecl, Open: s.Decl},
 		{Num: "02", Title: tTitleScope.In(l), Href: ScreenScope, Open: s.Scope},
 		{Num: "03", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
-		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReview, Open: true},
+		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReview, Open: !s.NoReview},
 	}
 	for i := range steps {
 		steps[i].Here = here == steps[i].Href
 		switch {
 		case !steps[i].Open:
 			steps[i].State = tStepClosed.In(l)
+		case i == 0 && st.DeclMissing:
+			steps[i].State, steps[i].Dot = tStepDeclMissing.In(l), "warn"
 		case i == 0 && st.Decl != nil:
 			steps[i].State, steps[i].Dot = declState(l, *st.Decl)
 		case i == 1 && st.Scope != nil:
@@ -204,6 +210,8 @@ type StepState struct {
 	Scope  *ScopeSummary
 	Survey *SurveySummary
 	Review *ReviewSummary
+	// DeclMissing — 작업 폴더에 선언이 아직 없다(만들기를 낸다).
+	DeclMissing bool
 	// ScopeFinal · ReviewFinal — 확정하는 두 단계의 확정 상태.
 	ScopeFinal, ReviewFinal Final
 }
@@ -271,6 +279,8 @@ const (
 	ModeWrite    Mode = "write"
 	ModeViewOnly Mode = "view-only"
 	ModeRecovery Mode = "recovery"
+	// ModeDiagnostic — 작업 폴더의 입력을 읽지 못해 진단 전용으로 열었다.
+	ModeDiagnostic Mode = "diagnostic"
 )
 
 func (m Mode) text(l Lang) string {
@@ -279,6 +289,8 @@ func (m Mode) text(l Lang) string {
 		return tModeViewOnly.In(l)
 	case ModeRecovery:
 		return tModeRecovery.In(l)
+	case ModeDiagnostic:
+		return tModeDiagnostic.In(l)
 	}
 	return tModeWrite.In(l)
 }

@@ -134,7 +134,9 @@ func (s *server) steps(wd *world) ui.StepState {
 		fmt.Fprintf(os.Stderr, "step card %s: unavailable: %v\n", step, err)
 	}
 	if s.decl != "" {
-		if wd.declErr != nil {
+		if s.workspace != "" && !s.declReady() {
+			st.DeclMissing = true
+		} else if wd.declErr != nil {
 			unavailable("declaration", wd.declErr)
 		} else {
 			got := ui.NewDeclView(wd.decl, ui.Page{}).WithObserved(wd.seen, wd.unmatched).Summary()

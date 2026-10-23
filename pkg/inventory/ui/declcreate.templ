@@ -1,0 +1,20 @@
+package ui
+
+// declCreatePage — 작업 폴더에 선언이 아직 없을 때의 선언 화면. **GET은 아무것도 만들지 않는다**: 만들기는
+// 이 폼의 POST(CSRF로 보호)가 하고, 파일이 그 사이 생겼으면 덮어쓰지 않는다.
+templ declCreatePage(v DeclCreateView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			<h2>{ tDeclCreateHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tDeclCreateLede.In(v.Page.Lang) }</p>
+			<form method="post" action={ templ.SafeURL(DeclCreatePath) }>
+				@csrfField(v.Page)
+				<label for="decl-create-org">{ tDeclCreateOrg.In(v.Page.Lang) }</label>
+				<input type="text" id="decl-create-org" name="org" value={ v.Org } required/>
+				<div class="actions">
+					<button class="primary">{ tDeclCreateDo.In(v.Page.Lang) }</button>
+				</div>
+			</form>
+		</div>
+	}
+}

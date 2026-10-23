@@ -24,6 +24,9 @@ var noticeText = map[string]noticeSpec{
 	NoticeDeclStillOff:        {tDeclStillOff, "n"},
 	NoticeFinalizedAlready:    {tFinalizedAlready, ""},
 	NoticeFinalizedSuperseded: {tFinalizedSuperseded, ""},
+	NoticeDeclCreated: {T{
+		KO: "빈 선언을 만들었습니다. 아래에서 노드와 자산을 적으십시오",
+		EN: "An empty declaration was created. Write the nodes and assets below"}, ""},
 
 	// 확정 관문이 막은 까닭. 머리 하나에 빠진 것들이 「 · 」 줄로 붙는다.
 	ProblemCannotFinalize: {T{
@@ -120,6 +123,12 @@ var (
 	tRefusedMismatch = T{
 		KO: "이 파일들은 다른 상태 디렉토리가 관리하고 있어 저장하지 않았습니다. 운영자 안내서의 「상태 디렉토리」 절을 보십시오.",
 		EN: "Not saved: these files are managed by another state directory. See the \"State directory\" section of the operator guide."}
+	tRefusedDiagnostic = T{
+		KO: "작업 폴더의 아래 파일을 읽지 못해 화면이 진단 전용으로 열렸습니다. 저장은 하지 않습니다. 파일을 고치거나 백업에서 되돌린 뒤 화면을 다시 띄우십시오. 운영자가 서버 기록에서 참조 번호를 찾아 원인을 확인할 수 있습니다.",
+		EN: "The screen opened for diagnostics only because the workspace files below could not be read. Nothing is saved. Fix them or restore them from a backup, then start the screen again. An operator can find the reference in the server log to see why."}
+	tRefusedExists = T{
+		KO: "만들려는 파일이 이미 있어 덮어쓰지 않았습니다. 화면을 새로 고치십시오.",
+		EN: "The file already exists, so it was not overwritten. Reload the screen."}
 	tRefusedDamaged = T{
 		KO: "상태 디렉토리의 기록을 읽지 못해 멈췄습니다. 운영자 안내서의 「복구」 절대로 확인해야 합니다.",
 		EN: "Stopped: a record in the state directory could not be read. An operator needs to check it as the \"Recovery\" section of the operator guide says."}

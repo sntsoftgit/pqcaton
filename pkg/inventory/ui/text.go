@@ -647,11 +647,21 @@ var (
 		KO: "관측 결과는 읽기만 합니다. 선언 · 세션 · 계층은 저장할 때 쓰고, 계획 · 정책 · 원장은 확인을 거쳐 확정할 때 한 번에 씁니다.",
 		EN: "Observed results are only read. The declaration, sessions and layers are written when you save; the plan, policy and ledger are written together when you finalize after confirming."}
 	// 화면 머리의 모드. 실제로 저장하는지를 적는다.
-	tModeWrite    = T{KO: "저장 가능", EN: "Saving enabled"}
-	tModeViewOnly = T{KO: "보기 전용: 이 플랫폼에서는 저장하지 않습니다", EN: "View only: this platform does not save"}
-	tModeRecovery = T{KO: "복구 필요: 저장을 멈췄습니다", EN: "Recovery required: saving is stopped"}
-	tWbSelfHost   = T{KO: "직접 설치", EN: "self-hosted"}
-	tWbStepsAria  = T{KO: "거버넌스 절차", EN: "Governance steps"}
+	tModeWrite      = T{KO: "저장 가능", EN: "Saving enabled"}
+	tModeViewOnly   = T{KO: "보기 전용: 이 플랫폼에서는 저장하지 않습니다", EN: "View only: this platform does not save"}
+	tModeRecovery   = T{KO: "복구 필요: 저장을 멈췄습니다", EN: "Recovery required: saving is stopped"}
+	tModeDiagnostic = T{KO: "진단 전용: 입력 파일을 읽지 못해 저장을 멈췄습니다", EN: "Diagnostics only: an input file could not be read, so saving is stopped"}
+
+	// 작업 폴더에 선언이 아직 없을 때.
+	tStepDeclMissing = T{KO: "아직 선언이 없습니다", EN: "no declaration yet"}
+	tDeclCreateHead  = T{KO: "아직 선언이 없습니다", EN: "There is no declaration yet"}
+	tDeclCreateLede  = T{
+		KO: "조직 이름을 적고 만들면 작업 폴더에 빈 선언이 생깁니다. 노드 · 자산 · 엣지는 만든 뒤에 이 화면에서 적습니다.",
+		EN: "Enter the organization name and create it: an empty declaration appears in the workspace. Write the nodes, assets and edges on this screen afterwards."}
+	tDeclCreateOrg = T{KO: "조직 이름", EN: "Organization name"}
+	tDeclCreateDo  = T{KO: "선언 만들기", EN: "Create the declaration"}
+	tWbSelfHost    = T{KO: "직접 설치", EN: "self-hosted"}
+	tWbStepsAria   = T{KO: "거버넌스 절차", EN: "Governance steps"}
 
 	// 옛 판(/classic)의 안내와 새 화면의 보조 링크. v0.23.0에서 없앤다.
 	tClassicBanner  = T{KO: "이 화면은 v0.23.0에서 없어집니다. 같은 작업은 새 화면에서 할 수 있습니다.", EN: "This screen will be removed in v0.23.0. You can do the same work on the new screen."}

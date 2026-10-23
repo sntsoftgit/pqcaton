@@ -482,3 +482,29 @@ func TestConcurrentAppends(t *testing.T) {
 	}
 	w.clean(t, s)
 }
+
+// IC-W45: Create는 없는 파일만 만든다. 하나라도 이미 있으면 ErrExists이고 아무것도 쓰지 않는다(있는 파일은
+// 그대로, 없던 파일도 생기지 않는다). 끝나면 기록도 준비 파일도 남지 않는다.
+func TestCreateNeverOverwrites(t *testing.T) {
+	w := newWorld(t)
+	s := w.open(t, nil)
+	decl := filepath.Join(w.data, "declaration.json")
+	layer := filepath.Join(w.data, "layer.csv")
+	if err := s.Create([]Change{{Path: decl, Content: []byte("decl-v1\n")}}, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, decl); got != "decl-v1\n" {
+		t.Fatalf("created %q", got)
+	}
+	err := s.Create([]Change{{Path: layer, Content: []byte("layer\n")}, {Path: decl, Content: []byte("decl-v2\n")}}, time.Second)
+	if !errors.Is(err, ErrExists) {
+		t.Fatalf("err %v, want ErrExists", err)
+	}
+	if got := read(t, decl); got != "decl-v1\n" {
+		t.Errorf("the existing file became %q", got)
+	}
+	if _, err := os.Stat(layer); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("a refused create still wrote the other file: %v", err)
+	}
+	w.clean(t, s)
+}

@@ -152,6 +152,22 @@ func (s *State) Do(tx Tx, wait time.Duration) error {
 	})
 }
 
+// Create: 없는 파일만 만든다(선언 · 계층 CSV처럼 화면이 처음 만드는 파일). 대상 디렉토리를 잠그고 남은 기록을
+// 복구한 뒤 만든다. **하나라도 이미 있으면 ErrExists이고 아무것도 쓰지 않는다** — 덮어쓰지 않는다.
+func (s *State) Create(files []Change, wait time.Duration) error {
+	var paths []string
+	for _, c := range files {
+		paths = append(paths, c.Path)
+	}
+	return s.withLocks(dirsOf(paths), wait, func() error {
+		rec, err := s.plan(Tx{Kind: "create", Create: files})
+		if err != nil {
+			return err
+		}
+		return s.run1(rec, Tx{Kind: "create", Create: files})
+	})
+}
+
 func (tx Tx) dirs() []string {
 	var out []string
 	for _, c := range tx.Replace {
@@ -213,7 +229,7 @@ func (s *State) plan(tx Tx) (*Record, error) {
 			return nil, err
 		}
 		if _, err := os.Lstat(abs); err == nil {
-			return nil, fmt.Errorf("%s already exists", abs)
+			return nil, fmt.Errorf("%w: %s", ErrExists, abs)
 		}
 		add(Item{Kind: ItemCreate, Path: s.rel(abs), Prepared: s.rel(PreparedPath(abs, id)), After: Sum(c.Content)})
 	}

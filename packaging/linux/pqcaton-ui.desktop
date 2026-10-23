@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
+#
+# 데스크톱 실행기: 서비스를 시작하고, 화면이 적어 둔 주소를 브라우저로 연다.
+[Desktop Entry]
+Type=Application
+Name=pqcaton
+Comment=Open the pqcaton screen
+Exec=sh -c 'systemctl --user start pqcaton-ui.service; f="$HOME/pqcaton/.pqcaton/screen.addr"; for i in 1 2 3 4 5 6 7 8 9 10; do [ -s "$f" ] && break; sleep 0.5; done; a=$(cat "$f"); case "$a" in 127.0.0.1:*|localhost:*|\[::1\]:*) exec xdg-open "http://$a/";; esac'
+Terminal=false
+Categories=Utility;

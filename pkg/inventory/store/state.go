@@ -59,6 +59,8 @@ var (
 	// ErrDamaged: 상태 디렉토리의 파일(상태 문서 · 잠금 파일 · 기록 · 영수증)을 읽을 수 없다. 화면은 이 값으로
 	// 종류를 가리고 문장을 해석하지 않는다.
 	ErrDamaged = errors.New("damaged")
+	// ErrExists: 만들려는 파일이 이미 있다(Create). 덮어쓰지 않는다.
+	ErrExists = errors.New("already exists")
 )
 
 // State: 열어 둔 상태 디렉토리.

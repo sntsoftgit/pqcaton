@@ -30,7 +30,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -59,124 +58,147 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-func main() {
-	fs := flag.NewFlagSet("pqcaton-ui", flag.ExitOnError)
-	addr := fs.String("addr", "127.0.0.1:8765", "address to listen on")
-	declPath := fs.String("decl", "", "declaration file (declaration.json). Given this, the declaration screen opens")
-	resultsDir := fs.String("results", "", "directory of collected results. With -decl, the reconciliation screen opens")
-	scopeAssets := fs.String("scope-assets", "", "asset-scope policy (scope-assets.csv) — the SAME file pqcota-ingest was given, or snapshot fingerprints will not match the central history")
-	scopePath := fs.String("scope", "", "asset scope session file. With -layers, the screen raises one itself")
-	layerList := fs.String("layers", "", "asset scope layer CSVs, comma separated. They stack in the order given (org, environment, node group), and **the later layer wins** when rules clash. Given these, rules can be edited on the screen")
-	basePath := fs.String("base", "", "the policy CSV in force. Given this, only changed rules come up for review")
-	scopeOut := fs.String("scope-out", "asset-scope.csv", "file to write the finalized scope policy to")
-	judgments := fs.String("judgments", "", "file to append judgments to on finalize (JSONL, append-only)")
-	orgName := fs.String("org", "local", "organization the judgments are bound to")
-	planOut := fs.String("plan", "plan.json", "file to write the finalized plan to")
-	recoverStatus := fs.Bool("recover-status", false, "print what unfinished transactions left behind (files, expected and current hashes, prepared copies) and exit. Changes nothing")
-	diagnostics := fs.String("diagnostics", "", "with -recover-status: also write the report as JSON to this new file (0600)")
-	stateDir := fs.String("state-dir", "", "state directory holding transaction records and receipts (default: .pqcaton next to the session file). Commands that change the same files must use the same one")
+func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
 
-	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag는 첫 비플래그에서
-	// 파싱을 멈추므로, 그냥 두면 `pqcaton-ui session.json -addr ...`의 -addr이 표시 없이
-	// 무시되고 기본 주소로 뜬다. 다른 명령들과 같은 규칙이다.
-	pos, flags := splitArgs(os.Args[1:])
-	if err := fs.Parse(flags); err != nil {
-		os.Exit(2)
+// serveHTTP: 열린 포트로 화면을 낸다. 시험이 바꿔 끼워 처리기를 받아 간다.
+var serveHTTP = http.Serve
+
+// run: 시작부터 끝까지. 종료 코드를 돌려준다.
+func run(args []string, stdout, stderr io.Writer) int {
+	c, err := parseStart(args, stderr)
+	if errors.Is(err, errUsage) {
+		return 2
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, "❌", err)
+		return 1
 	}
 	// 복구 상태 보기는 화면을 열지 않는다. 서버가 떠 있어도 볼 수 있다(읽기만 한다).
-	if *recoverStatus {
-		dir := *stateDir
-		if dir == "" && len(pos) > 0 {
-			dir = store.DefaultDir(pos[0])
+	if c.recoverStatus {
+		dir := c.stateDir
+		if dir == "" && c.session != "" {
+			dir = c.stateDirOf()
 		}
 		if dir == "" {
-			fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> -recover-status [-state-dir <dir>] [-diagnostics <file>]")
-			os.Exit(2)
+			fmt.Fprintln(stderr, "usage: pqcaton-ui [<session.json> | -workspace <dir>] -recover-status [-state-dir <dir>] [-diagnostics <file>]")
+			return 2
 		}
-		if err := printRecoverStatus(os.Stdout, dir, *diagnostics); err != nil {
-			fmt.Fprintln(os.Stderr, "❌", err)
-			os.Exit(1)
+		if err := printRecoverStatus(stdout, dir, c.diagnostics); err != nil {
+			fmt.Fprintln(stderr, "❌", err)
+			return 1
 		}
-		return
+		return 0
 	}
 	// **주소부터 본다.** 파일을 읽기 전에 막아야 열리지 않을 화면 때문에 입력을 건드리지 않는다.
-	if err := checkBind(*addr); err != nil {
-		fmt.Fprintln(os.Stderr, "❌", err)
-		os.Exit(2)
+	if err := checkBind(c.addr); err != nil {
+		fmt.Fprintln(stderr, "❌", err)
+		return 2
 	}
-	if len(pos) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: pqcaton-ui <session.json> [-decl declaration.json] [-results <dir>] [-layers <layer.csv>,...] [-base <in-force.csv>] [-addr 127.0.0.1:8765] [-judgments <file>] [-org <name>] [-plan <file>]")
-		os.Exit(2)
+	s := c.server()
+	if c.workspace == "" {
+		if code := checkExplicit(&c, stderr); code != 0 {
+			return code
+		}
+		s = c.server()
+	} else {
+		// 작업 폴더 모드: 깨진 입력은 시작을 막지 않고 진단 전용 화면으로 연다. 데스크톱에서 띄운 사람은
+		// 표준오류를 볼 수 없다.
+		s.diag = s.diagInputs()
 	}
-	path := pos[0]
-	if _, err := review.Load(path); err != nil {
-		// **입력이 있으면 화면이 직접 연다.** 선언과 관측 결과가 곧 리뷰 큐의 입력이다 —
-		// 그것을 손에 들고도 명령을 한 번 돌려야 화면이 열리는 것은, 화면을 두는 이유와
-		// 어긋난다.
-		if *declPath == "" || *resultsDir == "" {
-			fmt.Fprintln(os.Stderr, "❌ cannot read the review session:", err)
-			fmt.Fprintln(os.Stderr, "   Give it the declaration and the results and the screen raises one itself: -decl declaration.json -results <results-dir>")
-			fmt.Fprintln(os.Stderr, "   To make one with a command: `pqcaton-decide open <declaration.json> -results <results-dir> > "+path+"`")
-			os.Exit(1)
+	if err := s.openState(c.stateDir); err != nil {
+		if errors.Is(err, store.ErrBusy) {
+			if err := openRunning(c.stateDirOf(), c.noBrowser, stderr); err != nil {
+				fmt.Fprintln(stderr, "❌", err)
+				return 1
+			}
+			return 0
+		}
+		fmt.Fprintln(stderr, "❌", err)
+		return 1
+	}
+	if len(s.diag) > 0 {
+		ref := newRef()
+		for _, p := range s.diag {
+			fmt.Fprintf(stderr, "error ref=%s cannot read the %s %s: %v\n", ref, p.role, p.path, p.err)
+		}
+		fmt.Fprintln(stderr, "   The screen opens for diagnostics only: saving is stopped until the files are fixed and the screen is restarted.")
+		s.diagRef = ref
+	}
+	// **포트를 먼저 연다.** 그 뒤에 주소를 적고 브라우저를 연다 — 브라우저가 먼저 뜨면 빈 페이지를 본다.
+	ln, addr, err := listen(c.addr)
+	if err != nil {
+		fmt.Fprintln(stderr, "❌", err)
+		return 1
+	}
+	if s.st != nil {
+		if err := recordAddr(s.st.Dir, addr); err != nil {
+			fmt.Fprintln(stderr, "warning: could not record the screen address:", err)
 		}
 	}
-	if *declPath != "" {
-		if _, err := decl.Load(*declPath); err != nil {
-			// 선언은 사람이 처음 쓰는 것이라 만들어 줄 명령이 없다 — 빈 파일에서
-			// 시작할 수 있다는 것을 알린다.
-			fmt.Fprintln(os.Stderr, "❌ cannot read the declaration file:", err)
-			fmt.Fprintln(os.Stderr, `   To start from an empty declaration: echo '{"scope":[],"nodes":[],"assets":[],"edges":[]}' > `+*declPath)
-			os.Exit(1)
-		}
+	url := "http://" + addr + "/"
+	where := "session " + c.session
+	if c.workspace != "" {
+		where = "workspace " + c.workspace
 	}
+	fmt.Fprintf(stderr, "screen: %s  (%s)\n", url, where)
+	if !c.noBrowser {
+		openBrowser(url, stderr)
+	}
+	if err := serveHTTP(ln, s.handler()); err != nil {
+		fmt.Fprintln(stderr, "❌", err)
+		return 1
+	}
+	return 0
+}
 
-	if *resultsDir != "" && *declPath == "" {
-		// **선언 없이는 대조할 것이 없다.** 이유 없이 빈 화면을 주면 사람이 무엇이 빠졌는지 모른다.
-		fmt.Fprintln(os.Stderr, "❌ -results needs -decl — reconciliation means matching against a declaration")
-		os.Exit(2)
+// checkExplicit: 명시 모드의 입력 검사. v0.22까지와 같다 — 터미널에서 띄우는 길이라 표준오류로 알리고 멈춘다.
+func checkExplicit(c *startConfig, stderr io.Writer) int {
+	if c.session == "" {
+		fmt.Fprintln(stderr, "usage: pqcaton-ui [-workspace <dir>] | <session.json> [-decl declaration.json] [-results <dir>] [-layers <layer.csv>,...] [-base <in-force.csv>] [-addr 127.0.0.1:8765] [-judgments <file>] [-org <name>] [-plan <file>]")
+		return 2
 	}
-	layers := splitPaths(*layerList)
-	if len(layers) > 0 && *scopePath == "" {
-		// **계층을 줬으면 세션은 화면이 만든다.** 사람이 먼저 명령을 돌려야 화면이
-		// 열리는 것은, 화면을 두는 이유와 어긋난다.
-		*scopePath = defaultScopeSession
-	}
-	if *scopePath != "" && len(layers) == 0 {
-		if _, err := scope.LoadSession(*scopePath); err != nil {
-			// 계층을 주지 않았으면 화면은 세션을 만들 입력이 없다 — 어디서 나는지 알린다.
-			fmt.Fprintln(os.Stderr, "❌ cannot read the scope session:", err)
-			fmt.Fprintln(os.Stderr, "   Give it the layer CSVs and the screen raises one itself: -layers corp.csv,prod.csv -base asset-scope.csv")
-			fmt.Fprintln(os.Stderr, "   To make one with a command: `pqcaton-scope open <layer.csv>... -base <in-force.csv> > "+*scopePath+"`")
-			os.Exit(1)
+	if _, err := review.Load(c.session); err != nil {
+		// **입력이 있으면 화면이 직접 연다.** 선언과 관측 결과가 곧 리뷰 큐의 입력이다.
+		if c.decl == "" || c.results == "" {
+			fmt.Fprintln(stderr, "❌ cannot read the review session:", err)
+			fmt.Fprintln(stderr, "   Give it the declaration and the results and the screen raises one itself: -decl declaration.json -results <results-dir>")
+			fmt.Fprintln(stderr, "   Or start with a workspace folder instead: pqcaton-ui -workspace <dir>")
+			return 1
 		}
 	}
-	if _, err := scope.LoadLayers(layers); err != nil {
-		fmt.Fprintln(os.Stderr, "❌ cannot read the layer CSVs:", err)
-		os.Exit(1)
+	if c.decl != "" {
+		if _, err := decl.Load(c.decl); err != nil {
+			fmt.Fprintln(stderr, "❌ cannot read the declaration file:", err)
+			fmt.Fprintln(stderr, "   A workspace folder lets the screen create an empty declaration: pqcaton-ui -workspace <dir>")
+			return 1
+		}
+	}
+	if c.results != "" && c.decl == "" {
+		// **선언 없이는 대조할 것이 없다.**
+		fmt.Fprintln(stderr, "❌ -results needs -decl — reconciliation means matching against a declaration")
+		return 2
+	}
+	if len(c.layers) > 0 && c.scope == "" {
+		// **계층을 줬으면 세션은 화면이 만든다.**
+		c.scope = defaultScopeSession
+	}
+	if c.scope != "" && len(c.layers) == 0 {
+		if _, err := scope.LoadSession(c.scope); err != nil {
+			fmt.Fprintln(stderr, "❌ cannot read the scope session:", err)
+			fmt.Fprintln(stderr, "   Give it the layer CSVs and the screen raises one itself: -layers corp.csv,prod.csv -base asset-scope.csv")
+			return 1
+		}
+	}
+	if _, err := scope.LoadLayers(c.layers); err != nil {
+		fmt.Fprintln(stderr, "❌ cannot read the layer CSVs:", err)
+		return 1
 	}
 	// 정책은 읽을 수 있는지만 본다. **보관하지 않는다** - 쓸 때마다 읽는다(assetPolicy).
-	if _, err := review.LoadAssetPolicy(*scopeAssets); err != nil {
-		fmt.Fprintln(os.Stderr, "❌", err)
-		os.Exit(2)
+	if _, err := review.LoadAssetPolicy(c.scopeAssets); err != nil {
+		fmt.Fprintln(stderr, "❌", err)
+		return 2
 	}
-	s := &server{path: path, decl: *declPath, results: *resultsDir, scope: *scopePath,
-		layers: layers, base: *basePath, scopeAssets: *scopeAssets,
-		judgments: *judgments, org: *orgName, planOut: *planOut, scopeOut: *scopeOut}
-	if err := s.openState(*stateDir); err != nil {
-		fmt.Fprintln(os.Stderr, "❌", err)
-		os.Exit(1)
-	}
-	h := s.handler()
-
-	fmt.Fprintf(os.Stderr, "screen: http://%s  (session %s", *addr, path)
-	if *declPath != "" {
-		fmt.Fprintf(os.Stderr, " · declaration %s", *declPath)
-	}
-	fmt.Fprintln(os.Stderr, ")")
-	if err := http.ListenAndServe(*addr, h); err != nil {
-		fmt.Fprintln(os.Stderr, "❌", err)
-		os.Exit(1)
-	}
+	return 0
 }
 
 // openState — 상태 디렉토리를 열고 이 서버가 유일한 작성자가 된다. 그다음 남은 준비 파일을 보고,
@@ -220,6 +242,10 @@ func (s *server) openState(dir string) error {
 		return nil
 	}
 	s.st = st
+	// 진단 전용이면 깨진 입력으로 세션을 세우지 않는다(화면이 까닭을 보인다).
+	if len(s.diag) > 0 {
+		return nil
+	}
 	if err := s.materialize(); err != nil {
 		st.Close()
 		s.st = nil
@@ -299,6 +325,11 @@ type server struct {
 	st *store.State
 	// recovering: 시작할 때 복구 필요가 남아 있었다. 다시 띄울 때까지 모든 화면이 503이다.
 	recovering bool
+	// workspace: 작업 폴더 모드면 그 폴더(아니면 빈 값). diag · diagRef: 작업 폴더 모드에서 시작할 때 읽지 못한
+	// 입력과 그 참조 번호. 있으면 진단 전용 모드다 — 모든 화면이 503이고 저장하지 않는다.
+	workspace string
+	diag      []diagProblem
+	diagRef   string
 	// storeOpts: 상태 디렉토리를 열 때의 선택 사항. 테스트가 실패 주입 훅을 단다.
 	storeOpts store.Options
 	// afterModel: 화면 모델을 만든 직후에 불린다(snapshot). 테스트가 그 틈에 파일을 바꾼다.
@@ -335,6 +366,7 @@ func (s *server) handler() http.Handler {
 	r.Use(rememberLang)
 	// 복구 상태면 정적 파일 말고는 처리기에 닿지 않는다.
 	r.Use(s.recoveryGate)
+	r.Use(s.diagGate)
 
 	// 라우터에 없는 주소와 방식도 새 껍데기의 오류 페이지로 그린다.
 	r.NotFound(notFound)
@@ -349,6 +381,7 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.RowPath, s.declRow)
 	r.Get(ui.RemovePath, s.declRemove)
 	r.Post("/decl/save", s.declSave)
+	r.Post(ui.DeclCreatePath, s.declCreate)
 	r.Get(ui.ScreenScope, s.scopeEdit)
 	r.Get(ui.ScopeRowPath, s.scopeRow)
 	r.Post("/scope/rules", s.scopeRules)
@@ -418,6 +451,8 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 	switch {
 	case s.recovering:
 		mode = ui.ModeRecovery
+	case len(s.diag) > 0:
+		mode = ui.ModeDiagnostic
 	case s.st == nil:
 		mode = ui.ModeViewOnly
 	}
@@ -480,6 +515,9 @@ func (s *server) reviewClassic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) review(w http.ResponseWriter, r *http.Request) {
+	if s.needsDecl(w, r) {
+		return
+	}
 	s.reviewScreen(w, r, ui.RenderReviewNext, true)
 }
 
@@ -870,6 +908,9 @@ func (s *server) surveyClassic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) survey(w http.ResponseWriter, r *http.Request) {
+	if s.needsDecl(w, r) {
+		return
+	}
 	s.surveyScreen(w, r, ui.RenderSurveyNext, true)
 }
 
@@ -928,6 +969,9 @@ func (s *server) inventoryClassic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) inventory(w http.ResponseWriter, r *http.Request) {
+	if s.needsDecl(w, r) {
+		return
+	}
 	s.inventoryScreen(w, r, ui.RenderInventoryNext, true)
 }
 
@@ -1050,6 +1094,12 @@ func (s *server) declClassic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) declEdit(w http.ResponseWriter, r *http.Request) {
+	// 작업 폴더에 선언이 아직 없으면 만들기를 낸다. GET은 아무것도 만들지 않는다.
+	if s.workspace != "" && !s.declReady() {
+		p := s.nextPage(r, ui.ScreenDecl, s.decl, ui.StepState{DeclMissing: true})
+		html(w, r, func(out io.Writer) error { return ui.RenderDeclCreate(out, ui.DeclCreateView{Page: p, Org: s.org}) })
+		return
+	}
 	s.declScreen(w, r, ui.RenderDeclNext, true)
 }
 
@@ -1062,11 +1112,8 @@ func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepStat
 	p.ClassicHref = ui.Classic(here)
 	p.Org = s.org
 	p.Results = s.results
-	p.Steps = ui.StepsFor(p.Lang, here, ui.Screens{
-		Decl: s.decl != "", Scope: s.scope != "", Survey: s.results != "",
-		Inventory: s.results != "",
-	}, st)
-	if s.results != "" {
+	p.Steps = ui.StepsFor(p.Lang, here, s.screens(), st)
+	if s.screens().Inventory {
 		p.InventoryHref = ui.ScreenInventory
 		p.InventoryText = ui.InventoryLabel(p.Lang)
 	}
@@ -1247,4 +1294,77 @@ func (s *server) fileName(role string) string {
 // missingInput: 이 화면에 필요한 파일을 주지 않았다(404). 역할만 보인다.
 func missingInput(w http.ResponseWriter, r *http.Request, role string) {
 	errorPage(w, r, http.StatusNotFound, ui.ErrInputMissing, nil, ui.FileRef{Role: ui.RoleLabel(ui.PickLang(r), role)})
+}
+
+// screens: 열리는 화면. 작업 폴더에 선언이 아직 없으면 대조 · 판정 · 조회는 닫는다(판정할 것이 없다).
+func (s *server) screens() ui.Screens {
+	declOK := s.workspace == "" || s.declReady()
+	return ui.Screens{
+		Decl: s.decl != "", Scope: s.scope != "",
+		Survey: s.results != "" && declOK, Inventory: s.results != "" && declOK,
+		NoReview: !declOK,
+	}
+}
+
+// needsDecl: 작업 폴더에 선언이 아직 없으면 그 화면 대신 「필요한 파일 없음」을 낸다.
+func (s *server) needsDecl(w http.ResponseWriter, r *http.Request) bool {
+	if s.workspace == "" || s.declReady() {
+		return false
+	}
+	missingInput(w, r, "declaration")
+	return true
+}
+
+// diagGate: 진단 전용 모드면 정적 파일 말고는 모두 503 진단 페이지다. 읽지 못한 파일의 역할과 이름, 참조 번호를 보인다.
+func (s *server) diagGate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(s.diag) == 0 || strings.HasPrefix(r.URL.Path, ui.StaticPath) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		l := ui.PickLang(r)
+		var files []ui.FileRef
+		for _, p := range s.diag {
+			files = append(files, file(l, p.role, p.path))
+		}
+		v := ui.NewRefused(s.page(r, "", ""), ui.RefusedDiagnostic, "/", files)
+		v.Ref = s.diagRef
+		writePage(w, http.StatusServiceUnavailable, func(out io.Writer) error { return ui.RenderRefused(out, v) })
+	})
+}
+
+// declCreate: 작업 폴더에 빈 선언을 만든다(POST). 이미 있으면 덮어쓰지 않고 409다. 만든 뒤 관측 결과가 있으면
+// 리뷰 세션도 같은 요청에서 세운다 — GET이 파일을 만들지 않게.
+func (s *server) declCreate(w http.ResponseWriter, r *http.Request) {
+	if s.decl == "" {
+		missingInput(w, r, "declaration")
+		return
+	}
+	if !s.writable(w, r, ui.ScreenDecl) {
+		return
+	}
+	org := strings.TrimSpace(r.PostForm.Get("org"))
+	if org == "" || len(org) > 100 || strings.ContainsAny(org, "\r\n\t/\\") {
+		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
+		return
+	}
+	b, err := decl.Encode(decl.Declaration{Org: org, Scope: []string{}, Nodes: []decl.Node{}, Assets: []decl.Asset{}, Edges: []decl.Edge{}})
+	if err != nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, err)
+		return
+	}
+	l := ui.PickLang(r)
+	if err := s.st.Create([]store.Change{{Path: s.decl, Content: b}}, s.waitTime()); err != nil {
+		if errors.Is(err, store.ErrExists) {
+			s.refuse(w, r, http.StatusConflict, ui.RefusedExists, ui.ScreenDecl, []ui.FileRef{file(l, "declaration", s.decl)})
+			return
+		}
+		s.fail(w, r, ui.ScreenDecl, err, file(l, "declaration", s.decl))
+		return
+	}
+	if err := s.materialize(); err != nil {
+		s.fail(w, r, ui.ScreenDecl, err, file(l, "session", s.path))
+		return
+	}
+	redirect(w, r, ui.ScreenDecl, []ui.Notice{ui.N(ui.NoticeDeclCreated)}, nil)
 }

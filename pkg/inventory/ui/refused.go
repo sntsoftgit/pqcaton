@@ -24,6 +24,10 @@ const (
 	RefusedUnsafe   = "unsafe-file"
 	RefusedMismatch = "state-mismatch"
 	RefusedDamaged  = "damaged"
+	// RefusedDiagnostic — 작업 폴더의 입력을 읽지 못해 진단 전용으로 열었다(503).
+	RefusedDiagnostic = "diagnostic"
+	// RefusedExists — 만들려는 파일이 이미 있다(409). 덮어쓰지 않는다.
+	RefusedExists = "exists"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
 	ErrNotFound     = "not-found"     // 404
@@ -41,6 +45,7 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedRecovery: {body: tRefusedRecovery}, RefusedViewOnly: {body: tRefusedViewOnly},
 	RefusedExpired: {body: tRefusedExpired}, RefusedConfirm: {body: tRefusedConfirmBad},
 	RefusedUnsafe: {body: tRefusedUnsafe}, RefusedMismatch: {body: tRefusedMismatch}, RefusedDamaged: {body: tRefusedDamaged},
+	RefusedDiagnostic: {tErrInputBrokenHead, tRefusedDiagnostic}, RefusedExists: {body: tRefusedExists},
 	ErrNotFound:     {tErrNotFoundHead, tErrNotFound},
 	ErrMethod:       {tErrMethodHead, tErrMethod},
 	ErrBadRequest:   {tErrBadRequestHead, tErrBadRequest},
