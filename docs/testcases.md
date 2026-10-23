@@ -132,7 +132,7 @@
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT`로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass`가 고른 관계의 OID를 `pg_attribute`에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN`이 있을 때만 |
 
-### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 상태 디렉토리 · 잠금 · 원자적 교체까지
+### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 상태 디렉토리 · 잠금 · 원자적 교체 · 트랜잭션 복구까지
 화면과 명령이 파일을 바꿀 때 지나가는 한 길입니다. 상용 지원은 Linux 로컬 파일시스템뿐입니다.
 
 | TC | Given → When | Then |
@@ -149,6 +149,13 @@
 | [IC-W10](../pkg/inventory/store/file_test.go) ✅ | 심볼릭 링크 · 하드 링크 둘 · 남의 소유 · group/other 쓰기 권한인 대상 | 쓰지 않고, 대상은 한 바이트도 바뀌지 않는다. 쓰기 권한이 열린 파일은 남이 이미 바꿨을 수 있다 |
 | [IC-W11](../pkg/inventory/store/file_test.go) ✅ | 준비 파일 쓰기 · fsync · rename · 디렉토리 fsync 앞에서 멈춤 | 대상은 옛 내용이거나 새 내용이다. 반쯤 쓴 내용은 보이지 않는다. 남은 준비 파일은 지우지 않는다(누가 만든 것인지는 기록이 정한다) |
 | [IC-W12](../pkg/inventory/store/file_test.go) ✅ | 준비 파일 자리에 파일이나 심볼릭 링크가 있음 | 만들지 않고 따라가지도 않는다. 있던 것은 그대로 남는다 |
+| [IC-W13](../pkg/inventory/store/txn_test.go) ✅ | 확정 한 번(계획 교체와 백업 · 세션 교체 · 원장 추가 · 영수증 생성) | 함께 끝난다. 끝나면 준비 파일도 트랜잭션 기록도 남지 않는다. 기록과 준비 파일은 0600이다 |
+| **[IC-W14](../pkg/inventory/store/txn_test.go) ✅** | 기록 쓰기 · 준비 파일 · PREPARED 전환 · 항목마다 · rename · 원장 절반 · 기록 삭제 앞에서 멈춘 뒤 다시 엶 | **확정 전이거나 확정 후다. 그 중간은 없다.** PREPARED 전에 멈추면 기록에 적힌 준비 파일만 걷고, 그 뒤면 끝까지 간다. 확정 전으로 돌아간 뒤에는 같은 확정을 다시 할 수 있다 |
+| [IC-W15](../pkg/inventory/store/txn_test.go) ✅ | 기록에 없는 준비 파일 | 지우지 않고 멈추며 그 파일을 이름으로 알린다. 누가 만든 것인지 가릴 수 없다. 복구는 기록에 열거된 것만 걷는다 |
+| **[IC-W16](../pkg/inventory/store/txn_test.go) ✅** | 원장에 추가분이 반만 쓰이고 멈춤 | **자르지 않고** 남은 바이트를 이어 쓴다. 원장은 한 번도 짧아지지 않고, 추가분은 정확히 한 번 들어간다. 상태 보기는 「partial」로 보인다 |
+| [IC-W17](../pkg/inventory/store/txn_test.go) ✅ | 반만 쓰인 원장의 넘친 바이트가 다름 · 기준 길이 앞부분이 바뀜 · 추가분 뒤에 남의 바이트 | 복구 필요로 멈춘다. 원장은 한 바이트도 바뀌지 않는다 |
+| **[IC-W18](../pkg/inventory/store/txn_test.go) ✅** | 확정 도중 대상이 밖에서 바뀜 | 덮어쓰지 않고 복구 필요로 멈추며, 뒤의 항목(원장, 영수증)도 적용하지 않는다. 상태 보기는 파일 · 기대 해시 · 지금 해시 · 준비 파일을 보이고, 진단 묶음을 0600으로 새로 내보낸다(파일 내용은 담지 않는다). 그동안 그 디렉토리의 다른 저장은 막힌다 |
+| [IC-W19](../pkg/inventory/store/txn_test.go) ✅ | 같은 원장에 동시에 쓰는 요청 여럿 | 차례로 들어간다. 줄이 섞이거나 빠지거나 두 번 들어가지 않는다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |

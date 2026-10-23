@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sync"
 )
 
 // DirName: 기본 상태 디렉토리 이름. 세션 파일이 있는 디렉토리 아래에 둔다.
@@ -68,6 +69,10 @@ type State struct {
 	warn    func(string)
 	faultFn func(point, path string) error
 	run     *os.File
+
+	// active: 이 프로세스에서 지금 진행 중인 트랜잭션. 복구가 남의 진행 중인 기록을 끝내지 않게 한다.
+	mu     sync.Mutex
+	active map[string]bool
 }
 
 // Options: Open의 선택 사항.

@@ -135,18 +135,16 @@ func (s *State) LockTargets(dirs []string, wait time.Duration) (func(), error) {
 }
 
 // openTargetLock: 대상 디렉토리의 잠금 파일을 열고 상태 ID를 맞춘다.
+//
+// 만들기와 검사는 프로세스 안에서 한 번에 하나씩 한다. createExclusive는 임시 파일을 링크로 붙인 뒤
+// 임시 이름을 지우므로, 그 사이에 다른 요청이 검사하면 링크가 둘로 보인다. 다른 프로세스는 실행
+// 잠금이 막으므로 여기서 겹치지 않는다.
 func (s *State) openTargetLock(dir string) (*os.File, error) {
 	p := filepath.Join(dir, TargetLockName)
-	if _, err := os.Lstat(p); errors.Is(err, fs.ErrNotExist) {
-		if err := createExclusive(p, []byte(lockPrefix+s.ID+"\n")); err != nil && !errors.Is(err, fs.ErrExist) {
-			return nil, fmt.Errorf("create %s: %w", p, err)
-		}
-	}
-	fi, err := os.Lstat(p)
+	s.mu.Lock()
+	fi, err := s.ensureTargetLock(p)
+	s.mu.Unlock()
 	if err != nil {
-		return nil, err
-	}
-	if err := s.checkPlain(p, fi); err != nil {
 		return nil, err
 	}
 	if fi.Mode().Perm()&^filePerm != 0 {
@@ -154,6 +152,13 @@ func (s *State) openTargetLock(dir string) (*os.File, error) {
 	}
 	f, err := os.OpenFile(p, os.O_RDWR|noFollow, 0)
 	if err != nil {
+		return nil, err
+	}
+	if same, err := sameFile(f, fi); err != nil || !same {
+		f.Close()
+		if err == nil {
+			err = fmt.Errorf("%s was replaced while it was being opened", p)
+		}
 		return nil, err
 	}
 	b := make([]byte, 128)
@@ -170,4 +175,30 @@ func (s *State) openTargetLock(dir string) (*os.File, error) {
 			ErrStateMismatch, dir, id, s.ID, s.Dir)
 	}
 	return f, nil
+}
+
+// ensureTargetLock: 잠금 파일이 없으면 만들고, 링크·소유자·권한을 본다.
+func (s *State) ensureTargetLock(p string) (fs.FileInfo, error) {
+	if _, err := os.Lstat(p); errors.Is(err, fs.ErrNotExist) {
+		if err := createExclusive(p, []byte(lockPrefix+s.ID+"\n")); err != nil && !errors.Is(err, fs.ErrExist) {
+			return nil, fmt.Errorf("create %s: %w", p, err)
+		}
+	}
+	fi, err := os.Lstat(p)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.checkPlain(p, fi); err != nil {
+		return nil, err
+	}
+	return fi, nil
+}
+
+// sameFile: 연 파일이 검사한 그 파일인가. 검사와 열기 사이에 바뀌어 끼워졌으면 아니다.
+func sameFile(f *os.File, checked fs.FileInfo) (bool, error) {
+	fi, err := f.Stat()
+	if err != nil {
+		return false, err
+	}
+	return os.SameFile(fi, checked), nil
 }
