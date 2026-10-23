@@ -77,15 +77,18 @@ type LedgerRange struct {
 
 // Receipt: 확정 영수증.
 type Receipt struct {
-	Format        int           `json:"format"`
-	Kind          string        `json:"kind"`
-	Org           string        `json:"org"`
-	SessionID     string        `json:"session_id"`
-	PayloadSHA256 string        `json:"payload_sha256"`
-	TxID          string        `json:"txid"`
-	Finished      time.Time     `json:"finished"`
-	Outputs       []ReceiptFile `json:"outputs"`
-	Ledger        []LedgerRange `json:"ledger"`
+	Format        int    `json:"format"`
+	Kind          string `json:"kind"`
+	Org           string `json:"org"`
+	SessionID     string `json:"session_id"`
+	PayloadSHA256 string `json:"payload_sha256"`
+	TxID          string `json:"txid"`
+	// Seq: 확정 순번. 같은 출력을 쓴 확정끼리의 앞뒤는 이것으로 가린다. 벽시각은 되돌아가거나 같은
+	// 값이 나올 수 있어 순서로 쓰지 않는다(Finished는 사람이 읽는 기록일 뿐이다).
+	Seq      int64         `json:"seq"`
+	Finished time.Time     `json:"finished"`
+	Outputs  []ReceiptFile `json:"outputs"`
+	Ledger   []LedgerRange `json:"ledger"`
 }
 
 // Identity: 영수증의 동일성.
@@ -99,14 +102,58 @@ type Outcome struct {
 	By *Receipt
 }
 
-// Finalize: 세션을 확정한다. Replace는 출력(계획·정책·세션), Append는 원장에 더할 판정이다.
-func (s *State) Finalize(id Identity, payloadSHA256 string, replace []Change, add []Addition, wait time.Duration) (Outcome, error) {
+// Check: 화면이 그려질 때 본 입력과 그때의 rev. 저장과 확정은 **잠금을 잡은 뒤** 이 rev를 다시
+// 계산해 견준다. 처리기가 따로 견주고 저장을 부르면 그 사이에 다른 저장이 끼어든다.
+//
+// 비어 있으면(Inputs도 Rev도 없음) 견주지 않는다. 화면 없이 파일을 바로 읽어 쓰는 명령의 길이다.
+type Check struct {
+	Inputs []Input
+	Rev    string
+}
+
+func (c Check) empty() bool { return len(c.Inputs) == 0 && c.Rev == "" }
+
+// verify: 잠금 안에서 부른다.
+func (c Check) verify() error {
+	if c.empty() {
+		return nil
+	}
+	if c.Rev == "" {
+		return fmt.Errorf("%w: the request carries no rev", ErrStale)
+	}
+	now, err := Rev(c.Inputs)
+	if err != nil {
+		return err
+	}
+	if now != c.Rev {
+		return fmt.Errorf("%w: the files changed after the screen was drawn", ErrStale)
+	}
+	return nil
+}
+
+// ErrStale: 화면이 본 것과 지금 파일이 다르다. 저장하지 않았다.
+var ErrStale = errors.New("the screen is out of date")
+
+// Parts: 확정이 쓸 것. build가 잠금 안에서 지금 파일을 읽어 만든다.
+type Parts struct {
+	Replace       []Change
+	Append        []Addition
+	PayloadSHA256 string
+}
+
+// FinalizeChecked: 세션을 확정한다. 순서는 잠금 → 남은 기록 복구 → 영수증 확인 → rev 확인 →
+// build → payload 확인 → 쓰기이고, 모두 한 잠금 안에서 일어난다.
+//
+// targets는 쓸 파일 전부(출력과 원장)다. 잠글 디렉토리를 build 전에 알아야 한다. build가 targets 밖의
+// 파일을 내면 쓰지 않는다. payloadSHA256은 확인 화면이 보여 준 내용의 해시다. 이미 영수증이 있으면
+// rev는 보지 않는다. 확정이 세션 파일을 다시 쓰므로 rev가 달라져 있는 것이 정상이다.
+func (s *State) FinalizeChecked(id Identity, targets []string, chk Check, payloadSHA256 string, wait time.Duration,
+	build func() (Parts, error)) (Outcome, error) {
 	if err := id.check(); err != nil {
 		return Outcome{}, err
 	}
-	tx := Tx{Kind: id.Kind, Org: id.Org, SessionID: id.SessionID, PayloadSHA256: payloadSHA256, Replace: replace, Append: add}
 	var out Outcome
-	err := s.withLocks(tx.dirs(), wait, func() error {
+	err := s.withLocks(dirsOf(targets), wait, func() error {
 		prev, err := s.readReceipt(id)
 		if err != nil {
 			return err
@@ -118,47 +165,77 @@ func (s *State) Finalize(id Identity, payloadSHA256 string, replace []Change, ad
 			out, err = s.verifyReceipt(*prev)
 			return err
 		}
-		rc, err := s.newReceipt(tx)
+		if err := chk.verify(); err != nil {
+			return err
+		}
+		parts, err := build()
 		if err != nil {
 			return err
 		}
-		b, err := json.MarshalIndent(rc, "", "  ")
-		if err != nil {
+		if parts.PayloadSHA256 != payloadSHA256 {
+			return fmt.Errorf("%w: the content to finalize is not what was confirmed", ErrStale)
+		}
+		tx := Tx{Kind: id.Kind, Org: id.Org, SessionID: id.SessionID, PayloadSHA256: payloadSHA256,
+			Replace: parts.Replace, Append: parts.Append}
+		if err := within(tx, targets); err != nil {
 			return err
 		}
-		p := s.receiptPath(id)
-		if err := mkdirPrivate(filepath.Dir(p)); err != nil {
-			return err
-		}
-		tx.Create = []Change{{Path: p, Content: append(b, '\n')}}
-		rec, err := s.plan(tx)
-		if err != nil {
-			return err
-		}
-		// 영수증의 txid는 기록의 txid와 같아야 한다. plan이 ID를 만들므로 영수증을 다시 쓴다.
-		rc.TxID = rec.TxID
-		if b, err = json.MarshalIndent(rc, "", "  "); err != nil {
-			return err
-		}
-		tx.Create[0].Content = append(b, '\n')
-		last := len(rec.Items) - 1
-		rec.Items[last].After = Sum(tx.Create[0].Content)
-		if err := s.run1(rec, tx); err != nil {
-			return err
-		}
-		out = Outcome{Status: OutcomeDone, Receipt: rc}
-		return nil
+		out, err = s.finalizeLocked(id, tx)
+		return err
 	})
 	return out, err
 }
 
-// Save: 확정 전 세션의 일반 저장. 확정된 세션이면 ErrSessionFinalized.
-func (s *State) Save(id Identity, replace []Change, wait time.Duration) error {
+// Finalize: rev 없이 확정한다. 화면 없이 파일을 바로 읽어 쓰는 명령의 길이다.
+func (s *State) Finalize(id Identity, payloadSHA256 string, replace []Change, add []Addition, wait time.Duration) (Outcome, error) {
+	var targets []string
+	for _, c := range replace {
+		targets = append(targets, c.Path)
+	}
+	for _, a := range add {
+		targets = append(targets, a.Path)
+	}
+	return s.FinalizeChecked(id, targets, Check{}, payloadSHA256, wait, func() (Parts, error) {
+		return Parts{Replace: replace, Append: add, PayloadSHA256: payloadSHA256}, nil
+	})
+}
+
+// finalizeLocked: 영수증을 마지막 항목으로 붙여 트랜잭션을 한다. 잠금 안에서 부른다.
+func (s *State) finalizeLocked(id Identity, tx Tx) (Outcome, error) {
+	rc, err := s.newReceipt(tx)
+	if err != nil {
+		return Outcome{}, err
+	}
+	p := s.receiptPath(id)
+	if err := mkdirPrivate(filepath.Dir(p)); err != nil {
+		return Outcome{}, err
+	}
+	tx.Create = []Change{{Path: p}}
+	rec, err := s.plan(tx)
+	if err != nil {
+		return Outcome{}, err
+	}
+	// 영수증의 txid는 기록의 txid와 같아야 한다. plan이 ID를 만들므로 영수증은 그 뒤에 쓴다.
+	rc.TxID = rec.TxID
+	b, err := json.MarshalIndent(rc, "", "  ")
+	if err != nil {
+		return Outcome{}, err
+	}
+	tx.Create[0].Content = append(b, '\n')
+	rec.Items[len(rec.Items)-1].After = Sum(tx.Create[0].Content)
+	if err := s.run1(rec, tx); err != nil {
+		return Outcome{}, err
+	}
+	return Outcome{Status: OutcomeDone, Receipt: rc}, nil
+}
+
+// SaveChecked: 확정 전 세션의 일반 저장. 잠금 → 남은 기록 복구 → 확정 여부 → rev 확인 → build →
+// 쓰기가 한 잠금 안에서 일어난다. 확정된 세션이면 ErrSessionFinalized, 화면이 오래됐으면 ErrStale.
+func (s *State) SaveChecked(id Identity, targets []string, chk Check, wait time.Duration, build func() ([]Change, error)) error {
 	if err := id.check(); err != nil {
 		return err
 	}
-	tx := Tx{Kind: id.Kind, Org: id.Org, SessionID: id.SessionID, Replace: replace}
-	return s.withLocks(tx.dirs(), wait, func() error {
+	return s.withLocks(dirsOf(targets), wait, func() error {
 		prev, err := s.readReceipt(id)
 		if err != nil {
 			return err
@@ -166,12 +243,72 @@ func (s *State) Save(id Identity, replace []Change, wait time.Duration) error {
 		if prev != nil {
 			return fmt.Errorf("%w (%s); open a new session to make changes", ErrSessionFinalized, id)
 		}
+		if err := chk.verify(); err != nil {
+			return err
+		}
+		replace, err := build()
+		if err != nil {
+			return err
+		}
+		tx := Tx{Kind: id.Kind, Org: id.Org, SessionID: id.SessionID, Replace: replace}
+		if err := within(tx, targets); err != nil {
+			return err
+		}
 		rec, err := s.plan(tx)
 		if err != nil {
 			return err
 		}
 		return s.run1(rec, tx)
 	})
+}
+
+// Save: rev 없이 저장한다. 화면 없이 파일을 바로 읽어 쓰는 명령의 길이다.
+func (s *State) Save(id Identity, replace []Change, wait time.Duration) error {
+	var targets []string
+	for _, c := range replace {
+		targets = append(targets, c.Path)
+	}
+	return s.SaveChecked(id, targets, Check{}, wait, func() ([]Change, error) { return replace, nil })
+}
+
+// within: 트랜잭션이 잠근 대상 밖을 쓰지 않는가.
+func within(tx Tx, targets []string) error {
+	ok := map[string]bool{}
+	for _, t := range targets {
+		abs, err := filepath.Abs(t)
+		if err != nil {
+			return err
+		}
+		ok[abs] = true
+	}
+	var paths []string
+	for _, c := range tx.Replace {
+		paths = append(paths, c.Path)
+	}
+	for _, a := range tx.Append {
+		paths = append(paths, a.Path)
+	}
+	if len(paths) == 0 {
+		return errors.New("store: nothing to write")
+	}
+	for _, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return err
+		}
+		if !ok[abs] {
+			return fmt.Errorf("store: %s was not named as a target before locking", abs)
+		}
+	}
+	return nil
+}
+
+func dirsOf(paths []string) []string {
+	var out []string
+	for _, p := range paths {
+		out = append(out, filepath.Dir(p))
+	}
+	return out
 }
 
 // Finalized: 이 세션의 영수증. 확정 전이면 nil.
@@ -186,6 +323,21 @@ func (s *State) Finalized(id Identity) (*Receipt, error) {
 func (s *State) newReceipt(tx Tx) (Receipt, error) {
 	rc := Receipt{Format: receiptFormat, Kind: tx.Kind, Org: tx.Org, SessionID: tx.SessionID,
 		PayloadSHA256: tx.PayloadSHA256, Finished: time.Now().UTC()}
+	// 순번은 잠금 안에서 지금까지의 최댓값 + 1이다. 같은 출력을 쓰는 확정은 같은 디렉토리 잠금을
+	// 지나므로 차례로 번호를 받는다. 출력이 겹치지 않는 확정끼리는 번호가 같을 수 있지만, 그때는
+	// 앞뒤를 물을 일이 없다.
+	all, err := s.receipts()
+	if err != nil {
+		return rc, err
+	}
+	for _, r := range all {
+		if r.Seq >= rc.Seq {
+			rc.Seq = r.Seq + 1
+		}
+	}
+	if rc.Seq == 0 {
+		rc.Seq = 1
+	}
 	for _, c := range tx.Replace {
 		abs, err := filepath.Abs(c.Path)
 		if err != nil {
@@ -258,11 +410,11 @@ func (s *State) laterWriter(rc Receipt, path, cur string) (*Receipt, error) {
 	var found *Receipt
 	for i := range all {
 		r := all[i]
-		if r.Identity() == rc.Identity() || r.Finished.Before(rc.Finished) {
+		if r.Identity() == rc.Identity() || r.Seq <= rc.Seq {
 			continue
 		}
 		for _, o := range r.Outputs {
-			if o.Path == path && o.SHA256 == cur && (found == nil || r.Finished.After(found.Finished)) {
+			if o.Path == path && o.SHA256 == cur && (found == nil || r.Seq > found.Seq) {
 				found = &all[i]
 			}
 		}
@@ -291,7 +443,7 @@ func (s *State) receipts() ([]Receipt, error) {
 		out = append(out, *r)
 		return nil
 	})
-	sort.Slice(out, func(i, j int) bool { return out[i].Finished.Before(out[j].Finished) })
+	sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
 	return out, err
 }
 

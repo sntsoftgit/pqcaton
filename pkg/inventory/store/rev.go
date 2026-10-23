@@ -86,9 +86,10 @@ func digest(inputs []Input) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		root := resolveDir(in.Path)
 		fmt.Fprintf(h, "dir %d\n", len(files))
 		for _, rel := range files {
-			if err := digestFile(h, filepath.Join(in.Path, rel), rel); err != nil {
+			if err := digestFile(h, filepath.Join(root, rel), rel); err != nil {
 				return "", err
 			}
 		}
@@ -106,12 +107,26 @@ func digestFile(h io.Writer, p, rel string) error {
 		return err
 	}
 	if fi.Mode()&fs.ModeSymlink != 0 {
+		// 링크는 가리키는 곳과 그 내용을 함께 넣는다. 가리키는 곳만 넣으면 대상 파일의 내용이 바뀌어도
+		// rev가 그대로라 오래된 화면의 저장이 지나간다.
 		target, err := os.Readlink(p)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(h, "link %q %q\n", rel, target)
-		return nil
+		st, err := os.Stat(p)
+		if errors.Is(err, fs.ErrNotExist) {
+			fmt.Fprintf(h, "dangling %q\n", rel)
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if !st.Mode().IsRegular() {
+			return fmt.Errorf("%w: %s links to something that is not a plain file; inputs follow links to files only", ErrUnsupported, p)
+		}
+	} else if !fi.Mode().IsRegular() {
+		return fmt.Errorf("%w: %s is not a plain file", ErrUnsupported, p)
 	}
 	f, err := os.Open(p)
 	if err != nil {
@@ -128,7 +143,12 @@ func digestFile(h io.Writer, p, rel string) error {
 }
 
 // listFiles: 디렉토리 아래의 보통 파일과 링크를 상대 경로로 정렬해 낸다. 디렉토리가 없으면 빈 목록이다.
+// 디렉토리 자체가 링크면 가리키는 디렉토리를 훑는다. 그 아래의 디렉토리 링크는 따라가지 않고
+// digestFile이 거부한다(돌고 도는 링크를 피한다).
 func listFiles(root string) ([]string, error) {
+	if real, err := filepath.EvalSymlinks(root); err == nil {
+		root = real
+	}
 	var out []string
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if errors.Is(err, fs.ErrNotExist) && p == root {
@@ -173,6 +193,18 @@ func observe(inputs []Input) (observation, error) {
 			return err
 		}
 		o = append(o, sig{fi: fi, ok: true, key: key})
+		if fi.Mode()&fs.ModeSymlink != 0 {
+			// 링크가 가리키는 파일도 지켜본다. 링크 자체는 그대로인 채 대상만 바뀔 수 있다.
+			st, err := os.Stat(p)
+			if errors.Is(err, fs.ErrNotExist) {
+				o = append(o, sig{key: key + " ->"})
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			o = append(o, sig{fi: st, ok: true, key: key + " ->"})
+		}
 		return nil
 	}
 	for _, in := range inputs {
@@ -187,8 +219,9 @@ func observe(inputs []Input) (observation, error) {
 			return nil, err
 		}
 		o = append(o, sig{key: in.Name + "\x00" + strings.Join(files, "\x00")})
+		root := resolveDir(in.Path)
 		for _, rel := range files {
-			if err := add(filepath.Join(in.Path, rel), in.Name+"/"+rel); err != nil {
+			if err := add(filepath.Join(root, rel), in.Name+"/"+rel); err != nil {
 				return nil, err
 			}
 		}
@@ -214,4 +247,12 @@ func (a observation) equal(b observation) bool {
 		}
 	}
 	return true
+}
+
+// resolveDir: 디렉토리 입력이 링크면 가리키는 곳. 없거나 풀 수 없으면 그대로다.
+func resolveDir(p string) string {
+	if real, err := filepath.EvalSymlinks(p); err == nil {
+		return real
+	}
+	return p
 }
