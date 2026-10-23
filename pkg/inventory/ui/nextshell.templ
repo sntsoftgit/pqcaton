@@ -17,8 +17,11 @@ templ nextShell(p Page) {
 			<title>{ p.Title } — pqcaton</title>
 			<link rel="stylesheet" href={ StaticPath + "app.css" }/>
 			<script src={ StaticPath + "htmx.min.js" } defer></script>
+			<script src={ StaticPath + "app.js" } defer></script>
 		</head>
 		<body class="wb">
+			// **처음 누르는 Tab이 여기 온다.** 위쪽 맥락 줄과 단계 카드를 건너뛰고 본문으로 간다.
+			<a class="skip" href="#main">{ tSkipToMain.In(p.Lang) }</a>
 			<header class="topbar">
 				<div class="brand">pqcaton <span>/ workbench</span></div>
 				<div class="context" title={ p.Results }>
@@ -48,26 +51,28 @@ templ nextShell(p Page) {
 						@stepCard(st)
 					}
 					if p.InventoryHref != "" {
-						<a class={ "inventory-tab", templ.KV("active", p.InventoryHref == ScreenInventory && p.Title == tTitleInventory.In(p.Lang)) } href={ templ.SafeURL(p.InventoryHref) }>{ p.InventoryText }</a>
+						<a class={ "inventory-tab", templ.KV("active", p.InventoryHref == ScreenInventory && p.Title == tTitleInventory.In(p.Lang)) } href={ templ.SafeURL(p.InventoryHref) } { ariaCurrent(p.InventoryHref == ScreenInventory && p.Title == tTitleInventory.In(p.Lang), "page")... }>{ p.InventoryText }</a>
 					}
 				</nav>
 			}
-			if p.Message != "" {
-				<p class="msg ok">{ p.Message }</p>
-			}
-			if len(p.Warnings) > 0 {
-				<div class="warn-list">
-					<ul>
-						for _, w := range p.Warnings {
-							<li>{ w }</li>
-						}
-					</ul>
-				</div>
-			}
-			if p.Problem != "" {
-				<div class="msg bad"><strong>{ tRefused.In(p.Lang) }</strong><pre>{ p.Problem }</pre></div>
-			}
-			{ children... }
+			<main id="main">
+				if p.Message != "" {
+					<p class="msg ok" role="status">{ p.Message }</p>
+				}
+				if len(p.Warnings) > 0 {
+					<div class="warn-list">
+						<ul>
+							for _, w := range p.Warnings {
+								<li>{ w }</li>
+							}
+						</ul>
+					</div>
+				}
+				if p.Problem != "" {
+					<div class="msg bad" role="alert"><strong>{ tRefused.In(p.Lang) }</strong><pre>{ p.Problem }</pre></div>
+				}
+				{ children... }
+			</main>
 			if p.ClassicHref != "" {
 				<footer class="classic-link">
 					<a href={ templ.SafeURL(p.ClassicHref) }>{ tClassicLink.In(p.Lang) }</a>
@@ -81,7 +86,7 @@ templ nextShell(p Page) {
 // 하지 않는다는 선은 옛 이동 링크와 같다(NavFor).
 templ stepCard(st Step) {
 	if st.Open {
-		<a class={ "step", templ.KV("active", st.Here) } href={ templ.SafeURL(st.Href) }>
+		<a class={ "step", templ.KV("active", st.Here) } href={ templ.SafeURL(st.Href) } { ariaCurrent(st.Here, "step")... }>
 			@stepBody(st)
 		</a>
 	} else {

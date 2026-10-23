@@ -655,6 +655,13 @@ var (
 	tClassicOpenNew = T{KO: "새 화면 열기", EN: "Open the new screen"}
 	tClassicLink    = T{KO: "옛 화면(v0.23.0에서 제거)", EN: "Old screen (removed in v0.23.0)"}
 
+	// 접근성: 건너뛰기 링크와 표 칸의 이름에 쓰는 행 이름.
+	tSkipToMain = T{KO: "본문으로 건너뛰기", EN: "Skip to main content"}
+	tRowNode    = T{KO: "노드", EN: "Node"}
+	tRowAsset   = T{KO: "자산", EN: "Asset"}
+	tRowEdge    = T{KO: "엣지", EN: "Edge"}
+	tRowRule    = T{KO: "규칙", EN: "Rule"}
+
 	tStepDeclOpen = T{
 		KO: "연결할 관측 이름 %d개",
 		EN: "%d observed names to link"}

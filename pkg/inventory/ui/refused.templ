@@ -4,7 +4,7 @@ package ui
 // 오류 원문과 전체 경로는 싣지 않는다. 무엇을 하면 되는지가 본문이다.
 templ refusedPage(v RefusedView) {
 	@nextShell(v.Page) {
-		<div class="msg bad">
+		<div class="msg bad" role="alert">
 			<strong>{ v.Head }</strong>
 			<p>{ v.Body }</p>
 		</div>

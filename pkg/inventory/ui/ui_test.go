@@ -510,7 +510,7 @@ func TestRuntimeIsPickedFromAList(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := b.String()
-	if !strings.Contains(body, `<select name="asset.0.0.runtime">`) {
+	if !strings.Contains(body, `<select name="asset.0.0.runtime"`) {
 		t.Errorf("런타임이 고르는 칸이 아니다:\n%s", body)
 	}
 	for _, want := range []string{`value="openssl"`, `value="jca"`, `value="bouncycastle"`} {

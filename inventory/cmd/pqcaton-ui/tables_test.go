@@ -45,7 +45,7 @@ func TestEveryTableScrollsInItsBox(t *testing.T) {
 		}
 	}
 	css := get(t, s, ui.StaticPath+"app.css").Body.String()
-	for _, want := range []string{"body.wb .table-wrap { overflow-x: auto;", "@media (max-width: 650px)"} {
+	for _, want := range []string{"body.wb .table-wrap { overflow-x: auto;", "body.wb fieldset { min-width: 0; }", "box-sizing: border-box", "@media (max-width: 650px)"} {
 		if !strings.Contains(css, want) {
 			t.Errorf("the stylesheet has no %q", want)
 		}

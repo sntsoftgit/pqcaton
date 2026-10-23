@@ -157,7 +157,7 @@ templ surveyBody(v SurveyView) {
 		} else {
 			<p class="hint">@templ.Raw(tNoDot.In(v.Page.Lang))</p>
 			@tip(v.Page.Lang, tNoDotHelp.In(v.Page.Lang))
-			<textarea readonly style="min-height:12rem">{ v.DOT }</textarea>
+			<textarea readonly style="min-height:12rem" aria-label="DOT">{ v.DOT }</textarea>
 		}
 	</fieldset>
 }

@@ -29,10 +29,11 @@ templ inventoryBody(v InventoryView) {
 								name="q"
 								value={ v.Filter.Q }
 								placeholder={ tSearchQ.In(v.Page.Lang) }
+								aria-label={ tSearchQ.In(v.Page.Lang) }
 							/>
 						</td>
 						<td>
-							<select name="state">
+							<select name="state" aria-label={ tSearchState.In(v.Page.Lang) }>
 								<option value="" selected?={ v.Filter.State == "" }>{ tSearchState.In(v.Page.Lang) } — { tSearchAll.In(v.Page.Lang) }</option>
 								for _, st := range []string{"CONFIRMED", "UNDECLARED", "UNOBSERVED"} {
 									<option value={ st } selected?={ v.Filter.State == st }>{ st }</option>

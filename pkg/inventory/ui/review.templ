@@ -66,7 +66,7 @@ templ reviewForm(v ReviewView) {
 								<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
 								<td>{ confCell(it, v.RulesetVersion) }</td>
 								@planCells(v.Page.Lang, it)
-								<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion }/></td>
+								<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion } aria-label={ itemLabel(tColException.In(v.Page.Lang), it.ID) }/></td>
 							</tr>
 							@hooksRow(v.Page.Lang, it, 8)
 						}
@@ -131,18 +131,18 @@ templ reviewForm(v ReviewView) {
 // planCells — 계획 축의 칸. 리뷰 항목과 자동통과 항목이 **같은 칸**을 쓴다. 두 벌로 만들면 한쪽만
 // 고쳐지는 날이 오고, 그날 한쪽 항목은 계획에 넣을 수 없는 칸을 든다.
 templ planCells(lang Lang, it review.Item) {
-	<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan } disabled?={ !plannable(it) }/></td>
+	<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan } disabled?={ !plannable(it) } aria-label={ itemLabel(tColInPlan.In(lang), it.ID) }/></td>
 	<td>
-		<select name={ "kind:" + it.ID }>
+		<select name={ "kind:" + it.ID } aria-label={ itemLabel(tColKind.In(lang), it.ID) }>
 			<option value="" selected?={ it.Kind == "" }>{ tKindAuto.In(lang) }</option>
 			for _, k := range remediationKinds {
 				<option value={ k } selected?={ it.Kind == k }>{ shortKind(k) }</option>
 			}
 		</select>
 	</td>
-	<td><input type="text" name={ "target:" + it.ID } value={ it.TargetAlgorithm } placeholder="ML-KEM (FIPS 203)"/></td>
+	<td><input type="text" name={ "target:" + it.ID } value={ it.TargetAlgorithm } placeholder="ML-KEM (FIPS 203)" aria-label={ itemLabel(tColTarget2.In(lang), it.ID) }/></td>
 	<td>
-		<select name={ "level:" + it.ID }>
+		<select name={ "level:" + it.ID } aria-label={ itemLabel(tColLevel.In(lang), it.ID) }>
 			<option value="" selected?={ it.Level == "" }>{ tKindAuto.In(lang) }</option>
 			for _, l := range deployLevels {
 				<option value={ l } selected?={ it.Level == l }>{ l }</option>

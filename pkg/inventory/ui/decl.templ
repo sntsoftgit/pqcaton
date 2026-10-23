@@ -19,7 +19,7 @@ templ declForm(v DeclView) {
 		<fieldset>
 			<legend>{ tDeclOrg.In(v.Page.Lang) }</legend>
 			@tip(v.Page.Lang, tDeclOrgHint.In(v.Page.Lang))
-			<input type="text" name="org" value={ v.Org } placeholder="local"/>
+			<input type="text" name="org" value={ v.Org } placeholder="local" aria-label={ tDeclOrg.In(v.Page.Lang) }/>
 		</fieldset>
 		<fieldset>
 			<legend>{ tDeclScope.In(v.Page.Lang) }</legend>
@@ -86,8 +86,8 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 				</thead>
 				<tbody role="rowgroup">
 					<tr role="row">
-						<td role="cell" data-label={ tColName.In(l) }><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ n.Name }/></td>
-						<td role="cell" data-label={ tColIP.In(l) }><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ n.IPText() }/></td>
+						<td role="cell" data-label={ tColName.In(l) }><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ n.Name } aria-label={ rowLabel(l, tRowNode, i+1, tColName.In(l)) }/></td>
+						<td role="cell" data-label={ tColIP.In(l) }><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ n.IPText() } aria-label={ rowLabel(l, tRowNode, i+1, tColIP.In(l)) }/></td>
 						<td role="cell" data-label={ tColObservedAs.In(l) }>
 							<input
 								type="text"
@@ -95,6 +95,7 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 								value={ n.ObservedAsText() }
 								list={ unmatchedListID }
 								placeholder={ tColObservedAsHolder.In(l) }
+								aria-label={ rowLabel(l, tRowNode, i+1, tColObservedAs.In(l)) }
 							/>
 						</td>
 						<td role="cell" data-label="">@removeButton(l, ".node", tRemoveNodeAsk.In(l))</td>
@@ -140,23 +141,23 @@ templ assetRow(l Lang, node, i int, runtime, component string) {
 	{{ list := seenListID(node) }}
 	<tr role="row">
 		<td role="cell" data-label={ tColRuntime.In(l) }>
-			<select name={ assetField(node, i, "runtime") }>
+			<select name={ assetField(node, i, "runtime") } aria-label={ assetLabel(l, node, i, tColRuntime.In(l)) }>
 				for _, rt := range runtimeOptions(runtime) {
 					<option value={ rt } selected?={ rt == runtime }>{ rt }</option>
 				}
 			</select>
 		</td>
-		<td role="cell" data-label={ tColComponent.In(l) }><input type="text" name={ assetField(node, i, "component") } value={ component } placeholder="libssl" list={ list }/></td>
+		<td role="cell" data-label={ tColComponent.In(l) }><input type="text" name={ assetField(node, i, "component") } value={ component } placeholder="libssl" list={ list } aria-label={ assetLabel(l, node, i, tColComponent.In(l)) }/></td>
 		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveAssetAsk.In(l))</td>
 	</tr>
 }
 
 templ edgeRow(l Lang, i int, src, dst, port, proto string) {
 	<tr role="row">
-		<td role="cell" data-label={ tColSrc.In(l) }><input type="text" name={ "edge.src." + strconv.Itoa(i) } value={ src }/></td>
-		<td role="cell" data-label={ tColDst.In(l) }><input type="text" name={ "edge.dst." + strconv.Itoa(i) } value={ dst }/></td>
-		<td role="cell" data-label={ tColPort.In(l) }><input type="text" name={ "edge.port." + strconv.Itoa(i) } value={ port }/></td>
-		<td role="cell" data-label={ tColProto.In(l) }><input type="text" name={ "edge.proto." + strconv.Itoa(i) } value={ proto } placeholder="TLS | SSH"/></td>
+		<td role="cell" data-label={ tColSrc.In(l) }><input type="text" name={ "edge.src." + strconv.Itoa(i) } value={ src } aria-label={ rowLabel(l, tRowEdge, i+1, tColSrc.In(l)) }/></td>
+		<td role="cell" data-label={ tColDst.In(l) }><input type="text" name={ "edge.dst." + strconv.Itoa(i) } value={ dst } aria-label={ rowLabel(l, tRowEdge, i+1, tColDst.In(l)) }/></td>
+		<td role="cell" data-label={ tColPort.In(l) }><input type="text" name={ "edge.port." + strconv.Itoa(i) } value={ port } aria-label={ rowLabel(l, tRowEdge, i+1, tColPort.In(l)) }/></td>
+		<td role="cell" data-label={ tColProto.In(l) }><input type="text" name={ "edge.proto." + strconv.Itoa(i) } value={ proto } placeholder="TLS | SSH" aria-label={ rowLabel(l, tRowEdge, i+1, tColProto.In(l)) }/></td>
 		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveEdgeAsk.In(l))</td>
 	</tr>
 }
@@ -171,6 +172,7 @@ templ removeButton(l Lang, target, ask string) {
 	<button
 		type="button"
 		class="rm"
+		data-focus="next"
 		hx-get={ RemovePath }
 		hx-target={ "closest " + target }
 		hx-swap="outerHTML"
@@ -194,6 +196,7 @@ templ addRow(l Lang, kind string, node, next int, oob bool) {
 			hx-get={ RowPath + "?kind=" + kind + "&node=" + strconv.Itoa(node) + "&i=" + strconv.Itoa(next) + "&" + LangParam + "=" + string(l) }
 			hx-target={ "#" + addTarget(kind, node) }
 			hx-swap="beforeend"
+			data-focus="new"
 		>{ addLabel(l, kind) }</button>
 	</div>
 }

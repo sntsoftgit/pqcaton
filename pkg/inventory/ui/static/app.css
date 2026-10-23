@@ -240,6 +240,14 @@ body.wb .inventory-tab.active { color: var(--navy); border-color: var(--blue);
    역할은 마크업에 적어 두었다(role): display를 바꾸면 브라우저가 표의 의미를 지우기 때문이다.
    새 껍데기에만 건다. 옛 화면(/classic)의 모양은 바꾸지 않는다. */
 body.wb .table-wrap { overflow-x: auto; max-width: 100%; }
+/* fieldset은 기본으로 안의 표 너비만큼 넓어진다(min-width: min-content). 그러면 스크롤 상자가 있어도
+   페이지가 옆으로 넘친다. */
+body.wb fieldset { min-width: 0; }
+/* 너비 100%인 칸이 안쪽 여백만큼 상자를 넘지 않게 한다. */
+body.wb input[type=text], body.wb textarea, body.wb select { box-sizing: border-box; max-width: 100%; }
+/* 버튼 줄은 접히고, 펼친 도움말 안의 긴 명령 이름은 줄을 바꾼다. 영어 문구가 더 길어 320px에서 넘쳤다. */
+body.wb .actions { flex-wrap: wrap; }
+body.wb .tip, body.wb .hint { min-width: 0; overflow-wrap: anywhere; }
 body.wb .table-wrap > table:not(.editable) th:first-child,
 body.wb .table-wrap > table:not(.editable) td:first-child {
   position: sticky; left: 0; z-index: 1; background: var(--surface); }
@@ -247,10 +255,15 @@ body.wb .table-wrap > table:not(.editable) td:first-child {
   body.wb table.editable thead { position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap; }
   body.wb table.editable, body.wb table.editable tbody,
-  body.wb table.editable tr, body.wb table.editable td { display: block; width: 100%; }
+  body.wb table.editable tr, body.wb table.editable td { display: block; width: 100%; box-sizing: border-box; }
   body.wb table.editable tr { border: 1px solid var(--line); border-radius: 8px;
     padding: .4rem .6rem; margin: .6rem 0; }
   body.wb table.editable td { border-top: 0; padding: .25rem 0; }
   body.wb table.editable td[data-label]:not([data-label=""])::before {
     content: attr(data-label); display: block; color: var(--muted); font-size: .8rem; margin-bottom: .15rem; }
 }
+
+/* 본문으로 건너뛰기: 평소에는 보이지 않고, Tab으로 닿으면 왼쪽 위에 나타난다. */
+body.wb .skip { position: absolute; left: -9999px; top: 0; }
+body.wb .skip:focus { left: 12px; top: 12px; z-index: 10; padding: .5rem .8rem;
+  background: var(--surface); color: var(--ink); border: 2px solid var(--blue); border-radius: 6px; }
