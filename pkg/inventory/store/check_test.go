@@ -195,3 +195,41 @@ func TestSupersededUsesSequence(t *testing.T) {
 		t.Fatalf("outcome = %+v, %v; want superseded by %s", out, err, sessB)
 	}
 }
+
+// IC-W38 — **처음 rev를 견준 뒤 입력이 바뀌면 쓰지 않는다.** 잠금을 지키지 않는 작성자(손 편집)가
+// build가 읽은 직후에 입력을 바꾸면, 첫 기록을 쓰기 직전의 재확인이 「화면이 오래됐다」로 멈춘다.
+// 저장과 확정이 같다. 밖에서 바꾼 내용은 그대로 남는다.
+func TestCheckIsRepeatedBeforeWriting(t *testing.T) {
+	const theirs = "edited by hand while saving\n"
+	for _, finalize := range []bool{false, true} {
+		w := newWorld(t)
+		s := w.open(t, nil)
+		chk := w.check(t)
+		sneak := func() {
+			if err := os.WriteFile(w.session, []byte(theirs), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		var err error
+		if finalize {
+			_, err = s.FinalizeChecked(sessA, []string{w.plan, w.session}, chk, "p", time.Second, func() (Parts, error) {
+				sneak()
+				return Parts{Replace: []Change{{Path: w.plan, Content: []byte(planV2)}}, PayloadSHA256: "p"}, nil
+			})
+		} else {
+			err = s.SaveChecked(sessA, []string{w.plan}, chk, time.Second, func() ([]Change, error) {
+				sneak()
+				return []Change{{Path: w.plan, Content: []byte(planV2)}}, nil
+			})
+		}
+		if !errors.Is(err, ErrStale) {
+			t.Fatalf("finalize=%v: err = %v, want ErrStale", finalize, err)
+		}
+		if read(t, w.plan) != planV1 || read(t, w.session) != theirs {
+			t.Errorf("finalize=%v: plan %q, session %q", finalize, read(t, w.plan), read(t, w.session))
+		}
+		if recs, _ := s.Records(); len(recs) != 0 {
+			t.Errorf("finalize=%v: a record was written", finalize)
+		}
+	}
+}

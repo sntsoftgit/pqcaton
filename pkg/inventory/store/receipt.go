@@ -180,7 +180,7 @@ func (s *State) FinalizeChecked(id Identity, targets []string, chk Check, payloa
 		if err := within(tx, targets); err != nil {
 			return err
 		}
-		out, err = s.finalizeLocked(id, tx)
+		out, err = s.finalizeLocked(id, tx, chk)
 		return err
 	})
 	return out, err
@@ -201,7 +201,7 @@ func (s *State) Finalize(id Identity, payloadSHA256 string, replace []Change, ad
 }
 
 // finalizeLocked: 영수증을 마지막 항목으로 붙여 트랜잭션을 한다. 잠금 안에서 부른다.
-func (s *State) finalizeLocked(id Identity, tx Tx) (Outcome, error) {
+func (s *State) finalizeLocked(id Identity, tx Tx, chk Check) (Outcome, error) {
 	rc, err := s.newReceipt(tx)
 	if err != nil {
 		return Outcome{}, err
@@ -213,6 +213,10 @@ func (s *State) finalizeLocked(id Identity, tx Tx) (Outcome, error) {
 	tx.Create = []Change{{Path: p}}
 	rec, err := s.plan(tx)
 	if err != nil {
+		return Outcome{}, err
+	}
+	// 첫 기록을 쓰기 직전에 한 번 더 견준다(recheck).
+	if err := chk.verify(); err != nil {
 		return Outcome{}, err
 	}
 	// 영수증의 txid는 기록의 txid와 같아야 한다. plan이 ID를 만들므로 영수증은 그 뒤에 쓴다.
@@ -258,9 +262,18 @@ func (s *State) SaveChecked(id Identity, targets []string, chk Check, wait time.
 		if err != nil {
 			return err
 		}
+		// 첫 기록을 쓰기 직전에 한 번 더 견준다(recheck).
+		if err := chk.verify(); err != nil {
+			return err
+		}
 		return s.run1(rec, tx)
 	})
 }
+
+// recheck: 처음 견준 뒤 build가 입력을 다시 읽는다. 잠금을 지키지 않는 작성자(손 편집)가 그 사이에
+// 입력을 바꾸면, build는 바뀐 내용 위에 옛 화면의 폼 값을 얹고 plan은 바뀐 파일을 「적용 전」으로
+// 적는다. 그래서 plan 뒤, 첫 기록을 쓰기 직전에 다시 견준다. 그 뒤에 바뀐 대상 파일은 plan이 적은
+// 적용 전 해시가 막는다(복구 필요).
 
 // Save: rev 없이 저장한다. 화면 없이 파일을 바로 읽어 쓰는 명령의 길이다.
 func (s *State) Save(id Identity, replace []Change, wait time.Duration) error {

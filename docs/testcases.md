@@ -174,6 +174,7 @@
 | [IC-W35](../inventory/cmd/pqcaton-decide/main_test.go) ✅ | 화면이 떠 있는 동안 `close -o` | 기다리지 않고 거부되며 아무것도 쓰지 않는다 |
 | [IC-W36](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | `pqcaton-scope close`(`-judgments`만 · `-o`로 두 번) | 리뷰 확정과 같은 규칙이다. `open`이 세션 ID를 박는다 |
 | [IC-W37](../inventory/cmd/pqcaton-ui/recover_test.go) ✅ | `pqcaton-ui -recover-status [-diagnostics 파일]` | 고치지 않고 보여 준다. 남은 기록마다 전체 경로 · 기대 해시 · 지금 해시 · 준비 파일 상태 · 판정을 보이고, 진단 묶음을 0600으로 새로 낸다. 남은 기록이 없으면 없다고 알린다 |
+| **[IC-W38](../pkg/inventory/store/check_test.go) ✅** | 처음 rev를 견준 뒤, 저장 · 확정이 입력을 읽는 사이에 손 편집이 입력을 바꿈 | 첫 기록을 쓰기 직전에 다시 견주어 「화면이 오래됐다」로 멈춘다. 기록도 쓰지 않고, 밖에서 바꾼 내용은 그대로 남는다. 그 뒤에 바뀐 대상 파일은 기록의 적용 전 해시가 막는다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
@@ -306,6 +307,7 @@
 | [IC-U69](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅ | 오래된 화면에서 리뷰 · 스코프 확정 버튼 | 409이고 확인 페이지를 그리지 않는다(확인 토큰을 내주지 않는다) |
 | **[IC-U70](../inventory/cmd/pqcaton-ui/startup_test.go) ✅** | 복구 필요가 남은 채로 화면을 시작 | **일반 화면도 503이다.** 정적 파일만 나가고 화면 · 조각 · 저장은 모두 503 복구 페이지로 가며 `-recover-status`를 안내한다. 실행 잠금은 쥔 채라 명령도 막힌다 |
 | **[IC-U71](../inventory/cmd/pqcaton-ui/startup_test.go) ✅** | 입력에서 세운 세션의 준비 파일을 쓰는 단계에서 실패 | 서버가 뜨지 않는다. 그대로 열면 읽을 때마다 세션 ID가 새로 난다. 실행 잠금을 놓고 세션 파일도 준비 파일도 남기지 않는다 |
+| **[IC-U72](../inventory/cmd/pqcaton-ui/snapshot_test.go) ✅** | 화면 모델을 만든 직후에 다른 탭이나 손 편집이 세션을 바꿈 | **화면에 그린 내용과 양식의 rev는 같은 시점이다.** 모델을 만들기 전과 뒤의 rev가 같을 때만 짝짓고, 다르면 다시 만든다. 확인 페이지도 같아서, 미리 보는 사이에 바뀌면 폼의 rev와 맞지 않아 409다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |

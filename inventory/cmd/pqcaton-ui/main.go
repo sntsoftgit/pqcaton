@@ -305,6 +305,8 @@ type server struct {
 	recovering bool
 	// storeOpts: 상태 디렉토리를 열 때의 선택 사항. 테스트가 실패 주입 훅을 단다.
 	storeOpts store.Options
+	// afterModel: 화면 모델을 만든 직후에 불린다(snapshot). 테스트가 그 틈에 파일을 바꾼다.
+	afterModel func()
 	// wait: 대상 잠금을 기다리는 시간. 0이면 lockWait.
 	wait time.Duration
 	// key: 확인 토큰의 서명 키(confirm.go). clock: 지금 시각. 테스트가 바꾼다.
@@ -414,7 +416,7 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 		Lang: l, LangHref: ui.SwitchHref(r, l.Other()),
 		Message: r.URL.Query().Get("msg"), Problem: r.URL.Query().Get("problem"),
 		CSRF: csrfToken(r),
-		Rev:  s.revFor(here),
+		// rev는 여기서 재지 않는다. 화면 모델과 같은 시점에 잰 값(snapshot)을 처리기가 넣는다.
 	}
 }
 
@@ -456,7 +458,14 @@ func (s *server) reviewNext(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.ReviewView) error, next bool) {
-	sf, warn, err := s.reviewSession()
+	var (
+		sf   review.Session
+		warn []review.Warning
+	)
+	rev, err := s.snapshot(ui.ScreenReview, func() (err error) {
+		sf, warn, err = s.reviewSession()
+		return err
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -472,6 +481,7 @@ func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render fun
 		v.Page.Org = strings.TrimPrefix(sf.Scope, "org://")
 		v.Page.Warnings = ui.Warnings(ui.PickLang(r), warn)
 	}
+	v.Page.Rev = rev
 	html(w, func() error { return render(w, v) })
 }
 
@@ -614,7 +624,14 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 		http.Error(w, "no scope session was given — pass -scope or -layers", http.StatusNotFound)
 		return
 	}
-	sf, files, err := s.scopeSession()
+	var (
+		sf    scope.Session
+		files []scope.LayerFile
+	)
+	rev, err := s.snapshot(ui.ScreenScope, func() (err error) {
+		sf, files, err = s.scopeSession()
+		return err
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -629,6 +646,7 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 		v.Page = s.nextPage(r, ui.ScreenScopeNext, s.scope, ui.StepState{Scope: &got})
 		v.Page.Org = sf.Org
 	}
+	v.Page.Rev = rev
 	html(w, func() error { return render(w, v) })
 }
 
@@ -1036,14 +1054,24 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		http.Error(w, "no declaration file was given — pass -decl", http.StatusNotFound)
 		return
 	}
-	d, err := decl.Load(s.decl)
+	var (
+		d         decl.Declaration
+		seen      map[string][]ui.DeclAsset
+		unmatched []string
+	)
+	rev, err := s.snapshot(ui.ScreenDecl, func() (err error) {
+		if d, err = decl.Load(s.decl); err != nil {
+			return err
+		}
+		seen, unmatched = s.observedAssets(d)
+		return nil
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	sub := sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)
 	v := ui.NewDeclView(d, s.page(r, ui.ScreenDecl, sub))
-	seen, unmatched := s.observedAssets(d)
 	v = v.WithObserved(seen, unmatched)
 	// **카드는 요약이 나온 뒤에 채운다** — 붙지 않은 이름을 세어야 선언 카드가 설 수 있다.
 	if next {
@@ -1053,6 +1081,7 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		v.Page = s.nextPage(r, ui.ScreenDeclNext, s.decl, ui.StepState{Decl: &got})
 		v.Page.Org = d.OrgOrDefault()
 	}
+	v.Page.Rev = rev
 	html(w, func() error { return render(w, v) })
 }
 

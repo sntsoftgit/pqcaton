@@ -113,19 +113,38 @@ func (s *server) inputsFor(where string) []store.Input {
 	return nil
 }
 
-// revFor: 화면에 실을 rev. 읽는 동안 계속 바뀌면 빈 값을 싣는다. 그 화면의 저장은 「오래됐다」로
-// 거부되고, 새로 고치면 다시 잰다.
-func (s *server) revFor(here string) string {
+// snapshot: 화면 모델을 만들고, **그 모델과 같은 시점의 rev**를 돌려준다. 만들기 전과 뒤에 rev를 재어
+// 같을 때만 짝짓는다. 다르면(그 사이 다른 탭이나 손 편집이 썼다) 다시 만든다. 모델을 만든 뒤에 rev만
+// 따로 재면, 옛 내용을 그린 화면이 새 내용의 rev를 싣고 나가 그 위에 옛 폼 값을 덮어쓴다.
+//
+// 세 번 해도 맞지 않으면 빈 rev를 돌려준다. 그 화면의 저장은 「화면이 오래됐다」로 거부되고, 새로
+// 고치면 다시 잰다. 양식이 없는 화면은 rev 없이 모델만 만든다.
+func (s *server) snapshot(here string, build func() error) (string, error) {
 	in := s.inputsFor(here)
 	if in == nil {
-		return ""
+		return "", build()
 	}
-	r, err := store.Rev(in)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "rev for %s: %v\n", here, err)
-		return ""
+	for i := 0; i < 3; i++ {
+		before, err := store.Rev(in)
+		if err != nil {
+			return "", err
+		}
+		if err := build(); err != nil {
+			return "", err
+		}
+		if s.afterModel != nil {
+			s.afterModel()
+		}
+		after, err := store.Rev(in)
+		if err != nil {
+			return "", err
+		}
+		if before == after {
+			return after, nil
+		}
 	}
-	return r
+	fmt.Fprintf(os.Stderr, "rev for %s: the files kept changing while the screen was drawn; its saves will be refused until it is reloaded\n", here)
+	return "", nil
 }
 
 // check: 저장 요청이 들고 온 rev와 그 주소가 덮는 입력.

@@ -85,11 +85,12 @@ func (s *server) confirmed(w http.ResponseWriter, r *http.Request, kind, back st
 	return payload, true
 }
 
-// confirmPage: 확인 페이지를 그린다. 지금 파일과 폼의 rev가 다르면 미리 보지 않고 409다.
+// confirmPage: 확인 페이지를 그린다. cur는 미리 보기를 계산한 것과 같은 시점의 rev다(snapshot). 폼의
+// rev와 다르면 미리 보지 않고 409다.
 func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, action, saveAction, back string,
-	id store.Identity, payload string, lines []string, files []ui.FileRef) {
+	id store.Identity, cur, payload string, lines []string, files []ui.FileRef) {
 	rev := r.PostForm.Get(ui.RevField)
-	if cur, err := store.Rev(s.inputsFor(action)); err != nil || cur != rev {
+	if cur == "" || cur != rev {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, files)
 		return
 	}
@@ -110,19 +111,26 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 	l := ui.PickLang(r)
 	withJudg := s.judgments != ""
-	sf, err := s.applyReview(r)
-	if err != nil {
-		redirect(w, r, "/review", "", ui.Refusal(l, err))
-		return
-	}
-	o, err := review.Outputs(sf, s.org, withJudg, 0)
+	var (
+		o       review.Output
+		payload string
+		id      store.Identity
+	)
+	// 미리 보기와 그 지문을 rev와 같은 시점에 만든다.
+	cur, err := s.snapshot("/finalize/confirm", func() error {
+		sf, err := s.applyReview(r)
+		if err != nil {
+			return err
+		}
+		if o, err = review.Outputs(sf, s.org, withJudg, 0); err != nil {
+			return err
+		}
+		payload, err = review.PayloadSHA256(sf, s.org, withJudg)
+		id = s.reviewID()
+		return err
+	})
 	if err != nil {
 		// 확정되지 않을 이유가 있으면 미리 보지 않고 화면에 그 이유를 보인다.
-		redirect(w, r, "/review", "", ui.Refusal(l, err))
-		return
-	}
-	payload, err := review.PayloadSHA256(sf, s.org, withJudg)
-	if err != nil {
 		redirect(w, r, "/review", "", ui.Refusal(l, err))
 		return
 	}
@@ -132,7 +140,7 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 		lines = append(lines, ui.LineJudgments(l, o.Judged))
 		files = append(files, file(l, "ledger", s.judgments))
 	}
-	s.confirmPage(w, r, kindReview, "/finalize", "/save", "/review", s.reviewID(), payload, lines, files)
+	s.confirmPage(w, r, kindReview, "/finalize", "/save", "/review", id, cur, payload, lines, files)
 }
 
 // scopeConfirm — 스코프 확정 전 확인. 아무것도 쓰지 않는다.
@@ -146,17 +154,23 @@ func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 	l := ui.PickLang(r)
 	withJudg := s.judgments != ""
-	sf, err := s.applyScope(r)
-	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(l, err))
-		return
-	}
-	o, err := scope.Outputs(sf, s.org, withJudg, 0)
-	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(l, err))
-		return
-	}
-	payload, err := scope.PayloadSHA256(sf, s.org, withJudg)
+	var (
+		o       scope.Output
+		payload string
+		id      store.Identity
+	)
+	cur, err := s.snapshot("/scope/finalize/confirm", func() error {
+		sf, err := s.applyScope(r)
+		if err != nil {
+			return err
+		}
+		if o, err = scope.Outputs(sf, s.org, withJudg, 0); err != nil {
+			return err
+		}
+		payload, err = scope.PayloadSHA256(sf, s.org, withJudg)
+		id = s.scopeID()
+		return err
+	})
 	if err != nil {
 		redirect(w, r, "/scope", "", ui.Refusal(l, err))
 		return
@@ -167,5 +181,5 @@ func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 		lines = append(lines, ui.LineJudgments(l, o.Judged))
 		files = append(files, file(l, "ledger", s.judgments))
 	}
-	s.confirmPage(w, r, kindScope, "/scope/finalize", "/scope/save", "/scope", s.scopeID(), payload, lines, files)
+	s.confirmPage(w, r, kindScope, "/scope/finalize", "/scope/save", "/scope", id, cur, payload, lines, files)
 }

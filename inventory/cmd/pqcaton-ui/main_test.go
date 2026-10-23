@@ -59,6 +59,19 @@ func newServer(t *testing.T) (*server, string) {
 	return s, dir
 }
 
+// revFor: 지금 파일로 잰 그 화면(또는 저장 주소)의 rev. 테스트가 화면이 실을 값을 미리 안다.
+func (s *server) revFor(here string) string {
+	in := s.inputsFor(here)
+	if in == nil {
+		return ""
+	}
+	r, err := store.Rev(in)
+	if err != nil {
+		return ""
+	}
+	return r
+}
+
 // openStore: 화면 옆의 상태 디렉토리를 열고 실행 잠금을 잡는다. 서버가 시작할 때 하는 것과 같다.
 func openStore(t *testing.T, dir string) *store.State {
 	t.Helper()
