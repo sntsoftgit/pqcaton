@@ -88,22 +88,39 @@ func FromResults(resultsDir string, d decl.Declaration, orgName string) (*Built,
 // FromResultsWith — 자산 스코프 정책을 걸어 세운다. 상류 적재와 같은 정책을 걸어야 스냅샷 지문이
 // 상류와 같아 되짚기가 된다(`report.BuildWith`).
 func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, policy *scope.AssetPolicy) (*Built, error) {
-	// **선언에 조직이 적혀 있다.** 따로 주지 않았으면 선언의 것을 쓴다.
+	if _, err := orgFor(d, orgName); err != nil {
+		return nil, err
+	}
+	r, err := report.BuildWith(resultsDir, d, policy)
+	if err != nil {
+		return nil, err
+	}
+	return FromReport(r, d, orgName)
+}
+
+// orgFor — 세션의 조직. **선언에 조직이 적혀 있다.** 따로 주지 않았으면 선언의 것을 쓰고, 둘이
+// 다르면 세우지 않는다.
+func orgFor(d decl.Declaration, orgName string) (string, error) {
 	if orgName == "" || orgName == decl.DefaultOrg {
 		orgName = d.OrgOrDefault()
 	}
 	if d.Org != "" && d.Org != orgName {
-		return nil, fmt.Errorf("the declaration belongs to organization %q but reconciliation was asked for %q", d.Org, orgName)
+		return "", fmt.Errorf("the declaration belongs to organization %q but reconciliation was asked for %q", d.Org, orgName)
+	}
+	return orgName, nil
+}
+
+// FromReport — 이미 만든 대조 결과로 세운다. 화면은 요청 하나에서 대조를 한 번만 하고, 대조 화면 ·
+// 단계 카드 · 리뷰 큐가 그 결과를 함께 쓴다. r은 d와 같은 선언 · 같은 정책으로 만든 것이어야 한다.
+func FromReport(r *report.Result, d decl.Declaration, orgName string) (*Built, error) {
+	orgName, err := orgFor(d, orgName)
+	if err != nil {
+		return nil, err
 	}
 	out := &Built{Org: orgName}
 	// **앞뒤가 안 맞으면 알린다.** 노드↔IP가 틀리면 CONFIRMED여야 할 것이 UNDECLARED로 올라온다.
 	if p := decl.Check(d); len(p) > 0 {
 		out.Warnings = append(out.Warnings, Warning{Code: WarnDeclProblems, Count: len(p)})
-	}
-
-	r, err := report.BuildWith(resultsDir, d, policy)
-	if err != nil {
-		return nil, err
 	}
 	for _, sk := range r.Skipped {
 		out.Warnings = append(out.Warnings, Warning{Code: WarnUnreadableResult, Detail: sk})

@@ -660,7 +660,13 @@ var (
 		EN: "%d observed names to link"}
 	tStepDeclDone = T{KO: "연결할 이름 없음", EN: "nothing left to link"}
 	tStepClosed   = T{KO: "입력 파일을 주지 않았습니다", EN: "no input was given"}
-	tStepUnknown  = T{KO: "아직 세지 않습니다", EN: "not counted yet"}
+	tStepUnknown  = T{KO: "확인할 수 없음", EN: "Unavailable"}
+
+	// 확정 상태. 영수증과 지금 파일을 견준 결과다(store.VerifyFinalized).
+	tFinalNone       = T{KO: "미확정", EN: "Not finalized"}
+	tFinalDone       = T{KO: "확정됨", EN: "Finalized"}
+	tFinalSuperseded = T{KO: "대체됨", EN: "Superseded"}
+	tFinalRecovery   = T{KO: "복구 필요", EN: "Recovery required"}
 )
 
 // ── 스코프 요약 (`/scope-next`) ─────────────────────────────────────────────

@@ -87,6 +87,11 @@ func (s *State) LockTargets(dirs []string, wait time.Duration) (func(), error) {
 	if s.run == nil {
 		return nil, errors.New("store: LockTargets before AcquireRun")
 	}
+	return s.lockInOrder(dirs, wait, s.openTargetLock)
+}
+
+// lockInOrder: 디렉토리들을 경로 순서로 잠근다. open이 nil 파일을 돌려주면 그 디렉토리는 건너뛴다.
+func (s *State) lockInOrder(dirs []string, wait time.Duration, open func(dir string) (*os.File, error)) (func(), error) {
 	uniq := map[string]bool{}
 	for _, d := range dirs {
 		abs, err := filepath.Abs(d)
@@ -109,10 +114,13 @@ func (s *State) LockTargets(dirs []string, wait time.Duration) (func(), error) {
 	}
 	deadline := time.Now().Add(wait)
 	for _, d := range order {
-		f, err := s.openTargetLock(d)
+		f, err := open(d)
 		if err != nil {
 			release()
 			return nil, err
+		}
+		if f == nil {
+			continue
 		}
 		for {
 			err = tryLock(f)
@@ -161,18 +169,61 @@ func (s *State) openTargetLock(dir string) (*os.File, error) {
 		}
 		return nil, err
 	}
+	if err := s.checkLockOwner(f, p, dir); err != nil {
+		f.Close()
+		return nil, err
+	}
+	return f, nil
+}
+
+// checkLockOwner: 잠금 파일에 적힌 상태 ID가 이 상태 디렉토리인가.
+func (s *State) checkLockOwner(f *os.File, p, dir string) error {
 	b := make([]byte, 128)
 	n, _ := f.ReadAt(b, 0)
 	got := strings.TrimSpace(string(b[:n]))
 	id := strings.TrimPrefix(got, lockPrefix)
 	if got == id || !idPattern.MatchString(id) {
-		f.Close()
-		return nil, fmt.Errorf("%s is damaged; it should name a pqcaton state directory", p)
+		return fmt.Errorf("%s is damaged; it should name a pqcaton state directory", p)
 	}
 	if id != s.ID {
-		f.Close()
-		return nil, fmt.Errorf("%w: %s is used with state %s, this command uses state %s (%s); run it with the -state-dir the screen uses",
+		return fmt.Errorf("%w: %s is used with state %s, this command uses state %s (%s); run it with the -state-dir the screen uses",
 			ErrStateMismatch, dir, id, s.ID, s.Dir)
+	}
+	return nil
+}
+
+// openExistingLock: **읽기용.** 대상 디렉토리에 잠금 파일이 있을 때만 연다. 없으면 nil이다 — 그
+// 디렉토리를 이 도구가 쓴 적이 없다는 뜻이라 견줄 확정도 없다. 만들지 않는다(읽기가 남의 디렉토리에
+// 파일을 남기면 안 된다). 링크 · 소유자 · 권한 · 상태 ID는 쓰기와 같이 본다.
+func (s *State) openExistingLock(dir string) (*os.File, error) {
+	p := filepath.Join(dir, TargetLockName)
+	fi, err := os.Lstat(p)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := s.checkPlain(p, fi); err != nil {
+		return nil, err
+	}
+	if fi.Mode().Perm()&^filePerm != 0 {
+		return nil, fmt.Errorf("%w: %s is open to other users (%#o); run: chmod 600 %s", ErrUnsafeFile, p, fi.Mode().Perm(), p)
+	}
+	f, err := os.OpenFile(p, os.O_RDONLY|noFollow, 0)
+	if err != nil {
+		return nil, err
+	}
+	if same, err := sameFile(f, fi); err != nil || !same {
+		f.Close()
+		if err == nil {
+			err = fmt.Errorf("%s was replaced while it was being opened", p)
+		}
+		return nil, err
+	}
+	if err := s.checkLockOwner(f, p, dir); err != nil {
+		f.Close()
+		return nil, err
 	}
 	return f, nil
 }

@@ -175,6 +175,10 @@
 | [IC-W36](../inventory/cmd/pqcaton-scope/main_test.go) ✅ | `pqcaton-scope close`(`-judgments`만 · `-o`로 두 번) | 리뷰 확정과 같은 규칙이다. `open`이 세션 ID를 박는다 |
 | [IC-W37](../inventory/cmd/pqcaton-ui/recover_test.go) ✅ | `pqcaton-ui -recover-status [-diagnostics 파일]` | 고치지 않고 보여 준다. 남은 기록마다 전체 경로 · 기대 해시 · 지금 해시 · 준비 파일 상태 · 판정을 보이고, 진단 묶음을 0600으로 새로 낸다. 남은 기록이 없으면 없다고 알린다 |
 | **[IC-W38](../pkg/inventory/store/check_test.go) ✅** | 처음 rev를 견준 뒤, 저장 · 확정이 입력을 읽는 사이에 손 편집이 입력을 바꿈 | 첫 기록을 쓰기 직전에 다시 견주어 「화면이 오래됐다」로 멈춘다. 기록도 쓰지 않고, 밖에서 바꾼 내용은 그대로 남는다. 그 뒤에 바뀐 대상 파일은 기록의 적용 전 해시가 막는다 |
+| **[IC-W39](../pkg/inventory/store/verify_test.go) ✅** | 확정 전 · 확정 뒤 · 계획을 손으로 고침 · 원장 구간을 잘라 냄 | **확정 상태는 영수증이 있는지가 아니라 출력 해시와 원장 구간으로 판정한다**(`VerifyFinalized`). 미확정 · 확정됨 · 복구 필요 · 복구 필요다. 판정은 아무 파일도 바꾸지 않고 기록도 남기지 않는다 |
+| [IC-W40](../pkg/inventory/store/verify_test.go) ✅ | 출력 디렉토리에 잠금 파일이 없음 | 만들지 않고 잠그지 않은 채 판정한다. 읽기가 남의 디렉토리에 파일을 남기면 안 된다 |
+| **[IC-W41](../pkg/inventory/store/verify_test.go) ✅** | 다른 요청이 대상 잠금을 쥠 · 끝나지 않은 기록이 그 디렉토리를 건드림 | 기다리다 `ErrTargetBusy` · `ErrInProgress`다. 어느 쪽도 「복구 필요」로 단정하지 않는다 |
+| **[IC-W42](../pkg/inventory/store/verify_test.go) ✅** | 뒤 세션이 같은 계획을 다시 확정 · 뒤 영수증의 순번을 앞보다 작게 고침 | 앞 세션은 대체됨, 뒤 세션은 확정됨이다. 순번이 설명되지 않으면 앞 세션은 복구 필요다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
@@ -325,6 +329,10 @@ v0.21의 `-next` 주소는 북마크가 죽지 않게 301로 넘긴다.
 | **[IC-U79](../inventory/cmd/pqcaton-ui/returnto_test.go) ✅** | 두 판의 선언 · 스코프 · 판정 양식 | CSRF · rev · `return_to`를 싣는다. `return_to`는 그 양식을 그린 화면의 주소다 |
 | **[IC-U80](../inventory/cmd/pqcaton-ui/returnto_test.go) ✅** | 각 판에서 저장 · 확정 · 오래된 확인 | 저장한 판으로 돌아온다. 확인 페이지가 `return_to`를 다시 실어 확정 뒤에도 같은 판으로 오고, 확인 페이지와 거절 페이지의 「돌아가기」도 그 판을 가리킨다 |
 | **[IC-U81](../inventory/cmd/pqcaton-ui/returnto_test.go) ✅** | `return_to`에 바깥 주소 · 스킴 없는 바깥 주소 · 질의나 fragment가 붙은 주소 · 다른 화면의 주소 | 버리고 그 화면의 새 판으로 보낸다. 숨은 필드는 사람이 고칠 수 있어서, 받은 값을 그대로 따르면 열린 리다이렉트가 된다 |
+| **[IC-U82](../inventory/cmd/pqcaton-ui/cards_test.go) ✅** | 화면 다섯을 차례로 연다 | **단계 카드 넷이 모두 채워지고 어느 화면에서 보든 같다.** 요청 하나가 입력을 한 번 읽어 본문과 카드가 함께 쓴다. 스코프와 판정 카드에는 확정 상태(미확정)가 붙는다 |
+| **[IC-U83](../inventory/cmd/pqcaton-ui/cards_test.go) ✅** | 확정 전 · 확정 뒤 · 다른 요청이 잠금을 쥠 · 계획을 손으로 고침 | 판정 카드가 미확정 · 확정됨 · 확인할 수 없음 · 복구 필요다. 잠금 대기를 넘어도 화면은 선다 |
+| [IC-U84](../inventory/cmd/pqcaton-ui/cards_test.go) ✅ | 판정 화면을 여는데 스코프 세션이 깨짐 | 스코프 카드만 「확인할 수 없음」이고 화면과 다른 카드는 그대로다 |
+| **[IC-U85](../inventory/cmd/pqcaton-ui/cards_test.go) ✅** | 모델을 만든 직후에 카드만 읽는 파일(원장)이 바뀜 | 모델을 다시 만든다. 양식의 rev는 그 화면 입력만 덮어 지금 파일의 rev와 같다. 옛 화면은 카드가 없어 그 파일을 재지 않는다 |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |

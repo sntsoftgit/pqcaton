@@ -101,5 +101,8 @@ templ stepBody(st Step) {
 		<span class="step-num">{ st.Num }</span>
 		<span class="step-title">{ st.Title }</span>
 		<span class="step-state">{ st.State }</span>
+		if st.Final != "" {
+			<span class="step-final">{ st.Final }</span>
+		}
 	</span>
 }

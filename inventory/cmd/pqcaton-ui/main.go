@@ -470,24 +470,21 @@ func (s *server) review(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) reviewScreen(w http.ResponseWriter, r *http.Request, render func(io.Writer, ui.ReviewView) error, next bool) {
-	var (
-		sf   review.Session
-		warn []review.Warning
-	)
-	rev, err := s.snapshot(ui.ScreenReview, func() (err error) {
-		sf, warn, err = s.reviewSession()
-		return err
+	var wd *world
+	rev, err := s.snapshotScreen(ui.ScreenReview, next, func() error {
+		wd = s.load(next)
+		return wd.reviewErr
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	sf, warn := wd.review, wd.reviewWarn
 	page := s.page(r, ui.Classic(ui.ScreenReview), sub(sf.Scope, ui.LabelSession(ui.PickLang(r))+" "+s.path))
 	page.Warnings = ui.Warnings(ui.PickLang(r), warn)
 	v := ui.NewReviewView(sf, page)
 	if next {
-		got := v.Summary()
-		v.Page = s.nextPage(r, ui.ScreenReview, s.path, ui.StepState{Review: &got})
+		v.Page = s.nextPage(r, ui.ScreenReview, s.path, s.steps(wd))
 		// 세션의 스코프는 `org://이름`이다. 위쪽 맥락 줄에는 다른 화면과 같은 모양으로
 		// 조직 이름만 적는다 — 한 껍데기에서 같은 자리가 화면마다 다르면 다른 값으로 읽힌다.
 		v.Page.Org = strings.TrimPrefix(sf.Scope, "org://")
@@ -638,26 +635,23 @@ func (s *server) scopeScreen(w http.ResponseWriter, r *http.Request, render func
 		http.Error(w, "no scope session was given — pass -scope or -layers", http.StatusNotFound)
 		return
 	}
-	var (
-		sf    scope.Session
-		files []scope.LayerFile
-	)
-	rev, err := s.snapshot(ui.ScreenScope, func() (err error) {
-		sf, files, err = s.scopeSession()
-		return err
+	var wd *world
+	rev, err := s.snapshotScreen(ui.ScreenScope, next, func() error {
+		wd = s.load(next)
+		return wd.scopeErr
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	sf, files := wd.scope, wd.scopeFiles
 	page := s.page(r, ui.Classic(ui.ScreenScope), sub(ui.LabelOrg(ui.PickLang(r))+" "+sf.Org, s.scope))
 	v := ui.NewScopeView(sf, page)
 	if len(files) > 0 {
 		v = v.Editable(files)
 	}
 	if next {
-		got := v.Summary()
-		v.Page = s.nextPage(r, ui.ScreenScope, s.scope, ui.StepState{Scope: &got})
+		v.Page = s.nextPage(r, ui.ScreenScope, s.scope, s.steps(wd))
 		v.Page.Org = sf.Org
 	}
 	v.Page.Rev = rev
@@ -872,27 +866,20 @@ func (s *server) surveyScreen(w http.ResponseWriter, r *http.Request, render fun
 		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
 		return
 	}
-	d, err := decl.Load(s.decl)
-	if err != nil {
+	var wd *world
+	if _, err := s.snapshotScreen(ui.ScreenSurvey, next, func() error {
+		wd = s.load(next)
+		return wd.resErr
+	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	policy, err := s.assetPolicy()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	res, err := report.BuildWith(s.results, d, policy)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	res := wd.res
 	v := ui.NewSurveyView(res, s.page(r, ui.Classic(ui.ScreenSurvey),
 		sub(ui.LabelOrg(ui.PickLang(r))+" "+res.Org, ui.LabelResults(ui.PickLang(r))+" "+s.results)))
 	v.SVG = renderDOT(v.DOT)
 	if next {
-		got := v.Summary()
-		v.Page = s.nextPage(r, ui.ScreenSurvey, s.results, ui.StepState{Survey: &got})
+		v.Page = s.nextPage(r, ui.ScreenSurvey, s.results, s.steps(wd))
 		v.Page.Org = res.Org
 	}
 	html(w, func() error { return render(w, v) })
@@ -937,21 +924,16 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		http.Error(w, "no results were given — pass -results", http.StatusNotFound)
 		return
 	}
-	d, err := decl.Load(s.decl)
-	if err != nil {
+	var wd *world
+	if _, err := s.snapshotScreen(ui.ScreenInventory, next, func() error {
+		wd = s.load(next)
+		return wd.resErr
+	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	policy, err := s.assetPolicy()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	res, err := report.BuildWith(s.results, d, policy)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	res := wd.res
+	var err error
 	l := ui.PickLang(r)
 	page := s.page(r, ui.Classic(ui.ScreenInventory), sub(ui.LabelOrg(l)+" "+res.Org, ui.LabelResults(l)+" "+s.results))
 	v := ui.NewInventoryView(res, ui.FilterFrom(r.URL.Query()), page)
@@ -968,7 +950,7 @@ func (s *server) inventoryScreen(w http.ResponseWriter, r *http.Request, render 
 		// **조회는 절차 카드에 넣지 않는다** — 단계가 아니라 아무 때나 들어오는 자리다.
 		// 그래도 위쪽 카드는 그대로 세워 둔다. 어디서 들어왔든 절차가 어디까지 왔는지는
 		// 보여야 한다.
-		v.Page = s.nextPage(r, ui.ScreenInventory, s.results, ui.StepState{})
+		v.Page = s.nextPage(r, ui.ScreenInventory, s.results, s.steps(wd))
 		v.Page.Org = res.Org
 	}
 	html(w, func() error { return render(w, v) })
@@ -1082,38 +1064,31 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 		http.Error(w, "no declaration file was given — pass -decl", http.StatusNotFound)
 		return
 	}
-	var (
-		d         decl.Declaration
-		seen      map[string][]ui.DeclAsset
-		unmatched []string
-	)
-	rev, err := s.snapshot(ui.ScreenDecl, func() (err error) {
-		if d, err = decl.Load(s.decl); err != nil {
-			return err
-		}
-		seen, unmatched = s.observedAssets(d)
-		return nil
+	var wd *world
+	rev, err := s.snapshotScreen(ui.ScreenDecl, next, func() error {
+		wd = s.load(next)
+		return wd.declErr
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	d, seen, unmatched := wd.decl, wd.seen, wd.unmatched
 	sub := sub(ui.LabelOrg(ui.PickLang(r))+" "+d.OrgOrDefault(), s.decl)
 	v := ui.NewDeclView(d, s.page(r, ui.Classic(ui.ScreenDecl), sub))
 	v = v.WithObserved(seen, unmatched)
 	// **카드는 요약이 나온 뒤에 채운다** — 붙지 않은 이름을 세어야 선언 카드가 설 수 있다.
 	if next {
-		got := v.Summary()
 		// **부제에는 파일만 적는다.** 조직은 위쪽 맥락 줄에 이미 있어서, 그대로 두면
 		// 같은 값이 한 화면에 두 번 나온다.
-		v.Page = s.nextPage(r, ui.ScreenDecl, s.decl, ui.StepState{Decl: &got})
+		v.Page = s.nextPage(r, ui.ScreenDecl, s.decl, s.steps(wd))
 		v.Page.Org = d.OrgOrDefault()
 	}
 	v.Page.Rev = rev
 	html(w, func() error { return render(w, v) })
 }
 
-// observedAssets — 노드마다 **관측된** 자산. 컴포넌트 칸의 후보다.
+// observedFrom — 노드마다 **관측된** 자산. 컴포넌트 칸의 후보다. 대조 결과는 부르는 쪽이 이미 만든 것을 받는다.
 //
 // **관측 결과에 적힌 이름이 곧 맞는 이름이다.** 대조는 글자 그대로 같을 때만 맞는데, 관측 이름은
 // `.so` 뒤가 떼인 채로 온다 — 사람이 대조 화면을 보고 옮겨 적으면 거기서 틀린다.
@@ -1122,18 +1097,7 @@ func (s *server) declScreen(w http.ResponseWriter, r *http.Request, render func(
 // unmatched — 관측에는 있는데 어느 선언 노드에도 붙지 않은 노드 이름. 「관측 이름」 칸의
 // 후보다. 붙지 않았다는 것은 그 노드의 자산이 통째로 UNDECLARED로 오른다는 뜻이고, 그것은
 // 선언이 틀려서가 아니라 이름이 서로 달라서다.
-func (s *server) observedAssets(d decl.Declaration) (map[string][]ui.DeclAsset, []string) {
-	if s.results == "" {
-		return nil, nil
-	}
-	policy, err := s.assetPolicy()
-	if err != nil {
-		return nil, nil
-	}
-	res, err := report.BuildWith(s.results, d, policy)
-	if err != nil {
-		return nil, nil
-	}
+func observedFrom(d decl.Declaration, res *report.Result) (map[string][]ui.DeclAsset, []string) {
 	declared := map[string]bool{}
 	for _, n := range d.Nodes {
 		declared[n.Name] = true

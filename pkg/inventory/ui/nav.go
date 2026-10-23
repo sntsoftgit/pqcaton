@@ -127,14 +127,41 @@ type Step struct {
 	Here bool
 	// Open — 입력이 있어 열리는 화면인가. 닫힌 카드는 누를 수 없다.
 	Open bool
+	// Final — 확정하는 단계(스코프 · 판정)의 확정 상태. 다른 카드는 비어 있다.
+	Final string
+}
+
+// Final — 확정 상태. 서버가 저장소의 판정을 옮겨 담는다. FinalUnknown은 일시적으로 판정하지 못한
+// 것이다(잠금 대기 초과 · 읽기 실패). 「복구 필요」로 단정하지 않는다.
+type Final string
+
+const (
+	FinalUnknown    Final = ""
+	FinalNone       Final = "none"
+	FinalDone       Final = "finalized"
+	FinalSuperseded Final = "superseded"
+	FinalRecovery   Final = "recovery"
+)
+
+func (f Final) text(l Lang) string {
+	switch f {
+	case FinalNone:
+		return tFinalNone.In(l)
+	case FinalDone:
+		return tFinalDone.In(l)
+	case FinalSuperseded:
+		return tFinalSuperseded.In(l)
+	case FinalRecovery:
+		return tFinalRecovery.In(l)
+	}
+	return tStepUnknown.In(l)
 }
 
 // StepsFor — 절차 카드 넷과 조회 하나.
 //
-// **상태는 옮긴 화면부터 채운다.** 카드 하나를 채우려면 그 화면의 계산을 매 요청마다
-// 돌려야 하는데, 대조는 계산이 무겁고 한 화면의 입력이 어긋나면 다른 화면까지 막힌다.
-// 그래서 화면을 옮기는 걸음마다 그 카드를 채운다. 채운 것은 StepState의 필드에 적힌다 —
-// 여기에 이름을 세어 적으면 화면을 하나 옮길 때마다 이 주석이 낡는다.
+// **네 카드를 모두 채운다**(v0.22.0). 서버가 요청 하나에서 입력을 한 번 읽어 본문과 카드가 같은
+// 값을 쓴다. 한 화면의 입력을 읽지 못하면 그 카드만 「확인할 수 없음」이고 다른 카드와 본문은
+// 그대로 선다.
 func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 	steps := []Step{
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDecl, Open: s.Decl},
@@ -156,20 +183,29 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 		case i == 3 && st.Review != nil:
 			steps[i].State, steps[i].Dot = reviewState(l, *st.Review)
 		default:
+			// 그 화면의 입력을 읽지 못했다. 원인은 서버가 표준오류에 남긴다.
 			steps[i].State = tStepUnknown.In(l)
+		}
+		switch {
+		case !steps[i].Open:
+		case i == 1:
+			steps[i].Final = st.ScopeFinal.text(l)
+		case i == 3:
+			steps[i].Final = st.ReviewFinal.text(l)
 		}
 	}
 	return steps
 }
 
-// StepState — 카드에 채울 상태. **옮긴 화면만 넣는다** — 카드 하나를 채우려면 그 화면의
-// 계산을 매 요청마다 돌려야 하고, 대조는 계산이 무겁다. 비어 있는 자리는 「아직 세지
-// 않는다」로 적힌다.
+// StepState — 카드에 채울 상태. 비어 있는(nil) 자리는 그 입력을 읽지 못한 것이고 「확인할 수
+// 없음」으로 적힌다.
 type StepState struct {
 	Decl   *DeclSummary
 	Scope  *ScopeSummary
 	Survey *SurveySummary
 	Review *ReviewSummary
+	// ScopeFinal · ReviewFinal — 확정하는 두 단계의 확정 상태.
+	ScopeFinal, ReviewFinal Final
 }
 
 // reviewState — 판정 카드의 한 줄. **확정을 막는 것이 무엇인지** 알린다.

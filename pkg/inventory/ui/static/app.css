@@ -193,6 +193,7 @@ body.wb .step.closed { opacity: .55; }
 body.wb .step-num { display: block; color: var(--muted); font-size: .78rem; }
 body.wb .step-title { display: block; font-weight: 700; }
 body.wb .step-state { display: block; color: var(--muted); font-size: .82rem; }
+body.wb .step-final { display: block; color: var(--ink); font-size: .82rem; font-weight: 600; }
 body.wb .dot { width: 9px; height: 9px; border-radius: 99px; flex: 0 0 auto;
                background: var(--muted); }
 body.wb .dot.warn { background: var(--amber); }
