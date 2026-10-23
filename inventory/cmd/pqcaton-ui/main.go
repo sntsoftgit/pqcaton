@@ -186,12 +186,17 @@ func main() {
 // 남은 트랜잭션을 복구하고, 입력에서 세운 세션을 파일로 남긴다.
 //
 // 저장을 지원하지 않는 플랫폼이면 보기 전용으로 연다. 네트워크 파일시스템 같은 다른 거절은 열지
-// 않는다. 복구 필요가 남아 있으면 열되 알린다 - 그 디렉토리의 저장은 503으로 막힌다.
+// 않는다. **복구 필요가 남아 있으면 복구 상태로 연다.** 실행 잠금은 쥔 채로(명령도 막힌다) 정적
+// 파일을 뺀 모든 요청에 503 복구 페이지를 낸다(recoveryGate). 어긋난 파일을 읽어 그린 화면은 믿을 수
+// 없고, 그 위의 저장은 더 나쁘다. 세션도 파일로 남기지 않는다.
+//
+// 세션을 파일로 남기지 못하면 **시작하지 않는다.** 그대로 열면 읽을 때마다 세션 ID가 새로 나서
+// 확정의 동일성이 서지 않는다.
 func (s *server) openState(dir string) error {
 	if dir == "" {
 		dir = store.DefaultDir(s.path)
 	}
-	st, err := store.Open(dir, store.Options{})
+	st, err := store.Open(dir, s.storeOpts)
 	if errors.Is(err, store.ErrUnsupported) && runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
 		fmt.Fprintln(os.Stderr, "warning: saving is not supported on this platform; the screen is view-only")
 		return nil
@@ -212,14 +217,30 @@ func (s *server) openState(dir string) error {
 			st.Close()
 			return err
 		}
-		fmt.Fprintln(os.Stderr, "warning:", err)
+		fmt.Fprintln(os.Stderr, "❌", err)
+		fmt.Fprintln(os.Stderr, "   The screen opens in recovery mode: every page answers 503 until this is resolved and the screen is restarted.")
+		s.st, s.recovering = st, true
+		return nil
 	}
 	s.st = st
 	if err := s.materialize(); err != nil {
-		fmt.Fprintln(os.Stderr, "warning: could not write the session raised from the inputs:", err)
+		st.Close()
+		s.st = nil
+		return fmt.Errorf("could not write the session raised from the inputs, so the screen does not start: %w", err)
 	}
 	fmt.Fprintf(os.Stderr, "state: %s\n", st.Dir)
 	return nil
+}
+
+// recoveryGate — 복구 상태면 정적 파일(CSS · JS)을 뺀 모든 요청에 503 복구 페이지를 낸다.
+func (s *server) recoveryGate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.recovering && !strings.HasPrefix(r.URL.Path, ui.StaticPath) {
+			s.refuse(w, r, http.StatusServiceUnavailable, ui.RefusedRecovery, "/", nil)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // splitArgs — 위치 인자와 플래그를 가른다. 첫 플래그부터 뒤는 전부 플래그로 넘긴다.
@@ -280,6 +301,10 @@ type server struct {
 	scopeAssets string
 	// st: 상태 디렉토리. nil이면 보기 전용이다(저장을 지원하지 않는 플랫폼).
 	st *store.State
+	// recovering: 시작할 때 복구 필요가 남아 있었다. 다시 띄울 때까지 모든 화면이 503이다.
+	recovering bool
+	// storeOpts: 상태 디렉토리를 열 때의 선택 사항. 테스트가 실패 주입 훅을 단다.
+	storeOpts store.Options
 	// wait: 대상 잠금을 기다리는 시간. 0이면 lockWait.
 	wait time.Duration
 	// key: 확인 토큰의 서명 키(confirm.go). clock: 지금 시각. 테스트가 바꾼다.
@@ -307,6 +332,8 @@ func (s *server) handler() http.Handler {
 	r.Use(postGuard)
 	// 고른 말을 기억한다. 화면을 옮길 때마다 다시 고르게 하지 않는다.
 	r.Use(rememberLang)
+	// 복구 상태면 정적 파일 말고는 처리기에 닿지 않는다.
+	r.Use(s.recoveryGate)
 
 	// 화면이 브라우저로 내보내는 것(스타일 · htmx). 바이너리에 담겨 있다.
 	r.Handle(ui.StaticPath+"*", ui.Static())
