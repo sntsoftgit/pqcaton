@@ -43,6 +43,8 @@ const (
 	NoticeFinalizedSuperseded = "finalized-superseded"
 	NoticeDeclCreated         = "decl-created"
 	NoticeLayerCreated        = "layer-created"
+	NoticeRoundOpened         = "round-opened"
+	NoticeScopeRoundOpened    = "scope-round-opened"
 
 	ProblemCannotFinalize      = "gate-cannot-finalize"
 	ProblemMandatory           = "gate-mandatory"
@@ -155,7 +157,7 @@ func (n Notice) Text(l Lang, file func(role string) string) string {
 			args = append(args, planReason(l, a))
 		}
 	}
-	return fmt.Sprintf(spec.t.In(l), args...)
+	return spec.t.F(l, args...)
 }
 
 // identifier — 화면에 그대로 보여도 되는 식별자인가: 길이 제한 안이고 제어 문자가 없다.

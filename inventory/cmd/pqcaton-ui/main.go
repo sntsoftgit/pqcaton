@@ -76,6 +76,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "❌", err)
 		return 1
 	}
+	// 떠 있는 화면을 연다(실행기). 새로 띄우지 않는다.
+	if c.open {
+		if err := openRunning(c.stateDirOf(), c.noBrowser, stderr); err != nil {
+			fmt.Fprintln(stderr, "❌", err)
+			return 1
+		}
+		return 0
+	}
 	// 복구 상태 보기는 화면을 열지 않는다. 서버가 떠 있어도 볼 수 있다(읽기만 한다).
 	if c.recoverStatus {
 		dir := c.stateDir
@@ -299,7 +307,7 @@ func (s *server) openState(dir string) error {
 func (s *server) recoveryGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case !s.recovering || strings.HasPrefix(r.URL.Path, ui.StaticPath):
+		case !s.recovering || strings.HasPrefix(r.URL.Path, ui.StaticPath) || r.URL.Path == ui.HealthPath:
 			next.ServeHTTP(w, r)
 		case r.Method == http.MethodGet && r.URL.Path == ui.RecoveryDiagPath:
 			s.recoveryDiagnostics(w, r)
@@ -466,6 +474,7 @@ func (s *server) handler() http.Handler {
 
 	// **첫 화면은 절차의 첫 자리다.** 선언이 있으면 거기서 시작하고, 없으면 리뷰 큐다.
 	r.Get("/", s.home)
+	r.Get(ui.HealthPath, s.health)
 	r.Get(ui.ScreenDecl, s.declEdit)
 	r.Get(ui.RowPath, s.declRow)
 	r.Get(ui.RemovePath, s.declRemove)
@@ -484,6 +493,8 @@ func (s *server) handler() http.Handler {
 	r.Post("/save", s.save)
 	r.Post("/finalize/confirm", s.finalizeConfirm)
 	r.Post("/finalize", s.finalize)
+	r.Post(ui.ReviewNewPath, s.reviewNew)
+	r.Post(ui.ScopeNewPath, s.scopeNew)
 
 	// 옛 주소(v0.21의 `-next`, v0.22의 `/classic/…`). 옛 화면은 v0.23.0에서 없어졌고, 북마크가 죽지 않게
 	// 301로 지금 화면에 넘긴다.
@@ -607,6 +618,7 @@ func (s *server) review(w http.ResponseWriter, r *http.Request) {
 	page.Warnings = ui.Warnings(page.Lang, warn)
 	page.Rev = rev
 	v := ui.NewReviewView(sf, page)
+	v.Finalized = wd.reviewFinal.Locked()
 	html(w, r, func(out io.Writer) error { return ui.RenderReview(out, v) })
 }
 
@@ -767,6 +779,7 @@ func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 	if len(files) > 0 {
 		v = v.Editable(files)
 	}
+	v.Finalized = wd.scopeFinal.Locked()
 	html(w, r, func(out io.Writer) error { return ui.RenderScope(out, v) })
 }
 
@@ -1326,6 +1339,71 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, back, msg, nil)
 }
 
+// health: 이 화면의 상태 디렉토리 ID. 실행기가 낡은 주소나 다른 화면을 열지 않게 견주는 값이다. 보기 전용
+// (상태 디렉토리 없음)이면 빈 값이다.
+func (s *server) health(w http.ResponseWriter, r *http.Request) {
+	id := ""
+	if s.st != nil {
+		id = s.st.ID
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = io.WriteString(w, id+"\n")
+}
+
+// reviewNew: 확정된 판정 세션에서 새 회차를 연다. 새 세션은 **새 ID**이고 승인 서명이 비어 있다. 결론과
+// 계획 칸은 다시 세울 때의 규칙(review.Carry)대로 옮긴다. 세션 파일과 회차 표지를 한 트랜잭션으로 쓴다
+// (store.OpenRound). 옛 세션의 영수증은 세션 파일을 넘겨준 것으로 남아 「복구 필요」로 읽히지 않는다.
+func (s *server) reviewNew(w http.ResponseWriter, r *http.Request) {
+	back := ui.ScreenReview
+	if !s.writable(w, r, back) {
+		return
+	}
+	newID := review.NewSessionID()
+	to := store.Identity{Kind: kindReview, Org: s.orgName(), SessionID: newID}
+	err := s.st.OpenRound(s.reviewID(), to, []string{s.path}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
+		sf, _, err := s.reviewSession()
+		if err != nil {
+			return nil, err
+		}
+		sf.SessionID, sf.Signature = newID, ""
+		b, err := review.Encode(sf)
+		return []store.Change{{Path: s.path, Content: b}}, err
+	})
+	if err != nil {
+		s.fail(w, r, back, err, file(ui.PickLang(r), "session", s.path))
+		return
+	}
+	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeRoundOpened)}, nil)
+}
+
+// scopeNew: 확정된 스코프 검토에서 새 회차를 연다. reviewNew와 같다(scope.Reopen의 규칙대로 옮긴다).
+func (s *server) scopeNew(w http.ResponseWriter, r *http.Request) {
+	back := ui.ScreenScope
+	if s.scope == "" || s.scopeMissing() {
+		missingInput(w, r, "scope-session")
+		return
+	}
+	if !s.writable(w, r, back) {
+		return
+	}
+	newID := decision.NewSessionID()
+	to := store.Identity{Kind: kindScope, Org: s.orgName(), SessionID: newID}
+	err := s.st.OpenRound(s.scopeID(), to, []string{s.scope}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
+		sf, _, err := s.scopeSession()
+		if err != nil {
+			return nil, err
+		}
+		sf.SessionID, sf.Signature = newID, ""
+		b, err := scope.EncodeSession(sf)
+		return []store.Change{{Path: s.scope, Content: b}}, err
+	})
+	if err != nil {
+		s.fail(w, r, back, err, file(ui.PickLang(r), "scope-session", s.scope))
+		return
+	}
+	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeScopeRoundOpened)}, nil)
+}
+
 // layerCreate: 작업 폴더에 빈 계층 CSV를 만든다. 같은 이름의 파일이 있으면 덮어쓰지 않고 409다. 만든 뒤 같은
 // 요청에서 스코프 세션을 세운다(materialize).
 func (s *server) layerCreate(w http.ResponseWriter, r *http.Request) {
@@ -1407,7 +1485,7 @@ func (s *server) needsDecl(w http.ResponseWriter, r *http.Request) bool {
 // diagGate: 진단 전용 모드면 정적 파일 말고는 모두 503 진단 페이지다. 읽지 못한 파일의 역할과 이름, 참조 번호를 보인다.
 func (s *server) diagGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if len(s.diag) == 0 || strings.HasPrefix(r.URL.Path, ui.StaticPath) {
+		if len(s.diag) == 0 || strings.HasPrefix(r.URL.Path, ui.StaticPath) || r.URL.Path == ui.HealthPath {
 			next.ServeHTTP(w, r)
 			return
 		}

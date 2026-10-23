@@ -44,8 +44,8 @@ func warningText(l Lang, w review.Warning) string {
 	if l != KO {
 		// 명령의 영어는 자리를 `pqcaton-report`로 보낸다. 화면은 01 선언 화면이 그 자리를 보인다.
 		if w.Code == review.WarnDeclProblems {
-			return fmt.Sprintf("%d places where the declaration does not add up. Left as is, reconciliation "+
-				"is wrong without any error. The 01 declaration screen shows where", w.Count)
+			return enCounts(fmt.Sprintf("%d places where the declaration does not add up. Left as is, reconciliation "+
+				"is wrong without any error. The 01 declaration screen shows where", w.Count))
 		}
 		return w.English()
 	}

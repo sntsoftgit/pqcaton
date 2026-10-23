@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
@@ -13,7 +12,9 @@ templ scopeForm(v ScopeView) {
 	@tip(v.Page.Lang, tScopeIntro.In(v.Page.Lang)+" "+tScopeDelta.In(v.Page.Lang)+" "+tScopeConclusionHint.In(v.Page.Lang))
 	<form method="post" action="/scope/finalize/confirm">
 		@csrfField(v.Page)
-		if len(v.Editing) > 0 {
+		// 확정된 스코프 검토는 읽기 전용이다. 규칙도 새 스코프 검토를 시작한 뒤에 고친다.
+		<fieldset class="locked" disabled?={ v.Finalized }>
+		if len(v.Editing) > 0 && !v.Finalized {
 			@ruleLegend(v.Page.Lang)
 			for _, e := range v.Editing {
 				@layerEditor(v.Page.Lang, e)
@@ -82,7 +83,7 @@ templ scopeForm(v ScopeView) {
 		<fieldset>
 			<legend>
 				{ tPolicyOnFinalize.In(v.Page.Lang) }
-				<span class="n">— { fmt.Sprintf(tPolicyRulesAll.In(v.Page.Lang), len(v.Session.Merged)) }</span>
+				<span class="n">— { tPolicyRulesAll.F(v.Page.Lang, len(v.Session.Merged)) }</span>
 			</legend>
 			@tip(v.Page.Lang, tPolicyWholeHint.In(v.Page.Lang))
 			<div class="table-wrap">
@@ -103,11 +104,14 @@ templ scopeForm(v ScopeView) {
 				</table>
 			</div>
 		</fieldset>
-		<div class="actions">
-			<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
-			<button formaction="/scope/finalize/confirm" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
-			@tip(v.Page.Lang, tScopeGateHint.In(v.Page.Lang))
-		</div>
+		</fieldset>
+		if !v.Finalized {
+			<div class="actions">
+				<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
+				<button formaction="/scope/finalize/confirm" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
+				@tip(v.Page.Lang, tScopeGateHint.In(v.Page.Lang))
+			</div>
+		}
 	</form>
 }
 

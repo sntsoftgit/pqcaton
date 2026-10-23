@@ -1,6 +1,5 @@
 package ui
 
-import "fmt"
 import "strconv"
 
 // scopeNextPage — 스코프 화면의 다음 판. 선언과 같은 짜임이다(declNextPage).
@@ -38,13 +37,15 @@ templ scopeNextPage(v ScopeView) {
 // 확정이 막히면 사람은 무엇이 모자란지 화면에서 알 수 없다.
 templ scopeNextTodo(v ScopeView) {
 	{{ s := v.Summary() }}
-	if s.Changes > 0 {
+	if v.Finalized {
+		@newRoundBox(v.Page, tRoundScopeHead, tRoundScopeBody, ScopeNewPath, tRoundScopeDo)
+	} else if s.Changes > 0 {
 		<div class="next">
 			<div class="next-icon">!</div>
 			<div>
-				<strong>{ fmt.Sprintf(tNextScopeTodo.In(v.Page.Lang), s.Changes) }</strong>
+				<strong>{ tNextScopeTodo.F(v.Page.Lang, s.Changes) }</strong>
 				if s.Audited > 0 {
-					<span>{ fmt.Sprintf(tNextScopeAudited.In(v.Page.Lang), s.Audited) }</span>
+					<span>{ tNextScopeAudited.F(v.Page.Lang, s.Audited) }</span>
 				}
 			</div>
 			<a class="primary" href={ templ.SafeURL("#" + scopeEditAnchor) }>{ tNextScopeGo.In(v.Page.Lang) }</a>
@@ -54,7 +55,7 @@ templ scopeNextTodo(v ScopeView) {
 			<div class="next-icon">✓</div>
 			<div>
 				<strong>{ tNextScopeDone.In(v.Page.Lang) }</strong>
-				<span>{ fmt.Sprintf(tNextScopeDoneBody.In(v.Page.Lang), s.Rules) }</span>
+				<span>{ tNextScopeDoneBody.F(v.Page.Lang, s.Rules) }</span>
 			</div>
 		</div>
 	}
@@ -86,7 +87,7 @@ templ layerCard(l Lang, e LayerEdit) {
 			<span title={ e.Path }><code>{ baseName(e.Path) }</code></span>
 		</div>
 		<div>
-			<span>{ fmt.Sprintf(tNextLayerRules.In(l), len(e.Rules)) }</span>
+			<span>{ tNextLayerRules.F(l, len(e.Rules)) }</span>
 		</div>
 		<span class="tag">{ strconv.Itoa(e.Index + 1) }</span>
 		<a class="quiet" href={ templ.SafeURL("#" + layerBlockID(e.Index)) }>{ tNextGoEdit.In(l) }</a>

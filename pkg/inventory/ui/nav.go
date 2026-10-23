@@ -3,8 +3,6 @@
 
 package ui
 
-import "fmt"
-
 // 화면 주소. **이동 링크와 제목이 같은 값을 본다** — 문자열을 두 곳에 적으면 한쪽만
 // 옮겨지는 날 「지금 여기」 표시가 사라진다.
 const (
@@ -90,6 +88,9 @@ const (
 	FinalRecovery   Final = "recovery"
 )
 
+// Locked: 영수증이 있다(확정됨 · 대체됨 · 복구 필요). 그 세션은 더 저장할 수 없으므로 화면을 읽기 전용으로 그린다.
+func (f Final) Locked() bool { return f == FinalDone || f == FinalSuperseded || f == FinalRecovery }
+
 func (f Final) text(l Lang) string {
 	switch f {
 	case FinalNone:
@@ -171,7 +172,7 @@ func reviewState(l Lang, s ReviewSummary) (string, string) {
 	case s.Open == 0:
 		return tStepReviewSign.In(l), "warn"
 	default:
-		return fmt.Sprintf(tStepReviewOpen.In(l), s.Mandatory), "danger"
+		return tStepReviewOpen.F(l, s.Mandatory), "danger"
 	}
 }
 
@@ -179,12 +180,12 @@ func reviewState(l Lang, s ReviewSummary) (string, string) {
 // 확정하는 실수가 이 도구가 막으려는 바로 그 자리다.
 func surveyState(l Lang, s SurveySummary) (string, string) {
 	if s.Rescan > 0 {
-		return fmt.Sprintf(tStepSurveyRescan.In(l), s.ToJudge, s.Rescan), "danger"
+		return tStepSurveyRescan.F(l, s.ToJudge, s.Rescan), "danger"
 	}
 	if s.ToJudge == 0 {
 		return tStepSurveyDone.In(l), "ok"
 	}
-	return fmt.Sprintf(tStepSurveyOpen.In(l), s.ToJudge), "warn"
+	return tStepSurveyOpen.F(l, s.ToJudge), "warn"
 }
 
 // scopeState — 스코프 카드의 한 줄. **근거가 필요한 것을 따로 센다** — 다 승인해 놓고
@@ -194,20 +195,20 @@ func scopeState(l Lang, s ScopeSummary) (string, string) {
 		return tStepScopeDone.In(l), "ok"
 	}
 	if s.Audited > 0 {
-		return fmt.Sprintf(tStepScopeAudited.In(l), s.Changes, s.Audited), "danger"
+		return tStepScopeAudited.F(l, s.Changes, s.Audited), "danger"
 	}
-	return fmt.Sprintf(tStepScopeOpen.In(l), s.Changes), "warn"
+	return tStepScopeOpen.F(l, s.Changes), "warn"
 }
 
 // declState — 선언 카드의 한 줄. 붙지 않은 이름이 그 화면의 급한 일이다.
 func declState(l Lang, s DeclSummary) (string, string) {
 	if s.Problems > 0 {
-		return fmt.Sprintf(tStepDeclProblems.In(l), s.Problems), "warn"
+		return tStepDeclProblems.F(l, s.Problems), "warn"
 	}
 	if s.Unlinked == 0 {
 		return tStepDeclDone.In(l), "ok"
 	}
-	return fmt.Sprintf(tStepDeclOpen.In(l), s.Unlinked), "warn"
+	return tStepDeclOpen.F(l, s.Unlinked), "warn"
 }
 
 // InventoryLabel — 조회 탭에 적을 이름. **번호를 붙이지 않는다**(NavFor와 같은 선).

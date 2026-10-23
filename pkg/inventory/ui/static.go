@@ -42,6 +42,12 @@ const (
 	DeclCreatePath = "/decl/create"
 	// LayerCreatePath — 작업 폴더에 빈 계층 CSV를 만드는 POST.
 	LayerCreatePath = "/scope/layer/create"
+	// ReviewNewPath · ScopeNewPath — 확정된 세션에서 새 회차(새 세션 ID)를 여는 POST.
+	ReviewNewPath = "/review/new"
+	ScopeNewPath  = "/scope/new"
+	// HealthPath — 떠 있는 화면이 자기 상태 디렉토리의 ID를 알려 주는 자리. 실행기(pqcaton-ui -open)가 적힌 주소의
+	// 서버가 같은 작업 폴더의 것인지 견준다.
+	HealthPath = "/healthz"
 	// RecoveryDiagPath — 복구 필요 상태에서 진단 파일(JSON)을 내려받는 주소. 그 상태에서만 있다.
 	RecoveryDiagPath = "/recovery/diagnostics"
 )

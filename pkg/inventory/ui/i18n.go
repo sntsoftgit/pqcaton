@@ -4,7 +4,9 @@
 package ui
 
 import (
+	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -130,3 +132,68 @@ func (t T) In(l Lang) string {
 	}
 	return t.EN
 }
+
+// F — 그 말로, 값을 채워서. **수가 들어가는 문구는 이것으로 만든다.** 영어는 수가 1이면 뒤의 명사와 동사를
+// 단수로 맞춘다(enCounts). 문구마다 단수형을 따로 두면 하나쯤은 빠뜨린다(「1 nodes」, v0.23.0에서 고침).
+func (t T) F(l Lang, args ...any) string {
+	s := fmt.Sprintf(t.In(l), args...)
+	if l == EN || t.KO == "" {
+		s = enCounts(s)
+	}
+	return s
+}
+
+// enCounts: 영어 문장에서 「1」 바로 뒤의 복수 명사를 단수로, 그 바로 뒤의 are · were · need를 is · was · needs로
+// 맞춘다. 바로 뒤 낱말이 꾸밈말(observed · required 같은)이면 그다음 낱말을 명사로 본다. 「1 of them need」도
+// 맞춘다. 숫자의 일부인 1(11 · 0.1 · 1,000)은 건드리지 않는다.
+func enCounts(s string) string {
+	s = oneOfThem.ReplaceAllString(s, "${1}1 of them needs")
+	return oneWords.ReplaceAllStringFunc(s, func(m string) string {
+		g := oneWords.FindStringSubmatch(m)
+		w1, w2, rest := g[3], g[4], g[5]
+		switch {
+		case plural(w1):
+			next := ""
+			if w2 != "" {
+				next = agree(" " + w2)
+			}
+			return g[1] + "1" + g[2] + " " + singular(w1) + next + rest
+		case enModifiers[w1] && plural(w2):
+			return g[1] + "1" + g[2] + " " + w1 + " " + singular(w2) + agree(rest)
+		}
+		return m
+	})
+}
+
+func plural(w string) bool {
+	return strings.HasSuffix(w, "s") && !strings.HasSuffix(w, "ss") && len(w) > 2
+}
+
+func singular(w string) string {
+	if strings.HasSuffix(w, "ies") {
+		return strings.TrimSuffix(w, "ies") + "y"
+	}
+	return strings.TrimSuffix(w, "s")
+}
+
+// agree: 바로 뒤의 동사를 단수 주어에 맞춘다(앞에 공백 하나가 붙은 낱말).
+func agree(w string) string {
+	switch w {
+	case " are":
+		return " is"
+	case " were":
+		return " was"
+	case " need":
+		return " needs"
+	}
+	return w
+}
+
+// enModifiers: 수와 명사 사이에 오는 꾸밈말. 이 낱말 뒤의 낱말이 명사다.
+var enModifiers = map[string]bool{"observed": true, "required": true, "rule": true, "policy": true,
+	"auto-pass": true, "recorded": true, "negotiated": true}
+
+var (
+	oneWords  = regexp.MustCompile(`(^|[^\d.,])1(</b>)? ([a-z-]+)(?: ([a-z-]+))?( are| were| need)?\b`)
+	oneOfThem = regexp.MustCompile(`(^|[^\d.,])1 of them need\b`)
+)

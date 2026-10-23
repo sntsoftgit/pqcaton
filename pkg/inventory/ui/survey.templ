@@ -24,7 +24,7 @@ templ surveyBody(v SurveyView) {
 			</table>
 		</div>
 		<p style="margin-top:.8rem">
-			@templ.Raw(fmt.Sprintf(tObservedCount.In(v.Page.Lang), v.R.ObservedAssets, v.R.ObservedEdges))
+			@templ.Raw(tObservedCount.F(v.Page.Lang, v.R.ObservedAssets, v.R.ObservedEdges))
 		</p>
 		<div class="warn-list" style="border-color:var(--line)">
 			<strong>{ tNotSeen.In(v.Page.Lang) }</strong>
@@ -94,7 +94,7 @@ templ surveyBody(v SurveyView) {
 	<fieldset>
 		<legend>{ tSurveyEdges.In(v.Page.Lang) }</legend>
 		@tip(v.Page.Lang, tSurveyEdgesHint.In(v.Page.Lang))
-		<p>@templ.Raw(fmt.Sprintf(tPostures.In(v.Page.Lang), v.PQC, v.Classical, v.Unknown))</p>
+		<p>@templ.Raw(tPostures.F(v.Page.Lang, v.PQC, v.Classical, v.Unknown))</p>
 		<div class="table-wrap">
 			<table>
 				<tr>

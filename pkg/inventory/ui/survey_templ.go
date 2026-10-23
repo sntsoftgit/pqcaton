@@ -124,7 +124,7 @@ func surveyBody(v SurveyView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.Raw(fmt.Sprintf(tObservedCount.In(v.Page.Lang), v.R.ObservedAssets, v.R.ObservedEdges)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templ.Raw(tObservedCount.F(v.Page.Lang, v.R.ObservedAssets, v.R.ObservedEdges)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -584,7 +584,7 @@ func surveyBody(v SurveyView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.Raw(fmt.Sprintf(tPostures.In(v.Page.Lang), v.PQC, v.Classical, v.Unknown)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templ.Raw(tPostures.F(v.Page.Lang, v.PQC, v.Classical, v.Unknown)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -48,7 +48,9 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
 the launcher starts the service and then opens the screen in a browser. The launcher appears as "pqcaton" in the desktop's
-program list.
+program list. The launcher opens it with `pqcaton-ui -open`, which waits (up to 15 seconds) until the server at the
+recorded address answers that it is the screen of the same workspace, so it never opens a stale address left by an
+abnormal exit or a screen that is not up yet. If nothing answers, it opens nothing.
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
@@ -114,11 +116,20 @@ cat ~/pqcaton/.pqcaton/screen.addr
 ```
 
 **If it is already running, it does not start a second one.** Run again with the same workspace and it opens the running
-screen (only when the recorded address is a loopback address).
+screen, only when the recorded address is a loopback address and the server there answers that it is the screen of the
+same workspace.
 
 <!-- run -->
 ```bash
 pqcaton-ui -no-browser
+```
+
+To open the running screen without ever starting one, use `-open` (what the launcher does). With `-no-browser` it opens
+nothing and only prints the confirmed address.
+
+<!-- run -->
+```bash
+pqcaton-ui -open -no-browser
 ```
 
 **Stopping.** Press Ctrl+C in the terminal that started it, or for the service run `systemctl --user stop pqcaton-ui.service`.
@@ -172,6 +183,10 @@ required).
    level; and sign. "Finalize" shows a confirmation page with what will be written, and confirming writes the session,
    plan and ledger together. Finalizing the same session with the same content again writes nothing again.
 5. **After that.** `plan.json` is the judged plan (IN_REVIEW). Approval signing and execution follow the pqcota side.
+6. **The next round.** A finalized session cannot be changed and is shown read-only. When new observations arrive or a
+   conclusion must change, press "Start a new review" on the 04 screen ("Start a new scope review" on the 02 screen). A new
+   round starts under a new session id: conclusions and plan fields carry over, and a new signature is needed. The earlier
+   round's plan and ledger entries stay as they are.
 
 The inventory lookup (beside the cards) is not a step: come in any time, search with conditions, and see one asset's
 judgment history.

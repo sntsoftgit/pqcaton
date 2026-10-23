@@ -111,9 +111,9 @@ func (s *server) declInputs() []store.Input {
 // inputsFor: 화면(GET) 또는 저장 주소(POST)가 덮는 입력. 양식이 없는 화면은 nil이다.
 func (s *server) inputsFor(where string) []store.Input {
 	switch where {
-	case ui.ScreenReview, "/save", "/finalize", "/finalize/confirm":
+	case ui.ScreenReview, "/save", "/finalize", "/finalize/confirm", ui.ReviewNewPath:
 		return s.reviewInputs()
-	case ui.ScreenScope, "/scope/save", "/scope/rules", "/scope/finalize", "/scope/finalize/confirm":
+	case ui.ScreenScope, "/scope/save", "/scope/rules", "/scope/finalize", "/scope/finalize/confirm", ui.ScopeNewPath:
 		if s.scope == "" {
 			return nil
 		}
@@ -231,7 +231,7 @@ func (s *server) materialize() error {
 // 처리기가 하던 대로 화면에 이유를 실어 돌려보낸다. 확정 관문의 「무엇이 남았나」가 그것이다).
 func refusedKind(err error) (string, int) {
 	switch {
-	case errors.Is(err, store.ErrStale):
+	case errors.Is(err, store.ErrStale), errors.Is(err, store.ErrNotFinalized):
 		return ui.RefusedStale, http.StatusConflict
 	case errors.Is(err, store.ErrSessionFinalized):
 		return ui.RefusedFinalized, http.StatusConflict

@@ -274,3 +274,6 @@ body.wb .mode-view-only, body.wb .mode-recovery { border-color: var(--amber); ba
 .recovery-steps li { margin: .3rem 0; }
 .recovery-record { margin: 1.2rem 0; overflow-x: auto; }
 .recovery-record tr.mismatch td { color: var(--warn); font-weight: 600; }
+
+/* 확정된 세션의 양식 전체를 잠그는 fieldset. 틀은 그리지 않는다. */
+body.wb fieldset.locked { border: 0; padding: 0; margin: 0; min-width: 0; }

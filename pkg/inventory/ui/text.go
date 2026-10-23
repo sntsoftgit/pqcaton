@@ -46,10 +46,10 @@ var (
 		EN: "Declaration saved — %d nodes · %d assets · %d edges"}
 	tDeclDroppedNoIP = T{
 		KO: " · IP를 적지 않은 노드 %d개는 관리 대상에서 뺐습니다",
-		EN: " · %d nodes with no IP were left out of management"}
+		EN: " · left out of management for having no IP: %d nodes"}
 	tDeclStillOff = T{
 		KO: " · 맞지 않는 자리 %d곳이 남아 있습니다",
-		EN: " · %d places still do not add up"}
+		EN: " · still not adding up: %d places"}
 
 	// 저장하지 않은 까닭(409 · 503 페이지). 내부 경로와 오류 원문은 싣지 않는다.
 	tNotSaved      = T{KO: "저장하지 않았습니다", EN: "Not saved"}
@@ -293,7 +293,7 @@ var (
 			"assets are the most natural targets, so they can be put in the plan with a kind, target and level."}
 	tLegacyAutopass = T{
 		KO: "옛 세션의 자동통과 후보 %d개는 식별자만 남아 있어 계획에 넣을 수 없습니다. 결과에서 세션을 다시 열면 고를 수 있게 됩니다.",
-		EN: "%d auto-pass candidate(s) from an older session are listed by id only and cannot be put in a plan. Reopen the session from the results to make them selectable."}
+		EN: "Listed by id only, from an older session: %d auto-pass candidates. They cannot be put in a plan; reopen the session from the results to make them selectable."}
 	tRollbackNote = T{KO: "되돌림 메모", EN: "Rollback note"}
 	// 원장의 계획 선택 행. 판정이 아니다 - 결론 칸 대신 이 말이 선다.
 	tPlanSelectionRow = T{KO: "(계획에 넣기로 한 기록입니다. 판정이 아닙니다)", EN: "(recorded as put in a plan — not a judgment)"}
@@ -690,7 +690,7 @@ var (
 		KO: "연결할 관측 이름 %d개",
 		EN: "%d observed names to link"}
 	tStepDeclDone     = T{KO: "연결할 이름 없음", EN: "nothing left to link"}
-	tStepDeclProblems = T{KO: "앞뒤가 맞지 않는 자리 %d곳", EN: "%d places that do not add up"}
+	tStepDeclProblems = T{KO: "앞뒤가 맞지 않는 자리 %d곳", EN: "does not add up in %d places"}
 	tStepClosed       = T{KO: "입력 파일을 주지 않았습니다", EN: "no input was given"}
 	tStepUnknown      = T{KO: "확인할 수 없음", EN: "Unavailable"}
 
@@ -717,7 +717,7 @@ var (
 		EN: "%d rule changes are waiting for approval"}
 	tNextScopeAudited = T{
 		KO: "그 가운데 %d개는 왜 뺐는지를 적어야 확정됩니다.",
-		EN: "%d of them need a recorded reason before they can be finalized."}
+		EN: "%d of them need a recorded reason before finalizing."}
 	tNextScopeDone     = T{KO: "승인할 규칙 변경이 없습니다", EN: "No rule change is waiting"}
 	tNextScopeDoneBody = T{
 		KO: "지금 정책은 규칙 %d개이고, 새로 뺀 자산이 없습니다.",
@@ -744,7 +744,7 @@ var (
 	tStepScopeOpen    = T{KO: "승인할 변경 %d건", EN: "%d changes to approve"}
 	tStepScopeAudited = T{
 		KO: "승인할 변경 %d건 · 근거 필요 %d건",
-		EN: "%d changes to approve · %d need a reason"}
+		EN: "%d changes to approve · a reason needed for %d"}
 	tStepScopeDone = T{KO: "승인할 변경 없음", EN: "no change to approve"}
 )
 
@@ -753,7 +753,7 @@ var (
 	tNextSurveyEyebrow = T{KO: "03 · 대조", EN: "03 · Reconciliation"}
 	tNextSurveyHead    = T{
 		KO: "대조 결과에는 사람이 확인할 항목이 %d개 있습니다",
-		EN: "%d items in the reconciliation need a person to look"}
+		EN: "%d items need a person to look at the reconciliation"}
 	tNextSurveyHeadDone = T{
 		KO: "사람이 확인할 항목이 없습니다",
 		EN: "Nothing in the reconciliation needs a person"}
@@ -788,7 +788,7 @@ var (
 	tStepSurveyOpen   = T{KO: "판정할 항목 %d개", EN: "%d items to judge"}
 	tStepSurveyRescan = T{
 		KO: "판정할 항목 %d개 · 재관측 필요 %d개",
-		EN: "%d items to judge · %d need re-observing"}
+		EN: "%d items to judge · re-observing needed for %d"}
 	tStepSurveyDone = T{KO: "확인할 항목 없음", EN: "nothing to check"}
 )
 
@@ -863,7 +863,7 @@ var (
 	tNextInvStaleCard = T{KO: "근거가 바뀐 판정", EN: "Judgments whose basis changed"}
 	tNextInvStaleBody = T{
 		KO: "다시 봐야 하는 결론 %d개",
-		EN: "%d conclusions that need another look"}
+		EN: "%d conclusions to look at again"}
 	tNextInvQuiet     = T{KO: "지금 걸리는 것이 없습니다", EN: "Nothing is flagged right now"}
 	tNextInvQuietBody = T{
 		KO: "제외분과 판정 원장 모두 다시 볼 것이 없습니다.",

@@ -97,6 +97,8 @@ const RevField = "rev"
 // 기본 단위다(§3.4). 한 줄씩 늘어놓으면 화면이 있어도 수천 대에서 리뷰가 끝나지 않는다.
 type ReviewView struct {
 	Page
+	// Finalized — 이 세션은 확정되었다(영수증이 있다). 화면은 읽기 전용이고 새 회차를 여는 단추를 둔다.
+	Finalized bool
 	Scope     string
 	Reviewer  string
 	Signature string

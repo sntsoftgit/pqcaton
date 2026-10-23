@@ -21,8 +21,10 @@ import (
 // 줄씩 승인하는 리뷰는 수천 대에서 끝나지 않는다.
 type ScopeView struct {
 	Page
-	Session scope.Session
-	Layers  []LayerGroup
+	// Finalized — 이 스코프 검토는 확정되었다. 화면은 읽기 전용이고 새 회차를 여는 단추를 둔다.
+	Finalized bool
+	Session   scope.Session
+	Layers    []LayerGroup
 	// Audited — 근거 없이 확정할 수 없는 변경 수. 인벤토리에서 뺀 자산은 나중에 「왜 이건
 	// 안 봤나」에 답해야 하므로, 왜 뺐는지가 없으면 확정되지 않는다.
 	Audited int

@@ -373,6 +373,7 @@ func (s *State) newReceipt(tx Tx) (Receipt, error) {
 func (s *State) verifyReceipt(rc Receipt) (Outcome, error) {
 	var probs []Problem
 	var by *Receipt
+	superseded := false
 	for _, o := range rc.Outputs {
 		cur, size, err := currentHash(s.abs(o.Path))
 		if err != nil {
@@ -387,6 +388,15 @@ func (s *State) verifyReceipt(rc Receipt) (Outcome, error) {
 		}
 		if later != nil {
 			by = later
+			continue
+		}
+		// 새 회차가 넘겨받은 출력이다(round.go). 그 뒤에 바뀐 것은 새 세션의 일이다.
+		handed, err := s.handedOver(rc, o.Path)
+		if err != nil {
+			return Outcome{}, err
+		}
+		if handed {
+			superseded = true
 			continue
 		}
 		probs = append(probs, Problem{TxID: rc.TxID, Item: Item{Kind: ItemReplace, Path: o.Path, After: o.SHA256},
@@ -405,7 +415,7 @@ func (s *State) verifyReceipt(rc Receipt) (Outcome, error) {
 	if len(probs) > 0 {
 		return Outcome{}, &RecoveryError{Problems: probs}
 	}
-	if by != nil {
+	if by != nil || superseded {
 		return Outcome{Status: OutcomeSuperseded, Receipt: rc, By: by}, nil
 	}
 	return Outcome{Status: OutcomeAlready, Receipt: rc}, nil

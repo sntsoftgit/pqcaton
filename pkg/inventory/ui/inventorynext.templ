@@ -1,6 +1,5 @@
 package ui
 
-import "fmt"
 import "strconv"
 
 // inventoryNextPage — 조회 화면의 다음 판.
@@ -63,7 +62,7 @@ templ inventoryNextCards(v InventoryView) {
 				<article class="node-card">
 					<div>
 						<strong>{ tNextInvUnseenCard.In(v.Page.Lang) }</strong>
-						<span>{ fmt.Sprintf(tNextInvUnseenBody.In(v.Page.Lang), s.Unseen) }</span>
+						<span>{ tNextInvUnseenBody.F(v.Page.Lang, s.Unseen) }</span>
 					</div>
 					<div></div>
 					<span class="tag warn">{ tNextInvNeedCheck.In(v.Page.Lang) }</span>
@@ -74,7 +73,7 @@ templ inventoryNextCards(v InventoryView) {
 				<article class="node-card">
 					<div>
 						<strong>{ tNextInvStaleCard.In(v.Page.Lang) }</strong>
-						<span>{ fmt.Sprintf(tNextInvStaleBody.In(v.Page.Lang), s.Stale) }</span>
+						<span>{ tNextInvStaleBody.F(v.Page.Lang, s.Stale) }</span>
 					</div>
 					<div></div>
 					<span class="tag warn">{ tNextInvNeedCheck.In(v.Page.Lang) }</span>

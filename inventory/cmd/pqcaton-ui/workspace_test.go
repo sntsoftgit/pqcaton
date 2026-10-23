@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -156,20 +157,31 @@ func TestBrowserOpensAfterThePort(t *testing.T) {
 // realOpenBrowser: 바꿔 끼우기 전의 openBrowser.
 var realOpenBrowser = openBrowser
 
-// IC-U96 — **같은 작업 폴더로 이미 떠 있으면 새로 띄우지 않고 그 화면을 연다.** 적어 둔 주소가 루프백이 아니면 열지
-// 않고 실패한다.
+// IC-U96 — **같은 작업 폴더로 이미 떠 있으면 새로 띄우지 않고 그 화면을 연다.** 적힌 주소의 서버가 같은 상태
+// 디렉토리의 ID를 답할 때만 연다. 다른 화면이 답하거나 적힌 주소가 루프백이 아니면 열지 않고 실패한다.
 func TestRunningScreenIsReopened(t *testing.T) {
-	// 떠 있는 화면 대신 포트만 연다.
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	old := openWait
+	t.Cleanup(func() { openWait = old })
+	openWait = 300 * time.Millisecond
+	answering := func(id string) string {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == ui.HealthPath {
+				io.WriteString(w, id+"\n")
+			}
+		}))
+		t.Cleanup(srv.Close)
+		return strings.TrimPrefix(srv.URL, "http://")
 	}
-	defer ln.Close()
 	for _, c := range []struct {
-		addr string
+		name string
+		addr func(id string) string
 		code int
 		open bool
-	}{{ln.Addr().String(), 0, true}, {"192.0.2.1:80", 1, false}} {
+	}{
+		{"this screen", answering, 0, true},
+		{"another screen", func(string) string { return answering("0123456789abcdef0123456789abcdef") }, 1, false},
+		{"not loopback", func(string) string { return "192.0.2.1:80" }, 1, false},
+	} {
 		ws := t.TempDir()
 		var errb bytes.Buffer
 		if _, err := parseStart([]string{"-workspace", ws}, &errb); err != nil {
@@ -182,17 +194,96 @@ func TestRunningScreenIsReopened(t *testing.T) {
 		if err := st.AcquireRun(); err != nil {
 			t.Fatal(err)
 		}
-		if err := recordAddr(st.Dir, c.addr); err != nil {
+		addr := c.addr(st.ID)
+		if err := recordAddr(st.Dir, addr); err != nil {
 			t.Fatal(err)
 		}
 		h, code, opened, _ := started(t, "-workspace", ws)
 		st.Close()
 		if code != c.code || h != nil {
-			t.Errorf("%s: code %d, served %v; want %d and no second server", c.addr, code, h != nil, c.code)
+			t.Errorf("%s: code %d, served %v; want %d and no second server", c.name, code, h != nil, c.code)
 		}
-		if c.open != (len(opened) == 1 && opened[0] == "http://"+c.addr+"/") {
-			t.Errorf("%s: opened %v", c.addr, opened)
+		if c.open != (len(opened) == 1 && opened[0] == "http://"+addr+"/") {
+			t.Errorf("%s: opened %v", c.name, opened)
 		}
+	}
+}
+
+// IC-U111 — **실행기(`-open`)는 확인된 화면만 연다.** 새로 띄우지 않는다. 비정상 종료가 남긴 낡은 주소만 있고
+// 화면이 없으면 기다리다 열지 않고 실패한다. 화면이 늦게 뜨면(낡은 주소가 먼저 있어도) 그 화면이 답한 뒤에 새
+// 주소를 연다. 이미 떠 있으면 곧바로 연다. `-no-browser`면 주소만 찍는다.
+func TestLauncherOpensOnlyAConfirmedScreen(t *testing.T) {
+	oldWait, oldOpen, oldStop := openWait, openBrowser, stopSignal
+	t.Cleanup(func() { openWait, openBrowser, stopSignal = oldWait, oldOpen, oldStop })
+	var mu sync.Mutex
+	var opened []string
+	openBrowser = func(u string, _ io.Writer) { mu.Lock(); opened = append(opened, u); mu.Unlock() }
+	took := func() []string { mu.Lock(); defer mu.Unlock(); return append([]string(nil), opened...) }
+
+	ws := t.TempDir()
+	stateDir := filepath.Join(ws, ".pqcaton")
+	// 한 번 띄웠다 끈 작업 폴더에 비정상 종료가 남긴 것처럼 낡은 주소를 둔다.
+	sig := make(chan os.Signal, 1)
+	stopSignal = func() <-chan os.Signal { return sig }
+	done := make(chan int, 1)
+	go func() {
+		done <- run([]string{"-workspace", ws, "-no-browser", "-addr", "127.0.0.1:0"}, io.Discard, io.Discard)
+	}()
+	waitFile(t, filepath.Join(stateDir, addrFile))
+	sig <- os.Interrupt
+	<-done
+	if err := recordAddr(stateDir, "127.0.0.1:1"); err != nil {
+		t.Fatal(err)
+	}
+
+	openWait = 300 * time.Millisecond
+	if code := run([]string{"-workspace", ws, "-open"}, io.Discard, io.Discard); code != 1 || len(took()) != 0 {
+		t.Fatalf("a stale address with no screen: code %d, opened %v", code, took())
+	}
+
+	// 실행기를 먼저 부르고 화면을 늦게 띄운다.
+	openWait = 10 * time.Second
+	launcher := make(chan int, 1)
+	go func() { launcher <- run([]string{"-workspace", ws, "-open"}, io.Discard, io.Discard) }()
+	time.Sleep(500 * time.Millisecond)
+	if len(took()) != 0 {
+		t.Fatalf("the launcher opened %v before the screen was up", took())
+	}
+	sig = make(chan os.Signal, 1)
+	go func() {
+		done <- run([]string{"-workspace", ws, "-no-browser", "-addr", "127.0.0.1:0"}, io.Discard, io.Discard)
+	}()
+	t.Cleanup(func() { sig <- os.Interrupt; <-done })
+	if code := <-launcher; code != 0 {
+		t.Fatalf("the launcher gave up on a screen that came up: %d", code)
+	}
+	b, _ := os.ReadFile(filepath.Join(stateDir, addrFile))
+	want := "http://" + strings.TrimSpace(string(b)) + "/"
+	if got := took(); len(got) != 1 || got[0] != want || want == "http://127.0.0.1:1/" {
+		t.Fatalf("opened %v, want only %s", got, want)
+	}
+
+	// 이미 떠 있으면 곧바로 연다. -no-browser면 주소만 찍는다.
+	var out bytes.Buffer
+	if code := run([]string{"-workspace", ws, "-open", "-no-browser"}, io.Discard, &out); code != 0 || !strings.Contains(out.String(), want) || len(took()) != 1 {
+		t.Errorf("-open -no-browser on a running screen: %d %q %v", code, out.String(), took())
+	}
+	if code := run([]string{"-workspace", ws, "-open"}, io.Discard, io.Discard); code != 0 || len(took()) != 2 {
+		t.Errorf("-open on a running screen: %d %v", code, took())
+	}
+}
+
+func waitFile(t *testing.T, p string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if b, err := os.ReadFile(p); err == nil && len(b) > 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s did not appear", p)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 
@@ -220,6 +311,9 @@ func TestBrokenWorkspaceOpensForDiagnostics(t *testing.T) {
 	}
 	if !strings.Contains(stderr, filepath.Join(ws, "declaration.json")) {
 		t.Error("the full path is not in the server log")
+	}
+	if w := do(h, newReq(http.MethodGet, ui.HealthPath, nil)); w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) == "" {
+		t.Errorf("health in diagnostics mode: %d %q", w.Code, w.Body.String())
 	}
 }
 

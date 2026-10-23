@@ -292,7 +292,7 @@ func inventoryBody(v InventoryView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalAssets, len(v.Assets))).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templ.Raw(tShowingOf.F(v.Page.Lang, v.TotalAssets, len(v.Assets))).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -563,7 +563,7 @@ func inventoryBody(v InventoryView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalEdges, len(v.Edges))).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templ.Raw(tShowingOf.F(v.Page.Lang, v.TotalEdges, len(v.Edges))).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

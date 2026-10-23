@@ -50,7 +50,7 @@ templ inventoryBody(v InventoryView) {
 			{ tSurveyAssets.In(v.Page.Lang) }
 			<span class="n">
 				— 
-				@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalAssets, len(v.Assets)))
+				@templ.Raw(tShowingOf.F(v.Page.Lang, v.TotalAssets, len(v.Assets)))
 			</span>
 		</legend>
 		<div class="table-wrap">
@@ -93,7 +93,7 @@ templ inventoryBody(v InventoryView) {
 			{ tSurveyEdges.In(v.Page.Lang) }
 			<span class="n">
 				— 
-				@templ.Raw(fmt.Sprintf(tShowingOf.In(v.Page.Lang), v.TotalEdges, len(v.Edges)))
+				@templ.Raw(tShowingOf.F(v.Page.Lang, v.TotalEdges, len(v.Edges)))
 			</span>
 		</legend>
 		<div class="table-wrap">

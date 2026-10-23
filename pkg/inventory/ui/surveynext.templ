@@ -1,6 +1,5 @@
 package ui
 
-import "fmt"
 import "strconv"
 
 // surveyNextPage — 대조 화면의 다음 판.
@@ -14,7 +13,7 @@ templ surveyNextPage(v SurveyView) {
 			{{ s := v.Summary() }}
 			<p class="eyebrow">{ tNextSurveyEyebrow.In(v.Page.Lang) }</p>
 			if s.ToJudge > 0 {
-				<h2>{ fmt.Sprintf(tNextSurveyHead.In(v.Page.Lang), s.ToJudge) }</h2>
+				<h2>{ tNextSurveyHead.F(v.Page.Lang, s.ToJudge) }</h2>
 			} else {
 				<h2>{ tNextSurveyHeadDone.In(v.Page.Lang) }</h2>
 			}
@@ -57,7 +56,7 @@ templ surveyNextTodo(v SurveyView) {
 			<div class="next-icon">!</div>
 			<div>
 				<strong>{ tNextSurveyRescan.In(v.Page.Lang) }</strong>
-				<span>{ fmt.Sprintf(tNextSurveyRescanBody.In(v.Page.Lang), s.Rescan) }</span>
+				<span>{ tNextSurveyRescanBody.F(v.Page.Lang, s.Rescan) }</span>
 			</div>
 			<a class="quiet" href={ templ.SafeURL("#" + surveyEditAnchor) }>{ tNextGoEdit.In(v.Page.Lang) }</a>
 		</div>
@@ -66,7 +65,7 @@ templ surveyNextTodo(v SurveyView) {
 		<div class="next">
 			<div class="next-icon">!</div>
 			<div>
-				<strong>{ fmt.Sprintf(tNextSurveyJudge.In(v.Page.Lang), s.ToJudge) }</strong>
+				<strong>{ tNextSurveyJudge.F(v.Page.Lang, s.ToJudge) }</strong>
 				<span>{ tNextSurveyJudgeBody.In(v.Page.Lang) }</span>
 			</div>
 			<a class="primary" href={ templ.SafeURL(ScreenReview) }>{ tNextSurveyGoReview.In(v.Page.Lang) }</a>

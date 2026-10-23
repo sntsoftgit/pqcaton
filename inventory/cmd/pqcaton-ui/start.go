@@ -22,17 +22,20 @@ import (
 	"io"
 	"io/fs"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
 // 작업 폴더 안의 이름. 바꾸면 운영자 안내서와 백업 절차가 함께 바뀐다.
@@ -57,6 +60,7 @@ var pathFlags = []string{"decl", "results", "layers", "base", "scope", "scope-as
 type startConfig struct {
 	addr, org, stateDir  string
 	noBrowser            bool
+	open                 bool // 떠 있는 화면을 열기만 한다(실행기)
 	orgGiven             bool // -org를 직접 주었나
 	recoverStatus        bool
 	diagnostics          string
@@ -79,6 +83,7 @@ func parseStart(args []string, stderr io.Writer) (startConfig, error) {
 	var c startConfig
 	fs.StringVar(&c.addr, "addr", "127.0.0.1:8765", "address to listen on (loopback only)")
 	fs.BoolVar(&c.noBrowser, "no-browser", false, "do not open a browser after the screen starts")
+	fs.BoolVar(&c.open, "open", false, "open the screen already running for this workspace in a browser, waiting up to 15s for it to answer; never starts one (the desktop launcher uses this). With -no-browser, only print its address")
 	ws := fs.String("workspace", "", "workspace folder: every file sits at a fixed name inside it (default with no arguments: ~/pqcaton). Cannot be combined with the path flags")
 	fs.StringVar(&c.decl, "decl", "", "declaration file (declaration.json). Given this, the declaration screen opens")
 	fs.StringVar(&c.results, "results", "", "directory of collected results. With -decl, the reconciliation screen opens")
@@ -293,22 +298,65 @@ func (s *server) declReady() bool {
 	return err == nil
 }
 
-// openRunning: 같은 상태 디렉토리로 이미 떠 있는 화면을 연다. 적어 둔 주소가 루프백이 아니면 열지 않는다.
+// openRunning: 같은 상태 디렉토리로 떠 있는 화면을 연다. **적힌 주소를 믿지 않는다**: 그 주소의 서버가 같은
+// 상태 디렉토리의 ID를 답할 때까지 기다린 뒤에 연다(runningAt). 비정상 종료가 남긴 낡은 주소, 아직 포트를 열지
+// 않은 서버, 같은 포트의 다른 프로그램을 열지 않는다. 기다려도 답이 없으면 열지 않고 실패한다.
 func openRunning(stateDir string, noBrowser bool, stderr io.Writer) error {
+	deadline := time.Now().Add(openWait)
+	for {
+		url, err := runningAt(stateDir)
+		if err == nil {
+			fmt.Fprintf(stderr, "the screen is running: %s\n", url)
+			if !noBrowser {
+				openBrowser(url, stderr)
+			}
+			return nil
+		}
+		if errors.Is(err, errNotLoopback) || time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(openPoll)
+	}
+}
+
+// openWait · openPoll: 떠 있는 화면이 답하기를 기다리는 시간과 간격. 시험이 줄인다.
+var (
+	openWait = 15 * time.Second
+	openPoll = 200 * time.Millisecond
+)
+
+var errNotLoopback = errors.New("not a loopback address")
+
+// healthClient: 떠 있는 화면에 묻는 클라이언트. 답이 없는 주소에서 오래 머물지 않는다.
+var healthClient = &http.Client{Timeout: time.Second}
+
+// runningAt: 적힌 주소의 서버가 이 상태 디렉토리의 화면이면 그 주소를 돌려준다.
+func runningAt(stateDir string) (string, error) {
+	id, err := store.ReadStateID(stateDir)
+	if err != nil {
+		return "", err
+	}
+	if id == "" {
+		return "", fmt.Errorf("no screen has used %s yet", stateDir)
+	}
 	b, err := os.ReadFile(filepath.Join(stateDir, addrFile))
 	if err != nil {
-		return fmt.Errorf("another pqcaton screen is using %s, but its address is not recorded", stateDir)
+		return "", fmt.Errorf("no running screen has recorded its address in %s", stateDir)
 	}
 	addr := strings.TrimSpace(string(b))
 	if !loopback(addr) {
-		return fmt.Errorf("the recorded address of the running screen (%s) is not a loopback address; not opening it", addr)
+		return "", fmt.Errorf("%w: the recorded address of the running screen (%s); not opening it", errNotLoopback, addr)
 	}
-	url := "http://" + addr + "/"
-	fmt.Fprintf(stderr, "the screen is already running: %s\n", url)
-	if !noBrowser {
-		openBrowser(url, stderr)
+	res, err := healthClient.Get("http://" + addr + ui.HealthPath)
+	if err != nil {
+		return "", fmt.Errorf("the recorded address %s does not answer: %w", addr, err)
 	}
-	return nil
+	defer res.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(res.Body, 256))
+	if res.StatusCode != http.StatusOK || strings.TrimSpace(string(body)) != id {
+		return "", fmt.Errorf("the recorded address %s answers for another screen", addr)
+	}
+	return "http://" + addr + "/", nil
 }
 
 // recordAddr: 떠 있는 화면의 주소를 상태 디렉토리에 적는다(0600). 다시 실행하면 이 주소를 연다.

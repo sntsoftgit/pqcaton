@@ -1,6 +1,5 @@
 package ui
 
-import "fmt"
 import "strconv"
 
 // declNextPage — 선언 화면의 다음 판. **적는 자리 위에 「지금 무엇을 할지」를 얹는다.**
@@ -46,7 +45,7 @@ templ declNextTodo(v DeclView) {
 		<div class="next">
 			<div class="next-icon">!</div>
 			<div>
-				<strong>{ fmt.Sprintf(tNextUnlinked.In(v.Page.Lang), len(v.Unmatched)) }</strong>
+				<strong>{ tNextUnlinked.F(v.Page.Lang, len(v.Unmatched)) }</strong>
 				<span>
 					for i, id := range v.Unmatched {
 						if i > 0 {

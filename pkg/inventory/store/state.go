@@ -166,6 +166,23 @@ func (s *State) ensureDir() error {
 	return nil
 }
 
+// ReadStateID: 상태 디렉토리의 ID를 읽기만 한다(만들지 않는다). 아직 없으면 빈 값이다. 떠 있는 화면이 같은
+// 상태 디렉토리의 것인지 견줄 때 쓴다(pqcaton-ui -open).
+func ReadStateID(dir string) (string, error) {
+	b, err := os.ReadFile(filepath.Join(dir, stateFile))
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	var doc stateDoc
+	if err := json.Unmarshal(b, &doc); err != nil || doc.Format != stateFormat || !idPattern.MatchString(doc.StateID) {
+		return "", fmt.Errorf("%w: %s", ErrDamaged, filepath.Join(dir, stateFile))
+	}
+	return doc.StateID, nil
+}
+
 // ensureID: state.json을 읽는다. 없으면 만든다. **덮어쓰지 않는다.** 둘이 동시에 만들어도 먼저
 // 자리를 잡은 쪽의 ID가 남고, 다른 쪽은 그것을 읽는다(링크는 자리가 차 있으면 실패한다).
 func (s *State) ensureID() error {

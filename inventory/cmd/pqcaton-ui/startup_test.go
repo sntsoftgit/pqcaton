@@ -192,6 +192,11 @@ func TestRecoveryScreenShowsStateAndDiagnostics(t *testing.T) {
 		t.Error("the recovery screen changed the file")
 	}
 
+	// 실행기가 복구 화면도 열 수 있게 상태 ID는 답한다.
+	if w := get(t, s, ui.HealthPath); w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != s.st.ID {
+		t.Errorf("health during recovery: %d %q", w.Code, w.Body.String())
+	}
+
 	ok, _ := newServer(t)
 	if w := get(t, ok, ui.RecoveryDiagPath); w.Code != http.StatusNotFound {
 		t.Errorf("diagnostics outside recovery: %d, want 404", w.Code)

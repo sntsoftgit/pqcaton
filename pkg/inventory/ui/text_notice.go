@@ -27,6 +27,12 @@ var noticeText = map[string]noticeSpec{
 	NoticeDeclCreated: {T{
 		KO: "빈 선언을 만들었습니다. 아래에서 노드와 자산을 적으십시오",
 		EN: "An empty declaration was created. Write the nodes and assets below"}, ""},
+	NoticeRoundOpened: {T{
+		KO: "새 검토를 시작했습니다. 지난 결론과 계획 칸을 옮겨 왔고, 승인 서명은 비웠습니다",
+		EN: "A new review was started: earlier conclusions and plan fields were carried over, and the signature was cleared"}, ""},
+	NoticeScopeRoundOpened: {T{
+		KO: "새 스코프 검토를 시작했습니다. 지난 결론을 옮겨 왔고, 승인 서명은 비웠습니다",
+		EN: "A new scope review was started: earlier conclusions were carried over, and the signature was cleared"}, ""},
 	NoticeLayerCreated: {T{
 		KO: "빈 계층을 만들었습니다: %s. 아래에서 규칙을 적으십시오",
 		EN: "An empty layer was created: %s. Write its rules below"}, "i"},
@@ -201,3 +207,17 @@ func verdictText(l Lang, v string) string {
 	}
 	return v
 }
+
+// 확정된 세션의 화면. 읽기 전용이고, 새 회차를 연다.
+var (
+	tRoundReviewHead = T{KO: "이 판정 세션은 확정되었습니다", EN: "This review session is finalized"}
+	tRoundReviewBody = T{
+		KO: "확정한 세션은 고칠 수 없어 읽기 전용으로 보입니다. 바꾸려면 새 검토를 시작하십시오. 결론과 계획 칸은 새 세션으로 옮겨 가고, 승인 서명은 새로 받습니다.",
+		EN: "A finalized session cannot be changed, so it is shown read-only. To change it, start a new review: conclusions and plan fields carry over, and a new signature is needed."}
+	tRoundReviewDo  = T{KO: "새 검토 시작", EN: "Start a new review"}
+	tRoundScopeHead = T{KO: "이 스코프 검토는 확정되었습니다", EN: "This scope review is finalized"}
+	tRoundScopeBody = T{
+		KO: "확정한 스코프 검토는 고칠 수 없어 읽기 전용으로 보입니다. 규칙이나 결론을 바꾸려면 새 스코프 검토를 시작하십시오. 결론은 옮겨 가고, 승인 서명은 새로 받습니다.",
+		EN: "A finalized scope review cannot be changed, so it is shown read-only. To change rules or conclusions, start a new scope review: conclusions carry over, and a new signature is needed."}
+	tRoundScopeDo = T{KO: "새 스코프 검토 시작", EN: "Start a new scope review"}
+)

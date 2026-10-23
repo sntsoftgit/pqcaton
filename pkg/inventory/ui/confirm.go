@@ -5,7 +5,6 @@ package ui
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/url"
 	"sort"
@@ -71,8 +70,8 @@ func RenderConfirm(w io.Writer, v ConfirmView) error {
 func ConfirmTitle(l Lang) string { return tConfirmTitle.In(l) }
 
 // LinePlanActions · LineJudgments · LinePolicyRules: 확인 페이지의 요약 줄.
-func LinePlanActions(l Lang, n int) string { return fmt.Sprintf(tLinePlanActions.In(l), n) }
+func LinePlanActions(l Lang, n int) string { return tLinePlanActions.F(l, n) }
 
-func LineJudgments(l Lang, n int) string { return fmt.Sprintf(tLineJudgments.In(l), n) }
+func LineJudgments(l Lang, n int) string { return tLineJudgments.F(l, n) }
 
-func LinePolicyRules(l Lang, n int) string { return fmt.Sprintf(tLinePolicyRules.In(l), n) }
+func LinePolicyRules(l Lang, n int) string { return tLinePolicyRules.F(l, n) }

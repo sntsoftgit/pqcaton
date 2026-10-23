@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
@@ -12,6 +11,8 @@ import (
 templ reviewForm(v ReviewView) {
 	<form method="post">
 		@csrfField(v.Page)
+		// 확정된 세션은 읽기 전용이다. 칸을 모두 잠그고 저장 · 확정 단추를 두지 않는다(새 회차는 위의 단추로).
+		<fieldset class="locked" disabled?={ v.Finalized }>
 		@tip(v.Page.Lang, tReviewQueueHint.In(v.Page.Lang))
 		for _, g := range v.Policies {
 			<fieldset>
@@ -96,7 +97,7 @@ templ reviewForm(v ReviewView) {
 			</fieldset>
 		}
 		if len(v.LegacyAutopass) > 0 {
-			<p class="hint">{ fmt.Sprintf(tLegacyAutopass.In(v.Page.Lang), len(v.LegacyAutopass)) }</p>
+			<p class="hint">{ tLegacyAutopass.F(v.Page.Lang, len(v.LegacyAutopass)) }</p>
 		}
 		if len(v.Policies) == 0 {
 			<p>{ tReviewEmpty.In(v.Page.Lang) }</p>
@@ -113,11 +114,14 @@ templ reviewForm(v ReviewView) {
 				<input type="text" name="signature" value={ v.Signature }/>
 			</label>
 		</fieldset>
-		<div class="actions">
-			<button formaction="/save">{ tSaveOnly.In(v.Page.Lang) }</button>
-			<button formaction="/finalize/confirm" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
-			@tip(v.Page.Lang, tReviewGateHint.In(v.Page.Lang))
-		</div>
+		</fieldset>
+		if !v.Finalized {
+			<div class="actions">
+				<button formaction="/save">{ tSaveOnly.In(v.Page.Lang) }</button>
+				<button formaction="/finalize/confirm" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
+				@tip(v.Page.Lang, tReviewGateHint.In(v.Page.Lang))
+			</div>
+		}
 	</form>
 }
 
