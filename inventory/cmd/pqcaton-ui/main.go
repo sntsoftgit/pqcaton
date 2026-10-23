@@ -42,6 +42,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -263,6 +264,10 @@ type server struct {
 	st *store.State
 	// wait: 대상 잠금을 기다리는 시간. 0이면 lockWait.
 	wait time.Duration
+	// key: 확인 토큰의 서명 키(confirm.go). clock: 지금 시각. 테스트가 바꾼다.
+	keyOnce sync.Once
+	key     []byte
+	clock   func() time.Time
 }
 
 // handler — 주소와 처리기를 잇는다.
@@ -303,6 +308,7 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.ScopeRowPath, s.scopeRow)
 	r.Post("/scope/rules", s.scopeRules)
 	r.Post("/scope/save", s.scopeSave)
+	r.Post("/scope/finalize/confirm", s.scopeConfirm)
 	r.Post("/scope/finalize", s.scopeFinalize)
 	r.Get("/survey", s.survey)
 	r.Get(ui.ScreenSurveyNext, s.surveyNext)
@@ -311,6 +317,7 @@ func (s *server) handler() http.Handler {
 	r.Get("/review", s.review)
 	r.Get(ui.ScreenReviewNext, s.reviewNext)
 	r.Post("/save", s.save)
+	r.Post("/finalize/confirm", s.finalizeConfirm)
 	r.Post("/finalize", s.finalize)
 	return r
 }
@@ -459,7 +466,7 @@ func (s *server) save(w http.ResponseWriter, r *http.Request) {
 }
 
 // finalize — **명령과 같은 검사를 거친다.** 여기서 따로 판정하지 않는다(review.Outputs가
-// review.Finalize를 부른다).
+// review.Finalize를 부른다). 확인 페이지(confirm.go)를 거친 요청만 받는다.
 //
 // 세션 · 계획(앞 판은 .prev로) · 판정 원장 · 영수증이 한 트랜잭션이다. 같은 세션을 같은 내용으로
 // 다시 확정하면 아무것도 다시 쓰지 않는다.
@@ -475,20 +482,14 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		targets = append(targets, s.judgments)
 		files = append(files, file(l, "ledger", s.judgments))
 	}
-	// 확정할 내용의 지문. 잠금 안에서 다시 만들어 견준다 - 그 사이 파일이 바뀌었으면 쓰지 않는다.
-	sf, err := s.applyReview(r)
-	if err != nil {
-		redirect(w, r, "/review", "", ui.Refusal(l, err))
-		return
-	}
-	payload, err := review.PayloadSHA256(sf, s.org, withJudg)
-	if err != nil {
-		// 확정되지 않은 이유를 그대로 보여 준다 — 무엇이 남았는지가 거기 적혀 있다.
-		redirect(w, r, "/review", "", ui.Refusal(l, err))
+	// 확인 페이지가 서명한 지문. 잠금 안에서 다시 만들어 견준다 - 그 사이 파일이 바뀌었으면 쓰지 않는다.
+	id := s.reviewID()
+	payload, ok := s.confirmed(w, r, kindReview, "/review", id)
+	if !ok {
 		return
 	}
 	var written review.Output
-	out, err := s.st.FinalizeChecked(s.reviewID(), targets, s.check(r), payload, s.waitTime(), func() (store.Parts, error) {
+	out, err := s.st.FinalizeChecked(id, targets, s.check(r), payload, s.waitTime(), func() (store.Parts, error) {
 		sf, err := s.applyReview(r)
 		if err != nil {
 			return store.Parts{}, err
@@ -729,18 +730,13 @@ func (s *server) scopeFinalize(w http.ResponseWriter, r *http.Request) {
 		targets = append(targets, s.judgments)
 		files = append(files, file(l, "ledger", s.judgments))
 	}
-	sf, err := s.applyScope(r)
-	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(l, err))
-		return
-	}
-	payload, err := scope.PayloadSHA256(sf, s.org, withJudg)
-	if err != nil {
-		redirect(w, r, "/scope", "", ui.Refusal(l, err))
+	id := s.scopeID()
+	payload, ok := s.confirmed(w, r, kindScope, "/scope", id)
+	if !ok {
 		return
 	}
 	var written scope.Output
-	out, err := s.st.FinalizeChecked(s.scopeID(), targets, s.check(r), payload, s.waitTime(), func() (store.Parts, error) {
+	out, err := s.st.FinalizeChecked(id, targets, s.check(r), payload, s.waitTime(), func() (store.Parts, error) {
 		sf, err := s.applyScope(r)
 		if err != nil {
 			return store.Parts{}, err

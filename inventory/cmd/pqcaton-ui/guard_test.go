@@ -114,7 +114,9 @@ func TestSameOriginWithTokenReachesHandlers(t *testing.T) {
 	for _, p := range changePaths {
 		s, _ := fullServer(t)
 		w := serve(s.handler(), goodPost(p))
-		if w.Code == http.StatusForbidden || strings.HasPrefix(w.Body.String(), "forbidden") {
+		// 가드의 거부는 본문이 「forbidden」으로 시작한다. 확정 주소는 처리기 자신이 확인 토큰이 없다고
+		// 403을 낼 수 있다(confirm.go). 그것은 처리기에 닿았다는 뜻이다.
+		if strings.HasPrefix(w.Body.String(), "forbidden") {
 			t.Errorf("%s: 바른 요청을 막았다 (%d)\n%s", p, w.Code, w.Body.String())
 		}
 	}

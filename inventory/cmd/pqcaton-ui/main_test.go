@@ -190,7 +190,7 @@ func TestSaveDoesNotFinalize(t *testing.T) {
 // 화면에 그대로 보인다 — 안 보여 주면 사람은 화면에서도 고칠 수 없다.
 func TestFinalizeRefusesWithoutSignature(t *testing.T) {
 	s, _ := newServer(t)
-	q := location(t, postForm(t, s, "/finalize", url.Values{
+	q := location(t, postForm(t, s, "/finalize/confirm", url.Values{
 		"policy:openssl/libssl": {"교체한다"},
 		"reviewer":              {"보안팀"}, // 서명 없음
 	}))
@@ -210,7 +210,7 @@ func TestFinalizeWritesPlanAndJudgments(t *testing.T) {
 	s, dir := newServer(t)
 	s.judgments = filepath.Join(dir, "judgments.jsonl")
 
-	q := location(t, postForm(t, s, "/finalize", url.Values{
+	q := location(t, finalizeVia(t, s, "", "/finalize/confirm", url.Values{
 		"policy:openssl/libssl":            {"PQC 라이브러리로 교체한다"},
 		"plan:host://local/openssl/libssl": {"on"},
 		// 계획에 넣는 항목은 **골라야 확정된다**(RequireDecisions). 화면이 이 칸들을 함께 보낸다.
@@ -570,7 +570,7 @@ func TestScopeTabComesBeforeSurvey(t *testing.T) {
 // 무엇이 남았는지 화면에 그대로 보인다.
 func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 	s, _ := withScope(t)
-	q := location(t, postFormLang(t, s, "/scope/finalize", "ko", url.Values{
+	q := location(t, postFormLang(t, s, "/scope/finalize/confirm", "ko", url.Values{
 		"reviewer": {"보안팀"}, "signature": {"sig"}, // 결론 없음
 	}))
 	if q.Get("problem") == "" {
@@ -588,7 +588,7 @@ func TestScopeFinalizeRefusesWithoutConclusion(t *testing.T) {
 func TestScopeFinalizeEmitsPolicy(t *testing.T) {
 	s, dir := withScope(t)
 	s.judgments = filepath.Join(dir, "judgments.jsonl")
-	q := location(t, postForm(t, s, "/scope/finalize", url.Values{
+	q := location(t, finalizeVia(t, s, "", "/scope/finalize/confirm", url.Values{
 		"reviewer": {"보안팀"}, "signature": {"sig"},
 		"layer:corp": {"OS 패치로 관리한다"},
 	}))

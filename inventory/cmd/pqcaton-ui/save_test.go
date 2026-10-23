@@ -102,7 +102,7 @@ func TestStaleScreenIsRefused(t *testing.T) {
 func TestFinalizedSessionIsLocked(t *testing.T) {
 	s, dir := newServer(t)
 	s.judgments = filepath.Join(dir, "judgments.jsonl")
-	if q := location(t, postForm(t, s, "/finalize", signed())); q.Get("problem") != "" {
+	if q := location(t, finalizeVia(t, s, "", "/finalize/confirm", signed())); q.Get("problem") != "" {
 		t.Fatalf("finalize: %s", q.Get("problem"))
 	}
 	plan, sess := readFile(t, s.planOut), readFile(t, s.path)
@@ -113,7 +113,7 @@ func TestFinalizedSessionIsLocked(t *testing.T) {
 	}
 	other := signed()
 	other.Set("policy:openssl/libssl", "다른 결론")
-	if w := postForm(t, s, "/finalize", other); w.Code != http.StatusConflict {
+	if w := finalizeVia(t, s, "", "/finalize/confirm", other); w.Code != http.StatusConflict {
 		t.Fatalf("finalize with other content: status %d", w.Code)
 	}
 	if readFile(t, s.planOut) != plan || readFile(t, s.path) != sess {
@@ -129,12 +129,12 @@ func TestRepeatedFinalizeWritesOnce(t *testing.T) {
 	if err := os.WriteFile(s.planOut, []byte("{\"older\":true}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	first := postForm(t, s, "/finalize", signed())
+	first := finalizeVia(t, s, "", "/finalize/confirm", signed())
 	if q := location(t, first); q.Get("problem") != "" {
 		t.Fatalf("finalize: %s", q.Get("problem"))
 	}
 	ledger := readFile(t, s.judgments)
-	again := postFormLang(t, s, "/finalize", "ko", signed())
+	again := finalizeVia(t, s, "ko", "/finalize/confirm", signed())
 	q := location(t, again)
 	if q.Get("msg") != ui.MsgFinalizedAlready(ui.KO) {
 		t.Errorf("second finalize says %q, want the already-finalized message", q.Get("msg"))

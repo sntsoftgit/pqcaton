@@ -18,6 +18,8 @@ const (
 	RefusedBusy      = "busy"
 	RefusedRecovery  = "recovery"
 	RefusedViewOnly  = "view-only"
+	RefusedExpired   = "expired"
+	RefusedConfirm   = "confirm"
 )
 
 // FileRef: 거절 페이지에 보일 파일. **역할과 파일 이름뿐이다.** 같은 이름이 여럿일 수 있어 역할을
@@ -46,6 +48,7 @@ func NewRefused(p Page, kind, back string, files []FileRef) RefusedView {
 	body := map[string]T{
 		RefusedStale: tRefusedStale, RefusedFinalized: tRefusedFinalized, RefusedBusy: tRefusedBusy,
 		RefusedRecovery: tRefusedRecovery, RefusedViewOnly: tRefusedViewOnly,
+		RefusedExpired: tRefusedExpired, RefusedConfirm: tRefusedConfirmBad,
 	}[kind]
 	v := RefusedView{Page: p, Head: tNotSaved.In(p.Lang), Body: body.In(p.Lang), Back: back,
 		BackText: tBackToScreen.In(p.Lang)}

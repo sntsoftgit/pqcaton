@@ -1096,7 +1096,7 @@ func TestScopeNextSharesTheForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{`class="ui-next"`, "관리하지 않을 자산을 승인합니다",
-		`id="scope-edit"`, `action="/scope/finalize"`} {
+		`id="scope-edit"`, `action="/scope/finalize/confirm"`} {
 		if !strings.Contains(next.String(), want) {
 			t.Errorf("%q 가 없다", want)
 		}
@@ -1109,7 +1109,7 @@ func TestScopeNextSharesTheForm(t *testing.T) {
 	if strings.Contains(old.String(), `class="ui-next"`) {
 		t.Error("옛 화면에 요약이 붙었다")
 	}
-	if !strings.Contains(old.String(), `action="/scope/finalize"`) {
+	if !strings.Contains(old.String(), `action="/scope/finalize/confirm"`) {
 		t.Error("두 화면이 같은 확정 경로를 쓰지 않는다")
 	}
 }
@@ -1300,7 +1300,7 @@ func TestReviewNextSharesTheForm(t *testing.T) {
 		t.Error("옛 화면에 요약이 붙었다")
 	}
 	for _, w := range []*strings.Builder{&next, &old} {
-		if !strings.Contains(w.String(), `action="/finalize"`) {
+		if !strings.Contains(w.String(), `action="/finalize/confirm"`) {
 			t.Error("두 화면이 같은 확정 경로를 쓰지 않는다")
 		}
 	}

@@ -1,0 +1,39 @@
+package ui
+
+// confirmPage — 확정 전 확인. **이 페이지를 그리는 요청은 아무것도 바꾸지 않는다.** 받은 폼 값을
+// 숨은 필드로 다시 싣고, 확정 버튼은 서명된 확인 토큰과 함께 보낸다.
+templ confirmPage(v ConfirmView) {
+	@shell(v.Page) {
+		<p>{ tConfirmBody.In(v.Lang) }</p>
+		if len(v.Lines) > 0 {
+			<ul>
+				for _, l := range v.Lines {
+					<li>{ l }</li>
+				}
+			</ul>
+		}
+		if len(v.Files) > 0 {
+			<p>{ tFilesInvolved.In(v.Lang) }</p>
+			<ul class="refused-files">
+				for _, f := range v.Files {
+					<li>{ f.Role } <code>{ f.Name }</code></li>
+				}
+			</ul>
+		}
+		<form method="post" action={ templ.SafeURL(v.Action) }>
+			@csrfField(v.Page)
+			for _, f := range v.Hidden {
+				<input type="hidden" name={ f.Name } value={ f.Value }/>
+			}
+			<input type="hidden" name={ ConfirmSessionField } value={ v.SessionID }/>
+			<input type="hidden" name={ ConfirmPayloadField } value={ v.Payload }/>
+			<input type="hidden" name={ ConfirmExpField } value={ v.Exp }/>
+			<input type="hidden" name={ ConfirmTokenField } value={ v.Token }/>
+			<div class="actions">
+				<button type="submit" class="primary">{ tConfirmDo.In(v.Lang) }</button>
+				<button formaction={ templ.SafeURL(v.SaveAction) }>{ tConfirmSaveOnly.In(v.Lang) }</button>
+			</div>
+		</form>
+		<p><a href={ templ.SafeURL(v.Back) }>{ tConfirmBack.In(v.Lang) }</a></p>
+	}
+}

@@ -18,7 +18,7 @@ templ scopePage(v ScopeView) {
 // 같은 폼을 그대로 쓴다. 확정 경로가 두 벌이 되면 한쪽이 어긋나는 날이 온다.
 templ scopeForm(v ScopeView) {
 	@tip(v.Page.Lang, tScopeIntro.In(v.Page.Lang)+" "+tScopeDelta.In(v.Page.Lang)+" "+tScopeConclusionHint.In(v.Page.Lang))
-	<form method="post" action="/scope/finalize">
+	<form method="post" action="/scope/finalize/confirm">
 		@csrfField(v.Page)
 		if len(v.Editing) > 0 {
 			@ruleLegend(v.Page.Lang)
@@ -108,7 +108,7 @@ templ scopeForm(v ScopeView) {
 		</fieldset>
 		<div class="actions">
 			<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
-			<button formaction="/scope/finalize" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
+			<button formaction="/scope/finalize/confirm" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
 			@tip(v.Page.Lang, tScopeGateHint.In(v.Page.Lang))
 		</div>
 	</form>

@@ -118,7 +118,7 @@ templ reviewForm(v ReviewView) {
 		</fieldset>
 		<div class="actions">
 			<button formaction="/save">{ tSaveOnly.In(v.Page.Lang) }</button>
-			<button formaction="/finalize" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
+			<button formaction="/finalize/confirm" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
 			@tip(v.Page.Lang, tReviewGateHint.In(v.Page.Lang))
 		</div>
 	</form>

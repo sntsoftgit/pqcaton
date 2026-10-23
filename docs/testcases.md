@@ -293,6 +293,12 @@
 | [IC-U61](../inventory/cmd/pqcaton-ui/save_test.go) ✅ | 저장 기록과 파일이 어긋남 | 503이고 `-recover-status`를 안내한다. 밖에서 바뀐 파일을 덮어쓰지 않는다 |
 | **[IC-U62](../inventory/cmd/pqcaton-ui/save_test.go) ✅** | 같은 상태 디렉토리로 서버 둘 · 기록에 없는 준비 파일 · 계층만 주고 시작 | 둘째 서버는 열리지 않는다. 기록에 없는 준비 파일은 지우지 않고 열지 않는다. 입력에서 세운 세션은 시작할 때 파일로 남겨 세션 ID가 선다 |
 | [IC-U63](../inventory/cmd/pqcaton-ui/save_test.go) ✅ | 리뷰 · 스코프 · 선언 화면 | 양식이 지금 파일로 잰 rev를 숨은 필드로 싣는다. 세션이 바뀌면 rev도 바뀐다 |
+| **[IC-U64](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅** | 확정 버튼(확인 요청) | **아무것도 바꾸지 않는다.** 확인 페이지는 무엇이 확정되는지(조치 수 · 판정 수 · 역할과 파일 이름)를 보이고, 저장하지 않은 편집과 서명된 확인 토큰을 숨은 필드로 싣는다. 확정 전에 따로 저장할 필요가 없다 |
+| **[IC-U65](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅** | 확인 토큰 없음 · 토큰 · 지문 · rev · 세션 · 만료 시각 가운데 하나를 바꿈 | 403이고 아무것도 쓰지 않는다. 서명은 확정 종류 · 세션 ID · rev · 전체 payload 지문 · 만료 시각을 덮는다 |
+| [IC-U66](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅ | 확인 뒤 10분이 지남 · 서버를 다시 띄움 | 만료는 409이고 다시 미리 보라고 안내한다. 다시 띄우면 서명 키가 바뀌어 403이다 |
+| **[IC-U67](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅** | 확인한 뒤 파일이 바뀜 | 409이고 쓰지 않는다. 토큰이 맞아도 저장소가 잠금 안에서 rev와 지문을 다시 견준다 |
+| [IC-U68](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅ | 확인 페이지에서 「저장만」 | 확정하지 않고 실어 온 편집을 저장한다. 계획과 영수증은 생기지 않는다 |
+| [IC-U69](../inventory/cmd/pqcaton-ui/confirm_test.go) ✅ | 오래된 화면에서 리뷰 · 스코프 확정 버튼 | 409이고 확인 페이지를 그리지 않는다(확인 토큰을 내주지 않는다) |
 
 ### T. 말의 경계 (`tools/checktext`) ✅
 | TC | Given → When | Then |

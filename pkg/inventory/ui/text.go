@@ -75,6 +75,23 @@ var (
 	tRefusedViewOnly = T{
 		KO: "이 플랫폼에서는 화면을 보기만 할 수 있습니다. 저장은 Linux에서 합니다.",
 		EN: "On this platform the screen is view-only. Saving runs on Linux."}
+	tRefusedExpired = T{
+		KO: "확인 화면이 만료되었습니다(10분이 지났습니다). 확정을 처음부터 다시 하십시오.",
+		EN: "The confirmation page has expired (10 minutes passed). Start the finalize again."}
+	tRefusedConfirmBad = T{
+		KO: "확인 정보가 맞지 않아 확정하지 않았습니다. 서버를 다시 시작했거나 확인 페이지를 거치지 않았습니다. 확정을 처음부터 다시 하십시오.",
+		EN: "Not finalized: the confirmation does not match. The server may have restarted, or the request skipped the confirmation page. Start the finalize again."}
+	// 확정 전 확인 페이지.
+	tConfirmTitle = T{KO: "확정 전 확인", EN: "Confirm before finalizing"}
+	tConfirmBody  = T{
+		KO: "아래 내용으로 확정합니다. 확정한 세션은 다시 고칠 수 없고, 바꾸려면 새 세션을 열어야 합니다. 아직 아무것도 저장하지 않았습니다.",
+		EN: "This finalizes the content below. A finalized session cannot be edited again; open a new session to change it. Nothing has been saved yet."}
+	tConfirmDo        = T{KO: "확정합니다", EN: "Finalize"}
+	tConfirmSaveOnly  = T{KO: "확정하지 않고 저장만 합니다", EN: "Save without finalizing"}
+	tConfirmBack      = T{KO: "확정하지 않고 화면으로 돌아가기(저장하지 않은 편집은 남지 않습니다)", EN: "Back to the screen without finalizing (unsaved edits are not kept)"}
+	tLinePlanActions  = T{KO: "계획에 넣는 조치 %d건", EN: "%d actions in the plan"}
+	tLineJudgments    = T{KO: "판정 원장에 남길 기록 %d줄", EN: "%d records added to the judgment ledger"}
+	tLinePolicyRules  = T{KO: "정책 규칙 %d개", EN: "%d policy rules"}
 	tFinalizedAlready = T{
 		KO: "같은 내용으로 이미 확정되어 있어 다시 쓰지 않았습니다.",
 		EN: "Already finalized with the same content; nothing was written again."}
