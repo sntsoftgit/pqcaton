@@ -414,6 +414,13 @@ func (s *server) home(w http.ResponseWriter, r *http.Request) {
 // 이 명령이 표준오류로 찍는 것은 영어 하나다.
 func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 	l := ui.PickLang(r)
+	mode := ui.ModeWrite
+	switch {
+	case s.recovering:
+		mode = ui.ModeRecovery
+	case s.st == nil:
+		mode = ui.ModeViewOnly
+	}
 	var newer string
 	if ui.IsClassic(here) {
 		newer = ui.Current(here)
@@ -430,7 +437,7 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 		Message: ui.NoticeLines(l, ui.DecodeNotices(r.URL.Query().Get(ui.MsgParam)), s.fileName, ""),
 		Problem: ui.NoticeLines(l, ui.DecodeNotices(r.URL.Query().Get(ui.ProblemParam)), s.fileName, "\n"),
 		CSRF:    csrfToken(r),
-		Self:    here, NewHref: newer,
+		Self:    here, NewHref: newer, Mode: mode,
 		// rev는 여기서 재지 않는다. 화면 모델과 같은 시점에 잰 값(snapshot)을 처리기가 넣는다.
 	}
 }

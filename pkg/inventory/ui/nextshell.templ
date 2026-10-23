@@ -33,7 +33,9 @@ templ nextShell(p Page) {
 						<code>{ p.Results }</code>
 					}
 				</div>
-				<div class="mode">{ tWbMode.In(p.Lang) }</div>
+				if p.Mode != "" {
+					<div class={ "mode", "mode-" + string(p.Mode) }>{ p.Mode.text(p.Lang) }</div>
+				}
 				if p.LangHref != "" {
 					<a class="langbtn" href={ templ.SafeURL(p.LangHref) } rel="nofollow">{ p.Lang.Other().Label() }</a>
 				}

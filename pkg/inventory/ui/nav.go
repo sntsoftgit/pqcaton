@@ -262,3 +262,23 @@ func reloadHref(l Lang, self string) string {
 	}
 	return self + "?" + LangParam + "=" + string(l)
 }
+
+// Mode — 서버의 저장 모드. **머리표는 실제 동작과 같아야 한다**: 저장하는 화면에 「읽기」라고 적으면
+// 사람은 무엇이 파일에 남는지 알 수 없다.
+type Mode string
+
+const (
+	ModeWrite    Mode = "write"
+	ModeViewOnly Mode = "view-only"
+	ModeRecovery Mode = "recovery"
+)
+
+func (m Mode) text(l Lang) string {
+	switch m {
+	case ModeViewOnly:
+		return tModeViewOnly.In(l)
+	case ModeRecovery:
+		return tModeRecovery.In(l)
+	}
+	return tModeWrite.In(l)
+}

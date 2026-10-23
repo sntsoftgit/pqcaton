@@ -73,8 +73,8 @@ var (
 		KO: "파일이 저장 기록과 맞지 않아 멈췄습니다. 운영자가 운영자 안내서의 「복구」 절대로 확인해야 합니다.",
 		EN: "Stopped: the files do not match the save record. An operator needs to check them as the \"Recovery\" section of the operator guide says."}
 	tRefusedViewOnly = T{
-		KO: "이 플랫폼에서는 화면을 보기만 할 수 있습니다. 저장은 Linux에서 합니다.",
-		EN: "On this platform the screen is view-only. Saving runs on Linux."}
+		KO: "이 플랫폼에서는 화면을 보기만 할 수 있습니다. 저장은 Linux(검증함)와 macOS(검증하지 않음)에서 합니다.",
+		EN: "On this platform the screen is view-only. Saving runs on Linux (verified) and macOS (not verified)."}
 	tRefusedExpired = T{
 		KO: "확인 화면이 만료되었습니다(10분이 지났습니다). 확정을 처음부터 다시 하십시오.",
 		EN: "The confirmation page has expired (10 minutes passed). Start the finalize again."}
@@ -644,11 +644,14 @@ var (
 var (
 	tWbTagline = T{KO: "무엇을 먼저 판단할까요?", EN: "What should you judge first?"}
 	tWbLede    = T{
-		KO: "원본은 보존하고, 지금 확정에 필요한 일만 먼저 보여 줍니다.",
-		EN: "The originals stay untouched, and only what this finalization needs comes first."}
-	tWbMode      = T{KO: "읽기·검토 모드", EN: "Read and review mode"}
-	tWbSelfHost  = T{KO: "직접 설치", EN: "self-hosted"}
-	tWbStepsAria = T{KO: "거버넌스 절차", EN: "Governance steps"}
+		KO: "관측 결과는 읽기만 합니다. 선언 · 세션 · 계층은 저장할 때 쓰고, 계획 · 정책 · 원장은 확인을 거쳐 확정할 때 한 번에 씁니다.",
+		EN: "Observed results are only read. The declaration, sessions and layers are written when you save; the plan, policy and ledger are written together when you finalize after confirming."}
+	// 화면 머리의 모드. 실제로 저장하는지를 적는다.
+	tModeWrite    = T{KO: "저장 가능", EN: "Saving enabled"}
+	tModeViewOnly = T{KO: "보기 전용: 이 플랫폼에서는 저장하지 않습니다", EN: "View only: this platform does not save"}
+	tModeRecovery = T{KO: "복구 필요: 저장을 멈췄습니다", EN: "Recovery required: saving is stopped"}
+	tWbSelfHost   = T{KO: "직접 설치", EN: "self-hosted"}
+	tWbStepsAria  = T{KO: "거버넌스 절차", EN: "Governance steps"}
 
 	// 옛 판(/classic)의 안내와 새 화면의 보조 링크. v0.23.0에서 없앤다.
 	tClassicBanner  = T{KO: "이 화면은 v0.23.0에서 없어집니다. 같은 작업은 새 화면에서 할 수 있습니다.", EN: "This screen will be removed in v0.23.0. You can do the same work on the new screen."}
