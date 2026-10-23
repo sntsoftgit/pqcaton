@@ -132,7 +132,7 @@
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT`로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass`가 고른 관계의 OID를 `pg_attribute`에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN`이 있을 때만 |
 
-### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 상태 디렉토리와 잠금까지
+### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 상태 디렉토리 · 잠금 · 원자적 교체까지
 화면과 명령이 파일을 바꿀 때 지나가는 한 길입니다. 상용 지원은 Linux 로컬 파일시스템뿐입니다.
 
 | TC | Given → When | Then |
@@ -145,6 +145,10 @@
 | [IC-W6](../pkg/inventory/store/state_test.go) ✅ | 대상 디렉토리를 다른 상태 디렉토리로 씀 · 상태 디렉토리와 함께 옮긴 데이터 | 잠금 파일에 적힌 상태 ID가 다르면 거부하고 `-state-dir`를 안내한다. 함께 옮긴 데이터는 그대로 열린다. 경로가 아니라 ID로 본다 |
 | [IC-W7](../pkg/inventory/store/state_test.go) ✅ | 다른 요청이 대상 잠금을 쥠 | 정해진 시간까지 기다린다. 그 안에 풀리면 잡고, 못 잡으면 「다른 저장이 진행 중」으로 끝나며 그동안 잡은 잠금도 놓는다 |
 | [IC-W8](../pkg/inventory/store/state_test.go) ✅ | NFS · CIFS · SMB 위의 상태 디렉토리 | 시작하지 않는다. 잠금과 rename의 원자성을 믿을 수 없다. 로컬 파일시스템은 지나간다 |
+| [IC-W9](../pkg/inventory/store/file_test.go) ✅ | 파일 교체 | 준비 파일을 다 쓰고 fsync한 뒤 rename으로 바꿔 끼운다. 있던 파일의 권한은 이어받고 새 파일은 0600이다. 끝나면 준비 파일이 남지 않는다. 남이 읽을 수 있는 파일은 경고만 한다 |
+| [IC-W10](../pkg/inventory/store/file_test.go) ✅ | 심볼릭 링크 · 하드 링크 둘 · 남의 소유 · group/other 쓰기 권한인 대상 | 쓰지 않고, 대상은 한 바이트도 바뀌지 않는다. 쓰기 권한이 열린 파일은 남이 이미 바꿨을 수 있다 |
+| [IC-W11](../pkg/inventory/store/file_test.go) ✅ | 준비 파일 쓰기 · fsync · rename · 디렉토리 fsync 앞에서 멈춤 | 대상은 옛 내용이거나 새 내용이다. 반쯤 쓴 내용은 보이지 않는다. 남은 준비 파일은 지우지 않는다(누가 만든 것인지는 기록이 정한다) |
+| [IC-W12](../pkg/inventory/store/file_test.go) ✅ | 준비 파일 자리에 파일이나 심볼릭 링크가 있음 | 만들지 않고 따라가지도 않는다. 있던 것은 그대로 남는다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |

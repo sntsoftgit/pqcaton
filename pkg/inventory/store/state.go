@@ -64,9 +64,10 @@ type State struct {
 	// ID: 상태 ID. 대상 디렉토리의 잠금 파일에 같은 값이 적힌다.
 	ID string
 
-	uid  int
-	warn func(string)
-	run  *os.File
+	uid     int
+	warn    func(string)
+	faultFn func(point, path string) error
+	run     *os.File
 }
 
 // Options: Open의 선택 사항.
@@ -76,6 +77,9 @@ type Options struct {
 	Warn func(string)
 	// UID: 파일 소유자로 인정할 사용자. 테스트만 바꾼다. 음수면 현재 프로세스다.
 	UID int
+	// Fault: 실패 주입. 정해진 자리(Fault* 상수)에서 불리고, 오류를 돌려주면 거기서 멈춘다.
+	// 테스트만 쓴다. 전역 변수가 아니라 객체에 두어 테스트끼리 섞이지 않는다.
+	Fault func(point, path string) error
 }
 
 type stateDoc struct {
@@ -98,7 +102,7 @@ func Open(dir string, opt Options) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &State{Dir: abs, uid: opt.UID, warn: opt.Warn}
+	s := &State{Dir: abs, uid: opt.UID, warn: opt.Warn, faultFn: opt.Fault}
 	if s.uid < 0 {
 		s.uid = os.Getuid()
 	}
