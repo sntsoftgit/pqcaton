@@ -407,6 +407,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 |---|---|---|
 | **[IC-U107](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 두 판의 명령 블록과 인라인 코드에 적힌 `pqcaton-ui`의 플래그 | 모두 `-h`가 찍는 목록에 있다 |
 | **[IC-U108](../inventory/cmd/pqcaton-ui/guide_run_test.go) ✅** | 두 판에서 실행 표시가 붙은 명령을 빈 홈 폴더에서 차례대로 돌림 | 띄우기 · 떠 있는 화면 다시 열기 · 끝내기 · 루프백이 아닌 주소 거부 · 끈 상태의 백업과 복원 · 저장 도중 멈추고 밖에서 바뀐 파일의 복구가 안내서에 적힌 명령으로 끝난다. 멈춘 상태는 시험 도구(`testdata/guidetool`)가 저장소의 실패 주입으로 만든다 |
+| **[IC-U112](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 두 판의 기준판 문장 · `go install`의 판 · `raw.githubusercontent.com` 다운로드 주소의 판 | 모두 릴리스 노트 맨 위 절의 판과 같다. 새 판을 내며 안내서를 그대로 두면 낡은 판을 설치하게 되는 것을 막는다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 
