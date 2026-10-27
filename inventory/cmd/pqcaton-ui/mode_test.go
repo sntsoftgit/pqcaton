@@ -13,7 +13,7 @@ import (
 
 // IC-U92 — **화면 머리의 모드는 실제로 저장하는지와 같다.** 저장하는 서버는 「저장 가능」, 저장을 지원하지 않는
 // 플랫폼은 「보기 전용」, 복구가 남은 서버는 「복구 필요」다. 「읽기·검토 모드」와 「원본은 보존」 같은 문구는
-// 어느 화면에도 없다. 보기 전용 거절은 Linux(검증)와 macOS(검증하지 않음)를 함께 적는다.
+// 어느 화면에도 없다. 보기 전용 거절은 Linux와 Intel Mac(검증함), Apple Silicon Mac(검증하지 않음)을 두 말로 적는다.
 func TestModeMatchesWhatTheServerDoes(t *testing.T) {
 	for _, c := range []struct {
 		name, ko, en string
@@ -48,7 +48,15 @@ func TestModeMatchesWhatTheServerDoes(t *testing.T) {
 
 	v, _ := newServer(t)
 	v.st = nil
-	if body := postFormLang(t, v, "/save", "ko", url.Values{"reviewer": {"x"}}).Body.String(); !strings.Contains(body, "macOS") {
-		t.Error("the view-only refusal does not mention macOS")
+	for lang, want := range map[string][]string{
+		"ko": {"Linux와 Intel Mac(검증함)", "Apple Silicon Mac(검증하지 않음)"},
+		"en": {"Linux and Intel Macs (verified)", "Apple Silicon Macs (not verified)"},
+	} {
+		body := postFormLang(t, v, "/save", lang, url.Values{"reviewer": {"x"}}).Body.String()
+		for _, w := range want {
+			if !strings.Contains(body, w) {
+				t.Errorf("%s: the view-only refusal does not say %q", lang, w)
+			}
+		}
 	}
 }

@@ -5,12 +5,15 @@ package store
 
 import (
 	"fmt"
+	"runtime"
 	"syscall"
 )
 
-// platformCheck: macOS는 돌지만 검증하지 않았다.
+// platformCheck: Intel macOS는 검증한 지원 플랫폼이다. Apple Silicon은 돌지만 검증하지 않아 경고한다(darwinWarning).
 func platformCheck(warn func(string)) error {
-	warn("macOS is not a verified platform for saving; Linux on a local file system is")
+	if w := darwinWarning(runtime.GOARCH); w != "" {
+		warn(w)
+	}
 	return nil
 }
 

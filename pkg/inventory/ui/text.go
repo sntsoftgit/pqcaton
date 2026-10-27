@@ -68,8 +68,8 @@ var (
 		KO: "파일이 저장 기록과 맞지 않아 멈췄습니다. 운영자가 운영자 안내서의 「복구」 절대로 확인해야 합니다.",
 		EN: "Stopped: the files do not match the save record. An operator needs to check them as the \"Recovery\" section of the operator guide says."}
 	tRefusedViewOnly = T{
-		KO: "이 플랫폼에서는 화면을 보기만 할 수 있습니다. 저장은 Linux(검증함)와 macOS(검증하지 않음)에서 합니다.",
-		EN: "On this platform the screen is view-only. Saving runs on Linux (verified) and macOS (not verified)."}
+		KO: "이 플랫폼에서는 화면을 보기만 할 수 있습니다. 저장은 Linux와 Intel Mac(검증함), Apple Silicon Mac(검증하지 않음)에서 합니다.",
+		EN: "On this platform the screen is view-only. Saving runs on Linux and Intel Macs (verified) and Apple Silicon Macs (not verified)."}
 	tRefusedExpired = T{
 		KO: "확인 화면이 만료되었습니다(10분이 지났습니다). 확정을 처음부터 다시 하십시오.",
 		EN: "The confirmation page has expired (10 minutes passed). Start the finalize again."}

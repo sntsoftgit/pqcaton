@@ -30,7 +30,8 @@
 | 플랫폼 | 상태 |
 |---|---|
 | Linux(x86-64) | **지원합니다.** 저장 · 확정 · 복구를 검증했습니다. systemd 사용자 서비스와 데스크톱 실행기를 씁니다 |
-| macOS | 편의 기능입니다. 저장은 되지만 검증하지 않았고, 지원 근거에 넣지 않습니다 |
+| macOS Intel(amd64) | **지원합니다.** macOS 26.6.2의 로컬 파일 시스템에서 저장 · 확정 · 복구와 실행기(`pqcaton-ui.command`)를 검증했습니다(v0.23.1) |
+| macOS Apple Silicon(arm64) | 실행할 수 있지만 아직 검증하지 않았습니다. 시작할 때 경고를 남깁니다 |
 | Windows | 보기 전용입니다. 화면은 뜨지만 저장하지 않습니다 |
 
 화면은 이 기계 안(루프백 주소)에서만 열립니다. 로그인이 없기 때문입니다. 다른 기계에서는 SSH 터널로 봅니다([5절](#5-다른-기계에서-보기)).
@@ -62,7 +63,8 @@ systemctl --user enable --now pqcaton-ui.service
 journalctl --user -u pqcaton-ui.service
 ```
 
-**macOS: 편의 실행기.** 내려받은 파일을 두 번 누르면 화면을 띄우고 브라우저를 엽니다.
+**macOS: 실행기.** 내려받은 파일을 두 번 누르면 터미널 창에서 화면을 띄우고 브라우저를 엽니다. 이미 떠 있으면 그
+화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
 curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.23.0/packaging/macos/pqcaton-ui.command

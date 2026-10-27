@@ -32,7 +32,8 @@ folder, by a test (`guide_run_test.go`) that checks the result.
 | Platform | Status |
 |---|---|
 | Linux (x86-64) | **Supported.** Saving, finalizing and recovery are verified. Uses a systemd user service and a desktop launcher |
-| macOS | A convenience. Saving works but is not verified, and it does not count toward support |
+| macOS Intel (amd64) | **Supported.** Saving, finalizing, recovery and the launcher (`pqcaton-ui.command`) are verified on a local file system on macOS 26.6.2 (v0.23.1) |
+| macOS Apple Silicon (arm64) | Runs, but not verified yet. It logs a warning on start |
 | Windows | View only. The screen opens but does not save |
 
 The screen opens only on this machine (a loopback address), because it has no login. From another machine, use an SSH
@@ -67,7 +68,8 @@ The service's log is shown by the command below. Use it to find the cause behind
 journalctl --user -u pqcaton-ui.service
 ```
 
-**macOS: the convenience launcher.** Double-click the downloaded file: it starts the screen and opens a browser.
+**macOS: the launcher.** Double-click the downloaded file: it starts the screen in a Terminal window and opens a
+browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
 curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.23.0/packaging/macos/pqcaton-ui.command

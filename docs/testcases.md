@@ -144,7 +144,7 @@
 | [IC-W5](../pkg/inventory/store/state_test.go) ✅ | 서버가 실행 잠금을 쥔 채 명령이 같은 상태 디렉토리를 씀 | 명령은 **기다리지 않고** 거부된다. 서버가 놓으면 잡힌다. 같은 상태 디렉토리로 서버 둘도 같은 이유로 막힌다 |
 | [IC-W6](../pkg/inventory/store/state_test.go) ✅ | 대상 디렉토리를 다른 상태 디렉토리로 씀 · 상태 디렉토리와 함께 옮긴 데이터 | 잠금 파일에 적힌 상태 ID가 다르면 거부하고 `-state-dir`를 안내한다. 함께 옮긴 데이터는 그대로 열린다. 경로가 아니라 ID로 본다 |
 | [IC-W7](../pkg/inventory/store/state_test.go) ✅ | 다른 요청이 대상 잠금을 쥠 | 정해진 시간까지 기다린다. 그 안에 풀리면 잡고, 못 잡으면 「다른 저장이 진행 중」으로 끝나며 그동안 잡은 잠금도 놓는다 |
-| [IC-W8](../pkg/inventory/store/state_test.go) ✅ | NFS · CIFS · SMB 위의 상태 디렉토리 | 시작하지 않는다. 잠금과 rename의 원자성을 믿을 수 없다. 로컬 파일시스템은 지나간다 |
+| [IC-W8](../pkg/inventory/store/platform_test.go) ✅ | NFS · CIFS · SMB 위의 상태 디렉토리 | 시작하지 않는다. 잠금과 rename의 원자성을 믿을 수 없다. 로컬 파일시스템은 지나간다 |
 | [IC-W9](../pkg/inventory/store/file_test.go) ✅ | 파일 교체 | 준비 파일을 다 쓰고 fsync한 뒤 rename으로 바꿔 끼운다. 있던 파일의 권한은 이어받고 새 파일은 0600이다. 끝나면 준비 파일이 남지 않는다. 남이 읽을 수 있는 파일은 경고만 한다 |
 | [IC-W10](../pkg/inventory/store/file_test.go) ✅ | 심볼릭 링크 · 하드 링크 둘 · 남의 소유 · group/other 쓰기 권한인 대상 | 쓰지 않고, 대상은 한 바이트도 바뀌지 않는다. 쓰기 권한이 열린 파일은 남이 이미 바꿨을 수 있다 |
 | [IC-W11](../pkg/inventory/store/file_test.go) ✅ | 준비 파일 쓰기 · fsync · rename · 디렉토리 fsync 앞에서 멈춤 | 대상은 옛 내용이거나 새 내용이다. 반쯤 쓴 내용은 보이지 않는다. 남은 준비 파일은 지우지 않는다(누가 만든 것인지는 기록이 정한다) |
@@ -184,6 +184,7 @@
 | **[IC-W45](../pkg/inventory/store/txn_test.go) ✅** | 없는 파일만 만들기(Create)에 이미 있는 파일을 섞음 | `ErrExists`이고 아무것도 쓰지 않는다. 있는 파일은 그대로, 없던 파일도 생기지 않는다 |
 | **[IC-W46](../pkg/inventory/store/round_test.go) ✅** | 확정한 세션에서 새 회차를 열고, 새 세션을 저장해 세션 파일이 또 바뀜 · 옛 세션의 같은 확정을 다시 보냄 | 새 회차는 확정한 세션에서만, 한 번만 열린다. 새 세션 파일과 회차 표지가 함께 남고, 옛 세션은 「복구 필요」가 아니라 「대체됨」이다. 옛 확정을 다시 보내도 아무것도 쓰지 않는다. 넘겨받지 않은 출력(계획)이 밖에서 바뀌면 여전히 복구 필요다 |
 | **[IC-W47](../pkg/inventory/store/round_test.go) ✅** | 새 회차를 여는 트랜잭션의 각 자리에서 멈추고 다시 열어 복구 | 세션 파일과 회차 표지가 함께 있거나 함께 없다. 옛 세션은 어느 경우에도 복구 필요로 읽히지 않는다 |
+| **[IC-W48](../pkg/inventory/store/platform_test.go) ✅** | macOS에서 상태 디렉토리를 엶(Intel · Apple Silicon) | Intel(amd64)은 검증한 지원 플랫폼이라 경고하지 않는다. Apple Silicon(arm64)은 검증하지 않았다는 경고를 남긴다. 네트워크 파일시스템 거부는 그대로다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
@@ -356,7 +357,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U89](../inventory/cmd/pqcaton-ui/errors_test.go) ✅** | 주소의 `msg` · `problem`에 임의의 글 · 경로 · 스크립트 · 맞지 않는 인자 · 확정 관문이 막은 까닭 | 임의의 값은 보이지 않고 「알 수 없는 알림」이다. 관문의 까닭은 코드로 실려 가서 그 말의 문장으로 그려진다 |
 | [IC-U90](../inventory/cmd/pqcaton-ui/errors_test.go) ✅ | 화면 서버의 시험이 아닌 소스 | 평문 `http.Error`가 없다 |
 | **[IC-U91](../inventory/cmd/pqcaton-ui/errors_test.go) ✅** | 저장소 센티널(안전하지 않은 파일 · 상태 불일치 · 손상 · 진행 중 · 실행 잠금 · 대상 잠금 · 오래된 화면 · 복구 필요)과 모르는 오류 | 값으로 거절 종류와 상태를 가린다. 거절 페이지는 두 말 모두 경로를 싣지 않는다. 모르는 오류는 참조 번호를 붙인 내부 오류다 |
-| **[IC-U92](../inventory/cmd/pqcaton-ui/mode_test.go) ✅** | 저장하는 서버 · 저장을 지원하지 않는 플랫폼 · 복구가 남은 서버를 두 말로 | 화면 머리의 모드가 「저장 가능」 · 「보기 전용」 · 「복구 필요」로 실제 동작과 같다. 「읽기·검토 모드」 · 「원본은 보존」 문구는 어느 화면에도 없고, 보기 전용 거절은 macOS(검증하지 않음)도 적는다 |
+| **[IC-U92](../inventory/cmd/pqcaton-ui/mode_test.go) ✅** | 저장하는 서버 · 저장을 지원하지 않는 플랫폼 · 복구가 남은 서버를 두 말로 | 화면 머리의 모드가 「저장 가능」 · 「보기 전용」 · 「복구 필요」로 실제 동작과 같다. 「읽기·검토 모드」 · 「원본은 보존」 문구는 어느 화면에도 없고, 보기 전용 거절은 Linux와 Intel Mac(검증함), Apple Silicon Mac(검증하지 않음)을 두 말로 적는다 |
 
 #### 작업 폴더와 시작 (v0.23.0)
 
