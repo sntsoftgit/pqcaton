@@ -63,11 +63,13 @@ type markedProc struct {
 	Start string
 }
 
-// runMark: 이 실행의 프로세스를 가리는 것. 표지(환경 변수 한 줄)와, 이 실행이 띄운 것으로 아는 프로세스 묶음(감독 ·
-// 정리 명령의 묶음). 묶음은 환경을 읽을 수 없는 프로세스를 가릴 때만 쓴다(markedProcs).
+// runMark: 이 실행의 프로세스를 가리는 것. 표지(환경 변수 한 줄)다.
+//
+// **기록해 둔 프로세스 묶음 번호는 쓰지 않는다.** 감독이나 정리 명령이 끝난 뒤에는 그 번호가 다른 묶음에 다시 쓰였을 수
+// 있다. 묶음은 그 안에 지금 표지가 확인되는 프로세스가 있을 때만 이 실행의 것으로 본다(belonging) — 묶음 번호는
+// 구성원이 남아 있는 동안 다시 쓰이지 않으므로, 살아 있는 표지 구성원이 그 묶음의 증거다. 감독도 표지를 갖고 뜬다.
 type runMark struct {
 	Marker string
-	Groups []int
 }
 
 // procInfo: 검색 중의 프로세스 하나.
@@ -77,15 +79,10 @@ type procInfo struct {
 	marked, unreadable bool
 }
 
-// belonging: 표지가 있는 프로세스와, 환경을 읽을 수 없는데 부모나 프로세스 묶음이 이 실행의 것인 프로세스. 계보를 따라
-// 끝까지 넓힌다(표지 프로세스의 자식의 자식까지).
-func belonging(all []procInfo, groups []int) []markedProc {
+// belonging: 표지가 있는 프로세스와, 환경을 읽을 수 없는데 부모가 이 실행의 것이거나 지금 표지 프로세스가 있는 묶음에
+// 든 프로세스. 계보를 따라 끝까지 넓힌다(표지 프로세스의 자식의 자식까지).
+func belonging(all []procInfo) []markedProc {
 	in, grp := map[int]bool{}, map[int]bool{}
-	for _, g := range groups {
-		if g > 0 {
-			grp[g] = true
-		}
-	}
 	for _, p := range all {
 		if p.marked {
 			in[p.PID], grp[p.pgid] = true, true
@@ -240,7 +237,7 @@ func supervise(dir, ansible string) int {
 	}
 
 	marker := runMarker(m.ID)
-	mine := runMark{Marker: marker, Groups: []int{syscall.Getpgrp()}}
+	mine := runMark{Marker: marker}
 	cmd := exec.Command(ansible, "-i", runInventory, "-e", "@vars.json", "observe.yml")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), marker, "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)

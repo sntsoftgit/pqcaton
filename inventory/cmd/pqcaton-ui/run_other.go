@@ -57,7 +57,6 @@ func supervise(string, string) int { return 3 }
 
 type runMark struct {
 	Marker string
-	Groups []int
 }
 
 func killMarked(runMark, time.Duration) ([]int, error) { return nil, nil }

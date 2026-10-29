@@ -55,7 +55,7 @@ func procStart(pid int) (string, error) {
 //
 //   - 환경을 읽을 수 있으면 표지로 가린다.
 //   - 같은 사용자인데 덤프를 막아(OpenSSH 클라이언트가 그렇다) 환경을 읽을 수 없으면, 부모가 이 실행의 프로세스이거나
-//     프로세스 묶음이 이 실행의 묶음(표지 프로세스의 묶음과 rm.Groups)일 때 이 실행의 것으로 본다. 계보를 따라 넓힌다.
+//     같은 묶음에 지금 표지 프로세스가 있을 때 이 실행의 것으로 본다. 계보를 따라 넓힌다.
 //
 // **확인하지 못한 것을 「없음」으로 치지 않는다.** /proc을 읽지 못하거나 예상하지 못한 이유로 읽기에 실패하면 오류다
 // (부르는 쪽이 「회수 필요」로 닫는다). 읽는 사이에 끝나 사라진 프로세스만 건너뛴다. 남의 프로세스는 건너뛴다.
@@ -100,7 +100,7 @@ func markedProcs(rm runMark) ([]markedProc, error) {
 		}
 		all = append(all, p)
 	}
-	return belonging(all, rm.Groups), nil
+	return belonging(all), nil
 }
 
 // gone: 읽는 사이에 프로세스가 끝나 사라졌다.

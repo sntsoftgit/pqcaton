@@ -421,6 +421,9 @@ func (s *server) startRun(window int) error {
 	}
 	cmd := exec.Command(exe, superviseFlag, j.dir, ansible)
 	cmd.Dir = j.dir
+	// 감독도 표지를 갖는다. 감독이 살아 있는 동안 그 묶음은 표지 프로세스가 있는 묶음이라, 환경을 읽을 수 없는 그 구성원도
+	// 이 실행의 것으로 증명된다.
+	cmd.Env = append(os.Environ(), runMarker(j.m.ID))
 	ownGroup(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -478,7 +481,7 @@ func (s *server) startRun(window int) error {
 func (s *server) finishRun(j *runJob) {
 	r := &s.run
 	// 감독이 강제로 끝났으면(중지가 늦어 KILL) 표지를 가진 프로세스가 남았을 수 있다. 다 끝내기 전에는 아무것도 하지 않는다.
-	stuck, err := reapMarked(runMark{Marker: runMarker(j.m.ID), Groups: []int{j.cmd.Process.Pid}}, stopGrace)
+	stuck, err := reapMarked(runMark{Marker: runMarker(j.m.ID)}, stopGrace)
 	if why := reaped(stuck, err); why != "" {
 		r.mu.Lock()
 		j.m.State, j.m.Stuck, j.m.StuckWhy, j.m.Ended = ui.RunStuck, stuck, why, time.Now()
@@ -649,7 +652,7 @@ func runCleanup(dir, id string, logf func(string)) (string, string) {
 	for _, line := range strings.Split(strings.TrimRight(out.String(), "\n"), "\n") {
 		logf(line)
 	}
-	if why := reaped(reapMarked(runMark{Marker: runMarker(id), Groups: []int{cmd.Process.Pid}}, stopGrace)); why != "" {
+	if why := reaped(reapMarked(runMark{Marker: runMarker(id)}, stopGrace)); why != "" {
 		return "", "after the node cleanup, " + why
 	}
 	if err != nil {
@@ -872,9 +875,6 @@ func (s *server) recoverRuns() {
 		case m.State == ui.RunRunning || m.State == ui.RunStuck || invErr == nil:
 			waitSupervisor(dir, logf)
 			mark := runMark{Marker: runMarker(m.ID)}
-			if rec := readSupervisor(dir); rec != nil {
-				mark.Groups = []int{rec.PGID}
-			}
 			if left, err := findMarked(mark); err == nil && len(left) > 0 {
 				var pids []int
 				for _, p := range left {

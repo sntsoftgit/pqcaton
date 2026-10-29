@@ -36,7 +36,8 @@ func procStart(pid int) (string, error) {
 }
 
 // markedProcs: 이 실행의 프로세스와 그 시작 시각. kern.procargs2로 환경을 읽어 표지로 가리고, 같은 사용자인데 환경을
-// 읽을 수 없는 프로세스(덤프 금지 · 보호)는 부모나 프로세스 묶음이 이 실행의 것일 때 넣는다(Linux와 같은 규칙). 목록을
+// 읽을 수 없는 프로세스(덤프 금지 · 보호)는 부모가 이 실행의 것이거나 같은 묶음에 지금 표지 프로세스가 있을 때
+// 넣는다(Linux와 같은 규칙). 목록을
 // 얻지 못하거나 예상하지 못한 이유로 읽지 못하면 오류다. 그 사이 끝난 것과 좀비는 뺀다.
 func markedProcs(rm runMark) ([]markedProc, error) {
 	kps, err := unix.SysctlKinfoProcSlice("kern.proc.uid", os.Getuid())
@@ -69,7 +70,7 @@ func markedProcs(rm runMark) ([]markedProc, error) {
 		}
 		all = append(all, p)
 	}
-	return belonging(all, rm.Groups), nil
+	return belonging(all), nil
 }
 
 // signalProc: 찾을 때의 그 프로세스에만 신호를 보낸다. 시작 시각이 찾을 때와 같은지 본 뒤 보낸다. 다르면 원래 것은 이미
