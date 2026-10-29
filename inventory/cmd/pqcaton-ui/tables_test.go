@@ -28,7 +28,7 @@ var (
 	row          = regexp.MustCompile(`<tr\b[^>]*>`)
 )
 
-// IC-UI43 — **표는 모두 가로 스크롤 상자 안에 있다.** 여섯 화면 · 두 말에서 `<table>`마다 바로 바깥에
+// IC-UI43 — **표는 모두 가로 스크롤 상자 안에 있다.** 일곱 화면 · 두 말에서 `<table>`마다 바로 바깥에
 // `.table-wrap`이 있다. 좁은 화면에서 표만 옆으로 밀리고 페이지 전체는 넘치지 않게 하는 자리다.
 func TestEveryTableScrollsInItsBox(t *testing.T) {
 	s := observedServer(t)

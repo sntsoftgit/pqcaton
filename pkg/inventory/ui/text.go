@@ -18,6 +18,7 @@ var (
 	tTitleObserve = T{KO: "관측", EN: "Observation"}
 	tTitleSurvey  = T{KO: "대조", EN: "Reconciliation"}
 	tTitleReview  = T{KO: "판정(리뷰 큐)", EN: "Judgment (review queue)"}
+	tTitleApprove = T{KO: "승인 · 생성", EN: "Approval & generation"}
 
 	tSubOrg     = T{KO: "조직", EN: "org"}
 	tSubSession = T{KO: "세션", EN: "session"}
@@ -1008,4 +1009,124 @@ var runItemMissing = map[RunItem]T{
 	RunJar: {
 		KO: "없어도 시작하지만, 실행 중인 JVM의 provider 체인은 관측하지 않습니다",
 		EN: "The observation starts without it, but the provider chains of running JVMs are not observed"},
+}
+
+// ── 06 승인 · 생성 ──────────────────────────────────────────────────────────
+var (
+	tApproveEyebrow = T{KO: "06 · 승인 · 생성", EN: "06 · Approval & generation"}
+	tApproveHead    = T{
+		KO: "확정한 계획에 승인 서명을 하고 플레이북을 만듭니다",
+		EN: "Sign the approval of the finalized plan and generate the playbooks"}
+	tApproveLede = T{
+		KO: "서명하면 계획이 FINALIZED가 됩니다. 플레이북은 적용과 되돌리기를 함께 만들고, 운영 기계에 적용하는 일은 운영자가 Ansible로 합니다.",
+		EN: "Signing makes the plan FINALIZED. The apply and rollback playbooks are generated together; " +
+			"applying them to the machines is the operator's own Ansible run."}
+	tApproveNoPlan     = T{KO: "아직 확정한 계획이 없습니다", EN: "There is no finalized plan yet"}
+	tApproveNoPlanBody = T{
+		KO: "05 판정에서 확정하면 plan.json이 생기고 여기서 승인할 수 있습니다.",
+		EN: "Finalizing in 05 Judgment writes plan.json, which can then be approved here."}
+	tPlanHead    = T{KO: "승인할 계획", EN: "The plan to approve"}
+	tColProvider = T{KO: "provider", EN: "Provider"}
+
+	tSignHead    = T{KO: "승인 서명", EN: "Approval signature"}
+	tKeyItem     = T{KO: "승인 키", EN: "Approval key"}
+	tSignedValid = T{
+		KO: "승인했습니다: %s(%s). 이 키로 확인했습니다",
+		EN: "Approved by %s (%s), checked with this key"}
+	tSignedStale = T{
+		KO: "서명한 계획(plan.signed.json)이 지금 계획과 다릅니다. 05에서 다시 확정했다면 새 계획에 다시 서명하십시오.",
+		EN: "The signed plan (plan.signed.json) differs from the current plan. If 05 was finalized again, sign the new plan."}
+	tSignedInvalid = T{
+		KO: "서명한 계획의 서명을 이 키로 확인할 수 없습니다. 다른 키로 서명했거나 서명 뒤에 파일이 바뀌었습니다.",
+		EN: "The signed plan's signature does not check out with this key: it was signed with another key, or the file changed after signing."}
+	tVerifyKeyHint = T{
+		KO: "pqcota-provision으로 직접 생성할 때는 아래 줄을 환경 변수로 줍니다. 공개 키라 비밀이 아닙니다.",
+		EN: "When generating with pqcota-provision yourself, pass the line below as an environment variable. It is a public key, not a secret."}
+	tApprover    = T{KO: "승인자", EN: "Approver"}
+	tReviewedAsk = T{KO: "위 조치를 검토했고 승인합니다", EN: "I have reviewed the actions above and approve them"}
+	tSign        = T{KO: "승인 서명", EN: "Sign the approval"}
+	tSignHint    = T{
+		KO: "<b>서명은 계획의 내용 전부를 덮습니다.</b> 서명한 뒤에 계획을 고치면 승인은 무효가 됩니다.<br>" +
+			"서명한 계획은 plan.signed.json에 따로 남고 plan.json은 그대로입니다. 무엇에 서명했는지 되짚을 수 있게 하려는 것입니다.<br>" +
+			"승인자 이름은 서명 안에 들어가고, 확인은 그 이름의 키로만 합니다. 콜론(:)은 쓸 수 없습니다.",
+		EN: "<b>The signature covers the whole content of the plan.</b> Editing the plan after signing voids the approval.<br>" +
+			"The signed plan is kept separately in plan.signed.json and plan.json stays as it is, so that what was signed can be traced.<br>" +
+			"The approver's name goes inside the signature, and it is checked only with that name's key. A colon (:) cannot be used."}
+
+	tGenHead  = T{KO: "플레이북 생성", EN: "Playbook generation"}
+	tGenStale = T{
+		KO: "만든 플레이북이 지금 서명한 계획보다 오래됐습니다. 다시 만드십시오.",
+		EN: "The playbooks are older than the signed plan. Generate them again."}
+	tGenMade = T{
+		KO: "플레이북을 만들었습니다(기본 수준 %s, %s)",
+		EN: "The playbooks were generated (default level %s, %s)"}
+	tGenWarningsHead = T{KO: "생성기가 짚은 빈 곳 %d곳", EN: "Gaps the generator flagged: %d"}
+	tGenWarningsLede = T{
+		KO: "플레이북은 만들어졌지만 아래 자리가 비어 있습니다. pqcota-provision이라면 종료 상태 3으로 끝나는 경우입니다. 05에서 채워 다시 확정하거나, 알고 넘어가십시오.",
+		EN: "The playbooks were generated, but the places below are empty; pqcota-provision would end with exit status 3. " +
+			"Fill them in at 05 and finalize again, or go on knowingly."}
+	tApplyHint = T{
+		KO: "<b>적용은 운영자가 합니다.</b> 관측에 쓴 것과 같은 인벤토리로 실행합니다. " +
+			"<code>pqcota-hosts --ansible-out targets.ini hosts.csv</code>로 만든 뒤 " +
+			"<code>ansible-playbook -i targets.ini provision.yml</code>을 실행하고, 되돌릴 때는 provision-rollback.yml을 실행합니다. " +
+			"targets.ini에는 접근 비밀이 들어가니 끝나면 지우십시오.<br>" +
+			"provider 모듈 파일은 도구가 주지 않습니다. 플레이북이 컨트롤러의 files/ 아래에서 찾습니다.",
+		EN: "<b>Applying is the operator's job.</b> Run it with the same inventory the observation used: make it with " +
+			"<code>pqcota-hosts --ansible-out targets.ini hosts.csv</code>, then run " +
+			"<code>ansible-playbook -i targets.ini provision.yml</code>; to undo, run provision-rollback.yml. " +
+			"targets.ini holds access secrets, so remove it afterwards.<br>" +
+			"The tool does not supply provider module files; the playbook looks for them under files/ on the controller."}
+	tGenLevel = T{KO: "기본 위임 수준", EN: "Default delegation level"}
+	tLevelL1  = T{KO: "L1 · 모듈만 둔다", EN: "L1 · stage the module only"}
+	tLevelL2  = T{KO: "L2 · 설정까지 둔다", EN: "L2 · stage the module and the configuration"}
+	tLevelL3  = T{KO: "L3 · 활성화하고 재시작한다", EN: "L3 · activate and restart"}
+	tGenerate = T{KO: "플레이북 생성", EN: "Generate the playbooks"}
+	tGenHint  = T{
+		KO: "<b>기본 수준은 계획이 수준을 밝히지 않은 조치에만 씁니다.</b> 조치가 수준을 밝혔으면 그것을 따릅니다. 그 값은 승인 서명이 덮습니다.<br>" +
+			"작업 폴더에 provision.yml과 provision-rollback.yml을 씁니다. 다시 만들면 갈아 끼웁니다.",
+		EN: "<b>The default level applies only to actions whose level the plan does not state.</b> An action that states its level keeps it; that value is covered by the approval signature.<br>" +
+			"provision.yml and provision-rollback.yml are written to the workspace, and generating again replaces them."}
+	tGenNeedsSign = T{
+		KO: "지금 계획에 이 키로 확인되는 승인 서명이 있어야 만들 수 있습니다.",
+		EN: "Generation needs an approval on the current plan that checks out with this key."}
+
+	tStepApproveNoPlan     = T{KO: "아직 확정한 계획이 없습니다", EN: "no finalized plan yet"}
+	tStepApproveSign       = T{KO: "승인 서명이 필요합니다", EN: "approval needed"}
+	tStepApproveStale      = T{KO: "서명이 지금 계획과 맞지 않습니다", EN: "the signature does not match the plan"}
+	tStepApproveGenerate   = T{KO: "플레이북을 만들 수 있습니다", EN: "ready to generate"}
+	tStepApproveIncomplete = T{KO: "빈 곳 %d곳", EN: "%d gaps"}
+	tStepApproveDone       = T{KO: "플레이북을 만들었습니다", EN: "playbooks generated"}
+
+	tSignedNotice    = T{KO: "승인 서명을 했습니다. 계획이 FINALIZED가 됐습니다", EN: "The approval was signed: the plan is FINALIZED"}
+	tGeneratedNotice = T{KO: "플레이북을 만들었습니다. 빈 곳 %d곳", EN: "The playbooks were generated: %d gaps"}
+
+	tSignRefusedHead = T{KO: "서명하지 않았습니다", EN: "Not signed"}
+	tSignNotReady    = T{
+		KO: "승인 키를 쓸 수 없거나, 승인자 이름이 비었거나 콜론을 담았거나, 검토 확인을 하지 않았습니다. 06 화면의 점검을 보십시오.",
+		EN: "The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed. See the checks on the 06 screen."}
+	tPlanNotApprovable = T{
+		KO: "이 계획은 승인할 수 없습니다. 검토 중(IN_REVIEW) 상태가 아니거나, 조치가 없거나, 조치에 대상 노드 · 종류가 비었거나, 이미 이 키로 서명했습니다.",
+		EN: "This plan cannot be approved: it is not in review (IN_REVIEW), has no actions, an action lacks its target node or kind, " +
+			"or it is already signed with this key."}
+	tGenRefusedHead = T{KO: "플레이북을 만들지 않았습니다", EN: "The playbooks were not generated"}
+	tGenNotReady    = T{
+		KO: "지금 계획에 이 키로 확인되는 승인 서명이 없습니다. 먼저 승인 서명을 하십시오.",
+		EN: "The current plan has no approval that checks out with this key. Sign the approval first."}
+)
+
+var keyText = map[KeyState]T{
+	KeyOK: {KO: "쓸 수 있습니다", EN: "usable"},
+	KeyNotGiven: {
+		KO: "-approval-key <파일>로 시작하십시오. 키는 pqcota-keygen의 출력을 그대로 파일에 저장해 만듭니다",
+		EN: "Start with -approval-key <file>. Make the key by saving the output of pqcota-keygen to a file"},
+	KeyUnreadable: {KO: "파일을 읽을 수 없습니다", EN: "the file cannot be read"},
+	KeyOpen: {
+		KO: "다른 사용자도 읽을 수 있습니다. chmod 600으로 소유자만 읽게 하십시오",
+		EN: "other users can read it: make it owner-only with chmod 600"},
+	KeyInside: {
+		KO: "작업 폴더 안에 있습니다. 작업 폴더 밖으로 옮기십시오. 작업 폴더를 백업하면 키가 함께 퍼집니다",
+		EN: "it is inside the workspace: move it out. Backing up the workspace would spread the key"},
+	KeyBad: {
+		KO: "pqcota-keygen이 낸 개인 키(PQCOTA_SIGN_KEY)를 찾지 못했습니다",
+		EN: "no private key from pqcota-keygen (PQCOTA_SIGN_KEY) was found in it"},
 }

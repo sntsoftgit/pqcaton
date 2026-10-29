@@ -6,8 +6,9 @@
 이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.23.1 기준입니다.
 영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
-**범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정)는 터미널 없이 화면에서 합니다. 관측은 운영자가
-설치한 Ansible과 수집기로 실행합니다. 계획의 승인 서명은 pqcota가 맡습니다. 설치와 복구에는 터미널이나 파일 관리자가 필요합니다.
+**범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
+합니다. 관측은 운영자가 설치한 Ansible과 수집기로 실행합니다. 만든 플레이북을 운영 기계에 적용하는 일은 화면이 하지 않고
+운영자가 Ansible로 합니다. 설치와 복구에는 터미널이나 파일 관리자가 필요합니다.
 
 **명령은 실제로 돌려 봅니다.** 이 안내서에서 `<!-- run -->` 표시가 붙은 명령은 시험(`guide_run_test.go`)이 빈 홈 폴더에서
 차례대로 실행해 결과를 확인합니다.
@@ -88,6 +89,25 @@ collectors/
 └── collector.jar    없으면 실행 중인 JVM의 provider 체인은 관측하지 않습니다
 ```
 
+**승인 키 준비.** 06 화면에서 승인 서명을 하려면 승인 키가 필요합니다. `pqcota-keygen`의 출력을 작업 폴더 **밖**의
+파일에 소유자만 읽게 저장하고, 화면을 `-approval-key <파일>`로 띄웁니다. 화면은 서명할 때마다 이 파일을 다시 읽고, 다른
+사용자가 읽을 수 있거나 작업 폴더 안에 있으면 쓰지 않습니다.
+
+```bash
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.4
+mkdir -p ~/.config/pqcaton
+(umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
+```
+
+서비스로 띄운다면 서비스에 플래그를 더합니다.
+
+```bash
+mkdir -p ~/.config/systemd/user/pqcaton-ui.service.d
+printf '[Service]\nExecStart=\nExecStart=%%h/.local/bin/pqcaton-ui -no-browser -approval-key %%h/.config/pqcaton/approval.key\n' > ~/.config/systemd/user/pqcaton-ui.service.d/approval.conf
+systemctl --user daemon-reload
+systemctl --user restart pqcaton-ui.service
+```
+
 ## 3. 작업 폴더
 
 인자 없이 띄우면 홈의 `pqcaton` 폴더를 씁니다. 없으면 소유자만 읽을 수 있게(0700) 만듭니다. 다른 폴더를 쓰려면
@@ -106,6 +126,8 @@ collectors/
 | `asset-scope.csv` | 확정한 자산 스코프 정책. 있으면 다음 검토의 기준입니다 | 화면(02 확정) |
 | `scope-assets.csv` | pqcota 적재(`pqcota-ingest`)에 준 것과 같은 정책. 있으면 대조에 씁니다 | 운영자 |
 | `plan.json` | 확정한 계획(pqcota가 읽는 계약 형식) | 화면(05 확정) |
+| `plan.signed.json` | 승인 서명한 계획(FINALIZED). `plan.json`은 그대로 남습니다 | 화면(06 승인) |
+| `provision.yml` · `provision-rollback.yml` | 적용 · 되돌리기 플레이북 | 화면(06 생성) |
 | `judgments.jsonl` | 판정 원장. 덧붙이기만 합니다 | 화면(확정) |
 | `.pqcaton/` | 저장 기록 · 영수증 · 잠금 · 떠 있는 화면의 주소(`screen.addr`) | 화면 |
 | `.pqcaton.lock` | 이 폴더가 어느 상태 폴더에 묶였는지 적은 잠금 파일. `.pqcaton/`과 짝을 이룹니다 | 화면 |
@@ -179,7 +201,7 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 
 ## 6. 하루 절차
 
-화면 위쪽의 단계 카드 다섯이 절차 순서입니다. 카드마다 지금 상태가 적혀 있고, 확정하는 두 단계(02 · 05)는 확정 상태
+화면 위쪽의 단계 카드 여섯이 절차 순서입니다. 카드마다 지금 상태가 적혀 있고, 확정하는 두 단계(02 · 05)는 확정 상태
 (미확정 · 확정됨 · 대체됨 · 복구 필요)도 적혀 있습니다.
 
 1. **01 선언.** 처음이면 조직 이름을 넣어 빈 선언을 만듭니다. 관리 대상 노드와 IP, 노드에서 쓰는 암호 자산, 통신 엣지를
@@ -197,7 +219,11 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 5. **05 판정.** 정책마다 결론을 적고, 계획에 넣을 항목은 조치 종류 · 목표 · 수준을 고르고, 서명합니다. 「확정」을 누르면
    확인 페이지가 무엇이 쓰이는지 보이고, 확인하면 세션 · 계획 · 원장을 한 번에 씁니다. 같은 세션을 같은 내용으로 다시
    확정해도 다시 쓰지 않습니다.
-6. **그 뒤.** `plan.json`은 판정을 마친 계획(IN_REVIEW)입니다. 승인 서명과 실행은 pqcota 쪽 절차를 따릅니다.
+6. **06 승인 · 생성.** 승인할 계획의 조치를 확인하고, 승인자 이름과 검토 확인을 넣어 서명합니다. 서명한 계획은
+   `plan.signed.json`(FINALIZED)에 따로 남고 `plan.json`은 그대로입니다. 이어서 기본 위임 수준을 골라 「플레이북 생성」을
+   누르면 `provision.yml`과 `provision-rollback.yml`이 생깁니다. 생성기가 짚은 빈 곳이 있으면 그 수와 내용이 보입니다.
+   운영 기계에 적용하는 일은 화면이 하지 않습니다. 06 화면의 도움말에 적힌 명령으로 운영자가 실행합니다. 05에서 다시
+   확정해 계획이 바뀌면 06 카드가 「서명이 지금 계획과 맞지 않습니다」가 되고, 새 계획에 다시 서명해야 만들 수 있습니다.
 7. **다음 회차.** 확정한 세션은 고칠 수 없어 읽기 전용으로 보입니다. 새 관측이 들어왔거나 결론을 바꾸려면 05 화면의
    「새 검토 시작」(스코프는 02 화면의 「새 스코프 검토 시작」)을 누릅니다. 새 세션 ID로 새 회차가 서고, 결론과 계획 칸은
    옮겨 오며, 승인 서명은 새로 받습니다. 지난 회차의 계획 · 원장 기록은 그대로 남습니다.
@@ -363,6 +389,9 @@ pkill -INT -u "$USER" -x pqcaton-ui
 | `exists` | 만들려는 파일이 이미 있어 덮어쓰지 않았습니다 | 화면을 다시 불러옵니다 |
 | `run-not-ready` | 관측을 시작하기 전에 갖출 것(접근 정보 · Ansible · 수집기)이 빠졌습니다 | 03 화면의 점검 목록에서 ✗ 표시된 것을 갖춥니다 |
 | `run-busy` | 이미 관측이 돌고 있습니다 | 끝나거나 멈춘 뒤에 다시 시작합니다 |
+| `sign-not-ready` | 승인 키를 쓸 수 없거나, 승인자 이름이 비었거나 콜론을 담았거나, 검토 확인을 하지 않았습니다 | 06 화면의 승인 키 점검을 보고 양식을 채웁니다 |
+| `plan-not-approvable` | 계획이 검토 중(IN_REVIEW)이 아니거나, 조치가 없거나, 이미 이 키로 서명했습니다 | 05에서 다시 확정하거나 서명한 계획을 그대로 씁니다 |
+| `generate-not-ready` | 지금 계획에 이 키로 확인되는 승인 서명이 없습니다 | 먼저 승인 서명을 합니다 |
 | `not-found` | 이 주소에는 화면이 없습니다 | 첫 화면에서 다시 갑니다 |
 | `method` | 이 방식의 요청을 받지 않습니다 | 화면의 단추로 합니다 |
 | `bad-request` | 요청을 처리할 수 없습니다 | 화면을 다시 불러와 다시 합니다 |

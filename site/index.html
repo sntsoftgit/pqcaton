@@ -341,10 +341,10 @@
 <span lang="en">The link runs one way</span></h2>
 
 <p>
-  <span lang="ko">이 리포는 pqcota의 <strong>공개 모듈 셋</strong>을 Go 패키지로 가져다 씁니다. 계약 타입만이 아니라
+  <span lang="ko">이 리포는 pqcota의 <strong>공개 모듈 넷</strong>을 Go 패키지로 가져다 씁니다. 계약 타입만이 아니라
   등급·스코프 규칙 같은 공통 코드, 이력·정규화·선언 반입, 로컬 스캔이 부르는 수집기도 그대로 씁니다.
   아래 표가 그 전부입니다. 관측 로직도, 저장소 스키마도 재구현하지 않습니다.</span>
-  <span lang="en">This repository imports <strong>three published modules</strong> of pqcota as Go packages.
+  <span lang="en">This repository imports <strong>four published modules</strong> of pqcota as Go packages.
   That is not only the contract types: it uses shared code such as the grading and scope rules, the history,
   normalization and declaration import, and the collector behind the local scan, as they are. The table
   below lists all of it. It reimplements neither the observation logic nor the storage schema.</span>
@@ -370,6 +370,8 @@
     <span lang="en">Reads the collected observation result files</span></td></tr>
     <tr><td><code>pqcota-inventory/pkg/inventory/ingest</code></td><td><span lang="ko">테스트에서만 쓴다. 상류 적재가 만드는 스냅샷 지문과 이 리포의 것이 같은지 맞댄다</span>
     <span lang="en">Used only in tests: checks that this repository's snapshot fingerprint equals the one the upstream ingestion produces</span></td></tr>
+    <tr><td><code>pqcota-inventory/pkg/inventory</code></td><td><span lang="ko">접근 정보(<code>hosts.csv</code>)를 읽고 Ansible 인벤토리를 만든다</span>
+    <span lang="en">Reads the access file (<code>hosts.csv</code>) and builds the Ansible inventory</span></td></tr>
     <tr><td><code>pqcota-inventory/pkg/inventory/declaration</code></td><td><span lang="ko">선언(CMDB) 반입</span>
     <span lang="en">Imports the declaration (CMDB)</span></td></tr>
     <tr><td><code>pqcota-common/pkg/kernel/posture</code></td><td><span lang="ko">양자내성 등급. 우리가 다시 판단하지 않는다</span>
@@ -382,6 +384,10 @@
     <span lang="en">Called by the shortcut that scans this machine</span></td></tr>
     <tr><td><code>pqcota-common/gen/…/provisioning/v1</code></td><td><span lang="ko">확정 계획(<code>FinalizedPlan</code>)의 형식</span>
     <span lang="en">The shape of a finalized plan (<code>FinalizedPlan</code>)</span></td></tr>
+    <tr><td><code>pqcota-common/pkg/kernel/sign</code></td><td><span lang="ko">계획의 승인 서명과 그 확인</span>
+    <span lang="en">Signs plan approvals and checks them</span></td></tr>
+    <tr><td><code>pqcota-provisioning/pkg/provisioning</code></td><td><span lang="ko">승인 전이 · 실행 관문 · 적용과 되돌리기 플레이북 생성</span>
+    <span lang="en">The approval transition, the execution gate, and generating the apply and rollback playbooks</span></td></tr>
     <tr><td><code>pqcota-common/pkg/org</code></td><td><span lang="ko">조직 격리 축</span>
     <span lang="en">The organization isolation axis</span></td></tr>
   </tbody>

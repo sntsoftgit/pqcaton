@@ -11,17 +11,18 @@ const (
 	ScreenObserve   = "/observe"
 	ScreenSurvey    = "/survey"
 	ScreenReview    = "/review"
+	ScreenApprove   = "/approve"
 	ScreenInventory = "/inventory"
 )
 
-// screens6 — 화면 여섯. 순서는 절차 순서다.
-var screens6 = []string{ScreenDecl, ScreenScope, ScreenObserve, ScreenSurvey, ScreenReview, ScreenInventory}
+// screens7 — 화면 일곱. 순서는 절차 순서다(조회는 절차가 아니라 맨 뒤에 둔다).
+var screens7 = []string{ScreenDecl, ScreenScope, ScreenObserve, ScreenSurvey, ScreenReview, ScreenApprove, ScreenInventory}
 
-// AllScreens — 화면 여섯의 주소.
-func AllScreens() []string { return append([]string(nil), screens6...) }
+// AllScreens — 화면 일곱의 주소.
+func AllScreens() []string { return append([]string(nil), screens7...) }
 
 // MovedScreens — 옛 주소와 지금 주소. v0.21의 `-next`와 v0.22의 `/classic/…`이다. 옛 화면은 v0.23.0에서
-// 없어졌고, 북마크가 죽지 않게 301로 넘긴다(질의는 부르는 쪽이 보존한다). 관측 화면은 v0.24.0에 생겨 옛 주소가 없다.
+// 없어졌고, 북마크가 죽지 않게 301로 넘긴다(질의는 부르는 쪽이 보존한다). 관측 · 승인 화면은 v0.24.0에 생겨 옛 주소가 없다.
 func MovedScreens() map[string]string {
 	out := map[string]string{}
 	for _, sc := range []string{ScreenDecl, ScreenScope, ScreenSurvey, ScreenReview, ScreenInventory} {
@@ -38,6 +39,8 @@ type Screens struct {
 	Decl, Scope, Survey, Inventory bool
 	// Observe — 관측 화면. 작업 폴더 모드에서만 연다(접근 정보의 자리가 그 폴더 안에 정해져 있다).
 	Observe bool
+	// Approve — 승인 · 생성 화면. 계획 출력이 있으면 연다(서명한 계획과 플레이북은 그 옆에 쓴다).
+	Approve bool
 	// NoReview — 판정 화면을 닫는다. 작업 폴더에 선언이 아직 없으면 판정할 것이 없다(기본은 연다).
 	NoReview bool
 }
@@ -55,6 +58,8 @@ func ScreenTitle(here string, l Lang) string {
 		return tTitleSurvey.In(l)
 	case ScreenInventory:
 		return tTitleInventory.In(l)
+	case ScreenApprove:
+		return tTitleApprove.In(l)
 	}
 	return tTitleReview.In(l)
 }
@@ -110,7 +115,7 @@ func (f Final) text(l Lang) string {
 	return tStepUnknown.In(l)
 }
 
-// StepsFor — 절차 카드 다섯과 조회 하나.
+// StepsFor — 절차 카드 여섯과 조회 하나.
 //
 // **모든 카드를 채운다**(v0.22.0). 서버가 요청 하나에서 입력을 한 번 읽어 본문과 카드가 같은
 // 값을 쓴다. 한 화면의 입력을 읽지 못하면 그 카드만 「확인할 수 없음」이고 다른 카드와 본문은
@@ -122,6 +127,7 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 		stepObserve
 		stepSurvey
 		stepReview
+		stepApprove
 	)
 	steps := []Step{
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDecl, Open: s.Decl},
@@ -129,6 +135,7 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 		{Num: "03", Title: tTitleObserve.In(l), Href: ScreenObserve, Open: s.Observe},
 		{Num: "04", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
 		{Num: "05", Title: tTitleReview.In(l), Href: ScreenReview, Open: !s.NoReview},
+		{Num: "06", Title: tTitleApprove.In(l), Href: ScreenApprove, Open: s.Approve},
 	}
 	for i := range steps {
 		steps[i].Here = here == steps[i].Href
@@ -149,6 +156,8 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 			steps[i].State, steps[i].Dot = surveyState(l, *st.Survey)
 		case i == stepReview && st.Review != nil:
 			steps[i].State, steps[i].Dot = reviewState(l, *st.Review)
+		case i == stepApprove && st.Approve != nil:
+			steps[i].State, steps[i].Dot = approveState(l, *st.Approve)
 		default:
 			// 그 화면의 입력을 읽지 못했다. 원인은 서버가 표준오류에 남긴다.
 			steps[i].State = tStepUnknown.In(l)
@@ -180,6 +189,7 @@ type StepState struct {
 	Observe *ObserveSummary
 	Survey  *SurveySummary
 	Review  *ReviewSummary
+	Approve *ApproveSummary
 	// DeclMissing — 작업 폴더에 선언이 아직 없다(만들기를 낸다).
 	DeclMissing bool
 	// LayersMissing — 작업 폴더에 계층도 스코프 세션도 아직 없다(만들기를 낸다).

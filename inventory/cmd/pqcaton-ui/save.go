@@ -118,6 +118,11 @@ func (s *server) inputsFor(where string) []store.Input {
 			return nil
 		}
 		return s.scopeInputs()
+	case ui.ScreenApprove, ui.SignPath, ui.GeneratePath:
+		if s.planOut == "" {
+			return nil
+		}
+		return s.approveInputs()
 	case ui.ScreenObserve, ui.HostsSavePath:
 		if s.hosts == "" {
 			return nil
@@ -176,7 +181,7 @@ func (s *server) check(r *http.Request) store.Check {
 // targetDirs: 이 화면이 쓰는 파일의 디렉토리. 시작할 때 남은 준비 파일을 여기서 찾는다.
 func (s *server) targetDirs() []string {
 	var out []string
-	for _, p := range append([]string{s.path, s.planOut, s.judgments, s.decl, s.scope, s.scopeOut, s.hosts}, s.layerFiles()...) {
+	for _, p := range append([]string{s.path, s.planOut, s.judgments, s.decl, s.scope, s.scopeOut, s.hosts, s.signedPath(), s.provisionPath()}, s.layerFiles()...) {
 		if p != "" {
 			out = append(out, filepath.Dir(p))
 		}

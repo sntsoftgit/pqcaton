@@ -74,7 +74,7 @@ func nameless(t *testing.T, body string) []string {
 	return out
 }
 
-// IC-UI45 — **여섯 화면 · 두 말에서 이름 없는 입력이 하나도 없다.** 표 칸의 입력은 「노드 2 IP」처럼
+// IC-UI45 — **일곱 화면 · 두 말에서 이름 없는 입력이 하나도 없다.** 표 칸의 입력은 「노드 2 IP」처럼
 // 몇 번째 무엇의 어느 칸인지를 이름으로 단다. 「행 추가」가 돌려주는 조각도 같다.
 func TestEveryControlHasAName(t *testing.T) {
 	s := observedServer(t)

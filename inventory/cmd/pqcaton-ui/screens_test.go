@@ -13,7 +13,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// everyScreen: 화면 여섯이 모두 열리는 서버.
+// everyScreen: 화면 일곱이 모두 열리는 서버. 06에 보일 계획(검토 중)을 하나 둔다.
 func everyScreen(t *testing.T) *server {
 	t.Helper()
 	s, dir := fullServer(t)
@@ -21,10 +21,18 @@ func everyScreen(t *testing.T) *server {
 	if err := os.MkdirAll(s.results, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(s.planOut, []byte(planJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	return s
 }
 
-// IC-U74 — **기본 주소 여섯이 화면이다.** 모두 화면 껍데기(`body.wb`)로 그리고, 브라우저 제목은 그 화면의
+// planJSON: 05 확정이 쓰는 것과 같은 모양의 계획(검토 중, 조치 하나).
+const planJSON = `{"id":"plan-1","status":"PLAN_STATUS_IN_REVIEW","scope":"acme","actions":[{"id":"a1",` +
+	`"targetNodeId":"web","findingId":"f1","kind":"REMEDIATION_KIND_CONFIG_ONLY",` +
+	`"automationLevel":"DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL","targetAlgorithm":"ML-KEM (FIPS 203)"}]}`
+
+// IC-U74 — **기본 주소 일곱이 화면이다.** 모두 화면 껍데기(`body.wb`)로 그리고, 브라우저 제목은 그 화면의
 // 이름이다. 옛 이동 링크(`<nav>`)도 옛 화면으로 가는 링크도 없다.
 func TestDefaultAddressesAreTheScreens(t *testing.T) {
 	s := everyScreen(t)
@@ -48,7 +56,7 @@ func TestDefaultAddressesAreTheScreens(t *testing.T) {
 
 // titles: 화면마다 브라우저 제목. 단계 카드의 이름과 같다.
 var titles = map[string]string{
-	ui.ScreenDecl: "선언", ui.ScreenScope: "암호 자산 스코프", ui.ScreenObserve: "관측", ui.ScreenSurvey: "대조",
+	ui.ScreenDecl: "선언", ui.ScreenScope: "암호 자산 스코프", ui.ScreenObserve: "관측", ui.ScreenSurvey: "대조", ui.ScreenApprove: "승인 · 생성",
 	ui.ScreenReview: "판정(리뷰 큐)", ui.ScreenInventory: "인벤토리·판정 이력",
 }
 
@@ -58,7 +66,7 @@ var titles = map[string]string{
 func TestOldAddressesMovePermanently(t *testing.T) {
 	s := everyScreen(t)
 	for _, sc := range ui.AllScreens() {
-		if sc == ui.ScreenObserve {
+		if sc == ui.ScreenObserve || sc == ui.ScreenApprove {
 			continue // v0.24.0에 생긴 화면이라 옛 주소가 없다
 		}
 		for _, from := range []string{sc + "-next", "/classic" + sc} {

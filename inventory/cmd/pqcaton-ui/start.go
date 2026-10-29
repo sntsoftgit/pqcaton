@@ -51,6 +51,9 @@ const (
 	wsJudgments    = "judgments.jsonl"
 	wsHosts        = "hosts.csv"
 	wsCollectors   = "collectors"
+	wsSigned       = "plan.signed.json"
+	wsProvision    = "provision.yml"
+	wsRollback     = "provision-rollback.yml"
 	defaultWsName  = "pqcaton"
 	addrFile       = "screen.addr"
 )
@@ -75,6 +78,7 @@ type startConfig struct {
 	plan                 string
 	hosts                string // 접근 정보. 작업 폴더 모드에서만 있다
 	collectors           string // 수집기 폴더. 작업 폴더 모드에서 주지 않으면 그 안의 collectors
+	approvalKey          string // 승인 서명 키 파일(작업 폴더 밖)
 }
 
 // errUsage: 사용법이 틀렸다(종료 코드 2).
@@ -102,6 +106,7 @@ func parseStart(args []string, stderr io.Writer) (startConfig, error) {
 	fs.BoolVar(&c.recoverStatus, "recover-status", false, "print what unfinished transactions left behind (files, expected and current hashes, prepared copies) and exit. Changes nothing")
 	fs.StringVar(&c.diagnostics, "diagnostics", "", "with -recover-status: also write the report as JSON to this new file (0600)")
 	fs.StringVar(&c.collectors, "collectors", "", "collector folder for running observations from the screen: linux-amd64/, linux-arm64/, windows-amd64/ and collector.jar as pqcota-discovery builds them (default in a workspace: its collectors folder)")
+	fs.StringVar(&c.approvalKey, "approval-key", "", "approval signing key for the 06 screen: the output of pqcota-keygen saved to a file outside the workspace, readable only by its owner (chmod 600)")
 	fs.StringVar(&c.stateDir, "state-dir", "", "state directory holding transaction records and receipts (default: .pqcaton next to the session file). Commands that change the same files must use the same one")
 
 	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag는 첫 비플래그에서 파싱을 멈추므로, 그냥
@@ -215,6 +220,7 @@ func (c startConfig) server() *server {
 	return &server{path: c.session, decl: c.decl, results: c.results, scope: c.scope,
 		layers: c.layers, base: c.base, scopeAssets: c.scopeAssets, judgments: c.judgments,
 		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace, hosts: c.hosts, collectors: absPath(c.collectors),
+		approvalKey: absPath(c.approvalKey),
 		orgFromDecl: c.workspace != "" && !c.orgGiven}
 }
 

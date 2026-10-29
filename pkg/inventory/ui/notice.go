@@ -46,6 +46,8 @@ const (
 	NoticeRoundOpened         = "round-opened"
 	NoticeScopeRoundOpened    = "scope-round-opened"
 	NoticeHostsSaved          = "hosts-saved"
+	NoticeSigned              = "signed"
+	NoticeGenerated           = "generated"
 
 	ProblemCannotFinalize      = "gate-cannot-finalize"
 	ProblemMandatory           = "gate-mandatory"

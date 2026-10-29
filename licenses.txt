@@ -11,6 +11,7 @@
 github.com/randyinthedev-hash/pqcota-common     Apache-2.0
 github.com/randyinthedev-hash/pqcota-inventory  Apache-2.0
 github.com/randyinthedev-hash/pqcota-discovery  Apache-2.0
+github.com/randyinthedev-hash/pqcota-provisioning Apache-2.0
 google.golang.org/protobuf  BSD-3-Clause
 
 # 인벤토리 거버넌스가 끌어오는 것들. 값은 각 리포의 LICENSE에서 확인했다

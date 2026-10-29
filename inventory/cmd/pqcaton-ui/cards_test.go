@@ -27,8 +27,8 @@ func cards(t *testing.T, body string) map[string]string {
 			out[m[1]] += " | " + m[3]
 		}
 	}
-	if len(out) != 5 {
-		t.Fatalf("found %d step cards, want 5:\n%s", len(out), body)
+	if len(out) != 6 {
+		t.Fatalf("found %d step cards, want 6:\n%s", len(out), body)
 	}
 	return out
 }
@@ -114,7 +114,7 @@ func TestOneBrokenInputDimsOneCard(t *testing.T) {
 	if !strings.HasPrefix(got["02"], "확인할 수 없음") {
 		t.Errorf("scope card = %q, want unavailable", got["02"])
 	}
-	for _, num := range []string{"01", "03", "04", "05"} {
+	for _, num := range []string{"01", "03", "04", "05", "06"} {
 		if strings.HasPrefix(got[num], "확인할 수 없음") {
 			t.Errorf("card %s went unavailable with the scope session", num)
 		}

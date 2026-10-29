@@ -50,6 +50,9 @@ const (
 	// RunPath — 관측 실행. GET은 상태 조각, POST는 시작이다. RunStopPath — 돌고 있는 실행을 멈춘다.
 	RunPath     = "/observe/run"
 	RunStopPath = "/observe/run/stop"
+	// SignPath — 06 화면의 승인 서명. GeneratePath — 서명한 계획으로 플레이북을 만든다.
+	SignPath     = "/approve/sign"
+	GeneratePath = "/approve/generate"
 	// HealthPath — 떠 있는 화면이 자기 상태 디렉토리의 ID를 알려 주는 자리. 실행기(pqcaton-ui -open)가 적힌 주소의
 	// 서버가 같은 작업 폴더의 것인지 견준다.
 	HealthPath = "/healthz"

@@ -65,7 +65,7 @@ pqcota                          pqcaton
 | [`pkg/inventory/localscan`](pkg/inventory/localscan) | **이 기계를 스캔하는 지름길**: 관측 없이 전체 절차를 한 번 돌려 보는 자리입니다. 못 본 것은 「없다」로 보고하지 않습니다 |
 | [`inventory/cmd/pqcaton-decide`](inventory/cmd/pqcaton-decide) | **리뷰 큐 판정과 종료**: 판정된 계획을 계약 형식으로 만들되 상태는 `IN_REVIEW`이고 승인 칸은 비웁니다. 실행 승인은 이 리포의 일이 아닙니다 |
 | [`inventory/cmd/pqcaton-scope`](inventory/cmd/pqcaton-scope) | **「이 자산은 안 본다」를 승인하고 배포**: 확정된 정책이 pqcota 집행기의 입력이 됩니다 |
-| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 여섯**: 선언 · 암호 자산 스코프 · 관측 · 대조 · 판정 · 인벤토리 조회. **이 기계의 루프백에서만 열리고**, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
+| [`inventory/cmd/pqcaton-ui`](inventory/cmd/pqcaton-ui) | **사람이 쓰는 화면 일곱**: 선언 · 암호 자산 스코프 · 관측 · 대조 · 판정 · 승인과 플레이북 생성 · 인벤토리 조회. **이 기계의 루프백에서만 열리고**, 스타일·스크립트까지 바이너리 하나에 들어 있어 망이 끊긴 기계에서도 뜹니다 |
 | [`inventory/cmd/pqcaton-report`](inventory/cmd/pqcaton-report) | 거버넌스 리포트·토폴로지 |
 
 **UNDECLARED가 이 도구가 주는 첫 번째 쓸모입니다.** CMDB에 없는데 실제로 통신하고 있는 엣지, 곧 조직이
@@ -142,9 +142,10 @@ bin/pqcaton-ui session.json \
   -decl declaration.json -results results/ \
   -layers corp.csv,prod.csv -base asset-scope.csv \
   -judgments judgments.jsonl -org acme
-# → http://127.0.0.1:8765 — 위쪽 단계 카드 다섯이 절차 순서입니다
+# → http://127.0.0.1:8765 — 위쪽 단계 카드 여섯이 절차 순서입니다
 #   01 선언(관리 대상 노드와 그 안의 암호 자산·통신 엣지) → 02 암호 자산 스코프
-#   → 03 관측(접근 정보) → 04 대조(3-상태·등급·토폴로지) → 05 판정(리뷰 큐 — 판정·확정)
+#   → 03 관측(접근 정보·관측 실행) → 04 대조(3-상태·등급·토폴로지) → 05 판정(리뷰 큐 — 판정·확정)
+#   → 06 승인·생성(승인 서명·플레이북)
 ```
 
 **카드마다 그 단계의 지금 상태를 적습니다.** 확정하는 두 단계(스코프 · 판정)는 확정 상태(미확정 · 확정됨 · 대체됨 ·
@@ -236,7 +237,7 @@ PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
 
 계획이 실행 필드를 다 채우지 못하면 pqcota는 산출물을 내되 **성공으로 끝내지 않습니다**(종료 상태 3). 무엇이 비었는지는 그 경고가 이름으로 알려 줍니다. 다만 그 상태까지 가지 않습니다. 위임 수준과 조치 종류, 목표 알고리즘, L3의 활성화 훅은 **우리 화면에서 고르고, 비면 확정이 막힙니다.** 빈 값을 상류로 넘기고 거기서 걸리게 두는 것보다, 승인 서명이 붙기 전에 이쪽에서 막는 편이 맞기 때문입니다.
 
-**맞는 조합.** 이 리포의 최소 요구 버전은 pqcota **v0.10.4**(`pqcota-common`·`pqcota-inventory`·`pqcota-discovery` 셋을 같은 태그로)이고, `go.mod`도 그 판을 고정합니다. 종단(데모) 검증은 v0.10.4로 했고(다섯 리포를 같은 태그로 나란히 받아 돌렸습니다), 그 뒤 판과의 호환은 재지 않았습니다. 위 명령은 종단 검증을 한 v0.10.4 기준입니다. **이 판이 내는 계획은 조치마다 근거(`evidenceSources`)를 담으므로, 그 필드를 모르는 v0.8.0 이하의 `pqcota-approve`·`pqcota-provision`은 계획을 읽지 못하고 거절합니다.** 상태가 `IN_REVIEW`로 나가는 것은 v0.8.0부터 받고, 그 아래에서는 서명만 붙고 `IN_REVIEW`인 채로 남아 생성기가 「확정 아님」으로 거절합니다. 그 밖에 승인 검증이 기본으로 닫힌 것과 종료 상태 3은 v0.7.0부터, 컨트롤러 CLI가 릴리스에 붙는 것은 v0.7.2부터, 강화 규칙 판이 상수로 서는 것은 v0.7.3부터(외부 CBOM 수신 종단까지는 v0.7.4)입니다.
+**맞는 조합.** 이 리포의 최소 요구 버전은 pqcota **v0.10.4**(`pqcota-common`·`pqcota-inventory`·`pqcota-discovery`·`pqcota-provisioning` 넷을 같은 태그로)이고, `go.mod`도 그 판을 고정합니다. 종단(데모) 검증은 v0.10.4로 했고(다섯 리포를 같은 태그로 나란히 받아 돌렸습니다), 그 뒤 판과의 호환은 재지 않았습니다. 위 명령은 종단 검증을 한 v0.10.4 기준입니다. **이 판이 내는 계획은 조치마다 근거(`evidenceSources`)를 담으므로, 그 필드를 모르는 v0.8.0 이하의 `pqcota-approve`·`pqcota-provision`은 계획을 읽지 못하고 거절합니다.** 상태가 `IN_REVIEW`로 나가는 것은 v0.8.0부터 받고, 그 아래에서는 서명만 붙고 `IN_REVIEW`인 채로 남아 생성기가 「확정 아님」으로 거절합니다. 그 밖에 승인 검증이 기본으로 닫힌 것과 종료 상태 3은 v0.7.0부터, 컨트롤러 CLI가 릴리스에 붙는 것은 v0.7.2부터, 강화 규칙 판이 상수로 서는 것은 v0.7.3부터(외부 CBOM 수신 종단까지는 v0.7.4)입니다.
 
 여러 노드를 훑는 방법과 거버넌스 토폴로지는 [여정](docs/journey.md)에 있습니다.
 

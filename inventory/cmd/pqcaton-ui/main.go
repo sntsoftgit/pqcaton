@@ -425,6 +425,8 @@ type server struct {
 	// collectors: 수집기 폴더(-collectors, 작업 폴더 모드의 기본은 그 안의 collectors). run: 관측 실행 하나.
 	collectors string
 	run        runner
+	// approvalKey: 승인 서명 키 파일(-approval-key). 서명할 때마다 다시 읽고 점검한다.
+	approvalKey string
 	// st: 상태 디렉토리. nil이면 보기 전용이다(저장을 지원하지 않는 플랫폼).
 	st *store.State
 	// recovering: 시작할 때 복구 필요가 남아 있었다. 다시 띄울 때까지 모든 화면이 503이다.
@@ -499,6 +501,9 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.RunPath, s.runStatusFragment)
 	r.Post(ui.RunPath, s.runStart)
 	r.Post(ui.RunStopPath, s.runStop)
+	r.Get(ui.ScreenApprove, s.approve)
+	r.Post(ui.SignPath, s.approveSign)
+	r.Post(ui.GeneratePath, s.approveGenerate)
 	r.Get(ui.ScreenSurvey, s.survey)
 	r.Get(ui.ScreenInventory, s.inventory)
 	r.Get(ui.ScreenReview, s.review)
@@ -1463,7 +1468,8 @@ var layerName = regexp.MustCompile("^" + ui.LayerNamePattern + "$")
 // fileName: 알림 · 거절에 적을 파일 이름(역할 → 이 서버의 파일). 전체 경로는 싣지 않는다.
 func (s *server) fileName(role string) string {
 	p := map[string]string{"plan": s.planOut, "ledger": s.judgments, "policy": s.scopeOut, "session": s.path,
-		"scope-session": s.scope, "declaration": s.decl, "results": s.results, "hosts": s.hosts}[role]
+		"scope-session": s.scope, "declaration": s.decl, "results": s.results, "hosts": s.hosts,
+		"signed-plan": s.signedPath(), "playbook": s.provisionPath()}[role]
 	if p == "" {
 		return ""
 	}
@@ -1479,7 +1485,7 @@ func missingInput(w http.ResponseWriter, r *http.Request, role string) {
 func (s *server) screens() ui.Screens {
 	declOK := s.workspace == "" || s.declReady()
 	return ui.Screens{
-		Decl: s.decl != "", Scope: s.scope != "", Observe: s.hosts != "",
+		Decl: s.decl != "", Scope: s.scope != "", Observe: s.hosts != "", Approve: s.planOut != "",
 		Survey: s.results != "" && declOK, Inventory: s.results != "" && declOK,
 		NoReview: !declOK,
 	}

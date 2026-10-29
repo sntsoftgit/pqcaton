@@ -31,6 +31,10 @@ const (
 	// RefusedRunNotReady · RefusedRunBusy — 관측을 시작하지 않았다(409). 빠진 것이 있거나 이미 돌고 있다.
 	RefusedRunNotReady = "run-not-ready"
 	RefusedRunBusy     = "run-busy"
+	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 06 화면이 서명 · 생성을 하지 않았다(409).
+	RefusedSignNotReady      = "sign-not-ready"
+	RefusedPlanNotApprovable = "plan-not-approvable"
+	RefusedGenNotReady       = "generate-not-ready"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
 	ErrNotFound     = "not-found"     // 404
@@ -50,13 +54,15 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedUnsafe: {body: tRefusedUnsafe}, RefusedMismatch: {body: tRefusedMismatch}, RefusedDamaged: {body: tRefusedDamaged},
 	RefusedDiagnostic: {tErrInputBrokenHead, tRefusedDiagnostic}, RefusedExists: {body: tRefusedExists},
 	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
-	ErrNotFound:     {tErrNotFoundHead, tErrNotFound},
-	ErrMethod:       {tErrMethodHead, tErrMethod},
-	ErrBadRequest:   {tErrBadRequestHead, tErrBadRequest},
-	ErrInputMissing: {tErrInputMissingHead, tErrInputMissing},
-	ErrInputBroken:  {tErrInputBrokenHead, tErrInputBroken},
-	ErrForbidden:    {tErrForbiddenHead, tErrForbidden},
-	ErrInternal:     {tErrInternalHead, tErrInternal},
+	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
+	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady},
+	ErrNotFound:        {tErrNotFoundHead, tErrNotFound},
+	ErrMethod:          {tErrMethodHead, tErrMethod},
+	ErrBadRequest:      {tErrBadRequestHead, tErrBadRequest},
+	ErrInputMissing:    {tErrInputMissingHead, tErrInputMissing},
+	ErrInputBroken:     {tErrInputBrokenHead, tErrInputBroken},
+	ErrForbidden:       {tErrForbiddenHead, tErrForbidden},
+	ErrInternal:        {tErrInternalHead, tErrInternal},
 }
 
 // RefusedKinds — 알려진 종류 전부(시험이 문구 목록과 견준다).

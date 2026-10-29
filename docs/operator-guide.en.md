@@ -7,9 +7,10 @@ This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one 
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
-**Scope.** The procedure inside pqcaton (declaration, scope, observation, reconciliation, judgment, finalize) runs on the
-screen without a terminal. Observations run with the Ansible and collectors the operator installs. Signing the plan's
-approval belongs to pqcota. Installing and recovering need a terminal or a file manager.
+**Scope.** The procedure inside pqcaton (declaration, scope, observation, reconciliation, judgment, finalize, approval,
+playbook generation) runs on the screen without a terminal. Observations run with the Ansible and collectors the operator
+installs. Applying the generated playbooks to the machines is not done by the screen but by the operator's own Ansible run.
+Installing and recovering need a terminal or a file manager.
 
 **The commands are run for real.** Every command in this guide marked `<!-- run -->` is run in order, in an empty home
 folder, by a test (`guide_run_test.go`) that checks the result.
@@ -93,6 +94,26 @@ collectors/
 └── collector.jar    without it, the provider chains of running JVMs are not observed
 ```
 
+**Getting the approval key ready.** Signing approvals on the 06 screen needs an approval key. Save the output of
+`pqcota-keygen` to a file **outside** the workspace, readable only by its owner, and start the screen with
+`-approval-key <file>`. The screen reads the file again at every signature, and does not use it when other users can read
+it or when it sits inside the workspace.
+
+```bash
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.4
+mkdir -p ~/.config/pqcaton
+(umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
+```
+
+When the screen runs as a service, add the flag to the service.
+
+```bash
+mkdir -p ~/.config/systemd/user/pqcaton-ui.service.d
+printf '[Service]\nExecStart=\nExecStart=%%h/.local/bin/pqcaton-ui -no-browser -approval-key %%h/.config/pqcaton/approval.key\n' > ~/.config/systemd/user/pqcaton-ui.service.d/approval.conf
+systemctl --user daemon-reload
+systemctl --user restart pqcaton-ui.service
+```
+
 ## 3. Workspace
 
 Started without arguments, the screen uses the `pqcaton` folder in your home, and creates it readable by you only (0700)
@@ -112,6 +133,8 @@ can.
 | `asset-scope.csv` | The finalized asset scope policy. When present, it is the baseline for the next review | Screen (02 finalize) |
 | `scope-assets.csv` | The same policy given to pqcota ingest (`pqcota-ingest`). When present, reconciliation uses it | Operator |
 | `plan.json` | The finalized plan (the contract format pqcota reads) | Screen (05 finalize) |
+| `plan.signed.json` | The approved plan (FINALIZED). `plan.json` stays as it is | Screen (06 approval) |
+| `provision.yml` · `provision-rollback.yml` | The apply and rollback playbooks | Screen (06 generation) |
 | `judgments.jsonl` | The judgment ledger. Only appended to | Screen (finalize) |
 | `.pqcaton/` | Save records, receipts, locks, and the address of the running screen (`screen.addr`) | Screen |
 | `.pqcaton.lock` | The lock file saying which state folder this folder is bound to. It goes together with `.pqcaton/` | Screen |
@@ -188,7 +211,7 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 
 ## 6. A day's procedure
 
-The five step cards at the top of the screen are the procedure, in order. Each card shows where that step stands, and the
+The six step cards at the top of the screen are the procedure, in order. Each card shows where that step stands, and the
 two steps that finalize (02 and 05) also show the finalize state (not finalized, finalized, superseded, recovery
 required).
 
@@ -209,7 +232,12 @@ required).
 5. **05 Judgment.** Write a conclusion for each policy; for the items going into the plan, pick the action kind, target and
    level; and sign. "Finalize" shows a confirmation page with what will be written, and confirming writes the session,
    plan and ledger together. Finalizing the same session with the same content again writes nothing again.
-6. **After that.** `plan.json` is the judged plan (IN_REVIEW). Approval signing and execution follow the pqcota side.
+6. **06 Approval & generation.** Check the actions of the plan to approve, enter the approver's name and confirm the
+   review, and sign. The signed plan is kept separately in `plan.signed.json` (FINALIZED) and `plan.json` stays as it is.
+   Then pick the default delegation level and press "Generate the playbooks": `provision.yml` and `provision-rollback.yml`
+   are written. When the generator flags gaps, their number and content are shown. Applying them to the machines is not
+   done by the screen; the operator runs the commands in the 06 screen's help. When 05 is finalized again and the plan
+   changes, the 06 card reads "the signature does not match the plan", and generating needs a new signature on the new plan.
 7. **The next round.** A finalized session cannot be changed and is shown read-only. When new observations arrive or a
    conclusion must change, press "Start a new review" on the 05 screen ("Start a new scope review" on the 02 screen). A new
    round starts under a new session id: conclusions and plan fields carry over, and a new signature is needed. The earlier
@@ -386,6 +414,9 @@ screen.
 | `exists` | The file to create is already there, so it was not overwritten | Reload the screen |
 | `run-not-ready` | Something needed before an observation (access, Ansible, collectors) is missing | Provide the items marked ✗ in the checklist on the 03 screen |
 | `run-busy` | An observation is already running | Start again after it finishes or is stopped |
+| `sign-not-ready` | The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed | See the approval key check on the 06 screen and fill in the form |
+| `plan-not-approvable` | The plan is not in review (IN_REVIEW), has no actions, or is already signed with this key | Finalize again at 05, or use the signed plan as it is |
+| `generate-not-ready` | The current plan has no approval that checks out with this key | Sign the approval first |
 | `not-found` | There is no screen at this address | Start again from the first screen |
 | `method` | This kind of request is not accepted | Use the screen's buttons |
 | `bad-request` | The request could not be handled | Reload the screen and do it again |

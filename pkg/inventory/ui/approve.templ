@@ -1,0 +1,153 @@
+package ui
+
+// approvePage — 06 승인 · 생성. **무엇에 서명하는지 먼저 보인다** — 승인자는 계획의 이름이 아니라 조치의
+// 내용에 책임을 진다.
+templ approvePage(v ApproveView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			<p class="eyebrow">{ tApproveEyebrow.In(v.Page.Lang) }</p>
+			<h2>{ tApproveHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tApproveLede.In(v.Page.Lang) }</p>
+			if v.Plan == nil {
+				<div class="next">
+					<div class="next-icon">i</div>
+					<div>
+						<strong>{ tApproveNoPlan.In(v.Page.Lang) }</strong>
+						<span>{ tApproveNoPlanBody.In(v.Page.Lang) }</span>
+					</div>
+				</div>
+			} else {
+				@planTable(v.Page.Lang, *v.Plan)
+				@approveSign(v)
+				@approveGenerate(v)
+			}
+		</div>
+	}
+}
+
+templ planTable(l Lang, p PlanSummary) {
+	<h3>{ tPlanHead.In(l) }</h3>
+	<p class="lede"><code>{ p.ID }</code> · { p.Status }</p>
+	<div class="table-wrap">
+		<table role="table">
+			<thead role="rowgroup">
+				<tr role="row">
+					<th role="columnheader">{ tColNode.In(l) }</th>
+					<th role="columnheader">{ tColKind.In(l) }</th>
+					<th role="columnheader">{ tColProvider.In(l) }</th>
+					<th role="columnheader">{ tColTarget2.In(l) }</th>
+					<th role="columnheader">{ tColLevel.In(l) }</th>
+				</tr>
+			</thead>
+			<tbody role="rowgroup">
+				for _, a := range p.Actions {
+					<tr role="row">
+						<td role="cell" data-label={ tColNode.In(l) }>{ a.Node }</td>
+						<td role="cell" data-label={ tColKind.In(l) }>{ a.Kind }</td>
+						<td role="cell" data-label={ tColProvider.In(l) }>{ a.Provider }</td>
+						<td role="cell" data-label={ tColTarget2.In(l) }>{ a.Target }</td>
+						<td role="cell" data-label={ tColLevel.In(l) }>{ a.Level }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+}
+
+// approveSign — 키 점검 · 서명 상태 · 서명 양식.
+templ approveSign(v ApproveView) {
+	<h3 id="approve-sign">{ tSignHead.In(v.Page.Lang) }</h3>
+	<ul class="checks">
+		<li class={ templ.KV("ok", v.Key.State == KeyOK), templ.KV("bad", v.Key.State != KeyOK) }>
+			if v.Key.State == KeyOK {
+				{ "✓ " }
+			} else {
+				{ "✗ " }
+			}
+			<strong>{ tKeyItem.In(v.Page.Lang) }</strong>
+			if v.Key.Path != "" {
+				{ " " }
+				<code>{ v.Key.Path }</code>
+			}
+			<br/>
+			<span>{ v.Key.Text(v.Page.Lang) }</span>
+		</li>
+	</ul>
+	switch v.Signed.State {
+		case SignValid:
+			<p class="msg ok">{ tSignedValid.F(v.Page.Lang, joinNames(v.Signed.Approvers), v.Signed.At.Format("2006-01-02 15:04")) }</p>
+		case SignStale:
+			<p class="msg bad">{ tSignedStale.In(v.Page.Lang) }</p>
+		case SignInvalid:
+			<p class="msg bad">{ tSignedInvalid.In(v.Page.Lang) }</p>
+	}
+	if v.Key.State == KeyOK && v.Key.Public != "" {
+		@tip(v.Page.Lang, tVerifyKeyHint.In(v.Page.Lang))
+		<pre class="run-log">{ "PQCOTA_APPROVAL_KEYS=" + v.Approver + "=" + v.Key.Public }</pre>
+	}
+	if v.CanSign() {
+		<form method="post" action={ templ.SafeURL(SignPath) }>
+			@csrfField(v.Page)
+			<label>
+				{ tApprover.In(v.Page.Lang) }
+				<input type="text" name="approver" value={ v.Approver } required maxlength="100"/>
+			</label>
+			<label class="check">
+				<input type="checkbox" name="reviewed" value="on" required/>
+				{ tReviewedAsk.In(v.Page.Lang) }
+			</label>
+			<div class="actions">
+				<button class="primary">{ tSign.In(v.Page.Lang) }</button>
+				@tip(v.Page.Lang, tSignHint.In(v.Page.Lang))
+			</div>
+		</form>
+	}
+}
+
+// approveGenerate — 플레이북 생성. 적용과 되돌리기를 함께 만든다.
+templ approveGenerate(v ApproveView) {
+	<h3 id="approve-generate">{ tGenHead.In(v.Page.Lang) }</h3>
+	if v.Playbooks.Made {
+		if v.Playbooks.Stale {
+			<p class="msg bad">{ tGenStale.In(v.Page.Lang) }</p>
+		} else {
+			<p class="msg ok">{ tGenMade.F(v.Page.Lang, v.Playbooks.Level, v.Playbooks.At.Format("2006-01-02 15:04")) }</p>
+		}
+		<ul>
+			for _, f := range v.Playbooks.Files {
+				<li><code>{ f }</code></li>
+			}
+		</ul>
+		if len(v.Playbooks.Warnings) > 0 {
+			<section class="problems" aria-labelledby="gen-warnings">
+				<h3 id="gen-warnings">{ tGenWarningsHead.F(v.Page.Lang, len(v.Playbooks.Warnings)) }</h3>
+				<p class="lede">{ tGenWarningsLede.In(v.Page.Lang) }</p>
+				<ul>
+					for _, w := range v.Playbooks.Warnings {
+						<li><code>{ w }</code></li>
+					}
+				</ul>
+			</section>
+		}
+		@tip(v.Page.Lang, tApplyHint.In(v.Page.Lang))
+	}
+	if v.CanGenerate() {
+		<form method="post" action={ templ.SafeURL(GeneratePath) }>
+			@csrfField(v.Page)
+			<label>
+				{ tGenLevel.In(v.Page.Lang) }
+				<select name="level">
+					<option value="l1">{ tLevelL1.In(v.Page.Lang) }</option>
+					<option value="l2" selected>{ tLevelL2.In(v.Page.Lang) }</option>
+					<option value="l3">{ tLevelL3.In(v.Page.Lang) }</option>
+				</select>
+			</label>
+			<div class="actions">
+				<button class="primary">{ tGenerate.In(v.Page.Lang) }</button>
+				@tip(v.Page.Lang, tGenHint.In(v.Page.Lang))
+			</div>
+		</form>
+	} else if v.Signed.State != SignValid {
+		<p class="lede">{ tGenNeedsSign.In(v.Page.Lang) }</p>
+	}
+}
