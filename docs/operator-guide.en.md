@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.23.1.
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.24.0.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -50,7 +50,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 **The binary.** Go 1.26.10 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.23.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.24.0
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
@@ -61,8 +61,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.23.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.23.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -78,7 +78,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.23.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -241,7 +241,20 @@ required).
    under a supervisor process the screen starts (`pqcaton-ui` itself), so if the screen is killed, the supervisor stops
    Ansible, cleans the nodes and removes the inventory. If the supervisor ended too (a power loss, say), the next start
    finds the run's processes, stops them and does the same cleanup. If they cannot be stopped, nothing is removed or moved:
-   the run is left as "recovery needed", the 03 screen shows the PIDs, and no new observation starts. Observations started
+   the run is left as "recovery needed", the 03 screen shows the PIDs, and no new observation starts. pqcaton stops a
+   process only when its run marker (`PQCATON_RUN`) or the lineage of a live process shows it belongs to this
+   observation. A process whose ownership cannot be shown may be unrelated, so it is not stopped and the observation is
+   left as "recovery needed" instead. macOS does not let the environment of some Apple programs (such as `/bin/sh` and
+   `/usr/bin/ssh`) be read, so for those a live process of this observation, as the parent or in the same process group,
+   stands in for the run marker. When "recovery needed" shows, check the PIDs on the 03 screen.
+
+   ```bash
+   ps -p <PID> -o pid=,ppid=,pgid=,user=,command=
+   ```
+
+   Only when a process is confirmed to have been started by this observation, stop it normally and start the screen
+   again. If it is unrelated, or its ownership cannot be confirmed, do not stop it: wait until it ends on its own, then
+   start the screen again. The restarted screen carries on with the remaining cleanup. Observations started
    by the screen do not share SSH connections (`ControlMaster=no`). If the nodes could not be reached, the 03 screen names
    the staging folder that may be left, with the run ID: `/tmp/pqcaton-observe-<run ID>` (on Windows `C:\Windows\Temp\pqcaton-observe-<run ID>`). The network observation waits for handshakes on the
    node's default-route interface for the window you set (60 seconds by default).

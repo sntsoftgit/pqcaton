@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.23.1 기준입니다.
+이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.24.0 기준입니다.
 영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
@@ -47,7 +47,7 @@
 **바이너리.** Go 1.26.10이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.23.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.24.0
 ```
 
 **Linux: 서비스와 실행기.** 서비스는 로그인할 때 화면을 띄우고(브라우저는 열지 않음), 실행기는 서비스를 시작한 뒤 화면을
@@ -57,8 +57,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.23.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.23.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -73,7 +73,7 @@ journalctl --user -u pqcaton-ui.service
 화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.23.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -227,7 +227,19 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
    프로세스(`pqcaton-ui` 자신)가 실행하므로, 화면이 강제로 끝나도 감독이 Ansible을 끝내고 노드를 정리하고 인벤토리를
    지웁니다. 감독마저 끝났으면(전원 장애 같은 경우) 다음 시작이 이 실행의 프로세스를 찾아 끝내고 같은 정리를 합니다.
    프로세스를 끝내지 못하면 아무것도 지우거나 옮기지 않고 「회수 필요」로 남기며, 그 PID를 03 화면에 보이고 새 관측을
-   시작하지 않습니다. 화면이 띄운 관측은 SSH 연결 공유를 쓰지 않습니다(`ControlMaster=no`). 노드에 닿지 못했으면 03
+   시작하지 않습니다. pqcaton은 실행 표지(`PQCATON_RUN`)나 살아 있는 프로세스의 계보로 이 관측의 것임을 확인한
+   프로세스만 끝냅니다. 소속을 확인할 수 없는 프로세스는 관계없는 프로세스일 수 있으므로 끝내지 않고, 관측을 「회수
+   필요」로 남깁니다. macOS에서는 일부 Apple 기본 프로그램(`/bin/sh` · `/usr/bin/ssh` 같은 것)의 환경을 읽을 수 없으므로,
+   그런 프로세스는 실행 표지 대신 부모나 같은 프로세스 묶음에 살아 있는 이 관측의 프로세스로 확인합니다. 「회수 필요」가
+   보이면 03 화면에 적힌 PID를 확인합니다.
+
+   ```bash
+   ps -p <PID> -o pid=,ppid=,pgid=,user=,command=
+   ```
+
+   이 관측이 띄운 프로세스임이 확인될 때만 정상 종료한 뒤 화면을 다시 시작합니다. 관계없는 프로세스이거나 소속을 확인할
+   수 없으면 끝내지 말고, 그 프로세스가 스스로 끝난 뒤 화면을 다시 시작합니다. 다시 시작한 화면이 남은 정리를 이어서
+   합니다. 화면이 띄운 관측은 SSH 연결 공유를 쓰지 않습니다(`ControlMaster=no`). 노드에 닿지 못했으면 03
    화면이 남았을 수 있는 스테이징 폴더를 실행 ID와 함께 적습니다:
    `/tmp/pqcaton-observe-<실행 ID>`(Windows는 `C:\Windows\Temp\pqcaton-observe-<실행 ID>`). 네트워크 관측은 노드의 기본 경로
    인터페이스에서 정한 구간(기본 60초) 동안 핸드셰이크를 기다립니다.
