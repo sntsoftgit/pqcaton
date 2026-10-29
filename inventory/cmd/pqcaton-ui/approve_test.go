@@ -40,15 +40,18 @@ func signForm(approver string) url.Values {
 
 // IC-U120 — **화면의 승인 서명은 상류가 그대로 확인한다.** 06 화면은 계획의 조치를 보이고, 승인자 이름 · 검토
 // 확인과 함께 서명하면 plan.signed.json에 FINALIZED 계획을 쓴다. plan.json은 그대로다. 서명은 pqcota-provision이
-// 쓰는 확인 함수(VerifyApprovals)가 그 승인자의 공개 키로 통과시키고, 화면은 그 확인 키 줄을 보인다. 06 카드는
+// 쓰는 확인 함수(VerifyApprovals)가 그 승인자의 공개 키로 통과시키고, 화면은 서명한 뒤에만 그 확인 키 줄을 보인다. 06 카드는
 // 「플레이북을 만들 수 있습니다」가 된다.
 func TestApprovalIsVerifiedUpstream(t *testing.T) {
 	s, pub := keyReady(t)
 	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
-	for _, want := range []string{"ML-KEM (FIPS 203)", "REMEDIATION_KIND_CONFIG_ONLY", `action="` + ui.SignPath + `"`} {
+	for _, want := range []string{"ML-KEM (FIPS 203)", "config_only", "IN_REVIEW", `action="` + ui.SignPath + `"`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("the 06 screen does not show %q", want)
 		}
+	}
+	if strings.Contains(page, "PQCOTA_APPROVAL_KEYS=") {
+		t.Error("the verify line is shown before anyone signed (it has no approver yet)")
 	}
 	before := readFile(t, s.planOut)
 	w := postForm(t, s, ui.SignPath, withRev(signForm("보안팀장"), s.revFor(ui.ScreenApprove)))

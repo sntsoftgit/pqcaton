@@ -652,8 +652,11 @@ var (
 var (
 	tWbTagline = T{KO: "무엇을 먼저 판단할까요?", EN: "What should you judge first?"}
 	tWbLede    = T{
-		KO: "관측 결과는 읽기만 합니다. 선언 · 세션 · 계층은 저장할 때 쓰고, 계획 · 정책 · 원장은 확인을 거쳐 확정할 때 한 번에 씁니다.",
-		EN: "Observed results are only read. The declaration, sessions and layers are written when you save; the plan, policy and ledger are written together when you finalize after confirming."}
+		KO: "관측 결과는 관측을 실행할 때만 받고 그 밖에는 읽기만 합니다. 선언 · 세션 · 계층 · 접근 정보는 저장할 때, " +
+			"계획 · 정책 · 원장은 확인을 거쳐 확정할 때, 서명한 계획과 플레이북은 06에서 씁니다.",
+		EN: "Observed results are taken in only when an observation runs, and are otherwise only read. " +
+			"The declaration, sessions, layers and access are written when you save; the plan, policy and ledger when you " +
+			"finalize after confirming; the signed plan and playbooks at 06."}
 	// 화면 머리의 모드. 실제로 저장하는지를 적는다.
 	tModeWrite      = T{KO: "저장 가능", EN: "Saving enabled"}
 	tModeViewOnly   = T{KO: "보기 전용: 이 플랫폼에서는 저장하지 않습니다", EN: "View only: this platform does not save"}

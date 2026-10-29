@@ -415,7 +415,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U117](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | ansible-playbook과 수집기 폴더가 없는 서버, 두 말 | 점검 목록이 빠진 것과 할 일을 적고 시작 양식을 내지 않는다. 주소로 직접 보내도 409(`run-not-ready`)이고 아무것도 실행하지 않는다 |
 | **[IC-U118](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 돌고 있는 관측에 다시 시작 · 중지 · 범위 밖 관측 구간 | 다시 시작은 409(`run-busy`)다. 중지는 프로세스 묶음을 끝내고 그때까지 받은 결과만 옮기며 상태는 「멈춤」이다. 도는 동안 상태 조각은 2초마다 다시 받고 중지 단추를 낸다. 관측 구간 4초는 400이다 |
 | **[IC-U119](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | ansible-playbook이 종료 코드 2로 끝남 | 상태는 「실패」이고 종료 코드와 로그가 보인다. 그때까지 받은 결과는 옮기고 작업 자리는 지운다 |
-| **[IC-U120](../inventory/cmd/pqcaton-ui/approve_test.go) ✅** | 06 화면에서 승인자 이름 · 검토 확인과 함께 서명(작업 폴더 밖의 0600 키) | `plan.signed.json`에 FINALIZED 계획을 쓰고 `plan.json`은 그대로다. 서명은 상류 `VerifyApprovals`가 그 승인자의 공개 키로 통과시키고 `Executable`도 지난다. 화면은 확인 키 줄과 생성 양식을 보이고 06 카드는 「플레이북을 만들 수 있습니다」다. 같은 계획에 다시 서명하면 409다 |
+| **[IC-U120](../inventory/cmd/pqcaton-ui/approve_test.go) ✅** | 06 화면에서 승인자 이름 · 검토 확인과 함께 서명(작업 폴더 밖의 0600 키) | `plan.signed.json`에 FINALIZED 계획을 쓰고 `plan.json`은 그대로다. 서명은 상류 `VerifyApprovals`가 그 승인자의 공개 키로 통과시키고 `Executable`도 지난다. 화면은 서명한 뒤에만 확인 키 줄(승인자 이름이 든 것)을 보이고, 생성 양식을 내며, 06 카드는 「플레이북을 만들 수 있습니다」다. 같은 계획에 다시 서명하면 409다 |
 | **[IC-U121](../inventory/cmd/pqcaton-ui/approve_test.go) ✅** | 키 없음 · 0644 키 · 계획 폴더 안의 키 · 개인 키가 아닌 파일, 두 말 · 콜론이 든 승인자 · 검토 확인 없음 | 화면은 까닭과 할 일을 적고 서명 양식을 내지 않는다. 주소로 직접 보내도 409(`sign-not-ready`)이고 아무것도 쓰지 않는다 |
 | **[IC-U122](../inventory/cmd/pqcaton-ui/approve_test.go) ✅** | 서명 뒤 L3로 생성 · 그 뒤 계획이 바뀜 · 모르는 수준 | 두 플레이북이 상류 생성기의 출력과 바이트까지 같고, 생성기가 짚은 빈 곳의 수가 06 카드에 오른다. 계획이 바뀌면 카드가 「서명이 지금 계획과 맞지 않습니다」이고 생성은 409(`generate-not-ready`)다. 모르는 수준은 400이다 |
 

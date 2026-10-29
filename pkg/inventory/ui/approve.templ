@@ -1,5 +1,7 @@
 package ui
 
+import "strings"
+
 // approvePage — 06 승인 · 생성. **무엇에 서명하는지 먼저 보인다** — 승인자는 계획의 이름이 아니라 조치의
 // 내용에 책임을 진다.
 templ approvePage(v ApproveView) {
@@ -27,7 +29,7 @@ templ approvePage(v ApproveView) {
 
 templ planTable(l Lang, p PlanSummary) {
 	<h3>{ tPlanHead.In(l) }</h3>
-	<p class="lede"><code>{ p.ID }</code> · { p.Status }</p>
+	<p class="lede"><code>{ p.ID }</code> · { strings.TrimPrefix(p.Status, "PLAN_STATUS_") }</p>
 	<div class="table-wrap">
 		<table role="table">
 			<thead role="rowgroup">
@@ -43,10 +45,10 @@ templ planTable(l Lang, p PlanSummary) {
 				for _, a := range p.Actions {
 					<tr role="row">
 						<td role="cell" data-label={ tColNode.In(l) }>{ a.Node }</td>
-						<td role="cell" data-label={ tColKind.In(l) }>{ a.Kind }</td>
+						<td role="cell" data-label={ tColKind.In(l) }>{ shortKind(a.Kind) }</td>
 						<td role="cell" data-label={ tColProvider.In(l) }>{ a.Provider }</td>
 						<td role="cell" data-label={ tColTarget2.In(l) }>{ a.Target }</td>
-						<td role="cell" data-label={ tColLevel.In(l) }>{ a.Level }</td>
+						<td role="cell" data-label={ tColLevel.In(l) }>{ shortLevel(a.Level) }</td>
 					</tr>
 				}
 			</tbody>
@@ -81,7 +83,7 @@ templ approveSign(v ApproveView) {
 		case SignInvalid:
 			<p class="msg bad">{ tSignedInvalid.In(v.Page.Lang) }</p>
 	}
-	if v.Key.State == KeyOK && v.Key.Public != "" {
+	if v.Key.State == KeyOK && v.Key.Public != "" && v.Approver != "" {
 		@tip(v.Page.Lang, tVerifyKeyHint.In(v.Page.Lang))
 		<pre class="run-log">{ "PQCOTA_APPROVAL_KEYS=" + v.Approver + "=" + v.Key.Public }</pre>
 	}

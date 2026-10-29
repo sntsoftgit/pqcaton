@@ -13,6 +13,7 @@ package ui
 import (
 	"context"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -158,3 +159,12 @@ func joinNames(names []string) string {
 
 // StepApproveIncompleteText — 빈 곳이 남은 06 카드의 한 줄(시험이 견준다).
 func StepApproveIncompleteText(l Lang, n int) string { return tStepApproveIncomplete.F(l, n) }
+
+// shortLevel — 위임 수준을 L1 · L2 · L3로. 고르지 않았으면 빈 값이다(생성기가 기본 수준을 쓴다).
+func shortLevel(level string) string {
+	rest := strings.TrimPrefix(level, "DEPLOY_AUTOMATION_LEVEL_")
+	if len(rest) >= 2 && rest[0] == 'L' {
+		return rest[:2]
+	}
+	return ""
+}
