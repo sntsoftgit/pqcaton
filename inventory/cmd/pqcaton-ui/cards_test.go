@@ -27,8 +27,8 @@ func cards(t *testing.T, body string) map[string]string {
 			out[m[1]] += " | " + m[3]
 		}
 	}
-	if len(out) != 4 {
-		t.Fatalf("found %d step cards, want 4:\n%s", len(out), body)
+	if len(out) != 5 {
+		t.Fatalf("found %d step cards, want 5:\n%s", len(out), body)
 	}
 	return out
 }
@@ -55,8 +55,8 @@ func TestEveryCardIsFilledTheSameWay(t *testing.T) {
 			}
 		}
 	}
-	if !strings.HasSuffix(first["02"], " | 미확정") || !strings.HasSuffix(first["04"], " | 미확정") {
-		t.Errorf("the finalizing steps do not show their state: 02 %q, 04 %q", first["02"], first["04"])
+	if !strings.HasSuffix(first["02"], " | 미확정") || !strings.HasSuffix(first["05"], " | 미확정") {
+		t.Errorf("the finalizing steps do not show their state: 02 %q, 05 %q", first["02"], first["05"])
 	}
 }
 
@@ -70,7 +70,7 @@ func TestReviewCardShowsTheVerifiedState(t *testing.T) {
 		if w.Code != http.StatusOK {
 			t.Fatalf("GET /review = %d", w.Code)
 		}
-		line := cards(t, w.Body.String())["04"]
+		line := cards(t, w.Body.String())["05"]
 		return line[strings.LastIndex(line, " | ")+3:]
 	}
 	if got := final(); got != "미확정" {
@@ -114,7 +114,7 @@ func TestOneBrokenInputDimsOneCard(t *testing.T) {
 	if !strings.HasPrefix(got["02"], "확인할 수 없음") {
 		t.Errorf("scope card = %q, want unavailable", got["02"])
 	}
-	for _, num := range []string{"01", "03", "04"} {
+	for _, num := range []string{"01", "03", "04", "05"} {
 		if strings.HasPrefix(got[num], "확인할 수 없음") {
 			t.Errorf("card %s went unavailable with the scope session", num)
 		}
@@ -196,7 +196,7 @@ func TestSnapshotCoversTheReceipt(t *testing.T) {
 	if calls != 2 {
 		t.Errorf("the model was built %d times, want 2 (the receipt went away under the first)", calls)
 	}
-	line := cards(t, body)["04"]
+	line := cards(t, body)["05"]
 	if got := line[strings.LastIndex(line, " | ")+3:]; got != "미확정" {
 		t.Errorf("review card = %q, want the state after the receipt went away (미확정)", got)
 	}

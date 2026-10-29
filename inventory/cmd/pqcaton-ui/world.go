@@ -160,6 +160,14 @@ func (s *server) steps(wd *world) ui.StepState {
 			st.Scope = &got
 		}
 	}
+	if s.hosts != "" {
+		if hosts, err := s.loadHosts(); err != nil {
+			unavailable("observe", err)
+		} else {
+			got := ui.ObserveSummary{Hosts: len(hosts)}
+			st.Observe = &got
+		}
+	}
 	// 작업 폴더에 선언이 아직 없으면 대조 · 판정 카드는 닫혀 있다(screens). 읽지 못한 것으로 적지 않는다.
 	if s.workspace != "" && !s.declReady() {
 		st.ReviewFinal, st.ScopeFinal = wd.reviewFinal, wd.scopeFinal

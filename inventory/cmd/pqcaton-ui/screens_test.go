@@ -13,7 +13,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// everyScreen: 화면 다섯이 모두 열리는 서버.
+// everyScreen: 화면 여섯이 모두 열리는 서버.
 func everyScreen(t *testing.T) *server {
 	t.Helper()
 	s, dir := fullServer(t)
@@ -24,7 +24,7 @@ func everyScreen(t *testing.T) *server {
 	return s
 }
 
-// IC-U74 — **기본 주소 다섯이 화면이다.** 모두 화면 껍데기(`body.wb`)로 그리고, 브라우저 제목은 그 화면의
+// IC-U74 — **기본 주소 여섯이 화면이다.** 모두 화면 껍데기(`body.wb`)로 그리고, 브라우저 제목은 그 화면의
 // 이름이다. 옛 이동 링크(`<nav>`)도 옛 화면으로 가는 링크도 없다.
 func TestDefaultAddressesAreTheScreens(t *testing.T) {
 	s := everyScreen(t)
@@ -48,7 +48,7 @@ func TestDefaultAddressesAreTheScreens(t *testing.T) {
 
 // titles: 화면마다 브라우저 제목. 단계 카드의 이름과 같다.
 var titles = map[string]string{
-	ui.ScreenDecl: "선언", ui.ScreenScope: "암호 자산 스코프", ui.ScreenSurvey: "대조",
+	ui.ScreenDecl: "선언", ui.ScreenScope: "암호 자산 스코프", ui.ScreenObserve: "관측", ui.ScreenSurvey: "대조",
 	ui.ScreenReview: "판정(리뷰 큐)", ui.ScreenInventory: "인벤토리·판정 이력",
 }
 
@@ -58,6 +58,9 @@ var titles = map[string]string{
 func TestOldAddressesMovePermanently(t *testing.T) {
 	s := everyScreen(t)
 	for _, sc := range ui.AllScreens() {
+		if sc == ui.ScreenObserve {
+			continue // v0.24.0에 생긴 화면이라 옛 주소가 없다
+		}
 		for _, from := range []string{sc + "-next", "/classic" + sc} {
 			for _, q := range []string{"", "?lang=en", "?lang=en&q=libssl"} {
 				for range 2 {

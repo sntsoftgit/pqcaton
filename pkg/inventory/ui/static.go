@@ -45,6 +45,8 @@ const (
 	// ReviewNewPath · ScopeNewPath — 확정된 세션에서 새 회차(새 세션 ID)를 여는 POST.
 	ReviewNewPath = "/review/new"
 	ScopeNewPath  = "/scope/new"
+	// HostsSavePath — 03 관측 화면의 접근 정보 저장.
+	HostsSavePath = "/observe/hosts"
 	// HealthPath — 떠 있는 화면이 자기 상태 디렉토리의 ID를 알려 주는 자리. 실행기(pqcaton-ui -open)가 적힌 주소의
 	// 서버가 같은 작업 폴더의 것인지 견준다.
 	HealthPath = "/healthz"
@@ -57,12 +59,14 @@ const (
 	KindNode  = "node"
 	KindAsset = "asset"
 	KindEdge  = "edge"
+	// KindHost — 03 관측 화면의 접근 정보 한 줄.
+	KindHost = "host"
 )
 
 // ValidKind — 모르는 종류는 받지 않는다. 주소는 밖에서 오는 값이다.
 func ValidKind(kind string) bool {
 	switch kind {
-	case KindNode, KindAsset, KindEdge:
+	case KindNode, KindAsset, KindEdge, KindHost:
 		return true
 	}
 	return false
@@ -116,6 +120,8 @@ func addLabel(l Lang, kind string) string {
 		return tAddNode.In(l)
 	case KindAsset:
 		return tAddAsset.In(l)
+	case KindHost:
+		return tAddHost.In(l)
 	}
 	return tAddEdge.In(l)
 }

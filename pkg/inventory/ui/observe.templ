@@ -1,0 +1,114 @@
+package ui
+
+import "strconv"
+
+// observePage — 03 관측. 관측할 노드에 어떻게 붙는지(접근 정보)를 적는다.
+//
+// **비밀번호 칸은 없다.** 파일에 있으면 「있음」만 보이고 저장해도 그대로 남는다(observe.go).
+templ observePage(v ObserveView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			<p class="eyebrow">{ tObserveEyebrow.In(v.Page.Lang) }</p>
+			<h2>{ tObserveHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tObserveLede.In(v.Page.Lang) }</p>
+			@hostProblemList(v)
+			<div class="metrics">
+				<div class={ "metric", templ.KV("warn", len(v.Hosts) == 0) }>
+					<b>{ strconv.Itoa(len(v.Hosts)) }</b>
+					<span>{ tObserveMetricHosts.In(v.Page.Lang) }</span>
+				</div>
+			</div>
+			<h3>{ tHostsHead.In(v.Page.Lang) }</h3>
+			<p class="lede">{ tHostsLede.In(v.Page.Lang) }</p>
+			@hostsForm(v)
+		</div>
+	}
+}
+
+// hostProblemList — 저장을 막은 자리. 어느 노드의 무엇이 틀렸는지.
+templ hostProblemList(v ObserveView) {
+	if len(v.Problems) > 0 {
+		<section class="problems" aria-labelledby="host-problems" role="alert">
+			<h3 id="host-problems">{ tHostProblemsHead.In(v.Page.Lang) }</h3>
+			<ul>
+				for _, p := range v.Problems {
+					<li><strong>{ p.Node }</strong> · { p.What.In(v.Page.Lang) }</li>
+				}
+			</ul>
+		</section>
+	}
+}
+
+templ hostsForm(v ObserveView) {
+	<form method="post" action={ templ.SafeURL(HostsSavePath) }>
+		@csrfField(v.Page)
+		<fieldset>
+			<legend>{ tHostsLegend.In(v.Page.Lang) }</legend>
+			@tip(v.Page.Lang, tHostsHint.In(v.Page.Lang))
+			<div class="table-wrap">
+				<table class="editable" role="table">
+					<thead role="rowgroup">
+						<tr role="row">
+							<th role="columnheader" style="width:9rem">{ tColNodeID.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:10rem">{ tColName.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:9rem">{ tColIP.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:5rem">{ tColPort.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:7rem">{ tColUser.In(v.Page.Lang) }</th>
+							<th role="columnheader">{ tColKey.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:7rem">{ tColOS.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:7rem">{ tColConn.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:6rem">{ tColPass.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:5rem"></th>
+						</tr>
+					</thead>
+					<tbody role="rowgroup" id={ rowsID(KindHost) }>
+						for i, h := range v.Hosts {
+							@hostRow(v.Page.Lang, i, h)
+						}
+					</tbody>
+				</table>
+			</div>
+			@addRow(v.Page.Lang, KindHost, 0, len(v.Hosts), false)
+		</fieldset>
+		<div class="actions">
+			<button class="primary">{ tHostsSave.In(v.Page.Lang) }</button>
+			@reloadButton(v.Page.Lang, v.Page.Self)
+		</div>
+	</form>
+}
+
+// hostRow — 노드 한 대에 붙는 방법. OS와 접속 방법은 상류가 받는 값만 고른다.
+templ hostRow(l Lang, i int, h HostRow) {
+	{{ n := strconv.Itoa(i) }}
+	<tr role="row">
+		<td role="cell" data-label={ tColNodeID.In(l) }>
+			<input type="hidden" name={ "host.was." + n } value={ h.Was }/>
+			<input type="text" name={ "host.id." + n } value={ h.NodeID } aria-label={ rowLabel(l, tRowHost, i+1, tColNodeID.In(l)) }/>
+		</td>
+		<td role="cell" data-label={ tColName.In(l) }><input type="text" name={ "host.name." + n } value={ h.Name } aria-label={ rowLabel(l, tRowHost, i+1, tColName.In(l)) }/></td>
+		<td role="cell" data-label={ tColIP.In(l) }><input type="text" name={ "host.ip." + n } value={ h.IP } aria-label={ rowLabel(l, tRowHost, i+1, tColIP.In(l)) }/></td>
+		<td role="cell" data-label={ tColPort.In(l) }><input type="number" min="1" max="65535" name={ "host.port." + n } value={ h.Port } aria-label={ rowLabel(l, tRowHost, i+1, tColPort.In(l)) }/></td>
+		<td role="cell" data-label={ tColUser.In(l) }><input type="text" name={ "host.user." + n } value={ h.User } aria-label={ rowLabel(l, tRowHost, i+1, tColUser.In(l)) }/></td>
+		<td role="cell" data-label={ tColKey.In(l) }><input type="text" name={ "host.key." + n } value={ h.Key } placeholder="~/.ssh/id_ed25519" aria-label={ rowLabel(l, tRowHost, i+1, tColKey.In(l)) }/></td>
+		<td role="cell" data-label={ tColOS.In(l) }>
+			<select name={ "host.os." + n } aria-label={ rowLabel(l, tRowHost, i+1, tColOS.In(l)) }>
+				<option value="linux" selected?={ h.OS != "windows" }>Linux</option>
+				<option value="windows" selected?={ h.OS == "windows" }>Windows</option>
+			</select>
+		</td>
+		<td role="cell" data-label={ tColConn.In(l) }>
+			<select name={ "host.conn." + n } aria-label={ rowLabel(l, tRowHost, i+1, tColConn.In(l)) }>
+				<option value="ssh" selected?={ h.Conn != "winrm" }>SSH</option>
+				<option value="winrm" selected?={ h.Conn == "winrm" }>WinRM</option>
+			</select>
+		</td>
+		<td role="cell" data-label={ tColPass.In(l) }>
+			if h.HasPass {
+				{ tPassSet.In(l) }
+			} else {
+				{ "–" }
+			}
+		</td>
+		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveHostAsk.In(l))</td>
+	</tr>
+}

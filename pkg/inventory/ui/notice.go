@@ -45,6 +45,7 @@ const (
 	NoticeLayerCreated        = "layer-created"
 	NoticeRoundOpened         = "round-opened"
 	NoticeScopeRoundOpened    = "scope-round-opened"
+	NoticeHostsSaved          = "hosts-saved"
 
 	ProblemCannotFinalize      = "gate-cannot-finalize"
 	ProblemMandatory           = "gate-mandatory"

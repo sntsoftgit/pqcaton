@@ -49,6 +49,7 @@ const (
 	wsScopeSession = "scope-session.json"
 	wsPlan         = "plan.json"
 	wsJudgments    = "judgments.jsonl"
+	wsHosts        = "hosts.csv"
 	defaultWsName  = "pqcaton"
 	addrFile       = "screen.addr"
 )
@@ -71,6 +72,7 @@ type startConfig struct {
 	layers               []string
 	scopeOut, judgments  string
 	plan                 string
+	hosts                string // 접근 정보. 작업 폴더 모드에서만 있다
 }
 
 // errUsage: 사용법이 틀렸다(종료 코드 2).
@@ -178,6 +180,7 @@ func (c startConfig) inWorkspace() (startConfig, error) {
 	c.results = at(wsResults)
 	c.plan = at(wsPlan)
 	c.judgments = at(wsJudgments)
+	c.hosts = at(wsHosts)
 	c.scopeOut = at(wsPolicy)
 	c.stateDir = ""
 	if exists(at(wsScopeAssets)) {
@@ -205,7 +208,7 @@ func (c startConfig) inWorkspace() (startConfig, error) {
 func (c startConfig) server() *server {
 	return &server{path: c.session, decl: c.decl, results: c.results, scope: c.scope,
 		layers: c.layers, base: c.base, scopeAssets: c.scopeAssets, judgments: c.judgments,
-		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace,
+		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace, hosts: c.hosts,
 		orgFromDecl: c.workspace != "" && !c.orgGiven}
 }
 

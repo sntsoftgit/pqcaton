@@ -52,10 +52,11 @@ func readFile(t *testing.T, p string) string {
 
 // IC-U56 — **오래된 화면의 저장은 409다.** 화면을 연 뒤에 세션 파일이 바뀌었으면 그 화면이 보낸
 // 저장을 쓰지 않는다. 거절 페이지는 역할과 파일 이름만 보이고, 전체 경로와 오류 원문은 싣지 않는다.
-// 리뷰 · 스코프 · 선언 저장이 모두 같다.
+// 리뷰 · 스코프 · 선언 · 접근 정보 저장이 모두 같다.
 func TestStaleScreenIsRefused(t *testing.T) {
 	s, dir := withDecl(t)
 	s2, _ := withScope(t)
+	h, _ := fullServer(t)
 	cases := []struct {
 		name   string
 		srv    *server
@@ -67,6 +68,7 @@ func TestStaleScreenIsRefused(t *testing.T) {
 		{"review", s, ui.ScreenReview, "/save", s.path, url.Values{"reviewer": {"보안팀"}}},
 		{"declaration", s, ui.ScreenDecl, "/decl/save", s.decl, url.Values{"node.0.name": {"web-gw"}, "node.0.ips": {"10.0.0.1"}}},
 		{"scope", s2, ui.ScreenScope, "/scope/save", s2.scope, url.Values{"reviewer": {"보안팀"}}},
+		{"hosts", h, ui.ScreenObserve, ui.HostsSavePath, h.hosts, url.Values{"host.id.0": {"web"}, "host.ip.0": {"10.0.0.2"}}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

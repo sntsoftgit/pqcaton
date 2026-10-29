@@ -418,6 +418,8 @@ type server struct {
 	scopeOut    string
 	// scopeAssets: 자산 스코프 정책 파일의 경로. rev가 덮는 입력이다.
 	scopeAssets string
+	// hosts: 접근 정보(hosts.csv). 작업 폴더 모드에서만 있고, 없으면 관측 화면을 닫는다.
+	hosts string
 	// st: 상태 디렉토리. nil이면 보기 전용이다(저장을 지원하지 않는 플랫폼).
 	st *store.State
 	// recovering: 시작할 때 복구 필요가 남아 있었다. 다시 띄울 때까지 모든 화면이 503이다.
@@ -487,6 +489,8 @@ func (s *server) handler() http.Handler {
 	r.Post("/scope/save", s.scopeSave)
 	r.Post("/scope/finalize/confirm", s.scopeConfirm)
 	r.Post("/scope/finalize", s.scopeFinalize)
+	r.Get(ui.ScreenObserve, s.observe)
+	r.Post(ui.HostsSavePath, s.hostsSave)
 	r.Get(ui.ScreenSurvey, s.survey)
 	r.Get(ui.ScreenInventory, s.inventory)
 	r.Get(ui.ScreenReview, s.review)
@@ -1451,7 +1455,7 @@ var layerName = regexp.MustCompile("^" + ui.LayerNamePattern + "$")
 // fileName: 알림 · 거절에 적을 파일 이름(역할 → 이 서버의 파일). 전체 경로는 싣지 않는다.
 func (s *server) fileName(role string) string {
 	p := map[string]string{"plan": s.planOut, "ledger": s.judgments, "policy": s.scopeOut, "session": s.path,
-		"scope-session": s.scope, "declaration": s.decl, "results": s.results}[role]
+		"scope-session": s.scope, "declaration": s.decl, "results": s.results, "hosts": s.hosts}[role]
 	if p == "" {
 		return ""
 	}
@@ -1467,7 +1471,7 @@ func missingInput(w http.ResponseWriter, r *http.Request, role string) {
 func (s *server) screens() ui.Screens {
 	declOK := s.workspace == "" || s.declReady()
 	return ui.Screens{
-		Decl: s.decl != "", Scope: s.scope != "",
+		Decl: s.decl != "", Scope: s.scope != "", Observe: s.hosts != "",
 		Survey: s.results != "" && declOK, Inventory: s.results != "" && declOK,
 		NoReview: !declOK,
 	}

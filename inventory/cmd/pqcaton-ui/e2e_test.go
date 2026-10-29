@@ -205,7 +205,7 @@ func TestEmptyWorkspaceToFinalizedPlan(t *testing.T) {
 
 			// 4 · 5. 판정하고 확인을 거쳐 확정한다.
 			b.judgeAndFinalize()
-			if got := cards(t, b.open(ui.ScreenReview))["04"]; !strings.HasSuffix(got, "| "+c.finalized) {
+			if got := cards(t, b.open(ui.ScreenReview))["05"]; !strings.HasSuffix(got, "| "+c.finalized) {
 				t.Errorf("the 04 card is %q, want it %s", got, c.finalized)
 			}
 
@@ -440,7 +440,7 @@ func TestFinalizedSessionOpensANewRound(t *testing.T) {
 	if !strings.Contains(page, `name="signature" value=""`) {
 		t.Error("the signature was carried over")
 	}
-	if got := cards(t, page)["04"]; !strings.HasSuffix(got, "| 미확정") {
+	if got := cards(t, page)["05"]; !strings.HasSuffix(got, "| 미확정") {
 		t.Errorf("the 04 card is %q after the new round, want 미확정", got)
 	}
 
@@ -491,14 +491,14 @@ func TestRoundsAcrossARestart(t *testing.T) {
 		reviews = append(reviews, sessionIDOf(t, session))
 		scopes = append(scopes, sessionIDOf(t, scopeSession))
 		page := b.open(ui.ScreenReview)
-		if c := cards(t, page); !strings.HasSuffix(c["04"], "| Finalized") || !strings.HasSuffix(c["02"], "| Finalized") {
+		if c := cards(t, page); !strings.HasSuffix(c["05"], "| Finalized") || !strings.HasSuffix(c["02"], "| Finalized") {
 			t.Fatalf("after finalizing: %v", c)
 		}
 	}
 	newRounds := func() {
 		b.openNewRound(ui.ScreenReview, ui.ReviewNewPath)
 		b.openNewRound(ui.ScreenScope, ui.ScopeNewPath)
-		if c := cards(t, b.open(ui.ScreenReview)); !strings.HasSuffix(c["04"], "| Not finalized") || !strings.HasSuffix(c["02"], "| Not finalized") {
+		if c := cards(t, b.open(ui.ScreenReview)); !strings.HasSuffix(c["05"], "| Not finalized") || !strings.HasSuffix(c["02"], "| Not finalized") {
 			t.Fatalf("after the new rounds: %v", c)
 		}
 	}

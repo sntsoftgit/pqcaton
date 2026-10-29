@@ -22,16 +22,25 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// changePaths: 상태를 바꾸는 여섯 주소. 보호 범위의 기준은 이 목록이 아니라 라우터에
+// changePaths: 상태를 바꾸는 일곱 주소. 보호 범위의 기준은 이 목록이 아니라 라우터에
 // 등록된 POST 전부다. 이 목록은 실제 파일이 바뀌지 않는지 보는 데 쓴다.
-var changePaths = []string{"/decl/save", "/scope/rules", "/scope/save", "/scope/finalize", "/save", "/finalize"}
+var changePaths = []string{"/decl/save", "/scope/rules", "/scope/save", "/scope/finalize", "/save", "/finalize", ui.HostsSavePath}
 
-// fullServer: 여섯 주소가 모두 처리기까지 갈 수 있게 입력을 다 갖춘 서버.
+// hostsCSV: 시험용 접근 정보. 비밀번호가 있는 줄(db)이 하나 있다.
+const hostsCSV = "node_id,name,ip,port,ssh_user,ssh_key,ssh_pass,os,connection\n" +
+	"web,Web,10.0.0.2,22,deploy,/home/me/.ssh/id_ed25519,,linux,ssh\n" +
+	"db,DB,10.0.0.9,22,deploy,,s3cret-pw,linux,ssh\n"
+
+// fullServer: 일곱 주소가 모두 처리기까지 갈 수 있게 입력을 다 갖춘 서버.
 func fullServer(t *testing.T) (*server, string) {
 	t.Helper()
 	s, dir := withLayers(t)
 	s.decl = filepath.Join(dir, "declaration.json")
 	if err := os.WriteFile(s.decl, []byte(declJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.hosts = filepath.Join(dir, "hosts.csv")
+	if err := os.WriteFile(s.hosts, []byte(hostsCSV), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	s.judgments = filepath.Join(dir, "judgments.jsonl")

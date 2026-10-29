@@ -337,7 +337,7 @@ func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 		t.Errorf("review before a declaration: %d, want 404", w.Code)
 	}
 	got := cards(t, body)
-	if !strings.HasPrefix(got["03"], "입력 파일을 주지 않았습니다") || !strings.HasPrefix(got["04"], "입력 파일을 주지 않았습니다") {
+	if !strings.HasPrefix(got["04"], "입력 파일을 주지 않았습니다") || !strings.HasPrefix(got["05"], "입력 파일을 주지 않았습니다") {
 		t.Errorf("survey and review are not closed: %v", got)
 	}
 	if !strings.HasPrefix(got["02"], "아직 계층이 없습니다") {

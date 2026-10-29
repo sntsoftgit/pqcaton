@@ -8,22 +8,23 @@ package ui
 const (
 	ScreenDecl      = "/decl"
 	ScreenScope     = "/scope"
+	ScreenObserve   = "/observe"
 	ScreenSurvey    = "/survey"
 	ScreenReview    = "/review"
 	ScreenInventory = "/inventory"
 )
 
-// screens5 — 화면 다섯. 순서는 절차 순서다.
-var screens5 = []string{ScreenDecl, ScreenScope, ScreenSurvey, ScreenReview, ScreenInventory}
+// screens6 — 화면 여섯. 순서는 절차 순서다.
+var screens6 = []string{ScreenDecl, ScreenScope, ScreenObserve, ScreenSurvey, ScreenReview, ScreenInventory}
 
-// AllScreens — 새 화면 다섯의 주소.
-func AllScreens() []string { return append([]string(nil), screens5...) }
+// AllScreens — 화면 여섯의 주소.
+func AllScreens() []string { return append([]string(nil), screens6...) }
 
 // MovedScreens — 옛 주소와 지금 주소. v0.21의 `-next`와 v0.22의 `/classic/…`이다. 옛 화면은 v0.23.0에서
-// 없어졌고, 북마크가 죽지 않게 301로 넘긴다(질의는 부르는 쪽이 보존한다).
+// 없어졌고, 북마크가 죽지 않게 301로 넘긴다(질의는 부르는 쪽이 보존한다). 관측 화면은 v0.24.0에 생겨 옛 주소가 없다.
 func MovedScreens() map[string]string {
 	out := map[string]string{}
-	for _, sc := range screens5 {
+	for _, sc := range []string{ScreenDecl, ScreenScope, ScreenSurvey, ScreenReview, ScreenInventory} {
 		out[sc+"-next"] = sc
 		out["/classic"+sc] = sc
 	}
@@ -35,6 +36,8 @@ func MovedScreens() map[string]string {
 // **입력을 주지 않은 자리는 만들지 않는다** — 없는 것을 눌러 보게 하지 않는다.
 type Screens struct {
 	Decl, Scope, Survey, Inventory bool
+	// Observe — 관측 화면. 작업 폴더 모드에서만 연다(접근 정보의 자리가 그 폴더 안에 정해져 있다).
+	Observe bool
 	// NoReview — 판정 화면을 닫는다. 작업 폴더에 선언이 아직 없으면 판정할 것이 없다(기본은 연다).
 	NoReview bool
 }
@@ -46,6 +49,8 @@ func ScreenTitle(here string, l Lang) string {
 		return tTitleDecl.In(l)
 	case ScreenScope:
 		return tTitleScope.In(l)
+	case ScreenObserve:
+		return tTitleObserve.In(l)
 	case ScreenSurvey:
 		return tTitleSurvey.In(l)
 	case ScreenInventory:
@@ -59,7 +64,7 @@ func LabelOrg(l Lang) string     { return tSubOrg.In(l) }
 func LabelSession(l Lang) string { return tSubSession.In(l) }
 func LabelResults(l Lang) string { return tSubResults.In(l) }
 
-// Step — 절차 카드 하나. 다음 판의 껍데기가 위쪽에 넷을 늘어놓는다.
+// Step — 절차 카드 하나. 다음 판의 껍데기가 위쪽에 늘어놓는다.
 //
 // **번호와 이름만으로는 어디부터 볼지 알 수 없다.** 그래서 카드마다 지금 상태를 한 줄로
 // 달고, 점 색으로 급한 정도를 나눈다. 상태를 아직 세지 않는 화면은 그렇다고 적는다 —
@@ -105,34 +110,44 @@ func (f Final) text(l Lang) string {
 	return tStepUnknown.In(l)
 }
 
-// StepsFor — 절차 카드 넷과 조회 하나.
+// StepsFor — 절차 카드 다섯과 조회 하나.
 //
-// **네 카드를 모두 채운다**(v0.22.0). 서버가 요청 하나에서 입력을 한 번 읽어 본문과 카드가 같은
+// **모든 카드를 채운다**(v0.22.0). 서버가 요청 하나에서 입력을 한 번 읽어 본문과 카드가 같은
 // 값을 쓴다. 한 화면의 입력을 읽지 못하면 그 카드만 「확인할 수 없음」이고 다른 카드와 본문은
 // 그대로 선다.
 func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
+	const (
+		stepDecl = iota
+		stepScope
+		stepObserve
+		stepSurvey
+		stepReview
+	)
 	steps := []Step{
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDecl, Open: s.Decl},
 		{Num: "02", Title: tTitleScope.In(l), Href: ScreenScope, Open: s.Scope},
-		{Num: "03", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
-		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReview, Open: !s.NoReview},
+		{Num: "03", Title: tTitleObserve.In(l), Href: ScreenObserve, Open: s.Observe},
+		{Num: "04", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
+		{Num: "05", Title: tTitleReview.In(l), Href: ScreenReview, Open: !s.NoReview},
 	}
 	for i := range steps {
 		steps[i].Here = here == steps[i].Href
 		switch {
 		case !steps[i].Open:
 			steps[i].State = tStepClosed.In(l)
-		case i == 0 && st.DeclMissing:
+		case i == stepDecl && st.DeclMissing:
 			steps[i].State, steps[i].Dot = tStepDeclMissing.In(l), "warn"
-		case i == 1 && st.LayersMissing:
+		case i == stepScope && st.LayersMissing:
 			steps[i].State, steps[i].Dot = tStepLayersMissing.In(l), "warn"
-		case i == 0 && st.Decl != nil:
+		case i == stepDecl && st.Decl != nil:
 			steps[i].State, steps[i].Dot = declState(l, *st.Decl)
-		case i == 1 && st.Scope != nil:
+		case i == stepScope && st.Scope != nil:
 			steps[i].State, steps[i].Dot = scopeState(l, *st.Scope)
-		case i == 2 && st.Survey != nil:
+		case i == stepObserve && st.Observe != nil:
+			steps[i].State, steps[i].Dot = observeState(l, *st.Observe)
+		case i == stepSurvey && st.Survey != nil:
 			steps[i].State, steps[i].Dot = surveyState(l, *st.Survey)
-		case i == 3 && st.Review != nil:
+		case i == stepReview && st.Review != nil:
 			steps[i].State, steps[i].Dot = reviewState(l, *st.Review)
 		default:
 			// 그 화면의 입력을 읽지 못했다. 원인은 서버가 표준오류에 남긴다.
@@ -140,22 +155,31 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 		}
 		switch {
 		case !steps[i].Open:
-		case i == 1:
+		case i == stepScope:
 			steps[i].Final = st.ScopeFinal.text(l)
-		case i == 3:
+		case i == stepReview:
 			steps[i].Final = st.ReviewFinal.text(l)
 		}
 	}
 	return steps
 }
 
+// observeState — 관측 카드의 한 줄. 접근 정보가 없으면 관측을 시작할 수 없다.
+func observeState(l Lang, s ObserveSummary) (string, string) {
+	if s.Hosts == 0 {
+		return tStepObserveNoHosts.In(l), "warn"
+	}
+	return tStepObserveHosts.F(l, s.Hosts), "ok"
+}
+
 // StepState — 카드에 채울 상태. 비어 있는(nil) 자리는 그 입력을 읽지 못한 것이고 「확인할 수
 // 없음」으로 적힌다.
 type StepState struct {
-	Decl   *DeclSummary
-	Scope  *ScopeSummary
-	Survey *SurveySummary
-	Review *ReviewSummary
+	Decl    *DeclSummary
+	Scope   *ScopeSummary
+	Observe *ObserveSummary
+	Survey  *SurveySummary
+	Review  *ReviewSummary
 	// DeclMissing — 작업 폴더에 선언이 아직 없다(만들기를 낸다).
 	DeclMissing bool
 	// LayersMissing — 작업 폴더에 계층도 스코프 세션도 아직 없다(만들기를 낸다).

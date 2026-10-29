@@ -20,6 +20,7 @@ var noticeText = map[string]noticeSpec{
 	NoticeRulesSaved:          {tRulesSaved, "nnnn"},
 	NoticeSignatureCleared:    {tSignatureCleared, ""},
 	NoticeDeclSaved:           {tDeclSaved, "nnn"},
+	NoticeHostsSaved:          {tHostsSaved, "n"},
 	NoticeDeclDropped:         {tDeclDroppedNoIP, "n"},
 	NoticeDeclStillOff:        {tDeclStillOff, "n"},
 	NoticeFinalizedAlready:    {tFinalizedAlready, ""},

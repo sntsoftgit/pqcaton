@@ -13,10 +13,11 @@ package ui
 
 // ── 이동 · 화면 이름 ────────────────────────────────────────────────────────
 var (
-	tTitleDecl   = T{KO: "선언", EN: "Declaration"}
-	tTitleScope  = T{KO: "암호 자산 스코프", EN: "Crypto asset scope"}
-	tTitleSurvey = T{KO: "대조", EN: "Reconciliation"}
-	tTitleReview = T{KO: "판정(리뷰 큐)", EN: "Judgment (review queue)"}
+	tTitleDecl    = T{KO: "선언", EN: "Declaration"}
+	tTitleScope   = T{KO: "암호 자산 스코프", EN: "Crypto asset scope"}
+	tTitleObserve = T{KO: "관측", EN: "Observation"}
+	tTitleSurvey  = T{KO: "대조", EN: "Reconciliation"}
+	tTitleReview  = T{KO: "판정(리뷰 큐)", EN: "Judgment (review queue)"}
 
 	tSubOrg     = T{KO: "조직", EN: "org"}
 	tSubSession = T{KO: "세션", EN: "session"}
@@ -750,7 +751,7 @@ var (
 
 // ── 대조 요약 (`/survey-next`) ──────────────────────────────────────────────
 var (
-	tNextSurveyEyebrow = T{KO: "03 · 대조", EN: "03 · Reconciliation"}
+	tNextSurveyEyebrow = T{KO: "04 · 대조", EN: "04 · Reconciliation"}
 	tNextSurveyHead    = T{
 		KO: "대조 결과에는 사람이 확인할 항목이 %d개 있습니다",
 		EN: "%d items need a person to look at the reconciliation"}
@@ -794,7 +795,7 @@ var (
 
 // ── 판정 요약 (`/review-next`) ──────────────────────────────────────────────
 var (
-	tNextReviewEyebrow = T{KO: "04 · 판정", EN: "04 · Judgment"}
+	tNextReviewEyebrow = T{KO: "05 · 판정", EN: "05 · Judgment"}
 	tNextReviewHead    = T{
 		KO: "정책별로 결론을 남기고, 예외만 개별로 봅니다",
 		EN: "Record a conclusion per policy, and look at exceptions one by one"}
@@ -875,4 +876,64 @@ var (
 		KO: "노드·런타임·컴포넌트·상태로 좁혀 봅니다. 좁힌 조건은 주소에 실리므로 그대로 남에게 보낼 수 있습니다.",
 		EN: "Narrow by node, runtime, component or state. The filter rides in the URL, so " +
 			"you can send the screen as it is."}
+)
+
+// ── 03 관측 ─────────────────────────────────────────────────────────────────
+var (
+	tObserveEyebrow = T{KO: "03 · 관측", EN: "03 · Observation"}
+	tObserveHead    = T{
+		KO: "관측할 노드와 접속 방법을 적습니다",
+		EN: "Write down the nodes to observe and how to reach them"}
+	tObserveLede = T{
+		KO: "관측은 이 표에 적힌 노드에 SSH나 WinRM으로 접속해 수집기를 실행합니다. 결과는 작업 폴더의 results에 들어오고 04 대조로 이어집니다.",
+		EN: "Observation reaches each node in this table over SSH or WinRM and runs the collectors there. " +
+			"The results land in the workspace's results folder and go on to 04 Reconciliation."}
+	tObserveMetricHosts = T{KO: "관측할 노드", EN: "nodes to observe"}
+
+	tHostsHead = T{KO: "접근 정보", EN: "Access"}
+	tHostsLede = T{
+		KO: "작업 폴더의 hosts.csv에 저장합니다. 형식은 pqcota-hosts가 읽는 것과 같습니다.",
+		EN: "This is saved to hosts.csv in the workspace, in the same format pqcota-hosts reads."}
+	tHostsLegend = T{KO: "노드", EN: "Nodes"}
+	tHostsHint   = T{
+		KO: "<b>노드 ID는 관측 결과에 찍히는 이름입니다.</b> 01 선언의 「관측 이름」과 같게 적으면 대조가 저절로 이어집니다.<br>" +
+			"<b>SSH 키는 개인 키 파일의 경로를 적습니다.</b> 키 자체는 화면에 들어오지 않습니다. 포트를 비우면 SSH는 22, WinRM은 5985입니다.<br>" +
+			"<b>비밀번호는 이 화면에서 적지 않습니다.</b> 파일에 있으면 「있음」으로만 보이고 저장해도 그대로 남습니다. " +
+			"WinRM 노드처럼 비밀번호가 필요하면 hosts.csv의 ssh_pass 열에 직접 적습니다.<br>" +
+			"파일에 있던 주석 줄(#)은 저장하면 남지 않습니다.",
+		EN: "<b>The node ID is the name the observed results carry.</b> Write it the same as the 「Observed as」 field in 01 Declaration and reconciliation links them by itself.<br>" +
+			"<b>For an SSH key, write the path to the private key file.</b> The key itself never enters the screen. A blank port means 22 for SSH and 5985 for WinRM.<br>" +
+			"<b>Passwords are not written on this screen.</b> If the file has one, it shows only as 「set」 and is kept as is when you save. " +
+			"When a node needs a password, as WinRM nodes do, write it in the ssh_pass column of hosts.csv directly.<br>" +
+			"Comment lines (#) in the file are not kept when you save."}
+	tColNodeID = T{KO: "노드 ID", EN: "Node ID"}
+	tColUser   = T{KO: "계정", EN: "User"}
+	tColKey    = T{KO: "SSH 키 경로", EN: "SSH key path"}
+	tColOS     = T{KO: "OS", EN: "OS"}
+	tColConn   = T{KO: "접속", EN: "Connection"}
+	tColPass   = T{KO: "비밀번호", EN: "Password"}
+	tPassSet   = T{KO: "있음", EN: "set"}
+	tRowHost   = T{KO: "노드", EN: "Node"}
+	tAddHost   = T{KO: "노드 추가", EN: "Add node"}
+	tHostsSave = T{KO: "저장", EN: "Save"}
+
+	tRemoveHostAsk = T{
+		KO: "이 노드를 표에서 지웁니다. 저장해야 파일에 반영되고, 그 노드의 비밀번호도 함께 지워집니다. 지울까요?",
+		EN: "This removes the node from the table. It reaches the file only when you save, and the node's password goes with it. Remove?"}
+
+	tHostsSaved = T{
+		KO: "접근 정보를 저장했습니다. 노드 %d",
+		EN: "Access saved — %d nodes"}
+
+	tHostProblemsHead = T{KO: "저장하지 않았습니다. 아래 자리를 고치십시오", EN: "Not saved: fix the places below"}
+	tHostDup          = T{KO: "같은 노드 ID가 두 번 적혔습니다", EN: "the same node ID is written twice"}
+	tHostOS           = T{KO: "OS는 Linux와 Windows 가운데 하나입니다", EN: "the OS must be Linux or Windows"}
+	tHostConn         = T{KO: "접속 방법은 SSH와 WinRM 가운데 하나입니다", EN: "the connection must be SSH or WinRM"}
+	tHostWinRMOS      = T{KO: "WinRM은 Windows 노드에만 씁니다", EN: "WinRM is only for Windows nodes"}
+	tHostWinRMKey     = T{KO: "WinRM은 SSH 키로 접속하지 않습니다. 키 경로를 비우십시오", EN: "WinRM does not connect with an SSH key: clear the key path"}
+	tHostPort         = T{KO: "포트는 1부터 65535까지의 숫자입니다", EN: "the port must be a number from 1 to 65535"}
+	tHostNoIP         = T{KO: "IP가 없습니다", EN: "there is no IP"}
+
+	tStepObserveNoHosts = T{KO: "아직 접근 정보가 없습니다", EN: "no access written yet"}
+	tStepObserveHosts   = T{KO: "관측할 노드 %d대", EN: "%d nodes to observe"}
 )

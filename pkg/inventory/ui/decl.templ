@@ -202,6 +202,8 @@ templ rowFragment(l Lang, kind string, node, i int) {
 			@assetRow(l, node, i, "", "")
 		case KindEdge:
 			@edgeRow(l, i, "", "", "", "")
+		case KindHost:
+			@hostRow(l, i, HostRow{})
 	}
 	@addRow(l, kind, node, i+1, true)
 }

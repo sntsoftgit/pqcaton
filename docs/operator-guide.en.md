@@ -86,13 +86,14 @@ can.
 | Place | What | Written by |
 |---|---|---|
 | `declaration.json` | The declaration (managed nodes, assets, edges) | Screen (01) |
+| `hosts.csv` | Access to the nodes to observe. It may hold passwords, so only the owner reads it (0600) | Screen (03) |
 | `results/` | Observed results | pqcota collection |
-| `session.json` | The review session | Screen (04) |
+| `session.json` | The review session | Screen (05) |
 | `layers/*.csv` | Asset scope layers. They stack in name order, and where rules clash on the same asset the later layer applies | Screen (02) |
 | `scope-session.json` | The scope session | Screen (02) |
 | `asset-scope.csv` | The finalized asset scope policy. When present, it is the baseline for the next review | Screen (02 finalize) |
 | `scope-assets.csv` | The same policy given to pqcota ingest (`pqcota-ingest`). When present, reconciliation uses it | Operator |
-| `plan.json` | The finalized plan (the contract format pqcota reads) | Screen (04 finalize) |
+| `plan.json` | The finalized plan (the contract format pqcota reads) | Screen (05 finalize) |
 | `judgments.jsonl` | The judgment ledger. Only appended to | Screen (finalize) |
 | `.pqcaton/` | Save records, receipts, locks, and the address of the running screen (`screen.addr`) | Screen |
 | `.pqcaton.lock` | The lock file saying which state folder this folder is bound to. It goes together with `.pqcaton/` | Screen |
@@ -169,8 +170,8 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 
 ## 6. A day's procedure
 
-The four step cards at the top of the screen are the procedure, in order. Each card shows where that step stands, and the
-two steps that finalize (02 and 04) also show the finalize state (not finalized, finalized, superseded, recovery
+The five step cards at the top of the screen are the procedure, in order. Each card shows where that step stands, and the
+two steps that finalize (02 and 05) also show the finalize state (not finalized, finalized, superseded, recovery
 required).
 
 1. **01 Declaration.** The first time, enter the organization name to create an empty declaration. Write the managed nodes
@@ -179,14 +180,17 @@ required).
    reconciliation is wrong without any error.
 2. **02 Asset scope.** The first time, enter a layer name to create an empty layer. Write the rules, a conclusion for each
    changed rule, sign, and finalize. Finalizing creates `asset-scope.csv`.
-3. **03 Reconciliation.** When pqcota collection writes results to `results/`, reload the screen. With no results, the
+3. **03 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS, SSH or WinRM),
+   and save. They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
+   on the screen: if the file has one, it shows only as "set" and is kept as is when you save.
+4. **04 Reconciliation.** When pqcota collection writes results to `results/`, reload the screen. With no results, the
    screen points at that folder.
-4. **04 Judgment.** Write a conclusion for each policy; for the items going into the plan, pick the action kind, target and
+5. **05 Judgment.** Write a conclusion for each policy; for the items going into the plan, pick the action kind, target and
    level; and sign. "Finalize" shows a confirmation page with what will be written, and confirming writes the session,
    plan and ledger together. Finalizing the same session with the same content again writes nothing again.
-5. **After that.** `plan.json` is the judged plan (IN_REVIEW). Approval signing and execution follow the pqcota side.
-6. **The next round.** A finalized session cannot be changed and is shown read-only. When new observations arrive or a
-   conclusion must change, press "Start a new review" on the 04 screen ("Start a new scope review" on the 02 screen). A new
+6. **After that.** `plan.json` is the judged plan (IN_REVIEW). Approval signing and execution follow the pqcota side.
+7. **The next round.** A finalized session cannot be changed and is shown read-only. When new observations arrive or a
+   conclusion must change, press "Start a new review" on the 05 screen ("Start a new scope review" on the 02 screen). A new
    round starts under a new session id: conclusions and plan fields carry over, and a new signature is needed. The earlier
    round's plan and ledger entries stay as they are.
 
