@@ -35,6 +35,8 @@ const (
 	RefusedSignNotReady      = "sign-not-ready"
 	RefusedPlanNotApprovable = "plan-not-approvable"
 	RefusedGenNotReady       = "generate-not-ready"
+	// RefusedSignedExists — 서명한 계획 파일이 이미 있어 덮지 않았다(409).
+	RefusedSignedExists = "signed-exists"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
 	ErrNotFound     = "not-found"     // 404
@@ -55,14 +57,14 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedDiagnostic: {tErrInputBrokenHead, tRefusedDiagnostic}, RefusedExists: {body: tRefusedExists},
 	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
-	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady},
-	ErrNotFound:        {tErrNotFoundHead, tErrNotFound},
-	ErrMethod:          {tErrMethodHead, tErrMethod},
-	ErrBadRequest:      {tErrBadRequestHead, tErrBadRequest},
-	ErrInputMissing:    {tErrInputMissingHead, tErrInputMissing},
-	ErrInputBroken:     {tErrInputBrokenHead, tErrInputBroken},
-	ErrForbidden:       {tErrForbiddenHead, tErrForbidden},
-	ErrInternal:        {tErrInternalHead, tErrInternal},
+	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
+	ErrNotFound:     {tErrNotFoundHead, tErrNotFound},
+	ErrMethod:       {tErrMethodHead, tErrMethod},
+	ErrBadRequest:   {tErrBadRequestHead, tErrBadRequest},
+	ErrInputMissing: {tErrInputMissingHead, tErrInputMissing},
+	ErrInputBroken:  {tErrInputBrokenHead, tErrInputBroken},
+	ErrForbidden:    {tErrForbiddenHead, tErrForbidden},
+	ErrInternal:     {tErrInternalHead, tErrInternal},
 }
 
 // RefusedKinds — 알려진 종류 전부(시험이 문구 목록과 견준다).

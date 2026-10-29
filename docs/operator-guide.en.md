@@ -12,6 +12,11 @@ playbook generation) runs on the screen without a terminal. Observations run wit
 installs. Applying the generated playbooks to the machines is not done by the screen but by the operator's own Ansible run.
 Installing and recovering need a terminal or a file manager.
 
+**Trust model.** The screen runs on one machine as **one OS user** and opens only on **loopback** (it has no
+authentication). That user can reach the nodes to observe over SSH and run the collectors there **as root (become)**,
+and, when signing at 06, **reads the approval private key.** The user's account and the workspace are therefore the
+boundary of these powers. The 06 screen signs and checks with one key (single key, single approver).
+
 **The commands are run for real.** Every command in this guide marked `<!-- run -->` is run in order, in an empty home
 folder, by a test (`guide_run_test.go`) that checks the result.
 
@@ -134,8 +139,9 @@ can.
 | `asset-scope.csv` | The finalized asset scope policy. When present, it is the baseline for the next review | Screen (02 finalize) |
 | `scope-assets.csv` | The same policy given to pqcota ingest (`pqcota-ingest`). When present, reconciliation uses it | Operator |
 | `plan.json` | The finalized plan (the contract format pqcota reads) | Screen (05 finalize) |
-| `plan.signed.json` | The approved plan (FINALIZED). `plan.json` stays as it is | Screen (06 approval) |
-| `provision.yml` · `provision-rollback.yml` | The apply and rollback playbooks | Screen (06 generation) |
+| `plan.signed.json` | The approved plan (FINALIZED). `plan.json` stays as it is. Never overwritten once present | Screen (06 approval) |
+| `plan.provision.yml` · `plan.rollback.yml` | The apply and rollback playbooks | Screen (06 generation) |
+| `plan.signed.<time>.json` and the like | Earlier signatures and playbooks renamed by "Archive the earlier signature" | Screen (06 archive) |
 | `judgments.jsonl` | The judgment ledger. Only appended to | Screen (finalize) |
 | `.pqcaton/` | Save records, receipts, locks, and the address of the running screen (`screen.addr`) | Screen |
 | `.pqcaton.lock` | The lock file saying which state folder this folder is bound to. It goes together with `.pqcaton/` | Screen |
@@ -238,11 +244,15 @@ required).
    level; and sign. "Finalize" shows a confirmation page with what will be written, and confirming writes the session,
    plan and ledger together. Finalizing the same session with the same content again writes nothing again.
 6. **06 Approval & generation.** Check the actions of the plan to approve, enter the approver's name and confirm the
-   review, and sign. The signed plan is kept separately in `plan.signed.json` (FINALIZED) and `plan.json` stays as it is.
-   Then pick the default delegation level and press "Generate the playbooks": `provision.yml` and `provision-rollback.yml`
-   are written. When the generator flags gaps, their number and content are shown. Applying them to the machines is not
+   review, and press "Sign the approval". A confirmation page shows the plan, the plan file's hash, the approver and the
+   key fingerprint, and signing happens only on a second press there. If the plan or the key changed after the
+   confirmation, nothing is signed. The signed plan is kept separately in `plan.signed.json` (FINALIZED) and `plan.json`
+   stays as it is. **An existing signed file is never overwritten.** If it does not match the current plan, "Archive the
+   earlier signature" renames it with the current time beside it, and then the new plan can be signed. Then pick the
+   default delegation level and press "Generate the playbooks": `plan.provision.yml` and `plan.rollback.yml` are written. When the generator flags gaps, their number and content are shown. Applying them to the machines is not
    done by the screen; the operator runs the commands in the 06 screen's help. When 05 is finalized again and the plan
-   changes, the 06 card reads "the signature does not match the plan", and generating needs a new signature on the new plan.
+   changes, the 06 card reads "the signature does not match the plan", and generating needs the earlier signature archived
+   and a new signature on the new plan.
 7. **The next round.** A finalized session cannot be changed and is shown read-only. When new observations arrive or a
    conclusion must change, press "Start a new review" on the 05 screen ("Start a new scope review" on the 02 screen). A new
    round starts under a new session id: conclusions and plan fields carry over, and a new signature is needed. The earlier
@@ -423,6 +433,7 @@ screen.
 | `sign-not-ready` | The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed | See the approval key check on the 06 screen and fill in the form |
 | `plan-not-approvable` | The plan is not in review (IN_REVIEW), has no actions, or is already signed with this key | Finalize again at 05, or use the signed plan as it is |
 | `generate-not-ready` | The current plan has no approval that checks out with this key | Sign the approval first |
+| `signed-exists` | A signed plan file already exists and was not overwritten | If it does not match the current plan, press "Archive the earlier signature" on the 06 screen, then sign |
 | `not-found` | There is no screen at this address | Start again from the first screen |
 | `method` | This kind of request is not accepted | Use the screen's buttons |
 | `bad-request` | The request could not be handled | Reload the screen and do it again |

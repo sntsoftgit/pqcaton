@@ -35,6 +35,8 @@ type ConfirmView struct {
 	// Hidden: 다시 실을 폼 값. 확인 토큰과 CSRF · rev는 따로 싣는다.
 	Hidden                         []Field
 	Token, Exp, Payload, SessionID string
+	// DoText — 실행 단추의 말. 비면 「확정」이다.
+	DoText string
 }
 
 // confirmOwn: 확인 페이지가 직접 싣는 필드. 받은 폼에서 다시 싣지 않는다.

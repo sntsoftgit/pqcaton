@@ -48,6 +48,7 @@ const (
 	NoticeHostsSaved          = "hosts-saved"
 	NoticeSigned              = "signed"
 	NoticeGenerated           = "generated"
+	NoticeArchived            = "archived"
 
 	ProblemCannotFinalize      = "gate-cannot-finalize"
 	ProblemMandatory           = "gate-mandatory"

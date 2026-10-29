@@ -7,6 +7,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"os/exec"
 )
 
@@ -20,3 +21,7 @@ func kill(cmd *exec.Cmd) { _ = cmd.Process.Kill() }
 func dirswap(string, string) error {
 	return errors.New("swapping directories is not supported on this platform")
 }
+
+func ownedByMe(os.FileInfo) bool { return false }
+
+func links(os.FileInfo) uint64 { return 0 }

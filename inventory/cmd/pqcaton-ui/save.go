@@ -118,7 +118,7 @@ func (s *server) inputsFor(where string) []store.Input {
 			return nil
 		}
 		return s.scopeInputs()
-	case ui.ScreenApprove, ui.SignPath, ui.GeneratePath:
+	case ui.ScreenApprove, ui.SignPath, ui.SignConfirmPath, ui.GeneratePath, ui.ArchivePath:
 		if s.planOut == "" {
 			return nil
 		}

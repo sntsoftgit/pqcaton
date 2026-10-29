@@ -59,6 +59,7 @@ templ planTable(l Lang, p PlanSummary) {
 // approveSign — 키 점검 · 서명 상태 · 서명 양식.
 templ approveSign(v ApproveView) {
 	<h3 id="approve-sign">{ tSignHead.In(v.Page.Lang) }</h3>
+	<p class="lede">{ tSingleKey.In(v.Page.Lang) }</p>
 	<ul class="checks">
 		<li class={ templ.KV("ok", v.Key.State == KeyOK), templ.KV("bad", v.Key.State != KeyOK) }>
 			if v.Key.State == KeyOK {
@@ -87,8 +88,17 @@ templ approveSign(v ApproveView) {
 		@tip(v.Page.Lang, tVerifyKeyHint.In(v.Page.Lang))
 		<pre class="run-log">{ "PQCOTA_APPROVAL_KEYS=" + v.Approver + "=" + v.Key.Public }</pre>
 	}
+	if v.CanArchive() {
+		<form method="post" action={ templ.SafeURL(ArchivePath) }>
+			@csrfField(v.Page)
+			<p class="lede">{ tArchiveAsk.In(v.Page.Lang) }</p>
+			<div class="actions">
+				<button type="submit">{ tArchive.In(v.Page.Lang) }</button>
+			</div>
+		</form>
+	}
 	if v.CanSign() {
-		<form method="post" action={ templ.SafeURL(SignPath) }>
+		<form method="post" action={ templ.SafeURL(SignConfirmPath) }>
 			@csrfField(v.Page)
 			<label>
 				{ tApprover.In(v.Page.Lang) }

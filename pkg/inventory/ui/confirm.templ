@@ -30,8 +30,14 @@ templ confirmPage(v ConfirmView) {
 			<input type="hidden" name={ ConfirmExpField } value={ v.Exp }/>
 			<input type="hidden" name={ ConfirmTokenField } value={ v.Token }/>
 			<div class="actions">
-				<button type="submit" class="primary">{ tConfirmDo.In(v.Lang) }</button>
-				<button formaction={ templ.SafeURL(v.SaveAction) }>{ tConfirmSaveOnly.In(v.Lang) }</button>
+				if v.DoText != "" {
+					<button type="submit" class="primary">{ v.DoText }</button>
+				} else {
+					<button type="submit" class="primary">{ tConfirmDo.In(v.Lang) }</button>
+				}
+				if v.SaveAction != "" {
+					<button formaction={ templ.SafeURL(v.SaveAction) }>{ tConfirmSaveOnly.In(v.Lang) }</button>
+				}
 			</div>
 		</form>
 		<p><a href={ templ.SafeURL(v.Back) }>{ tConfirmBack.In(v.Lang) }</a></p>

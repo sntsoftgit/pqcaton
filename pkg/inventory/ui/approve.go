@@ -55,6 +55,9 @@ const (
 	KeyOpen       KeyState = "open"
 	KeyInside     KeyState = "inside"
 	KeyBad        KeyState = "bad"
+	KeyLink       KeyState = "link"
+	KeyOwner      KeyState = "owner"
+	KeyLinks      KeyState = "links"
 )
 
 // KeyCheck — 승인 키 점검. Public은 확인 키(공개 키)다. pqcota-provision에 넘길 때 쓴다.
@@ -62,6 +65,8 @@ type KeyCheck struct {
 	State  KeyState
 	Path   string
 	Public string
+	// Fingerprint — 공개 키의 지문. 확인 페이지가 보이고 확인 토큰이 덮는다.
+	Fingerprint string
 }
 
 // Text — 점검 결과 한 줄과, 빠졌으면 할 일.
@@ -114,9 +119,15 @@ func (v ApproveView) Summary() ApproveSummary {
 		Stale: v.Playbooks.Stale, Warnings: len(v.Playbooks.Warnings)}
 }
 
-// CanSign — 서명 양식을 낼 수 있는가. 계획이 있고, 키가 쓸 만하고, 아직 맞는 서명이 없어야 한다.
+// CanSign — 서명 양식을 낼 수 있는가. 계획이 있고, 키가 쓸 만하고, **서명한 계획 파일이 아직 없어야 한다.** 있는
+// 파일은 어떤 경우에도 덮지 않는다(낡았으면 운영자가 먼저 보관한다).
 func (v ApproveView) CanSign() bool {
-	return v.Writable && v.Plan != nil && v.Key.State == KeyOK && v.Signed.State != SignValid
+	return v.Writable && v.Plan != nil && v.Key.State == KeyOK && v.Signed.State == SignNone
+}
+
+// CanArchive — 지난 서명을 보관할 수 있는가. 지금 계획과 맞지 않거나 이 키로 확인되지 않는 서명이 있을 때다.
+func (v ApproveView) CanArchive() bool {
+	return v.Writable && (v.Signed.State == SignStale || v.Signed.State == SignInvalid)
 }
 
 // CanGenerate — 생성 양식을 낼 수 있는가. 서명이 지금 계획과 맞고 이 키로 확인돼야 한다.
@@ -168,3 +179,12 @@ func shortLevel(level string) string {
 	}
 	return ""
 }
+
+// SignConfirmLines — 서명 확인 페이지의 줄: 무엇에(계획 · 조치 수 · 해시) 누가(승인자) 어느 키로(지문).
+func SignConfirmLines(l Lang, planID string, actions int, planHash, approver, fingerprint string) []string {
+	return []string{tSignLinePlan.F(l, planID, actions), tSignLineHash.F(l, planHash), tSignLineApprover.F(l, approver),
+		tSignLineKey.F(l, fingerprint)}
+}
+
+// SignConfirmDo — 서명 확인 페이지의 실행 단추.
+func SignConfirmDo(l Lang) string { return tSignDo.In(l) }

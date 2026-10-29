@@ -1086,12 +1086,12 @@ var (
 	tApplyHint = T{
 		KO: "<b>적용은 운영자가 합니다.</b> 관측에 쓴 것과 같은 인벤토리로 실행합니다. " +
 			"<code>pqcota-hosts --ansible-out targets.ini hosts.csv</code>로 만든 뒤 " +
-			"<code>ansible-playbook -i targets.ini provision.yml</code>을 실행하고, 되돌릴 때는 provision-rollback.yml을 실행합니다. " +
+			"<code>ansible-playbook -i targets.ini plan.provision.yml</code>을 실행하고, 되돌릴 때는 plan.rollback.yml을 실행합니다. " +
 			"targets.ini에는 접근 비밀이 들어가니 끝나면 지우십시오.<br>" +
 			"provider 모듈 파일은 도구가 주지 않습니다. 플레이북이 컨트롤러의 files/ 아래에서 찾습니다.",
 		EN: "<b>Applying is the operator's job.</b> Run it with the same inventory the observation used: make it with " +
 			"<code>pqcota-hosts --ansible-out targets.ini hosts.csv</code>, then run " +
-			"<code>ansible-playbook -i targets.ini provision.yml</code>; to undo, run provision-rollback.yml. " +
+			"<code>ansible-playbook -i targets.ini plan.provision.yml</code>; to undo, run plan.rollback.yml. " +
 			"targets.ini holds access secrets, so remove it afterwards.<br>" +
 			"The tool does not supply provider module files; the playbook looks for them under files/ on the controller."}
 	tGenLevel = T{KO: "기본 위임 수준", EN: "Default delegation level"}
@@ -1101,9 +1101,9 @@ var (
 	tGenerate = T{KO: "플레이북 생성", EN: "Generate the playbooks"}
 	tGenHint  = T{
 		KO: "<b>기본 수준은 계획이 수준을 밝히지 않은 조치에만 씁니다.</b> 조치가 수준을 밝혔으면 그것을 따릅니다. 그 값은 승인 서명이 덮습니다.<br>" +
-			"작업 폴더에 provision.yml과 provision-rollback.yml을 씁니다. 다시 만들면 갈아 끼웁니다.",
+			"계획 파일 옆에 plan.provision.yml과 plan.rollback.yml을 씁니다(계획 파일 이름을 따릅니다). 다시 만들면 갈아 끼웁니다.",
 		EN: "<b>The default level applies only to actions whose level the plan does not state.</b> An action that states its level keeps it; that value is covered by the approval signature.<br>" +
-			"provision.yml and provision-rollback.yml are written to the workspace, and generating again replaces them."}
+			"plan.provision.yml and plan.rollback.yml are written beside the plan file (named after it), and generating again replaces them."}
 	tGenNeedsSign = T{
 		KO: "지금 계획에 이 키로 확인되는 승인 서명이 있어야 만들 수 있습니다.",
 		EN: "Generation needs an approval on the current plan that checks out with this key."}
@@ -1114,6 +1114,23 @@ var (
 	tStepApproveGenerate   = T{KO: "플레이북을 만들 수 있습니다", EN: "ready to generate"}
 	tStepApproveIncomplete = T{KO: "빈 곳 %d곳", EN: "%d gaps"}
 	tStepApproveDone       = T{KO: "플레이북을 만들었습니다", EN: "playbooks generated"}
+
+	tSignLinePlan     = T{KO: "계획 %s · 조치 %d개", EN: "Plan %s, actions: %d"}
+	tSignLineHash     = T{KO: "계획 파일 SHA-256 %s", EN: "Plan file SHA-256 %s"}
+	tSignLineApprover = T{KO: "승인자 %s", EN: "Approver %s"}
+	tSignLineKey      = T{KO: "승인 키 지문 %s", EN: "Approval key fingerprint %s"}
+	tSignDo           = T{KO: "이 내용으로 서명", EN: "Sign this"}
+	tSignedExists     = T{
+		KO: "서명한 계획 파일이 이미 있어 덮지 않았습니다. 지금 계획과 맞지 않으면 06 화면에서 지난 서명을 보관한 뒤 서명하십시오.",
+		EN: "A signed plan file already exists and was not overwritten. If it does not match the current plan, archive the earlier signature on the 06 screen, then sign."}
+	tArchive    = T{KO: "지난 서명 보관", EN: "Archive the earlier signature"}
+	tArchiveAsk = T{
+		KO: "서명한 계획과 그 플레이북을 지우지 않고, 이름에 지금 시각을 붙여 옆에 둡니다. 그 뒤 새 계획에 서명할 수 있습니다.",
+		EN: "The signed plan and its playbooks are not deleted: they are kept beside it with the current time in their names. Then the new plan can be signed."}
+	tArchivedNotice = T{KO: "지난 서명을 보관했습니다. 파일 %d개", EN: "The earlier signature was archived (files: %d)"}
+	tSingleKey      = T{
+		KO: "06 화면은 승인 키 하나로 서명하고 확인합니다. 서명마다 승인자 이름이 들어가지만, 확인은 이 화면에 준 키 하나로 합니다(단일 키 · 단일 승인자).",
+		EN: "The 06 screen signs and checks with a single approval key. Each signature carries the approver's name, but checking uses the one key given to this screen (single key, single approver)."}
 
 	tSignedNotice    = T{KO: "승인 서명을 했습니다. 계획이 FINALIZED가 됐습니다", EN: "The approval was signed: the plan is FINALIZED"}
 	tGeneratedNotice = T{KO: "플레이북을 만들었습니다. 빈 곳 %d곳", EN: "The playbooks were generated: %d gaps"}
@@ -1147,4 +1164,13 @@ var keyText = map[KeyState]T{
 	KeyBad: {
 		KO: "pqcota-keygen이 낸 개인 키(PQCOTA_SIGN_KEY)를 찾지 못했습니다",
 		EN: "no private key from pqcota-keygen (PQCOTA_SIGN_KEY) was found in it"},
+	KeyLink: {
+		KO: "심볼릭 링크입니다. 링크가 아닌 파일 자체를 주십시오",
+		EN: "it is a symbolic link: give the file itself, not a link"},
+	KeyOwner: {
+		KO: "이 화면을 띄운 사용자의 파일이 아닙니다",
+		EN: "it does not belong to the user running this screen"},
+	KeyLinks: {
+		KO: "하드 링크가 더 있습니다. 다른 이름으로 바뀔 수 있으니 링크가 하나인 파일로 두십시오",
+		EN: "it has more hard links, so it can change under another name: keep it as a file with a single link"},
 }

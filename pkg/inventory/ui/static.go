@@ -51,8 +51,11 @@ const (
 	RunPath     = "/observe/run"
 	RunStopPath = "/observe/run/stop"
 	// SignPath — 06 화면의 승인 서명. GeneratePath — 서명한 계획으로 플레이북을 만든다.
-	SignPath     = "/approve/sign"
-	GeneratePath = "/approve/generate"
+	SignPath        = "/approve/sign"
+	SignConfirmPath = "/approve/sign/confirm"
+	GeneratePath    = "/approve/generate"
+	// ArchivePath — 지난 서명과 그 플레이북을 이름에 시각을 붙여 보관한다(지우지 않는다).
+	ArchivePath = "/approve/archive"
 	// HealthPath — 떠 있는 화면이 자기 상태 디렉토리의 ID를 알려 주는 자리. 실행기(pqcaton-ui -open)가 적힌 주소의
 	// 서버가 같은 작업 폴더의 것인지 견준다.
 	HealthPath = "/healthz"

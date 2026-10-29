@@ -52,9 +52,6 @@ const (
 	wsHosts        = "hosts.csv"
 	wsCollectors   = "collectors"
 	wsObservations = "observations"
-	wsSigned       = "plan.signed.json"
-	wsProvision    = "provision.yml"
-	wsRollback     = "provision-rollback.yml"
 	defaultWsName  = "pqcaton"
 	addrFile       = "screen.addr"
 )

@@ -90,6 +90,17 @@ func (s *server) confirmed(w http.ResponseWriter, r *http.Request, kind, back st
 // rev와 다르면 미리 보지 않고 409다.
 func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, action, saveAction, back string,
 	id store.Identity, cur, payload string, lines []string, files []ui.FileRef) {
+	s.confirmPageWith(w, r, kind, action, saveAction, back, id, cur, payload, lines, files, "")
+}
+
+// confirmPageAs: 저장만 하는 단추 없이, 실행 단추의 말을 정해 확인 페이지를 그린다(06 승인 서명).
+func (s *server) confirmPageAs(w http.ResponseWriter, r *http.Request, kind, action, back string,
+	id store.Identity, cur, payload string, lines []string, files []ui.FileRef, do string) {
+	s.confirmPageWith(w, r, kind, action, "", back, id, cur, payload, lines, files, do)
+}
+
+func (s *server) confirmPageWith(w http.ResponseWriter, r *http.Request, kind, action, saveAction, back string,
+	id store.Identity, cur, payload string, lines []string, files []ui.FileRef, do string) {
 	rev := r.PostForm.Get(ui.RevField)
 	if cur == "" || cur != rev {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, files)
@@ -99,7 +110,7 @@ func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, actio
 	p := s.page(r, "", "")
 	p.Title = ui.ConfirmTitle(p.Lang)
 	p.Rev = rev
-	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files,
+	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files, DoText: do,
 		Hidden: ui.CarryForm(r.PostForm), Exp: exp, Payload: payload, SessionID: id.SessionID,
 		Token: s.confirmToken(kind, id.SessionID, rev, payload, exp)}
 	html(w, r, func(out io.Writer) error { return ui.RenderConfirm(out, v) })
