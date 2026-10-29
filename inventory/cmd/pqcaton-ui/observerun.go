@@ -848,6 +848,9 @@ func (s *server) recoverRuns() {
 			}
 		case m.State == ui.RunRunning || m.State == ui.RunStuck || invErr == nil:
 			waitSupervisor(dir, logf)
+			if left := markedProcs(runMarker(m.ID)); len(left) > 0 {
+				logf(fmt.Sprintf("pqcaton: stopping processes %v left by the interrupted run", left))
+			}
 			if stuck := reapMarked(runMarker(m.ID), stopGrace); len(stuck) > 0 {
 				m.State, m.Stuck = ui.RunStuck, stuck
 				_ = writeManifest(dir, m)

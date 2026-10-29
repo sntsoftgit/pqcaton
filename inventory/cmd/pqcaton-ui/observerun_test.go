@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -591,6 +592,9 @@ func TestRestartReapsAnOrphanedRun(t *testing.T) {
 	}
 	if !strings.Contains(readFile(t, filepath.Join(dir, runLog)), "CLEANUP ran") {
 		t.Error("the nodes were not cleaned with the leftover inventory")
+	}
+	if !strings.Contains(readFile(t, filepath.Join(dir, runLog)), fmt.Sprintf("stopping processes [%d]", ansible.Process.Pid)) {
+		t.Error("the log does not name the processes recovery stopped")
 	}
 
 	orphan("20261029T000002-dddddddddddd", nil, "", false)
