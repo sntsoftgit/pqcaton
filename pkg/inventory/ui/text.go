@@ -937,3 +937,75 @@ var (
 	tStepObserveNoHosts = T{KO: "아직 접근 정보가 없습니다", EN: "no access written yet"}
 	tStepObserveHosts   = T{KO: "관측할 노드 %d대", EN: "%d nodes to observe"}
 )
+
+// ── 03 관측 · 실행 ──────────────────────────────────────────────────────────
+var (
+	tRunHead = T{KO: "관측 실행", EN: "Run the observation"}
+	tRunLede = T{
+		KO: "위 표의 노드마다 수집기를 올려 실행하고, 결과를 받은 뒤 노드에서 지웁니다. 운영 기계의 설정은 바꾸지 않습니다.",
+		EN: "Copies the collectors to each node in the table above, runs them, takes the results, and removes them from the node. " +
+			"Nothing in the machines' configuration is changed."}
+	tRunWindow    = T{KO: "네트워크 관측 구간(초)", EN: "Network observation window (seconds)"}
+	tRunStart     = T{KO: "관측 시작", EN: "Start the observation"}
+	tRunStartHint = T{
+		KO: "<b>Linux 노드에서는 root 권한(become)으로 실행합니다.</b> 다른 사용자의 프로세스와 네트워크 패킷을 보려면 필요합니다.<br>" +
+			"네트워크 관측은 노드의 기본 경로 인터페이스에서 이 구간만큼 TLS · SSH 핸드셰이크를 기다립니다. " +
+			"구간 동안 오간 통신이 없으면 「없음」이 아니라 「관측하지 못함」으로 남습니다.<br>" +
+			"받은 결과는 작업 폴더의 results에 들어가고, 같은 노드의 이전 결과를 갈아 끼웁니다.",
+		EN: "<b>On Linux nodes the collectors run as root (become).</b> Seeing other users' processes and network packets needs it.<br>" +
+			"The network observation waits this long for TLS and SSH handshakes on the node's default-route interface. " +
+			"If nothing passes in that window, it is recorded as 「not observed」, not as 「none」.<br>" +
+			"The results go into the workspace's results folder and replace the earlier results of the same node."}
+	tRunNotWritable = T{
+		KO: "이 화면은 저장하지 않는 모드라 관측을 시작하지 않습니다",
+		EN: "This screen does not save in its current mode, so it does not start an observation"}
+	tRunStop     = T{KO: "중지", EN: "Stop"}
+	tRunStopHint = T{
+		KO: "멈추면 그때까지 받은 결과만 옮깁니다. 실행 중이던 노드에는 스테이징 폴더(/tmp/pqcaton-observe-…)가 남을 수 있습니다.",
+		EN: "Stopping moves only the results received so far. A node that was mid-run may keep its staging folder (/tmp/pqcaton-observe-…)."}
+	tRunGoSurvey = T{KO: "04 대조에서 보기", EN: "See them in 04 Reconciliation"}
+	tRunDropped  = T{KO: "화면에 남기지 않은 앞의 로그: %d줄", EN: "Log lines not kept from the start: %d"}
+	tRunLog      = T{KO: "관측 실행 로그", EN: "Observation log"}
+
+	tRunRefusedHead     = T{KO: "관측을 시작하지 않았습니다", EN: "The observation was not started"}
+	tRunRefusedNotReady = T{
+		KO: "시작하기 전에 갖출 것이 빠졌습니다. 03 관측 화면의 점검 목록에서 ✗ 표시된 것을 갖추십시오.",
+		EN: "Something needed before starting is missing. Provide the items marked ✗ in the checklist on the 03 Observation screen."}
+	tRunRefusedBusy = T{
+		KO: "이미 관측이 돌고 있습니다. 끝나거나 멈춘 뒤에 다시 시작하십시오.",
+		EN: "An observation is already running. Start again after it finishes or is stopped."}
+	tRunRunning = T{KO: "관측 중입니다(%s 시작)", EN: "Observing (started at %s)"}
+	tRunDone    = T{KO: "관측을 마쳤습니다. 결과 파일 %d개를 받았습니다", EN: "The observation finished: %d result files received"}
+	tRunStopped = T{KO: "관측을 멈췄습니다. 결과 파일 %d개를 받았습니다", EN: "The observation was stopped: %d result files received"}
+	tRunFailed  = T{
+		KO: "관측이 실패했습니다(종료 코드 %d). 결과 파일 %d개를 받았습니다. 아래 로그에서 어느 노드의 어느 단계인지 보십시오",
+		EN: "The observation failed (exit code %d): %d result files received. The log below shows which node and which step"}
+)
+
+var runItemText = map[RunItem]T{
+	RunHosts:       {KO: "관측할 노드", EN: "Nodes to observe"},
+	RunAnsible:     {KO: "ansible-playbook", EN: "ansible-playbook"},
+	RunCollectors:  {KO: "수집기 폴더", EN: "Collector folder"},
+	RunLinuxBins:   {KO: "Linux 수집기", EN: "Linux collectors"},
+	RunWindowsBins: {KO: "Windows 수집기", EN: "Windows collectors"},
+	RunJar:         {KO: "JVM 관측 에이전트(collector.jar)", EN: "JVM observation agent (collector.jar)"},
+}
+
+var runItemMissing = map[RunItem]T{
+	RunHosts: {KO: "위 표에 노드를 적고 저장하십시오", EN: "Write the nodes in the table above and save"},
+	RunAnsible: {
+		KO: "이 기계에 Ansible을 설치하십시오. PATH에서 ansible-playbook을 찾습니다",
+		EN: "Install Ansible on this machine: ansible-playbook is looked up on the PATH"},
+	RunCollectors: {
+		KO: "작업 폴더에 collectors 폴더를 두거나 -collectors <폴더>로 시작하십시오",
+		EN: "Put a collectors folder in the workspace, or start with -collectors <folder>"},
+	RunLinuxBins: {
+		KO: "linux-amd64(또는 linux-arm64)에 pqcota-nodescan · pqcota-netcap · pqcota-jvmscan을 두십시오",
+		EN: "Put pqcota-nodescan, pqcota-netcap and pqcota-jvmscan in linux-amd64 (or linux-arm64)"},
+	RunWindowsBins: {
+		KO: "windows-amd64에 pqcota-cngscan.exe · pqcota-jvmscan.exe를 두십시오",
+		EN: "Put pqcota-cngscan.exe and pqcota-jvmscan.exe in windows-amd64"},
+	RunJar: {
+		KO: "없어도 시작하지만, 실행 중인 JVM의 provider 체인은 관측하지 않습니다",
+		EN: "The observation starts without it, but the provider chains of running JVMs are not observed"},
+}

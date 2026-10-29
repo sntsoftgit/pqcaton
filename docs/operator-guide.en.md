@@ -7,9 +7,9 @@ This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one 
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
-**Scope.** Once the observed results are in, the procedure inside pqcaton (declaration, scope, reconciliation, judgment,
-finalize) runs on the screen without a terminal. Collecting observations and signing the plan's approval belong to pqcota.
-Installing and recovering need a terminal or a file manager.
+**Scope.** The procedure inside pqcaton (declaration, scope, observation, reconciliation, judgment, finalize) runs on the
+screen without a terminal. Observations run with the Ansible and collectors the operator installs. Signing the plan's
+approval belongs to pqcota. Installing and recovering need a terminal or a file manager.
 
 **The commands are run for real.** Every command in this guide marked `<!-- run -->` is run in order, in an empty home
 folder, by a test (`guide_run_test.go`) that checks the result.
@@ -76,6 +76,23 @@ curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntso
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
+**Getting ready to run observations.** Running an observation from the 03 Observation screen needs two more things on this
+machine. The screen checks both before it starts and, when something is missing, says what to do.
+
+- **Ansible.** `ansible-playbook` is looked up on the `PATH`. Nodes are reached over SSH (Windows nodes over SSH or WinRM),
+  and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
+  with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
+- **Collectors.** Put the build output of pqcota-discovery in the workspace's `collectors` folder (or `-collectors
+  <folder>`), shaped like this.
+
+```text
+collectors/
+├── linux-amd64/     pqcota-nodescan · pqcota-netcap · pqcota-jvmscan
+├── linux-arm64/     when there are arm64 nodes
+├── windows-amd64/   pqcota-cngscan.exe · pqcota-jvmscan.exe (when there are Windows nodes)
+└── collector.jar    without it, the provider chains of running JVMs are not observed
+```
+
 ## 3. Workspace
 
 Started without arguments, the screen uses the `pqcaton` folder in your home, and creates it readable by you only (0700)
@@ -87,7 +104,8 @@ can.
 |---|---|---|
 | `declaration.json` | The declaration (managed nodes, assets, edges) | Screen (01) |
 | `hosts.csv` | Access to the nodes to observe. It may hold passwords, so only the owner reads it (0600) | Screen (03) |
-| `results/` | Observed results | pqcota collection |
+| `collectors/` | The collectors observations use. The screen only reads them | Operator |
+| `results/` | Observed results | Screen (03 Observation), pqcota collection |
 | `session.json` | The review session | Screen (05) |
 | `layers/*.csv` | Asset scope layers. They stack in name order, and where rules clash on the same asset the later layer applies | Screen (02) |
 | `scope-session.json` | The scope session | Screen (02) |
@@ -182,9 +200,12 @@ required).
    changed rule, sign, and finalize. Finalizing creates `asset-scope.csv`.
 3. **03 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS, SSH or WinRM),
    and save. They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
-   on the screen: if the file has one, it shows only as "set" and is kept as is when you save.
-4. **04 Reconciliation.** When pqcota collection writes results to `results/`, reload the screen. With no results, the
-   screen points at that folder.
+   on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation"
+   copies the collectors to each node in the table, runs them, takes the results into `results/`, and removes them from
+   the node. While it runs, the log is shown and "Stop" stops it. The network observation waits for handshakes on the
+   node's default-route interface for the window you set (60 seconds by default).
+4. **04 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
+   screen. With no results, the screen points at that folder.
 5. **05 Judgment.** Write a conclusion for each policy; for the items going into the plan, pick the action kind, target and
    level; and sign. "Finalize" shows a confirmation page with what will be written, and confirming writes the session,
    plan and ledger together. Finalizing the same session with the same content again writes nothing again.
@@ -363,6 +384,8 @@ screen.
 | `damaged` | A save record or lock file is damaged | Stop the screen, get the diagnostics file and ask for support |
 | `diagnostic` | An input file could not be read, so the screen opened for diagnostics only | Fix the file the screen shows and start it again |
 | `exists` | The file to create is already there, so it was not overwritten | Reload the screen |
+| `run-not-ready` | Something needed before an observation (access, Ansible, collectors) is missing | Provide the items marked ✗ in the checklist on the 03 screen |
+| `run-busy` | An observation is already running | Start again after it finishes or is stopped |
 | `not-found` | There is no screen at this address | Start again from the first screen |
 | `method` | This kind of request is not accepted | Use the screen's buttons |
 | `bad-request` | The request could not be handled | Reload the screen and do it again |

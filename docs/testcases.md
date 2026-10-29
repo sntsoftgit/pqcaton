@@ -411,6 +411,10 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U113](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | 03 관측 화면에서 비밀번호가 있는 줄의 노드 ID를 고치고, 다른 줄을 고치고, 새 WinRM 줄을 더해 저장 | 화면은 비밀번호를 「있음」으로만 보이고 값은 싣지 않는다. 비밀번호는 고친 노드 ID를 따라가고 새 줄에는 없다. 저장한 `hosts.csv`는 상류 `ParseHosts`가 그대로 읽고 소유자 전용(0600)이다 |
 | **[IC-U114](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | WinRM을 Linux 노드에 고르고 같은 노드 ID를 두 번 적어 저장, 두 말 | 422이고 파일은 한 바이트도 바뀌지 않는다. 화면에는 적은 값이 남고 어느 노드의 무엇이 틀렸는지 적힌다. 리다이렉트하면 적던 것이 날아간다 |
 | **[IC-U115](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | 명시 모드와 `hosts.csv`가 없는 작업 폴더에서 `/observe` | 명시 모드는 404이고 03 카드가 닫혀 있다. 작업 폴더 모드는 열리고 03 카드가 「아직 접근 정보가 없습니다」다 |
+| **[IC-U116](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 03 관측 화면에서 「관측 시작」(가짜 ansible-playbook) | 내장 플레이북과 소유자 전용(0600) 인벤토리(접근 비밀이 실린다)를 상태 폴더의 작업 자리에 쓰고 정해진 인자로 부른다. 끝나면 받은 결과(빈 파일은 빼고)를 `results/`로 옮기고 작업 자리를 통째로 지운다. 상태 조각은 받은 수 · 로그 · 대조로 가는 길을 보이고 더는 다시 받지 않는다 |
+| **[IC-U117](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | ansible-playbook과 수집기 폴더가 없는 서버, 두 말 | 점검 목록이 빠진 것과 할 일을 적고 시작 양식을 내지 않는다. 주소로 직접 보내도 409(`run-not-ready`)이고 아무것도 실행하지 않는다 |
+| **[IC-U118](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 돌고 있는 관측에 다시 시작 · 중지 · 범위 밖 관측 구간 | 다시 시작은 409(`run-busy`)다. 중지는 프로세스 묶음을 끝내고 그때까지 받은 결과만 옮기며 상태는 「멈춤」이다. 도는 동안 상태 조각은 2초마다 다시 받고 중지 단추를 낸다. 관측 구간 4초는 400이다 |
+| **[IC-U119](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | ansible-playbook이 종료 코드 2로 끝남 | 상태는 「실패」이고 종료 코드와 로그가 보인다. 그때까지 받은 결과는 옮기고 작업 자리는 지운다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 

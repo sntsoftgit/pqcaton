@@ -21,8 +21,84 @@ templ observePage(v ObserveView) {
 			<h3>{ tHostsHead.In(v.Page.Lang) }</h3>
 			<p class="lede">{ tHostsLede.In(v.Page.Lang) }</p>
 			@hostsForm(v)
+			<h3 id="observe-run">{ tRunHead.In(v.Page.Lang) }</h3>
+			<p class="lede">{ tRunLede.In(v.Page.Lang) }</p>
+			@runChecks(v.Page.Lang, v.Run)
+			if v.Run.CanStart() {
+				<form method="post" action={ templ.SafeURL(RunPath) } class="run-start">
+					<input type="hidden" name={ CSRFField } value={ v.Page.CSRF }/>
+					<label>
+						{ tRunWindow.In(v.Page.Lang) }
+						<input type="number" name="window" min="5" max="3600" value={ strconv.Itoa(v.Run.Window) }/>
+					</label>
+					<div class="actions">
+						<button class="primary">{ tRunStart.In(v.Page.Lang) }</button>
+						@tip(v.Page.Lang, tRunStartHint.In(v.Page.Lang))
+					</div>
+				</form>
+			}
+			@runStatus(v.Page.Lang, v.Page.CSRF, v.Run.Status)
 		</div>
 	}
+}
+
+// runChecks — 시작하기 전에 보는 것. 빠진 것은 무엇을 하면 되는지 함께 적는다.
+templ runChecks(l Lang, r ObserveRun) {
+	<ul class="checks">
+		if !r.Writable {
+			<li class="bad">{ tRunNotWritable.In(l) }</li>
+		}
+		for _, c := range r.Checks {
+			<li class={ templ.KV("ok", c.OK), templ.KV("bad", !c.OK && c.Blocking), templ.KV("warn", !c.OK && !c.Blocking) }>
+				if c.OK {
+					{ "✓ " }
+				} else {
+					{ "✗ " }
+				}
+				<strong>{ c.Text(l) }</strong>
+				if c.Detail != "" {
+					{ " " }
+					<code>{ c.Detail }</code>
+				}
+				if !c.OK {
+					<br/>
+					<span>{ c.Missing(l) }</span>
+				}
+			</li>
+		}
+	</ul>
+}
+
+// runStatus — 실행 상태와 로그. **돌고 있는 동안에만 몇 초마다 다시 받는다** — 끝난 조각에는 받을 까닭이 없다.
+templ runStatus(l Lang, csrf string, st *RunStatus) {
+	if st == nil {
+		<div id="run-status"></div>
+	} else if st.State == RunRunning {
+		<div id="run-status" class="run-status" hx-get={ RunPath + "?" + LangParam + "=" + string(l) } hx-trigger="every 2s" hx-swap="outerHTML" role="status" aria-live="polite">
+			@runStatusBody(l, csrf, st)
+		</div>
+	} else {
+		<div id="run-status" class="run-status" role="status">
+			@runStatusBody(l, csrf, st)
+		</div>
+	}
+}
+
+templ runStatusBody(l Lang, csrf string, st *RunStatus) {
+	<p><strong>{ st.Text(l) }</strong></p>
+	if st.State == RunRunning {
+		<form method="post" action={ templ.SafeURL(RunStopPath) }>
+			<input type="hidden" name={ CSRFField } value={ csrf }/>
+			<button type="submit">{ tRunStop.In(l) }</button>
+			@tip(l, tRunStopHint.In(l))
+		</form>
+	} else if st.Received > 0 {
+		<p><a class="primary" href={ templ.SafeURL(ScreenSurvey + "?" + LangParam + "=" + string(l)) }>{ tRunGoSurvey.In(l) }</a></p>
+	}
+	if st.Dropped > 0 {
+		<p class="hint">{ tRunDropped.F(l, st.Dropped) }</p>
+	}
+	<pre class="run-log" tabindex="0" aria-label={ tRunLog.In(l) }>{ st.Log }</pre>
 }
 
 // hostProblemList — 저장을 막은 자리. 어느 노드의 무엇이 틀렸는지.

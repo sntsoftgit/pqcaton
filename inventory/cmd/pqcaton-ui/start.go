@@ -50,6 +50,7 @@ const (
 	wsPlan         = "plan.json"
 	wsJudgments    = "judgments.jsonl"
 	wsHosts        = "hosts.csv"
+	wsCollectors   = "collectors"
 	defaultWsName  = "pqcaton"
 	addrFile       = "screen.addr"
 )
@@ -73,6 +74,7 @@ type startConfig struct {
 	scopeOut, judgments  string
 	plan                 string
 	hosts                string // 접근 정보. 작업 폴더 모드에서만 있다
+	collectors           string // 수집기 폴더. 작업 폴더 모드에서 주지 않으면 그 안의 collectors
 }
 
 // errUsage: 사용법이 틀렸다(종료 코드 2).
@@ -99,6 +101,7 @@ func parseStart(args []string, stderr io.Writer) (startConfig, error) {
 	fs.StringVar(&c.plan, "plan", "plan.json", "file to write the finalized plan to")
 	fs.BoolVar(&c.recoverStatus, "recover-status", false, "print what unfinished transactions left behind (files, expected and current hashes, prepared copies) and exit. Changes nothing")
 	fs.StringVar(&c.diagnostics, "diagnostics", "", "with -recover-status: also write the report as JSON to this new file (0600)")
+	fs.StringVar(&c.collectors, "collectors", "", "collector folder for running observations from the screen: linux-amd64/, linux-arm64/, windows-amd64/ and collector.jar as pqcota-discovery builds them (default in a workspace: its collectors folder)")
 	fs.StringVar(&c.stateDir, "state-dir", "", "state directory holding transaction records and receipts (default: .pqcaton next to the session file). Commands that change the same files must use the same one")
 
 	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag는 첫 비플래그에서 파싱을 멈추므로, 그냥
@@ -181,6 +184,9 @@ func (c startConfig) inWorkspace() (startConfig, error) {
 	c.plan = at(wsPlan)
 	c.judgments = at(wsJudgments)
 	c.hosts = at(wsHosts)
+	if c.collectors == "" {
+		c.collectors = at(wsCollectors)
+	}
 	c.scopeOut = at(wsPolicy)
 	c.stateDir = ""
 	if exists(at(wsScopeAssets)) {
@@ -208,7 +214,7 @@ func (c startConfig) inWorkspace() (startConfig, error) {
 func (c startConfig) server() *server {
 	return &server{path: c.session, decl: c.decl, results: c.results, scope: c.scope,
 		layers: c.layers, base: c.base, scopeAssets: c.scopeAssets, judgments: c.judgments,
-		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace, hosts: c.hosts,
+		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace, hosts: c.hosts, collectors: absPath(c.collectors),
 		orgFromDecl: c.workspace != "" && !c.orgGiven}
 }
 
@@ -406,4 +412,15 @@ func (c startConfig) stateDirOf() string {
 		return c.stateDir
 	}
 	return store.DefaultDir(c.session)
+}
+
+// absPath: 상대 경로를 지금 자리에서 절대 경로로 바꾼다. 관측은 작업 자리에서 돌아서 상대 경로가 다른 곳을 가리킨다.
+func absPath(p string) string {
+	if p == "" {
+		return ""
+	}
+	if a, err := filepath.Abs(p); err == nil {
+		return a
+	}
+	return p
 }

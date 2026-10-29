@@ -171,6 +171,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if s.st != nil {
 			_ = os.Remove(filepath.Join(s.st.Dir, addrFile))
 		}
+		// 돌고 있는 관측도 끝낸다. 화면이 없어지면 멈출 자리가 없다.
+		s.stopRun()
 		close(stopped)
 		_ = ln.Close()
 	}()
@@ -420,6 +422,9 @@ type server struct {
 	scopeAssets string
 	// hosts: 접근 정보(hosts.csv). 작업 폴더 모드에서만 있고, 없으면 관측 화면을 닫는다.
 	hosts string
+	// collectors: 수집기 폴더(-collectors, 작업 폴더 모드의 기본은 그 안의 collectors). run: 관측 실행 하나.
+	collectors string
+	run        runner
 	// st: 상태 디렉토리. nil이면 보기 전용이다(저장을 지원하지 않는 플랫폼).
 	st *store.State
 	// recovering: 시작할 때 복구 필요가 남아 있었다. 다시 띄울 때까지 모든 화면이 503이다.
@@ -491,6 +496,9 @@ func (s *server) handler() http.Handler {
 	r.Post("/scope/finalize", s.scopeFinalize)
 	r.Get(ui.ScreenObserve, s.observe)
 	r.Post(ui.HostsSavePath, s.hostsSave)
+	r.Get(ui.RunPath, s.runStatusFragment)
+	r.Post(ui.RunPath, s.runStart)
+	r.Post(ui.RunStopPath, s.runStop)
 	r.Get(ui.ScreenSurvey, s.survey)
 	r.Get(ui.ScreenInventory, s.inventory)
 	r.Get(ui.ScreenReview, s.review)

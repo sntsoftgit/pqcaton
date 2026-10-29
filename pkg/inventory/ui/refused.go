@@ -28,6 +28,9 @@ const (
 	RefusedDiagnostic = "diagnostic"
 	// RefusedExists — 만들려는 파일이 이미 있다(409). 덮어쓰지 않는다.
 	RefusedExists = "exists"
+	// RefusedRunNotReady · RefusedRunBusy — 관측을 시작하지 않았다(409). 빠진 것이 있거나 이미 돌고 있다.
+	RefusedRunNotReady = "run-not-ready"
+	RefusedRunBusy     = "run-busy"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
 	ErrNotFound     = "not-found"     // 404
@@ -46,6 +49,7 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedExpired: {body: tRefusedExpired}, RefusedConfirm: {body: tRefusedConfirmBad},
 	RefusedUnsafe: {body: tRefusedUnsafe}, RefusedMismatch: {body: tRefusedMismatch}, RefusedDamaged: {body: tRefusedDamaged},
 	RefusedDiagnostic: {tErrInputBrokenHead, tRefusedDiagnostic}, RefusedExists: {body: tRefusedExists},
+	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
 	ErrNotFound:     {tErrNotFoundHead, tErrNotFound},
 	ErrMethod:       {tErrMethodHead, tErrMethod},
 	ErrBadRequest:   {tErrBadRequestHead, tErrBadRequest},

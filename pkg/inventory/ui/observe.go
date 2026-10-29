@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory"
 )
@@ -47,6 +48,104 @@ type ObserveView struct {
 	Hosts []HostRow
 	// Problems — 저장을 막은 자리. 있으면 화면은 받은 그대로의 값을 다시 그린다(적던 것을 잃지 않는다).
 	Problems []HostProblem
+	// Run — 관측 실행. 저장하지 않는 서버(보기 전용 · 복구)에서는 Checks가 비고 시작 단추가 없다.
+	Run ObserveRun
+}
+
+// ObserveRun — 관측 실행 구역.
+type ObserveRun struct {
+	Checks []RunCheck
+	// Writable — 이 서버가 저장하는가. 아니면 시작하지 않는다.
+	Writable bool
+	// Window — 시작 양식에 채울 네트워크 관측 구간(초).
+	Window int
+	// Status — 마지막(또는 지금) 실행. 한 번도 돌리지 않았으면 nil이다.
+	Status *RunStatus
+}
+
+// CanStart — 시작 단추를 낼 수 있는가. 막는 점검이 남았거나 이미 돌고 있으면 낼 수 없다.
+func (r ObserveRun) CanStart() bool {
+	if !r.Writable || (r.Status != nil && r.Status.State == RunRunning) {
+		return false
+	}
+	for _, c := range r.Checks {
+		if c.Blocking && !c.OK {
+			return false
+		}
+	}
+	return true
+}
+
+// RunItem — 시작 전에 보는 것 하나.
+type RunItem string
+
+const (
+	RunHosts       RunItem = "hosts"
+	RunAnsible     RunItem = "ansible"
+	RunCollectors  RunItem = "collectors"
+	RunLinuxBins   RunItem = "linux-bins"
+	RunWindowsBins RunItem = "windows-bins"
+	RunJar         RunItem = "jar"
+)
+
+// RunCheck — 점검 하나. Blocking이 아닌 것은 빠져도 시작하지만 그 관측이 빠진다는 것을 알린다.
+type RunCheck struct {
+	Item     RunItem
+	OK       bool
+	Blocking bool
+	// Detail — 찾은 자리(명령의 경로 · 폴더). 운영자 자신의 기계 경로라 보인다.
+	Detail string
+}
+
+// Text — 점검의 이름.
+func (c RunCheck) Text(l Lang) string {
+	if t, ok := runItemText[c.Item]; ok {
+		return t.In(l)
+	}
+	return string(c.Item)
+}
+
+// Missing — 빠졌을 때 무엇을 하면 되는지.
+func (c RunCheck) Missing(l Lang) string {
+	if t, ok := runItemMissing[c.Item]; ok {
+		return t.In(l)
+	}
+	return ""
+}
+
+// RunState — 실행의 상태.
+type RunState string
+
+const (
+	RunRunning RunState = "running"
+	RunDone    RunState = "done"
+	RunFailed  RunState = "failed"
+	RunStopped RunState = "stopped"
+)
+
+// RunStatus — 실행 하나의 지금 모습.
+type RunStatus struct {
+	State          RunState
+	Started, Ended time.Time
+	Log            string
+	// Dropped — 화면에 남기지 못하고 앞에서 버린 로그 줄 수.
+	Dropped  int
+	Received int
+	Exit     int
+	Window   int
+}
+
+// Text — 상태 한 줄.
+func (s RunStatus) Text(l Lang) string {
+	switch s.State {
+	case RunRunning:
+		return tRunRunning.F(l, s.Started.Format("15:04:05"))
+	case RunDone:
+		return tRunDone.F(l, s.Received)
+	case RunStopped:
+		return tRunStopped.F(l, s.Received)
+	}
+	return tRunFailed.F(l, s.Exit, s.Received)
 }
 
 // ObserveSummary — 관측 카드에 적을 것.
@@ -171,6 +270,11 @@ func EncodeHosts(hosts []inventory.Host) ([]byte, error) {
 	}
 	w.Flush()
 	return b.Bytes(), w.Error()
+}
+
+// RenderRunStatus — 관측 실행 상태 조각. 화면이 돌고 있는 동안 몇 초마다 다시 받는다.
+func RenderRunStatus(w io.Writer, l Lang, csrf string, st *RunStatus) error {
+	return runStatus(l, csrf, st).Render(context.Background(), w)
 }
 
 // RenderObserve — 03 관측 화면.
