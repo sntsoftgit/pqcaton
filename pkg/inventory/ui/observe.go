@@ -16,7 +16,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
-	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -157,8 +156,9 @@ type RunStatus struct {
 	Missing []string
 	// NodeCleanup — 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
 	NodeCleanup string
-	// Stuck — 끝내지 못한 이 실행의 프로세스.
-	Stuck []int
+	// Stuck · StuckWhy — 끝내지 못했거나 확인하지 못한 이 실행의 프로세스와 그 까닭.
+	Stuck    []int
+	StuckWhy string
 }
 
 // StagingPaths — 노드에 남을 수 있는 스테이징 폴더(실행 ID가 붙는다).
@@ -180,7 +180,7 @@ func (s RunStatus) Text(l Lang) string {
 	case RunInterrupted:
 		return tRunInterrupted.In(l)
 	case RunStuck:
-		return tRunStuck.F(l, fmt.Sprint(s.Stuck), s.StagingPaths())
+		return tRunStuck.F(l, s.StuckWhy, s.StagingPaths())
 	}
 	return tRunFailed.F(l, s.Exit, s.Received)
 }

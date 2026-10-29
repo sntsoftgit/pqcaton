@@ -48,46 +48,130 @@ type supervisorRecord struct {
 	PID   int    `json:"pid"`
 	PGID  int    `json:"pgid"`
 	Start string `json:"start"`
-	// Stuck: 끝내지 못한 표지 프로세스. 비면 다 끝냈다.
-	Stuck []int `json:"stuck,omitempty"`
+	// Stuck · StuckWhy: 끝내지 못한 표지 프로세스와 그 까닭(확인하지 못한 경우 PID가 비고 까닭만 있다).
+	Stuck    []int  `json:"stuck,omitempty"`
+	StuckWhy string `json:"stuck_why,omitempty"`
 }
 
 // runMarker: 실행 하나의 프로세스에 붙는 표지.
 func runMarker(id string) string { return "PQCATON_RUN=" + id }
 
-// killMarked: 표지를 가진 프로세스(자기 자신 빼고)를 끝낸다. 끝내라고 알리고, grace까지 기다리고, 남으면 강제로
-// 끝내고, 다시 기다린다. 끝내 남은 PID를 돌려준다(비면 다 끝났다).
-func killMarked(marker string, grace time.Duration) []int {
-	pids := markedProcs(marker)
-	if len(pids) == 0 {
-		return nil
-	}
-	for _, p := range pids {
-		_ = syscallKill(p, false)
-	}
-	if waitMarkedGone(marker, grace) {
-		return nil
-	}
-	for _, p := range markedProcs(marker) {
-		_ = syscallKill(p, true)
-	}
-	if waitMarkedGone(marker, 5*time.Second) {
-		return nil
-	}
-	return markedProcs(marker)
+// markedProc: 표지를 가진 프로세스 하나. 찾을 때의 시작 시각을 함께 들고 있어, 신호를 보내기 전에 같은 프로세스인지
+// 다시 본다(signalProc). 그 사이 끝나 PID가 다른 프로세스에 다시 쓰였으면 건드리지 않는다.
+type markedProc struct {
+	PID   int
+	Start string
 }
 
-func waitMarkedGone(marker string, limit time.Duration) bool {
+// runMark: 이 실행의 프로세스를 가리는 것. 표지(환경 변수 한 줄)와, 이 실행이 띄운 것으로 아는 프로세스 묶음(감독 ·
+// 정리 명령의 묶음). 묶음은 환경을 읽을 수 없는 프로세스를 가릴 때만 쓴다(markedProcs).
+type runMark struct {
+	Marker string
+	Groups []int
+}
+
+// procInfo: 검색 중의 프로세스 하나.
+type procInfo struct {
+	markedProc
+	ppid, pgid         int
+	marked, unreadable bool
+}
+
+// belonging: 표지가 있는 프로세스와, 환경을 읽을 수 없는데 부모나 프로세스 묶음이 이 실행의 것인 프로세스. 계보를 따라
+// 끝까지 넓힌다(표지 프로세스의 자식의 자식까지).
+func belonging(all []procInfo, groups []int) []markedProc {
+	in, grp := map[int]bool{}, map[int]bool{}
+	for _, g := range groups {
+		if g > 0 {
+			grp[g] = true
+		}
+	}
+	for _, p := range all {
+		if p.marked {
+			in[p.PID], grp[p.pgid] = true, true
+		}
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, p := range all {
+			if p.unreadable && !in[p.PID] && (in[p.ppid] || grp[p.pgid]) {
+				in[p.PID], changed = true, true
+			}
+		}
+	}
+	var out []markedProc
+	for _, p := range all {
+		if in[p.PID] {
+			out = append(out, p.markedProc)
+		}
+	}
+	return out
+}
+
+// findMarked: 이 실행의 프로세스를 찾는 함수. 시험이 검색 실패를 주입한다.
+var findMarked = markedProcs
+
+// killMarked: 표지를 가진 프로세스(자기 자신 빼고)를 끝낸다. 끝내라고 알리고, grace까지 기다리고, 남으면 강제로 끝내고,
+// 다시 기다린다. 끝내 남은 PID를 돌려준다(비면 다 끝났다). **프로세스를 확인하지 못하면 오류다** — 「확인할 수 없음」은
+// 「남은 것 없음」이 아니다. 부르는 쪽은 둘 다 「회수 필요」로 닫는다.
+func killMarked(rm runMark, grace time.Duration) ([]int, error) {
+	ps, err := findMarked(rm)
+	if err != nil || len(ps) == 0 {
+		return nil, err
+	}
+	for _, p := range ps {
+		_ = signalProc(p, false)
+	}
+	if done, err := waitMarkedGone(rm, grace); err != nil || done {
+		return nil, err
+	}
+	ps, err = findMarked(rm)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range ps {
+		_ = signalProc(p, true)
+	}
+	if done, err := waitMarkedGone(rm, 5*time.Second); err != nil || done {
+		return nil, err
+	}
+	ps, err = findMarked(rm)
+	if err != nil {
+		return nil, err
+	}
+	var left []int
+	for _, p := range ps {
+		left = append(left, p.PID)
+	}
+	return left, nil
+}
+
+func waitMarkedGone(rm runMark, limit time.Duration) (bool, error) {
 	deadline := time.Now().Add(limit)
 	for {
-		if len(markedProcs(marker)) == 0 {
-			return true
+		ps, err := findMarked(rm)
+		if err != nil {
+			return false, err
+		}
+		if len(ps) == 0 {
+			return true, nil
 		}
 		if time.Now().After(deadline) {
-			return false
+			return false, nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+// reaped: killMarked의 결과를 「회수 필요」의 까닭으로. 비면 다 끝났다.
+func reaped(stuck []int, err error) string {
+	switch {
+	case err != nil:
+		return "could not inspect the processes: " + err.Error()
+	case len(stuck) > 0:
+		return fmt.Sprintf("processes %v did not end", stuck)
+	}
+	return ""
 }
 
 // writeDurable: 임시 파일 → fsync → rename → 폴더 fsync. 감독의 기록이 디스크에 닿은 뒤에야 Ansible을 띄운다.
@@ -150,12 +234,13 @@ func supervise(dir, ansible string) int {
 	go func() { _, _ = io.Copy(io.Discard, os.Stdin); close(parentGone) }()
 	select {
 	case <-parentGone:
-		finishOrphaned(dir, m, nil)
+		finishOrphaned(dir, m)
 		return 4
 	default:
 	}
 
 	marker := runMarker(m.ID)
+	mine := runMark{Marker: marker, Groups: []int{syscall.Getpgrp()}}
 	cmd := exec.Command(ansible, "-i", runInventory, "-e", "@vars.json", "observe.yml")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), marker, "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
@@ -185,21 +270,24 @@ func supervise(dir, ansible string) int {
 	select {
 	case <-done:
 	case <-term:
-		killMarked(marker, stopGrace)
+		_, _ = killMarked(mine, stopGrace)
 		<-done
 	case <-parentGone:
 		orphaned = true
-		killMarked(marker, stopGrace)
+		_, _ = killMarked(mine, stopGrace)
 		<-done
 	}
 	// Ansible이 끝나도 표지를 가진 자식(세션을 떼어 나간 것 포함)이 남을 수 있다. 다 끝낸다.
-	stuck := killMarked(marker, stopGrace)
-	if len(stuck) > 0 {
-		_ = writeDurable(filepath.Join(dir, supervisorFile), supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start, Stuck: stuck})
-		say("pqcaton: these processes of the run did not end: %v", stuck)
-	}
-	if orphaned {
-		finishOrphaned(dir, m, stuck)
+	stuck, err := killMarked(mine, stopGrace)
+	if why := reaped(stuck, err); why != "" {
+		_ = writeDurable(filepath.Join(dir, supervisorFile), supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start, Stuck: stuck, StuckWhy: why})
+		say("pqcaton: %s", why)
+		if orphaned {
+			markStuck(dir, m, stuck, why)
+			return 4
+		}
+	} else if orphaned {
+		finishOrphaned(dir, m)
 		return 4
 	}
 	code := cmd.ProcessState.ExitCode()
@@ -209,25 +297,31 @@ func supervise(dir, ansible string) int {
 	return code
 }
 
-// finishOrphaned: 화면 없이 마무리한다. 끝내지 못한 프로세스가 있으면 아무것도 지우거나 옮기지 않고 「회수 필요」로
-// 적는다(그 프로세스가 아직 실행 자리를 쓸 수 있다). 다 끝냈으면 노드를 정리하고, 인벤토리를 지우고, 받던 것을
-// partial/로 옮기고, 「중단됨」으로 적는다.
-func finishOrphaned(dir string, m runManifest, stuck []int) {
+// finishOrphaned: 화면 없이 마무리한다. 노드를 정리하고(정리가 남긴 자식까지 회수한다), 인벤토리를 지우고, 받던 것을
+// partial/로 옮기고, 「중단됨」으로 적는다. 정리가 남긴 프로세스를 끝내지 못하면 아무것도 지우거나 옮기지 않고 「회수
+// 필요」로 적는다.
+func finishOrphaned(dir string, m runManifest) {
 	logf := appendRunLog(dir)
-	if len(stuck) > 0 {
-		m.State, m.Stuck = ui.RunStuck, stuck
-		_ = writeManifest(dir, m)
-		logf(fmt.Sprintf("pqcaton: the screen went away and processes %v of this run did not end; nothing was cleaned up", stuck))
+	logf("pqcaton: the screen went away; the supervisor stopped the observation and cleans up")
+	cleaned, why := runCleanup(dir, m.ID, logf)
+	if why != "" {
+		markStuck(dir, m, nil, why)
 		return
 	}
-	logf("pqcaton: the screen went away; the supervisor stopped the observation and cleans up")
-	m.NodeCleanup = runCleanup(dir, m.ID, logf)
+	m.NodeCleanup = cleaned
 	removeRunSecrets(dir)
 	if isDir(filepath.Join(dir, "next")) {
 		_ = os.Rename(filepath.Join(dir, "next"), filepath.Join(dir, "partial"))
 	}
 	m.State, m.Ended = ui.RunInterrupted, time.Now()
 	_ = writeManifest(dir, m)
+}
+
+// markStuck: 「회수 필요」로 적는다. 인벤토리 · 받던 것 · 노드 정리는 그대로 둔다(남은 프로세스가 아직 쓸 수 있다).
+func markStuck(dir string, m runManifest, stuck []int, why string) {
+	m.State, m.Stuck, m.StuckWhy = ui.RunStuck, stuck, why
+	_ = writeManifest(dir, m)
+	appendRunLog(dir)("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 }
 
 // appendRunLog: 실행 로그 파일 끝에 덧붙이는 함수. 화면 없이(감독 · 다음 시작) 남길 때 쓴다.

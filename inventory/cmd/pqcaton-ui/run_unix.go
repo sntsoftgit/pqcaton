@@ -19,15 +19,6 @@ func terminate(cmd *exec.Cmd) { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTE
 
 func kill(cmd *exec.Cmd) { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 
-// syscallKill: 프로세스 하나에 끝내라고 알린다. force면 강제로 끝낸다.
-func syscallKill(pid int, force bool) error {
-	sig := syscall.SIGTERM
-	if force {
-		sig = syscall.SIGKILL
-	}
-	return syscall.Kill(pid, sig)
-}
-
 // ownedByMe · links: 승인 키 점검(approve.go). 이 사용자의 파일인가, 하드 링크가 몇 개인가.
 func ownedByMe(fi os.FileInfo) bool {
 	st, ok := fi.Sys().(*syscall.Stat_t)

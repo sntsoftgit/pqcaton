@@ -35,26 +35,56 @@ func procStart(pid int) (string, error) {
 	return fmt.Sprintf("%d.%06d", t.Sec, t.Usec), nil
 }
 
-// markedProcs: 표지(환경 변수 한 줄)를 가진 이 사용자의 프로세스. kern.procargs2로 환경을 읽는다(같은 사용자의 것만
-// 읽힌다). 자기 자신과 좀비는 뺀다.
-func markedProcs(marker string) []int {
+// markedProcs: 이 실행의 프로세스와 그 시작 시각. kern.procargs2로 환경을 읽어 표지로 가리고, 같은 사용자인데 환경을
+// 읽을 수 없는 프로세스(덤프 금지 · 보호)는 부모나 프로세스 묶음이 이 실행의 것일 때 넣는다(Linux와 같은 규칙). 목록을
+// 얻지 못하거나 예상하지 못한 이유로 읽지 못하면 오류다. 그 사이 끝난 것과 좀비는 뺀다.
+func markedProcs(rm runMark) ([]markedProc, error) {
 	kps, err := unix.SysctlKinfoProcSlice("kern.proc.uid", os.Getuid())
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("cannot list processes: %w", err)
 	}
-	want := []byte("\x00" + marker + "\x00")
+	want := []byte("\x00" + rm.Marker + "\x00")
 	self := os.Getpid()
-	var out []int
+	var all []procInfo
 	for _, kp := range kps {
 		pid := int(kp.Proc.P_pid)
 		if pid == self || kp.Proc.P_stat == sZomb {
 			continue
 		}
+		t := kp.Proc.P_starttime
+		p := procInfo{markedProc: markedProc{PID: pid, Start: fmt.Sprintf("%d.%06d", t.Sec, t.Usec)},
+			ppid: int(kp.Eproc.Ppid), pgid: int(kp.Eproc.Pgid)}
 		buf, err := unix.SysctlRaw("kern.procargs2", pid)
-		if err != nil || !bytes.Contains(buf, want) {
-			continue
+		switch {
+		case err == nil:
+			p.marked = bytes.Contains(buf, want)
+		default:
+			if _, serr := procStart(pid); serr != nil {
+				continue // 그 사이 끝났다
+			}
+			if !errors.Is(err, unix.EPERM) && !errors.Is(err, unix.EINVAL) && !errors.Is(err, unix.EACCES) {
+				return nil, fmt.Errorf("cannot read the environment of process %d: %w", pid, err)
+			}
+			p.unreadable = true
 		}
-		out = append(out, pid)
+		all = append(all, p)
 	}
-	return out
+	return belonging(all, rm.Groups), nil
+}
+
+// signalProc: 찾을 때의 그 프로세스에만 신호를 보낸다. 시작 시각이 찾을 때와 같은지 본 뒤 보낸다. 다르면 원래 것은 이미
+// 끝났으므로 아무것도 하지 않는다. macOS에는 pidfd가 없어, 견준 순간과 보내는 순간 사이의 아주 짧은 틈은 남는다.
+func signalProc(p markedProc, force bool) error {
+	if cur, err := procStart(p.PID); err != nil || cur != p.Start {
+		return nil
+	}
+	sig := unix.SIGTERM
+	if force {
+		sig = unix.SIGKILL
+	}
+	err := unix.Kill(p.PID, sig)
+	if errors.Is(err, unix.ESRCH) {
+		return nil
+	}
+	return err
 }

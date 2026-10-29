@@ -30,9 +30,12 @@ func links(os.FileInfo) uint64 { return 0 }
 
 func procStart(int) (string, error) { return "", errors.New("not supported on this platform") }
 
-func syscallKill(int, bool) error { return errors.New("not supported on this platform") }
+func signalProc(markedProc, bool) error { return errors.New("not supported on this platform") }
 
-func markedProcs(string) []int { return nil }
+type markedProc struct {
+	PID   int
+	Start string
+}
 
 // 저장을 지원하지 않는 플랫폼에서는 관측을 시작하지 않으므로 감독도 없다.
 const (
@@ -43,6 +46,7 @@ const (
 
 type supervisorRecord struct {
 	PID   int
+	PGID  int
 	Start string
 	Stuck []int
 }
@@ -51,7 +55,12 @@ func runMarker(id string) string { return "PQCATON_RUN=" + id }
 
 func supervise(string, string) int { return 3 }
 
-func killMarked(string, time.Duration) []int { return nil }
+type runMark struct {
+	Marker string
+	Groups []int
+}
+
+func killMarked(runMark, time.Duration) ([]int, error) { return nil, nil }
 
 func readSupervisor(string) *supervisorRecord { return nil }
 
@@ -62,3 +71,9 @@ func removeRunSecrets(dir string) {
 		_ = os.Remove(filepath.Join(dir, name))
 	}
 }
+
+func markedProcs(runMark) ([]markedProc, error) { return nil, nil }
+
+var findMarked = markedProcs
+
+func reaped([]int, error) string { return "" }

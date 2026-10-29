@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 // SPDX-License-Identifier: BUSL-1.1
 
+//go:build unix
+
 package main
 
 import (
@@ -27,7 +29,13 @@ import (
 // 비밀번호가 든 줄을 **일부러 그대로 찍는다**(화면이 가리는지 본다).
 const fakeAnsible = `#!/bin/sh
 [ "$1" = "-i" ] && [ "$2" = "targets.yml" ] && [ "$3" = "-e" ] && [ "$4" = "@vars.json" ] || { echo "bad args: $*"; exit 9; }
-if [ "$5" = "cleanup.yml" ]; then grep -q 'state: absent' cleanup.yml && echo "CLEANUP ran"; exit 0; fi
+if [ "$5" = "cleanup.yml" ]; then
+  grep -q 'state: absent' cleanup.yml && echo "CLEANUP ran"
+  if [ "$FAKE_CLEANUP" = "orphan" ]; then
+    if command -v setsid >/dev/null; then setsid sleep 300 >/dev/null 2>&1 & else sleep 300 >/dev/null 2>&1 & fi
+  fi
+  exit 0
+fi
 [ "$5" = "observe.yml" ] || { echo "bad playbook: $5"; exit 9; }
 rd=$(sed -n 's/.*"results_dir":"\([^"]*\)".*/\1/p' vars.json)
 win=$(sed -n 's/.*"netcap_window":\([0-9]*\).*/\1/p' vars.json)
@@ -638,7 +646,7 @@ func TestSupervisorFinishesWhenTheScreenGoes(t *testing.T) {
 	if m.State != ui.RunInterrupted || m.NodeCleanup != "done" || isFile(filepath.Join(j.dir, runInventory)) || !isDir(filepath.Join(j.dir, "partial")) {
 		t.Errorf("after the screen went: %+v, inventory left %v", m, isFile(filepath.Join(j.dir, runInventory)))
 	}
-	if left := markedProcs(runMarker(m.ID)); len(left) > 0 {
+	if left, _ := markedProcs(runMark{Marker: runMarker(m.ID)}); len(left) > 0 {
 		t.Errorf("processes of the run are left: %v", left)
 	}
 	if got := names(t, s.results); strings.Join(got, ",") != oldResult {
@@ -652,7 +660,7 @@ func TestSupervisorFinishesWhenTheScreenGoes(t *testing.T) {
 func TestStuckRunIsLeftAlone(t *testing.T) {
 	s := runReady(t, "ok")
 	old := reapMarked
-	reapMarked = func(string, time.Duration) []int { return []int{4242} }
+	reapMarked = func(runMark, time.Duration) ([]int, error) { return []int{4242}, nil }
 	id := "20261029T000003-eeeeeeeeeeee"
 	dir := filepath.Join(s.runsDir(), id)
 	if err := os.MkdirAll(filepath.Join(dir, "next"), 0o700); err != nil {
@@ -671,7 +679,7 @@ func TestStuckRunIsLeftAlone(t *testing.T) {
 		t.Errorf("a stuck run was touched: %+v", m)
 	}
 	page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
-	for _, want := range []string{"4242", "/tmp/pqcaton-observe-" + id, "끝내지 못한 지난 관측"} {
+	for _, want := range []string{"4242", "/tmp/pqcaton-observe-" + id, "끝내지 못한 지난 관측", "끝내지 못했거나 확인하지 못했습니다"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("the observe screen does not show %q", want)
 		}
@@ -699,8 +707,127 @@ func TestNothingOfTheRunIsLeft(t *testing.T) {
 			s.stopRun()
 		}
 		st := waitRun(t, s)
-		if left := markedProcs(runMarker(st.ID)); len(left) > 0 {
+		if left, _ := markedProcs(runMark{Marker: runMarker(st.ID)}); len(left) > 0 {
 			t.Errorf("stop=%v: processes of the run are left: %v", stop, left)
 		}
+	}
+}
+
+// IC-U134 — **프로세스를 확인하지 못한 것은 「남은 것 없음」이 아니다.** 프로세스 목록이나 이 사용자 프로세스의 환경을
+// 읽지 못하면 회수는 실패다. 관측을 마칠 때든 다시 시작할 때든 노드 정리 · 인벤토리 삭제 · 결과 이동을 하지 않고 「회수
+// 필요」로 닫으며, 화면이 그 까닭을 보이고 새 관측을 시작하지 않는다.
+func TestUnknownProcessesAreNotNone(t *testing.T) {
+	failing := func(runMark) ([]markedProc, error) { return nil, errors.New("injected: cannot list processes") }
+	t.Run("finishing a run", func(t *testing.T) {
+		s := runReady(t, "fail")
+		old := findMarked
+		findMarked = failing
+		t.Cleanup(func() { findMarked = old })
+		postForm(t, s, ui.RunPath, url.Values{})
+		st := waitRun(t, s)
+		dir := runDir(t, s)
+		if st.State != ui.RunStuck || !strings.Contains(st.StuckWhy, "could not inspect") || !isFile(filepath.Join(dir, runInventory)) ||
+			strings.Contains(st.Log, "CLEANUP ran") {
+			t.Errorf("state %s, why %q, inventory kept %v", st.State, st.StuckWhy, isFile(filepath.Join(dir, runInventory)))
+		}
+		if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusConflict {
+			t.Errorf("start after an unknown state = %d, want 409", w.Code)
+		}
+	})
+	t.Run("restarting", func(t *testing.T) {
+		s := runReady(t, "ok")
+		old := findMarked
+		findMarked = failing
+		t.Cleanup(func() { findMarked = old })
+		id := "20261029T000004-ffffffffffff"
+		dir := filepath.Join(s.runsDir(), id)
+		if err := os.MkdirAll(filepath.Join(dir, "next"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeManifest(dir, runManifest{ID: id, State: ui.RunRunning, Started: time.Now()}); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, runInventory), []byte("targets:\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		s.recoverRuns()
+		if m := readManifest(dir, ""); m.State != ui.RunStuck || !isFile(filepath.Join(dir, runInventory)) || !isDir(filepath.Join(dir, "next")) {
+			t.Errorf("an unknown state was treated as none: %+v", m)
+		}
+		if page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String(); !strings.Contains(page, "확인하지 못했습니다") {
+			t.Error("the screen does not say the processes could not be inspected")
+		}
+	})
+}
+
+// IC-U135 — **노드 정리가 남긴 자식도 회수한다.** 정리용 Ansible도 실행 표지를 물려받는다. 정리 플레이북이 세션을 떼어 나간
+// 자식을 남기고 0으로 끝나도, 끝난 뒤 그 표지로 찾아 끝낸 다음에야 인벤토리를 지운다. 끝내지 못하면 인벤토리를 지우지
+// 않고 「회수 필요」로 닫는다.
+func TestCleanupOrphansAreReaped(t *testing.T) {
+	t.Setenv("FAKE_CLEANUP", "orphan")
+	s := runReady(t, "fail")
+	postForm(t, s, ui.RunPath, url.Values{})
+	st := waitRun(t, s)
+	if st.State != ui.RunFailed || st.NodeCleanup != "done" || isFile(filepath.Join(runDir(t, s), runInventory)) {
+		t.Errorf("state %s, cleanup %s, inventory left %v", st.State, st.NodeCleanup, isFile(filepath.Join(runDir(t, s), runInventory)))
+	}
+	if left, err := markedProcs(runMark{Marker: runMarker(st.ID)}); err != nil || len(left) > 0 {
+		t.Errorf("the cleanup left %v (%v)", left, err)
+	}
+
+	s = runReady(t, "fail")
+	old := reapMarked
+	calls := 0
+	reapMarked = func(m runMark, d time.Duration) ([]int, error) {
+		if calls++; calls >= 2 { // 관측 회수는 지나고, 정리 뒤의 회수가 실패한다
+			return []int{4343}, nil
+		}
+		return old(m, d)
+	}
+	t.Cleanup(func() { reapMarked = old })
+	postForm(t, s, ui.RunPath, url.Values{})
+	st = waitRun(t, s)
+	if st.State != ui.RunStuck || !isFile(filepath.Join(runDir(t, s), runInventory)) {
+		t.Errorf("after an unreaped cleanup: state %s, inventory kept %v", st.State, isFile(filepath.Join(runDir(t, s), runInventory)))
+	}
+}
+
+// IC-U136 — **찾은 뒤 PID가 다른 프로세스에 다시 쓰였으면 신호를 보내지 않는다.** 표지 프로세스는 찾을 때의 시작 시각과
+// 함께 잡아 두고, 신호를 보내기 직전에 같은 프로세스인지 다시 본다(Linux는 pidfd를 연 뒤에 본다). 시작 시각이 다른 살아
+// 있는 프로세스는 끝내지 않는다.
+func TestSignalsGoOnlyToTheProcessFound(t *testing.T) {
+	cmd := exec.Command("sleep", "300")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
+	other := markedProc{PID: cmd.Process.Pid, Start: "not-its-start"}
+	if err := signalProc(other, true); err != nil {
+		t.Fatal(err)
+	}
+	old := findMarked
+	n := 0
+	findMarked = func(runMark) ([]markedProc, error) {
+		if n++; n == 1 {
+			return []markedProc{other}, nil
+		}
+		return nil, nil
+	}
+	t.Cleanup(func() { findMarked = old })
+	if _, err := killMarked(runMark{Marker: "PQCATON_RUN=x"}, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	// 신호는 비동기로 닿는다. 보냈다면 죽을 만큼 기다린 뒤에 본다.
+	time.Sleep(300 * time.Millisecond)
+	if _, err := procStart(cmd.Process.Pid); err != nil {
+		t.Error("a process whose PID was reused was signalled")
+	}
+	start, _ := procStart(cmd.Process.Pid)
+	if err := signalProc(markedProc{PID: cmd.Process.Pid, Start: start}, true); err != nil {
+		t.Fatal(err)
+	}
+	_ = cmd.Wait()
+	if cmd.ProcessState == nil || cmd.ProcessState.Success() {
+		t.Error("the process that was found was not signalled")
 	}
 }

@@ -116,8 +116,10 @@ type runManifest struct {
 	Files    []string    `json:"files,omitempty"`
 	Missing  []string    `json:"missing,omitempty"`
 	Received int         `json:"received"`
-	// Stuck: 끝내지 못한 이 실행의 프로세스. 있으면 「회수 필요」이고, 아무것도 지우거나 옮기지 않았다.
-	Stuck []int `json:"stuck,omitempty"`
+	// Stuck · StuckWhy: 끝내지 못했거나 확인하지 못한 이 실행의 프로세스와 그 까닭. 있으면 「회수 필요」이고, 아무것도
+	// 지우거나 옮기지 않았다.
+	Stuck    []int  `json:"stuck,omitempty"`
+	StuckWhy string `json:"stuck_why,omitempty"`
 	// NodeCleanup: 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
 	NodeCleanup string `json:"node_cleanup,omitempty"`
 	// Swapping: results/와 맞바꾸기 직전에 적는다. 이 표시로 끊겼으면 다음 시작이 results/의 기록으로 교환 여부를 가린다.
@@ -144,7 +146,8 @@ func (r *runner) status() *ui.RunStatus {
 	m := j.m
 	return &ui.RunStatus{ID: m.ID, State: m.State, Started: m.Started, Ended: m.Ended, Received: m.Received,
 		Exit: m.Exit, Window: m.Window, Dropped: j.dropped, Missing: m.Missing, NodeCleanup: m.NodeCleanup, Stuck: m.Stuck,
-		Log: strings.Join(j.log, "\n")}
+		StuckWhy: m.StuckWhy,
+		Log:      strings.Join(j.log, "\n")}
 }
 
 func (r *runner) running() bool {
@@ -313,7 +316,7 @@ func (s *server) stuckRuns() []string {
 	var out []string
 	for _, e := range ents {
 		if m := readManifest(filepath.Join(s.runsDir(), e.Name()), e.Name()); e.IsDir() && m.State == ui.RunStuck {
-			out = append(out, fmt.Sprintf("%s: %v", m.ID, m.Stuck))
+			out = append(out, fmt.Sprintf("%s: %v %s", m.ID, m.Stuck, m.StuckWhy))
 		}
 	}
 	return out
@@ -475,10 +478,11 @@ func (s *server) startRun(window int) error {
 func (s *server) finishRun(j *runJob) {
 	r := &s.run
 	// 감독이 강제로 끝났으면(중지가 늦어 KILL) 표지를 가진 프로세스가 남았을 수 있다. 다 끝내기 전에는 아무것도 하지 않는다.
-	if stuck := reapMarked(runMarker(j.m.ID), stopGrace); len(stuck) > 0 {
+	stuck, err := reapMarked(runMark{Marker: runMarker(j.m.ID), Groups: []int{j.cmd.Process.Pid}}, stopGrace)
+	if why := reaped(stuck, err); why != "" {
 		r.mu.Lock()
-		j.m.State, j.m.Stuck, j.m.Ended = ui.RunStuck, stuck, time.Now()
-		r.appendLocked(fmt.Sprintf("pqcaton: processes %v of this run did not end; nothing was cleaned up. Stop them, then restart the screen", stuck))
+		j.m.State, j.m.Stuck, j.m.StuckWhy, j.m.Ended = ui.RunStuck, stuck, why, time.Now()
+		r.appendLocked("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 		m := j.m
 		if j.logFile != nil {
 			_ = j.logFile.Close()
@@ -501,7 +505,21 @@ func (s *server) finishRun(j *runJob) {
 
 	// 끝까지 돌지 못한 실행은 노드에 스테이징 폴더가 남았을 수 있다. 인벤토리가 아직 있을 때 한 번 지운다.
 	if state != ui.RunDone {
-		cleaned := runCleanup(j.dir, j.m.ID, func(line string) { r.logf("%s", line) })
+		cleaned, why := runCleanup(j.dir, j.m.ID, func(line string) { r.logf("%s", line) })
+		if why != "" {
+			r.mu.Lock()
+			j.m.State, j.m.StuckWhy, j.m.Ended = ui.RunStuck, why, time.Now()
+			r.appendLocked("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
+			m := j.m
+			if j.logFile != nil {
+				_ = j.logFile.Close()
+				j.logFile = nil
+			}
+			r.mu.Unlock()
+			_ = writeManifest(j.dir, m)
+			close(j.done)
+			return
+		}
 		r.mu.Lock()
 		j.m.NodeCleanup = cleaned
 		r.mu.Unlock()
@@ -593,16 +611,18 @@ func finishSwap(dir string) error {
 }
 
 // runCleanup: 정리 플레이북을 cleanupLimit 안에서 돌린다. 출력은 logf로 남기고, 다 지웠으면 "done", 아니면 "failed"다.
+// **정리가 남긴 프로세스도 회수한다** — 정리용 Ansible도 같은 실행 표지를 물려받으므로, 끝난 뒤 그 표지로 남은 자식을
+// 찾아 끝낸다. 끝내지 못하거나 확인하지 못하면 둘째 값에 그 까닭을 돌려준다(부르는 쪽은 인벤토리를 지우지 않는다).
 // 실행 중인 관측의 끝(finishRun)과, 비정상 종료 뒤의 다음 시작(recoverRuns)이 함께 쓴다.
-func runCleanup(dir, id string, logf func(string)) string {
+func runCleanup(dir, id string, logf func(string)) (string, string) {
 	if !isFile(filepath.Join(dir, runInventory)) {
 		logf("pqcaton: no inventory left to reach the nodes, so their staging folders were not removed")
-		return "failed"
+		return "failed", ""
 	}
 	if !isFile(filepath.Join(dir, "cleanup.yml")) {
 		if err := os.WriteFile(filepath.Join(dir, "cleanup.yml"), cleanupPlaybook, 0o600); err != nil {
 			logf("pqcaton: node cleanup did not start: " + err.Error())
-			return "failed"
+			return "failed", ""
 		}
 	}
 	logf("pqcaton: removing the staging folders from the nodes")
@@ -614,7 +634,7 @@ func runCleanup(dir, id string, logf func(string)) string {
 	cmd.Stdout, cmd.Stderr = &out, &out
 	if err := cmd.Start(); err != nil {
 		logf("pqcaton: node cleanup did not start: " + err.Error())
-		return "failed"
+		return "failed", ""
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -629,11 +649,14 @@ func runCleanup(dir, id string, logf func(string)) string {
 	for _, line := range strings.Split(strings.TrimRight(out.String(), "\n"), "\n") {
 		logf(line)
 	}
+	if why := reaped(reapMarked(runMark{Marker: runMarker(id), Groups: []int{cmd.Process.Pid}}, stopGrace)); why != "" {
+		return "", "after the node cleanup, " + why
+	}
 	if err != nil {
 		logf(fmt.Sprintf("pqcaton: node cleanup did not finish everywhere (%v); a node may keep %s", err, stagingPaths(id)))
-		return "failed"
+		return "failed", ""
 	}
-	return "done"
+	return "done", ""
 }
 
 // stagingPaths: 노드에 남을 수 있는 스테이징 폴더. 화면과 안내서가 같은 말을 쓴다.
@@ -848,13 +871,22 @@ func (s *server) recoverRuns() {
 			}
 		case m.State == ui.RunRunning || m.State == ui.RunStuck || invErr == nil:
 			waitSupervisor(dir, logf)
-			if left := markedProcs(runMarker(m.ID)); len(left) > 0 {
-				logf(fmt.Sprintf("pqcaton: stopping processes %v left by the interrupted run", left))
+			mark := runMark{Marker: runMarker(m.ID)}
+			if rec := readSupervisor(dir); rec != nil {
+				mark.Groups = []int{rec.PGID}
 			}
-			if stuck := reapMarked(runMarker(m.ID), stopGrace); len(stuck) > 0 {
-				m.State, m.Stuck = ui.RunStuck, stuck
+			if left, err := findMarked(mark); err == nil && len(left) > 0 {
+				var pids []int
+				for _, p := range left {
+					pids = append(pids, p.PID)
+				}
+				logf(fmt.Sprintf("pqcaton: stopping processes %v left by the interrupted run", pids))
+			}
+			stuck, err := reapMarked(mark, stopGrace)
+			if why := reaped(stuck, err); why != "" {
+				m.State, m.Stuck, m.StuckWhy = ui.RunStuck, stuck, why
 				_ = writeManifest(dir, m)
-				logf(fmt.Sprintf("pqcaton: processes %v of this run did not end; nothing was cleaned up. Stop them, then restart the screen", stuck))
+				logf("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 				break
 			}
 			m = readManifest(dir, e.Name()) // 감독이 마무리했으면 그 기록을 따른다
@@ -862,7 +894,7 @@ func (s *server) recoverRuns() {
 			if m.State != ui.RunRunning && m.State != ui.RunStuck && invErr != nil {
 				break
 			}
-			m.Stuck = nil
+			m.Stuck, m.StuckWhy = nil, ""
 			if cur := s.currentRun(); m.Swapping && cur != nil && cur.ID == m.ID {
 				// 교환은 끝났다. 새 결과가 지금 결과다.
 				m.State, m.Swapping = ui.RunDone, false
@@ -873,7 +905,14 @@ func (s *server) recoverRuns() {
 			} else {
 				m.Swapping = false
 				if invErr == nil {
-					m.NodeCleanup = runCleanup(dir, m.ID, logf)
+					cleaned, why := runCleanup(dir, m.ID, logf)
+					if why != "" {
+						m.State, m.StuckWhy = ui.RunStuck, why
+						_ = writeManifest(dir, m)
+						logf("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
+						break
+					}
+					m.NodeCleanup = cleaned
 				} else if m.NodeCleanup == "" {
 					m.NodeCleanup = "failed"
 				}
@@ -937,7 +976,7 @@ func waitSupervisor(dir string, logf func(string)) {
 		limit  time.Duration
 	}{{false, false, supervisorWait}, {true, false, stopGrace}, {true, true, 5 * time.Second}} {
 		if step.signal {
-			_ = syscallKill(rec.PID, step.force)
+			_ = signalProc(markedProc{PID: rec.PID, Start: rec.Start}, step.force)
 		}
 		deadline := time.Now().Add(step.limit)
 		for alive() && time.Now().Before(deadline) {
