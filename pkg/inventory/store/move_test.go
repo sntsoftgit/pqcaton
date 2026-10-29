@@ -102,3 +102,22 @@ func TestMoveIsOneTransaction(t *testing.T) {
 		t.Error("files moved although a destination was taken")
 	}
 }
+
+// IC-W50: 일반 트랜잭션(Do)도 만들기 · 지우기 대상의 폴더를 잠근다. 다른 요청이 그 폴더를 쥐고 있으면 기다리다
+// ErrTargetBusy이고 아무것도 지우지 않는다.
+func TestDoLocksCreateAndRemoveTargets(t *testing.T) {
+	w, moves, _ := moveWorld(t)
+	s := w.open(t, nil)
+	release, err := s.LockTargets([]string{w.data}, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	err = s.Do(Tx{Kind: "archive", Org: "local", SessionID: "a", Remove: []string{moves[0].From}}, 50*time.Millisecond)
+	if !errors.Is(err, ErrTargetBusy) {
+		t.Fatalf("Do(Remove) while the folder is held: %v, want ErrTargetBusy", err)
+	}
+	if _, err := os.Stat(moves[0].From); err != nil {
+		t.Error("the file was removed while the folder was held")
+	}
+}

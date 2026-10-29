@@ -96,7 +96,10 @@ type runJob struct {
 	secrets       []string
 	logFile       *os.File
 	cmd           *exec.Cmd
+	stdin         io.WriteCloser
 	stopRequested bool
+	// detached: 시험이 화면이 사라진 것을 흉내 낸다. 감독이 끝나도 화면 쪽 마무리를 하지 않는다.
+	detached bool
 	// done: 프로세스가 끝나고 결과 처리와 정리까지 마치면 닫힌다.
 	done chan struct{}
 }
@@ -113,11 +116,8 @@ type runManifest struct {
 	Files    []string    `json:"files,omitempty"`
 	Missing  []string    `json:"missing,omitempty"`
 	Received int         `json:"received"`
-	// PID · PGID · ProcStart: ansible-playbook 프로세스와 그 묶음, 그리고 같은 PID가 다른 프로세스에 다시 쓰였는지
-	// 가릴 시작 시각. 화면이 비정상으로 끝난 뒤 다음 시작이 아직 살아 있는 실행을 찾아 끝낸다(recoverRuns).
-	PID       int    `json:"pid,omitempty"`
-	PGID      int    `json:"pgid,omitempty"`
-	ProcStart string `json:"proc_start,omitempty"`
+	// Stuck: 끝내지 못한 이 실행의 프로세스. 있으면 「회수 필요」이고, 아무것도 지우거나 옮기지 않았다.
+	Stuck []int `json:"stuck,omitempty"`
 	// NodeCleanup: 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
 	NodeCleanup string `json:"node_cleanup,omitempty"`
 	// Swapping: results/와 맞바꾸기 직전에 적는다. 이 표시로 끊겼으면 다음 시작이 results/의 기록으로 교환 여부를 가린다.
@@ -143,7 +143,7 @@ func (r *runner) status() *ui.RunStatus {
 	}
 	m := j.m
 	return &ui.RunStatus{ID: m.ID, State: m.State, Started: m.Started, Ended: m.Ended, Received: m.Received,
-		Exit: m.Exit, Window: m.Window, Dropped: j.dropped, Missing: m.Missing, NodeCleanup: m.NodeCleanup,
+		Exit: m.Exit, Window: m.Window, Dropped: j.dropped, Missing: m.Missing, NodeCleanup: m.NodeCleanup, Stuck: m.Stuck,
 		Log: strings.Join(j.log, "\n")}
 }
 
@@ -269,6 +269,9 @@ func (s *server) preflight() []ui.RunCheck {
 	add(ui.RunHosts, err == nil && len(hosts) > 0, true, fmt.Sprint(len(hosts)))
 	path, err := exec.LookPath(ansibleCommand)
 	add(ui.RunAnsible, err == nil, true, path)
+	if stuck := s.stuckRuns(); len(stuck) > 0 {
+		add(ui.RunStuckItem, false, true, strings.Join(stuck, " · "))
+	}
 	add(ui.RunCollectors, s.collectors != "" && isDir(s.collectors), true, s.collectors)
 	if s.collectors == "" || !isDir(s.collectors) {
 		return out
@@ -295,6 +298,24 @@ func (s *server) preflight() []ui.RunCheck {
 			true, filepath.Join(s.collectors, "windows-amd64"))
 	}
 	add(ui.RunJar, isFile(filepath.Join(s.collectors, "collector.jar")), false, filepath.Join(s.collectors, "collector.jar"))
+	return out
+}
+
+// stuckRuns: 끝내지 못한 프로세스가 남은 실행(「실행 ID: PID…」). 있으면 새 관측을 시작하지 않는다.
+func (s *server) stuckRuns() []string {
+	if s.results == "" {
+		return nil
+	}
+	ents, err := os.ReadDir(s.runsDir())
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range ents {
+		if m := readManifest(filepath.Join(s.runsDir(), e.Name()), e.Name()); e.IsDir() && m.State == ui.RunStuck {
+			out = append(out, fmt.Sprintf("%s: %v", m.ID, m.Stuck))
+		}
+	}
 	return out
 }
 
@@ -387,26 +408,31 @@ func (s *server) startRun(window int) error {
 			return fail(err)
 		}
 	}
-	cmd := exec.Command(ansibleCommand, "-i", runInventory, "-e", "@vars.json", "observe.yml")
+	ansible, err := exec.LookPath(ansibleCommand)
+	if err != nil {
+		return fail(err)
+	}
+	exe, err := supervisorExe()
+	if err != nil {
+		return fail(err)
+	}
+	cmd := exec.Command(exe, superviseFlag, j.dir, ansible)
 	cmd.Dir = j.dir
-	cmd.Env = append(os.Environ(), "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0")
 	ownGroup(cmd)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return fail(err)
+	}
 	pr, pw := io.Pipe()
 	cmd.Stdout, cmd.Stderr = pw, pw
-	r.logf("pqcaton: %s -i %s -e @vars.json observe.yml (%d nodes, network window %ds)", ansibleCommand, runInventory, len(hosts), window)
+	r.logf("pqcaton: %s -i %s -e @vars.json observe.yml (%d nodes, network window %ds)", ansible, runInventory, len(hosts), window)
+	// 감독이 자기를 기록한 뒤에야 Ansible을 띄운다. 화면이 어떻게 끝나든 표준 입력이 닫혀 감독이 마무리한다.
 	if err := cmd.Start(); err != nil {
 		return fail(err)
 	}
 	r.mu.Lock()
-	j.cmd = cmd
-	j.m.PID, j.m.PGID = cmd.Process.Pid, cmd.Process.Pid
-	j.m.ProcStart, _ = procStart(cmd.Process.Pid)
-	started := j.m
+	j.cmd, j.stdin = cmd, stdin
 	r.mu.Unlock()
-	// 프로세스를 적어 둔다. 화면이 비정상으로 끝나면 다음 시작이 이 기록으로 실행을 찾아 끝낸다.
-	if err := writeManifest(j.dir, started); err != nil {
-		r.logf("pqcaton: could not record the running process: %v", err)
-	}
 
 	read := make(chan struct{})
 	go func() {
@@ -424,6 +450,12 @@ func (s *server) startRun(window int) error {
 		_ = pw.Close()
 		<-read
 		r.mu.Lock()
+		if j.detached {
+			r.mu.Unlock()
+			close(j.done)
+			return
+		}
+		_ = j.stdin.Close()
 		j.m.Exit = cmd.ProcessState.ExitCode()
 		switch {
 		case j.stopRequested:
@@ -442,6 +474,21 @@ func (s *server) startRun(window int) error {
 // finishRun: 끝난 실행의 결과를 세대로 다루고 비밀을 지운다. 끝나면 done을 닫는다.
 func (s *server) finishRun(j *runJob) {
 	r := &s.run
+	// 감독이 강제로 끝났으면(중지가 늦어 KILL) 표지를 가진 프로세스가 남았을 수 있다. 다 끝내기 전에는 아무것도 하지 않는다.
+	if stuck := reapMarked(runMarker(j.m.ID), stopGrace); len(stuck) > 0 {
+		r.mu.Lock()
+		j.m.State, j.m.Stuck, j.m.Ended = ui.RunStuck, stuck, time.Now()
+		r.appendLocked(fmt.Sprintf("pqcaton: processes %v of this run did not end; nothing was cleaned up. Stop them, then restart the screen", stuck))
+		m := j.m
+		if j.logFile != nil {
+			_ = j.logFile.Close()
+			j.logFile = nil
+		}
+		r.mu.Unlock()
+		_ = writeManifest(j.dir, m)
+		close(j.done)
+		return
+	}
 	next := filepath.Join(j.dir, "next")
 	files, missing := expectedResults(next, j.m.Nodes)
 	r.mu.Lock()
@@ -561,7 +608,7 @@ func runCleanup(dir, id string, logf func(string)) string {
 	logf("pqcaton: removing the staging folders from the nodes")
 	cmd := exec.Command(ansibleCommand, "-i", runInventory, "-e", "@vars.json", "cleanup.yml")
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0")
+	cmd.Env = append(os.Environ(), runMarker(id), "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
 	ownGroup(cmd)
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
@@ -764,14 +811,15 @@ func (s *server) shutdownRun() {
 	}
 }
 
-// recoverRuns: 시작할 때 부른다. 화면이 실행 도중에 비정상으로 끝나(강제 종료 · 전원 · 충돌) 남은 자리를 마친다.
+// recoverRuns: 시작할 때 부른다. 화면이 실행 도중에 비정상으로 끝나 남은 자리를 마친다.
 //
-//  1. 기록의 프로세스가 아직 살아 있으면(PID와 시작 시각이 같으면) 그 묶음에 끝내라고 알리고, 기다리고, 그래도 남으면
-//     강제로 끝내고, 다 사라질 때까지 기다린다. 같은 PID가 다른 프로세스에 다시 쓰였으면 건드리지 않는다.
-//  2. results/와 맞바꾸던 중이었으면 results/의 기록으로 교환이 일어났는지 가린다. 일어났으면 새 결과를 지금 결과로
-//     두고 이전 결과를 previous/로 옮긴다.
-//  3. 그 밖이면 남은 인벤토리로 노드 정리를 한 번 시도하고, 인벤토리를 지우고, 받던 것을 partial/로 격리하고,
-//     「중단됨」으로 적는다. 노드에 닿지 못했으면 남았을 스테이징 폴더를 기록과 화면에 밝힌다.
+//  1. 감독이 아직 살아 있으면(기록의 PID와 시작 시각이 같으면) 마무리를 하고 있는 것이다. 끝나기를 기다리고, 너무
+//     오래 걸리면 끝내라고 알리고, 그래도 남으면 강제로 끝낸다. 감독의 기록이 없으면 Ansible도 뜬 적이 없다.
+//  2. 이 실행의 표지를 가진 프로세스를 모두 찾아 끝낸다(감독이 강제로 죽어 Ansible이나 그 자식이 남은 경우).
+//     **끝내지 못하면 아무것도 지우거나 옮기지 않는다** — 그 프로세스가 아직 실행 자리를 쓸 수 있다. 「회수 필요」로
+//     적고 새 관측 시작을 막으며, 화면이 PID와 스테이징 폴더를 보인다.
+//  3. 감독이 이미 마무리했으면 그대로 둔다. 아니면 results/와 맞바꾸던 중이었는지 가려 마치거나, 남은 인벤토리로
+//     노드 정리를 시도하고, 인벤토리를 지우고, 받던 것을 partial/로 격리하고, 「중단됨」으로 적는다.
 //
 // 가장 최근 실행을 화면에 보일 상태로 둔다.
 func (s *server) recoverRuns() {
@@ -785,20 +833,10 @@ func (s *server) recoverRuns() {
 			continue
 		}
 		dir := filepath.Join(s.runsDir(), e.Name())
-		var m runManifest
-		b, err := os.ReadFile(filepath.Join(dir, runManifestFile))
-		if err == nil {
-			err = json.Unmarshal(b, &m)
-		}
-		if m.ID == "" {
-			m.ID = e.Name()
-		}
+		m := readManifest(dir, e.Name())
 		logf := func(line string) {
 			fmt.Fprintf(os.Stderr, "observation %s: %s\n", m.ID, line)
-			if f, err := os.OpenFile(filepath.Join(dir, runLog), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600); err == nil {
-				_, _ = f.WriteString(line + "\n")
-				_ = f.Close()
-			}
+			appendRunLog(dir)(line)
 		}
 		_, invErr := os.Stat(filepath.Join(dir, runInventory))
 		switch {
@@ -808,8 +846,20 @@ func (s *server) recoverRuns() {
 				_ = writeManifest(dir, m)
 				logf("pqcaton: the earlier results are now kept in previous/")
 			}
-		case err != nil || m.State == ui.RunRunning || invErr == nil:
-			reapRun(m, logf)
+		case m.State == ui.RunRunning || m.State == ui.RunStuck || invErr == nil:
+			waitSupervisor(dir, logf)
+			if stuck := reapMarked(runMarker(m.ID), stopGrace); len(stuck) > 0 {
+				m.State, m.Stuck = ui.RunStuck, stuck
+				_ = writeManifest(dir, m)
+				logf(fmt.Sprintf("pqcaton: processes %v of this run did not end; nothing was cleaned up. Stop them, then restart the screen", stuck))
+				break
+			}
+			m = readManifest(dir, e.Name()) // 감독이 마무리했으면 그 기록을 따른다
+			_, invErr = os.Stat(filepath.Join(dir, runInventory))
+			if m.State != ui.RunRunning && m.State != ui.RunStuck && invErr != nil {
+				break
+			}
+			m.Stuck = nil
 			if cur := s.currentRun(); m.Swapping && cur != nil && cur.ID == m.ID {
 				// 교환은 끝났다. 새 결과가 지금 결과다.
 				m.State, m.Swapping = ui.RunDone, false
@@ -830,9 +880,7 @@ func (s *server) recoverRuns() {
 				m.State = ui.RunInterrupted
 				logf("pqcaton: interrupted when the screen stopped; the inventory was removed")
 			}
-			for _, name := range []string{runInventory, "vars.json", "observe.yml", "cleanup.yml"} {
-				_ = os.Remove(filepath.Join(dir, name))
-			}
+			removeRunSecrets(dir)
 			_ = writeManifest(dir, m)
 		}
 		if last == nil || m.Started.After(last.m.Started) {
@@ -853,36 +901,56 @@ func (s *server) recoverRuns() {
 	s.run.mu.Unlock()
 }
 
-// reapRun: 기록의 ansible-playbook이 아직 살아 있으면 그 묶음을 끝내고 사라질 때까지 기다린다. 우리 자식이 아니라 Wait할
-// 수 없으므로, 묶음에 프로세스가 남았는지를 신호 0으로 본다. PID가 다른 프로세스에 다시 쓰였으면 건드리지 않는다.
-func reapRun(m runManifest, logf func(string)) {
-	if m.PID <= 0 || m.PGID <= 0 || m.ProcStart == "" {
+// readManifest: 실행 기록. 읽지 못하면 이름만 채운 빈 기록이다.
+func readManifest(dir, name string) runManifest {
+	var m runManifest
+	if b, err := os.ReadFile(filepath.Join(dir, runManifestFile)); err == nil {
+		_ = json.Unmarshal(b, &m)
+	}
+	if m.ID == "" {
+		m.ID = name
+	}
+	return m
+}
+
+// supervisorWait: 살아 있는 감독이 스스로 마무리하기를 기다리는 시간(노드 정리 시간을 넉넉히 준다). 시험이 줄인다.
+var supervisorWait = stopGrace + cleanupLimit + 10*time.Second
+
+// waitSupervisor: 기록의 감독이 살아 있으면(PID와 시작 시각이 같으면) 끝나기를 기다리고, 그래도 남으면 끝내라고 알리고,
+// 마지막에는 강제로 끝낸다. 같은 PID가 다른 프로세스에 다시 쓰였으면 건드리지 않는다.
+func waitSupervisor(dir string, logf func(string)) {
+	rec := readSupervisor(dir)
+	if rec == nil || rec.PID <= 0 || rec.Start == "" {
 		return
 	}
-	if cur, err := procStart(m.PID); err != nil || cur != m.ProcStart {
+	alive := func() bool { cur, err := procStart(rec.PID); return err == nil && cur == rec.Start }
+	if !alive() {
 		return
 	}
-	logf(fmt.Sprintf("pqcaton: ansible-playbook (pid %d) from the interrupted run is still running; stopping it", m.PID))
-	signalGroup(m.PGID, false)
-	if waitGroupGone(m.PGID, stopGrace) {
-		return
-	}
-	signalGroup(m.PGID, true)
-	if !waitGroupGone(m.PGID, 5*time.Second) {
-		logf(fmt.Sprintf("pqcaton: process group %d did not go away", m.PGID))
+	logf(fmt.Sprintf("pqcaton: the supervisor (pid %d) of the interrupted run is still finishing; waiting for it", rec.PID))
+	for _, step := range []struct {
+		signal bool
+		force  bool
+		limit  time.Duration
+	}{{false, false, supervisorWait}, {true, false, stopGrace}, {true, true, 5 * time.Second}} {
+		if step.signal {
+			_ = syscallKill(rec.PID, step.force)
+		}
+		deadline := time.Now().Add(step.limit)
+		for alive() && time.Now().Before(deadline) {
+			time.Sleep(100 * time.Millisecond)
+		}
+		if !alive() {
+			return
+		}
 	}
 }
 
-func waitGroupGone(pgid int, limit time.Duration) bool {
-	deadline := time.Now().Add(limit)
-	for time.Now().Before(deadline) {
-		if !groupAlive(pgid) {
-			return true
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return !groupAlive(pgid)
-}
+// reapMarked: 화면 쪽에서 표지 프로세스를 끝내는 함수. 시험이 끝내지 못하는 경우를 주입한다.
+var reapMarked = killMarked
+
+// supervisorExe: 감독으로 띄울 바이너리(지금 도는 이것). 시험이 바꾼다.
+var supervisorExe = os.Executable
 
 // currentRun: results/가 지금 어느 실행의 결과인가. 화면에서 관측을 돌린 적이 없으면 nil이다.
 func (s *server) currentRun() *runManifest {

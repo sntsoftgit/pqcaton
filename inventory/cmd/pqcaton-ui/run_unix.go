@@ -6,35 +6,26 @@
 package main
 
 import (
-	"errors"
 	"os"
 	"os/exec"
 	"syscall"
 )
 
-// ownGroup: 관측 실행을 제 프로세스 묶음에 띄운다. ansible-playbook은 노드마다 ssh를 자식으로 띄우므로, 멈출 때
-// 묶음 전체에 알려야 남는 것이 없다. 화면이 비정상으로 끝나면 묶음은 그대로 남고, 다음 시작이 기록의 PID와 시작
-// 시각으로 찾아 끝낸다(recoverRuns). 부모가 죽을 때 자식만 끝내는 장치(Linux Pdeathsig)는 쓰지 않는다 — 묶음의 나머지가
-// 주인 없이 남는다.
+// ownGroup: 감독(과 그 아래 Ansible)을 제 프로세스 묶음에 띄운다. 멈출 때 묶음 전체에 알린다. 화면이 비정상으로
+// 끝나면 감독이 표준 입력이 닫힌 것을 보고 마무리한다(supervise.go).
 func ownGroup(cmd *exec.Cmd) { cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
 
 func terminate(cmd *exec.Cmd) { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM) }
 
 func kill(cmd *exec.Cmd) { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 
-// signalGroup: 우리 자식이 아닌 묶음(지난 실행)에 끝내라고 알린다. force면 강제로 끝낸다.
-func signalGroup(pgid int, force bool) {
+// syscallKill: 프로세스 하나에 끝내라고 알린다. force면 강제로 끝낸다.
+func syscallKill(pid int, force bool) error {
 	sig := syscall.SIGTERM
 	if force {
 		sig = syscall.SIGKILL
 	}
-	_ = syscall.Kill(-pgid, sig)
-}
-
-// groupAlive: 그 묶음에 프로세스가 남았는가.
-func groupAlive(pgid int) bool {
-	err := syscall.Kill(-pgid, 0)
-	return err == nil || errors.Is(err, syscall.EPERM)
+	return syscall.Kill(pid, sig)
 }
 
 // ownedByMe · links: 승인 키 점검(approve.go). 이 사용자의 파일인가, 하드 링크가 몇 개인가.

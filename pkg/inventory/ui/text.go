@@ -998,6 +998,9 @@ var (
 	tRunStagingLeft = T{
 		KO: "노드 정리를 마치지 못했습니다. 노드에 스테이징 폴더 %s가 남았을 수 있으니 확인해 지우십시오",
 		EN: "The node cleanup did not finish. Nodes may keep the staging folder %s: check and remove it"}
+	tRunStuck = T{
+		KO: "이 관측의 프로세스 %s를 끝내지 못했습니다. 인벤토리와 받던 결과를 지우거나 옮기지 않았고, 새 관측을 시작하지 않습니다. 그 프로세스를 끝낸 뒤 화면을 다시 띄우십시오. 노드의 스테이징 폴더: %s",
+		EN: "Processes %s of this observation did not end. The inventory and what was arriving were neither removed nor moved, and no new observation starts. Stop those processes, then restart the screen. The staging folder on the nodes: %s"}
 	tRunStagingCleaned = T{KO: "노드의 스테이징 폴더를 지웠습니다", EN: "The staging folders on the nodes were removed"}
 	tRunMissing        = T{KO: "결과가 오지 않았거나 맞지 않는 자리", EN: "Results that did not arrive or do not check out"}
 	tRunCurrent        = T{
@@ -1012,6 +1015,7 @@ var runItemText = map[RunItem]T{
 	RunLinuxBins:   {KO: "Linux 수집기", EN: "Linux collectors"},
 	RunWindowsBins: {KO: "Windows 수집기", EN: "Windows collectors"},
 	RunJar:         {KO: "JVM 관측 에이전트(collector.jar)", EN: "JVM observation agent (collector.jar)"},
+	RunStuckItem:   {KO: "끝내지 못한 지난 관측", EN: "Earlier observation not stopped"},
 }
 
 var runItemMissing = map[RunItem]T{
@@ -1028,6 +1032,9 @@ var runItemMissing = map[RunItem]T{
 	RunWindowsBins: {
 		KO: "windows-amd64에 pqcota-cngscan.exe · pqcota-jvmscan.exe를 두십시오",
 		EN: "Put pqcota-cngscan.exe and pqcota-jvmscan.exe in windows-amd64"},
+	RunStuckItem: {
+		KO: "지난 관측의 프로세스가 아직 남았습니다. 아래 상태의 PID를 끝낸 뒤 화면을 다시 띄우십시오",
+		EN: "Processes of an earlier observation are still there. Stop the PIDs shown below, then restart the screen"},
 	RunJar: {
 		KO: "없어도 시작하지만, 실행 중인 JVM의 provider 체인은 관측하지 않습니다",
 		EN: "The observation starts without it, but the provider chains of running JVMs are not observed"},

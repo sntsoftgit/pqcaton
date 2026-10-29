@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -96,6 +97,8 @@ const (
 	RunLinuxBins   RunItem = "linux-bins"
 	RunWindowsBins RunItem = "windows-bins"
 	RunJar         RunItem = "jar"
+	// RunStuckItem — 끝내지 못한 지난 실행의 프로세스가 있다.
+	RunStuckItem RunItem = "stuck"
 )
 
 // RunCheck — 점검 하나. Blocking이 아닌 것은 빠져도 시작하지만 그 관측이 빠진다는 것을 알린다.
@@ -133,8 +136,10 @@ const (
 	RunStopped RunState = "stopped"
 	// RunIncomplete — ansible-playbook은 0으로 끝났지만 어느 노드의 결과가 빠졌다.
 	RunIncomplete RunState = "incomplete"
-	// RunInterrupted — 화면이 실행 도중에 끝났다. 다음 시작이 남은 것을 정리했다.
+	// RunInterrupted — 화면이 실행 도중에 끝났다. 감독이나 다음 시작이 남은 것을 정리했다.
 	RunInterrupted RunState = "interrupted"
+	// RunStuck — 이 실행의 프로세스를 끝내지 못했다. 아무것도 지우거나 옮기지 않았고, 새 관측을 시작하지 않는다.
+	RunStuck RunState = "stuck"
 )
 
 // RunStatus — 실행 하나의 지금 모습.
@@ -152,6 +157,8 @@ type RunStatus struct {
 	Missing []string
 	// NodeCleanup — 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
 	NodeCleanup string
+	// Stuck — 끝내지 못한 이 실행의 프로세스.
+	Stuck []int
 }
 
 // StagingPaths — 노드에 남을 수 있는 스테이징 폴더(실행 ID가 붙는다).
@@ -172,6 +179,8 @@ func (s RunStatus) Text(l Lang) string {
 		return tRunIncomplete.F(l, len(s.Missing), s.Received)
 	case RunInterrupted:
 		return tRunInterrupted.In(l)
+	case RunStuck:
+		return tRunStuck.F(l, fmt.Sprint(s.Stuck), s.StagingPaths())
 	}
 	return tRunFailed.F(l, s.Exit, s.Received)
 }

@@ -5,7 +5,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -35,6 +34,10 @@ echo "PLAY [pqcaton observation] window=$win"
 echo "INI_MODE=$(stat -c %a targets.yml 2>/dev/null || stat -f %Lp targets.yml)"
 grep 'ansible_ssh_pass' targets.yml
 grep -q 'name: pqcaton observation' observe.yml && echo "PLAYBOOK=embedded"
+echo "SSH_ARGS=$ANSIBLE_SSH_ARGS MARKED=${PQCATON_RUN:+yes}"
+if [ "$FAKE_MODE" = "escape" ]; then
+  if command -v setsid >/dev/null; then setsid sleep 300 >/dev/null 2>&1 & else sleep 300 >/dev/null 2>&1 & fi
+fi
 res() { printf '{"envelope":{"collectorId":"%s","targetNodeId":"%s"}}' "$1" "$2"; }
 for a in $(sed -n 's/^    \(n[0-9]*\):$/\1/p' targets.yml); do
   node=$(sed -n "/^    $a:\$/{n;s/.*pqcaton_node: !unsafe '\(.*\)'\$/\1/p;}" targets.yml)
@@ -148,7 +151,8 @@ func TestObservationRunsAndHandsOverResults(t *testing.T) {
 	if st.State != ui.RunDone || st.Received != 4 {
 		t.Fatalf("state %s, received %d\n%s", st.State, st.Received, st.Log)
 	}
-	for _, want := range []string{"window=7", "INI_MODE=600", "PLAYBOOK=embedded", "PLAY RECAP", "ansible_ssh_pass: !unsafe '********'"} {
+	for _, want := range []string{"window=7", "INI_MODE=600", "PLAYBOOK=embedded", "PLAY RECAP", "ansible_ssh_pass: !unsafe '********'",
+		"SSH_ARGS=-C -o ControlMaster=no -o ControlPersist=no MARKED=yes"} {
 		if !strings.Contains(st.Log, want) {
 			t.Errorf("the log lacks %q:\n%s", want, st.Log)
 		}
@@ -169,7 +173,7 @@ func TestObservationRunsAndHandsOverResults(t *testing.T) {
 	if got := names(t, filepath.Join(dir, "previous")); strings.Join(got, ",") != oldResult {
 		t.Errorf("previous/ = %v, want the earlier result", got)
 	}
-	if got := names(t, dir); strings.Join(got, ",") != strings.Join([]string{runLog, runManifestFile, "previous"}, ",") {
+	if got := names(t, dir); strings.Join(got, ",") != strings.Join([]string{runLog, runManifestFile, "previous", supervisorFile}, ",") {
 		t.Errorf("the run directory keeps %v (the inventory must be gone)", got)
 	}
 	if cur := s.currentRun(); cur == nil || cur.ID != st.ID || len(cur.Nodes) != 2 || cur.Nodes[1].Node != "db" {
@@ -515,14 +519,19 @@ func TestSwapIsTheCommitPoint(t *testing.T) {
 	})
 }
 
-// IC-U129 — **화면이 비정상으로 끝나도 다음 시작이 남은 실행을 끝낸다.** 기록의 ansible-playbook 묶음이 아직 살아 있으면
-// (PID와 시작 시각이 같으면) 끝내고 사라질 때까지 기다린 뒤, 남은 인벤토리로 노드 정리를 돌리고, 인벤토리를 지우고,
-// 받던 것을 partial/로 옮기고, 「중단됨」으로 적는다. 같은 PID가 다른 프로세스(시작 시각이 다름)면 건드리지 않는다.
-// 노드 정리에 닿지 못했으면 화면이 남았을 스테이징 폴더를 실행 ID와 함께 적는다.
+// IC-U129 — **화면이 비정상으로 끝나도 다음 시작이 남은 실행을 끝낸다.** 감독이 살아 있으면(기록의 PID와 시작 시각이
+// 같으면) 마무리하기를 기다리고, 너무 오래 걸리면 끝낸다. 시작 시각이 다르면(PID가 다른 프로세스에 다시 쓰였으면)
+// 건드리지 않는다. 그 뒤 이 실행의 표지를 가진 프로세스(감독이 죽어 남은 Ansible과 그 자식)를 모두 끝내고, 남은
+// 인벤토리로 노드 정리를 돌리고, 인벤토리를 지우고, partial/로 옮기고, 「중단됨」으로 적는다. 노드에 닿지 못했으면 03
+// 화면이 남았을 스테이징 폴더를 실행 ID와 함께 적는다.
 func TestRestartReapsAnOrphanedRun(t *testing.T) {
 	s := runReady(t, "ok")
-	spawn := func() *exec.Cmd {
-		cmd := exec.Command("sh", "-c", "sleep 300 & wait")
+	old := supervisorWait
+	supervisorWait = 300 * time.Millisecond
+	t.Cleanup(func() { supervisorWait = old })
+	spawn := func(env ...string) *exec.Cmd {
+		cmd := exec.Command("sleep", "300")
+		cmd.Env = append(os.Environ(), env...)
 		ownGroup(cmd)
 		if err := cmd.Start(); err != nil {
 			t.Fatal(err)
@@ -530,14 +539,18 @@ func TestRestartReapsAnOrphanedRun(t *testing.T) {
 		t.Cleanup(func() { kill(cmd); _ = cmd.Wait() })
 		return cmd
 	}
-	orphan := func(id string, cmd *exec.Cmd, start string, inventory bool) string {
+	orphan := func(id string, sup *exec.Cmd, start string, inventory bool) string {
 		dir := filepath.Join(s.runsDir(), id)
 		if err := os.MkdirAll(filepath.Join(dir, "next"), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		m := runManifest{ID: id, State: ui.RunRunning, Started: time.Now(), PID: cmd.Process.Pid, PGID: cmd.Process.Pid, ProcStart: start}
-		if err := writeManifest(dir, m); err != nil {
+		if err := writeManifest(dir, runManifest{ID: id, State: ui.RunRunning, Started: time.Now()}); err != nil {
 			t.Fatal(err)
+		}
+		if sup != nil {
+			if err := writeDurable(filepath.Join(dir, supervisorFile), supervisorRecord{PID: sup.Process.Pid, PGID: sup.Process.Pid, Start: start}); err != nil {
+				t.Fatal(err)
+			}
 		}
 		if inventory {
 			for name, body := range map[string]string{runInventory: "targets:\n", "vars.json": `{"run_id":"` + id + `"}`} {
@@ -548,31 +561,31 @@ func TestRestartReapsAnOrphanedRun(t *testing.T) {
 		}
 		return dir
 	}
+	gone := func(cmd *exec.Cmd) bool {
+		_, err := procStart(cmd.Process.Pid)
+		return err != nil
+	}
 
-	live := spawn()
-	start, err := procStart(live.Process.Pid)
+	id := "20261029T000001-bbbbbbbbbbbb"
+	sup := spawn()
+	supStart, err := procStart(sup.Process.Pid)
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := orphan("20261029T000001-bbbbbbbbbbbb", live, start, true)
+	ansible := spawn(runMarker(id))    // 감독이 남긴 Ansible
+	stray := spawn(runMarker("other")) // 다른 실행의 프로세스
+	dir := orphan(id, sup, supStart, true)
 	reused := spawn()
 	orphan("20261029T000000-cccccccccccc", reused, "not-its-start", false)
 
-	exited := make(chan error, 1)
-	go func() { exited <- live.Wait() }()
 	s.recoverRuns()
-	select {
-	case <-exited:
-	case <-time.After(20 * time.Second):
-		t.Fatal("the orphaned run is still running")
+	if !gone(sup) || !gone(ansible) {
+		t.Errorf("after recovery: supervisor gone %v, marked process gone %v", gone(sup), gone(ansible))
 	}
-	if !groupAlive(reused.Process.Pid) {
-		t.Error("a process whose PID was reused was signalled")
+	if gone(reused) || gone(stray) {
+		t.Error("a process that was not this run's was signalled")
 	}
-	var m runManifest
-	if err := json.Unmarshal([]byte(readFile(t, filepath.Join(dir, runManifestFile))), &m); err != nil {
-		t.Fatal(err)
-	}
+	m := readManifest(dir, "")
 	if m.State != ui.RunInterrupted || m.NodeCleanup != "done" || isFile(filepath.Join(dir, runInventory)) || !isDir(filepath.Join(dir, "partial")) {
 		t.Errorf("after recovery: %+v, inventory left %v", m, isFile(filepath.Join(dir, runInventory)))
 	}
@@ -580,11 +593,110 @@ func TestRestartReapsAnOrphanedRun(t *testing.T) {
 		t.Error("the nodes were not cleaned with the leftover inventory")
 	}
 
-	// 노드 정리에 닿지 못한 중단(인벤토리가 이미 없다)은 남았을 자리를 적는다.
-	gone := orphan("20261029T000002-dddddddddddd", reused, "not-its-start", false)
+	orphan("20261029T000002-dddddddddddd", nil, "", false)
 	s.recoverRuns()
 	page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
 	if !strings.Contains(page, "/tmp/pqcaton-observe-20261029T000002-dddddddddddd") {
-		t.Errorf("the screen does not name the staging folder that may be left (%s)", gone)
+		t.Error("the screen does not name the staging folder that may be left")
+	}
+}
+
+// IC-U131 — **화면이 사라지면 감독이 마무리한다.** 감독은 자기를 기록한 뒤에야 Ansible을 띄우고, 화면과 이은 표준 입력이
+// 닫히면(화면이 어떻게 끝나든) Ansible과 이 실행의 표지를 가진 프로세스를 모두 끝내고, 노드를 정리하고, 인벤토리를
+// 지우고, 받던 것을 partial/로 옮기고, 「중단됨」으로 적은 뒤 끝난다. 다음 시작을 기다리지 않는다.
+func TestSupervisorFinishesWhenTheScreenGoes(t *testing.T) {
+	s := runReady(t, "hang")
+	if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusSeeOther {
+		t.Fatalf("start = %d", w.Code)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(s.run.status().Log, "PLAYBOOK=") {
+		if time.Now().After(deadline) {
+			t.Fatalf("the fake never started:\n%s", s.run.status().Log)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	s.run.mu.Lock()
+	j := s.run.job
+	j.detached = true
+	rec := readSupervisor(j.dir)
+	s.run.mu.Unlock()
+	if rec == nil || rec.PID != j.cmd.Process.Pid || rec.Start == "" {
+		t.Fatalf("the supervisor did not record itself before starting Ansible: %+v", rec)
+	}
+	_ = j.stdin.Close() // 화면이 사라졌다
+	select {
+	case <-j.done:
+	case <-time.After(20 * time.Second):
+		t.Fatal("the supervisor did not finish")
+	}
+	m := readManifest(j.dir, "")
+	if m.State != ui.RunInterrupted || m.NodeCleanup != "done" || isFile(filepath.Join(j.dir, runInventory)) || !isDir(filepath.Join(j.dir, "partial")) {
+		t.Errorf("after the screen went: %+v, inventory left %v", m, isFile(filepath.Join(j.dir, runInventory)))
+	}
+	if left := markedProcs(runMarker(m.ID)); len(left) > 0 {
+		t.Errorf("processes of the run are left: %v", left)
+	}
+	if got := names(t, s.results); strings.Join(got, ",") != oldResult {
+		t.Errorf("results/ changed: %v", got)
+	}
+}
+
+// IC-U132 — **끝내지 못한 프로세스가 있으면 아무것도 지우거나 옮기지 않는다.** 회수가 이 실행의 프로세스를 끝내지 못하면
+// 노드 정리를 겹쳐 돌리지 않고, 인벤토리를 지우지 않고, 받던 것을 옮기지 않고, 「회수 필요」로 적는다. 03 화면은 그 PID와
+// 스테이징 폴더를 보이고, 새 관측은 409(`run-not-ready`)로 시작하지 않는다. 프로세스가 사라진 뒤 다시 시작하면 남은 것을 회수한다.
+func TestStuckRunIsLeftAlone(t *testing.T) {
+	s := runReady(t, "ok")
+	old := reapMarked
+	reapMarked = func(string, time.Duration) []int { return []int{4242} }
+	id := "20261029T000003-eeeeeeeeeeee"
+	dir := filepath.Join(s.runsDir(), id)
+	if err := os.MkdirAll(filepath.Join(dir, "next"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeManifest(dir, runManifest{ID: id, State: ui.RunRunning, Started: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, runInventory), []byte("targets:\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s.recoverRuns()
+	m := readManifest(dir, "")
+	if m.State != ui.RunStuck || !isFile(filepath.Join(dir, runInventory)) || !isDir(filepath.Join(dir, "next")) ||
+		strings.Contains(readFile(t, filepath.Join(dir, runLog)), "CLEANUP ran") {
+		t.Errorf("a stuck run was touched: %+v", m)
+	}
+	page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	for _, want := range []string{"4242", "/tmp/pqcaton-observe-" + id, "끝내지 못한 지난 관측"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the observe screen does not show %q", want)
+		}
+	}
+	if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusConflict {
+		t.Errorf("start with a stuck run = %d, want 409", w.Code)
+	}
+	reapMarked = old
+	s.recoverRuns()
+	if m := readManifest(dir, ""); m.State != ui.RunInterrupted || isFile(filepath.Join(dir, runInventory)) {
+		t.Errorf("after the processes went: %+v", m)
+	}
+}
+
+// IC-U133 — **관측이 끝나면 그 실행의 프로세스가 하나도 남지 않는다.** 화면이 띄운 관측은 SSH 연결 공유를 쓰지 않고
+// (`ControlMaster=no`), Ansible과 그 자식은 실행 표지를 물려받는다. 세션을 떼어 나간 자식이 있어도 감독이 표지로 찾아
+// 끝내므로, 정상 종료와 중지 뒤에 표지를 가진 프로세스가 없다.
+func TestNothingOfTheRunIsLeft(t *testing.T) {
+	for _, stop := range []bool{false, true} {
+		s := runReady(t, "escape")
+		if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusSeeOther {
+			t.Fatalf("start = %d", w.Code)
+		}
+		if stop {
+			s.stopRun()
+		}
+		st := waitRun(t, s)
+		if left := markedProcs(runMarker(st.ID)); len(left) > 0 {
+			t.Errorf("stop=%v: processes of the run are left: %v", stop, left)
+		}
 	}
 }

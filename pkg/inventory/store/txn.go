@@ -172,6 +172,7 @@ func (s *State) Create(files []Change, wait time.Duration) error {
 	})
 }
 
+// dirs: 트랜잭션이 잠글 대상 디렉토리. 바꾸기 · 덧붙이기 · 만들기 · 지우기 모두다.
 func (tx Tx) dirs() []string {
 	var out []string
 	for _, c := range tx.Replace {
@@ -179,6 +180,12 @@ func (tx Tx) dirs() []string {
 	}
 	for _, a := range tx.Append {
 		out = append(out, filepath.Dir(a.Path))
+	}
+	for _, c := range tx.Create {
+		out = append(out, filepath.Dir(c.Path))
+	}
+	for _, p := range tx.Remove {
+		out = append(out, filepath.Dir(p))
 	}
 	return out
 }

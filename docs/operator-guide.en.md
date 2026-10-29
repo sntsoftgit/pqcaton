@@ -237,10 +237,13 @@ required).
    the current results stay and what arrived is kept for diagnosis in `observations/<run>/partial/`. The results received
    are read with the upstream decoder, and if any file is broken, belongs to another node or comes from another collector,
    they do not become current. After a run that did not finish, a cleanup removes the staging folders from the nodes.
-   Stopping the screen stops a running observation too, and the screen ends only after the cleanup. If the screen ends
-   abnormally (killed, power loss), the next start stops any Ansible still running, tries the node cleanup, and removes the
-   inventory with the access secrets. If the nodes could not be reached, the 03 screen names the staging folder that may
-   be left, with the run ID: `/tmp/pqcaton-observe-<run ID>` (on Windows `C:\Windows\Temp\pqcaton-observe-<run ID>`). The network observation waits for handshakes on the
+   Stopping the screen stops a running observation too, and the screen ends only after the cleanup. The observation runs
+   under a supervisor process the screen starts (`pqcaton-ui` itself), so if the screen is killed, the supervisor stops
+   Ansible, cleans the nodes and removes the inventory. If the supervisor ended too (a power loss, say), the next start
+   finds the run's processes, stops them and does the same cleanup. If they cannot be stopped, nothing is removed or moved:
+   the run is left as "recovery needed", the 03 screen shows the PIDs, and no new observation starts. Observations started
+   by the screen do not share SSH connections (`ControlMaster=no`). If the nodes could not be reached, the 03 screen names
+   the staging folder that may be left, with the run ID: `/tmp/pqcaton-observe-<run ID>` (on Windows `C:\Windows\Temp\pqcaton-observe-<run ID>`). The network observation waits for handshakes on the
    node's default-route interface for the window you set (60 seconds by default).
 4. **04 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
    screen. With no results, the screen points at that folder.

@@ -68,6 +68,10 @@ var serveHTTP = http.Serve
 
 // run: 시작부터 끝까지. 종료 코드를 돌려준다.
 func run(args []string, stdout, stderr io.Writer) int {
+	// 관측 감독 모드. 화면이 자기 바이너리를 이렇게 띄운다(supervise.go). 사용자가 부르는 플래그가 아니다.
+	if len(args) == 3 && args[0] == superviseFlag {
+		return supervise(args[1], args[2])
+	}
 	c, err := parseStart(args, stderr)
 	if errors.Is(err, errUsage) {
 		return 2

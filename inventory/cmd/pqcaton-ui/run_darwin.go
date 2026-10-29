@@ -4,8 +4,10 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"os"
 
 	"golang.org/x/sys/unix"
 )
@@ -31,4 +33,28 @@ func procStart(pid int) (string, error) {
 	}
 	t := kp.Proc.P_starttime
 	return fmt.Sprintf("%d.%06d", t.Sec, t.Usec), nil
+}
+
+// markedProcs: 표지(환경 변수 한 줄)를 가진 이 사용자의 프로세스. kern.procargs2로 환경을 읽는다(같은 사용자의 것만
+// 읽힌다). 자기 자신과 좀비는 뺀다.
+func markedProcs(marker string) []int {
+	kps, err := unix.SysctlKinfoProcSlice("kern.proc.uid", os.Getuid())
+	if err != nil {
+		return nil
+	}
+	want := []byte("\x00" + marker + "\x00")
+	self := os.Getpid()
+	var out []int
+	for _, kp := range kps {
+		pid := int(kp.Proc.P_pid)
+		if pid == self || kp.Proc.P_stat == sZomb {
+			continue
+		}
+		buf, err := unix.SysctlRaw("kern.procargs2", pid)
+		if err != nil || !bytes.Contains(buf, want) {
+			continue
+		}
+		out = append(out, pid)
+	}
+	return out
 }

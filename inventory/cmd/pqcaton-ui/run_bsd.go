@@ -13,3 +13,5 @@ func dirswap(string, string) error {
 }
 
 func procStart(int) (string, error) { return "", errors.New("not supported on this platform") }
+
+func markedProcs(string) []int { return nil }
