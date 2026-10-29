@@ -1124,7 +1124,12 @@ var (
 	tSignLineApprover = T{KO: "승인자 %s", EN: "Approver %s"}
 	tSignLineKey      = T{KO: "승인 키 지문 %s", EN: "Approval key fingerprint %s"}
 	tSignDo           = T{KO: "이 내용으로 서명", EN: "Sign this"}
-	tSignedExists     = T{
+	tSignConfirmTitle = T{KO: "서명 전 확인", EN: "Confirm before signing"}
+	tSignConfirmBody  = T{
+		KO: "아래 계획에 이 승인자와 이 키로 승인 서명을 합니다. 서명한 계획은 따로 남고 덮지 않습니다. 아직 아무것도 쓰지 않았습니다.",
+		EN: "This signs the approval of the plan below as this approver with this key. The signed plan is kept separately and never overwritten. Nothing has been written yet."}
+	tSignConfirmBack = T{KO: "서명하지 않고 화면으로 돌아가기", EN: "Back to the screen without signing"}
+	tSignedExists    = T{
 		KO: "서명한 계획 파일이 이미 있어 덮지 않았습니다. 지금 계획과 맞지 않으면 06 화면에서 지난 서명을 보관한 뒤 서명하십시오.",
 		EN: "A signed plan file already exists and was not overwritten. If it does not match the current plan, archive the earlier signature on the 06 screen, then sign."}
 	tArchive    = T{KO: "지난 서명 보관", EN: "Archive the earlier signature"}

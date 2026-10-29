@@ -35,8 +35,8 @@ type ConfirmView struct {
 	// Hidden: 다시 실을 폼 값. 확인 토큰과 CSRF · rev는 따로 싣는다.
 	Hidden                         []Field
 	Token, Exp, Payload, SessionID string
-	// DoText — 실행 단추의 말. 비면 「확정」이다.
-	DoText string
+	// Sign — 확정이 아니라 06의 승인 서명을 확인한다. 제목 · 안내 · 단추 · 돌아가기의 말이 서명의 것이 된다.
+	Sign bool
 }
 
 // confirmOwn: 확인 페이지가 직접 싣는 필드. 받은 폼에서 다시 싣지 않는다.
@@ -70,6 +70,9 @@ func RenderConfirm(w io.Writer, v ConfirmView) error {
 
 // ConfirmTitle: 확인 페이지의 제목.
 func ConfirmTitle(l Lang) string { return tConfirmTitle.In(l) }
+
+// SignConfirmTitle: 서명 확인 페이지의 제목.
+func SignConfirmTitle(l Lang) string { return tSignConfirmTitle.In(l) }
 
 // LinePlanActions · LineJudgments · LinePolicyRules: 확인 페이지의 요약 줄.
 func LinePlanActions(l Lang, n int) string { return tLinePlanActions.F(l, n) }

@@ -4,7 +4,11 @@ package ui
 // 숨은 필드로 다시 싣고, 확정 버튼은 서명된 확인 토큰과 함께 보낸다.
 templ confirmPage(v ConfirmView) {
 	@nextShell(v.Page) {
-		<p>{ tConfirmBody.In(v.Lang) }</p>
+		if v.Sign {
+			<p>{ tSignConfirmBody.In(v.Lang) }</p>
+		} else {
+			<p>{ tConfirmBody.In(v.Lang) }</p>
+		}
 		if len(v.Lines) > 0 {
 			<ul>
 				for _, l := range v.Lines {
@@ -30,8 +34,8 @@ templ confirmPage(v ConfirmView) {
 			<input type="hidden" name={ ConfirmExpField } value={ v.Exp }/>
 			<input type="hidden" name={ ConfirmTokenField } value={ v.Token }/>
 			<div class="actions">
-				if v.DoText != "" {
-					<button type="submit" class="primary">{ v.DoText }</button>
+				if v.Sign {
+					<button type="submit" class="primary">{ tSignDo.In(v.Lang) }</button>
 				} else {
 					<button type="submit" class="primary">{ tConfirmDo.In(v.Lang) }</button>
 				}
@@ -40,6 +44,10 @@ templ confirmPage(v ConfirmView) {
 				}
 			</div>
 		</form>
-		<p><a href={ templ.SafeURL(v.Back) }>{ tConfirmBack.In(v.Lang) }</a></p>
+		if v.Sign {
+			<p><a href={ templ.SafeURL(v.Back) }>{ tSignConfirmBack.In(v.Lang) }</a></p>
+		} else {
+			<p><a href={ templ.SafeURL(v.Back) }>{ tConfirmBack.In(v.Lang) }</a></p>
+		}
 	}
 }

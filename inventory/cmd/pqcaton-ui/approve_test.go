@@ -71,10 +71,11 @@ func TestApprovalIsVerifiedUpstream(t *testing.T) {
 		t.Error("the verify line is shown before anyone signed (it has no approver yet)")
 	}
 	before := readFile(t, s.planOut)
-	w := postForm(t, s, ui.SignConfirmPath, withRev(signForm("보안팀장"), s.revFor(ui.ScreenApprove)))
+	w := postFormLang(t, s, ui.SignConfirmPath, "ko", withRev(signForm("보안팀장"), s.revFor(ui.ScreenApprove)))
 	key, _ := s.readKey()
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), key.Fingerprint) || !strings.Contains(w.Body.String(), "보안팀장") ||
-		!strings.Contains(w.Body.String(), "plan-1") {
+		!strings.Contains(w.Body.String(), "plan-1") || !strings.Contains(w.Body.String(), "서명 전 확인") ||
+		strings.Contains(w.Body.String(), "확정합니다") {
 		t.Fatalf("the confirmation page = %d\n%s", w.Code, w.Body.String())
 	}
 	if _, err := os.Stat(s.signedPath()); err == nil {

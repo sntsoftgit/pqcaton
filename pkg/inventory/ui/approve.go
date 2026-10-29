@@ -185,6 +185,3 @@ func SignConfirmLines(l Lang, planID string, actions int, planHash, approver, fi
 	return []string{tSignLinePlan.F(l, planID, actions), tSignLineHash.F(l, planHash), tSignLineApprover.F(l, approver),
 		tSignLineKey.F(l, fingerprint)}
 }
-
-// SignConfirmDo — 서명 확인 페이지의 실행 단추.
-func SignConfirmDo(l Lang) string { return tSignDo.In(l) }

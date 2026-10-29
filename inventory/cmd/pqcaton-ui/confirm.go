@@ -90,17 +90,17 @@ func (s *server) confirmed(w http.ResponseWriter, r *http.Request, kind, back st
 // rev와 다르면 미리 보지 않고 409다.
 func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, action, saveAction, back string,
 	id store.Identity, cur, payload string, lines []string, files []ui.FileRef) {
-	s.confirmPageWith(w, r, kind, action, saveAction, back, id, cur, payload, lines, files, "")
+	s.confirmPageWith(w, r, kind, action, saveAction, back, id, cur, payload, lines, files, false)
 }
 
-// confirmPageAs: 저장만 하는 단추 없이, 실행 단추의 말을 정해 확인 페이지를 그린다(06 승인 서명).
-func (s *server) confirmPageAs(w http.ResponseWriter, r *http.Request, kind, action, back string,
-	id store.Identity, cur, payload string, lines []string, files []ui.FileRef, do string) {
-	s.confirmPageWith(w, r, kind, action, "", back, id, cur, payload, lines, files, do)
+// signConfirmPage: 06 승인 서명의 확인 페이지. 저장만 하는 단추가 없고, 말이 서명의 것이다.
+func (s *server) signConfirmPage(w http.ResponseWriter, r *http.Request, kind, action, back string,
+	id store.Identity, cur, payload string, lines []string, files []ui.FileRef) {
+	s.confirmPageWith(w, r, kind, action, "", back, id, cur, payload, lines, files, true)
 }
 
 func (s *server) confirmPageWith(w http.ResponseWriter, r *http.Request, kind, action, saveAction, back string,
-	id store.Identity, cur, payload string, lines []string, files []ui.FileRef, do string) {
+	id store.Identity, cur, payload string, lines []string, files []ui.FileRef, sign bool) {
 	rev := r.PostForm.Get(ui.RevField)
 	if cur == "" || cur != rev {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, files)
@@ -109,8 +109,11 @@ func (s *server) confirmPageWith(w http.ResponseWriter, r *http.Request, kind, a
 	exp := strconv.FormatInt(s.now().Add(confirmTTL).Unix(), 10)
 	p := s.page(r, "", "")
 	p.Title = ui.ConfirmTitle(p.Lang)
+	if sign {
+		p.Title = ui.SignConfirmTitle(p.Lang)
+	}
 	p.Rev = rev
-	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files, DoText: do,
+	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files, Sign: sign,
 		Hidden: ui.CarryForm(r.PostForm), Exp: exp, Payload: payload, SessionID: id.SessionID,
 		Token: s.confirmToken(kind, id.SessionID, rev, payload, exp)}
 	html(w, r, func(out io.Writer) error { return ui.RenderConfirm(out, v) })

@@ -403,7 +403,7 @@ func (s *server) approveSignConfirm(w http.ResponseWriter, r *http.Request) {
 	l := ui.PickLang(r)
 	lines := ui.SignConfirmLines(l, plan.GetId(), len(plan.GetActions()), strings.SplitN(payload, "|", 2)[0], approver, key.Fingerprint)
 	files := []ui.FileRef{file(l, "plan", s.planOut), file(l, "signed-plan", s.signedPath())}
-	s.confirmPageAs(w, r, kindApprove, ui.SignPath, back, store.Identity{SessionID: plan.GetId()}, cur, payload, lines, files, ui.SignConfirmDo(l))
+	s.signConfirmPage(w, r, kindApprove, ui.SignPath, back, store.Identity{SessionID: plan.GetId()}, cur, payload, lines, files)
 }
 
 // approveSign: 확인을 거친 서명(POST). 확인 토큰이 맞고 만료 전이어야 하고, 잠금 안에서 계획 · 키 · 승인자를 **다시
