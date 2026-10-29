@@ -50,6 +50,9 @@ const (
 	ItemReplace = "replace"
 	ItemAppend  = "append"
 	ItemCreate  = "create"
+	// ItemRemove: 파일을 지운다. 준비 파일이 없고, 적용 후 해시는 「파일이 없다」(빈 문자열)다. 이름 바꾸기는
+	// 새 이름의 Create와 옛 이름의 Remove를 한 기록에 담는다(MoveChecked).
+	ItemRemove = "remove"
 )
 
 // 트랜잭션의 실패 주입 자리.
@@ -78,13 +81,14 @@ type Addition struct {
 	Data []byte
 }
 
-// Tx: 한 번에 바꿀 것. Create는 없어야 하는 파일(영수증)이다.
+// Tx: 한 번에 바꿀 것. Create는 없어야 하는 파일(영수증)이다. Remove는 지울 파일이고 계획할 때의 내용이어야 지운다.
 type Tx struct {
 	Kind, Org, SessionID string
 	PayloadSHA256        string
 	Replace              []Change
 	Append               []Addition
 	Create               []Change
+	Remove               []string
 }
 
 // Item: 기록에 적히는 적용 항목. 경로는 상태 디렉토리의 부모 안이면 상대 경로다.
@@ -189,7 +193,9 @@ func (s *State) plan(tx Tx) (*Record, error) {
 		SessionID: tx.SessionID, PayloadSHA256: tx.PayloadSHA256, Created: time.Now().UTC()}
 	add := func(it Item) {
 		rec.Items = append(rec.Items, it)
-		rec.Prepared = append(rec.Prepared, it.Prepared)
+		if it.Prepared != "" {
+			rec.Prepared = append(rec.Prepared, it.Prepared)
+		}
 	}
 	var replaces []Item
 	for _, c := range tx.Replace {
@@ -232,6 +238,17 @@ func (s *State) plan(tx Tx) (*Record, error) {
 			return nil, fmt.Errorf("%w: %s", ErrExists, abs)
 		}
 		add(Item{Kind: ItemCreate, Path: s.rel(abs), Prepared: s.rel(PreparedPath(abs, id)), After: Sum(c.Content)})
+	}
+	// 지우기는 맨 뒤다. 이름 바꾸기에서 새 이름이 다 생긴 뒤에야 옛 이름이 사라진다.
+	for _, p := range tx.Remove {
+		tg, err := s.Inspect(p)
+		if err != nil {
+			return nil, err
+		}
+		if !tg.Exists {
+			return nil, fmt.Errorf("store: %s to remove does not exist", tg.Path)
+		}
+		add(Item{Kind: ItemRemove, Path: s.rel(tg.Path), Before: tg.SHA256, After: ""})
 	}
 	return rec, nil
 }
@@ -281,6 +298,9 @@ func (s *State) prepareAll(rec *Record, tx Tx) error {
 		adds[s.rel(abs)] = a.Data
 	}
 	for _, it := range rec.Items {
+		if it.Kind == ItemRemove {
+			continue // 준비할 것이 없다
+		}
 		var body []byte
 		mode := filePerm
 		switch it.Kind {
@@ -346,6 +366,25 @@ func (s *State) apply(txid string, it Item) (*Problem, error) {
 	path, prep := s.abs(it.Path), s.abs(it.Prepared)
 	if it.Kind == ItemAppend {
 		return s.applyAppend(txid, it)
+	}
+	if it.Kind == ItemRemove {
+		cur, size, err := currentHash(path)
+		if err != nil {
+			return nil, err
+		}
+		switch cur {
+		case "":
+			return nil, nil
+		case it.Before:
+			if fi, err := os.Lstat(path); err == nil {
+				if err := s.checkPlain(path, fi); err != nil {
+					return nil, err
+				}
+			}
+			return nil, os.Remove(path)
+		}
+		return &Problem{TxID: txid, Item: it, Current: cur, Size: size,
+			Why: "the file was changed outside pqcaton since the transaction began"}, nil
 	}
 	cur, size, err := currentHash(path)
 	if err != nil {

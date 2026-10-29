@@ -234,9 +234,13 @@ required).
    copies the collectors to each node in the table, runs them, takes the results into `results/`, and removes them from
    the node. While it runs, the log is shown and "Stop" stops it. **The current results change, all at once, only when
    every node's results arrived and the run succeeded.** If the run failed, was stopped, or a node's results are missing,
-   the current results stay and what arrived is kept for diagnosis in `observations/<run>/partial/`. After a run that did
-   not finish, a cleanup removes the staging folders from the nodes. Stopping the screen stops a running observation too,
-   and the screen ends only after the cleanup. The network observation waits for handshakes on the
+   the current results stay and what arrived is kept for diagnosis in `observations/<run>/partial/`. The results received
+   are read with the upstream decoder, and if any file is broken, belongs to another node or comes from another collector,
+   they do not become current. After a run that did not finish, a cleanup removes the staging folders from the nodes.
+   Stopping the screen stops a running observation too, and the screen ends only after the cleanup. If the screen ends
+   abnormally (killed, power loss), the next start stops any Ansible still running, tries the node cleanup, and removes the
+   inventory with the access secrets. If the nodes could not be reached, the 03 screen names the staging folder that may
+   be left, with the run ID: `/tmp/pqcaton-observe-<run ID>` (on Windows `C:\Windows\Temp\pqcaton-observe-<run ID>`). The network observation waits for handshakes on the
    node's default-route interface for the window you set (60 seconds by default).
 4. **04 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
    screen. With no results, the screen points at that folder.

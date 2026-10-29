@@ -25,3 +25,9 @@ func dirswap(string, string) error {
 func ownedByMe(os.FileInfo) bool { return false }
 
 func links(os.FileInfo) uint64 { return 0 }
+
+func procStart(int) (string, error) { return "", errors.New("not supported on this platform") }
+
+func signalGroup(int, bool) {}
+
+func groupAlive(int) bool { return false }

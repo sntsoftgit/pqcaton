@@ -45,6 +45,7 @@ import (
 const (
 	kindApprove   = "approve"
 	kindProvision = "provision"
+	kindArchive   = "archive"
 )
 
 // 06 화면이 쓰는 자리. 계획 파일 옆이고 이름은 계획 파일을 따른다(plan.json → plan.signed.json · plan.provision.yml ·
@@ -484,8 +485,9 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 }
 
 // approveArchive: 지난 서명(과 그 서명으로 만든 플레이북)을 보관한다(POST). **지우지 않고 이름만 바꾼다** —
-// `<계획>.signed.<시각>.json`처럼 시각을 붙여 옆에 두고, 그 이름이 이미 있으면 아무것도 옮기지 않는다. 지금 계획과
-// 맞는, 이 키로 확인되는 서명은 보관하지 않는다(새로 서명할 까닭이 없다).
+// `<계획>.signed.<시각>.json`처럼 시각을 붙여 옆에 둔다. 세 파일은 **한 트랜잭션**이다(store.MoveChecked): 서명 ·
+// 생성과 같은 대상 잠금 안에서 rev를 확인하고, 새 이름이 하나라도 이미 있으면 아무것도 옮기지 않고, 도중에 끊기면
+// 다음 시작이 끝까지 옮기거나 되돌린다. 지금 계획과 맞는, 이 키로 확인되는 서명은 보관하지 않는다.
 func (s *server) approveArchive(w http.ResponseWriter, r *http.Request) {
 	back := ui.ScreenApprove
 	if s.planOut == "" {
@@ -504,30 +506,24 @@ func (s *server) approveArchive(w http.ResponseWriter, r *http.Request) {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
 		return
 	}
-	if cur, err := store.Rev(s.approveInputs()); err != nil || cur != r.PostForm.Get(ui.RevField) {
-		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
+	stamp := s.now().UTC().Format("20060102T150405Z")
+	var moves []store.Move
+	for _, p := range []string{s.signedPath(), s.provisionPath(), s.rollbackPath()} {
+		ext := filepath.Ext(p)
+		moves = append(moves, store.Move{From: p, To: strings.TrimSuffix(p, ext) + "." + stamp + ext})
+	}
+	id := store.Identity{Kind: kindArchive, Org: s.orgName(), SessionID: "approval"}
+	n, err := s.st.MoveChecked(id, moves, s.check(r), s.waitTime())
+	if err != nil {
+		l := ui.PickLang(r)
+		if errors.Is(err, store.ErrExists) {
+			s.refuse(w, r, http.StatusConflict, ui.RefusedExists, back, []ui.FileRef{file(l, "signed-plan", s.signedPath())})
+			return
+		}
+		s.fail(w, r, back, err, file(l, "signed-plan", s.signedPath()))
 		return
 	}
-	stamp := s.now().UTC().Format("20060102T150405Z")
-	moved := 0
-	for _, p := range []string{s.signedPath(), s.provisionPath(), s.rollbackPath()} {
-		if _, err := os.Lstat(p); err != nil {
-			continue
-		}
-		ext := filepath.Ext(p)
-		to := strings.TrimSuffix(p, ext) + "." + stamp + ext
-		// 링크를 만든 뒤 옛 이름을 지운다. 새 이름이 이미 있으면 링크가 실패하고 아무것도 옮기지 않는다.
-		if err := os.Link(p, to); err != nil {
-			s.fail(w, r, back, err, file(ui.PickLang(r), "signed-plan", p))
-			return
-		}
-		if err := os.Remove(p); err != nil {
-			s.fail(w, r, back, err, file(ui.PickLang(r), "signed-plan", p))
-			return
-		}
-		moved++
-	}
-	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeArchived, moved)}, nil)
+	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeArchived, n)}, nil)
 }
 
 // approveGenerate: 서명한 계획으로 적용 · 되돌리기 플레이북을 만들어 작업 폴더에 쓴다(POST). 이 키로 확인되는

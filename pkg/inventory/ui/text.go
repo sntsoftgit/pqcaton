@@ -937,7 +937,7 @@ var (
 	tHostWinRMKey     = T{KO: "WinRM은 SSH 키로 접속하지 않습니다. 키 경로를 비우십시오", EN: "WinRM does not connect with an SSH key: clear the key path"}
 	tHostPort         = T{KO: "포트는 1부터 65535까지의 숫자입니다", EN: "the port must be a number from 1 to 65535"}
 	tHostNoIP         = T{KO: "IP가 없습니다", EN: "there is no IP"}
-	tHostControl      = T{KO: "줄바꿈이나 탭 같은 제어 문자가 들어 있습니다", EN: "it holds a control character such as a line break or a tab"}
+	tHostControl      = T{KO: "줄바꿈 · 탭 · 줄 구분자 같은 인쇄할 수 없는 문자가 들어 있습니다", EN: "it holds a character that cannot be printed, such as a line break, a tab or a line separator"}
 
 	tStepObserveNoHosts = T{KO: "아직 접근 정보가 없습니다", EN: "no access written yet"}
 	tStepObserveHosts   = T{KO: "관측할 노드 %d대", EN: "%d nodes to observe"}
@@ -990,13 +990,17 @@ var (
 		KO: "관측이 실패했습니다(종료 코드 %d). 지금 결과는 그대로이고, 받은 파일 %d개는 진단용으로 따로 두었습니다. 아래 로그에서 어느 노드의 어느 단계인지 보십시오",
 		EN: "The observation failed (exit code %d). The current results are unchanged; what arrived is kept aside for diagnosis (files: %d). The log below shows which node and which step"}
 	tRunIncomplete = T{
-		KO: "노드 %d곳의 결과가 오지 않아 지금 결과로 쓰지 않았습니다. 받은 파일 %d개는 진단용으로 따로 두었습니다",
-		EN: "Some nodes sent no results (nodes: %d), so this run was not used as the current results; what arrived is kept aside for diagnosis (files: %d)"}
+		KO: "결과가 오지 않았거나 맞지 않는 자리 %d곳이 있어 지금 결과로 쓰지 않았습니다. 받은 파일 %d개는 진단용으로 따로 두었습니다",
+		EN: "Some results did not arrive or do not check out (places: %d), so this run was not used as the current results; what arrived is kept aside for diagnosis (files: %d)"}
 	tRunInterrupted = T{
-		KO: "지난 관측은 화면이 도중에 끝나 중단됐습니다. 접근 비밀이 담긴 인벤토리는 지웠고 지금 결과는 그대로입니다. 노드에 임시 폴더(/tmp/pqcaton-observe-…)가 남았을 수 있습니다",
-		EN: "The last observation was interrupted when the screen stopped. Its inventory with the access secrets was removed and the current results are unchanged. Nodes may keep a staging folder (/tmp/pqcaton-observe-…)"}
-	tRunMissing = T{KO: "결과가 오지 않은 노드", EN: "Nodes whose results did not arrive"}
-	tRunCurrent = T{
+		KO: "지난 관측은 화면이 도중에 끝나 중단됐습니다. 남은 실행을 끝냈고, 접근 비밀이 담긴 인벤토리를 지웠고, 지금 결과는 그대로입니다",
+		EN: "The last observation was interrupted when the screen stopped. What was still running was stopped, the inventory with the access secrets was removed, and the current results are unchanged"}
+	tRunStagingLeft = T{
+		KO: "노드 정리를 마치지 못했습니다. 노드에 스테이징 폴더 %s가 남았을 수 있으니 확인해 지우십시오",
+		EN: "The node cleanup did not finish. Nodes may keep the staging folder %s: check and remove it"}
+	tRunStagingCleaned = T{KO: "노드의 스테이징 폴더를 지웠습니다", EN: "The staging folders on the nodes were removed"}
+	tRunMissing        = T{KO: "결과가 오지 않았거나 맞지 않는 자리", EN: "Results that did not arrive or do not check out"}
+	tRunCurrent        = T{
 		KO: "지금 결과는 %s에 끝난 관측입니다(노드 %d곳, 파일 %d개)",
 		EN: "The current results come from the observation that finished at %s (%d nodes, %d files)"}
 )

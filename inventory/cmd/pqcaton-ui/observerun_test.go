@@ -5,9 +5,12 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -32,14 +35,19 @@ echo "PLAY [pqcaton observation] window=$win"
 echo "INI_MODE=$(stat -c %a targets.yml 2>/dev/null || stat -f %Lp targets.yml)"
 grep 'ansible_ssh_pass' targets.yml
 grep -q 'name: pqcaton observation' observe.yml && echo "PLAYBOOK=embedded"
+res() { printf '{"envelope":{"collectorId":"%s","targetNodeId":"%s"}}' "$1" "$2"; }
 for a in $(sed -n 's/^    \(n[0-9]*\):$/\1/p' targets.yml); do
-  printf '{"envelope":{"targetNodeId":"x"}}' > "$rd/$a-openssl.json"
+  node=$(sed -n "/^    $a:\$/{n;s/.*pqcaton_node: !unsafe '\(.*\)'\$/\1/p;}" targets.yml)
+  res openssl-collector "$node" > "$rd/$a-openssl.json"
   case "$FAKE_MODE" in
   fail) echo "fatal: [$a]: UNREACHABLE!"; exit 2 ;;
   hang) sleep 300 ;;
+  badjson) echo 'ERROR: collector crashed' > "$rd/$a-openssl.json" ;;
+  wrongnode) res openssl-collector other-node > "$rd/$a-openssl.json" ;;
+  wrongcollector) res network-collector "$node" > "$rd/$a-openssl.json" ;;
   esac
   [ "$FAKE_MODE" = "incomplete" ] && [ "$a" = "n2" ] && continue
-  printf '{"envelope":{"targetNodeId":"x"}}' > "$rd/$a-net.json"
+  res network-collector "$node" > "$rd/$a-net.json"
 done
 : > "$rd/n1-jca.jsonl"
 echo "PLAY RECAP"
@@ -286,8 +294,9 @@ func TestFailedObservationLeavesResultsAlone(t *testing.T) {
 
 // IC-U123 — **접근 정보의 값은 인벤토리의 문법이 되지 않는다.** 노드 ID가 `cmdb://web-1`처럼 기호를 담고, 이름 ·
 // 계정 · 키 경로에 공백 · 작은따옴표 · `{{ }}`가 있어도 인벤토리의 호스트 이름은 별칭(n1)이고, 값은 모두 !unsafe
-// 문자열(작은따옴표는 겹쳐 적는다)이라 한 줄을 벗어나거나 템플릿으로 풀리지 않는다. 줄바꿈 같은 제어 문자는 화면이
-// 저장하지 않고(422), 손으로 넣은 파일이면 실행 전 점검이 막는다.
+// 문자열(작은따옴표는 겹쳐 적는다)이라 한 줄을 벗어나거나 템플릿으로 풀리지 않는다. 줄바꿈 · 탭 · YAML이 줄바꿈으로
+// 읽는 U+0085 · U+2028 · U+2029는 노드 ID · 계정 · 키 경로 · 비밀번호 어디에 있어도 인벤토리가 되지 않고, 화면이 저장하지
+// 않으며(422), 손으로 넣은 파일이면 실행 전 점검이 막는다.
 func TestHostValuesStayValues(t *testing.T) {
 	hosts := []inventory.Host{{NodeID: "cmdb://web-1", Name: "x ansible_become_pass=y", IP: "10.0.0.2", Port: 22,
 		SSHUser: "o'neil", SSHKey: "/k/{{ lookup('pipe','id') }}", SSHPass: "p w", OS: inventory.OSLinux, Conn: inventory.ConnSSH}}
@@ -310,16 +319,25 @@ func TestHostValuesStayValues(t *testing.T) {
 	if strings.Contains(inv, "ansible_become_pass") || len(slots) != 1 || slots[0].Alias != "n1" || slots[0].Node != "cmdb://web-1" {
 		t.Errorf("slots %+v, inventory:\n%s", slots, inv)
 	}
-	bad := []inventory.Host{{NodeID: "web\nevil ansible_host=1.2.3.4", IP: "10.0.0.2", Port: 22}}
-	if _, _, err := renderTargets(bad); err == nil {
-		t.Error("a node ID with a line break became an inventory")
+	for _, h := range []inventory.Host{
+		{NodeID: "web\nevil ansible_host=1.2.3.4", IP: "10.0.0.2", Port: 22},
+		{NodeID: "web\u2028evil: x", IP: "10.0.0.2", Port: 22},
+		{NodeID: "web", IP: "10.0.0.2", Port: 22, SSHUser: "a\u2029b"},
+		{NodeID: "web", IP: "10.0.0.2", Port: 22, SSHKey: "/k\u0085x"},
+		{NodeID: "web", IP: "10.0.0.2", Port: 22, SSHPass: "p\u2028w"},
+	} {
+		if _, _, err := renderTargets([]inventory.Host{h}); err == nil {
+			t.Errorf("a line separator in %+v became an inventory", h)
+		}
 	}
 
 	s := runReady(t, "ok")
 	before := readFile(t, s.hosts)
-	w := postForm(t, s, ui.HostsSavePath, withRev(url.Values{"host.id.0": {"web\tx"}, "host.ip.0": {"10.0.0.2"}}, s.revFor(ui.ScreenObserve)))
-	if w.Code != http.StatusUnprocessableEntity || readFile(t, s.hosts) != before {
-		t.Errorf("a tab in a node ID: %d, file changed %v", w.Code, readFile(t, s.hosts) != before)
+	for _, id := range []string{"web\tx", "web\u2028x", "web\u2029x"} {
+		w := postForm(t, s, ui.HostsSavePath, withRev(url.Values{"host.id.0": {id}, "host.ip.0": {"10.0.0.2"}}, s.revFor(ui.ScreenObserve)))
+		if w.Code != http.StatusUnprocessableEntity || readFile(t, s.hosts) != before {
+			t.Errorf("%q in a node ID: %d, file changed %v", id, w.Code, readFile(t, s.hosts) != before)
+		}
 	}
 	if err := os.WriteFile(s.hosts, []byte("node_id,ip\n\"we\nb\",10.0.0.2\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -400,5 +418,173 @@ func TestDirSwapExchanges(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(filepath.Join(a, "f")); !bytes.Equal(got, []byte("B")) {
 		t.Errorf("a/f = %q after the swap", got)
+	}
+}
+
+// IC-U127 — **결과는 내용까지 맞아야 지금 결과가 된다.** 받은 파일을 모두 상류 디코더로 읽어, 깨진 JSON(수집기 오류
+// 문구) · 다른 노드의 결과 · 파일 종류와 다른 수집기의 결과가 하나라도 있으면 「불완전」이고, 어느 노드의 어느 결과가
+// 왜 맞지 않는지가 보이며, results/는 그대로이고 받은 것은 partial/로 간다.
+func TestResultsMustCheckOut(t *testing.T) {
+	for _, c := range []struct{ mode, why string }{
+		{"badjson", "web (openssl): not a collection result"},
+		{"wrongnode", `web (openssl): for node "other-node", not this node`},
+		{"wrongcollector", `web (openssl): from "network-collector", not openssl-collector`},
+	} {
+		s := runReady(t, c.mode)
+		if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusSeeOther {
+			t.Fatalf("%s: start = %d", c.mode, w.Code)
+		}
+		st := waitRun(t, s)
+		if st.State != ui.RunIncomplete || !strings.Contains(strings.Join(st.Missing, "\n"), c.why) {
+			t.Errorf("%s: state %s, missing %v", c.mode, st.State, st.Missing)
+		}
+		if got := names(t, s.results); strings.Join(got, ",") != oldResult {
+			t.Errorf("%s: results/ changed: %v", c.mode, got)
+		}
+		if !isDir(filepath.Join(runDir(t, s), "partial")) {
+			t.Errorf("%s: nothing kept for diagnosis", c.mode)
+		}
+	}
+}
+
+// IC-U128 — **결과를 맞바꾼 순간이 커밋이다.** 맞바꾸기가 실패하면 지금 결과는 그대로이고 받은 것은 partial/로 간다.
+// 맞바꾼 뒤 이전 결과를 previous/로 옮기지 못해도 실행은 성공이고 새 결과가 지금 결과이며, 이전 결과의 보관만 「정리
+// 필요」로 남아 다음 시작이 마친다. 맞바꾼 직후 화면이 끊긴 자리도 다음 시작이 results/의 기록으로 알아보고 마친다.
+func TestSwapIsTheCommitPoint(t *testing.T) {
+	t.Run("swap fails", func(t *testing.T) {
+		s := runReady(t, "ok")
+		old := swapDirs
+		swapDirs = func(string, string) error { return errors.New("injected") }
+		t.Cleanup(func() { swapDirs = old })
+		postForm(t, s, ui.RunPath, url.Values{})
+		st := waitRun(t, s)
+		if st.State != ui.RunFailed || strings.Join(names(t, s.results), ",") != oldResult {
+			t.Errorf("state %s, results %v", st.State, names(t, s.results))
+		}
+		if !isFile(filepath.Join(runDir(t, s), "partial", "n1-openssl.json")) {
+			t.Error("the new results were not kept in partial/")
+		}
+	})
+	t.Run("keeping the earlier results fails", func(t *testing.T) {
+		s := runReady(t, "ok")
+		old := keepPrevious
+		keepPrevious = func(string) error { return errors.New("injected") }
+		postForm(t, s, ui.RunPath, url.Values{})
+		st := waitRun(t, s)
+		keepPrevious = old
+		if st.State != ui.RunDone || s.currentRun() == nil || s.currentRun().ID != st.ID {
+			t.Fatalf("state %s, current %+v", st.State, s.currentRun())
+		}
+		dir := runDir(t, s)
+		if !isFile(filepath.Join(dir, "next", oldResult)) || isDir(filepath.Join(dir, "partial")) {
+			t.Error("the earlier results were misfiled")
+		}
+		s.recoverRuns()
+		if !isFile(filepath.Join(dir, "previous", oldResult)) {
+			t.Error("the next start did not finish keeping the earlier results")
+		}
+	})
+	t.Run("stopped right after the swap", func(t *testing.T) {
+		s := runReady(t, "ok")
+		id := "20261029T000000-aaaaaaaaaaaa"
+		dir := filepath.Join(s.runsDir(), id)
+		next := filepath.Join(dir, "next")
+		if err := os.MkdirAll(next, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		m := runManifest{ID: id, State: ui.RunRunning, Started: time.Now(), Swapping: true,
+			Nodes: []runSlot{{Alias: "n1", Node: "web"}}}
+		mark := m
+		mark.State = ui.RunDone
+		if err := writeManifestAs(filepath.Join(next, currentMark), mark); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeManifest(dir, m); err != nil {
+			t.Fatal(err)
+		}
+		if err := dirswap(next, s.results); err != nil {
+			t.Fatal(err)
+		}
+		s.recoverRuns()
+		if st := s.run.status(); st.State != ui.RunDone {
+			t.Errorf("state after recovery = %s", st.State)
+		}
+		if !isFile(filepath.Join(dir, "previous", oldResult)) || s.currentRun().ID != id {
+			t.Error("the swap was not finished as committed")
+		}
+	})
+}
+
+// IC-U129 — **화면이 비정상으로 끝나도 다음 시작이 남은 실행을 끝낸다.** 기록의 ansible-playbook 묶음이 아직 살아 있으면
+// (PID와 시작 시각이 같으면) 끝내고 사라질 때까지 기다린 뒤, 남은 인벤토리로 노드 정리를 돌리고, 인벤토리를 지우고,
+// 받던 것을 partial/로 옮기고, 「중단됨」으로 적는다. 같은 PID가 다른 프로세스(시작 시각이 다름)면 건드리지 않는다.
+// 노드 정리에 닿지 못했으면 화면이 남았을 스테이징 폴더를 실행 ID와 함께 적는다.
+func TestRestartReapsAnOrphanedRun(t *testing.T) {
+	s := runReady(t, "ok")
+	spawn := func() *exec.Cmd {
+		cmd := exec.Command("sh", "-c", "sleep 300 & wait")
+		ownGroup(cmd)
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { kill(cmd); _ = cmd.Wait() })
+		return cmd
+	}
+	orphan := func(id string, cmd *exec.Cmd, start string, inventory bool) string {
+		dir := filepath.Join(s.runsDir(), id)
+		if err := os.MkdirAll(filepath.Join(dir, "next"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		m := runManifest{ID: id, State: ui.RunRunning, Started: time.Now(), PID: cmd.Process.Pid, PGID: cmd.Process.Pid, ProcStart: start}
+		if err := writeManifest(dir, m); err != nil {
+			t.Fatal(err)
+		}
+		if inventory {
+			for name, body := range map[string]string{runInventory: "targets:\n", "vars.json": `{"run_id":"` + id + `"}`} {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		return dir
+	}
+
+	live := spawn()
+	start, err := procStart(live.Process.Pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := orphan("20261029T000001-bbbbbbbbbbbb", live, start, true)
+	reused := spawn()
+	orphan("20261029T000000-cccccccccccc", reused, "not-its-start", false)
+
+	exited := make(chan error, 1)
+	go func() { exited <- live.Wait() }()
+	s.recoverRuns()
+	select {
+	case <-exited:
+	case <-time.After(20 * time.Second):
+		t.Fatal("the orphaned run is still running")
+	}
+	if !groupAlive(reused.Process.Pid) {
+		t.Error("a process whose PID was reused was signalled")
+	}
+	var m runManifest
+	if err := json.Unmarshal([]byte(readFile(t, filepath.Join(dir, runManifestFile))), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.State != ui.RunInterrupted || m.NodeCleanup != "done" || isFile(filepath.Join(dir, runInventory)) || !isDir(filepath.Join(dir, "partial")) {
+		t.Errorf("after recovery: %+v, inventory left %v", m, isFile(filepath.Join(dir, runInventory)))
+	}
+	if !strings.Contains(readFile(t, filepath.Join(dir, runLog)), "CLEANUP ran") {
+		t.Error("the nodes were not cleaned with the leftover inventory")
+	}
+
+	// 노드 정리에 닿지 못한 중단(인벤토리가 이미 없다)은 남았을 자리를 적는다.
+	gone := orphan("20261029T000002-dddddddddddd", reused, "not-its-start", false)
+	s.recoverRuns()
+	page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	if !strings.Contains(page, "/tmp/pqcaton-observe-20261029T000002-dddddddddddd") {
+		t.Errorf("the screen does not name the staging folder that may be left (%s)", gone)
 	}
 }

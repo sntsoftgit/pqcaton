@@ -5,14 +5,11 @@
 
 package main
 
-import (
-	"errors"
-	"syscall"
-)
+import "errors"
 
 // 저장을 지원하는 플랫폼은 Linux와 macOS뿐이다. 그 밖의 유닉스는 컴파일만 되게 둔다.
-func deathSignal(*syscall.SysProcAttr) {}
-
 func dirswap(string, string) error {
 	return errors.New("swapping directories is not supported on this platform")
 }
+
+func procStart(int) (string, error) { return "", errors.New("not supported on this platform") }

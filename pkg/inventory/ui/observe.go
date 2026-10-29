@@ -148,8 +148,15 @@ type RunStatus struct {
 	Received int
 	Exit     int
 	Window   int
-	// Missing — 결과가 오지 않은 노드(와 무엇이 빠졌는지).
+	// Missing — 결과가 오지 않았거나 맞지 않는 자리(와 그 까닭).
 	Missing []string
+	// NodeCleanup — 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
+	NodeCleanup string
+}
+
+// StagingPaths — 노드에 남을 수 있는 스테이징 폴더(실행 ID가 붙는다).
+func (s RunStatus) StagingPaths() string {
+	return "/tmp/pqcaton-observe-" + s.ID + " (Windows: C:\\Windows\\Temp\\pqcaton-observe-" + s.ID + ")"
 }
 
 // Text — 상태 한 줄.
@@ -307,11 +314,12 @@ func RenderObserve(w io.Writer, v ObserveView) error {
 	return observePage(v).Render(context.Background(), w)
 }
 
-// hasControl — 값에 제어 문자(줄바꿈 · 탭 같은 것)가 있는가. 접근 정보에서는 정당한 쓰임이 없고, 인벤토리의
-// 줄을 갈라 다른 설정을 끼워 넣는 길이 된다.
+// hasControl — 값에 인쇄할 수 없는 문자가 있는가. 줄바꿈 · 탭 같은 제어 문자와, YAML이 줄바꿈으로 읽는 U+2028 ·
+// U+2029, 보이지 않는 서식 문자까지다. 접근 정보에서는 정당한 쓰임이 없고, 인벤토리의 줄을 갈라 다른 설정을 끼워
+// 넣는 길이 된다. 실행 전 점검(hostValuesOK)과 같은 규칙이다.
 func hasControl(vs ...string) bool {
 	for _, v := range vs {
-		if strings.IndexFunc(v, unicode.IsControl) >= 0 {
+		if strings.IndexFunc(v, func(r rune) bool { return r != ' ' && !unicode.IsPrint(r) }) >= 0 {
 			return true
 		}
 	}

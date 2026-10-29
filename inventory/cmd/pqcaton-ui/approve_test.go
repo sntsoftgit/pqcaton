@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,11 +12,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	provisioningv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/provisioning/v1"
 	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/sign"
 	"github.com/randyinthedev-hash/pqcota-provisioning/pkg/provisioning"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
@@ -304,5 +307,126 @@ func TestPlaybooksMatchUpstreamAndGoStale(t *testing.T) {
 	w = postForm(t, s, ui.GeneratePath, withRev(url.Values{"level": {"l2"}}, s.revFor(ui.ScreenApprove)))
 	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedGenNotReady) {
 		t.Errorf("generate on a stale signature = %d, want 409 %s", w.Code, ui.RefusedGenNotReady)
+	}
+}
+
+// archiveReady: 다른 키로 서명하고 플레이북까지 만든 뒤 지금 키로 바꾼 서버. 보관할 파일이 셋이다.
+func archiveReady(t *testing.T) (*server, map[string]string) {
+	t.Helper()
+	s, _ := keyReady(t)
+	mine := s.approvalKey
+	s.approvalKey = filepath.Join(t.TempDir(), "other.key")
+	writeKey(t, s.approvalKey)
+	if w := signVia(t, s, "예전 승인자"); w.Code != http.StatusSeeOther {
+		t.Fatalf("sign = %d", w.Code)
+	}
+	if w := postForm(t, s, ui.GeneratePath, withRev(url.Values{"level": {"l2"}}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusSeeOther {
+		t.Fatalf("generate = %d", w.Code)
+	}
+	s.approvalKey = mine
+	files := map[string]string{}
+	for _, p := range []string{s.signedPath(), s.provisionPath(), s.rollbackPath()} {
+		files[p] = readFile(t, p)
+	}
+	return s, files
+}
+
+// archivedState: 세 파일이 모두 보관됐으면 true, 모두 그대로면 false. 섞이면 실패다.
+func archivedState(t *testing.T, files map[string]string) bool {
+	t.Helper()
+	var moved, kept int
+	for p, body := range files {
+		ext := filepath.Ext(p)
+		to, _ := filepath.Glob(strings.TrimSuffix(p, ext) + ".*" + ext)
+		_, err := os.Stat(p)
+		switch {
+		case err == nil && len(to) == 0 && readFile(t, p) == body:
+			kept++
+		case err != nil && len(to) == 1 && readFile(t, to[0]) == body:
+			moved++
+		default:
+			t.Errorf("%s is half archived (%v, %v)", filepath.Base(p), err, to)
+		}
+	}
+	if moved != 0 && kept != 0 {
+		t.Errorf("mixed: %d archived, %d kept", moved, kept)
+	}
+	return moved == len(files)
+}
+
+// reopen: 상태 폴더를 실패 주입과 함께 다시 연다(hook이 nil이면 그냥 연다). 서버가 다시 뜬 것과 같다.
+func reopen(t *testing.T, s *server, hook func(point, path string) error) {
+	t.Helper()
+	s.st.Close()
+	st, err := store.Open(filepath.Join(filepath.Dir(s.planOut), store.DirName), store.Options{Warn: func(string) {}, Fault: hook})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AcquireRun(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	s.st = st
+}
+
+// IC-U130 — **「지난 서명 보관」은 세 파일을 한 트랜잭션으로 옮긴다.** 서명한 계획과 두 플레이북의 보관이 어느 자리에서
+// 멈춰도, 다시 열어 복구하면 셋 다 보관됐거나 셋 다 그대로다. 보관할 이름 하나가 이미 있으면 아무것도 옮기지 않는다(409
+// `exists`). 보관은 서명 · 생성과 같은 대상 잠금을 쓰므로, 다른 요청이 그 폴더를 쥐고 있으면 보관도 생성도 기다리다
+// 409(`busy`)이고 아무것도 바뀌지 않는다.
+func TestArchiveIsOneTransaction(t *testing.T) {
+	for _, stop := range []string{store.FaultPrepared, store.FaultRecordPrepared, store.FaultApply + "1", store.FaultApply + "4", store.FaultDone} {
+		t.Run(stop, func(t *testing.T) {
+			s, files := archiveReady(t)
+			errStop := errors.New("stopped here")
+			fired := false
+			reopen(t, s, func(point, path string) error {
+				if !fired && (point == stop || point+path == stop) {
+					fired = true
+					return errStop
+				}
+				return nil
+			})
+			w := postForm(t, s, ui.ArchivePath, withRev(url.Values{}, s.revFor(ui.ScreenApprove)))
+			if !strings.Contains(w.Header().Get("Location"), ui.ProblemParam+"=") {
+				t.Fatalf("archive with a stop = %d %s, want the problem shown", w.Code, w.Header().Get("Location"))
+			}
+			reopen(t, s, nil)
+			if err := s.st.Recover(time.Second); err != nil {
+				t.Fatalf("recover: %v", err)
+			}
+			archivedState(t, files)
+		})
+	}
+
+	s, files := archiveReady(t)
+	stamp := s.now().UTC().Format("20060102T150405Z")
+	taken := strings.TrimSuffix(s.rollbackPath(), ".yml") + "." + stamp + ".yml"
+	if err := os.WriteFile(taken, []byte("taken\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if w := postForm(t, s, ui.ArchivePath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusConflict {
+		t.Errorf("a taken archive name = %d, want 409", w.Code)
+	}
+	_ = os.Remove(taken)
+	if archivedState(t, files) {
+		t.Error("files moved although an archive name was taken")
+	}
+
+	s.wait = 50 * time.Millisecond
+	release, err := s.st.LockTargets([]string{filepath.Dir(s.planOut)}, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		path string
+		form url.Values
+	}{{ui.ArchivePath, url.Values{}}, {ui.GeneratePath, url.Values{"level": {"l2"}}}} {
+		if w := postForm(t, s, c.path, withRev(c.form, s.revFor(ui.ScreenApprove))); w.Code != http.StatusConflict {
+			t.Errorf("%s while the folder is held = %d, want 409", c.path, w.Code)
+		}
+	}
+	release()
+	if archivedState(t, files) {
+		t.Error("a request went through while the folder was held")
 	}
 }

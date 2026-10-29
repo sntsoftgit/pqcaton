@@ -270,6 +270,61 @@ func (s *State) SaveChecked(id Identity, targets []string, chk Check, wait time.
 	})
 }
 
+// Move: 이름 바꾸기 하나. To는 없어야 한다.
+type Move struct{ From, To string }
+
+// MoveChecked: 여러 파일의 이름을 **한 트랜잭션으로** 바꾼다. 잠금 → 남은 기록 복구 → rev 확인 → 계획 → 쓰기가 한
+// 잠금 안에서 일어난다. 새 이름마다 옛 내용을 만들고(Create: 이미 있으면 ErrExists이고 아무것도 하지 않는다), 다
+// 만든 뒤에 옛 이름을 지운다(Remove). 도중에 끊기면 다음 복구가 끝까지 하거나(PREPARED) 걷어 낸다(PREPARING) —
+// 일부만 옮겨진 채로 남지 않는다. From이 없는 Move는 건너뛴다. 옮길 것이 없으면 아무것도 하지 않는다.
+func (s *State) MoveChecked(id Identity, moves []Move, chk Check, wait time.Duration) (int, error) {
+	if err := id.check(); err != nil {
+		return 0, err
+	}
+	var targets []string
+	for _, m := range moves {
+		targets = append(targets, m.From, m.To)
+	}
+	n := 0
+	err := s.withLocks(dirsOf(targets), wait, func() error {
+		if err := chk.verify(); err != nil {
+			return err
+		}
+		tx := Tx{Kind: id.Kind, Org: id.Org, SessionID: id.SessionID}
+		for _, m := range moves {
+			fi, err := os.Lstat(m.From)
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			if err := s.checkPlain(m.From, fi); err != nil {
+				return err
+			}
+			b, err := os.ReadFile(m.From)
+			if err != nil {
+				return err
+			}
+			tx.Create = append(tx.Create, Change{Path: m.To, Content: b})
+			tx.Remove = append(tx.Remove, m.From)
+		}
+		if len(tx.Create) == 0 {
+			return nil
+		}
+		rec, err := s.plan(tx)
+		if err != nil {
+			return err
+		}
+		if err := chk.verify(); err != nil {
+			return err
+		}
+		n = len(tx.Create)
+		return s.run1(rec, tx)
+	})
+	return n, err
+}
+
 // recheck: 처음 견준 뒤 build가 입력을 다시 읽는다. 잠금을 지키지 않는 작성자(손 편집)가 그 사이에
 // 입력을 바꾸면, build는 바뀐 내용 위에 옛 화면의 폼 값을 얹고 plan은 바뀐 파일을 「적용 전」으로
 // 적는다. 그래서 plan 뒤, 첫 기록을 쓰기 직전에 다시 견준다. 그 뒤에 바뀐 대상 파일은 plan이 적은

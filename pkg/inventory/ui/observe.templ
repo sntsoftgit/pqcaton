@@ -98,6 +98,12 @@ templ runStatusBody(l Lang, csrf string, st *RunStatus) {
 	} else if st.State == RunDone {
 		<p><a class="primary" href={ templ.SafeURL(ScreenSurvey + "?" + LangParam + "=" + string(l)) }>{ tRunGoSurvey.In(l) }</a></p>
 	}
+	switch st.NodeCleanup {
+		case "failed":
+			<p class="msg bad">{ tRunStagingLeft.F(l, st.StagingPaths()) }</p>
+		case "done":
+			<p class="hint">{ tRunStagingCleaned.In(l) }</p>
+	}
 	if len(st.Missing) > 0 {
 		<p><strong>{ tRunMissing.In(l) }</strong></p>
 		<ul>

@@ -47,6 +47,7 @@ import (
 	"unicode"
 
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/resultio"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
@@ -112,6 +113,17 @@ type runManifest struct {
 	Files    []string    `json:"files,omitempty"`
 	Missing  []string    `json:"missing,omitempty"`
 	Received int         `json:"received"`
+	// PID · PGID · ProcStart: ansible-playbook 프로세스와 그 묶음, 그리고 같은 PID가 다른 프로세스에 다시 쓰였는지
+	// 가릴 시작 시각. 화면이 비정상으로 끝난 뒤 다음 시작이 아직 살아 있는 실행을 찾아 끝낸다(recoverRuns).
+	PID       int    `json:"pid,omitempty"`
+	PGID      int    `json:"pgid,omitempty"`
+	ProcStart string `json:"proc_start,omitempty"`
+	// NodeCleanup: 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
+	NodeCleanup string `json:"node_cleanup,omitempty"`
+	// Swapping: results/와 맞바꾸기 직전에 적는다. 이 표시로 끊겼으면 다음 시작이 results/의 기록으로 교환 여부를 가린다.
+	Swapping bool `json:"swapping,omitempty"`
+	// PreviousPending: 교환은 됐지만 이전 결과를 previous/로 옮기지 못했다. 다음 시작이 마친다.
+	PreviousPending bool `json:"previous_pending,omitempty"`
 }
 
 // runSlot: 인벤토리의 별칭과 그것이 가리키는 노드.
@@ -131,7 +143,8 @@ func (r *runner) status() *ui.RunStatus {
 	}
 	m := j.m
 	return &ui.RunStatus{ID: m.ID, State: m.State, Started: m.Started, Ended: m.Ended, Received: m.Received,
-		Exit: m.Exit, Window: m.Window, Dropped: j.dropped, Missing: m.Missing, Log: strings.Join(j.log, "\n")}
+		Exit: m.Exit, Window: m.Window, Dropped: j.dropped, Missing: m.Missing, NodeCleanup: m.NodeCleanup,
+		Log: strings.Join(j.log, "\n")}
 }
 
 func (r *runner) running() bool {
@@ -170,16 +183,23 @@ func redact(line string, secrets []string) string {
 
 // ── 접근 정보 → 인벤토리 ────────────────────────────────────────────────────
 
-// errHostValue: 접근 정보의 값에 제어 문자가 있다. 줄바꿈이 든 노드 ID나 주소는 정당한 쓰임이 없다.
-var errHostValue = errors.New("a control character in the access file")
+// errHostValue: 접근 정보의 값에 인쇄할 수 없는 문자가 있다. 줄바꿈(\n · \r · U+0085) · 줄 · 문단 구분자
+// (U+2028 · U+2029)는 YAML이 줄바꿈으로 읽어 인벤토리의 구조를 벗어나고, 그 밖의 제어 · 서식 문자도 노드 ID나 경로에
+// 정당한 쓰임이 없다.
+var errHostValue = errors.New("a character that cannot be printed in the access file")
 
-// hostValuesOK: 모든 값에 제어 문자가 없는가. 저장과 실행에서 같은 것을 본다.
+// printable: 인쇄할 수 있는 문자와 공백뿐인가. 저장(ui.ApplyHosts)과 실행이 같은 규칙을 쓴다.
+func printable(v string) bool {
+	return strings.IndexFunc(v, func(r rune) bool { return r != ' ' && !unicode.IsPrint(r) }) < 0
+}
+
+// hostValuesOK: 모든 값이 printable인가.
 func hostValuesOK(hosts []inventory.Host) error {
 	for _, h := range hosts {
-		for _, v := range []string{h.NodeID, h.Name, h.IP, h.SSHUser, h.SSHKey, h.SSHPass} {
-			if strings.IndexFunc(v, unicode.IsControl) >= 0 {
+		for _, v := range []string{h.NodeID, h.Name, h.IP, h.SSHUser, h.SSHKey, h.SSHPass, h.OS, h.Conn} {
+			if !printable(v) {
 				return fmt.Errorf("%w (node %q)", errHostValue, strings.Map(func(r rune) rune {
-					if unicode.IsControl(r) {
+					if r != ' ' && !unicode.IsPrint(r) {
 						return '?'
 					}
 					return r
@@ -379,7 +399,14 @@ func (s *server) startRun(window int) error {
 	}
 	r.mu.Lock()
 	j.cmd = cmd
+	j.m.PID, j.m.PGID = cmd.Process.Pid, cmd.Process.Pid
+	j.m.ProcStart, _ = procStart(cmd.Process.Pid)
+	started := j.m
 	r.mu.Unlock()
+	// 프로세스를 적어 둔다. 화면이 비정상으로 끝나면 다음 시작이 이 기록으로 실행을 찾아 끝낸다.
+	if err := writeManifest(j.dir, started); err != nil {
+		r.logf("pqcaton: could not record the running process: %v", err)
+	}
 
 	read := make(chan struct{})
 	go func() {
@@ -427,57 +454,120 @@ func (s *server) finishRun(j *runJob) {
 
 	// 끝까지 돌지 못한 실행은 노드에 스테이징 폴더가 남았을 수 있다. 인벤토리가 아직 있을 때 한 번 지운다.
 	if state != ui.RunDone {
-		s.cleanupNodes(j)
-	}
-	var note string
-	if state == ui.RunDone {
+		cleaned := runCleanup(j.dir, j.m.ID, func(line string) { r.logf("%s", line) })
 		r.mu.Lock()
-		m := j.m
+		j.m.NodeCleanup = cleaned
 		r.mu.Unlock()
-		m.Received, m.Ended = len(files), time.Now()
-		err := writeManifestAs(filepath.Join(next, currentMark), m)
-		if err == nil {
-			err = dirswap(next, s.results)
-		}
-		if err == nil {
-			err = os.Rename(next, filepath.Join(j.dir, "previous"))
-			note = fmt.Sprintf("pqcaton: %d result files are now the current results; the earlier results are kept in %s",
-				len(files), filepath.Join(j.dir, "previous"))
-		}
-		if err != nil {
+	}
+	var notes []string
+	if state == ui.RunDone {
+		committed, note := s.promote(j, files)
+		notes = append(notes, note...)
+		if !committed {
 			state = ui.RunFailed
-			note = "pqcaton: the results could not become current, so the earlier results stay: " + err.Error()
-			_ = os.Rename(next, filepath.Join(j.dir, "partial"))
 		}
 	} else {
 		_ = os.Rename(next, filepath.Join(j.dir, "partial"))
-		note = fmt.Sprintf("pqcaton: not used as the current results (%s); what arrived is kept for diagnosis in %s",
+		note := fmt.Sprintf("pqcaton: not used as the current results (%s); what arrived is kept for diagnosis in %s",
 			state, filepath.Join(j.dir, "partial"))
 		if len(missing) > 0 {
-			note += "; missing: " + strings.Join(missing, ", ")
+			note += "; missing or not valid: " + strings.Join(missing, ", ")
 		}
+		notes = append(notes, note)
 	}
 	r.mu.Lock()
 	j.m.State, j.m.Ended, j.m.Received = state, time.Now(), len(files)
-	r.appendLocked(note)
+	for _, n := range notes {
+		r.appendLocked(n)
+	}
 	r.appendLocked(fmt.Sprintf("pqcaton: finished (%s, exit %d)", state, j.m.Exit))
 	r.mu.Unlock()
 	s.closeRun(j)
 }
 
-// cleanupNodes: 정리 플레이북을 cleanupLimit 안에서 돌린다. 결과는 로그에만 남긴다.
-func (s *server) cleanupNodes(j *runJob) {
+// promote: 받은 세대를 지금 결과로 올린다. **dirswap이 성공한 순간이 커밋이다.**
+//
+//   - 교환 전에 실패하면 지금 결과는 그대로이고 받은 것은 partial/로 간다(committed=false).
+//   - 교환한 뒤의 일(next/에 든 이전 결과를 previous/로 옮기기)이 실패해도 새 결과는 이미 지금 결과다. 실행은 성공으로
+//     두고, 이전 결과의 보관만 「정리 필요」로 적는다. 다음 시작이 results/의 기록과 실행 기록을 견주어 마친다.
+//
+// 교환하기 전에 실행 기록을 「교환 중」으로 남긴다. 그 사이에 끊기면 다음 시작이 results/의 기록으로 교환이 일어났는지 안다.
+func (s *server) promote(j *runJob, files []string) (bool, []string) {
 	r := &s.run
-	r.logf("pqcaton: removing the staging folders from the nodes")
+	next := filepath.Join(j.dir, "next")
+	r.mu.Lock()
+	m := j.m
+	r.mu.Unlock()
+	m.State, m.Received, m.Ended = ui.RunDone, len(files), time.Now()
+	err := writeManifestAs(filepath.Join(next, currentMark), m)
+	if err == nil {
+		r.mu.Lock()
+		j.m.Swapping = true
+		pre := j.m
+		r.mu.Unlock()
+		err = writeManifest(j.dir, pre)
+	}
+	if err == nil {
+		err = swapDirs(next, s.results)
+	}
+	if err != nil {
+		_ = os.Rename(next, filepath.Join(j.dir, "partial"))
+		return false, []string{"pqcaton: the results could not become current, so the earlier results stay: " + err.Error()}
+	}
+	notes := []string{fmt.Sprintf("pqcaton: %d result files are now the current results", len(files))}
+	r.mu.Lock()
+	j.m.Swapping = false
+	r.mu.Unlock()
+	if err := keepPrevious(j.dir); err != nil {
+		r.mu.Lock()
+		j.m.PreviousPending = true
+		r.mu.Unlock()
+		notes = append(notes, "pqcaton: the earlier results are still in "+next+" and could not be kept as previous/ ("+
+			err.Error()+"); the next start finishes this")
+	} else {
+		notes = append(notes, "pqcaton: the earlier results are kept in "+filepath.Join(j.dir, "previous"))
+	}
+	return true, notes
+}
+
+// swapDirs · keepPrevious: 교환과 그 뒤의 일. 시험이 실패를 주입한다.
+var (
+	swapDirs     = dirswap
+	keepPrevious = finishSwap
+)
+
+// finishSwap: 교환 뒤 next/에 남은 이전 결과를 previous/로 옮긴다. 이미 옮겼으면 아무것도 하지 않는다.
+func finishSwap(dir string) error {
+	next := filepath.Join(dir, "next")
+	if !isDir(next) {
+		return nil
+	}
+	return os.Rename(next, filepath.Join(dir, "previous"))
+}
+
+// runCleanup: 정리 플레이북을 cleanupLimit 안에서 돌린다. 출력은 logf로 남기고, 다 지웠으면 "done", 아니면 "failed"다.
+// 실행 중인 관측의 끝(finishRun)과, 비정상 종료 뒤의 다음 시작(recoverRuns)이 함께 쓴다.
+func runCleanup(dir, id string, logf func(string)) string {
+	if !isFile(filepath.Join(dir, runInventory)) {
+		logf("pqcaton: no inventory left to reach the nodes, so their staging folders were not removed")
+		return "failed"
+	}
+	if !isFile(filepath.Join(dir, "cleanup.yml")) {
+		if err := os.WriteFile(filepath.Join(dir, "cleanup.yml"), cleanupPlaybook, 0o600); err != nil {
+			logf("pqcaton: node cleanup did not start: " + err.Error())
+			return "failed"
+		}
+	}
+	logf("pqcaton: removing the staging folders from the nodes")
 	cmd := exec.Command(ansibleCommand, "-i", runInventory, "-e", "@vars.json", "cleanup.yml")
-	cmd.Dir = j.dir
+	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0")
 	ownGroup(cmd)
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
 	if err := cmd.Start(); err != nil {
-		r.logf("pqcaton: node cleanup did not start: %v", err)
-		return
+		logf("pqcaton: node cleanup did not start: " + err.Error())
+		return "failed"
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -487,16 +577,21 @@ func (s *server) cleanupNodes(j *runJob) {
 	case <-time.After(cleanupLimit):
 		kill(cmd)
 		err = <-done
-		r.logf("pqcaton: node cleanup took longer than %s and was stopped", cleanupLimit)
+		logf(fmt.Sprintf("pqcaton: node cleanup took longer than %s and was stopped", cleanupLimit))
 	}
-	r.mu.Lock()
 	for _, line := range strings.Split(strings.TrimRight(out.String(), "\n"), "\n") {
-		r.appendLocked(line)
+		logf(line)
 	}
-	r.mu.Unlock()
 	if err != nil {
-		r.logf("pqcaton: node cleanup did not finish everywhere (%v); a node may keep /tmp/pqcaton-observe-%s", err, j.m.ID)
+		logf(fmt.Sprintf("pqcaton: node cleanup did not finish everywhere (%v); a node may keep %s", err, stagingPaths(id)))
+		return "failed"
 	}
+	return "done"
+}
+
+// stagingPaths: 노드에 남을 수 있는 스테이징 폴더. 화면과 안내서가 같은 말을 쓴다.
+func stagingPaths(id string) string {
+	return "/tmp/pqcaton-observe-" + id + " (Windows: C:\\Windows\\Temp\\pqcaton-observe-" + id + ")"
 }
 
 // closeRun: 비밀이 실린 파일을 지우고 기록을 남긴 뒤 done을 닫는다. 실패해도 done은 닫는다.
@@ -520,22 +615,81 @@ func (s *server) closeRun(j *runJob) {
 	close(j.done)
 }
 
-// expectedResults: 노드마다 있어야 하는 결과가 다 왔는가. Linux는 OpenSSL과 네트워크, Windows는 CNG가 있어야 한다
-// (JCA는 JVM이 있는 노드에서만 나온다). 빈 파일은 지우고 받은 것으로 치지 않는다.
+// collectorOf: 결과 파일의 종류(이름 끝)와 그 파일을 낸 수집기.
+var collectorOf = map[string]string{
+	"-openssl.json": "openssl-collector", "-net.json": "network-collector",
+	"-jca.jsonl": "jvm-collector", "-cng.json": "cng-collector",
+}
+
+// expectedResults: 받은 세대가 지금 결과가 될 만한가. 노드마다 있어야 하는 결과(Linux는 OpenSSL과 네트워크, Windows는
+// CNG. JCA는 JVM이 있는 노드에서만 나온다)가 다 왔는지 보고, **받은 파일을 모두 상류 디코더로 읽어** 깨진 것이 없는지,
+// 봉투의 노드가 그 별칭의 노드인지, 수집기가 파일 종류와 맞는지 본다. 하나라도 어긋나면 그 까닭을 missing에 적는다
+// (세대는 partial로 간다). 빈 파일은 지우고 받은 것으로 치지 않는다.
 func expectedResults(dir string, slots []runSlot) (files, missing []string) {
+	byAlias := map[string]runSlot{}
+	for _, sl := range slots {
+		byAlias[sl.Alias] = sl
+	}
 	ents, _ := os.ReadDir(dir)
 	have := map[string]bool{}
 	for _, e := range ents {
+		name := e.Name()
 		fi, err := e.Info()
-		if err != nil || !fi.Mode().IsRegular() || strings.HasPrefix(e.Name(), ".") {
+		if err != nil || strings.HasPrefix(name, ".") {
+			continue
+		}
+		if !fi.Mode().IsRegular() {
+			missing = append(missing, name+": not a plain file")
 			continue
 		}
 		if fi.Size() == 0 {
-			_ = os.Remove(filepath.Join(dir, e.Name()))
+			_ = os.Remove(filepath.Join(dir, name))
 			continue
 		}
-		have[e.Name()] = true
-		files = append(files, e.Name())
+		files = append(files, name)
+		var alias, kind string
+		for suf := range collectorOf {
+			if strings.HasSuffix(name, suf) {
+				alias, kind = strings.TrimSuffix(name, suf), suf
+			}
+		}
+		sl, ok := byAlias[alias]
+		if !ok {
+			missing = append(missing, name+": not a result this run asked for")
+			continue
+		}
+		label := sl.Node + " (" + strings.TrimPrefix(strings.TrimSuffix(strings.TrimSuffix(kind, ".json"), ".jsonl"), "-") + ")"
+		b, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			missing = append(missing, label+": "+err.Error())
+			continue
+		}
+		res, flaws := resultio.Decode(b)
+		switch {
+		case len(flaws) > 0:
+			missing = append(missing, label+": not a collection result ("+flaws[0].Error()+")")
+			continue
+		case len(res) == 0:
+			missing = append(missing, label+": no collection result in it")
+			continue
+		}
+		bad := ""
+		for _, r := range res {
+			env := r.GetEnvelope()
+			if env.GetTargetNodeId() != sl.Node {
+				bad = fmt.Sprintf("for node %q, not this node", env.GetTargetNodeId())
+				break
+			}
+			if env.GetCollectorId() != collectorOf[kind] {
+				bad = fmt.Sprintf("from %q, not %s", env.GetCollectorId(), collectorOf[kind])
+				break
+			}
+		}
+		if bad != "" {
+			missing = append(missing, label+": "+bad)
+			continue
+		}
+		have[name] = true
 	}
 	sort.Strings(files)
 	for _, sl := range slots {
@@ -544,11 +698,12 @@ func expectedResults(dir string, slots []runSlot) (files, missing []string) {
 			need = []string{"-cng.json"}
 		}
 		for _, suf := range need {
-			if !have[sl.Alias+suf] {
+			if !have[sl.Alias+suf] && !isFile(filepath.Join(dir, sl.Alias+suf)) {
 				missing = append(missing, sl.Node+" ("+strings.TrimPrefix(strings.TrimSuffix(suf, ".json"), "-")+")")
 			}
 		}
 	}
+	sort.Strings(missing)
 	return files, missing
 }
 
@@ -609,8 +764,16 @@ func (s *server) shutdownRun() {
 	}
 }
 
-// recoverRuns: 시작할 때 부른다. 서버가 실행 도중에 끝나 남은 자리를 찾아 비밀이 실린 파일을 지우고, 받던 결과를
-// partial로 격리하고, 「중단됨」으로 적는다. 가장 최근 실행을 화면에 보일 상태로 돌려준다.
+// recoverRuns: 시작할 때 부른다. 화면이 실행 도중에 비정상으로 끝나(강제 종료 · 전원 · 충돌) 남은 자리를 마친다.
+//
+//  1. 기록의 프로세스가 아직 살아 있으면(PID와 시작 시각이 같으면) 그 묶음에 끝내라고 알리고, 기다리고, 그래도 남으면
+//     강제로 끝내고, 다 사라질 때까지 기다린다. 같은 PID가 다른 프로세스에 다시 쓰였으면 건드리지 않는다.
+//  2. results/와 맞바꾸던 중이었으면 results/의 기록으로 교환이 일어났는지 가린다. 일어났으면 새 결과를 지금 결과로
+//     두고 이전 결과를 previous/로 옮긴다.
+//  3. 그 밖이면 남은 인벤토리로 노드 정리를 한 번 시도하고, 인벤토리를 지우고, 받던 것을 partial/로 격리하고,
+//     「중단됨」으로 적는다. 노드에 닿지 못했으면 남았을 스테이징 폴더를 기록과 화면에 밝힌다.
+//
+// 가장 최근 실행을 화면에 보일 상태로 둔다.
 func (s *server) recoverRuns() {
 	ents, err := os.ReadDir(s.runsDir())
 	if err != nil {
@@ -627,20 +790,50 @@ func (s *server) recoverRuns() {
 		if err == nil {
 			err = json.Unmarshal(b, &m)
 		}
+		if m.ID == "" {
+			m.ID = e.Name()
+		}
+		logf := func(line string) {
+			fmt.Fprintf(os.Stderr, "observation %s: %s\n", m.ID, line)
+			if f, err := os.OpenFile(filepath.Join(dir, runLog), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600); err == nil {
+				_, _ = f.WriteString(line + "\n")
+				_ = f.Close()
+			}
+		}
 		_, invErr := os.Stat(filepath.Join(dir, runInventory))
-		if err != nil || m.State == ui.RunRunning || invErr == nil {
+		switch {
+		case m.State == ui.RunDone && m.PreviousPending:
+			if err := finishSwap(dir); err == nil {
+				m.PreviousPending = false
+				_ = writeManifest(dir, m)
+				logf("pqcaton: the earlier results are now kept in previous/")
+			}
+		case err != nil || m.State == ui.RunRunning || invErr == nil:
+			reapRun(m, logf)
+			if cur := s.currentRun(); m.Swapping && cur != nil && cur.ID == m.ID {
+				// 교환은 끝났다. 새 결과가 지금 결과다.
+				m.State, m.Swapping = ui.RunDone, false
+				if err := finishSwap(dir); err != nil {
+					m.PreviousPending = true
+				}
+				logf("pqcaton: the screen stopped right after the results became current; finished keeping the earlier results")
+			} else {
+				m.Swapping = false
+				if invErr == nil {
+					m.NodeCleanup = runCleanup(dir, m.ID, logf)
+				} else if m.NodeCleanup == "" {
+					m.NodeCleanup = "failed"
+				}
+				if isDir(filepath.Join(dir, "next")) {
+					_ = os.Rename(filepath.Join(dir, "next"), filepath.Join(dir, "partial"))
+				}
+				m.State = ui.RunInterrupted
+				logf("pqcaton: interrupted when the screen stopped; the inventory was removed")
+			}
 			for _, name := range []string{runInventory, "vars.json", "observe.yml", "cleanup.yml"} {
 				_ = os.Remove(filepath.Join(dir, name))
 			}
-			if isDir(filepath.Join(dir, "next")) {
-				_ = os.Rename(filepath.Join(dir, "next"), filepath.Join(dir, "partial"))
-			}
-			if m.ID == "" {
-				m.ID = e.Name()
-			}
-			m.State = ui.RunInterrupted
 			_ = writeManifest(dir, m)
-			fmt.Fprintf(os.Stderr, "observation %s was interrupted when the screen stopped; its inventory was removed\n", m.ID)
 		}
 		if last == nil || m.Started.After(last.m.Started) {
 			j := &runJob{m: m, dir: dir, done: make(chan struct{})}
@@ -658,6 +851,37 @@ func (s *server) recoverRuns() {
 	s.run.mu.Lock()
 	s.run.job = last
 	s.run.mu.Unlock()
+}
+
+// reapRun: 기록의 ansible-playbook이 아직 살아 있으면 그 묶음을 끝내고 사라질 때까지 기다린다. 우리 자식이 아니라 Wait할
+// 수 없으므로, 묶음에 프로세스가 남았는지를 신호 0으로 본다. PID가 다른 프로세스에 다시 쓰였으면 건드리지 않는다.
+func reapRun(m runManifest, logf func(string)) {
+	if m.PID <= 0 || m.PGID <= 0 || m.ProcStart == "" {
+		return
+	}
+	if cur, err := procStart(m.PID); err != nil || cur != m.ProcStart {
+		return
+	}
+	logf(fmt.Sprintf("pqcaton: ansible-playbook (pid %d) from the interrupted run is still running; stopping it", m.PID))
+	signalGroup(m.PGID, false)
+	if waitGroupGone(m.PGID, stopGrace) {
+		return
+	}
+	signalGroup(m.PGID, true)
+	if !waitGroupGone(m.PGID, 5*time.Second) {
+		logf(fmt.Sprintf("pqcaton: process group %d did not go away", m.PGID))
+	}
+}
+
+func waitGroupGone(pgid int, limit time.Duration) bool {
+	deadline := time.Now().Add(limit)
+	for time.Now().Before(deadline) {
+		if !groupAlive(pgid) {
+			return true
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return !groupAlive(pgid)
 }
 
 // currentRun: results/가 지금 어느 실행의 결과인가. 화면에서 관측을 돌린 적이 없으면 nil이다.
