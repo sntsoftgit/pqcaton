@@ -6,6 +6,7 @@ package main
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 // TestMain: 화면은 자기 바이너리를 감독 모드로 띄운다. 시험에서 그 바이너리는 이 시험 바이너리라, 감독 모드로 불리면
@@ -21,5 +22,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// testModes: 시험이 이 시험 바이너리를 다른 모양의 프로세스로 띄울 때 쓰는 모드(플랫폼별 시험 파일이 채운다).
-var testModes = map[string]func(){}
+// testModes: 시험이 이 시험 바이너리를 다른 모양의 프로세스로 띄울 때 쓰는 모드(플랫폼별 시험 파일이 더 채운다).
+// -test-sleep은 오래 도는 프로세스다. /bin/sleep과 달리 플랫폼 바이너리가 아니라 macOS에서도 환경(표지)이 읽힌다.
+var testModes = map[string]func(){"-test-sleep": func() { time.Sleep(300 * time.Second) }}

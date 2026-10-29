@@ -14,8 +14,8 @@ func dirswap(string, string) error {
 
 func procStart(int) (string, error) { return "", errors.New("not supported on this platform") }
 
-func markedProcs(runMark) ([]markedProc, error) {
-	return nil, errors.New("not supported on this platform")
+func scanProcs(runMark) ([]markedProc, []markedProc, error) {
+	return nil, nil, errors.New("not supported on this platform")
 }
 
 func signalProc(markedProc, bool) error { return errors.New("not supported on this platform") }

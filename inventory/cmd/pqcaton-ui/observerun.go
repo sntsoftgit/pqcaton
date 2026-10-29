@@ -481,7 +481,7 @@ func (s *server) startRun(window int) error {
 func (s *server) finishRun(j *runJob) {
 	r := &s.run
 	// 감독이 강제로 끝났으면(중지가 늦어 KILL) 표지를 가진 프로세스가 남았을 수 있다. 다 끝내기 전에는 아무것도 하지 않는다.
-	stuck, err := reapMarked(runMark{Marker: runMarker(j.m.ID)}, stopGrace)
+	stuck, err := reapMarked(runMark{Marker: runMarker(j.m.ID), Suspect: []int{j.cmd.Process.Pid}}, stopGrace)
 	if why := reaped(stuck, err); why != "" {
 		r.mu.Lock()
 		j.m.State, j.m.Stuck, j.m.StuckWhy, j.m.Ended = ui.RunStuck, stuck, why, time.Now()
@@ -652,7 +652,7 @@ func runCleanup(dir, id string, logf func(string)) (string, string) {
 	for _, line := range strings.Split(strings.TrimRight(out.String(), "\n"), "\n") {
 		logf(line)
 	}
-	if why := reaped(reapMarked(runMark{Marker: runMarker(id)}, stopGrace)); why != "" {
+	if why := reaped(reapMarked(runMark{Marker: runMarker(id), Suspect: []int{cmd.Process.Pid}}, stopGrace)); why != "" {
 		return "", "after the node cleanup, " + why
 	}
 	if err != nil {
@@ -875,6 +875,9 @@ func (s *server) recoverRuns() {
 		case m.State == ui.RunRunning || m.State == ui.RunStuck || invErr == nil:
 			waitSupervisor(dir, logf)
 			mark := runMark{Marker: runMarker(m.ID)}
+			if rec := readSupervisor(dir); rec != nil {
+				mark.Suspect = []int{rec.PGID}
+			}
 			if left, err := findMarked(mark); err == nil && len(left) > 0 {
 				var pids []int
 				for _, p := range left {
@@ -989,7 +992,7 @@ func waitSupervisor(dir string, logf func(string)) {
 }
 
 // reapMarked: 화면 쪽에서 표지 프로세스를 끝내는 함수. 시험이 끝내지 못하는 경우를 주입한다.
-var reapMarked = killMarked
+var reapMarked = reapRun
 
 // supervisorExe: 감독으로 띄울 바이너리(지금 도는 이것). 시험이 바꾼다.
 var supervisorExe = os.Executable

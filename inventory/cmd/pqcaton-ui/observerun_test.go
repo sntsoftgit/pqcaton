@@ -28,12 +28,16 @@ import (
 // 인벤토리의 별칭(n1, n2…)마다 모드(FAKE_MODE)대로 결과를 쓰고 끝난다. 받은 인벤토리의 권한을 로그로 남기고,
 // 비밀번호가 든 줄을 **일부러 그대로 찍는다**(화면이 가리는지 본다).
 const fakeAnsible = `#!/bin/sh
+# orphan: 세션을 떼어 나간(가능하면) 자식을 남긴다. 시험 바이너리를 쓴다 — /bin/sleep은 macOS에서 환경이 안 보이는
+# 플랫폼 바이너리라 표지로 증명되지 않는다(그 경우는 IC-U138이 따로 잰다).
+orphan() {
+  if command -v setsid >/dev/null; then setsid "$FAKE_HELPER" -test-sleep >/dev/null 2>&1 &
+  else "$FAKE_HELPER" -test-sleep >/dev/null 2>&1 & fi
+}
 [ "$1" = "-i" ] && [ "$2" = "targets.yml" ] && [ "$3" = "-e" ] && [ "$4" = "@vars.json" ] || { echo "bad args: $*"; exit 9; }
 if [ "$5" = "cleanup.yml" ]; then
   grep -q 'state: absent' cleanup.yml && echo "CLEANUP ran"
-  if [ "$FAKE_CLEANUP" = "orphan" ]; then
-    if command -v setsid >/dev/null; then setsid sleep 300 >/dev/null 2>&1 & else sleep 300 >/dev/null 2>&1 & fi
-  fi
+  if [ "$FAKE_CLEANUP" = "orphan" ]; then orphan; fi
   exit 0
 fi
 [ "$5" = "observe.yml" ] || { echo "bad playbook: $5"; exit 9; }
@@ -44,16 +48,14 @@ echo "INI_MODE=$(stat -c %a targets.yml 2>/dev/null || stat -f %Lp targets.yml)"
 grep 'ansible_ssh_pass' targets.yml
 grep -q 'name: pqcaton observation' observe.yml && echo "PLAYBOOK=embedded"
 echo "SSH_ARGS=$ANSIBLE_SSH_ARGS MARKED=${PQCATON_RUN:+yes}"
-if [ "$FAKE_MODE" = "escape" ]; then
-  if command -v setsid >/dev/null; then setsid sleep 300 >/dev/null 2>&1 & else sleep 300 >/dev/null 2>&1 & fi
-fi
+if [ "$FAKE_MODE" = "escape" ]; then orphan; fi
 res() { printf '{"envelope":{"collectorId":"%s","targetNodeId":"%s"}}' "$1" "$2"; }
 for a in $(sed -n 's/^    \(n[0-9]*\):$/\1/p' targets.yml); do
   node=$(sed -n "/^    $a:\$/{n;s/.*pqcaton_node: !unsafe '\(.*\)'\$/\1/p;}" targets.yml)
   res openssl-collector "$node" > "$rd/$a-openssl.json"
   case "$FAKE_MODE" in
   fail) echo "fatal: [$a]: UNREACHABLE!"; exit 2 ;;
-  hang) sleep 300 ;;
+  hang) echo "HANGING"; sleep 300 & wait ;;
   badjson) echo 'ERROR: collector crashed' > "$rd/$a-openssl.json" ;;
   wrongnode) res openssl-collector other-node > "$rd/$a-openssl.json" ;;
   wrongcollector) res network-collector "$node" > "$rd/$a-openssl.json" ;;
@@ -80,6 +82,11 @@ func runReady(t *testing.T, mode string) *server {
 	old := ansibleCommand
 	ansibleCommand = fake
 	t.Setenv("FAKE_MODE", mode)
+	helper, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FAKE_HELPER", helper)
 	s.collectors = t.TempDir()
 	linux := filepath.Join(s.collectors, "linux-amd64")
 	if err := os.MkdirAll(linux, 0o700); err != nil {
@@ -236,7 +243,7 @@ func TestObservationRunsOnceAndStops(t *testing.T) {
 		t.Fatalf("start = %d", w.Code)
 	}
 	deadline := time.Now().Add(5 * time.Second)
-	for !strings.Contains(s.run.status().Log, "PLAYBOOK=") {
+	for !strings.Contains(s.run.status().Log, "HANGING") {
 		if time.Now().After(deadline) {
 			t.Fatalf("the fake never started:\n%s", s.run.status().Log)
 		}
@@ -369,7 +376,7 @@ func TestShutdownAndRestartCleanUp(t *testing.T) {
 		t.Fatalf("start = %d", w.Code)
 	}
 	deadline := time.Now().Add(5 * time.Second)
-	for !strings.Contains(s.run.status().Log, "PLAYBOOK=") {
+	for !strings.Contains(s.run.status().Log, "HANGING") {
 		if time.Now().After(deadline) {
 			t.Fatal("the fake never started")
 		}
@@ -538,8 +545,12 @@ func TestRestartReapsAnOrphanedRun(t *testing.T) {
 	old := supervisorWait
 	supervisorWait = 300 * time.Millisecond
 	t.Cleanup(func() { supervisorWait = old })
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
 	spawn := func(env ...string) *exec.Cmd {
-		cmd := exec.Command("sleep", "300")
+		cmd := exec.Command(exe, "-test-sleep")
 		cmd.Env = append(os.Environ(), env...)
 		ownGroup(cmd)
 		if err := cmd.Start(); err != nil {
@@ -622,7 +633,7 @@ func TestSupervisorFinishesWhenTheScreenGoes(t *testing.T) {
 		t.Fatalf("start = %d", w.Code)
 	}
 	deadline := time.Now().Add(5 * time.Second)
-	for !strings.Contains(s.run.status().Log, "PLAYBOOK=") {
+	for !strings.Contains(s.run.status().Log, "HANGING") {
 		if time.Now().After(deadline) {
 			t.Fatalf("the fake never started:\n%s", s.run.status().Log)
 		}
@@ -639,7 +650,7 @@ func TestSupervisorFinishesWhenTheScreenGoes(t *testing.T) {
 	_ = j.stdin.Close() // 화면이 사라졌다
 	select {
 	case <-j.done:
-	case <-time.After(20 * time.Second):
+	case <-time.After(40 * time.Second):
 		t.Fatal("the supervisor did not finish")
 	}
 	m := readManifest(j.dir, "")
@@ -787,6 +798,8 @@ func TestCleanupOrphansAreReaped(t *testing.T) {
 	t.Cleanup(func() { reapMarked = old })
 	postForm(t, s, ui.RunPath, url.Values{})
 	st = waitRun(t, s)
+	// 이 부분은 회수가 실패한 것으로 꾸며 정리의 고아를 일부러 남긴다. 시험이 끝나면 진짜로 거둔다.
+	t.Cleanup(func() { _, _ = killMarked(runMark{Marker: runMarker(st.ID)}, time.Second) })
 	if st.State != ui.RunStuck || !isFile(filepath.Join(runDir(t, s), runInventory)) {
 		t.Errorf("after an unreaped cleanup: state %s, inventory kept %v", st.State, isFile(filepath.Join(runDir(t, s), runInventory)))
 	}

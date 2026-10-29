@@ -56,7 +56,8 @@ func runMarker(id string) string { return "PQCATON_RUN=" + id }
 func supervise(string, string) int { return 3 }
 
 type runMark struct {
-	Marker string
+	Marker  string
+	Suspect []int
 }
 
 func killMarked(runMark, time.Duration) ([]int, error) { return nil, nil }
@@ -76,3 +77,5 @@ func markedProcs(runMark) ([]markedProc, error) { return nil, nil }
 var findMarked = markedProcs
 
 func reaped([]int, error) string { return "" }
+
+func reapRun(runMark, time.Duration) ([]int, error) { return nil, nil }

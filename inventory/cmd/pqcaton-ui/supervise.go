@@ -22,6 +22,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -63,26 +64,38 @@ type markedProc struct {
 	Start string
 }
 
-// runMark: 이 실행의 프로세스를 가리는 것. 표지(환경 변수 한 줄)다.
+// runMark: 이 실행의 프로세스를 가리는 것. 표지(환경 변수 한 줄)와, 이 실행이 띄운 것으로 기록된 프로세스 묶음 번호다.
 //
-// **기록해 둔 프로세스 묶음 번호는 쓰지 않는다.** 감독이나 정리 명령이 끝난 뒤에는 그 번호가 다른 묶음에 다시 쓰였을 수
-// 있다. 묶음은 그 안에 지금 표지가 확인되는 프로세스가 있을 때만 이 실행의 것으로 본다(belonging) — 묶음 번호는
-// 구성원이 남아 있는 동안 다시 쓰이지 않으므로, 살아 있는 표지 구성원이 그 묶음의 증거다. 감독도 표지를 갖고 뜬다.
+// **기록된 묶음 번호로는 아무것도 끝내지 않는다.** 감독이나 정리 명령이 끝난 뒤에는 그 번호가 다른 묶음에 다시 쓰였을 수
+// 있다. 끝낼 대상은 표지로 확인되거나, 환경을 읽을 수 없는데 부모나 같은 묶음의 살아 있는 표지 구성원으로 증명되는
+// 프로세스뿐이다(belonging). 묶음 번호는 구성원이 남아 있는 동안 다시 쓰이지 않으므로 살아 있는 표지 구성원이 그 묶음의
+// 증거다. 감독도 표지를 갖고 뜬다.
+//
+// 기록된 묶음 번호(Suspect)는 **멈춰 세울 이유**로만 쓴다. 환경을 읽을 수 없어 증명되지 않는 프로세스가 그 묶음에 남아
+// 있으면 「확인할 수 없음」이다(끝내지도, 없다고 치지도 않는다). macOS는 Apple 플랫폼 바이너리의 환경을 보여 주지 않아,
+// 감독까지 죽으면 이 실행의 것이 이 자리에 남을 수 있다.
 type runMark struct {
-	Marker string
+	Marker  string
+	Suspect []int
 }
 
-// procInfo: 검색 중의 프로세스 하나.
+// procInfo: 검색 중의 프로세스 하나. self는 검색하는 프로세스 자신이다 — 결과에는 넣지 않지만, 표지가 있으면 같은
+// 묶음과 자식을 증명하는 증거로는 쓴다(감독이 자기 묶음을 증명한다).
 type procInfo struct {
 	markedProc
-	ppid, pgid         int
-	marked, unreadable bool
+	ppid, pgid               int
+	marked, unreadable, self bool
 }
 
-// belonging: 표지가 있는 프로세스와, 환경을 읽을 수 없는데 부모가 이 실행의 것이거나 지금 표지 프로세스가 있는 묶음에
-// 든 프로세스. 계보를 따라 끝까지 넓힌다(표지 프로세스의 자식의 자식까지).
-func belonging(all []procInfo) []markedProc {
-	in, grp := map[int]bool{}, map[int]bool{}
+// belonging: 이 실행의 것으로 증명되는 프로세스와, 증명되지 않는데 기록된 묶음에 든 의심 프로세스. 표지가 있으면 증명된다.
+// 환경을 읽을 수 없으면 부모가 증명됐거나 같은 묶음에 표지 프로세스가 있을 때 증명된다(계보를 따라 넓힌다).
+func belonging(all []procInfo, suspect []int) (ours, suspects []markedProc) {
+	in, grp, sus := map[int]bool{}, map[int]bool{}, map[int]bool{}
+	for _, g := range suspect {
+		if g > 0 {
+			sus[g] = true
+		}
+	}
 	for _, p := range all {
 		if p.marked {
 			in[p.PID], grp[p.pgid] = true, true
@@ -96,17 +109,46 @@ func belonging(all []procInfo) []markedProc {
 			}
 		}
 	}
-	var out []markedProc
 	for _, p := range all {
-		if in[p.PID] {
-			out = append(out, p.markedProc)
+		switch {
+		case p.self:
+		case in[p.PID]:
+			ours = append(ours, p.markedProc)
+		case p.unreadable && sus[p.pgid]:
+			suspects = append(suspects, p.markedProc)
 		}
 	}
-	return out
+	return ours, suspects
 }
 
-// findMarked: 이 실행의 프로세스를 찾는 함수. 시험이 검색 실패를 주입한다.
-var findMarked = markedProcs
+// selfInfo: 검색하는 프로세스 자신. 표지가 있으면 증거로 쓴다.
+func selfInfo(marker string, ppid, pgid int) procInfo {
+	p := procInfo{markedProc: markedProc{PID: os.Getpid()}, ppid: ppid, pgid: pgid, self: true}
+	for _, e := range os.Environ() {
+		if e == marker {
+			p.marked = true
+		}
+	}
+	return p
+}
+
+// markedProcs: 이 실행의 것으로 증명되는 프로세스(scanProcs의 첫째 값).
+func markedProcs(rm runMark) ([]markedProc, error) {
+	ours, _, err := scanProcs(rm)
+	return ours, err
+}
+
+// suspectProcs: 기록된 묶음에 든, 증명되지 않는 의심 프로세스(scanProcs의 둘째 값).
+func suspectProcs(rm runMark) ([]markedProc, error) {
+	_, sus, err := scanProcs(rm)
+	return sus, err
+}
+
+// findMarked · findSuspects: 이 실행의 프로세스와 의심 프로세스를 찾는 함수. 시험이 검색 실패를 주입한다.
+var (
+	findMarked   = markedProcs
+	findSuspects = suspectProcs
+)
 
 // killMarked: 표지를 가진 프로세스(자기 자신 빼고)를 끝낸다. 끝내라고 알리고, grace까지 기다리고, 남으면 강제로 끝내고,
 // 다시 기다린다. 끝내 남은 PID를 돌려준다(비면 다 끝났다). **프로세스를 확인하지 못하면 오류다** — 「확인할 수 없음」은
@@ -143,6 +185,34 @@ func killMarked(rm runMark, grace time.Duration) ([]int, error) {
 	return left, nil
 }
 
+// errUnproven: 기록된 묶음에 증명되지 않는 프로세스가 남았다. 끝내지 않고, 없다고 치지도 않는다.
+type errUnproven struct{ pids []int }
+
+func (e errUnproven) Error() string {
+	return fmt.Sprintf("processes %v in the run's recorded process group cannot be shown to belong to it, so they were not stopped", e.pids)
+}
+
+// reapRun: 이 실행의 프로세스를 끝내고(killMarked), 기록된 묶음에 증명되지 않는 프로세스가 남았는지 본다. 남았으면
+// errUnproven이다.
+func reapRun(rm runMark, grace time.Duration) ([]int, error) {
+	stuck, err := killMarked(rm, grace)
+	if err != nil || len(stuck) > 0 || len(rm.Suspect) == 0 {
+		return stuck, err
+	}
+	sus, err := findSuspects(rm)
+	if err != nil {
+		return nil, err
+	}
+	if len(sus) > 0 {
+		var pids []int
+		for _, p := range sus {
+			pids = append(pids, p.PID)
+		}
+		return pids, errUnproven{pids}
+	}
+	return nil, nil
+}
+
 func waitMarkedGone(rm runMark, limit time.Duration) (bool, error) {
 	deadline := time.Now().Add(limit)
 	for {
@@ -163,6 +233,8 @@ func waitMarkedGone(rm runMark, limit time.Duration) (bool, error) {
 // reaped: killMarked의 결과를 「회수 필요」의 까닭으로. 비면 다 끝났다.
 func reaped(stuck []int, err error) string {
 	switch {
+	case errors.As(err, new(errUnproven)):
+		return err.Error()
 	case err != nil:
 		return "could not inspect the processes: " + err.Error()
 	case len(stuck) > 0:
@@ -237,7 +309,7 @@ func supervise(dir, ansible string) int {
 	}
 
 	marker := runMarker(m.ID)
-	mine := runMark{Marker: marker}
+	mine := runMark{Marker: marker, Suspect: []int{syscall.Getpgrp()}}
 	cmd := exec.Command(ansible, "-i", runInventory, "-e", "@vars.json", "observe.yml")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), marker, "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
@@ -275,7 +347,7 @@ func supervise(dir, ansible string) int {
 		<-done
 	}
 	// Ansible이 끝나도 표지를 가진 자식(세션을 떼어 나간 것 포함)이 남을 수 있다. 다 끝낸다.
-	stuck, err := killMarked(mine, stopGrace)
+	stuck, err := reapRun(mine, stopGrace)
 	if why := reaped(stuck, err); why != "" {
 		_ = writeDurable(filepath.Join(dir, supervisorFile), supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start, Stuck: stuck, StuckWhy: why})
 		say("pqcaton: %s", why)

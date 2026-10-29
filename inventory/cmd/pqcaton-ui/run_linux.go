@@ -51,22 +51,20 @@ func procStart(pid int) (string, error) {
 	return start, nil
 }
 
-// markedProcs: 이 실행의 프로세스와 그 시작 시각. 자기 자신과 좀비는 뺀다.
-//
-//   - 환경을 읽을 수 있으면 표지로 가린다.
-//   - 같은 사용자인데 덤프를 막아(OpenSSH 클라이언트가 그렇다) 환경을 읽을 수 없으면, 부모가 이 실행의 프로세스이거나
-//     같은 묶음에 지금 표지 프로세스가 있을 때 이 실행의 것으로 본다. 계보를 따라 넓힌다.
+// scanProcs: 이 사용자의 프로세스를 훑어 이 실행의 것과 의심 프로세스를 가린다(belonging). 자기 자신과 좀비는 결과에서
+// 뺀다. 환경을 읽을 수 있으면 표지로 가리고, 덤프를 막아(OpenSSH 클라이언트 · sshd 세션) 읽을 수 없으면 계보와 묶음으로
+// 가린다.
 //
 // **확인하지 못한 것을 「없음」으로 치지 않는다.** /proc을 읽지 못하거나 예상하지 못한 이유로 읽기에 실패하면 오류다
 // (부르는 쪽이 「회수 필요」로 닫는다). 읽는 사이에 끝나 사라진 프로세스만 건너뛴다. 남의 프로세스는 건너뛴다.
-func markedProcs(rm runMark) ([]markedProc, error) {
+func scanProcs(rm runMark) (ours, suspects []markedProc, err error) {
 	ents, err := os.ReadDir("/proc")
 	if err != nil {
-		return nil, fmt.Errorf("cannot list processes: %w", err)
+		return nil, nil, fmt.Errorf("cannot list processes: %w", err)
 	}
 	want := []byte("\x00" + rm.Marker + "\x00")
 	self, uid := os.Getpid(), os.Getuid()
-	var all []procInfo
+	all := []procInfo{selfInfo(rm.Marker, os.Getppid(), unix.Getpgrp())}
 	for _, e := range ents {
 		pid, err := strconv.Atoi(e.Name())
 		if err != nil || pid == self {
@@ -77,7 +75,7 @@ func markedProcs(rm runMark) ([]markedProc, error) {
 			if gone(err) {
 				continue
 			}
-			return nil, fmt.Errorf("cannot inspect process %d: %w", pid, err)
+			return nil, nil, fmt.Errorf("cannot inspect process %d: %w", pid, err)
 		}
 		if int(st.Uid) != uid {
 			continue
@@ -96,11 +94,12 @@ func markedProcs(rm runMark) ([]markedProc, error) {
 		case gone(err):
 			continue
 		default:
-			return nil, fmt.Errorf("cannot read the environment of process %d: %w", pid, err)
+			return nil, nil, fmt.Errorf("cannot read the environment of process %d: %w", pid, err)
 		}
 		all = append(all, p)
 	}
-	return belonging(all), nil
+	ours, suspects = belonging(all, rm.Suspect)
+	return ours, suspects, nil
 }
 
 // gone: 읽는 사이에 프로세스가 끝나 사라졌다.

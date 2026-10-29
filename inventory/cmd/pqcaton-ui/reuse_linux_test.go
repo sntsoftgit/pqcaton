@@ -23,10 +23,10 @@ func init() {
 	}
 }
 
-// IC-U137 — **기록해 둔 프로세스 묶음 번호를 믿지 않는다.** 지난 감독이 끝난 뒤 그 묶음 번호가 다른 묶음에 다시 쓰였고,
-// 그 묶음의 같은 사용자 프로세스가 환경을 읽을 수 없어도(덤프 금지), 회수는 그 프로세스를 끝내지 않는다. 묶음은 지금
-// 표지 프로세스가 있을 때만 이 실행의 것이다. 같은 묶음에 표지 프로세스가 있으면(감독이 살아 있는 동안처럼) 그
-// 덤프 금지 구성원은 이 실행의 것으로 끝낸다.
+// IC-U137 — **기록해 둔 프로세스 묶음 번호로는 아무것도 끝내지 않는다.** 지난 감독이 끝난 뒤 그 묶음 번호가 다른 묶음에
+// 다시 쓰였고, 그 묶음의 같은 사용자 프로세스가 환경을 읽을 수 없어도(덤프 금지), 회수는 그 프로세스를 끝내지 않는다.
+// 다만 증명되지 않는 프로세스가 기록된 묶음에 남았으므로 「없음」으로 치지도 않고 「회수 필요」로 멈춘다. 묶음은 지금
+// 표지 프로세스가 있을 때만 이 실행의 것이며, 그때는 덤프 금지 구성원도 이 실행의 것으로 찾는다.
 func TestRecordedGroupIsNotTrusted(t *testing.T) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -78,8 +78,9 @@ func TestRecordedGroupIsNotTrusted(t *testing.T) {
 	if !alive(unrelated) {
 		t.Fatal("a process in a reused group was stopped")
 	}
-	if m := readManifest(dir, ""); m.State != ui.RunInterrupted {
-		t.Errorf("state %s", m.State)
+	if m := readManifest(dir, ""); m.State != ui.RunStuck || len(m.Stuck) != 1 || m.Stuck[0] != unrelated.Process.Pid ||
+		!isDir(filepath.Join(dir, "next")) {
+		t.Errorf("an unproven process in the recorded group: %+v", m)
 	}
 
 	// 같은 묶음에 지금 표지 프로세스가 있으면 그 덤프 금지 구성원은 이 실행의 것이다.
