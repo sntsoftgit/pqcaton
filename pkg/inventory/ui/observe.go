@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory"
 )
@@ -61,6 +62,15 @@ type ObserveRun struct {
 	Window int
 	// Status — 마지막(또는 지금) 실행. 한 번도 돌리지 않았으면 nil이다.
 	Status *RunStatus
+	// Current — results/가 지금 어느 실행의 결과인가. 화면에서 관측을 돌려 바꾼 적이 없으면 nil이다.
+	Current *RunCurrent
+}
+
+// RunCurrent — 지금 결과 세대.
+type RunCurrent struct {
+	ID           string
+	Ended        time.Time
+	Nodes, Files int
 }
 
 // CanStart — 시작 단추를 낼 수 있는가. 막는 점검이 남았거나 이미 돌고 있으면 낼 수 없다.
@@ -121,10 +131,15 @@ const (
 	RunDone    RunState = "done"
 	RunFailed  RunState = "failed"
 	RunStopped RunState = "stopped"
+	// RunIncomplete — ansible-playbook은 0으로 끝났지만 어느 노드의 결과가 빠졌다.
+	RunIncomplete RunState = "incomplete"
+	// RunInterrupted — 화면이 실행 도중에 끝났다. 다음 시작이 남은 것을 정리했다.
+	RunInterrupted RunState = "interrupted"
 )
 
 // RunStatus — 실행 하나의 지금 모습.
 type RunStatus struct {
+	ID             string
 	State          RunState
 	Started, Ended time.Time
 	Log            string
@@ -133,6 +148,8 @@ type RunStatus struct {
 	Received int
 	Exit     int
 	Window   int
+	// Missing — 결과가 오지 않은 노드(와 무엇이 빠졌는지).
+	Missing []string
 }
 
 // Text — 상태 한 줄.
@@ -144,6 +161,10 @@ func (s RunStatus) Text(l Lang) string {
 		return tRunDone.F(l, s.Received)
 	case RunStopped:
 		return tRunStopped.F(l, s.Received)
+	case RunIncomplete:
+		return tRunIncomplete.F(l, len(s.Missing), s.Received)
+	case RunInterrupted:
+		return tRunInterrupted.In(l)
 	}
 	return tRunFailed.F(l, s.Exit, s.Received)
 }
@@ -206,6 +227,10 @@ func ApplyHosts(prev []inventory.Host, f url.Values) ([]inventory.Host, []HostPr
 		bad := func(t T) { problems = append(problems, HostProblem{Node: r.NodeID, What: t}) }
 		if seen[r.NodeID] {
 			bad(tHostDup)
+			continue
+		}
+		if hasControl(r.NodeID, r.Name, r.IP, r.Port, r.User, r.Key) {
+			bad(tHostControl)
 			continue
 		}
 		seen[r.NodeID] = true
@@ -280,4 +305,15 @@ func RenderRunStatus(w io.Writer, l Lang, csrf string, st *RunStatus) error {
 // RenderObserve — 03 관측 화면.
 func RenderObserve(w io.Writer, v ObserveView) error {
 	return observePage(v).Render(context.Background(), w)
+}
+
+// hasControl — 값에 제어 문자(줄바꿈 · 탭 같은 것)가 있는가. 접근 정보에서는 정당한 쓰임이 없고, 인벤토리의
+// 줄을 갈라 다른 설정을 끼워 넣는 길이 된다.
+func hasControl(vs ...string) bool {
+	for _, v := range vs {
+		if strings.IndexFunc(v, unicode.IsControl) >= 0 {
+			return true
+		}
+	}
+	return false
 }

@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
+#
+# 관측을 멈추거나 실패한 뒤 노드에 남은 스테이징 폴더를 지운다. 본 플레이북의 `always` 정리는 ansible-playbook이
+# 끝내라는 신호를 받으면 돌지 않는다. 화면이 인벤토리를 지우기 전에 시간 제한을 두고 한 번 부른다.
+- name: pqcaton observation cleanup
+  hosts: targets
+  gather_facts: true
+  vars:
+    stage: "/tmp/pqcaton-observe-{{ run_id }}"
+    stage_win: 'C:\Windows\Temp\pqcaton-observe-{{ run_id }}'
+  tasks:
+    - name: Remove the staging directory
+      ansible.builtin.file: { path: "{{ stage }}", state: absent }
+      become: true
+      when: ansible_facts['os_family'] | default('') != 'Windows'
+
+    - name: Remove the staging directory
+      ansible.windows.win_file: { path: "{{ stage_win }}", state: absent }
+      when: ansible_facts['os_family'] | default('') == 'Windows'

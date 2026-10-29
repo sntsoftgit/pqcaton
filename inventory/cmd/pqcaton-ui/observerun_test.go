@@ -4,38 +4,51 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
 // fakeAnsible: ansible-playbook 대신 부를 스크립트. 화면이 넘긴 인자 그대로 받아 vars.json에서 결과 자리를 읽고,
-// 모드(FAKE_MODE)대로 결과를 쓰고 끝난다. 받은 인벤토리의 권한과 비밀이 실렸는지를 로그로 남긴다.
+// 인벤토리의 별칭(n1, n2…)마다 모드(FAKE_MODE)대로 결과를 쓰고 끝난다. 받은 인벤토리의 권한을 로그로 남기고,
+// 비밀번호가 든 줄을 **일부러 그대로 찍는다**(화면이 가리는지 본다).
 const fakeAnsible = `#!/bin/sh
-[ "$1" = "-i" ] && [ "$2" = "targets.ini" ] && [ "$3" = "-e" ] && [ "$4" = "@vars.json" ] && [ "$5" = "observe.yml" ] || { echo "bad args: $*"; exit 9; }
+[ "$1" = "-i" ] && [ "$2" = "targets.yml" ] && [ "$3" = "-e" ] && [ "$4" = "@vars.json" ] || { echo "bad args: $*"; exit 9; }
+if [ "$5" = "cleanup.yml" ]; then grep -q 'state: absent' cleanup.yml && echo "CLEANUP ran"; exit 0; fi
+[ "$5" = "observe.yml" ] || { echo "bad playbook: $5"; exit 9; }
 rd=$(sed -n 's/.*"results_dir":"\([^"]*\)".*/\1/p' vars.json)
 win=$(sed -n 's/.*"netcap_window":\([0-9]*\).*/\1/p' vars.json)
 echo "PLAY [pqcaton observation] window=$win"
-echo "INI_MODE=$(stat -c %a targets.ini 2>/dev/null || stat -f %Lp targets.ini)"
-grep -q 'ansible_ssh_pass=s3cret-pw' targets.ini && echo "INI_HAS_SECRET=yes"
+echo "INI_MODE=$(stat -c %a targets.yml 2>/dev/null || stat -f %Lp targets.yml)"
+grep 'ansible_ssh_pass' targets.yml
 grep -q 'name: pqcaton observation' observe.yml && echo "PLAYBOOK=embedded"
-printf '{"envelope":{"targetNodeId":"web"}}' > "$rd/web-openssl.json"
-case "$FAKE_MODE" in
-fail) echo "fatal: [db]: UNREACHABLE!"; exit 2 ;;
-hang) sleep 300 ;;
-esac
-printf '{"envelope":{"targetNodeId":"web"}}' > "$rd/web-net.json"
-: > "$rd/db-openssl.json"
+for a in $(sed -n 's/^    \(n[0-9]*\):$/\1/p' targets.yml); do
+  printf '{"envelope":{"targetNodeId":"x"}}' > "$rd/$a-openssl.json"
+  case "$FAKE_MODE" in
+  fail) echo "fatal: [$a]: UNREACHABLE!"; exit 2 ;;
+  hang) sleep 300 ;;
+  esac
+  [ "$FAKE_MODE" = "incomplete" ] && [ "$a" = "n2" ] && continue
+  printf '{"envelope":{"targetNodeId":"x"}}' > "$rd/$a-net.json"
+done
+: > "$rd/n1-jca.jsonl"
 echo "PLAY RECAP"
 `
 
-// runReady: 관측을 시작할 수 있게 갖춘 서버. 가짜 ansible-playbook과 Linux 수집기 폴더를 둔다.
+// oldResult: 화면이 관측을 돌리기 전부터 results/에 있던 결과(직접 넣은 것).
+const oldResult = "old-openssl.json"
+
+// runReady: 관측을 시작할 수 있게 갖춘 서버. 가짜 ansible-playbook과 Linux 수집기 폴더, 이전 결과 하나를 둔다.
 func runReady(t *testing.T, mode string) *server {
 	t.Helper()
 	s := everyScreen(t)
@@ -57,63 +70,105 @@ func runReady(t *testing.T, mode string) *server {
 			t.Fatal(err)
 		}
 	}
+	if err := os.WriteFile(filepath.Join(s.results, oldResult), []byte(`{"envelope":{}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
-		s.stopRun()
-		waitRun(t, s)
+		s.shutdownRun()
 		ansibleCommand = old
 	})
 	return s
 }
 
-// waitRun: 실행이 끝나기를 기다린다(최대 15초).
+// waitRun: 실행이 끝나고 정리까지 마치기를 기다린다(최대 15초).
 func waitRun(t *testing.T, s *server) *ui.RunStatus {
 	t.Helper()
-	deadline := time.Now().Add(15 * time.Second)
-	for s.run.running() {
-		if time.Now().After(deadline) {
-			t.Fatal("the observation did not finish")
-		}
-		time.Sleep(20 * time.Millisecond)
+	s.run.mu.Lock()
+	j := s.run.job
+	s.run.mu.Unlock()
+	if j == nil {
+		t.Fatal("nothing ran")
+	}
+	select {
+	case <-j.done:
+	case <-time.After(15 * time.Second):
+		t.Fatal("the observation did not finish")
 	}
 	return s.run.status()
 }
 
-// IC-U116 — **관측을 화면에서 실행하고 결과를 넘겨받는다.** 「관측 시작」은 내장 플레이북과 소유자 전용 인벤토리
-// (접근 비밀이 실린다)를 상태 폴더의 작업 자리에 쓰고 ansible-playbook을 부른다. 끝나면 받은 결과(빈 파일은 빼고)를
-// 작업 폴더의 results로 옮기고 작업 자리를 통째로 지운다. 실행 상태 조각은 받은 수와 로그를 보이고, 대조로 가는
-// 길을 낸다.
+func names(t *testing.T, dir string) []string {
+	t.Helper()
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, e := range ents {
+		out = append(out, e.Name())
+	}
+	sort.Strings(out)
+	return out
+}
+
+// runDir: 마지막 실행의 작업 자리.
+func runDir(t *testing.T, s *server) string {
+	t.Helper()
+	s.run.mu.Lock()
+	defer s.run.mu.Unlock()
+	return s.run.job.dir
+}
+
+// IC-U116 — **완전히 성공한 관측만 지금 결과가 되고, 한 번에 바뀐다.** 「관측 시작」은 소유자 전용 인벤토리(접근
+// 비밀이 실린다)와 내장 플레이북을 실행 자리에 쓰고 정해진 인자로 부른다. 모든 노드의 결과가 오고 0으로 끝나면 받은
+// 세대(빈 파일은 빼고)와 results/를 맞바꾼다. 이전 결과는 섞이지 않고 실행 자리의 previous/로 간다. 인벤토리는
+// 지우고, 기록과 로그는 남는다. 로그에 비밀번호가 찍혀도 화면과 로그 파일에는 가려져 있다.
 func TestObservationRunsAndHandsOverResults(t *testing.T) {
 	s := runReady(t, "ok")
 	page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
 	if !strings.Contains(page, `action="`+ui.RunPath+`"`) {
 		t.Fatalf("the observe screen has no start form:\n%s", page)
 	}
+	if err := os.Chmod(s.results, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	w := postForm(t, s, ui.RunPath, url.Values{"window": {"7"}})
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("start = %d\n%s", w.Code, w.Body.String())
 	}
 	st := waitRun(t, s)
-	if st.State != ui.RunDone || st.Received != 2 {
+	if st.State != ui.RunDone || st.Received != 4 {
 		t.Fatalf("state %s, received %d\n%s", st.State, st.Received, st.Log)
 	}
-	for _, want := range []string{"window=7", "INI_MODE=600", "INI_HAS_SECRET=yes", "PLAYBOOK=embedded", "PLAY RECAP"} {
+	for _, want := range []string{"window=7", "INI_MODE=600", "PLAYBOOK=embedded", "PLAY RECAP", "ansible_ssh_pass: !unsafe '********'"} {
 		if !strings.Contains(st.Log, want) {
 			t.Errorf("the log lacks %q:\n%s", want, st.Log)
 		}
 	}
-	for _, f := range []string{"web-openssl.json", "web-net.json"} {
-		if _, err := os.Stat(filepath.Join(s.results, f)); err != nil {
-			t.Errorf("%s was not handed over: %v", f, err)
-		}
+	dir := runDir(t, s)
+	// 이전 결과가 넓은 권한이어도 상태 폴더의 검사에 걸리지 않게, 실행 자리는 상태 폴더 밖 results/ 옆이다.
+	if strings.HasPrefix(dir, s.st.Dir) || filepath.Dir(filepath.Dir(dir)) != filepath.Dir(s.results) {
+		t.Errorf("the run directory %s is not beside results/ or sits in the state directory", dir)
 	}
-	if _, err := os.Stat(filepath.Join(s.results, "db-openssl.json")); err == nil {
-		t.Error("an empty result was handed over")
+	logFile := readFile(t, filepath.Join(dir, runLog))
+	if strings.Contains(st.Log, "s3cret-pw") || strings.Contains(logFile, "s3cret-pw") {
+		t.Error("the password shows in the log")
 	}
-	if ents, _ := os.ReadDir(filepath.Join(s.st.Dir, "observe")); len(ents) != 0 {
-		t.Errorf("the work directory (with the inventory's secrets) was left: %v", ents)
+	want := []string{currentMark, "n1-net.json", "n1-openssl.json", "n2-net.json", "n2-openssl.json"}
+	if got := names(t, s.results); strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("results/ = %v, want %v", got, want)
+	}
+	if got := names(t, filepath.Join(dir, "previous")); strings.Join(got, ",") != oldResult {
+		t.Errorf("previous/ = %v, want the earlier result", got)
+	}
+	if got := names(t, dir); strings.Join(got, ",") != strings.Join([]string{runLog, runManifestFile, "previous"}, ",") {
+		t.Errorf("the run directory keeps %v (the inventory must be gone)", got)
+	}
+	if cur := s.currentRun(); cur == nil || cur.ID != st.ID || len(cur.Nodes) != 2 || cur.Nodes[1].Node != "db" {
+		t.Errorf("the current mark = %+v", cur)
 	}
 	frag := get(t, s, ui.RunPath+"?lang=ko").Body.String()
-	if !strings.Contains(frag, "결과 파일 2개를 받았습니다") || !strings.Contains(frag, ui.ScreenSurvey) || strings.Contains(frag, "every 2s") {
+	if !strings.Contains(frag, "파일 4개가 지금 결과가 됐습니다") || !strings.Contains(frag, ui.ScreenSurvey) || strings.Contains(frag, "every 2s") {
 		t.Errorf("the finished fragment:\n%s", frag)
 	}
 }
@@ -148,8 +203,9 @@ func TestObservationNeedsItsTools(t *testing.T) {
 	}
 }
 
-// IC-U118 — **관측은 한 번에 하나이고 멈출 수 있다.** 돌고 있는 동안 다시 시작하면 409(`run-busy`)다. 「중지」를
-// 누르면 프로세스 묶음을 끝내고 그때까지 받은 결과만 옮기며, 상태는 「멈춤」이다. 관측 구간이 범위 밖이면 400이다.
+// IC-U118 — **관측은 한 번에 하나이고, 멈춘 관측은 지금 결과를 건드리지 않는다.** 돌고 있는 동안 다시 시작하면
+// 409(`run-busy`)다. 「중지」는 프로세스 묶음을 끝내고, 그때까지 받은 것은 실행 자리의 partial/로 격리한다.
+// results/는 그대로다. 노드에 남았을 스테이징 폴더는 정리 플레이북으로 한 번 더 지운다. 관측 구간이 범위 밖이면 400이다.
 func TestObservationRunsOnceAndStops(t *testing.T) {
 	s := runReady(t, "hang")
 	if w := postForm(t, s, ui.RunPath, url.Values{"window": {"4"}}); w.Code != http.StatusBadRequest {
@@ -159,7 +215,7 @@ func TestObservationRunsOnceAndStops(t *testing.T) {
 		t.Fatalf("start = %d", w.Code)
 	}
 	deadline := time.Now().Add(5 * time.Second)
-	for !strings.Contains(s.run.status().Log, "INI_MODE") {
+	for !strings.Contains(s.run.status().Log, "PLAYBOOK=") {
 		if time.Now().After(deadline) {
 			t.Fatalf("the fake never started:\n%s", s.run.status().Log)
 		}
@@ -178,23 +234,171 @@ func TestObservationRunsOnceAndStops(t *testing.T) {
 	if st.State != ui.RunStopped || st.Received != 1 {
 		t.Errorf("after stop: state %s, received %d\n%s", st.State, st.Received, st.Log)
 	}
+	if got := names(t, s.results); strings.Join(got, ",") != oldResult {
+		t.Errorf("a stopped run changed results/: %v", got)
+	}
+	if got := names(t, filepath.Join(runDir(t, s), "partial")); strings.Join(got, ",") != "n1-openssl.json" {
+		t.Errorf("partial/ = %v", got)
+	}
+	if !strings.Contains(st.Log, "CLEANUP ran") {
+		t.Errorf("a stopped run did not clean the nodes:\n%s", st.Log)
+	}
 }
 
-// IC-U119 — **실패한 관측도 받은 만큼은 넘기고 실패로 남는다.** ansible-playbook이 0이 아닌 코드로 끝나면 상태는
-// 「실패」이고 종료 코드와 로그(어느 노드의 어느 단계인지)가 보인다. 그때까지 받은 결과는 옮기고 작업 자리는 지운다.
-func TestFailedObservationKeepsWhatArrived(t *testing.T) {
-	s := runReady(t, "fail")
+// IC-U119 — **실패하거나 빠진 노드가 있는 관측은 지금 결과가 되지 않는다.** ansible-playbook이 0이 아닌 코드로
+// 끝나면 「실패」이고 종료 코드와 로그가 보인다. 0으로 끝났어도 어느 노드의 결과가 빠졌으면 「불완전」이고 빠진 노드와
+// 무엇이 빠졌는지가 보인다. 두 경우 모두 results/는 그대로이고 받은 것은 partial/로 격리하며 인벤토리는 지운다.
+func TestFailedObservationLeavesResultsAlone(t *testing.T) {
+	for _, c := range []struct {
+		mode  string
+		state ui.RunState
+		frag  string
+	}{
+		{"fail", ui.RunFailed, "종료 코드 2"},
+		{"incomplete", ui.RunIncomplete, "db (net)"},
+	} {
+		s := runReady(t, c.mode)
+		if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusSeeOther {
+			t.Fatalf("%s: start = %d", c.mode, w.Code)
+		}
+		st := waitRun(t, s)
+		if st.State != c.state {
+			t.Errorf("%s: state %s\n%s", c.mode, st.State, st.Log)
+		}
+		if frag := get(t, s, ui.RunPath+"?lang=ko").Body.String(); !strings.Contains(frag, c.frag) || strings.Contains(frag, ui.ScreenSurvey) {
+			t.Errorf("%s: the fragment does not show %q or still points at reconciliation:\n%s", c.mode, c.frag, frag)
+		}
+		if got := names(t, s.results); strings.Join(got, ",") != oldResult {
+			t.Errorf("%s: results/ changed: %v", c.mode, got)
+		}
+		dir := runDir(t, s)
+		if _, err := os.Stat(filepath.Join(dir, runInventory)); err == nil {
+			t.Errorf("%s: the inventory was left", c.mode)
+		}
+		if !isDir(filepath.Join(dir, "partial")) {
+			t.Errorf("%s: nothing was kept for diagnosis", c.mode)
+		}
+		if !strings.Contains(st.Log, "CLEANUP ran") {
+			t.Errorf("%s: the nodes were not cleaned", c.mode)
+		}
+	}
+}
+
+// IC-U123 — **접근 정보의 값은 인벤토리의 문법이 되지 않는다.** 노드 ID가 `cmdb://web-1`처럼 기호를 담고, 이름 ·
+// 계정 · 키 경로에 공백 · 작은따옴표 · `{{ }}`가 있어도 인벤토리의 호스트 이름은 별칭(n1)이고, 값은 모두 !unsafe
+// 문자열(작은따옴표는 겹쳐 적는다)이라 한 줄을 벗어나거나 템플릿으로 풀리지 않는다. 줄바꿈 같은 제어 문자는 화면이
+// 저장하지 않고(422), 손으로 넣은 파일이면 실행 전 점검이 막는다.
+func TestHostValuesStayValues(t *testing.T) {
+	hosts := []inventory.Host{{NodeID: "cmdb://web-1", Name: "x ansible_become_pass=y", IP: "10.0.0.2", Port: 22,
+		SSHUser: "o'neil", SSHKey: "/k/{{ lookup('pipe','id') }}", SSHPass: "p w", OS: inventory.OSLinux, Conn: inventory.ConnSSH}}
+	slots, b, err := renderTargets(hosts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv := string(b)
+	for _, want := range []string{
+		"\n    n1:\n",
+		"      pqcaton_node: !unsafe 'cmdb://web-1'\n",
+		"      ansible_user: !unsafe 'o''neil'\n",
+		"      ansible_ssh_private_key_file: !unsafe '/k/{{ lookup(''pipe'',''id'') }}'\n",
+		"      ansible_ssh_pass: !unsafe 'p w'\n",
+	} {
+		if !strings.Contains(inv, want) {
+			t.Errorf("the inventory lacks %q:\n%s", want, inv)
+		}
+	}
+	if strings.Contains(inv, "ansible_become_pass") || len(slots) != 1 || slots[0].Alias != "n1" || slots[0].Node != "cmdb://web-1" {
+		t.Errorf("slots %+v, inventory:\n%s", slots, inv)
+	}
+	bad := []inventory.Host{{NodeID: "web\nevil ansible_host=1.2.3.4", IP: "10.0.0.2", Port: 22}}
+	if _, _, err := renderTargets(bad); err == nil {
+		t.Error("a node ID with a line break became an inventory")
+	}
+
+	s := runReady(t, "ok")
+	before := readFile(t, s.hosts)
+	w := postForm(t, s, ui.HostsSavePath, withRev(url.Values{"host.id.0": {"web\tx"}, "host.ip.0": {"10.0.0.2"}}, s.revFor(ui.ScreenObserve)))
+	if w.Code != http.StatusUnprocessableEntity || readFile(t, s.hosts) != before {
+		t.Errorf("a tab in a node ID: %d, file changed %v", w.Code, readFile(t, s.hosts) != before)
+	}
+	if err := os.WriteFile(s.hosts, []byte("node_id,ip\n\"we\nb\",10.0.0.2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusConflict {
+		t.Errorf("a hand-edited line break: start = %d, want 409", w.Code)
+	}
+}
+
+// IC-U124 — **화면이 끝나면 관측도 끝나고, 비밀이 남지 않는다.** 서버가 끝날 때 돌던 관측을 멈추고 정리가 끝나기를
+// 기다린다(인벤토리가 지워진 뒤에 돌아온다). 서버가 비정상으로 끝나 실행 자리가 남았으면, 다음 시작이 인벤토리를
+// 지우고 받던 것을 partial/로 옮기고 「중단됨」으로 적으며, 03 화면이 그것을 보인다.
+func TestShutdownAndRestartCleanUp(t *testing.T) {
+	s := runReady(t, "hang")
 	if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusSeeOther {
 		t.Fatalf("start = %d", w.Code)
 	}
-	st := waitRun(t, s)
-	if st.State != ui.RunFailed || st.Exit != 2 || st.Received != 1 || !strings.Contains(st.Log, "UNREACHABLE") {
-		t.Errorf("state %s, exit %d, received %d\n%s", st.State, st.Exit, st.Received, st.Log)
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(s.run.status().Log, "PLAYBOOK=") {
+		if time.Now().After(deadline) {
+			t.Fatal("the fake never started")
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
-	if frag := get(t, s, ui.RunPath+"?lang=ko").Body.String(); !strings.Contains(frag, "종료 코드 2") {
-		t.Errorf("the failed fragment does not show the exit code:\n%s", frag)
+	dir := runDir(t, s)
+	s.shutdownRun()
+	if _, err := os.Stat(filepath.Join(dir, runInventory)); err == nil {
+		t.Error("shutdown returned before the inventory was removed")
 	}
-	if ents, _ := os.ReadDir(filepath.Join(s.st.Dir, "observe")); len(ents) != 0 {
-		t.Errorf("the work directory was left: %v", ents)
+	if st := s.run.status(); st.State != ui.RunStopped {
+		t.Errorf("after shutdown: %s", st.State)
+	}
+
+	// 비정상 종료가 남긴 자리.
+	crashed := filepath.Join(s.runsDir(), "20261029T000000-000000000000")
+	if err := os.MkdirAll(filepath.Join(crashed, "next"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	m := runManifest{ID: "20261029T000000-000000000000", State: ui.RunRunning, Started: time.Now().Add(time.Hour)}
+	if err := writeManifest(crashed, m); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{runInventory: "ansible_ssh_pass: !unsafe 's3cret-pw'\n", "next/n1-openssl.json": "{}"} {
+		if err := os.WriteFile(filepath.Join(crashed, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s.recoverRuns()
+	if _, err := os.Stat(filepath.Join(crashed, runInventory)); err == nil {
+		t.Error("the leftover inventory was not removed")
+	}
+	if !isFile(filepath.Join(crashed, "partial", "n1-openssl.json")) {
+		t.Error("what arrived before the crash was not kept in partial/")
+	}
+	page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	if !strings.Contains(page, "지난 관측은 화면이 도중에 끝나 중단됐습니다") {
+		t.Errorf("the observe screen does not say the last run was interrupted")
+	}
+	if got := names(t, s.results); strings.Join(got, ",") != oldResult {
+		t.Errorf("recovery changed results/: %v", got)
+	}
+}
+
+// dirswap가 이 플랫폼에서 실제로 맞바꾸는지(Linux renameat2 · macOS renamex_np).
+func TestDirSwapExchanges(t *testing.T) {
+	d := t.TempDir()
+	a, b := filepath.Join(d, "a"), filepath.Join(d, "b")
+	for p, body := range map[string]string{a: "A", b: "B"} {
+		if err := os.MkdirAll(p, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(p, "f"), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := dirswap(a, b); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(a, "f")); !bytes.Equal(got, []byte("B")) {
+		t.Errorf("a/f = %q after the swap", got)
 	}
 }

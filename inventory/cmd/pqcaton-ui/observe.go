@@ -75,6 +75,9 @@ func (s *server) runView() ui.ObserveRun {
 	if v.Writable {
 		v.Checks = s.preflight()
 	}
+	if m := s.currentRun(); m != nil {
+		v.Current = &ui.RunCurrent{ID: m.ID, Ended: m.Ended.Local(), Nodes: len(m.Nodes), Files: m.Received}
+	}
 	if v.Status != nil && v.Status.Window > 0 {
 		v.Window = v.Status.Window
 	}

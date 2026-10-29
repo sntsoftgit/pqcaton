@@ -411,13 +411,15 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U113](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | 03 관측 화면에서 비밀번호가 있는 줄의 노드 ID를 고치고, 다른 줄을 고치고, 새 WinRM 줄을 더해 저장 | 화면은 비밀번호를 「있음」으로만 보이고 값은 싣지 않는다. 비밀번호는 고친 노드 ID를 따라가고 새 줄에는 없다. 저장한 `hosts.csv`는 상류 `ParseHosts`가 그대로 읽고 소유자 전용(0600)이다 |
 | **[IC-U114](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | WinRM을 Linux 노드에 고르고 같은 노드 ID를 두 번 적어 저장, 두 말 | 422이고 파일은 한 바이트도 바뀌지 않는다. 화면에는 적은 값이 남고 어느 노드의 무엇이 틀렸는지 적힌다. 리다이렉트하면 적던 것이 날아간다 |
 | **[IC-U115](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | 명시 모드와 `hosts.csv`가 없는 작업 폴더에서 `/observe` | 명시 모드는 404이고 03 카드가 닫혀 있다. 작업 폴더 모드는 열리고 03 카드가 「아직 접근 정보가 없습니다」다 |
-| **[IC-U116](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 03 관측 화면에서 「관측 시작」(가짜 ansible-playbook) | 내장 플레이북과 소유자 전용(0600) 인벤토리(접근 비밀이 실린다)를 상태 폴더의 작업 자리에 쓰고 정해진 인자로 부른다. 끝나면 받은 결과(빈 파일은 빼고)를 `results/`로 옮기고 작업 자리를 통째로 지운다. 상태 조각은 받은 수 · 로그 · 대조로 가는 길을 보이고 더는 다시 받지 않는다 |
+| **[IC-U116](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 「관측 시작」(가짜 ansible-playbook), 이전 결과가 0755 폴더에 있음 | 소유자 전용 인벤토리와 내장 플레이북을 실행 자리(results/ 옆 `observations/<id>/`, 상태 폴더 밖)에 쓰고 정해진 인자로 부른다. 모든 노드의 결과가 오고 0으로 끝나면 받은 세대와 results/를 **한 번에 맞바꾸고**, 이전 결과는 섞이지 않고 `previous/`로 간다. 인벤토리는 지우고 기록과 로그는 남는다. 로그에 찍힌 비밀번호는 화면과 로그 파일에서 가려진다 |
 | **[IC-U117](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | ansible-playbook과 수집기 폴더가 없는 서버, 두 말 | 점검 목록이 빠진 것과 할 일을 적고 시작 양식을 내지 않는다. 주소로 직접 보내도 409(`run-not-ready`)이고 아무것도 실행하지 않는다 |
-| **[IC-U118](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 돌고 있는 관측에 다시 시작 · 중지 · 범위 밖 관측 구간 | 다시 시작은 409(`run-busy`)다. 중지는 프로세스 묶음을 끝내고 그때까지 받은 결과만 옮기며 상태는 「멈춤」이다. 도는 동안 상태 조각은 2초마다 다시 받고 중지 단추를 낸다. 관측 구간 4초는 400이다 |
-| **[IC-U119](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | ansible-playbook이 종료 코드 2로 끝남 | 상태는 「실패」이고 종료 코드와 로그가 보인다. 그때까지 받은 결과는 옮기고 작업 자리는 지운다 |
+| **[IC-U118](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 돌고 있는 관측에 다시 시작 · 중지 · 범위 밖 관측 구간 | 다시 시작은 409(`run-busy`)다. 중지는 프로세스 묶음을 끝내고 받은 것은 `partial/`로 격리하며 results/는 그대로다. 노드 정리 플레이북을 한 번 더 돌린다. 도는 동안 상태 조각은 2초마다 다시 받고 중지 단추를 낸다. 관측 구간 4초는 400이다 |
+| **[IC-U119](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | ansible-playbook이 종료 코드 2로 끝남 · 0으로 끝났지만 한 노드의 네트워크 결과가 빠짐 | 「실패」 · 「불완전」이고 종료 코드나 빠진 노드가 보이며 대조로 가는 길을 내지 않는다. results/는 그대로이고 받은 것은 `partial/`로 격리하며 노드 정리를 돌리고 인벤토리는 지운다 |
 | **[IC-U120](../inventory/cmd/pqcaton-ui/approve_test.go) ✅** | 06 화면에서 승인자 이름 · 검토 확인과 함께 서명(작업 폴더 밖의 0600 키) | `plan.signed.json`에 FINALIZED 계획을 쓰고 `plan.json`은 그대로다. 서명은 상류 `VerifyApprovals`가 그 승인자의 공개 키로 통과시키고 `Executable`도 지난다. 화면은 서명한 뒤에만 확인 키 줄(승인자 이름이 든 것)을 보이고, 생성 양식을 내며, 06 카드는 「플레이북을 만들 수 있습니다」다. 같은 계획에 다시 서명하면 409다 |
 | **[IC-U121](../inventory/cmd/pqcaton-ui/approve_test.go) ✅** | 키 없음 · 0644 키 · 계획 폴더 안의 키 · 개인 키가 아닌 파일, 두 말 · 콜론이 든 승인자 · 검토 확인 없음 | 화면은 까닭과 할 일을 적고 서명 양식을 내지 않는다. 주소로 직접 보내도 409(`sign-not-ready`)이고 아무것도 쓰지 않는다 |
 | **[IC-U122](../inventory/cmd/pqcaton-ui/approve_test.go) ✅** | 서명 뒤 L3로 생성 · 그 뒤 계획이 바뀜 · 모르는 수준 | 두 플레이북이 상류 생성기의 출력과 바이트까지 같고, 생성기가 짚은 빈 곳의 수가 06 카드에 오른다. 계획이 바뀌면 카드가 「서명이 지금 계획과 맞지 않습니다」이고 생성은 409(`generate-not-ready`)다. 모르는 수준은 400이다 |
+| **[IC-U123](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 노드 ID `cmdb://web-1`, 공백 · 작은따옴표 · `{{ }}`가 든 이름 · 계정 · 키 경로 · 줄바꿈이나 탭이 든 노드 ID | 인벤토리의 호스트 이름은 별칭(n1)이고 값은 모두 `!unsafe` 문자열이라 한 줄을 벗어나거나 템플릿으로 풀리지 않는다. 제어 문자는 화면이 저장하지 않고(422), 손으로 넣은 파일이면 실행 전 점검이 막는다(409) |
+| **[IC-U124](../inventory/cmd/pqcaton-ui/observerun_test.go) ✅** | 관측 도중 서버 종료 · 실행 자리를 남긴 비정상 종료 뒤 다시 시작 | 종료는 관측을 멈추고 인벤토리가 지워진 뒤에 돌아온다. 다시 시작하면 남은 인벤토리를 지우고 받던 것을 `partial/`로 옮기고 「중단됨」으로 적으며 03 화면이 그것을 보인다. results/는 그대로다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 

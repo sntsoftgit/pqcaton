@@ -51,6 +51,7 @@ const (
 	wsJudgments    = "judgments.jsonl"
 	wsHosts        = "hosts.csv"
 	wsCollectors   = "collectors"
+	wsObservations = "observations"
 	wsSigned       = "plan.signed.json"
 	wsProvision    = "provision.yml"
 	wsRollback     = "provision-rollback.yml"

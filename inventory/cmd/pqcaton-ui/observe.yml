@@ -8,6 +8,10 @@
 # 여기서는 그 명령들이 문서로 밝힌 사용법대로 부른다. 수집기를 노드에 올리고, 실행하고, 결과를 컨트롤러로
 # 가져오고, 노드에서 지운다. 지우는 일은 `always`에 있어 중간에 실패해도 한다.
 #
+# **노드 이름은 문법이 되지 않는다.** 인벤토리의 호스트 이름은 화면이 정한 별칭(n1, n2…)이고, 사람이 적은 노드 ID는
+# pqcaton_node 변수로 온다(인벤토리에서 !unsafe라 템플릿으로 풀리지 않는다). 명령은 모두 argv로 불러 셸을 거치지
+# 않고, 결과 파일 이름은 별칭으로 짓는다.
+#
 # 화면이 넘기는 변수(-e @vars.json):
 #   results_dir    컨트롤러에서 결과를 받을 자리(작업 자리 안). 끝나면 화면이 작업 폴더의 results로 옮긴다
 #   bin_root       수집기 폴더. linux-amd64 · linux-arm64 · windows-amd64 아래에 바이너리가 있다
@@ -27,6 +31,16 @@
       when: ansible_facts['os_family'] | default('') != 'Windows'
       become: true
       block:
+        - name: Check the collectors for this node's architecture
+          ansible.builtin.stat: { path: "{{ bin_root }}/linux-{{ arch }}/pqcota-nodescan" }
+          register: bins
+          delegate_to: localhost
+          become: false
+
+        - name: Stop here when there are no collectors for it
+          ansible.builtin.fail: { msg: "no collectors for linux-{{ arch }} in the collector folder" }
+          when: not bins.stat.exists
+
         - name: Make the staging directory
           ansible.builtin.file: { path: "{{ stage }}", state: directory, mode: "0700" }
 
@@ -38,7 +52,8 @@
           loop: [pqcota-nodescan, pqcota-netcap, pqcota-jvmscan]
 
         - name: Look for JVMs
-          ansible.builtin.command: "{{ stage }}/pqcota-jvmscan -recon"
+          ansible.builtin.command:
+            argv: ["{{ stage }}/pqcota-jvmscan", "-recon"]
           register: jvms
           changed_when: false
           when: jar_present | bool
@@ -49,7 +64,8 @@
           when: jar_present | bool and (jvms.stdout | default('[]') | from_json | length) > 0
 
         - name: Observe the OpenSSL runtime
-          ansible.builtin.command: "{{ stage }}/pqcota-nodescan {{ inventory_hostname }}"
+          ansible.builtin.command:
+            argv: ["{{ stage }}/pqcota-nodescan", "{{ pqcaton_node }}"]
           register: openssl
           changed_when: false
 
@@ -59,7 +75,8 @@
           become: false
 
         - name: Observe the JCA provider chains
-          ansible.builtin.command: "{{ stage }}/pqcota-jvmscan {{ inventory_hostname }}"
+          ansible.builtin.command:
+            argv: ["{{ stage }}/pqcota-jvmscan", "{{ pqcaton_node }}"]
           environment: { PQCOTA_JVM_AGENT: "{{ stage }}/collector.jar" }
           register: jca
           changed_when: false
@@ -72,7 +89,8 @@
           when: jca is not skipped and (jca.stdout | default('') | length) > 0
 
         - name: Observe TLS and SSH handshakes
-          ansible.builtin.command: "{{ stage }}/pqcota-netcap {{ inventory_hostname }} {{ iface }} {{ netcap_window }}"
+          ansible.builtin.command:
+            argv: ["{{ stage }}/pqcota-netcap", "{{ pqcaton_node }}", "{{ iface }}", "{{ netcap_window }}"]
           register: net
           changed_when: false
 
@@ -97,7 +115,8 @@
           loop: [pqcota-cngscan.exe, pqcota-jvmscan.exe]
 
         - name: Observe the CNG providers
-          ansible.windows.win_command: '{{ stage_win }}\pqcota-cngscan.exe {{ inventory_hostname }}'
+          ansible.windows.win_command:
+            argv: ['{{ stage_win }}\pqcota-cngscan.exe', "{{ pqcaton_node }}"]
           register: cng
           changed_when: false
 
@@ -106,7 +125,8 @@
           delegate_to: localhost
 
         - name: Look for JVMs
-          ansible.windows.win_command: '{{ stage_win }}\pqcota-jvmscan.exe -recon'
+          ansible.windows.win_command:
+            argv: ['{{ stage_win }}\pqcota-jvmscan.exe', "-recon"]
           register: jvms_win
           changed_when: false
           when: jar_present | bool
@@ -117,7 +137,8 @@
           when: jar_present | bool and (jvms_win.stdout | default('[]') | from_json | length) > 0
 
         - name: Observe the JCA provider chains
-          ansible.windows.win_command: '{{ stage_win }}\pqcota-jvmscan.exe {{ inventory_hostname }}'
+          ansible.windows.win_command:
+            argv: ['{{ stage_win }}\pqcota-jvmscan.exe', "{{ pqcaton_node }}"]
           environment: { PQCOTA_JVM_AGENT: '{{ stage_win }}\collector.jar' }
           register: jca_win
           changed_when: false

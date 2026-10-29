@@ -37,6 +37,9 @@ templ observePage(v ObserveView) {
 					</div>
 				</form>
 			}
+			if v.Run.Current != nil {
+				<p class="lede">{ tRunCurrent.F(v.Page.Lang, v.Run.Current.Ended.Format("2006-01-02 15:04"), v.Run.Current.Nodes, v.Run.Current.Files) }</p>
+			}
 			@runStatus(v.Page.Lang, v.Page.CSRF, v.Run.Status)
 		</div>
 	}
@@ -92,8 +95,16 @@ templ runStatusBody(l Lang, csrf string, st *RunStatus) {
 			<button type="submit">{ tRunStop.In(l) }</button>
 			@tip(l, tRunStopHint.In(l))
 		</form>
-	} else if st.Received > 0 {
+	} else if st.State == RunDone {
 		<p><a class="primary" href={ templ.SafeURL(ScreenSurvey + "?" + LangParam + "=" + string(l)) }>{ tRunGoSurvey.In(l) }</a></p>
+	}
+	if len(st.Missing) > 0 {
+		<p><strong>{ tRunMissing.In(l) }</strong></p>
+		<ul>
+			for _, m := range st.Missing {
+				<li><code>{ m }</code></li>
+			}
+		</ul>
 	}
 	if st.Dropped > 0 {
 		<p class="hint">{ tRunDropped.F(l, st.Dropped) }</p>

@@ -171,8 +171,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if s.st != nil {
 			_ = os.Remove(filepath.Join(s.st.Dir, addrFile))
 		}
-		// 돌고 있는 관측도 끝낸다. 화면이 없어지면 멈출 자리가 없다.
-		s.stopRun()
+		// 돌고 있는 관측도 끝내고 **정리가 끝나기를 기다린다.** 먼저 끝나면 Ansible 자식과 비밀이 실린 인벤토리가 남는다.
+		s.shutdownRun()
 		close(stopped)
 		_ = ln.Close()
 	}()
@@ -288,9 +288,12 @@ func (s *server) openState(dir string) error {
 		fmt.Fprintln(os.Stderr, "❌", err)
 		fmt.Fprintln(os.Stderr, "   The screen opens in recovery mode: every page answers 503 until this is resolved and the screen is restarted.")
 		s.st, s.recovering = st, true
+		s.recoverRuns()
 		return nil
 	}
 	s.st = st
+	// 지난번에 관측 도중 끝났으면 접근 비밀이 담긴 인벤토리가 남아 있다. 무엇보다 먼저 지운다.
+	s.recoverRuns()
 	// 진단 전용이면 깨진 입력으로 세션을 세우지 않는다(화면이 까닭을 보인다).
 	if len(s.diag) > 0 {
 		return nil

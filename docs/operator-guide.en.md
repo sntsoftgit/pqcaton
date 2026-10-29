@@ -124,7 +124,8 @@ can.
 | Place | What | Written by |
 |---|---|---|
 | `declaration.json` | The declaration (managed nodes, assets, edges) | Screen (01) |
-| `hosts.csv` | Access to the nodes to observe. It may hold passwords, so only the owner reads it (0600) | Screen (03) |
+| `hosts.csv` | Access to the nodes to observe. A password written here **stays in this file and goes into backups.** Only the owner reads it (0600) | Screen (03) |
+| `observations/` | One place per observation run: its record, its log (passwords masked), the results it replaced (`previous/`), and results that did not become current (`partial/`) | Screen (03) |
 | `collectors/` | The collectors observations use. The screen only reads them | Operator |
 | `results/` | Observed results | Screen (03 Observation), pqcota collection |
 | `session.json` | The review session | Screen (05) |
@@ -225,7 +226,11 @@ required).
    and save. They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
    on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation"
    copies the collectors to each node in the table, runs them, takes the results into `results/`, and removes them from
-   the node. While it runs, the log is shown and "Stop" stops it. The network observation waits for handshakes on the
+   the node. While it runs, the log is shown and "Stop" stops it. **The current results change, all at once, only when
+   every node's results arrived and the run succeeded.** If the run failed, was stopped, or a node's results are missing,
+   the current results stay and what arrived is kept for diagnosis in `observations/<run>/partial/`. After a run that did
+   not finish, a cleanup removes the staging folders from the nodes. Stopping the screen stops a running observation too,
+   and the screen ends only after the cleanup. The network observation waits for handshakes on the
    node's default-route interface for the window you set (60 seconds by default).
 4. **04 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
    screen. With no results, the screen points at that folder.
@@ -262,7 +267,8 @@ pgrep -u "$USER" -x pqcaton-ui || echo stopped
 ```
 
 3. Copy the whole workspace, `.pqcaton/` included. The save records and the lock files go together, so do not copy only a
-   part.
+   part. If `hosts.csv` holds passwords, they go into the backup as well, so guard the backup like the workspace. With SSH
+   keys instead of passwords, no secret ends up in the backup.
 
 <!-- run -->
 ```bash
