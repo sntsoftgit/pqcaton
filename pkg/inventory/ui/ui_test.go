@@ -1388,6 +1388,23 @@ func TestInstallationsAreShownAndConfirmedAgainstTheListSeen(t *testing.T) {
 	if strings.Contains(body, `name="installs:db/openssl/libssl"`) {
 		t.Error("a single installation got the confirmation row")
 	}
+	if !strings.Contains(body, "관측 출처:") {
+		t.Error("the sources that saw the installations are not shown")
+	}
+	// 같은 경로를 원천 이름 둘이 봤으면 설치 하나라 확인 줄이 없다.
+	seenTwice := review.Item{ID: "pay/openssl/libssl", Policy: "p", Runtime: "openssl", State: "UNDECLARED",
+		Sources: []review.EvidenceSource{
+			{FindingID: "f-a", Path: "/usr/lib/libssl.so.3", SourceNodeID: "pay-a"},
+			{FindingID: "f-b", Path: "/usr/lib/libssl.so.3", SourceNodeID: "pay-b"},
+		}}
+	var b2 strings.Builder
+	sf2 := review.Session{Scope: "org://acme", PolicyDecisions: map[string]string{"p": ""}, Items: []review.Item{seenTwice}}
+	if err := ui.RenderReview(&b2, ui.NewReviewView(sf2, ui.Page{Title: "판정", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b2.String(), `name="installs:pay/openssl/libssl"`) {
+		t.Error("one path seen from two sources got the confirmation row")
+	}
 
 	tok := ui.InstallationsToken(review.Installations(it))
 	got := ui.ApplyReview(sf, url.Values{"installs:web/openssl/libssl": {"all:" + tok}})

@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -594,23 +595,47 @@ func RequireNode(it Item) error {
 // 필수의 범위는 상류의 완결성 기준을 따른다. 목표 알고리즘은 **config로 배달하는 조치**에만
 // 필요하다 — 그 조치의 조각에만 `Groups` 줄이 있고, 비면 배치해도 아무것도 켜지지 않는다.
 // 포크 교체나 폐기에는 적을 자리가 없으므로 요구하지 않는다.
-// Installations — 이 항목의 근거가 가리키는 설치들. 근거마다 원천 노드와 설치 경로로 하나이고, 경로를 모르면
-// `finding_id`로 대신한다. 정렬하고 겹친 것을 지운다. 같은 경로라도 원천 노드가 다르면 다른 기계의 설치다.
+// UnknownPathPrefix — 경로를 모르는 근거의 설치 식별자 앞머리. 뒤에 finding id가 붙는다(「경로를 확인하지 못한 설치 후보」).
+const UnknownPathPrefix = "finding:"
+
+// installationOf — 근거 하나가 가리키는 설치. 경로가 있으면 경로이고, 없으면 finding id로 보수적으로 가른다.
+func installationOf(s EvidenceSource) string {
+	if s.Path != "" {
+		return s.Path
+	}
+	return UnknownPathPrefix + s.FindingID
+}
+
+// Installations — 이 항목이 가리키는 설치들. 정렬하고 겹친 것을 지운다.
+//
+// **원천 노드는 설치의 동일성이 아니다.** 관측 봉투의 이름이라 선언 노드와 다를 수 있고, 계획은 항목의 노드 하나로
+// 나간다. 같은 경로를 원천 이름 둘이 봤으면 설치 하나, 근거 둘이다. 원천 노드는 [InstallationSources]가 관측 출처로
+// 따로 보인다. 근거 해시([BasisOf])에는 원천 노드가 그대로 들어가므로, 출처가 바뀌면 판정 근거는 여전히 무효가 된다.
 func Installations(it Item) []string {
 	seen := map[string]bool{}
 	var out []string
 	for _, s := range it.Sources {
-		where := s.Path
-		if where == "" {
-			where = "finding " + s.FindingID
-		}
-		k := s.SourceNodeID + ": " + where
-		if !seen[k] {
+		if k := installationOf(s); !seen[k] {
 			seen[k] = true
 			out = append(out, k)
 		}
 	}
 	sort.Strings(out)
+	return out
+}
+
+// InstallationSources — 설치마다 그것을 본 원천 노드들(정렬, 겹침 없음). 화면이 관측 출처로 보인다.
+func InstallationSources(it Item) map[string][]string {
+	out := map[string][]string{}
+	for _, s := range it.Sources {
+		k := installationOf(s)
+		if !slices.Contains(out[k], s.SourceNodeID) {
+			out[k] = append(out[k], s.SourceNodeID)
+		}
+	}
+	for k := range out {
+		sort.Strings(out[k])
+	}
 	return out
 }
 

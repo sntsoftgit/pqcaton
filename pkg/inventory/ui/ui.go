@@ -212,6 +212,27 @@ func InstallationsToken(installs []string) string {
 	return hex.EncodeToString(h[:8])
 }
 
+// installRows — 설치 줄에 보일 것: 이름(경로, 또는 경로를 확인하지 못한 설치 후보의 finding id)과 그 설치를 본 원천 노드들.
+type installRow struct {
+	Path, Finding string // 둘 가운데 하나만 찬다
+	SeenBy        string // 원천 노드들(관측 출처). 설치의 동일성이 아니다
+}
+
+func installRows(it review.Item) []installRow {
+	src := review.InstallationSources(it)
+	var out []installRow
+	for _, k := range review.Installations(it) {
+		r := installRow{SeenBy: strings.Join(src[k], ", ")}
+		if id, ok := strings.CutPrefix(k, review.UnknownPathPrefix); ok {
+			r.Finding = id
+		} else {
+			r.Path = k
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
 // plannable — 계획에 넣을 수 있는 항목인가. 제외 전용은 관리 대상이 아니라 칸을 잠근다.
 func plannable(it review.Item) bool { return review.ManagedOf(it) != reconcile.ExcludedByPolicy }
 

@@ -20,8 +20,9 @@ const dg = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 func withSources() review.Item {
 	it := base()
 	it.Sources = []review.EvidenceSource{
-		{FindingID: "f-a", Fingerprint: "fp-a", Evidence: "confirmed", SourceNodeID: "web-a.corp", SnapshotDigest: dg, SnapshotRuleset: "pqcota-enrich/v2"},
-		{FindingID: "f-b", Fingerprint: "fp-b", Evidence: "inferred-low", SourceNodeID: "web-b.corp", SnapshotDigest: dg, SnapshotRuleset: "pqcota-enrich/v2"},
+		// 같은 설치(경로)를 원천 이름 둘이 봤다. 상류의 finding id는 노드 이름을 넣어 만들므로 둘이 다르다.
+		{FindingID: "f-a", Path: "/usr/lib/libssl.so.3", Fingerprint: "fp-a", Evidence: "confirmed", SourceNodeID: "web-a.corp", SnapshotDigest: dg, SnapshotRuleset: "pqcota-enrich/v2"},
+		{FindingID: "f-b", Path: "/usr/lib/libssl.so.3", Fingerprint: "fp-b", Evidence: "inferred-low", SourceNodeID: "web-b.corp", SnapshotDigest: dg, SnapshotRuleset: "pqcota-enrich/v2"},
 	}
 	it.FindingID, it.Fingerprint = "f-a", "fp-a"
 	return it
@@ -32,7 +33,6 @@ func withSources() review.Item {
 func TestEvidenceReachesTheContract(t *testing.T) {
 	it := withSources()
 	it.Plan, it.Level, it.Kind, it.TargetAlgorithm, it.Node, it.Runtime = true, "L2", "REMEDIATION_KIND_CONFIG_ONLY", "ML-KEM (FIPS 203)", "web", "openssl"
-	it.InstallationsConfirmed = review.Installations(it) // 원천 노드 둘이라 설치 둘이다(IC-P21)
 	sf := judgedSession()
 	sf.Items = []review.Item{it}
 	res, err := review.Finalize(sf)
@@ -91,7 +91,6 @@ func TestEmptyDigestStillNamesTheFinding(t *testing.T) {
 	it := withSources()
 	it.Sources[1].SnapshotDigest = ""
 	it.Plan, it.Level, it.Kind, it.TargetAlgorithm, it.Node, it.Runtime = true, "L2", "REMEDIATION_KIND_CONFIG_ONLY", "ML-KEM (FIPS 203)", "web", "openssl"
-	it.InstallationsConfirmed = review.Installations(it) // 원천 노드 둘이라 설치 둘이다(IC-P21)
 	sf := judgedSession()
 	sf.Items = []review.Item{it}
 	res, err := review.Finalize(sf)

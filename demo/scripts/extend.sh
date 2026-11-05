@@ -165,8 +165,9 @@ def pick(it):
     it["deploy_level"] = "L2"
     it["rollback_note"] = "remove the staged config fragment"
     # 설치가 둘 이상이면 한 조치가 그 전부에 간다는 확인이 있어야 확정된다(IC-P21). 사람이 화면에서 하는 확인을
-    # 여기서 대신한다. 목록은 review.Installations와 같은 꼴이다: 「원천 노드: 경로」(경로를 모르면 finding id), 정렬.
-    ins = sorted({s["source_node_id"] + ": " + (s.get("path") or "finding " + s["finding_id"]) for s in it.get("evidence_sources") or []})
+    # 여기서 대신한다. 목록은 review.Installations와 같은 꼴이다: 경로(모르면 「finding:」 + finding id), 정렬.
+    # 원천 노드는 설치가 아니다 - 같은 경로를 원천 이름 둘이 봤으면 설치 하나다.
+    ins = sorted({s.get("path") or "finding:" + s["finding_id"] for s in it.get("evidence_sources") or []})
     if len(ins) > 1:
         it["installations_confirmed"] = ins
 n = m = 0

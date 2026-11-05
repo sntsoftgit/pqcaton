@@ -122,3 +122,42 @@ func TestPathIsPartOfTheBasis(t *testing.T) {
 		t.Error("an unknown path moved the basis")
 	}
 }
+
+// IC-P23 — **설치는 경로로 세고, 원천 노드로 세지 않는다.** 같은 경로를 원천 이름 둘이 봤으면 설치 하나라 확인이
+// 필요 없다. 경로를 모르는 서로 다른 finding 둘은 설치 후보 둘이라 확인이 필요하고, 확인한 뒤 그 finding id가
+// 바뀌면 확인은 무효다. 원천 노드는 설치 목록에 들지 않고 관측 출처로만 남는다.
+func TestInstallationsAreCountedByPathNotBySource(t *testing.T) {
+	sf := judgedSession()
+	it := &sf.Items[0]
+	it.Sources = []review.EvidenceSource{
+		{FindingID: "f-a", Path: "/usr/lib/libssl.so.3", SourceNodeID: "web-a.corp"},
+		{FindingID: "f-b", Path: "/usr/lib/libssl.so.3", SourceNodeID: "web-b.corp"},
+	}
+	if got := review.Installations(*it); len(got) != 1 {
+		t.Fatalf("one path seen from two sources is one installation, got %v", got)
+	}
+	if src := review.InstallationSources(*it)["/usr/lib/libssl.so.3"]; len(src) != 2 {
+		t.Errorf("the sources that saw it are lost: %v", src)
+	}
+	if _, err := review.Finalize(sf); err != nil {
+		t.Errorf("one installation asked for a confirmation: %v", err)
+	}
+
+	unknown := judgedSession()
+	u := &unknown.Items[0]
+	u.Sources = []review.EvidenceSource{{FindingID: "f-x", SourceNodeID: "web"}, {FindingID: "f-y", SourceNodeID: "web"}}
+	if got := review.Installations(*u); len(got) != 2 {
+		t.Fatalf("two findings without a path are two installation candidates, got %v", got)
+	}
+	if _, err := review.Finalize(unknown); err == nil {
+		t.Error("two installation candidates went through without a confirmation")
+	}
+	u.InstallationsConfirmed = review.Installations(*u)
+	if _, err := review.Finalize(unknown); err != nil {
+		t.Errorf("a confirmed pair of candidates was refused: %v", err)
+	}
+	u.Sources[1].FindingID = "f-z"
+	if _, err := review.Finalize(unknown); err == nil {
+		t.Error("a confirmation still counted after an unknown installation's finding id changed")
+	}
+}

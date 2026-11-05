@@ -157,8 +157,15 @@ templ installsRow(lang Lang, it review.Item, span int) {
 			<td colspan={ strconv.Itoa(span) }>
 				<span class="hint">{ tInstallsHead.In(lang) }</span>
 				<ul class="installs">
-					for _, p := range ins {
-						<li><code>{ p }</code></li>
+					for _, r := range installRows(it) {
+						<li>
+							if r.Path != "" {
+								<code>{ r.Path }</code>
+							} else {
+								{ tInstallUnknownPath.In(lang) } <code>{ r.Finding }</code>
+							}
+							<span class="hint">{ tInstallSeenBy.In(lang) } { r.SeenBy }</span>
+						</li>
 					}
 				</ul>
 				<label><input type="radio" name={ "installs:" + it.ID } value={ "all:" + InstallationsToken(ins) } checked?={ review.InstallationsConfirmedNow(it) }/> { tInstallsAll.In(lang) }</label>
