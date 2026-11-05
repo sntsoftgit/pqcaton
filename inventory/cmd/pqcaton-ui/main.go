@@ -655,7 +655,19 @@ func (s *server) applyReview(r *http.Request) (review.Session, error) {
 	if err != nil {
 		return sf, err
 	}
+	if err := sameUpstreamRuleset(sf); err != nil {
+		return sf, err
+	}
 	return ui.ApplyReview(sf, r.PostForm), nil
+}
+
+// sameUpstreamRuleset: 세션이 지금 도구와 같은 상류 규칙 판인가. 다르면 그 세션 파일은 다시 쓰지 않는다
+// (review.Carry가 옮기지 않고 저장된 세션을 그대로 돌려준 경우다). 저장 · 확정 · 새 회차가 모두 이것을 본다.
+func sameUpstreamRuleset(sf review.Session) error {
+	if sf.RulesetVersion != "" && review.UpstreamRuleset(sf.RulesetVersion) != review.UpstreamRuleset(review.RulesetVersion) {
+		return &review.RulesetChanged{Session: sf.RulesetVersion, Tool: review.RulesetVersion}
+	}
+	return nil
 }
 
 // reviewID: 리뷰 세션의 동일성. 파일에 적힌 세션 ID다.
@@ -1384,11 +1396,21 @@ func (s *server) reviewNew(w http.ResponseWriter, r *http.Request) {
 	if !s.writable(w, r, back) {
 		return
 	}
+	// 규칙 판이 다른 세션은 확정 여부보다 먼저 거절한다. 같은 규칙 판의 새 회차는 결론을 옮기므로 이 길로 넘어가면 안 된다.
+	if sf, _, err := s.reviewSession(); err == nil {
+		if err := sameUpstreamRuleset(sf); err != nil {
+			s.fail(w, r, back, err)
+			return
+		}
+	}
 	newID := review.NewSessionID()
 	to := store.Identity{Kind: kindReview, Org: s.orgName(), SessionID: newID}
 	err := s.st.OpenRound(s.reviewID(), to, []string{s.path}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
 		sf, _, err := s.reviewSession()
 		if err != nil {
+			return nil, err
+		}
+		if err := sameUpstreamRuleset(sf); err != nil {
 			return nil, err
 		}
 		sf.SessionID, sf.Signature = newID, ""

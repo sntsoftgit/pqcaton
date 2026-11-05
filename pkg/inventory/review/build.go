@@ -164,6 +164,13 @@ func FromReport(r *report.Result, d decl.Declaration, orgName string) (*Built, e
 // 옛 식별자 목록(LegacyAutopass)은 새 세션에 같은 ID의 구조화 후보가 있으면 그것으로 치환된
 // 셈이다(새 세션이 이미 들고 있다). 없으면 목록에 남기고 계획 불가를 알린다 - 알리지 않고 지우지 않는다.
 func Carry(prev, next Session) Session {
+	// **상류 규칙 판이 다르면 옮기지 않고 저장된 세션을 그대로 돌려준다.** 자산 ID와 스냅샷 지문이 다른 규칙으로
+	// 셈해져, 옛 결론을 새 근거에 옮기면 사람이 본 적 없는 근거가 판정된 것처럼 된다. 결론이 차면 그 항목은
+	// 「판정됨」이라 서명만 넣어도 확정을 지나간다. 저장된 세션은 옛 규칙 판을 그대로 들고 있으므로 확정이
+	// [ErrRulesetChanged]로 막고, 화면은 그 파일을 다시 쓰지 않는다. 넘어가는 길은 새 회차다.
+	if prev.RulesetVersion != "" && UpstreamRuleset(prev.RulesetVersion) != UpstreamRuleset(next.RulesetVersion) {
+		return prev
+	}
 	was := map[string]Item{}
 	for _, it := range All(prev) {
 		was[it.ID] = it

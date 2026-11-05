@@ -245,6 +245,8 @@ func refusedKind(err error) (string, int) {
 		return ui.RefusedStale, http.StatusConflict
 	case errors.Is(err, store.ErrSessionFinalized):
 		return ui.RefusedFinalized, http.StatusConflict
+	case errors.Is(err, review.ErrRulesetChanged):
+		return ui.RefusedRulesetChanged, http.StatusConflict
 	case errors.Is(err, store.ErrTargetBusy):
 		return ui.RefusedBusy, http.StatusConflict
 	case errors.Is(err, store.ErrNeedsRecovery):

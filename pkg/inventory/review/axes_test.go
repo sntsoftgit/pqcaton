@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/normalize"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
@@ -19,9 +20,11 @@ import (
 // 판정 축과 계획 축을 나눈다. 자동통과는 「사람이 볼 필요가 없다」이지 「바꿀 필요가 없다」가
 // 아니다. 관리 축은 대조 축과 다른 것을 재고, 세션 파일에 들어가 해시가 덮고 계획 차단이 본다.
 
-const (
-	v2 = "pqcota-enrich/v2+pqcaton-plan/v2"
-	v3 = "pqcota-enrich/v2+pqcaton-plan/v3"
+// 계획 규칙 판의 v2 · v3. 상류 쪽은 지금 도구의 것이다 - 상류 판이 다르면 확정이 막히므로(IC-P19), 계획 규칙 판만
+// 다른 세션을 재려면 상류 쪽을 맞춰야 한다.
+var (
+	v2 = normalize.RulesetVersion + "+pqcaton-plan/v2"
+	v3 = normalize.RulesetVersion + "+pqcaton-plan/v3"
 )
 
 func autopassItem(id string) review.Item {

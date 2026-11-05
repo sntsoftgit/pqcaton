@@ -441,6 +441,7 @@ screen.
 |---|---|---|
 | `stale` | The files changed after the screen was opened, so nothing was saved | Reload the screen and do it again |
 | `finalized` | The session is already finalized, so nothing was saved | Do it in a new session |
+| `ruleset-changed` | The session was opened under a different upstream ruleset, so nothing was saved or finalized, to keep the two from mixing | Open a new round and judge it again under the current rules |
 | `busy` | Another save to the same files is in progress, or another command holds the state folder | Try again shortly. If it persists, check whether another `pqcaton-ui` or command is running |
 | `recovery` | Saving is stopped in the recovery required state | Follow [section 8](#8-recovery) |
 | `view-only` | This platform does not save | Run it on Linux |

@@ -95,7 +95,7 @@ func TestConfidenceMovesBothDeltaAndSignature(t *testing.T) {
 // IC-D21 — 큐가 비면 항목별 비교가 전부 참이다. 규칙 판을 따로 한 번 더 보는 이유다.
 func TestEmptyQueueStillLosesTheSignatureWhenTheRulesMove(t *testing.T) {
 	prev := review.Session{RulesetVersion: rules, Signature: "sig"}
-	got := review.Carry(prev, review.Session{RulesetVersion: "pqcota-enrich/v2+pqcaton-plan/v1",
+	got := review.Carry(prev, review.Session{RulesetVersion: "pqcota-enrich/v1+pqcaton-plan/v2",
 		PolicyDecisions: map[string]string{}})
 	if got.Signature != "" {
 		t.Error("빈 큐라 규칙 변경이 서명을 지나쳤다")

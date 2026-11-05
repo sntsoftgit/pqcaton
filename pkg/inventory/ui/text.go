@@ -63,6 +63,9 @@ var (
 	tRefusedFinalized = T{
 		KO: "이 세션은 이미 확정되었습니다. 바꾸려면 새 세션을 여십시오.",
 		EN: "This session is already finalized. Open a new session to make changes."}
+	tRefusedRulesetChanged = T{
+		KO: "이 세션은 지금과 다른 상류 규칙 판으로 열렸습니다. 두 규칙 판이 섞이지 않도록 저장하거나 확정하지 않았습니다. 새 회차를 열어 지금 규칙으로 다시 판정하십시오.",
+		EN: "This session was opened under a different upstream ruleset. To keep the two rulesets from mixing, nothing was saved or finalized. Open a new round and judge it again under the current rules."}
 	tRefusedBusy = T{
 		KO: "다른 저장이 아직 끝나지 않았습니다. 잠시 뒤 다시 시도하십시오.",
 		EN: "Another save has not finished yet. Try again in a moment."}

@@ -20,6 +20,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -145,6 +146,11 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 		id = s.reviewID()
 		return err
 	})
+	if errors.Is(err, review.ErrRulesetChanged) {
+		// 규칙 판이 다른 세션은 화면에서 고칠 것이 아니라 새 회차로 넘어갈 일이다. 거절 페이지로 보인다.
+		s.fail(w, r, back, err)
+		return
+	}
 	if err != nil {
 		// 확정되지 않을 이유가 있으면 미리 보지 않고 화면에 그 이유를 보인다.
 		redirect(w, r, back, nil, problemsFor(r, err))

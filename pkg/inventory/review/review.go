@@ -284,6 +284,33 @@ func SourcesOf(r reconcile.Reconciled) []EvidenceSource {
 // 사람이 한 일이 사라진다.
 const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v3"
 
+// ErrRulesetChanged — 세션을 연 때의 상류 규칙 판(`pqcota-enrich/…`)이 지금 도구와 다르다.
+//
+// **계획 규칙 판이 낮은 것과 다르다.** 그쪽은 이 리포의 대조 · 계획 규칙만 바뀐 것이라 근거의 자리는 그대로이고, 경고만
+// 한다. 상류 규칙 판이 바뀌면 자산 ID와 스냅샷 지문이 달라져, 옛 세션의 근거는 지금 상류 이력에서 찾히지 않는다.
+// 그 세션으로 낸 계획은 한 계획 안에 두 규칙 판을 섞는다. 그래서 막는다. 사람이 적은 결론은 새 회차에 참고값으로
+// 남으므로 막아도 사람이 한 일이 버려지지 않는다.
+var ErrRulesetChanged = errors.New("ruleset changed")
+
+// RulesetChanged — [ErrRulesetChanged]에 두 판을 싣는다. 명령이 읽는 영어 문장이다.
+type RulesetChanged struct{ Session, Tool string }
+
+func (e *RulesetChanged) Error() string {
+	return fmt.Sprintf("this session was opened under %s, but the tool now runs %s: the upstream ruleset changed, "+
+		"so its evidence cannot be found in the current upstream history. Open a new round from the results to judge "+
+		"under the current rules; the conclusions written here stay there as reference values", e.Session, e.Tool)
+}
+
+func (e *RulesetChanged) Unwrap() error { return ErrRulesetChanged }
+
+// UpstreamRuleset — 결합 판에서 상류 쪽(`pqcota-enrich/…`)을 꺼낸다. 계획 규칙 판이 붙어 있지 않으면 통째로 상류 판이다.
+func UpstreamRuleset(rulesetVersion string) string {
+	if i := strings.LastIndex(rulesetVersion, "+pqcaton-plan/v"); i >= 0 {
+		return rulesetVersion[:i]
+	}
+	return rulesetVersion
+}
+
 // planRulesetNumber — 결합 판 문자열에서 이 리포의 계획 규칙 판 번호를 꺼낸다. 없거나 못 읽으면
 // 0이다(옛 빌드가 연 세션, 또는 규칙 판을 안 적은 것).
 func planRulesetNumber(rulesetVersion string) int {
@@ -477,6 +504,11 @@ func Finalize(sf Session) (*Result, error) {
 		return nil, fmt.Errorf("this session records no session_id — it was raised by an older build. " +
 			"raise it again from the results (`pqcaton-decide open`) so its judgments and its plan " +
 			"share one session id; finalizing it as-is would leave a plan nothing in the ledger points back to")
+	}
+
+	// **상류 규칙 판이 다르면 막는다**([ErrRulesetChanged]). 아래의 계획 규칙 판 경고보다 먼저 본다.
+	if have, now := UpstreamRuleset(sf.RulesetVersion), UpstreamRuleset(RulesetVersion); have != now {
+		return nil, &RulesetChanged{Session: sf.RulesetVersion, Tool: RulesetVersion}
 	}
 
 	// 규칙 판이 지금 도구보다 낮은 세션이다. 막지는 않는다 - 검토 중인 세션이 도구 교체로 버려지면

@@ -30,15 +30,15 @@ func TestRulesetVersionJoinsBothSides(t *testing.T) {
 // 달라졌으면 승인자가 본 것과 다른 근거가 된다. 전에는 ID와 상태만 비교해서 살아남았다.
 func TestChangedRulesetDropsTheSignature(t *testing.T) {
 	items := []review.Item{{ID: "n1/openssl/libssl", Policy: "openssl/libssl", State: "UNDECLARED"}}
-	prev := review.Session{RulesetVersion: "rules/v1", Reviewer: "보안팀", Signature: "sig", Items: items}
+	prev := review.Session{RulesetVersion: "rules/v1+pqcaton-plan/v1", Reviewer: "보안팀", Signature: "sig", Items: items}
 
-	same := review.Carry(prev, review.Session{RulesetVersion: "rules/v1", Items: items,
+	same := review.Carry(prev, review.Session{RulesetVersion: "rules/v1+pqcaton-plan/v1", Items: items,
 		PolicyDecisions: map[string]string{}})
 	if same.Signature != "sig" {
 		t.Error("규칙이 그대로인데 서명이 사라졌다 — 매번 다시 서명하게 된다")
 	}
 
-	moved := review.Carry(prev, review.Session{RulesetVersion: "rules/v2", Items: items,
+	moved := review.Carry(prev, review.Session{RulesetVersion: "rules/v1+pqcaton-plan/v2", Items: items,
 		PolicyDecisions: map[string]string{}})
 	if moved.Signature != "" {
 		t.Error("규칙이 바뀌었는데 서명이 남았다 — 승인자가 보지 않은 근거에 서명이 붙는다")

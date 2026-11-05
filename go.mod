@@ -9,10 +9,10 @@ go 1.26.10
 // **넷은 같은 태그로 함께 올린다.** 단계 모듈은 따로 릴리스하지 않아서, 하나만 올리면
 // 상류가 검증한 적 없는 조합이 된다. `replace` 없이 공개 태그로 받는다.
 require (
-	github.com/randyinthedev-hash/pqcota-common v0.10.4
-	github.com/randyinthedev-hash/pqcota-discovery v0.10.4
-	github.com/randyinthedev-hash/pqcota-inventory v0.10.4
-	github.com/randyinthedev-hash/pqcota-provisioning v0.10.4
+	github.com/randyinthedev-hash/pqcota-common v0.10.6
+	github.com/randyinthedev-hash/pqcota-discovery v0.10.6
+	github.com/randyinthedev-hash/pqcota-inventory v0.10.6
+	github.com/randyinthedev-hash/pqcota-provisioning v0.10.6
 )
 
 require (
@@ -23,16 +23,16 @@ require (
 require (
 	github.com/a-h/templ v0.3.1020
 	github.com/go-chi/chi/v5 v5.4.0
-	golang.org/x/net v0.60.0
-	golang.org/x/sys v0.48.0
+	golang.org/x/net v0.62.0
+	golang.org/x/sys v0.49.0
 )
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/grpc v1.83.2 // indirect
 )
