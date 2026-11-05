@@ -189,6 +189,8 @@
 | **[IC-W48](../pkg/inventory/store/platform_test.go) ✅** | macOS에서 상태 디렉토리를 엶(Intel · Apple Silicon) | Intel(amd64)은 검증한 지원 플랫폼이라 경고하지 않는다. Apple Silicon(arm64)은 검증하지 않았다는 경고를 남긴다. 네트워크 파일시스템 거부는 그대로다 |
 | **[IC-W49](../pkg/inventory/store/move_test.go) ✅** | 여러 파일의 이름 바꾸기(`MoveChecked`)가 준비 · 기록 · 적용 · 완료 직전에 멈춤 · 새 이름 하나가 이미 있음 | 다시 열어 복구하면 모두 옮겨졌거나 모두 그대로다. 새 이름을 다 만든 뒤에 옛 이름을 지운다. 새 이름이 있으면 `ErrExists`이고 아무것도 옮기지 않는다 |
 | **[IC-W50](../pkg/inventory/store/move_test.go) ✅** | 다른 요청이 폴더를 쥔 동안 일반 트랜잭션(`Do`)으로 지우기 | 만들기 · 지우기의 폴더도 잠근다. 기다리다 `ErrTargetBusy`이고 아무것도 지우지 않는다 |
+| **[IC-W51](../pkg/inventory/store/ruleset_round_test.go) ✅** | 규칙 전환 회차를 기록 · 준비 · 적용의 자리마다 멈춘 뒤 다시 열어 복구 | 보관본 · 새 세션 · 보고서 · 회차 표지가 **넷 다 있거나 넷 다 없다.** 넷 다 없으면 옛 세션 파일이 바이트 그대로다 |
+| **[IC-W52](../pkg/inventory/store/ruleset_round_test.go) ✅** | 확정된 세션에서 규칙 전환 · 같은 전환을 다시 · 보관 자리가 이미 있음 · 확정 전 세션에서 새 세션을 다른 자리에 | 영수증은 그대로이고 **회차 표지가 옛 영수증 해시 · 옛 세션 해시 · 새 세션 ID를 잇는다.** 옛 세션은 「대체됨」, 보관본은 옛 바이트 그대로다. 다시 보내면 ErrStale이고 아무것도 더 만들지 않는다. 보관 자리가 있으면 ErrExists이고 아무것도 쓰지 않는다. 다른 자리에 쓰면 옛 파일은 제자리에 남는다 |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |

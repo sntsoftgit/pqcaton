@@ -43,6 +43,20 @@ type Round struct {
 	To     string    `json:"to_session_id"`
 	Paths  []string  `json:"paths"`
 	Opened time.Time `json:"opened"`
+
+	// 규칙 전환 회차(OpenRulesetRound)만 채운다. 같은 규칙 판의 새 회차에는 없다.
+	//
+	// Reason: "ruleset-change". FromRuleset · ToRuleset: 옛 세션과 새 세션의 규칙 판. FromSHA256: 넘겨준 세션 파일의
+	// 바이트 해시(전환 직전). ReceiptSHA256: 넘겨준 세션이 확정돼 있었으면 그 영수증 파일의 해시(아니면 빈다).
+	// **영수증은 고치지 않는다.** 옛 영수증은 옛 세션을 가리킨 채로 남고, 그것과 새 세션을 잇는 것은 이 표지다.
+	// Archive: 옛 세션의 바이트를 옮겨 둔 자리(새 세션을 다른 자리에 썼으면 빈다). Report: 변환 보고서의 자리.
+	Reason        string `json:"reason,omitempty"`
+	FromRuleset   string `json:"from_ruleset,omitempty"`
+	ToRuleset     string `json:"to_ruleset,omitempty"`
+	FromSHA256    string `json:"from_sha256,omitempty"`
+	ReceiptSHA256 string `json:"from_receipt_sha256,omitempty"`
+	Archive       string `json:"archive,omitempty"`
+	Report        string `json:"report,omitempty"`
 }
 
 func (s *State) roundPath(from Identity) string {
