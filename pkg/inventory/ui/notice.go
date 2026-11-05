@@ -44,6 +44,7 @@ const (
 	NoticeDeclCreated         = "decl-created"
 	NoticeLayerCreated        = "layer-created"
 	NoticeRoundOpened         = "round-opened"
+	NoticeRulesetRoundOpened  = "ruleset-round-opened"
 	NoticeScopeRoundOpened    = "scope-round-opened"
 	NoticeHostsSaved          = "hosts-saved"
 	NoticeSigned              = "signed"

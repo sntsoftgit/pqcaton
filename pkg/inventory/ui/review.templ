@@ -12,7 +12,7 @@ templ reviewForm(v ReviewView) {
 	<form method="post">
 		@csrfField(v.Page)
 		// 확정된 세션은 읽기 전용이다. 칸을 모두 잠그고 저장 · 확정 단추를 두지 않는다(새 회차는 위의 단추로).
-		<fieldset class="locked" disabled?={ v.Finalized }>
+		<fieldset class="locked" disabled?={ v.Locked() }>
 		@tip(v.Page.Lang, tReviewQueueHint.In(v.Page.Lang))
 		for _, g := range v.Policies {
 			<fieldset>
@@ -34,6 +34,12 @@ templ reviewForm(v ReviewView) {
 						placeholder={ tReviewPlaceholder.In(v.Page.Lang) }
 					/>
 				</label>
+				if g.Previous != "" {
+					<p class="hint previous">
+						{ tPrevPolicy.In(v.Page.Lang) } <q>{ g.Previous }</q>
+						<button type="submit" name="adopt-policy" value={ g.Name } formaction="/save">{ tAdopt.In(v.Page.Lang) }</button>
+					</p>
+				}
 				<div class="table-wrap">
 					<table>
 						<tr>
@@ -64,6 +70,7 @@ templ reviewForm(v ReviewView) {
 							</tr>
 							@hooksRow(v.Page.Lang, it, 8)
 							@installsRow(v.Page.Lang, it, 8)
+							@previousRow(v.Page.Lang, it, 8)
 						}
 					</table>
 				</div>
@@ -93,6 +100,7 @@ templ reviewForm(v ReviewView) {
 							</tr>
 							@hooksRow(v.Page.Lang, it, 7)
 							@installsRow(v.Page.Lang, it, 7)
+							@previousRow(v.Page.Lang, it, 7)
 						}
 					</table>
 				</div>
@@ -117,7 +125,7 @@ templ reviewForm(v ReviewView) {
 			</label>
 		</fieldset>
 		</fieldset>
-		if !v.Finalized {
+		if !v.Locked() {
 			<div class="actions">
 				<button formaction="/save">{ tSaveOnly.In(v.Page.Lang) }</button>
 				<button formaction="/finalize/confirm" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
@@ -148,6 +156,24 @@ templ planCells(lang Lang, it review.Item) {
 			}
 		</select>
 	</td>
+}
+
+// previousRow — 규칙 전환 회차가 옮겨 온 옛 판정(참고값)과 「다시 채택」. 현재 값이 아니라는 것을 먼저 적는다.
+templ previousRow(lang Lang, it review.Item, span int) {
+	if p := it.Previous; p != nil {
+		<tr class="previous">
+			<td colspan={ strconv.Itoa(span) }>
+				<span class="hint">{ tPrevHead.In(lang) }</span>
+				if p.Conclusion != "" {
+					{ tPrevConclusion.In(lang) } <q>{ p.Conclusion }</q>
+				}
+				if p.Plan {
+					{ tPrevInPlan.In(lang) } { shortKind(p.Kind) } { p.TargetAlgorithm } { p.Level }
+				}
+				<button type="submit" name="adopt" value={ it.ID } formaction="/save">{ tAdopt.In(lang) }</button>
+			</td>
+		</tr>
+	}
 }
 
 // installsRow — 한 키 아래 설치가 둘 이상일 때 그 목록과 「전부에 적용」 · 「설치마다 다름」 선택. 설치가 하나면 그리지 않는다.

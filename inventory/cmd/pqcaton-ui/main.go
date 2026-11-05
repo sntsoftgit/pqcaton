@@ -56,6 +56,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/rulesetround"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
@@ -520,6 +521,7 @@ func (s *server) handler() http.Handler {
 	r.Post("/finalize/confirm", s.finalizeConfirm)
 	r.Post("/finalize", s.finalize)
 	r.Post(ui.ReviewNewPath, s.reviewNew)
+	r.Post(ui.ReviewRulesetRoundPath, s.reviewRulesetRound)
 	r.Post(ui.ScopeNewPath, s.scopeNew)
 
 	// 옛 주소(v0.21의 `-next`, v0.22의 `/classic/…`). 옛 화면은 v0.23.0에서 없어졌고, 북마크가 죽지 않게
@@ -657,6 +659,13 @@ func (s *server) review(w http.ResponseWriter, r *http.Request) {
 	page.Rev = rev
 	v := ui.NewReviewView(sf, page)
 	v.Finalized = wd.reviewFinal.Locked()
+	if c := sf.RulesetChange; c != nil && c.Report != "" && filepath.Base(c.Report) == c.Report {
+		if b, err := os.ReadFile(filepath.Join(filepath.Dir(s.path), c.Report)); err == nil {
+			if rep, err := review.DecodeReport(b); err == nil {
+				v.Report = &rep
+			}
+		}
+	}
 	html(w, r, func(out io.Writer) error { return ui.RenderReview(out, v) })
 }
 
@@ -1435,6 +1444,46 @@ func (s *server) reviewNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeRoundOpened)}, nil)
+}
+
+// reviewRulesetRound: 상류 규칙 판이 다른 판정 세션에서 규칙 전환 회차를 연다. 명령(pqcaton-decide new-round)과 같은
+// 함수(rulesetround.Open)를 쓴다. 옛 세션 파일은 보관본으로 옮기고, 그 자리에 지금 규칙으로 다시 세운 새 세션을 쓰며,
+// 변환 보고서와 회차 표지를 한 트랜잭션으로 남긴다. 이미 지금 규칙 판이면 아무것도 하지 않고 돌아간다.
+func (s *server) reviewRulesetRound(w http.ResponseWriter, r *http.Request) {
+	back := ui.ScreenReview
+	if !s.writable(w, r, back) {
+		return
+	}
+	if s.results == "" || s.decl == "" {
+		errorPage(w, r, http.StatusConflict, ui.ErrInputMissing, nil)
+		return
+	}
+	req := rulesetround.Request{OldPath: s.path, OutPath: s.path, Org: s.orgName(), NewID: review.NewSessionID(),
+		Rebuild: func() (review.Session, error) {
+			d, err := decl.Load(s.decl)
+			if err != nil {
+				return review.Session{}, err
+			}
+			policy, err := s.assetPolicy()
+			if err != nil {
+				return review.Session{}, err
+			}
+			b, err := review.FromResultsWith(s.results, d, s.orgName(), policy)
+			if err != nil {
+				return review.Session{}, err
+			}
+			return b.Session, nil
+		}}
+	_, err := rulesetround.Open(s.st, req, s.check(r), s.waitTime())
+	if errors.Is(err, rulesetround.ErrSameRuleset) {
+		redirect(w, r, back, nil, nil)
+		return
+	}
+	if err != nil {
+		s.fail(w, r, back, err, file(ui.PickLang(r), "session", s.path))
+		return
+	}
+	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeRulesetRoundOpened)}, nil)
 }
 
 // scopeNew: 확정된 스코프 검토에서 새 회차를 연다. reviewNew와 같다(scope.Reopen의 규칙대로 옮긴다).

@@ -44,7 +44,9 @@ const (
 	LayerCreatePath = "/scope/layer/create"
 	// ReviewNewPath · ScopeNewPath — 확정된 세션에서 새 회차(새 세션 ID)를 여는 POST.
 	ReviewNewPath = "/review/new"
-	ScopeNewPath  = "/scope/new"
+	// ReviewRulesetRoundPath — 다른 상류 규칙 판의 세션에서 규칙 전환 회차를 여는 POST.
+	ReviewRulesetRoundPath = "/review/ruleset-round"
+	ScopeNewPath           = "/scope/new"
 	// HostsSavePath — 03 관측 화면의 접근 정보 저장.
 	HostsSavePath = "/observe/hosts"
 	// RunPath — 관측 실행. GET은 상태 조각, POST는 시작이다. RunStopPath — 돌고 있는 실행을 멈춘다.

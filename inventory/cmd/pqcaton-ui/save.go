@@ -111,7 +111,7 @@ func (s *server) declInputs() []store.Input {
 // inputsFor: 화면(GET) 또는 저장 주소(POST)가 덮는 입력. 양식이 없는 화면은 nil이다.
 func (s *server) inputsFor(where string) []store.Input {
 	switch where {
-	case ui.ScreenReview, "/save", "/finalize", "/finalize/confirm", ui.ReviewNewPath:
+	case ui.ScreenReview, "/save", "/finalize", "/finalize/confirm", ui.ReviewNewPath, ui.ReviewRulesetRoundPath:
 		return s.reviewInputs()
 	case ui.ScreenScope, "/scope/save", "/scope/rules", "/scope/finalize", "/scope/finalize/confirm", ui.ScopeNewPath:
 		if s.scope == "" {

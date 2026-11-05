@@ -17,6 +17,7 @@ templ reviewNextPage(v ReviewView) {
 			@reviewNextMetrics(v)
 			<h3 id={ reviewEditAnchor }>{ tNextReviewEditHead.In(v.Page.Lang) }</h3>
 			<p class="lede">{ tNextReviewEditLede.In(v.Page.Lang) }</p>
+			@rulesetReport(v)
 			@reviewForm(v)
 		</div>
 	}
@@ -26,7 +27,9 @@ templ reviewNextPage(v ReviewView) {
 // 없거나, 다 찼거나.
 templ reviewNextTodo(v ReviewView) {
 	{{ s := v.Summary() }}
-	if v.Finalized {
+	if v.RulesetChanged {
+		@newRoundBox(v.Page, tRulesetRoundHead, tRulesetRoundBody, ReviewRulesetRoundPath, tRulesetRoundDo)
+	} else if v.Finalized {
 		@newRoundBox(v.Page, tRoundReviewHead, tRoundReviewBody, ReviewNewPath, tRoundReviewDo)
 	} else if s.Ready() {
 		<div class="next done">
@@ -73,6 +76,30 @@ templ reviewNextMetrics(v ReviewView) {
 			<span>{ tNextReviewMetricAutopass.In(v.Page.Lang) }</span>
 		</div>
 	</div>
+}
+
+// rulesetReport — 규칙 전환 회차로 열린 세션의 변환 보고서 요약. 규칙이 바뀌어 달라 보일 수 있다는 것을 먼저 적는다.
+templ rulesetReport(v ReviewView) {
+	if v.RulesetChange != nil {
+		<section class="ruleset-change">
+			<h3>{ tReportHead.In(v.Page.Lang) }</h3>
+			<p class="hint">{ tReportNote.In(v.Page.Lang) }</p>
+			<p class="hint">{ tReportFrom.In(v.Page.Lang) } <code>{ v.RulesetChange.FromRuleset }</code> · <code>{ v.RulesetChange.Report }</code></p>
+			if changes := v.ReportChanges(); len(changes) > 0 {
+				<ul>
+					for _, c := range changes {
+						<li><code>{ c.ID }</code> { changeLabel(v.Page.Lang, c.Change) }
+							if len(c.NewInstallations) > 1 {
+								· { tReportInstalls.F(v.Page.Lang, len(c.NewInstallations)) }
+							}
+						</li>
+					}
+				</ul>
+			} else if v.Report == nil {
+				<p class="hint">{ tReportMissing.In(v.Page.Lang) }</p>
+			}
+		</section>
+	}
 }
 
 // newRoundBox — 확정된 세션의 화면 위쪽. 읽기 전용이라고 알리고, 새 회차를 여는 POST(요청 보호 · rev)를 둔다.

@@ -112,14 +112,38 @@ type ReviewView struct {
 	LegacyAutopass []string
 	// RulesetVersion — 세션의 규칙 판. 옛 칸(미평가)을 어떻게 읽을지가 여기에 달린다.
 	RulesetVersion string
+	// RulesetChanged — 세션이 지금 도구와 다른 상류 규칙 판이다(비었어도). 칸을 잠그고 규칙 전환 회차 단추를 둔다.
+	RulesetChanged bool
+	// RulesetChange · Report — 이 세션이 규칙 전환 회차로 열렸으면 그 기록과 변환 보고서(서버가 읽어 넣는다. 없으면 nil).
+	RulesetChange *review.RulesetChangeRef
+	Report        *review.RulesetChangeReport
+}
+
+// Locked — 칸을 잠그는가. 확정됐거나, 다른 규칙 판의 세션이다.
+func (v ReviewView) Locked() bool { return v.Finalized || v.RulesetChanged }
+
+// ReportChanges — 보고서에서 달라진 항목(같음은 뺀다).
+func (v ReviewView) ReportChanges() []review.ItemChange {
+	if v.Report == nil {
+		return nil
+	}
+	var out []review.ItemChange
+	for _, c := range v.Report.Items {
+		if c.Change != review.ChangeSame {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // PolicyGroup — 한 정책과 그에 묶인 항목들.
 type PolicyGroup struct {
 	Name       string
 	Conclusion string
-	Items      []review.Item
-	Mandatory  int
+	// Previous — 규칙 전환 회차가 옮겨 온 옛 정책 결론(참고값). 없으면 빈다.
+	Previous  string
+	Items     []review.Item
+	Mandatory int
 }
 
 // NewReviewView — 세션을 화면이 보는 모양으로 옮긴다.
@@ -129,7 +153,7 @@ func NewReviewView(sf review.Session, page Page) ReviewView {
 	for _, it := range sf.Items {
 		g, ok := byPolicy[it.Policy]
 		if !ok {
-			g = &PolicyGroup{Name: it.Policy, Conclusion: sf.PolicyDecisions[it.Policy]}
+			g = &PolicyGroup{Name: it.Policy, Conclusion: sf.PolicyDecisions[it.Policy], Previous: sf.PreviousPolicyDecisions[it.Policy]}
 			byPolicy[it.Policy] = g
 			order = append(order, it.Policy)
 		}
@@ -141,7 +165,8 @@ func NewReviewView(sf review.Session, page Page) ReviewView {
 	sort.Strings(order)
 	v := ReviewView{Page: page, Scope: sf.Scope, Reviewer: sf.Reviewer,
 		Signature: sf.Signature, Autopass: sf.Autopass, LegacyAutopass: sf.LegacyAutopass,
-		RulesetVersion: sf.RulesetVersion}
+		RulesetVersion: sf.RulesetVersion, RulesetChange: sf.RulesetChange,
+		RulesetChanged: review.UpstreamRuleset(sf.RulesetVersion) != review.UpstreamRuleset(review.RulesetVersion)}
 	for _, name := range order {
 		v.Policies = append(v.Policies, *byPolicy[name])
 	}
@@ -194,6 +219,14 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 	}
 	apply(sf.Items)
 	apply(sf.Autopass)
+	// 「다시 채택」: 규칙 전환 회차의 참고값을 그 항목 하나, 그 정책 하나만 현재 값으로 옮긴다. 폼의 다른 값을 얹은 뒤라
+	// 채택한 항목의 칸은 참고값이 이긴다(누른 것이 그 뜻이다).
+	if id := strings.TrimSpace(f.Get("adopt")); id != "" {
+		review.Adopt(&sf, id)
+	}
+	if pol := strings.TrimSpace(f.Get("adopt-policy")); pol != "" {
+		review.AdoptPolicy(&sf, pol)
+	}
 	return sf
 }
 
@@ -231,6 +264,18 @@ func installRows(it review.Item) []installRow {
 		out = append(out, r)
 	}
 	return out
+}
+
+// changeLabel — 보고서 변화 종류의 화면 말.
+func changeLabel(l Lang, c string) string {
+	switch c {
+	case review.ChangeOnlyOld:
+		return tChangeOnlyOld.In(l)
+	case review.ChangeOnlyNew:
+		return tChangeOnlyNew.In(l)
+	default:
+		return tChangeChanged.In(l)
+	}
 }
 
 // plannable — 계획에 넣을 수 있는 항목인가. 제외 전용은 관리 대상이 아니라 칸을 잠근다.

@@ -1122,7 +1122,8 @@ func TestSurveyNextWarnsBeforeJudging(t *testing.T) {
 // reviewSession — 요약을 재는 판정 세션. 정책 둘 가운데 하나만 결론이 차 있다.
 func reviewSession(concluded, reviewer, signature string) review.Session {
 	return review.Session{
-		Scope: "org://acme", Reviewer: reviewer, Signature: signature,
+		// 실제 세션은 열 때 규칙 판을 박는다. 비어 있으면 옛 빌드의 파일로 보고 규칙 전환 상자가 대신 나온다.
+		Scope: "org://acme", Reviewer: reviewer, Signature: signature, RulesetVersion: review.RulesetVersion,
 		PolicyDecisions: map[string]string{"openssl/libssl": concluded, "jca/provider": ""},
 		Items: []review.Item{
 			{ID: "a", Policy: "openssl/libssl", Mandatory: true},

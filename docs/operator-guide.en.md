@@ -444,7 +444,7 @@ screen.
 |---|---|---|
 | `stale` | The files changed after the screen was opened, so nothing was saved | Reload the screen and do it again |
 | `finalized` | The session is already finalized, so nothing was saved | Do it in a new session |
-| `ruleset-changed` | The session was opened under a different upstream ruleset, or records none, so nothing was saved or finalized, to keep the two from mixing | Use v0.24.1. Moving a session to the current rules (a new round) is still being built for v0.25.0 |
+| `ruleset-changed` | The session was opened under a different upstream ruleset, or records none, so nothing was saved or finalized, to keep the two from mixing | Press "Start a new round under the current rules" at the top of the review screen (the command is `pqcaton-decide new-round`). Earlier conclusions are carried only as reference values, so judge each item again |
 | `busy` | Another save to the same files is in progress, or another command holds the state folder | Try again shortly. If it persists, check whether another `pqcaton-ui` or command is running |
 | `recovery` | Saving is stopped in the recovery required state | Follow [section 8](#8-recovery) |
 | `view-only` | This platform does not save | Run it on Linux |

@@ -34,6 +34,9 @@ var noticeText = map[string]noticeSpec{
 	NoticeRoundOpened: {T{
 		KO: "새 검토를 시작했습니다. 지난 결론과 계획 칸을 옮겨 왔고, 승인 서명은 비웠습니다",
 		EN: "A new review was started: earlier conclusions and plan fields were carried over, and the signature was cleared"}, ""},
+	NoticeRulesetRoundOpened: {T{
+		KO: "지금 규칙으로 새 회차를 열었습니다. 옛 세션은 보관했고, 지난 결론은 참고값으로만 옮겼습니다. 항목마다 다시 판정하거나 「다시 채택」을 누르십시오",
+		EN: "A new round was opened under the current rules. The old session was archived, and earlier conclusions were carried only as reference values. Judge each item again or press \"Adopt again\""}, ""},
 	NoticeScopeRoundOpened: {T{
 		KO: "새 스코프 검토를 시작했습니다. 지난 결론을 옮겨 왔고, 승인 서명은 비웠습니다",
 		EN: "A new scope review was started: earlier conclusions were carried over, and the signature was cleared"}, ""},

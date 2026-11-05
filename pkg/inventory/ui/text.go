@@ -64,8 +64,8 @@ var (
 		KO: "이 세션은 이미 확정되었습니다. 바꾸려면 새 세션을 여십시오.",
 		EN: "This session is already finalized. Open a new session to make changes."}
 	tRefusedRulesetChanged = T{
-		KO: "이 세션은 지금과 다른 상류 규칙 판으로 열렸거나 규칙 판이 적혀 있지 않습니다. 두 규칙 판이 섞이지 않도록 저장하거나 확정하지 않았고, 세션 파일은 그대로입니다. 지금 규칙으로 넘어가는 새 회차 기능은 v0.25.0에서 작업 중입니다. 그때까지는 pqcaton v0.24.1을 쓰십시오.",
-		EN: "This session was opened under a different upstream ruleset, or records none. To keep the two rulesets from mixing, nothing was saved or finalized, and the session file is unchanged. Moving a session to the current rules (a new round) is still being built for v0.25.0. Until then, use pqcaton v0.24.1."}
+		KO: "이 세션은 지금과 다른 상류 규칙 판으로 열렸거나 규칙 판이 적혀 있지 않습니다. 두 규칙 판이 섞이지 않도록 저장하거나 확정하지 않았고, 세션 파일은 그대로입니다. 판정 화면 위쪽의 「지금 규칙으로 새 회차 시작」으로 넘어가십시오.",
+		EN: "This session was opened under a different upstream ruleset, or records none. To keep the two rulesets from mixing, nothing was saved or finalized, and the session file is unchanged. Move on with \"Start a new round under the current rules\" at the top of the review screen."}
 	tRefusedBusy = T{
 		KO: "다른 저장이 아직 끝나지 않았습니다. 잠시 뒤 다시 시도하십시오.",
 		EN: "Another save has not finished yet. Try again in a moment."}
@@ -273,6 +273,22 @@ var (
 	tKindAuto           = T{KO: "고르지 않음", EN: "not chosen"}
 	tHooks              = T{KO: "활성화 훅 (L3 전용)", EN: "Activation hooks (used at L3 only)"}
 	tInstallsHead       = T{KO: "같은 자산 키 아래 설치(경로를 확인하지 못한 설치 후보 포함)가 둘 이상입니다. 이 판정과 조치는 아래 설치 전부에 적용됩니다.", EN: "There is more than one installation under this asset key (counting candidates whose path could not be confirmed). This judgment and its action apply to all of the installations below."}
+	tPrevHead           = T{KO: "지난 판정(다른 규칙 판, 참고값이며 현재 값이 아닙니다):", EN: "Earlier judgment (another ruleset; a reference value, not the current one):"}
+	tPrevConclusion     = T{KO: "결론", EN: "conclusion"}
+	tPrevInPlan         = T{KO: "· 계획에 넣었음:", EN: "· was in the plan:"}
+	tPrevPolicy         = T{KO: "지난 정책 결론(다른 규칙 판, 참고값):", EN: "Earlier policy conclusion (another ruleset; a reference value):"}
+	tAdopt              = T{KO: "다시 채택", EN: "Adopt again"}
+	tRulesetRoundHead   = T{KO: "이 세션은 지금과 다른 상류 규칙 판으로 열렸습니다", EN: "This session was opened under a different upstream ruleset"}
+	tRulesetRoundBody   = T{KO: "자산 ID와 스냅샷 지문이 다른 규칙으로 셈해져 그대로는 저장 · 확정하지 않습니다. 새 회차를 열면 옛 세션을 보관하고, 지난 결론은 참고값으로만 옮기며, 변환 보고서를 씁니다.", EN: "Asset ids and snapshot fingerprints were computed by different rules, so it is not saved or finalized as it is. A new round archives the old session, carries earlier conclusions only as reference values, and writes a change report."}
+	tRulesetRoundDo     = T{KO: "지금 규칙으로 새 회차 시작", EN: "Start a new round under the current rules"}
+	tReportHead         = T{KO: "규칙 전환 보고서", EN: "Ruleset change report"}
+	tReportNote         = T{KO: "상류 규칙 판이 바뀌었습니다. 아래에 사라짐 · 생김 · 바뀜으로 보이는 것은 규칙이 바뀐 것만으로 생겼을 수 있고, 그것만으로 설치가 없어지거나 생기거나 바뀐 것은 아닙니다.", EN: "The upstream ruleset changed. What shows below as removed, added or changed may come from the rule change alone, and is not by itself an installation removed, added or changed."}
+	tReportFrom         = T{KO: "옛 규칙 판과 보고서:", EN: "Old ruleset and report:"}
+	tReportInstalls     = T{KO: "설치 %d개", EN: "%d installations"}
+	tReportMissing      = T{KO: "보고서 파일을 읽지 못했습니다.", EN: "The report file could not be read."}
+	tChangeOnlyOld      = T{KO: "지금 규칙에서는 없음", EN: "not under the current rules"}
+	tChangeOnlyNew      = T{KO: "지금 규칙에서 새로 생김", EN: "new under the current rules"}
+	tChangeChanged      = T{KO: "근거가 바뀜", EN: "evidence changed"}
 	tInstallUnknownPath = T{KO: "경로를 확인하지 못한 설치 후보:", EN: "Installation candidate with no confirmed path:"}
 	tInstallSeenBy      = T{KO: "관측 출처:", EN: "Observed from:"}
 	tInstallsAll        = T{KO: "이 조치가 아래 설치 전부에 적용됨을 확인합니다", EN: "I confirm this action applies to all of the installations below"}

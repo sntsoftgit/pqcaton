@@ -20,6 +20,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -35,6 +36,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/localscan"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/rulesetround"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 )
 
@@ -61,6 +63,16 @@ const usage = `usage:
         Without -o the plan goes to stdout and nothing else is written; -judgments then
         is refused, as the ledger and stdout cannot be one transaction
 
+  pqcaton-decide new-round <old-session.json> -decl <declaration.json> -results <results-dir> -o <new-session.json>
+        [-report <file>] [-scope-assets <csv>] [-org <name>] [-state-dir <dir>]
+        Open a **ruleset change round**: the old session was judged under another upstream ruleset, so it
+        cannot be finalized as it is. The results are reconciled again under the current rules into a new
+        session with a new id; earlier conclusions and plan fields go only into "previous" (reference
+        values) and the current ones stay empty, so each item has to be judged again. A change report is
+        written beside the new session (or at -report). If -o is the old session file, the old bytes are
+        moved to an archive next to it first. All of this and a round marker are one transaction, through
+        the same state directory as pqcaton-ui; the same round is opened only once
+
   pqcaton-decide delta <judgments.jsonl> <declaration> [node] [-org <name>] [-results <dir>]
         Compare recorded judgments against the current observation and pick out
         **only those whose basis changed**. Give it the same input as open, or the
@@ -83,7 +95,9 @@ func main() {
 	view := fs.Bool("view", false, "also print the reconciliation as a table (the session still goes to stdout)")
 	orgName := fs.String("org", "local", "organization the reconciliation and judgments are bound to")
 	out := fs.String("o", "", "close: file to write the finalized plan to (needed with -judgments)")
-	stateDir := fs.String("state-dir", "", "close -o: state directory (default: .pqcaton next to the session file). Use the one pqcaton-ui uses")
+	stateDir := fs.String("state-dir", "", "close -o, new-round: state directory (default: .pqcaton next to the session file). Use the one pqcaton-ui uses")
+	declPath := fs.String("decl", "", "new-round: declaration (declaration.json) to reconcile the results against")
+	reportPath := fs.String("report", "", "new-round: where to write the change report (default: beside the new session)")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
 	var pos []string
 	var flags []string
@@ -116,6 +130,9 @@ func main() {
 	case "close":
 		need(1)
 		err = closeSession(pos[0], *judgments, *orgName, *out, *stateDir)
+	case "new-round":
+		need(1)
+		err = newRound(pos[0], *declPath, *results, *scopeAssets, *orgName, *out, *reportPath, *stateDir)
 	case "delta":
 		need(2)
 		node := localscan.DefaultNode
@@ -292,6 +309,42 @@ func closeSession(path, judgmentPath, orgName, out, stateDir string) error {
 // closeToFile — **M1이 보장하는 확정의 길이다.** 세션 · 계획(앞 판은 .prev) · 판정 원장 · 영수증이 한
 // 트랜잭션이고, 화면과 같은 상태 디렉토리와 같은 잠금을 쓴다. 같은 세션을 같은 내용으로 다시 확정하면
 // 아무것도 다시 쓰지 않는다.
+// newRound — 규칙 전환 회차를 연다. 화면과 같은 함수(rulesetround.Open)를 쓴다. 여러 파일을 한 트랜잭션으로 바꾸므로
+// 표준출력으로 내는 길은 두지 않는다.
+func newRound(oldPath, declPath, resultsDir, scopeAssets, orgName, out, reportPath, stateDir string) error {
+	if declPath == "" || resultsDir == "" || out == "" {
+		return errors.New("new-round needs -decl, -results and -o: the new session is reconciled again from the results " +
+			"under the current rules, and it is written to a file as one transaction with the report")
+	}
+	if stateDir == "" {
+		stateDir = store.DefaultDir(oldPath)
+	}
+	req := rulesetround.Request{OldPath: oldPath, OutPath: out, ReportPath: reportPath, Org: orgName, NewID: review.NewSessionID(),
+		Rebuild: func() (review.Session, error) {
+			sf, _, err := sessionFromResults(declPath, orgName, resultsDir, scopeAssets)
+			return sf, err
+		}}
+	targets, err := rulesetround.Targets(req)
+	if err != nil {
+		return err
+	}
+	st, err := store.OpenCommand(stateDir, targets, store.Options{})
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	res, err := rulesetround.Open(st, req, store.Check{}, store.CommandWait)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "new round %s under %s\n   session: %s\n   report:  %s\n", res.NewSessionID, review.RulesetVersion, out, res.Report)
+	if res.Archive != "" {
+		fmt.Fprintf(os.Stderr, "   the old session was moved to %s\n", res.Archive)
+	}
+	fmt.Fprintln(os.Stderr, "   earlier conclusions are reference values only (\"previous\"); judge each item again before close")
+	return nil
+}
+
 func closeToFile(path, judgmentPath, orgName, out, stateDir string) error {
 	if stateDir == "" {
 		stateDir = store.DefaultDir(path)
