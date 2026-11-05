@@ -3,10 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main` is under development for v0.25.0.** The upstream pqcota v0.10.6 dependency is in, but the round that moves an
-> older session to the current rules is not finished yet. For operation, use the [v0.24.1 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.24.1).
-
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.24.1.
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.25.0.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -33,7 +30,7 @@ folder, by a test (`guide_run_test.go`) that checks the result.
 6. [A day's procedure](#6-a-days-procedure)
 7. [Backup and restore](#7-backup-and-restore)
 8. [Recovery](#8-recovery)
-9. [Upgrading (v0.22 to v0.23)](#9-upgrading-v022-to-v023)
+9. [Upgrading](#9-upgrading)
 10. [Error table](#10-error-table)
 
 ## 1. Supported platforms
@@ -53,7 +50,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 **The binary.** Go 1.26.10 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.24.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.25.0
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
@@ -64,8 +61,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.25.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.25.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -81,7 +78,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.25.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -92,10 +89,11 @@ machine. The screen checks both before it starts and, when something is missing,
   and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
   with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
 - **Collectors.** Put the build output of pqcota-discovery in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this. Keep them on pqcota v0.10.4 or v0.10.5. v0.10.4 was verified end to end; for v0.10.5,
-  only that the ruleset and the fingerprints are the same was checked. This screen normalizes the collection results it
-  reads with the v0.10.4 ruleset. It was checked to read the results of `pqcota-nodescan` v0.10.6 too, but
-  `pqcota-netcap` and `pqcota-jvmscan` were not checked (see the version table under 「맞는 조합」 in the README).
+  <folder>`), shaped like this. Keep them on pqcota v0.10.6, and the `collector.jar` put on the nodes on the same version.
+  This screen normalizes the collection results it reads with the v0.10.6 ruleset. An earlier `pqcota-jvmscan` or
+  `collector.jar` does not carry the per-provider list of PQC services, so the JCA readiness becomes `unknown`, and the 03
+  and 04 screens name such nodes as "the JCA results cannot be confirmed as v0.10.6 collection results" (see the version
+  table under 「맞는 조합」 in the README).
 
 ```text
 collectors/
@@ -111,7 +109,7 @@ collectors/
 it or when it sits inside the workspace.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.4
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.6
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 ```
@@ -420,7 +418,35 @@ missing or `present, differs`, or when the start of the ledger changed (the ledg
 cut). Send the diagnostics file and the files you kept. The diagnostics file holds paths and hashes only, no file
 contents.
 
-## 9. Upgrading (v0.22 to v0.23)
+## 9. Upgrading
+
+### v0.24 to v0.25
+
+v0.25 normalizes with the ruleset of upstream pqcota v0.10.6 (`pqcota-enrich/v3`). The sessions, plans and judgment ledger
+built with v0.24.x stay as they are, and a round is opened to judge again under the current rules.
+
+1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back up the workspace as
+   [section 7](#7-backup-and-restore) says.
+2. **Upgrade upstream with it.** Move the five upstream repositories to v0.10.6, and replace the collectors and
+   `collector.jar` on the nodes with v0.10.6 too. Back up the upstream database before upgrading (as upstream v0.10.6 says).
+   Mixed with the history of upstream v0.10.5 or earlier, the plan's evidence cannot be found. If upstream is not
+   upgraded yet, keep pqcaton on v0.24.1 too.
+3. Replace the binary with the `go install` in [section 2](#2-installation) and start the screen.
+4. When the review screen (05) says "This session was opened under a different upstream ruleset", press "Start a new round
+   under the current rules". The old session is archived byte for byte as `session.ruleset-<alias>-<session id>.json`, a
+   new session under the current rules takes its place, and a change report (`session.ruleset-change-<session id>.json`)
+   is written beside it. The command is `pqcaton-decide new-round`.
+5. **Earlier conclusions are carried only as reference values.** Judge each item again, or press "Adopt again". What the
+   report shows as removed, added or changed may come from the rule change alone.
+6. When there is more than one installation under an asset key (the same-named OpenSSL seen at different paths), choose
+   "I confirm this action applies to all of the installations below" before finalizing. Different actions per
+   installation cannot be expressed in this version.
+7. The 06 screen does not sign or generate a plan under the old ruleset. A plan already signed under it and its playbooks
+   are left as they are, and can only be viewed and archived. Sign the plan finalized in the new round.
+8. When the 03 or 04 screen names nodes whose JCA results cannot be confirmed as v0.10.6 collection results, check the
+   version of the collectors and `collector.jar` on those nodes.
+
+### v0.22 to v0.23
 
 1. Stop the screen and replace the binary with the `go install` in [section 2](#2-installation).
 2. **The old screens are gone.** Bookmarks to `/classic/…` and `-next` addresses move to the current screens (301).

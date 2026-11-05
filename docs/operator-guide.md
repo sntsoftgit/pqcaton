@@ -3,10 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main`은 v0.25.0 개발 중입니다.** 상류 pqcota v0.10.6 의존성은 반영됐지만, 옛 세션을 지금 규칙으로 넘기는 규칙 전환
-> 회차는 아직 완성되지 않았습니다. 운영에는 [v0.24.1 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.24.1)를 쓰십시오.
-
-이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.24.1 기준입니다.
+이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.25.0 기준입니다.
 영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
@@ -31,7 +28,7 @@
 6. [하루 절차](#6-하루-절차)
 7. [백업과 복원](#7-백업과-복원)
 8. [복구](#8-복구)
-9. [판 올리기(v0.22에서 v0.23으로)](#9-판-올리기v022에서-v023으로)
+9. [판 올리기](#9-판-올리기)
 10. [오류 표](#10-오류-표)
 
 ## 1. 지원 플랫폼
@@ -50,7 +47,7 @@
 **바이너리.** Go 1.26.10이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.24.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.25.0
 ```
 
 **Linux: 서비스와 실행기.** 서비스는 로그인할 때 화면을 띄우고(브라우저는 열지 않음), 실행기는 서비스를 시작한 뒤 화면을
@@ -60,8 +57,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.25.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.25.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -76,7 +73,7 @@ journalctl --user -u pqcaton-ui.service
 화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.24.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.25.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -87,9 +84,10 @@ chmod +x ~/Desktop/pqcaton-ui.command
   노드에서는 root 권한(`become`)으로 실행하므로 그 계정에 sudo 권한이 있어야 합니다. 처음 접속하는 노드는 미리 `ssh`로
   한 번 접속해 호스트 키를 받아 둡니다. Windows 노드를 관측하려면 `ansible.windows` 컬렉션도 필요합니다.
 - **수집기.** 작업 폴더의 `collectors` 폴더(또는 `-collectors <폴더>`)에 pqcota-discovery를 빌드한 결과를 아래 모양으로
-  둡니다. 판은 pqcota v0.10.4나 v0.10.5로 둡니다. v0.10.4는 종단 검증했고, v0.10.5는 규칙 묶음과 지문이 같은 것만
-  확인했습니다. 이 화면은 읽은 수집 결과를 v0.10.4 규칙 묶음으로 정규화합니다. `pqcota-nodescan` v0.10.6의 결과도 읽는
-  것은 확인했지만, `pqcota-netcap`과 `pqcota-jvmscan`은 확인하지 않았습니다(README의 「맞는 조합」).
+  둡니다. 판은 pqcota v0.10.6으로 두고, 노드에 올리는 `collector.jar`도 같은 판으로 둡니다. 이 화면은 읽은 수집 결과를
+  v0.10.6 규칙 묶음으로 정규화합니다. 그 전 판의 `pqcota-jvmscan` · `collector.jar`는 provider별 PQC 서비스 목록을 싣지 않아
+  JCA 준비도가 `unknown`이 되고, 03 · 04 화면이 그 노드를 「v0.10.6 JCA 수집 결과임을 확인할 수 없습니다」로 알립니다
+  (README의 「맞는 조합」).
 
 ```text
 collectors/
@@ -104,7 +102,7 @@ collectors/
 사용자가 읽을 수 있거나 작업 폴더 안에 있으면 쓰지 않습니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.4
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.6
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 ```
@@ -396,7 +394,32 @@ pkill -INT -u "$USER" -x pqcaton-ui
 덧붙이기만 하므로 자르지 않습니다)가 그렇습니다. 진단 파일과 보존한 파일을 함께 보냅니다. 진단 파일에는 경로와 해시만 있고
 파일 내용은 없습니다.
 
-## 9. 판 올리기(v0.22에서 v0.23으로)
+## 9. 판 올리기
+
+### v0.24에서 v0.25로
+
+v0.25는 상류 pqcota v0.10.6의 규칙 묶음(`pqcota-enrich/v3`)으로 정규화합니다. v0.24.x로 쌓은 세션 · 계획 · 판정 원장은
+그대로 남고, 지금 규칙으로 다시 판정하는 회차를 엽니다.
+
+1. 화면을 끄고 `-recover-status`가 `no unfinished transactions`를 찍는지 확인한 뒤, 작업 폴더를 [7절](#7-백업과-복원)대로
+   백업합니다.
+2. **상류를 함께 올립니다.** 상류 다섯 리포를 v0.10.6으로 올리고, 노드의 수집기와 `collector.jar`도 v0.10.6으로 바꿉니다.
+   상류 DB는 올리기 전에 백업합니다(상류 v0.10.6의 안내). v0.10.5 이하의 상류 이력과 섞으면 계획의 근거를 찾지 못합니다.
+   상류를 아직 올리지 않는다면 pqcaton도 v0.24.1에 둡니다.
+3. [2절](#2-설치)의 `go install`로 바이너리를 바꾸고 화면을 띄웁니다.
+4. 판정 화면(05)이 「이 세션은 지금과 다른 상류 규칙 판으로 열렸습니다」를 보이면 「지금 규칙으로 새 회차 시작」을 누릅니다.
+   옛 세션은 `session.ruleset-<별칭>-<세션 ID>.json`으로 바이트 그대로 보관되고, 그 자리에 지금 규칙의 새 세션이, 옆에 변환
+   보고서(`session.ruleset-change-<세션 ID>.json`)가 생깁니다. 명령으로는 `pqcaton-decide new-round`입니다.
+5. **지난 결론은 참고값으로만 옮겨집니다.** 항목마다 다시 판정하거나 「다시 채택」을 누릅니다. 보고서에서 사라짐 · 생김 ·
+   바뀜으로 보이는 것은 규칙이 바뀐 것만으로 생겼을 수 있습니다.
+6. 같은 자산 키 아래 설치가 둘 이상이면(같은 이름의 OpenSSL을 다른 경로에서 봤으면) 확정 전에 「이 조치가 아래 설치 전부에
+   적용됨을 확인합니다」를 고릅니다. 설치마다 다른 조치는 이 판에서 표현하지 못합니다.
+7. 06 화면은 옛 규칙 판의 계획을 서명 · 생성하지 않습니다. 이미 서명된 옛 계획과 그 플레이북은 그대로 두고 열람 · 보관만
+   합니다. 새 회차에서 확정한 계획을 서명합니다.
+8. 03 · 04 화면이 「v0.10.6 JCA 수집 결과임을 확인할 수 없는 노드」를 알리면 그 노드의 수집기와 `collector.jar` 판을
+   확인합니다.
+
+### v0.22에서 v0.23으로
 
 1. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다.
 2. **옛 화면은 없어졌습니다.** `/classic/…`와 `-next` 주소의 북마크는 지금 화면으로 넘어갑니다(301).

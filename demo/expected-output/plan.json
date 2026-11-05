@@ -20,8 +20,8 @@
             "sourceNodeId": "pay-app",
             "content": {
               "formatVersion": "pqcota-snapshot-content/v1",
-              "digest": "a33e43bc6a75f4421588b6261787f40bac798277feba72ff82050738d9fa087e",
-              "rulesetVersion": "pqcota-enrich/v2"
+              "digest": "8b6dfb3f40aefe2ce60f0daa7d856750c9f37936cc7ae9f0dd236dea75aac3e8",
+              "rulesetVersion": "pqcota-enrich/v3"
             }
           }
         }
@@ -30,7 +30,7 @@
     {
       "id": "a2",
       "targetNodeId": "pay-db",
-      "findingId": "b247f951ffcf4da0064f3979927211f7a10012da68685457854109e47b4ea6b0",
+      "findingId": "81c4b8b825628340c6bbda69ca8c02874606a34b6404e9920493f070c447690e",
       "cryptoRuntime": "CRYPTO_RUNTIME_OPENSSL",
       "kind": "REMEDIATION_KIND_CONFIG_ONLY",
       "automationLevel": "DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL",
@@ -39,18 +39,18 @@
       "rollbackNote": "remove the staged config fragment",
       "evidenceSources": [
         {
-          "findingId": "b247f951ffcf4da0064f3979927211f7a10012da68685457854109e47b4ea6b0",
+          "findingId": "81c4b8b825628340c6bbda69ca8c02874606a34b6404e9920493f070c447690e",
           "snapshot": {
             "sourceNodeId": "pay-db",
             "content": {
               "formatVersion": "pqcota-snapshot-content/v1",
-              "digest": "c3d7a5a18162953efe87bfd573cdc6d8df6b2c7bc51359b0f833f7ac4eddedd6",
-              "rulesetVersion": "pqcota-enrich/v2"
+              "digest": "63f0c9d72f6f1c790b2377fbab8d7a6e872d48b33657779c5e52eb99ab01be71",
+              "rulesetVersion": "pqcota-enrich/v3"
             }
           }
         }
       ]
     }
   ],
-  "rulesetVersion": "pqcota-enrich/v2+pqcaton-plan/v3"
+  "rulesetVersion": "pqcota-enrich/v3+pqcaton-plan/v3"
 }
