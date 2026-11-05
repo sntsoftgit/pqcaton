@@ -116,6 +116,9 @@ func TestOperatorGuideInstallsTheLatestRelease(t *testing.T) {
 }
 
 var (
+	readmeUp  = regexp.MustCompile(`(?m)^\| \*\*pqcota\*\* \|[^\n]*?\*\*(v\d+\.\d+\.\d+)\*\*`)
+	demoUp    = regexp.MustCompile(`pqcota는 (v\d+\.\d+\.\d+)으로 받습니다|git clone --branch (v\d+\.\d+\.\d+) `)
+	noteUp    = regexp.MustCompile("(?s)^## v[^\n]*\n.*?\n### [^\n]*\n\\s*- [^\n]*pqcota:\\s*[`*]*(v\\d+\\.\\d+\\.\\d+)")
 	compatTop = regexp.MustCompile(`(?m)^\| (v\d+\.\d+\.\d+)(?: ~ (v\d+\.\d+\.\d+))? \| (v\d+\.\d+\.\d+) \|`)
 	goModUp   = regexp.MustCompile(`(?m)^\s*github\.com/randyinthedev-hash/(pqcota[a-z-]*) (v\d+\.\d+\.\d+)`)
 )
@@ -153,5 +156,26 @@ func TestCompatibilityTableIsCurrent(t *testing.T) {
 	}
 	if string(top[3]) != pinned {
 		t.Errorf("the table's top row pins pqcota %s, but go.mod requires %s", top[3], pinned)
+	}
+	// 판을 정하는 자리들도 같은 판을 적는다.
+	if m := readmeUp.FindSubmatch(read("README.md")); m == nil || string(m[1]) != pinned {
+		t.Errorf("README's prerequisites do not name pqcota %s", pinned)
+	}
+	demo := demoUp.FindAllSubmatch(read(filepath.Join("demo", "README.md")), -1)
+	if len(demo) < 2 {
+		t.Errorf("the demo guide does not name the pqcota version and the clone tag")
+	}
+	for _, m := range demo {
+		if v := string(m[1]) + string(m[2]); v != pinned {
+			t.Errorf("the demo guide names pqcota %s, but go.mod requires %s", v, pinned)
+		}
+	}
+	// v0.25.0 뒤의 절은 첫 소제목(「받는 쪽이 달라지는 것」)의 첫 항목에 함께 쓰는 pqcota를 적는다(그 전 절은 소급하지 않는다).
+	if string(note[1]) != "v0.25.0" {
+		notes := read("RELEASE_NOTES.md")
+		top := notes[latestNote.FindIndex(notes)[0]:]
+		if m := noteUp.FindSubmatch(top); m == nil || string(m[1]) != pinned {
+			t.Errorf("the first item of the latest release section does not name `pqcota: %s`", pinned)
+		}
 	}
 }

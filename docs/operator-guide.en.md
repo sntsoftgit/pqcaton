@@ -428,7 +428,8 @@ built with v0.24.x stay as they are, and a round is opened to judge again under 
 
 1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back up the workspace as
    [section 7](#7-backup-and-restore) says.
-2. **Upgrade upstream with it.** Move the five upstream repositories to v0.10.6, and replace the collectors and
+2. **Upgrade upstream with it.** Move the five upstream repositories to v0.10.6 (the pqcota version for each pqcaton
+   version is in the [version table](compatibility.md), in Korean), and replace the collectors and
    `collector.jar` on the nodes with v0.10.6 too. Back up the upstream database before upgrading (as upstream v0.10.6 says).
    Mixed with the history of upstream v0.10.5 or earlier, the plan's evidence cannot be found. If upstream is not
    upgraded yet, keep pqcaton on v0.24.1 too.

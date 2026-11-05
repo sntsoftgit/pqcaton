@@ -81,8 +81,8 @@ Go가 없는 호스트에서는 `PQCATON_BIN_DIR=<dir>`로 미리 빌드한 `pqc
   (`../pqcota`)에 두거나 `PQCOTA_DIR=/경로`로 알려 줍니다.
 - **pqcota는 v0.10.6으로 받습니다.** 상류 데모는 다섯 리포를 나란히 받아 한 이미지로 묶으므로, 다섯 리포를
   모두 같은 태그로 이 리포 옆에 받습니다. 다른 판을 받으면 상류가 다른 규칙 묶음으로 이력을 쌓아, 이 리포가
-  만든 계획의 근거를 상류 이력에서 찾지 못할 수 있습니다. 함께 쓸 수 있는 판은
-  [README의 「맞는 조합」](../README.md#써보기)에 있습니다.
+  만든 계획의 근거를 상류 이력에서 찾지 못할 수 있습니다. pqcaton 판마다 함께 쓰는 판은
+  [판별 표](../docs/compatibility.md)에 있습니다.
 
   ```bash
   for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.10.6 https://github.com/randyinthedev-hash/$r; done
