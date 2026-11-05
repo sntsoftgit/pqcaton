@@ -197,6 +197,9 @@ func Carry(prev, next Session) Session {
 			n.FIPS = old.FIPS
 			n.Config = old.Config
 			n.RollbackNote = old.RollbackNote
+			// 확인은 목록째 옮긴다. 지금 목록과 다르면 확정이 무효로 읽는다(InstallationsConfirmedNow).
+			n.InstallationsConfirmed = append([]string(nil), old.InstallationsConfirmed...)
+			n.PerInstallation = old.PerInstallation
 			n.Pre, n.Activate = old.Pre, old.Activate
 			n.Deactivate, n.Restart = old.Deactivate, old.Restart
 		})

@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -121,6 +122,12 @@ type Item struct {
 	// 않으므로 결론에 기대면 빈 값이 계약으로 나간다. 옛 판(v2 이하)의 세션에서 비어 있으면 결론으로
 	// 물러선다 - 그 자리에 있던 값이 실제로 되돌림 메모 구실을 해 왔다. v3부터 빈 값은 비우기로 한 것이다.
 	RollbackNote string `json:"rollback_note,omitempty"`
+	// InstallationsConfirmed — 「이 조치는 아래 설치 전부에 적용된다」를 사람이 확인한 그때의 설치 목록([Installations]).
+	// **목록째 적는다.** 지금 목록과 다르면(재수집으로 설치가 늘거나 경로가 바뀌면) 확인은 무효다. 설치가 하나면 쓰지 않는다.
+	InstallationsConfirmed []string `json:"installations_confirmed,omitempty"`
+	// PerInstallation — 설치마다 다른 조치가 필요하다고 사람이 골랐다. **이 판은 그것을 표현하지 못한다**: 계획에 넣으면
+	// 확정이 막힌다. 경로별 자산 키는 별도 판에서 다룬다.
+	PerInstallation bool `json:"per_installation_actions,omitempty"`
 	// 활성화 훅 — L3에서만 쓰인다. **도구가 추측하지 않는다**(상류 §2.5): 활성화 지점은 앱
 	// 기동 방식에 달려 있어 관측으로 알 수 없다. 비면 상류가 무엇이 일어나지 않는지 알린다.
 	Pre        string `json:"activation_pre,omitempty"`
@@ -131,7 +138,9 @@ type Item struct {
 
 // EvidenceSource — 근거 하나. 대조의 Source를 세션 파일에 적는 꼴이다.
 type EvidenceSource struct {
-	FindingID   string `json:"finding_id"`
+	FindingID string `json:"finding_id"`
+	// Path — 설치 경로. **계약으로 나가지 않는다**(계획의 근거에는 경로 칸이 없다). 세션 · 화면 · 보고서가 쓴다.
+	Path        string `json:"path,omitempty"`
 	Fingerprint string `json:"fingerprint"`
 	Evidence    string `json:"evidence,omitempty"`
 	// 스냅샷 위치. 원천 노드는 봉투의 이름이라 항목의 Node(선언 이름)와 다를 수 있다.
@@ -258,7 +267,7 @@ func ConfidenceEvaluated(it Item, rulesetVersion string) bool {
 func SourcesOf(r reconcile.Reconciled) []EvidenceSource {
 	out := make([]EvidenceSource, 0, len(r.Sources))
 	for _, s := range r.Sources {
-		out = append(out, EvidenceSource{FindingID: s.FindingID, Fingerprint: s.Fingerprint, Evidence: s.Evidence,
+		out = append(out, EvidenceSource{FindingID: s.FindingID, Path: s.Path, Fingerprint: s.Fingerprint, Evidence: s.Evidence,
 			SourceNodeID: s.Snapshot.SourceNodeID, SnapshotDigest: s.Snapshot.Digest, SnapshotRuleset: s.Snapshot.RulesetVersion})
 	}
 	return out
@@ -585,6 +594,42 @@ func RequireNode(it Item) error {
 // 필수의 범위는 상류의 완결성 기준을 따른다. 목표 알고리즘은 **config로 배달하는 조치**에만
 // 필요하다 — 그 조치의 조각에만 `Groups` 줄이 있고, 비면 배치해도 아무것도 켜지지 않는다.
 // 포크 교체나 폐기에는 적을 자리가 없으므로 요구하지 않는다.
+// Installations — 이 항목의 근거가 가리키는 설치들. 근거마다 원천 노드와 설치 경로로 하나이고, 경로를 모르면
+// `finding_id`로 대신한다. 정렬하고 겹친 것을 지운다. 같은 경로라도 원천 노드가 다르면 다른 기계의 설치다.
+func Installations(it Item) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range it.Sources {
+		where := s.Path
+		if where == "" {
+			where = "finding " + s.FindingID
+		}
+		k := s.SourceNodeID + ": " + where
+		if !seen[k] {
+			seen[k] = true
+			out = append(out, k)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// InstallationsConfirmedNow — 「설치 전부에 적용」의 확인이 지금 설치 목록과 맞는가.
+func InstallationsConfirmedNow(it Item) bool {
+	now := Installations(it)
+	if len(it.InstallationsConfirmed) != len(now) {
+		return false
+	}
+	was := append([]string(nil), it.InstallationsConfirmed...)
+	sort.Strings(was)
+	for i := range now {
+		if was[i] != now[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func RequireDecisions(it Item) error {
 	// **관리 대상이 아닌 자산에 조치를 세우지 않는다.** 이미 한 번 잡힌 결함이다 - 정책을 무시하던
 	// 동안 뺀 자산에 조치 계획을 세우고 있었다. 화면에서 고를 수 없고, 세션 파일을 손으로 고쳐
@@ -599,6 +644,18 @@ func RequireDecisions(it Item) error {
 	}
 	if _, err := levelOf(it.Level); err != nil {
 		return planErr(decision.PlanBadLevel, fmt.Errorf("item %s: %w", it.ID, err))
+	}
+	// **설치가 둘 이상이면 한 조치가 그 전부에 간다.** 사람이 그것을 확인해야 하고, 설치마다 달라야 한다고 했으면
+	// 이 판에서는 계획에 넣지 못한다. 확인 없이 지나가면 서로 다른 설치에 조치 하나가 말없이 적용된다.
+	if ins := Installations(it); len(ins) > 1 {
+		if it.PerInstallation {
+			return planErr(decision.PlanPerInstallation, fmt.Errorf("item %s: different actions per installation were asked for, "+
+				"which this version cannot express — leave it out of the plan (installations: %s)", it.ID, strings.Join(ins, "; ")))
+		}
+		if !InstallationsConfirmedNow(it) {
+			return planErr(decision.PlanInstallsUnconfirmed, fmt.Errorf("item %s: one action goes to all %d installations (%s) — "+
+				"confirm that on the review screen; a confirmation made for a different list does not count", it.ID, len(ins), strings.Join(ins, "; ")))
+		}
 	}
 	if it.Kind == "" {
 		return planErr(decision.PlanNoKind, fmt.Errorf("item %s: no remediation kind — what to do is a review decision, not a default", it.ID))
@@ -729,7 +786,12 @@ func BasisOf(it Item, rulesetVersion string) string {
 		}
 	}
 	for _, s := range it.Sources {
-		parts = append(parts, "source="+s.FindingID+"|"+s.Fingerprint+"|"+s.SourceNodeID)
+		p := "source=" + s.FindingID + "|" + s.Fingerprint + "|" + s.SourceNodeID
+		// 경로가 바뀌면 다른 설치를 본 것이다. 경로를 모르는 근거의 해시는 전과 같게 둔다.
+		if s.Path != "" {
+			p += "|path=" + s.Path
+		}
+		parts = append(parts, p)
 	}
 	return decision.HashBasis(parts...) // HashBasis가 정렬한다 — 근거의 순서는 근거가 아니다
 }

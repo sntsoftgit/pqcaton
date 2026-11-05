@@ -1363,3 +1363,43 @@ func TestEveryPostFormCarriesTheCSRFToken(t *testing.T) {
 		}
 	}
 }
+
+// IC-UI54 — **설치가 둘 이상인 항목에 설치 목록과 두 선택이 보이고, 「전부에 적용」은 사람이 본 목록일 때만 받는다.**
+// 목록의 표지가 지금 목록과 다르면 확인으로 받지 않는다. 설치가 하나면 그 줄을 그리지 않는다.
+func TestInstallationsAreShownAndConfirmedAgainstTheListSeen(t *testing.T) {
+	it := review.Item{ID: "web/openssl/libssl", Policy: "p", Runtime: "openssl", State: "UNDECLARED", Plan: true,
+		Sources: []review.EvidenceSource{
+			{FindingID: "f-sys", Path: "/usr/lib/libssl.so.3", SourceNodeID: "web"},
+			{FindingID: "f-app", Path: "/opt/app/libssl.so.3", SourceNodeID: "web"},
+		}}
+	single := review.Item{ID: "db/openssl/libssl", Policy: "p", Runtime: "openssl", State: "UNDECLARED",
+		Sources: []review.EvidenceSource{{FindingID: "f-db", Path: "/usr/lib/libssl.so.3", SourceNodeID: "db"}}}
+	sf := review.Session{Scope: "org://acme", PolicyDecisions: map[string]string{"p": ""}, Items: []review.Item{it, single}}
+	var b strings.Builder
+	if err := ui.RenderReview(&b, ui.NewReviewView(sf, ui.Page{Title: "판정", Lang: ui.KO})); err != nil {
+		t.Fatal(err)
+	}
+	body := b.String()
+	for _, want := range []string{"/usr/lib/libssl.so.3", "/opt/app/libssl.so.3", "설치 전부에 적용됨을 확인합니다", `name="installs:web/openssl/libssl"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the review screen lacks %q", want)
+		}
+	}
+	if strings.Contains(body, `name="installs:db/openssl/libssl"`) {
+		t.Error("a single installation got the confirmation row")
+	}
+
+	tok := ui.InstallationsToken(review.Installations(it))
+	got := ui.ApplyReview(sf, url.Values{"installs:web/openssl/libssl": {"all:" + tok}})
+	if !review.InstallationsConfirmedNow(got.Items[0]) {
+		t.Error("confirming the list seen did not count")
+	}
+	stale := ui.ApplyReview(sf, url.Values{"installs:web/openssl/libssl": {"all:0000000000000000"}})
+	if len(stale.Items[0].InstallationsConfirmed) != 0 {
+		t.Error("a confirmation for another list was taken")
+	}
+	each := ui.ApplyReview(sf, url.Values{"installs:web/openssl/libssl": {"each"}})
+	if !each.Items[0].PerInstallation {
+		t.Error("「each installation differs」 was not recorded")
+	}
+}

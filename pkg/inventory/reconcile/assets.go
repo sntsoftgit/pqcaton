@@ -94,11 +94,12 @@ func Runtimes() []string { return []string{RuntimeOpenSSL, RuntimeJCA, RuntimeCN
 func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 	var out []Observed
 	for _, f := range findings {
-		var rt, comp string
+		var rt, comp, path string
 		switch f.GetCryptoRuntime() {
 		case commonv1.CryptoRuntime_CRYPTO_RUNTIME_OPENSSL:
 			rt = RuntimeOpenSSL
 			comp = normalizeComponent(f.GetOpenssl().GetLib())
+			path = f.GetOpenssl().GetPath()
 		case commonv1.CryptoRuntime_CRYPTO_RUNTIME_JCA:
 			rt = RuntimeJCA
 			comp = ComponentJCA
@@ -114,6 +115,7 @@ func observedFrom(node string, findings []*discoveryv1.Finding) []Observed {
 			Key:         AssetKey{NodeID: node, Runtime: rt, Component: comp},
 			Evidence:    evidenceStr(f.GetEvidenceStrength()),
 			FindingID:   f.GetId(),
+			Path:        path,
 			Fingerprint: Fingerprint(f),
 			appKeys:     append([]string(nil), f.GetAppKeys()...),
 		})

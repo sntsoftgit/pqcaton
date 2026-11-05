@@ -30,7 +30,11 @@ const (
 	PlanNoKind   = "no-kind"
 	PlanBadKind  = "bad-kind"
 	PlanNoTarget = "no-target"
-	PlanL3       = "l3:"
+	// PlanInstallsUnconfirmed — 설치가 둘 이상인데 「전부에 적용」을 지금 목록으로 확인하지 않았다.
+	PlanInstallsUnconfirmed = "installs-unconfirmed"
+	// PlanPerInstallation — 설치마다 다른 조치를 골랐다. 이 판은 표현하지 못한다.
+	PlanPerInstallation = "per-installation"
+	PlanL3              = "l3:"
 )
 
 const (

@@ -63,6 +63,7 @@ templ reviewForm(v ReviewView) {
 								<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion } aria-label={ itemLabel(tColException.In(v.Page.Lang), it.ID) }/></td>
 							</tr>
 							@hooksRow(v.Page.Lang, it, 8)
+							@installsRow(v.Page.Lang, it, 8)
 						}
 					</table>
 				</div>
@@ -91,6 +92,7 @@ templ reviewForm(v ReviewView) {
 								@planCells(v.Page.Lang, it)
 							</tr>
 							@hooksRow(v.Page.Lang, it, 7)
+							@installsRow(v.Page.Lang, it, 7)
 						}
 					</table>
 				</div>
@@ -146,6 +148,24 @@ templ planCells(lang Lang, it review.Item) {
 			}
 		</select>
 	</td>
+}
+
+// installsRow — 한 키 아래 설치가 둘 이상일 때 그 목록과 「전부에 적용」 · 「설치마다 다름」 선택. 설치가 하나면 그리지 않는다.
+templ installsRow(lang Lang, it review.Item, span int) {
+	if ins := review.Installations(it); len(ins) > 1 {
+		<tr class="installs">
+			<td colspan={ strconv.Itoa(span) }>
+				<span class="hint">{ tInstallsHead.In(lang) }</span>
+				<ul class="installs">
+					for _, p := range ins {
+						<li><code>{ p }</code></li>
+					}
+				</ul>
+				<label><input type="radio" name={ "installs:" + it.ID } value={ "all:" + InstallationsToken(ins) } checked?={ review.InstallationsConfirmedNow(it) }/> { tInstallsAll.In(lang) }</label>
+				<label><input type="radio" name={ "installs:" + it.ID } value="each" checked?={ it.PerInstallation }/> { tInstallsEach.In(lang) }</label>
+			</td>
+		</tr>
+	}
 }
 
 // hooksRow — 활성화 훅과 되돌림 메모. 되돌림 메모는 판정 결론이 아니라 계획 축의 값이다.

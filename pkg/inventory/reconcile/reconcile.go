@@ -68,6 +68,10 @@ type Observed struct {
 	// `finding_id`). 여기서 버리면 계획이 「무엇을 보고 정했나」를 대지 못해, 판정 원장에는
 	// 근거가 있는데 실행 계획에는 없는 상태가 된다. UNOBSERVED는 관측이 없으니 빈다.
 	FindingID string
+	// Path — 설치 경로(OpenSSL은 라이브러리 파일의 절대 경로, 상류 v0.10.6의 `OpensslAxes.path`). 자산 키에는
+	// 경로가 없어 같은 이름의 설치 둘이 한 키 아래 근거 둘로 모인다. 그 둘을 사람이 가를 수 있게 끝까지 싣는다.
+	// **계약으로 나가지 않는다**: 계획의 근거에는 경로 칸이 없고, 설치는 `finding_id`로 갈린다. 비면 모르는 것이다.
+	Path string
 	// Fingerprint — 그 관측의 **내용** 지문([Fingerprint]). id는 자산이 같으면 같으므로,
 	// 버전이 오르거나 강화 판정이 달라진 것을 id로는 알 수 없다. 판정의 근거가 바뀌었는지는
 	// 이 값으로 가른다.
@@ -92,6 +96,7 @@ type SnapshotLocation struct {
 // Source — 한 자산의 근거 하나. 같은 자산을 원천 노드 여럿이 봤으면 여럿이고, 주 근거가 앞이다.
 type Source struct {
 	FindingID   string
+	Path        string // 설치 경로. 세션 · 화면 · 보고서까지만 간다(계약에는 칸이 없다)
 	Fingerprint string
 	Evidence    string
 	Snapshot    SnapshotLocation
@@ -178,7 +183,7 @@ func reconcileAssets(declared []AssetKey, observed []Observed, excluded []Exclud
 	}
 	for _, o := range observed {
 		note(o.Key)
-		sources[o.Key] = append(sources[o.Key], Source{FindingID: o.FindingID, Fingerprint: o.Fingerprint, Evidence: o.Evidence, Snapshot: o.Snapshot})
+		sources[o.Key] = append(sources[o.Key], Source{FindingID: o.FindingID, Path: o.Path, Fingerprint: o.Fingerprint, Evidence: o.Evidence, Snapshot: o.Snapshot})
 	}
 	for _, e := range excluded {
 		note(e.Key)

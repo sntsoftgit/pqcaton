@@ -32,6 +32,7 @@ func withSources() review.Item {
 func TestEvidenceReachesTheContract(t *testing.T) {
 	it := withSources()
 	it.Plan, it.Level, it.Kind, it.TargetAlgorithm, it.Node, it.Runtime = true, "L2", "REMEDIATION_KIND_CONFIG_ONLY", "ML-KEM (FIPS 203)", "web", "openssl"
+	it.InstallationsConfirmed = review.Installations(it) // 원천 노드 둘이라 설치 둘이다(IC-P21)
 	sf := judgedSession()
 	sf.Items = []review.Item{it}
 	res, err := review.Finalize(sf)
@@ -90,6 +91,7 @@ func TestEmptyDigestStillNamesTheFinding(t *testing.T) {
 	it := withSources()
 	it.Sources[1].SnapshotDigest = ""
 	it.Plan, it.Level, it.Kind, it.TargetAlgorithm, it.Node, it.Runtime = true, "L2", "REMEDIATION_KIND_CONFIG_ONLY", "ML-KEM (FIPS 203)", "web", "openssl"
+	it.InstallationsConfirmed = review.Installations(it) // 원천 노드 둘이라 설치 둘이다(IC-P21)
 	sf := judgedSession()
 	sf.Items = []review.Item{it}
 	res, err := review.Finalize(sf)

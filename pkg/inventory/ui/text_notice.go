@@ -86,6 +86,8 @@ var planReasonText = map[string]T{
 	"no-kind":                  {KO: "조치 종류를 고르십시오", EN: "pick a remediation kind"},
 	"bad-kind":                 {KO: "조치 종류가 계약에 없는 값입니다", EN: "the remediation kind is not one the contract knows"},
 	"no-target":                {KO: "이 조치 종류는 목표 알고리즘이 있어야 합니다", EN: "this remediation kind needs a target algorithm"},
+	"installs-unconfirmed":     {KO: "설치가 둘 이상입니다. 이 조치가 설치 전부에 적용됨을 지금 목록으로 확인하십시오", EN: "there is more than one installation; confirm against the current list that this action applies to all of them"},
+	"per-installation":         {KO: "설치마다 다른 조치는 이 판에서 표현할 수 없습니다. 계획에서 빼십시오", EN: "different actions per installation cannot be expressed in this version; leave the item out of the plan"},
 	"l3:activation.activate":   {KO: "L3는 활성화 명령(activate)이 있어야 합니다", EN: "L3 needs an activate command"},
 	"l3:activation.restart":    {KO: "L3는 재시작 명령(restart)이 있어야 합니다", EN: "L3 needs a restart command"},
 	"l3:activation.deactivate": {KO: "L3는 비활성화 명령(deactivate)이 있어야 합니다", EN: "L3 needs a deactivate command"},

@@ -19,6 +19,8 @@ package ui
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/url"
@@ -179,6 +181,15 @@ func ApplyReview(sf review.Session, f url.Values) review.Session {
 			items[i].Deactivate = strings.TrimSpace(f.Get("deactivate:" + it.ID))
 			items[i].Restart = strings.TrimSpace(f.Get("restart:" + it.ID))
 			items[i].RollbackNote = strings.TrimSpace(f.Get("rollback:" + it.ID))
+			// 「설치 전부에 적용」은 사람이 본 목록의 표지(InstallationsToken)와 함께 온다. 지금 목록과 다르면 확인으로
+			// 받지 않는다 - 사람이 보지 않은 설치에 확인이 붙는다.
+			items[i].InstallationsConfirmed, items[i].PerInstallation = nil, false
+			switch v := f.Get("installs:" + it.ID); {
+			case v == "all:"+InstallationsToken(review.Installations(it)):
+				items[i].InstallationsConfirmed = review.Installations(it)
+			case v == "each":
+				items[i].PerInstallation = true
+			}
 		}
 	}
 	apply(sf.Items)
@@ -193,6 +204,12 @@ func confCell(it review.Item, rulesetVersion string) string {
 		return "n/a"
 	}
 	return fmt.Sprintf("%.2f", it.Conf)
+}
+
+// InstallationsToken — 설치 목록의 표지. 화면이 「전부에 적용」 선택에 실어 보내, 사람이 본 목록과 지금 목록이 같은지 견준다.
+func InstallationsToken(installs []string) string {
+	h := sha256.Sum256([]byte(strings.Join(installs, "\n")))
+	return hex.EncodeToString(h[:8])
 }
 
 // plannable — 계획에 넣을 수 있는 항목인가. 제외 전용은 관리 대상이 아니라 칸을 잠근다.

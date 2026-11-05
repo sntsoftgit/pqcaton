@@ -272,6 +272,9 @@ var (
 	tColLevel      = T{KO: "위임 수준", EN: "Delegation level"}
 	tKindAuto      = T{KO: "고르지 않음", EN: "not chosen"}
 	tHooks         = T{KO: "활성화 훅 (L3 전용)", EN: "Activation hooks (used at L3 only)"}
+	tInstallsHead  = T{KO: "같은 자산 키 아래 설치가 둘 이상입니다. 이 판정과 조치는 아래 설치 전부에 적용됩니다.", EN: "There is more than one installation under this asset key. This judgment and its action apply to all of the installations below."}
+	tInstallsAll   = T{KO: "이 조치가 아래 설치 전부에 적용됨을 확인합니다", EN: "I confirm this action applies to all of the installations below"}
+	tInstallsEach  = T{KO: "설치마다 다른 조치가 필요합니다 (이 판에서는 계획에 넣지 못합니다)", EN: "Each installation needs a different action (this version cannot put that in a plan)"}
 	tHookPre       = T{KO: "내리기", EN: "pre"}
 	tHookActivate  = T{KO: "활성화", EN: "activate"}
 	tHookDeact     = T{KO: "되돌리기", EN: "deactivate"}

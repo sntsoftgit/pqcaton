@@ -49,7 +49,7 @@ func TestNoticeCatalogIsComplete(t *testing.T) {
 		}
 	}
 	for _, code := range []string{decision.PlanExcluded, decision.PlanNoLevel, decision.PlanBadLevel, decision.PlanNoKind,
-		decision.PlanBadKind, decision.PlanNoTarget, decision.PlanL3 + "activation.activate",
+		decision.PlanBadKind, decision.PlanNoTarget, decision.PlanInstallsUnconfirmed, decision.PlanPerInstallation, decision.PlanL3 + "activation.activate",
 		decision.PlanL3 + "activation.restart", decision.PlanL3 + "activation.deactivate"} {
 		txt, ok := planReasonText[code]
 		if !ok {
