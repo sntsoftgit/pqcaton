@@ -39,6 +39,7 @@ templ observePage(v ObserveView) {
 			}
 			if v.Run.Current != nil {
 				<p class="lede">{ tRunCurrent.F(v.Page.Lang, v.Run.Current.Ended.Format("2006-01-02 15:04"), v.Run.Current.Nodes, v.Run.Current.Files) }</p>
+				@jcaUnconfirmed(v.Page.Lang, v.Run.JCAUnconfirmed)
 			}
 			@runStatus(v.Page.Lang, v.Page.CSRF, v.Run.Status)
 		</div>

@@ -66,7 +66,15 @@ var (
 	tRefusedRulesetChanged = T{
 		KO: "이 세션은 지금과 다른 상류 규칙 판으로 열렸거나 규칙 판이 적혀 있지 않습니다. 두 규칙 판이 섞이지 않도록 저장하거나 확정하지 않았고, 세션 파일은 그대로입니다. 판정 화면 위쪽의 「지금 규칙으로 새 회차 시작」으로 넘어가십시오.",
 		EN: "This session was opened under a different upstream ruleset, or records none. To keep the two rulesets from mixing, nothing was saved or finalized, and the session file is unchanged. Move on with \"Start a new round under the current rules\" at the top of the review screen."}
-	tRefusedBusy = T{
+	tRefusedPlanRuleset = T{
+		KO: "이 계획은 지금과 다른 상류 규칙 판으로 판정됐거나, 근거의 규칙 판을 확인할 수 없습니다. 서명하거나 플레이북을 만들지 않았고, 있는 파일은 그대로입니다. 지금 규칙의 새 회차에서 다시 확정하십시오. 상류를 v0.10.5 이하로 운영한다면 pqcaton v0.24.x나 상류 pqcota-provision v0.10.5로 생성하십시오.",
+		EN: "This plan was judged under a different upstream ruleset, or the ruleset of its evidence cannot be confirmed. Nothing was signed or generated, and the existing files are unchanged. Finalize it again in a new round under the current rules. If upstream still runs v0.10.5 or earlier, generate with pqcaton v0.24.x or upstream pqcota-provision v0.10.5."}
+	tPlanRulesetTop          = T{KO: "이 계획은 지금과 다른 상류 규칙 판으로 판정됐습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다.", EN: "This plan was judged under a different upstream ruleset. It is not signed or generated here; it can still be viewed and archived."}
+	tPlanRulesetEvidence     = T{KO: "이 계획의 근거 가운데 다른 상류 규칙 판의 것이 있습니다(규칙 판이 섞인 계획). 서명 · 생성하지 않습니다.", EN: "Some evidence in this plan is under a different upstream ruleset (a plan that mixes rulesets). It is not signed or generated."}
+	tPlanRulesetUnverifiable = T{KO: "이 계획의 관측 근거 가운데 스냅샷 참조나 규칙 판이 없는 것이 있어 지금 이력에서 되짚을 수 없습니다. 서명 · 생성하지 않습니다.", EN: "Some observed evidence in this plan has no snapshot reference or ruleset, so it cannot be traced in the current history. It is not signed or generated."}
+	tGenRulesetBlocked       = T{KO: "규칙 판이 맞지 않는 계획으로는 새 플레이북을 만들지 않습니다. 이미 만든 플레이북은 그대로 둡니다.", EN: "No new playbook is generated from a plan whose ruleset does not match. Playbooks already made are left as they are."}
+	tJCAUnconfirmed          = T{KO: "v0.10.6 JCA 수집 결과임을 확인할 수 없는 노드가 있습니다. 수집기와 collector.jar의 판을 확인하십시오:", EN: "For some nodes, the JCA results cannot be confirmed as v0.10.6 collection results. Check the version of the collectors and collector.jar:"}
+	tRefusedBusy             = T{
 		KO: "다른 저장이 아직 끝나지 않았습니다. 잠시 뒤 다시 시도하십시오.",
 		EN: "Another save has not finished yet. Try again in a moment."}
 	tRefusedRecovery = T{

@@ -444,6 +444,7 @@ screen.
 |---|---|---|
 | `stale` | The files changed after the screen was opened, so nothing was saved | Reload the screen and do it again |
 | `finalized` | The session is already finalized, so nothing was saved | Do it in a new session |
+| `plan-ruleset` | The plan was judged under a different upstream ruleset, or the ruleset of its evidence cannot be confirmed, so nothing was signed or generated. Existing files are unchanged | Finalize it again in a new round. If upstream still runs v0.10.5 or earlier, generate with pqcaton v0.24.x or upstream `pqcota-provision` v0.10.5 |
 | `ruleset-changed` | The session was opened under a different upstream ruleset, or records none, so nothing was saved or finalized, to keep the two from mixing | Press "Start a new round under the current rules" at the top of the review screen (the command is `pqcaton-decide new-round`). Earlier conclusions are carried only as reference values, so judge each item again |
 | `busy` | Another save to the same files is in progress, or another command holds the state folder | Try again shortly. If it persists, check whether another `pqcaton-ui` or command is running |
 | `recovery` | Saving is stopped in the recovery required state | Follow [section 8](#8-recovery) |

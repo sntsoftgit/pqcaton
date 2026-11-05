@@ -12,6 +12,7 @@ package ui
 
 import (
 	"context"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"io"
 	"strings"
 	"time"
@@ -32,6 +33,9 @@ type ApproveView struct {
 	Writable bool
 	// Approver — 서명 양식에 채울 승인자(마지막으로 서명한 사람).
 	Approver string
+	// RulesetProblem — 계획(또는 서명된 계획)의 규칙 판이 지금 도구와 맞지 않는 사유(review.PlanRuleset*). 비면 맞다.
+	// 맞지 않으면 서명 · 생성 양식을 내지 않는다. 보관은 그대로 할 수 있고, 있는 플레이북은 그대로 둔다.
+	RulesetProblem string
 }
 
 // PlanSummary — 계획에서 승인자가 볼 것.
@@ -122,17 +126,33 @@ func (v ApproveView) Summary() ApproveSummary {
 // CanSign — 서명 양식을 낼 수 있는가. 계획이 있고, 키가 쓸 만하고, **서명한 계획 파일이 아직 없어야 한다.** 있는
 // 파일은 어떤 경우에도 덮지 않는다(낡았으면 운영자가 먼저 보관한다).
 func (v ApproveView) CanSign() bool {
-	return v.Writable && v.Plan != nil && v.Key.State == KeyOK && v.Signed.State == SignNone
+	return v.Writable && v.Plan != nil && v.Key.State == KeyOK && v.Signed.State == SignNone && v.RulesetProblem == ""
 }
 
-// CanArchive — 지난 서명을 보관할 수 있는가. 지금 계획과 맞지 않거나 이 키로 확인되지 않는 서명이 있을 때다.
+// CanArchive — 지난 서명을 보관할 수 있는가. 지금 계획과 맞지 않거나 이 키로 확인되지 않는 서명이 있을 때, 그리고 규칙 판이
+// 맞지 않는 서명된 계획이 있을 때다(그 계획으로는 다시 서명도 생성도 하지 않으므로, 옮겨 두어야 새 회차의 계획을 서명한다).
 func (v ApproveView) CanArchive() bool {
-	return v.Writable && (v.Signed.State == SignStale || v.Signed.State == SignInvalid)
+	return v.Writable && (v.Signed.State == SignStale || v.Signed.State == SignInvalid ||
+		(v.RulesetProblem != "" && v.Signed.State != SignNone))
 }
 
 // CanGenerate — 생성 양식을 낼 수 있는가. 서명이 지금 계획과 맞고 이 키로 확인돼야 한다.
 func (v ApproveView) CanGenerate() bool {
-	return v.Writable && v.Signed.State == SignValid && v.Key.State == KeyOK
+	return v.Writable && v.Signed.State == SignValid && v.Key.State == KeyOK && v.RulesetProblem == ""
+}
+
+// RulesetText — 규칙 판 거절의 화면 말.
+func (v ApproveView) RulesetText() string {
+	switch v.RulesetProblem {
+	case "":
+		return ""
+	case review.PlanRulesetTop:
+		return tPlanRulesetTop.In(v.Page.Lang)
+	case review.PlanRulesetEvidence:
+		return tPlanRulesetEvidence.In(v.Page.Lang)
+	default:
+		return tPlanRulesetUnverifiable.In(v.Page.Lang)
+	}
 }
 
 // RenderApprove — 06 승인 · 생성 화면.

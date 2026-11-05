@@ -38,6 +38,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
@@ -230,6 +231,10 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 		return v, nil
 	}
 	v.Plan = planSummary(plan)
+	// 규칙 판이 맞지 않는 계획은 서명하지 않는다. 서명된 계획이 있으면 그것도 본다(생성은 서명된 계획으로 한다).
+	if err := review.CheckPlanRuleset(plan); err != nil {
+		v.RulesetProblem = rulesetReason(err)
+	}
 	signed, err := loadPlanFile(s.signedPath())
 	if err != nil {
 		v.Signed.State = ui.SignInvalid
@@ -260,8 +265,22 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 			v.Signed.State, v.Signed.Approvers = ui.SignValid, chk.Approved
 		}
 	}
+	if v.RulesetProblem == "" {
+		if err := review.CheckPlanRuleset(signed); err != nil {
+			v.RulesetProblem = rulesetReason(err)
+		}
+	}
 	v.Playbooks = s.playbookState(signed)
 	return v, nil
+}
+
+// rulesetReason: 계획 규칙 판 거절의 사유 코드.
+func rulesetReason(err error) string {
+	var pe *review.PlanRulesetError
+	if errors.As(err, &pe) {
+		return pe.Reason
+	}
+	return review.PlanRulesetUnverifiable
 }
 
 var levelLine = regexp.MustCompile(`(?m)^# default level: (L[123])\b`)
@@ -400,6 +419,11 @@ func (s *server) approveSignConfirm(w http.ResponseWriter, r *http.Request) {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
+	if err := review.CheckPlanRuleset(plan); err != nil {
+		fmt.Fprintln(os.Stderr, "approve:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
+		return
+	}
 	l := ui.PickLang(r)
 	lines := ui.SignConfirmLines(l, plan.GetId(), len(plan.GetActions()), strings.SplitN(payload, "|", 2)[0], approver, key.Fingerprint)
 	files := []ui.FileRef{file(l, "plan", s.planOut), file(l, "signed-plan", s.signedPath())}
@@ -454,6 +478,9 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil, err
 		}
+		if err := review.CheckPlanRuleset(plan); err != nil {
+			return nil, err
+		}
 		if err := provisioning.PrepareApproval(plan, s.now()); err != nil {
 			return nil, fmt.Errorf("%w: %v", errNotApprovable, err)
 		}
@@ -467,6 +494,10 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 	})
 	l := ui.PickLang(r)
 	switch {
+	case errors.Is(err, review.ErrPlanRuleset):
+		fmt.Fprintln(os.Stderr, "approve:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
+		return
 	case errors.Is(err, errExists):
 		s.refuse(w, r, http.StatusConflict, ui.RefusedSignedExists, back, []ui.FileRef{file(l, "signed-plan", s.signedPath())})
 		return
@@ -557,6 +588,10 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil, err
 		}
+		// 옛 규칙 판의 서명된 계획은 열람 · 보관만 한다. 새 플레이북을 만들지 않고, 있는 것은 덮지 않는다.
+		if err := review.CheckPlanRuleset(signed); err != nil {
+			return nil, err
+		}
 		if err := provisioning.Executable(signed); err != nil {
 			return nil, fmt.Errorf("%w: %v", errNotReady, err)
 		}
@@ -566,6 +601,11 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 			{Path: s.rollbackPath(), Content: []byte(provisioning.GenerateRollbackPlaybook(signed, level))},
 		}, nil
 	})
+	if errors.Is(err, review.ErrPlanRuleset) {
+		fmt.Fprintln(os.Stderr, "generate:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
+		return
+	}
 	if errors.Is(err, errNotReady) {
 		fmt.Fprintln(os.Stderr, "generate:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedGenNotReady, back, nil)

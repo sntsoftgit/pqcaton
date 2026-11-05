@@ -12,9 +12,11 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -60,6 +62,11 @@ type Result struct {
 	DeclaredAssets int
 	DeclaredEdges  int
 	Nodes          int
+
+	// JCAUnconfirmed — JCA 결과가 있는데 그 provider별 PQC 서비스 목록(pqcota:jca.pqc_services, 상류 v0.10.6)이 없는
+	// 노드(선언 이름, 결과를 읽은 순서). 옛 수집기의 결과일 수도, provider를 보지 못한 수집일 수도 있어 **판을 단정하지 않는다.**
+	// JCA 결과가 아예 없는 노드는 들지 않는다(그것은 JCA를 관측하지 않은 것이다).
+	JCAUnconfirmed []string
 
 	// Skipped — 읽지 못한 결과 파일. **알리지 않고 넘기지 않는다** — 빠진 노드를 모르면
 	// 「관측 안 됨」과 「못 읽음」이 뒤섞인다.
@@ -119,6 +126,9 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 		node := ResolveAssetNode(group[0], d.Nodes)
 		for _, res := range group {
 			out.SeenBy[node] = append(out.SeenBy[node], res.GetEnvelope().GetCollectorId())
+			if jcaServicesUnconfirmed(res) && !slices.Contains(out.JCAUnconfirmed, node) {
+				out.JCAUnconfirmed = append(out.JCAUnconfirmed, node)
+			}
 			// NETWORK 계층을 **실제로 커버**했으면 covered — 서버 전용 노드는 client 엣지가 0이어도
 			// 관측은 수행됐다(collector 미설치가 아니라 강등만 미커버).
 			if (len(res.GetObservedEdges()) > 0 || HasNetworkLayer(res)) && NetworkCovered(res) {
@@ -285,6 +295,33 @@ func LoadResults(dir string) (out []*discoveryv1.CollectionResult, skipped []str
 //
 // **잘못 이으면 CONFIRMED여야 할 통신이 UNDECLARED로 올라온다** — 오류가 아니라 그럴듯한
 // 결과라 눈으로는 안 잡힌다(IC-R8). 이미 이어진 것은 덮지 않는다.
+// jcaServicesUnconfirmed — 결과의 CBOM에 JCA 구성 요소가 있는데 PQC 서비스 목록 속성이 없는가.
+func jcaServicesUnconfirmed(res *discoveryv1.CollectionResult) bool {
+	var doc struct {
+		Components []struct {
+			Properties []struct{ Name, Value string } `json:"properties"`
+		} `json:"components"`
+	}
+	if json.Unmarshal(res.GetCbomCyclonedx(), &doc) != nil {
+		return false
+	}
+	for _, c := range doc.Components {
+		jca, listed := false, false
+		for _, p := range c.Properties {
+			switch {
+			case p.Name == "pqcota:crypto_runtime" && p.Value == "jca":
+				jca = true
+			case p.Name == "pqcota:jca.pqc_services":
+				listed = true
+			}
+		}
+		if jca && !listed {
+			return true
+		}
+	}
+	return false
+}
+
 // ResolveAssetNode — 관측 결과 하나가 **선언의 어느 노드**의 것인가.
 //
 // 자산 대조는 노드 이름이 글자 그대로 같아야 맞는다. 그런데 collector는 자기가 붙인

@@ -64,6 +64,8 @@ type ObserveRun struct {
 	Status *RunStatus
 	// Current — results/가 지금 어느 실행의 결과인가. 화면에서 관측을 돌려 바꾼 적이 없으면 nil이다.
 	Current *RunCurrent
+	// JCAUnconfirmed — 지금 결과에서 JCA 서비스 목록을 확인할 수 없는 노드(report.Result의 같은 칸). 시작을 막지 않는다.
+	JCAUnconfirmed []string
 }
 
 // RunCurrent — 지금 결과 세대.

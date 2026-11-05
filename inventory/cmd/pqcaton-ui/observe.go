@@ -62,10 +62,14 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
-	page := s.nextPage(r, ui.ScreenObserve, s.hosts, s.steps(s.load()))
+	wd := s.load()
+	page := s.nextPage(r, ui.ScreenObserve, s.hosts, s.steps(wd))
 	page.Rev = rev
 	v := ui.NewObserveView(hosts, page)
 	v.Run = s.runView()
+	if wd.res != nil {
+		v.Run.JCAUnconfirmed = wd.res.JCAUnconfirmed
+	}
 	html(w, r, func(out io.Writer) error { return ui.RenderObserve(out, v) })
 }
 

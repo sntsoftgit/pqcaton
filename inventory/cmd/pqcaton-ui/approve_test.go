@@ -17,7 +17,9 @@ import (
 	provisioningv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/provisioning/v1"
 	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/sign"
 	"github.com/randyinthedev-hash/pqcota-provisioning/pkg/provisioning"
+	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
@@ -264,6 +266,11 @@ func TestSignedPlansAreNeverOverwritten(t *testing.T) {
 // 계획이 달라지면 06 카드는 「서명이 지금 계획과 맞지 않습니다」이고 생성은 409(`generate-not-ready`)다.
 func TestPlaybooksMatchUpstreamAndGoStale(t *testing.T) {
 	s, _ := keyReady(t)
+	// 빈 곳을 세는 것을 보려면 실제로 빈 곳이 있어야 한다. 목표 알고리즘을 비운 계획이다(근거와 규칙 판은 05가 싣는 그대로다).
+	gapped := strings.Replace(planJSON, `"targetAlgorithm":"ML-KEM (FIPS 203)"`, `"targetAlgorithm":""`, 1)
+	if err := os.WriteFile(s.planOut, []byte(gapped), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	if w := signVia(t, s, "보안팀장"); w.Code != http.StatusSeeOther {
 		t.Fatalf("sign = %d", w.Code)
 	}
@@ -429,5 +436,65 @@ func TestArchiveIsOneTransaction(t *testing.T) {
 	release()
 	if archivedState(t, files) {
 		t.Error("a request went through while the folder was held")
+	}
+}
+
+// IC-U142 — **다른 상류 규칙 판의 계획은 06에서 열람 · 보관만 한다.** 서명 양식이 없고 서명 확인은 409 `plan-ruleset`이다.
+// 이미 서명된 그런 계획이 있으면 생성 양식이 없고, 생성은 409이며 이미 만든 플레이북은 바이트 그대로다. 보관은 할 수 있다.
+func TestOldRulesetPlansAreViewedNotSignedOrGenerated(t *testing.T) {
+	oldRuleset := "pqcota-enrich/v0" + strings.TrimPrefix(review.RulesetVersion, review.UpstreamRuleset(review.RulesetVersion))
+	old := strings.Replace(planJSON, `"rulesetVersion":"`+review.RulesetVersion+`"`, `"rulesetVersion":"`+oldRuleset+`"`, 1)
+	if old == planJSON {
+		t.Fatal("the fixture did not change")
+	}
+	s, _ := keyReady(t)
+	if err := os.WriteFile(s.planOut, []byte(old), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	if strings.Contains(page, `action="`+ui.SignConfirmPath+`"`) || !strings.Contains(page, "다른 상류 규칙 판으로 판정됐습니다") {
+		t.Errorf("the 06 screen offers to sign an old-ruleset plan, or does not say why not")
+	}
+	w := postForm(t, s, ui.SignConfirmPath, withRev(signForm("보안팀장"), s.revFor(ui.ScreenApprove)))
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedPlanRuleset) {
+		t.Fatalf("sign confirm = %d, want 409 %s", w.Code, ui.RefusedPlanRuleset)
+	}
+	if _, err := os.Stat(s.signedPath()); err == nil {
+		t.Fatal("an old-ruleset plan was signed")
+	}
+
+	// 이미 서명된 옛 계획과 그 플레이북.
+	plan, err := loadPlanFile(s.planOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := provisioning.PrepareApproval(plan, s.now()); err != nil {
+		t.Fatal(err)
+	}
+	_, priv := s.readKey()
+	sig, err := sign.SignApproval(priv, "보안팀장", plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.ApprovalSignatures = append(plan.ApprovalSignatures, sig)
+	b, _ := protojson.Marshal(plan)
+	for p, c := range map[string][]byte{s.signedPath(): b, s.provisionPath(): []byte("old apply\n"), s.rollbackPath(): []byte("old undo\n")} {
+		if err := os.WriteFile(p, c, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	page = get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	if strings.Contains(page, `action="`+ui.GeneratePath+`"`) || !strings.Contains(page, `action="`+ui.ArchivePath+`"`) {
+		t.Errorf("a signed old-ruleset plan: generation offered or archiving not offered")
+	}
+	w = postForm(t, s, ui.GeneratePath, withRev(url.Values{"level": {"l2"}}, s.revFor(ui.ScreenApprove)))
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedPlanRuleset) {
+		t.Fatalf("generate = %d, want 409 %s", w.Code, ui.RefusedPlanRuleset)
+	}
+	if readFile(t, s.provisionPath()) != "old apply\n" || readFile(t, s.rollbackPath()) != "old undo\n" {
+		t.Error("existing playbooks were overwritten")
+	}
+	if w := postForm(t, s, ui.ArchivePath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusSeeOther {
+		t.Errorf("archiving the old signed plan = %d", w.Code)
 	}
 }

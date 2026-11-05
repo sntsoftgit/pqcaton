@@ -39,6 +39,8 @@ const (
 	RefusedSignedExists = "signed-exists"
 	// RefusedRulesetChanged — 세션이 지금과 다른 상류 규칙 판으로 열려 저장 · 확정하지 않았다(409).
 	RefusedRulesetChanged = "ruleset-changed"
+	// RefusedPlanRuleset — 계획의 규칙 판이 지금 도구와 맞지 않아 서명 · 생성하지 않았다(409).
+	RefusedPlanRuleset = "plan-ruleset"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
 	ErrNotFound     = "not-found"     // 404
@@ -61,6 +63,7 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
 	RefusedRulesetChanged: {body: tRefusedRulesetChanged},
+	RefusedPlanRuleset:    {tSignRefusedHead, tRefusedPlanRuleset},
 	ErrNotFound:           {tErrNotFoundHead, tErrNotFound},
 	ErrMethod:             {tErrMethodHead, tErrMethod},
 	ErrBadRequest:         {tErrBadRequestHead, tErrBadRequest},
