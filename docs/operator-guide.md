@@ -84,7 +84,7 @@ chmod +x ~/Desktop/pqcaton-ui.command
   노드에서는 root 권한(`become`)으로 실행하므로 그 계정에 sudo 권한이 있어야 합니다. 처음 접속하는 노드는 미리 `ssh`로
   한 번 접속해 호스트 키를 받아 둡니다. Windows 노드를 관측하려면 `ansible.windows` 컬렉션도 필요합니다.
 - **수집기.** 작업 폴더의 `collectors` 폴더(또는 `-collectors <폴더>`)에 pqcota-discovery를 빌드한 결과를 아래 모양으로
-  둡니다. 판은 pqcota v0.10.6으로 두고, 노드에 올리는 `collector.jar`도 같은 판으로 둡니다. 이 화면은 읽은 수집 결과를
+  둡니다. 판은 pqcota v0.10.6으로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다. 이 화면은 읽은 수집 결과를
   v0.10.6 규칙 묶음으로 정규화합니다. 그 전 판의 `pqcota-jvmscan` · `collector.jar`는 provider별 PQC 서비스 목록을 싣지 않아
   JCA 준비도가 `unknown`이 되고, 03 · 04 화면이 그 노드를 「v0.10.6 JCA 수집 결과임을 확인할 수 없습니다」로 알립니다
   (README의 「맞는 조합」).

@@ -114,3 +114,44 @@ func TestOperatorGuideInstallsTheLatestRelease(t *testing.T) {
 		}
 	}
 }
+
+var (
+	compatTop = regexp.MustCompile(`(?m)^\| (v\d+\.\d+\.\d+)(?: ~ (v\d+\.\d+\.\d+))? \| (v\d+\.\d+\.\d+) \|`)
+	goModUp   = regexp.MustCompile(`(?m)^\s*github\.com/randyinthedev-hash/(pqcota[a-z-]*) (v\d+\.\d+\.\d+)`)
+)
+
+// IC-U144 — **판별 표(docs/compatibility.md)의 맨 위 줄은 지금 판이다.** 그 줄의 pqcaton 판(범위면 끝 판)은 릴리스 노트 맨 위
+// 절의 판과 같다. `go.mod`의 pqcota 계열 모듈은 모두 같은 판이고, 표의 고정한 pqcota 판은 그 판과 같다. 새 판을 내며 표를
+// 두면 사용자가 옛 조합을 따르고, 모듈 하나만 다른 판이면 상류가 검증하지 않은 조합이 된다.
+func TestCompatibilityTableIsCurrent(t *testing.T) {
+	root := filepath.Join("..", "..", "..")
+	read := func(p string) []byte {
+		b, err := os.ReadFile(filepath.Join(root, p))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	note := latestNote.FindSubmatch(read("RELEASE_NOTES.md"))
+	mods := goModUp.FindAllSubmatch(read("go.mod"), -1)
+	top := compatTop.FindSubmatch(read(filepath.Join("docs", "compatibility.md")))
+	if note == nil || len(mods) == 0 || top == nil {
+		t.Fatalf("could not read the latest note (%v), go.mod (%d pqcota modules) or the table's top row (%v)", note != nil, len(mods), top != nil)
+	}
+	pinned := string(mods[0][2])
+	for _, m := range mods[1:] {
+		if string(m[2]) != pinned {
+			t.Errorf("go.mod pins %s %s but %s %s: the pqcota modules must share one tag", mods[0][1], pinned, m[1], m[2])
+		}
+	}
+	pqcaton := string(top[1])
+	if len(top[2]) > 0 {
+		pqcaton = string(top[2])
+	}
+	if pqcaton != string(note[1]) {
+		t.Errorf("the table's top row is pqcaton %s, but the latest release is %s", pqcaton, note[1])
+	}
+	if string(top[3]) != pinned {
+		t.Errorf("the table's top row pins pqcota %s, but go.mod requires %s", top[3], pinned)
+	}
+}

@@ -239,7 +239,7 @@ PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
 
 계획이 실행 필드를 다 채우지 못하면 pqcota는 산출물을 내되 **성공으로 끝내지 않습니다**(종료 상태 3). 무엇이 비었는지는 그 경고가 이름으로 알려 줍니다. 다만 그 상태까지 가지 않습니다. 위임 수준과 조치 종류, 목표 알고리즘, L3의 활성화 훅은 **우리 화면에서 고르고, 비면 확정이 막힙니다.** 빈 값을 상류로 넘기고 거기서 걸리게 두는 것보다, 승인 서명이 붙기 전에 이쪽에서 막는 편이 맞기 때문입니다.
 
-**맞는 조합.** 이 리포는 pqcota **v0.10.6**(`pqcota-common`·`pqcota-inventory`·`pqcota-discovery`·`pqcota-provisioning` 넷을 같은 태그로)으로 만들고, `go.mod`도 그 판을 고정합니다. 종단(데모) 검증은 v0.10.6으로 했습니다(다섯 리포를 같은 태그로 나란히 받아 돌렸습니다). 위 명령도 v0.10.6 기준입니다. **상류의 판이 맞아야 합니다.** 이 리포는 관측 결과를 자기 안에 든 v0.10.6의 규칙 묶음(`pqcota-enrich/v3`)으로 정규화하고, 계획의 근거에 그 스냅샷 지문을 싣습니다. 그래서 상류의 `pqcota-ingest`와 `pqcota-provision`도 같은 규칙 묶음이어야 근거가 이력에서 찾힙니다.
+**맞는 조합.** pqcaton의 판마다 함께 쓰는 pqcota 판은 [판별 표](docs/compatibility.md)에 있습니다. 이 리포는 pqcota **v0.10.6**(`pqcota-common`·`pqcota-inventory`·`pqcota-discovery`·`pqcota-provisioning` 넷을 같은 태그로)으로 만들고, `go.mod`도 그 판을 고정합니다. 종단(데모) 검증은 v0.10.6으로 했습니다(다섯 리포를 같은 태그로 나란히 받아 돌렸습니다). 위 명령도 v0.10.6 기준입니다. **상류의 판이 맞아야 합니다.** 이 리포는 관측 결과를 자기 안에 든 v0.10.6의 규칙 묶음(`pqcota-enrich/v3`)으로 정규화하고, 계획의 근거에 그 스냅샷 지문을 싣습니다. 그래서 상류의 `pqcota-ingest`와 `pqcota-provision`도 같은 규칙 묶음이어야 근거가 이력에서 찾힙니다.
 
 | pqcota | 상태 | 근거 |
 |---|---|---|

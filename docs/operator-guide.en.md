@@ -89,7 +89,8 @@ machine. The screen checks both before it starts and, when something is missing,
   and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
   with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
 - **Collectors.** Put the build output of pqcota-discovery in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this. Keep them on pqcota v0.10.6, and the `collector.jar` put on the nodes on the same version.
+  <folder>`), shaped like this. Keep them on pqcota v0.10.6 (the pqcota version for each pqcaton version is in the
+  [version table](compatibility.md), in Korean), and the `collector.jar` put on the nodes on the same version.
   This screen normalizes the collection results it reads with the v0.10.6 ruleset. An earlier `pqcota-jvmscan` or
   `collector.jar` does not carry the per-provider list of PQC services, so the JCA readiness becomes `unknown`, and the 03
   and 04 screens name such nodes as "the JCA results cannot be confirmed as v0.10.6 collection results" (see the version
