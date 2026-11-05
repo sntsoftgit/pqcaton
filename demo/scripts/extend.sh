@@ -48,11 +48,30 @@ if [ -n "${PQCATON_BIN_DIR:-}" ]; then
   echo "   using prebuilt binaries from $PQCATON_BIN_DIR"
   cp "$PQCATON_BIN_DIR/pqcaton-report" "$PQCATON_BIN_DIR/pqcaton-decide" "$TMP/"
 else
-  ( cd "$REPO_DIR" && CGO_ENABLED=0 go build -o "$TMP/pqcaton-report" ./inventory/cmd/pqcaton-report )
-  ( cd "$REPO_DIR" && CGO_ENABLED=0 go build -o "$TMP/pqcaton-decide" ./inventory/cmd/pqcaton-decide )
+  # **컨테이너용으로 빌드한다.** 둘은 호스트가 아니라 pqcota-ctl 안에서 돈다. 호스트의 기본값으로
+  # 빌드하면 macOS에서 darwin 바이너리가 나와 3/8에서 「Exec format error」로 멈춘다(Linux 호스트에서만
+  # 돌려 보던 동안 드러나지 않았다). 아키텍처도 호스트가 아니라 컨테이너에 묻는다.
+  case "$(docker exec pqcota-ctl uname -m)" in
+    x86_64|amd64)  CTL_ARCH=amd64 ;;
+    aarch64|arm64) CTL_ARCH=arm64 ;;
+    *) echo "❌ unsupported pqcota-ctl architecture: $(docker exec pqcota-ctl uname -m)"; exit 1 ;;
+  esac
+  echo "   target: linux/$CTL_ARCH (pqcota-ctl)"
+  ( cd "$REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH=$CTL_ARCH go build -o "$TMP/pqcaton-report" ./inventory/cmd/pqcaton-report )
+  ( cd "$REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH=$CTL_ARCH go build -o "$TMP/pqcaton-decide" ./inventory/cmd/pqcaton-decide )
 fi
 docker cp "$TMP/pqcaton-report" pqcota-ctl:/usr/local/bin/pqcaton-report
 docker cp "$TMP/pqcaton-decide" pqcota-ctl:/usr/local/bin/pqcaton-decide
+# 미리 빌드한 둘(PQCATON_BIN_DIR)도 컨테이너에서 실행되는지 여기서 본다. 셸을 거쳐 실행해야
+# 실행할 수 없는 파일이 126으로 나온다(docker exec로 바로 부르면 Docker 판에 따라 255가 나온다).
+# 인자 없이 부르면 둘 다 사용법을 찍고 2로 끝나며 아무것도 쓰지 않는다.
+for b in pqcaton-report pqcaton-decide; do
+  rc=0; docker exec pqcota-ctl bash -c "/usr/local/bin/$b >/dev/null 2>&1" || rc=$?
+  if [ "$rc" -eq 126 ] || [ "$rc" -eq 127 ] || [ "$rc" -eq 255 ]; then
+    echo "❌ $b does not run inside pqcota-ctl (exit $rc) — it must be a linux/$(docker exec pqcota-ctl uname -m) binary"
+    exit 1
+  fi
+done
 
 echo "▶ 2/8 generate the declaration (topology.yaml -> declaration) and inject node↔IP…"
 echo "   topology: $TOPO"
@@ -130,7 +149,9 @@ echo "▶ 3/8 inventory reconciliation + governance topology (pqcaton-report)…
 SCOPE=/work/scope-assets.csv
 docker exec pqcota-ctl bash -lc "test -f $SCOPE" || { echo "❌ $SCOPE not in pqcota-ctl — pqcota/demo/scripts/demo.sh writes it"; exit 1; }
 docker exec -e PQCATON_SCOPE_ASSETS=$SCOPE pqcota-ctl bash -lc 'pqcaton-report /work/results /work/declaration.json /work/topology-governance.dot' \
-  | tee "$SAMPLE_DIR/report.txt"
+  | tee "$TMP/report.txt"
+# 끝까지 돈 출력만 기대 파일로 옮긴다. tee로 바로 쓰면 명령이 실패해도 기대 파일이 먼저 비워진다.
+cp "$TMP/report.txt" "$SAMPLE_DIR/report.txt"
 
 echo "▶ 4/8 judgment → judged plan, IN_REVIEW (pqcaton-decide)…"
 # **대조에서 멈추지 않는다.** 여기까지만 돌리면 「관측을 판정으로 잇는다」가 데모에서
