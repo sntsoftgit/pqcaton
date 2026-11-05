@@ -222,6 +222,9 @@
 | **[IC-P24](../pkg/inventory/review/ruleset_round_test.go) ✅** | 상류 규칙 판이 다른 판정 세션을 지금 규칙으로 다시 세운 세션에 넘김 · 서명과 검토자만 넣고 확정 | 새 세션은 새 ID에 서명 · 검토자가 비고, **옛 결론 · 계획 칸 · 정책 결론은 참고값(previous)에만 있고 현재 칸은 빈다.** 서명만으로는 확정되지 않는다 | 옛 결론이 현재 값이 되면 그 항목은 판정된 것이라 서명만으로 다른 규칙의 근거를 확정한다 |
 | **[IC-P25](../pkg/inventory/review/ruleset_round_test.go) ✅** | 참고값이 있는 항목과 없는 항목을 다시 채택 · 정책 결론을 다시 채택 · 다시 세워 `Carry` · 같은 입력으로 보고서를 두 번 | 채택은 **그 항목 하나만** 옮기고 다설치 확인은 옮기지 않는다. 참고값과 전환 기록은 다시 세워도 남는다. 보고서는 같은 바이트이고, 사라진 항목 · 새 항목 · 설치가 갈린 항목과 맨 위 문장을 적는다 | 한꺼번에 옮기면 자동 이월이다. 보고서가 흔들리면 멈춘 뒤 복구한 결과와 처음 결과를 견줄 수 없다 |
 | **[IC-P26](../pkg/inventory/rulesetround/rulesetround_test.go) ✅** | 공통 규칙 전환 함수로 끊김 없이 회차를 엶 · 적용 도중과 끝에서 멈춘 뒤 복구 · 같은 요청을 다시 · 이미 지금 판인 세션 | 멈췄다 복구한 새 세션 · 보고서 · 보관본이 **끊김 없이 연 것과 바이트까지 같다.** 다시 보내면 거절되고 파일이 늘지 않는다. 이름에 규칙 판 문자열이 없다 | 화면과 명령이 다른 함수를 쓰거나 복구 결과가 달라지면, 같은 전환이 어느 길로 갔느냐에 따라 다른 기록이 남는다 |
+| **[IC-P27](../pkg/inventory/rulesetround/rulesetround_test.go) ✅** | 옛 세션 · 선언 · 결과 폴더 · 자산 스코프 정책의 지문을 재어 넘기고, 다시 세우는 도중에 하나씩 바꿈 | 넷 모두 **ErrStale이고 보관본 · 새 세션 · 보고서 · 회차 표지가 하나도 생기지 않는다** | 서로 다른 시점의 입력으로 새 세션과 보고서가 만들어지면 무엇을 보고 넘겼는지 되짚지 못한다 |
+| **[IC-P28](../pkg/inventory/rulesetround/rulesetround_test.go) ✅** | 같은 항목 ID에 요청한 조직이 다름 · 다시 세운 세션만 다른 조직 | 둘 다 ErrOrgMismatch이고 파일이 생기지 않는다 | 다른 조직의 결론이 참고값으로라도 넘어가면 조직의 경계가 무너진다 |
+| **[IC-P29](../pkg/inventory/rulesetround/rulesetround_test.go) ✅** | 세션 ID가 없는 옛 파일 둘을 한 상태 폴더에서 차례로 전환 | 둘 다 회차가 열린다 | 내부 이름이 하나(`unnamed-session`)면 첫 회차의 표지가 둘째를 막는다 |
 
 ### E. 통신 엣지 대조와 토폴로지 ([인벤토리 설계 §6](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) 🔶: 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector([디스커버리 설계 §2.3](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/discovery/design.md))가 공급
 | TC | Given → When | Then |

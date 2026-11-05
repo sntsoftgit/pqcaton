@@ -333,7 +333,12 @@ func newRound(oldPath, declPath, resultsDir, scopeAssets, orgName, out, reportPa
 		return err
 	}
 	defer st.Close()
-	res, err := rulesetround.Open(st, req, store.Check{}, store.CommandWait)
+	// 화면과 같은 네 입력의 지문을 먼저 재어 넘긴다. 다시 세우는 사이에 하나라도 바뀌면 아무것도 쓰지 않는다.
+	chk, err := rulesetround.Snapshot(rulesetround.Inputs(oldPath, declPath, resultsDir, scopeAssets))
+	if err != nil {
+		return err
+	}
+	res, err := rulesetround.Open(st, req, chk, store.CommandWait)
 	if err != nil {
 		return err
 	}

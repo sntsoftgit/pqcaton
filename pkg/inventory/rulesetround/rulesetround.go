@@ -26,11 +26,36 @@ import (
 // Kind — 판정 세션의 영수증 종류. 화면과 명령이 같은 값을 쓴다.
 const Kind = "review"
 
-// unnamed — 세션 ID가 없는 옛 세션의 저장 이름. 화면의 것과 같다.
-const unnamed = "unnamed-session"
-
 // ErrSameRuleset — 세션이 이미 지금 상류 규칙 판이다. 넘길 것이 없다.
 var ErrSameRuleset = errors.New("the session is already under the current upstream ruleset")
+
+// ErrOrgMismatch — 옛 세션 · 다시 세운 세션 · 요청한 조직이 같지 않다. 항목 ID가 같아도 다른 조직의 결론을 옮기지 않는다.
+var ErrOrgMismatch = errors.New("the old session, the rebuilt session and the requested organization are not the same organization")
+
+// Inputs — 회차가 읽는 입력. 판정 화면이 rev로 덮는 넷과 같다(세션 · 선언 · 결과 폴더 · 자산 스코프 정책). 빈 경로는 뺀다.
+func Inputs(oldPath, declPath, resultsDir, scopeAssets string) []store.Input {
+	in := []store.Input{{Name: "session", Path: oldPath}}
+	if declPath != "" {
+		in = append(in, store.Input{Name: "declaration", Path: declPath})
+	}
+	if resultsDir != "" {
+		in = append(in, store.Input{Name: "results", Path: resultsDir, Dir: true})
+	}
+	if scopeAssets != "" {
+		in = append(in, store.Input{Name: "scope-assets", Path: scopeAssets})
+	}
+	return in
+}
+
+// Snapshot — 입력의 지문을 지금 재어 Check로 돌려준다. 명령이 쓴다(화면은 폼에 실려 온 rev를 쓴다). 저장소가 다시 세우기
+// 전과 쓰기 직전에 같은 입력을 다시 재므로, 그 사이에 하나라도 바뀌면 ErrStale이고 아무것도 쓰지 않는다.
+func Snapshot(inputs []store.Input) (store.Check, error) {
+	rev, err := store.Rev(inputs)
+	if err != nil {
+		return store.Check{}, err
+	}
+	return store.Check{Inputs: inputs, Rev: rev}, nil
+}
 
 // Request — 회차 하나.
 type Request struct {
@@ -59,8 +84,7 @@ var safeKey = regexp.MustCompile(`^[A-Za-z0-9-]{1,64}$`)
 func Names(oldPath, outPath string, old review.Session, oldBytes []byte) (archive, report string) {
 	key := old.SessionID
 	if !safeKey.MatchString(key) {
-		h := sha256.Sum256(oldBytes)
-		key = hex.EncodeToString(h[:6])
+		key = strings.TrimPrefix(internalID(oldPath, "", oldBytes), "unnamed-")[:12]
 	}
 	rh := sha256.Sum256([]byte(old.RulesetVersion))
 	alias := hex.EncodeToString(rh[:6])
@@ -78,9 +102,10 @@ func Targets(req Request) ([]string, error) {
 		return nil, err
 	}
 	archive, report := req.names(old, raw)
-	t := []string{req.OutPath, report}
+	// 옛 세션은 쓰지 않을 때도(다른 자리에 새 세션을 쓸 때) 잠그고 남은 준비 파일을 본다.
+	t := []string{req.OldPath, req.OutPath, report}
 	if same(req.OldPath, req.OutPath) {
-		t = append(t, archive)
+		t = append(t[1:], archive)
 	}
 	return t, nil
 }
@@ -95,6 +120,9 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 	if !changed(old) {
 		return Result{}, ErrSameRuleset
 	}
+	if err := sameOrg(old.Scope, req.Org, "", false); err != nil {
+		return Result{}, err
+	}
 	archive, report := req.names(old, raw)
 	targets, err := Targets(req)
 	if err != nil {
@@ -105,7 +133,7 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 	if archived {
 		res.Archive = archive
 	}
-	from := store.Identity{Kind: Kind, Org: req.Org, SessionID: name(old.SessionID)}
+	from := store.Identity{Kind: Kind, Org: req.Org, SessionID: internalID(req.OldPath, old.SessionID, raw)}
 	to := store.Identity{Kind: Kind, Org: req.Org, SessionID: req.NewID}
 	err = st.OpenRulesetRound(from, to, targets, chk, wait, func() (store.RulesetRound, error) {
 		// 잠금 안에서 다시 읽는다. 그 사이에 바뀌었으면 처음 정한 이름과 어긋나므로 멈춘다.
@@ -118,6 +146,9 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 		}
 		rebuilt, err := req.Rebuild()
 		if err != nil {
+			return store.RulesetRound{}, err
+		}
+		if err := sameOrg(cur.Scope, req.Org, rebuilt.Scope, true); err != nil {
 			return store.RulesetRound{}, err
 		}
 		archiveName := ""
@@ -165,11 +196,27 @@ func changed(sf review.Session) bool {
 	return review.UpstreamRuleset(sf.RulesetVersion) != review.UpstreamRuleset(review.RulesetVersion)
 }
 
-func name(id string) string {
-	if id == "" {
-		return unnamed
+// sameOrg — 옛 세션의 스코프와 요청한 조직이 같은가(rebuiltToo면 다시 세운 세션의 스코프도).
+func sameOrg(oldScope, org, rebuiltScope string, rebuiltToo bool) error {
+	want := "org://" + org
+	if oldScope != want || (rebuiltToo && rebuiltScope != want) {
+		return fmt.Errorf("%w: old session %q, rebuilt %q, requested %q", ErrOrgMismatch, oldScope, rebuiltScope, want)
 	}
-	return id
+	return nil
+}
+
+// internalID — 저장소가 그 세션을 부르는 이름. 세션 ID가 있으면 그것이고, 없으면(옛 빌드의 파일) **절대 경로와 옛 바이트의
+// 해시**다. 하나의 이름(unnamed-session)을 함께 쓰면 한 상태 폴더의 이름 없는 세션 둘 가운데 첫 회차의 표지가 둘째를 막는다.
+func internalID(path, id string, raw []byte) string {
+	if id != "" {
+		return id
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		abs = path
+	}
+	h := sha256.Sum256(append([]byte(abs+"\x00"), raw...))
+	return "unnamed-" + hex.EncodeToString(h[:8])
 }
 
 func same(a, b string) bool {

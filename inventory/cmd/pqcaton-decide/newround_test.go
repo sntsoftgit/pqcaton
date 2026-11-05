@@ -22,6 +22,7 @@ func oldRound(t *testing.T) (dir, sess, declPath, results string) {
 		t.Fatal(err)
 	}
 	sf.RulesetVersion = "pqcota-enrich/v0" + strings.TrimPrefix(review.RulesetVersion, review.UpstreamRuleset(review.RulesetVersion))
+	sf.Scope = "org://local" // 결과에서 다시 세운 세션의 조직과 같아야 넘어간다
 	if err := review.Save(sess, sf); err != nil {
 		t.Fatal(err)
 	}
