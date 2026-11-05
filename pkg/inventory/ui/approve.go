@@ -36,6 +36,8 @@ type ApproveView struct {
 	// RulesetProblem — 계획(또는 서명된 계획)의 규칙 판이 지금 도구와 맞지 않는 사유(review.PlanRuleset*). 비면 맞다.
 	// 맞지 않으면 서명 · 생성 양식을 내지 않는다. 보관은 그대로 할 수 있고, 있는 플레이북은 그대로 둔다.
 	RulesetProblem string
+	// RulesetSigned — 맞지 않는 것이 서명된 계획(plan.signed.json) 쪽이다. 지금 계획(plan.json)은 맞을 수 있다.
+	RulesetSigned bool
 }
 
 // PlanSummary — 계획에서 승인자가 볼 것.
@@ -143,6 +145,9 @@ func (v ApproveView) CanGenerate() bool {
 
 // RulesetText — 규칙 판 거절의 화면 말.
 func (v ApproveView) RulesetText() string {
+	if v.RulesetSigned && v.RulesetProblem != "" {
+		return tSignedRulesetProblem.In(v.Page.Lang)
+	}
 	switch v.RulesetProblem {
 	case "":
 		return ""

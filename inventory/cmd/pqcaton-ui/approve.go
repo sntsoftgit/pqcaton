@@ -267,7 +267,7 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	}
 	if v.RulesetProblem == "" {
 		if err := review.CheckPlanRuleset(signed); err != nil {
-			v.RulesetProblem = rulesetReason(err)
+			v.RulesetProblem, v.RulesetSigned = rulesetReason(err), true
 		}
 	}
 	v.Playbooks = s.playbookState(signed)

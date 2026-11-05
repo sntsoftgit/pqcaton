@@ -656,13 +656,16 @@ type ReviewSummary struct {
 	Signed bool
 	// Autopass — 기계가 답을 낸 항목. 사람이 볼 것에서 뺀다.
 	Autopass int
+	// RulesetChanged — 세션이 지금과 다른 상류 규칙 판이다. 잠겨 있어 결론이 다 차 있어도 확정할 수 없다.
+	RulesetChanged bool
 }
 
 // Summary — 요약의 숫자.
 func (v ReviewView) Summary() ReviewSummary {
 	s := ReviewSummary{
 		Policies: len(v.Policies), Autopass: len(v.Autopass),
-		Signed: strings.TrimSpace(v.Reviewer) != "" && strings.TrimSpace(v.Signature) != "",
+		Signed:         strings.TrimSpace(v.Reviewer) != "" && strings.TrimSpace(v.Signature) != "",
+		RulesetChanged: v.RulesetChanged,
 	}
 	for _, p := range v.Policies {
 		if strings.TrimSpace(p.Conclusion) == "" {
@@ -674,7 +677,7 @@ func (v ReviewView) Summary() ReviewSummary {
 }
 
 // Ready — 확정할 수 있나. **결론이 다 찼고 서명도 있어야** 한다.
-func (s ReviewSummary) Ready() bool { return s.Open == 0 && s.Signed }
+func (s ReviewSummary) Ready() bool { return s.Open == 0 && s.Signed && !s.RulesetChanged }
 
 // reviewEditAnchor — 요약에서 판정 폼으로 보내는 자리.
 const reviewEditAnchor = "review-edit"

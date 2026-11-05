@@ -28,7 +28,7 @@ templ reviewNextPage(v ReviewView) {
 templ reviewNextTodo(v ReviewView) {
 	{{ s := v.Summary() }}
 	if v.RulesetChanged {
-		@newRoundBox(v.Page, tRulesetRoundHead, tRulesetRoundBody, ReviewRulesetRoundPath, tRulesetRoundDo)
+		@rulesetRoundBox(v.Page)
 	} else if v.Finalized {
 		@newRoundBox(v.Page, tRoundReviewHead, tRoundReviewBody, ReviewNewPath, tRoundReviewDo)
 	} else if s.Ready() {
@@ -100,6 +100,22 @@ templ rulesetReport(v ReviewView) {
 			}
 		</section>
 	}
+}
+
+// rulesetRoundBox — 다른 상류 규칙 판의 세션의 화면 위쪽. **할 일이 남았다는 상자다**(완료 모양이 아니다). 잠겨 있다고
+// 알리고, 규칙 전환 회차를 여는 POST(요청 보호 · rev)를 둔다.
+templ rulesetRoundBox(p Page) {
+	<div class="next ruleset" role="status">
+		<div class="next-icon">!</div>
+		<div>
+			<strong>{ tRulesetRoundHead.In(p.Lang) }</strong>
+			<span>{ tRulesetRoundBody.In(p.Lang) }</span>
+		</div>
+		<form method="post" action={ templ.SafeURL(ReviewRulesetRoundPath) }>
+			@csrfField(p)
+			<button class="primary">{ tRulesetRoundDo.In(p.Lang) }</button>
+		</form>
+	</div>
 }
 
 // newRoundBox — 확정된 세션의 화면 위쪽. 읽기 전용이라고 알리고, 새 회차를 여는 POST(요청 보호 · rev)를 둔다.

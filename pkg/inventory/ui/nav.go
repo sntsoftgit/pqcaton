@@ -201,6 +201,8 @@ type StepState struct {
 // reviewState — 판정 카드의 한 줄. **확정을 막는 것이 무엇인지** 알린다.
 func reviewState(l Lang, s ReviewSummary) (string, string) {
 	switch {
+	case s.RulesetChanged:
+		return tStepReviewRuleset.In(l), "danger"
 	case s.Ready():
 		return tStepReviewReady.In(l), "ok"
 	case s.Open == 0:

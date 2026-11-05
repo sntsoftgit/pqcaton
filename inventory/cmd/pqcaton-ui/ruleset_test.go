@@ -105,8 +105,13 @@ func TestRulesetRoundFromTheScreen(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := readFile(t, s.path)
-	if body := get(t, s, ui.ScreenReview+"?lang=ko").Body.String(); !strings.Contains(body, ui.ReviewRulesetRoundPath) || !strings.Contains(body, "지금 규칙으로 새 회차 시작") {
+	body := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
+	if !strings.Contains(body, ui.ReviewRulesetRoundPath) || !strings.Contains(body, "지금 규칙으로 새 회차 시작") {
 		t.Fatal("the review screen does not offer the ruleset round")
+	}
+	// 할 일이 남았다는 상자이고(완료 모양이 아니다), 05 카드는 확정할 수 있다고 말하지 않는다.
+	if !strings.Contains(body, `class="next ruleset"`) || !strings.HasPrefix(cards(t, body)["05"], "규칙 전환 회차가 필요함") {
+		t.Errorf("the ruleset box or card 05 is wrong: card %q", cards(t, body)["05"])
 	}
 	w := postForm(t, s, ui.ReviewRulesetRoundPath, withRev(url.Values{}, s.revFor(ui.ScreenReview)))
 	if q := location(t, w); q.Get("msg") != ui.NoticeRulesetRoundOpened {
@@ -149,7 +154,7 @@ func TestRulesetRoundFromTheScreen(t *testing.T) {
 		t.Error("pressing the button again made files")
 	}
 
-	body := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
+	body = get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
 	for _, want := range []string{"규칙 전환 보고서", "지난 판정", "옛 결론", `name="adopt"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the review screen lacks %q", want)

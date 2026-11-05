@@ -494,6 +494,14 @@ func TestOldRulesetPlansAreViewedNotSignedOrGenerated(t *testing.T) {
 	if readFile(t, s.provisionPath()) != "old apply\n" || readFile(t, s.rollbackPath()) != "old undo\n" {
 		t.Error("existing playbooks were overwritten")
 	}
+	// 지금 계획을 지금 규칙 판으로 바꾸면(새 회차에서 다시 확정한 뒤) 맞지 않는 것은 서명된 계획 쪽이고, 화면이 그렇게 말한다.
+	if err := os.WriteFile(s.planOut, []byte(planJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	page = get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	if !strings.Contains(page, "서명한 계획(plan.signed.json)이 지금과 다른 상류 규칙 판으로") || strings.Contains(page, "이 계획은 지금과 다른 상류 규칙 판으로") {
+		t.Error("the screen does not say that it is the signed plan whose ruleset differs")
+	}
 	if w := postForm(t, s, ui.ArchivePath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusSeeOther {
 		t.Errorf("archiving the old signed plan = %d", w.Code)
 	}
