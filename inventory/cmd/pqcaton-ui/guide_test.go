@@ -116,7 +116,7 @@ func TestOperatorGuideInstallsTheLatestRelease(t *testing.T) {
 }
 
 var (
-	readmeUp  = regexp.MustCompile(`(?m)^\| \*\*pqcota\*\* \|[^\n]*?\*\*(v\d+\.\d+\.\d+)\*\*`)
+	readmeUp  = regexp.MustCompile(`pqcota \*\*(v\d+\.\d+\.\d+)\*\*`)
 	demoUp    = regexp.MustCompile(`pqcota는 (v\d+\.\d+\.\d+)으로 받습니다|git clone --branch (v\d+\.\d+\.\d+) `)
 	noteUp    = regexp.MustCompile("(?s)^## v[^\n]*\n.*?\n### [^\n]*\n\\s*- [^\n]*pqcota:\\s*[`*]*(v\\d+\\.\\d+\\.\\d+)")
 	compatTop = regexp.MustCompile(`(?m)^\| (v\d+\.\d+\.\d+)(?: ~ (v\d+\.\d+\.\d+))? \| (v\d+\.\d+\.\d+) \|`)
@@ -158,8 +158,15 @@ func TestCompatibilityTableIsCurrent(t *testing.T) {
 		t.Errorf("the table's top row pins pqcota %s, but go.mod requires %s", top[3], pinned)
 	}
 	// 판을 정하는 자리들도 같은 판을 적는다.
-	if m := readmeUp.FindSubmatch(read("README.md")); m == nil || string(m[1]) != pinned {
-		t.Errorf("README's prerequisites do not name pqcota %s", pinned)
+	// README는 맨 위 소개 · 사전 준비 · 맞는 조합 세 곳에서 판을 밝힌다.
+	readme := readmeUp.FindAllSubmatch(read("README.md"), -1)
+	if len(readme) < 3 {
+		t.Errorf("README names the pqcota version in %d places, want the intro, the prerequisites and the matching-versions note", len(readme))
+	}
+	for _, m := range readme {
+		if string(m[1]) != pinned {
+			t.Errorf("README names pqcota %s, but go.mod requires %s", m[1], pinned)
+		}
 	}
 	demo := demoUp.FindAllSubmatch(read(filepath.Join("demo", "README.md")), -1)
 	if len(demo) < 2 {

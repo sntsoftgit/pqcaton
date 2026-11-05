@@ -3,7 +3,8 @@
 **개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.md) · [설계](docs/design.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** 관측은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가
-하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.**
+하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.** 이 판은 pqcota **v0.10.6**과 함께
+씁니다. pqcaton 판마다 함께 쓰는 pqcota 판은 [판별 표](docs/compatibility.md)에 있습니다.
 
 **사용 방법은 두 가지입니다.** 이 문서가 설명하는 것은 **직접 설치**입니다. 관측 결과를 자기
 인프라에 두고 대조·판정·확정까지 같은 자리에서 끝내므로 밖으로 나가는 것이 없습니다.
