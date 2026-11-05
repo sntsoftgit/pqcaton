@@ -62,6 +62,41 @@ type Session struct {
 	// 후보로 읽는다. 관측에서 같은 ID를 찾으면 Carry가 치환한다. 이름을 새로 둔 것은 같은 이름에
 	// 두 형을 허용하면 읽는 코드가 형을 살펴야 하고 그 분기는 한 번 쓰면 지워지지 않기 때문이다.
 	LegacyAutopass []string `json:"autopass_candidates_legacy,omitempty"`
+	// PreviousPolicyDecisions — 규칙 전환 회차가 옛 세션에서 옮겨 온 정책 결론. **참고값이다**: 현재 결론
+	// (PolicyDecisions)은 비어 있고, 사람이 정책마다 다시 채택해야 현재 값이 된다([AdoptPolicy]).
+	PreviousPolicyDecisions map[string]string `json:"previous_policy_decisions,omitempty"`
+	// RulesetChange — 이 세션이 규칙 전환 회차로 열렸으면 그 기록. 화면이 보고서를 찾고 머리에 알린다.
+	RulesetChange *RulesetChangeRef `json:"ruleset_change,omitempty"`
+}
+
+// RulesetChangeRef — 규칙 전환 회차의 기록. 보고서는 세션 파일과 같은 폴더의 그 이름이다.
+type RulesetChangeRef struct {
+	FromSessionID string `json:"from_session_id"`
+	FromRuleset   string `json:"from_ruleset"`
+	Report        string `json:"report"`
+	Archive       string `json:"archive,omitempty"`
+}
+
+// Previous — 규칙 전환 회차가 옛 세션의 같은 항목에서 옮겨 온 사람의 값. **참고값이다**: 현재 칸(결론 · 계획 칸)은
+// 비어 있고, 사람이 [Adopt]로 다시 채택해야 현재 값이 된다. 옛 근거는 다른 규칙으로 셈한 것이라 그대로 옮기면 사람이
+// 본 적 없는 근거가 판정된 것이 된다.
+type Previous struct {
+	SessionID              string   `json:"session_id"`
+	RulesetVersion         string   `json:"ruleset_version"`
+	Conclusion             string   `json:"conclusion,omitempty"`
+	Plan                   bool     `json:"include_in_plan,omitempty"`
+	Level                  string   `json:"deploy_level,omitempty"`
+	FIPS                   bool     `json:"fips_required,omitempty"`
+	Kind                   string   `json:"remediation_kind,omitempty"`
+	TargetAlgorithm        string   `json:"target_algorithm,omitempty"`
+	Config                 string   `json:"config_artifact,omitempty"`
+	RollbackNote           string   `json:"rollback_note,omitempty"`
+	Pre                    string   `json:"activation_pre,omitempty"`
+	Activate               string   `json:"activation_activate,omitempty"`
+	Deactivate             string   `json:"activation_deactivate,omitempty"`
+	Restart                string   `json:"activation_restart,omitempty"`
+	InstallationsConfirmed []string `json:"installations_confirmed,omitempty"`
+	PerInstallation        bool     `json:"per_installation_actions,omitempty"`
 }
 
 // Item — 판정 대상 하나.
@@ -129,6 +164,8 @@ type Item struct {
 	// PerInstallation — 설치마다 다른 조치가 필요하다고 사람이 골랐다. **이 판은 그것을 표현하지 못한다**: 계획에 넣으면
 	// 확정이 막힌다. 경로별 자산 키는 별도 판에서 다룬다.
 	PerInstallation bool `json:"per_installation_actions,omitempty"`
+	// Previous — 규칙 전환 회차가 옮겨 온 옛 값(참고값). 현재 값이 아니다.
+	Previous *Previous `json:"previous,omitempty"`
 	// 활성화 훅 — L3에서만 쓰인다. **도구가 추측하지 않는다**(상류 §2.5): 활성화 지점은 앱
 	// 기동 방식에 달려 있어 관측으로 알 수 없다. 비면 상류가 무엇이 일어나지 않는지 알린다.
 	Pre        string `json:"activation_pre,omitempty"`

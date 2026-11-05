@@ -200,6 +200,7 @@ func Carry(prev, next Session) Session {
 			// 확인은 목록째 옮긴다. 지금 목록과 다르면 확정이 무효로 읽는다(InstallationsConfirmedNow).
 			n.InstallationsConfirmed = append([]string(nil), old.InstallationsConfirmed...)
 			n.PerInstallation = old.PerInstallation
+			n.Previous = old.Previous
 			n.Pre, n.Activate = old.Pre, old.Activate
 			n.Deactivate, n.Restart = old.Deactivate, old.Restart
 		})
@@ -222,6 +223,8 @@ func Carry(prev, next Session) Session {
 		}
 	}
 	next.Reviewer = prev.Reviewer
+	// 규칙 전환 회차의 참고값과 기록은 다시 세워도 남는다. 화면은 읽을 때마다 다시 세운다.
+	next.PreviousPolicyDecisions, next.RulesetChange = prev.PreviousPolicyDecisions, prev.RulesetChange
 	// **세션의 동일성을 옮긴다.** 다시 연 것은 같은 세션이다 — 계획 id와 원장 행이 이 값으로
 	// 이어지므로, 다시 열 때마다 바뀌면 원장에 같은 세션의 판정이 여러 id로 흩어진다.
 	// 앞 세션에 id가 없으면(옛 빌드가 연 것) 새로 만든 것을 그대로 둔다 — 빈 값을 옮겨 오면

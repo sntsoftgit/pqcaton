@@ -1,0 +1,235 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
+package review
+
+// 규칙 전환 회차의 판정 쪽. 상류 규칙 판이 다른 옛 세션을 지금 규칙으로 다시 세운 세션에 넘긴다.
+//
+// **옮기는 것은 참고값뿐이다.** 옛 결론 · 정책 결론 · 계획 칸은 항목의 Previous와 세션의 PreviousPolicyDecisions에만
+// 들어가고, 현재 칸은 비어 있다. 결론이 차면 그 항목은 판정된 것이라 서명만 넣어도 확정을 지나가기 때문이다. 사람이
+// 항목마다 [Adopt]로 다시 채택해야 현재 값이 된다. 한꺼번에 채택하는 함수는 두지 않는다. 그것이 곧 자동 이월이다.
+//
+// 화면과 명령이 이 함수 하나를 쓴다. 같은 입력이면 같은 세션 · 같은 보고서 바이트가 나온다(시각을 넣지 않는다).
+
+import (
+	"encoding/json"
+	"fmt"
+	"slices"
+	"sort"
+)
+
+// RulesetChangeReportFormat — 변환 보고서의 형식 판.
+const RulesetChangeReportFormat = 1
+
+// RulesetChangeReport — 변환 보고서. 옛 세션과 새 세션을 자산 키로 짝지어 무엇이 달라졌는지 적는다.
+type RulesetChangeReport struct {
+	Format        int          `json:"format"`
+	Note          string       `json:"_how_to_read"`
+	FromRuleset   string       `json:"from_ruleset"`
+	ToRuleset     string       `json:"to_ruleset"`
+	FromSessionID string       `json:"from_session_id"`
+	ToSessionID   string       `json:"to_session_id"`
+	Archive       string       `json:"archive,omitempty"`
+	Items         []ItemChange `json:"items"`
+}
+
+// ItemChange — 항목 하나의 변화. Change는 only-old(새 규칙에서는 없다) · only-new(새 규칙에서 생겼다) · changed · same.
+type ItemChange struct {
+	ID                 string   `json:"id"`
+	Change             string   `json:"change"`
+	OldState           string   `json:"old_state,omitempty"`
+	NewState           string   `json:"new_state,omitempty"`
+	OldFindings        []string `json:"old_findings,omitempty"`
+	NewFindings        []string `json:"new_findings,omitempty"`
+	OldInstallations   []string `json:"old_installations,omitempty"`
+	NewInstallations   []string `json:"new_installations,omitempty"`
+	EvidenceChanged    bool     `json:"evidence_changed,omitempty"`
+	PreviousConclusion string   `json:"previous_conclusion,omitempty"`
+	PreviousInPlan     bool     `json:"previous_in_plan,omitempty"`
+}
+
+// 변화 종류.
+const (
+	ChangeOnlyOld = "only-old"
+	ChangeOnlyNew = "only-new"
+	ChangeChanged = "changed"
+	ChangeSame    = "same"
+)
+
+const reportNote = "The upstream ruleset changed between these two sessions. Asset ids and snapshot fingerprints are computed " +
+	"by different rules, so an entry that looks removed and added, or changed, may come from the rule change alone and is not " +
+	"by itself an installation removed, added or changed. Conclusions of the old session are carried only as reference values " +
+	"(previous); nothing here was judged under the new rules."
+
+// RulesetRound — 옛 세션(old)을 지금 규칙으로 다시 세운 세션(rebuilt)에 넘긴다. 새 세션은 newID를 들고, 서명과
+// 검토자는 비고, 현재 결론과 계획 칸은 rebuilt 그대로(비어 있다)다. 옛 값은 참고값으로만 붙는다.
+func RulesetRound(old, rebuilt Session, newID, reportName, archiveName string) (Session, RulesetChangeReport) {
+	next := rebuilt
+	next.SessionID, next.Signature, next.Reviewer = newID, "", ""
+	next.Items = append([]Item(nil), rebuilt.Items...)
+	next.Autopass = append([]Item(nil), rebuilt.Autopass...)
+	next.PolicyDecisions = map[string]string{}
+	for pol := range rebuilt.PolicyDecisions {
+		next.PolicyDecisions[pol] = ""
+	}
+	was := map[string]Item{}
+	for _, it := range All(old) {
+		was[it.ID] = it
+	}
+	for _, it := range All(next) {
+		o, ok := was[it.ID]
+		if !ok || !hasHumanValues(o) {
+			continue
+		}
+		p := previousOf(o, old)
+		update(&next, it.ID, func(n *Item) { n.Previous = &p })
+	}
+	next.PreviousPolicyDecisions = nil
+	for pol, c := range old.PolicyDecisions {
+		if c != "" {
+			if next.PreviousPolicyDecisions == nil {
+				next.PreviousPolicyDecisions = map[string]string{}
+			}
+			next.PreviousPolicyDecisions[pol] = c
+		}
+	}
+	next.RulesetChange = &RulesetChangeRef{FromSessionID: old.SessionID, FromRuleset: old.RulesetVersion, Report: reportName, Archive: archiveName}
+	return next, reportOf(old, next, archiveName)
+}
+
+func hasHumanValues(it Item) bool {
+	return it.Conclusion != "" || it.Plan || it.Kind != "" || it.TargetAlgorithm != "" || it.Config != "" ||
+		it.RollbackNote != "" || it.Pre != "" || it.Activate != "" || it.Deactivate != "" || it.Restart != "" ||
+		len(it.InstallationsConfirmed) > 0 || it.PerInstallation
+}
+
+func previousOf(o Item, old Session) Previous {
+	return Previous{SessionID: old.SessionID, RulesetVersion: old.RulesetVersion,
+		Conclusion: o.Conclusion, Plan: o.Plan, Level: o.Level, FIPS: o.FIPS, Kind: o.Kind, TargetAlgorithm: o.TargetAlgorithm,
+		Config: o.Config, RollbackNote: o.RollbackNote, Pre: o.Pre, Activate: o.Activate, Deactivate: o.Deactivate, Restart: o.Restart,
+		InstallationsConfirmed: append([]string(nil), o.InstallationsConfirmed...), PerInstallation: o.PerInstallation}
+}
+
+func findingsOf(it Item) []string {
+	var out []string
+	for _, s := range it.Sources {
+		if !slices.Contains(out, s.FindingID) {
+			out = append(out, s.FindingID)
+		}
+	}
+	if len(out) == 0 && it.FindingID != "" {
+		out = append(out, it.FindingID)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func fingerprintsOf(it Item) []string {
+	var out []string
+	for _, s := range it.Sources {
+		out = append(out, s.Fingerprint)
+	}
+	if len(out) == 0 && it.Fingerprint != "" {
+		out = append(out, it.Fingerprint)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func reportOf(old, next Session, archiveName string) RulesetChangeReport {
+	r := RulesetChangeReport{Format: RulesetChangeReportFormat, Note: reportNote, FromRuleset: old.RulesetVersion, ToRuleset: next.RulesetVersion,
+		FromSessionID: old.SessionID, ToSessionID: next.SessionID, Archive: archiveName, Items: []ItemChange{}}
+	was, now := map[string]Item{}, map[string]Item{}
+	var ids []string
+	for _, it := range All(old) {
+		was[it.ID] = it
+		ids = append(ids, it.ID)
+	}
+	for _, it := range All(next) {
+		now[it.ID] = it
+		if _, ok := was[it.ID]; !ok {
+			ids = append(ids, it.ID)
+		}
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		o, inOld := was[id]
+		n, inNew := now[id]
+		c := ItemChange{ID: id}
+		if inOld {
+			c.OldState, c.OldFindings, c.OldInstallations = o.State, findingsOf(o), Installations(o)
+			c.PreviousConclusion, c.PreviousInPlan = o.Conclusion, o.Plan
+		}
+		if inNew {
+			c.NewState, c.NewFindings, c.NewInstallations = n.State, findingsOf(n), Installations(n)
+		}
+		switch {
+		case !inNew:
+			c.Change = ChangeOnlyOld
+		case !inOld:
+			c.Change = ChangeOnlyNew
+		default:
+			c.EvidenceChanged = !slices.Equal(fingerprintsOf(o), fingerprintsOf(n))
+			if c.OldState != c.NewState || c.EvidenceChanged || !slices.Equal(c.OldFindings, c.NewFindings) ||
+				!slices.Equal(c.OldInstallations, c.NewInstallations) {
+				c.Change = ChangeChanged
+			} else {
+				c.Change = ChangeSame
+			}
+		}
+		r.Items = append(r.Items, c)
+	}
+	return r
+}
+
+// EncodeReport — 보고서의 바이트. 같은 보고서면 같은 바이트다.
+func EncodeReport(r RulesetChangeReport) ([]byte, error) {
+	b, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(b, '\n'), nil
+}
+
+// DecodeReport — 보고서를 읽는다. 형식 판이 다르면 거절한다.
+func DecodeReport(b []byte) (RulesetChangeReport, error) {
+	var r RulesetChangeReport
+	if err := json.Unmarshal(b, &r); err != nil {
+		return r, err
+	}
+	if r.Format != RulesetChangeReportFormat {
+		return r, fmt.Errorf("ruleset change report: format %d, want %d", r.Format, RulesetChangeReportFormat)
+	}
+	return r, nil
+}
+
+// Adopt — 항목 하나의 참고값(Previous)을 현재 값으로 옮긴다. 사람이 이 회차에서 그 항목을 다시 판정한 것이다.
+// 참고값은 남겨 둔다(무엇을 채택했는지 보인다). 없는 항목이거나 참고값이 없으면 false.
+func Adopt(sf *Session, id string) bool {
+	var ok bool
+	update(sf, id, func(n *Item) {
+		if n.Previous == nil {
+			return
+		}
+		p := n.Previous
+		n.Conclusion, n.Plan, n.Level, n.FIPS, n.Kind, n.TargetAlgorithm = p.Conclusion, p.Plan, p.Level, p.FIPS, p.Kind, p.TargetAlgorithm
+		n.Config, n.RollbackNote, n.Pre, n.Activate, n.Deactivate, n.Restart = p.Config, p.RollbackNote, p.Pre, p.Activate, p.Deactivate, p.Restart
+		// 다설치 확인은 옮기지 않는다. 설치 목록이 새 규칙으로 달라졌을 수 있어 지금 목록으로 다시 확인해야 한다.
+		n.PerInstallation = p.PerInstallation
+		ok = true
+	})
+	return ok
+}
+
+// AdoptPolicy — 정책 하나의 옛 결론을 현재 결론으로 옮긴다. 없으면 false.
+func AdoptPolicy(sf *Session, pol string) bool {
+	c, ok := sf.PreviousPolicyDecisions[pol]
+	if !ok || c == "" {
+		return false
+	}
+	if _, here := sf.PolicyDecisions[pol]; !here {
+		return false
+	}
+	sf.PolicyDecisions[pol] = c
+	return true
+}
