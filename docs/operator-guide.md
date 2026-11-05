@@ -84,7 +84,9 @@ chmod +x ~/Desktop/pqcaton-ui.command
   노드에서는 root 권한(`become`)으로 실행하므로 그 계정에 sudo 권한이 있어야 합니다. 처음 접속하는 노드는 미리 `ssh`로
   한 번 접속해 호스트 키를 받아 둡니다. Windows 노드를 관측하려면 `ansible.windows` 컬렉션도 필요합니다.
 - **수집기.** 작업 폴더의 `collectors` 폴더(또는 `-collectors <폴더>`)에 pqcota-discovery를 빌드한 결과를 아래 모양으로
-  둡니다.
+  둡니다. 판은 pqcota v0.10.4나 v0.10.5를 씁니다. 이 화면은 v0.10.4의 규칙 묶음으로 결과를 정규화하므로, 같은 노드를
+  상류에도 적재한다면 상류도 같은 판이어야 합니다. v0.10.6은 규칙 묶음이 달라 함께 쓰지 않습니다(README의 「맞는
+  조합」).
 
 ```text
 collectors/

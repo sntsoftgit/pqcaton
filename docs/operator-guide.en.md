@@ -89,7 +89,9 @@ machine. The screen checks both before it starts and, when something is missing,
   and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
   with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
 - **Collectors.** Put the build output of pqcota-discovery in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this.
+  <folder>`), shaped like this. Use pqcota v0.10.4 or v0.10.5. This screen normalizes the results with the v0.10.4
+  ruleset, so if the same nodes are also ingested upstream, upstream must be on one of those versions too. v0.10.6 has a
+  different ruleset and is not used with it (see the version table under 「맞는 조합」 in the README).
 
 ```text
 collectors/
