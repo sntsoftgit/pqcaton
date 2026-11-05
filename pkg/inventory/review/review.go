@@ -288,17 +288,21 @@ const RulesetVersion = normalize.RulesetVersion + "+pqcaton-plan/v3"
 //
 // **계획 규칙 판이 낮은 것과 다르다.** 그쪽은 이 리포의 대조 · 계획 규칙만 바뀐 것이라 근거의 자리는 그대로이고, 경고만
 // 한다. 상류 규칙 판이 바뀌면 자산 ID와 스냅샷 지문이 달라져, 옛 세션의 근거는 지금 상류 이력에서 찾히지 않는다.
-// 그 세션으로 낸 계획은 한 계획 안에 두 규칙 판을 섞는다. 그래서 막는다. 사람이 적은 결론은 새 회차에 참고값으로
-// 남으므로 막아도 사람이 한 일이 버려지지 않는다.
+// 그 세션으로 낸 계획은 한 계획 안에 두 규칙 판을 섞는다. 그래서 막는다. 세션 파일은 그대로 남으므로 막아도 사람이
+// 한 일이 버려지지 않는다.
 var ErrRulesetChanged = errors.New("ruleset changed")
 
 // RulesetChanged — [ErrRulesetChanged]에 두 판을 싣는다. 명령이 읽는 영어 문장이다.
 type RulesetChanged struct{ Session, Tool string }
 
 func (e *RulesetChanged) Error() string {
-	return fmt.Sprintf("this session was opened under %s, but the tool now runs %s: the upstream ruleset changed, "+
-		"so its evidence cannot be found in the current upstream history. Open a new round from the results to judge "+
-		"under the current rules; the conclusions written here stay there as reference values", e.Session, e.Tool)
+	was := "under " + e.Session
+	if e.Session == "" {
+		was = "by an older build that recorded no ruleset_version"
+	}
+	return fmt.Sprintf("this session was opened %s, but the tool now runs %s: the upstream ruleset differs, "+
+		"so its evidence cannot be found in the current upstream history. Nothing was saved or finalized. "+
+		"Moving a session to the current rules (a new round) is still being built for v0.25.0; until then use pqcaton v0.24.1", was, e.Tool)
 }
 
 func (e *RulesetChanged) Unwrap() error { return ErrRulesetChanged }

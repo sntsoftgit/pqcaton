@@ -3,6 +3,9 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
+> **`main` is under development for v0.25.0.** The upstream pqcota v0.10.6 dependency is in, but the round that moves an
+> older session to the current rules is not finished yet. For operation, use the [v0.24.1 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.24.1).
+
 This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.24.1.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
@@ -441,7 +444,7 @@ screen.
 |---|---|---|
 | `stale` | The files changed after the screen was opened, so nothing was saved | Reload the screen and do it again |
 | `finalized` | The session is already finalized, so nothing was saved | Do it in a new session |
-| `ruleset-changed` | The session was opened under a different upstream ruleset, so nothing was saved or finalized, to keep the two from mixing | Open a new round and judge it again under the current rules |
+| `ruleset-changed` | The session was opened under a different upstream ruleset, or records none, so nothing was saved or finalized, to keep the two from mixing | Use v0.24.1. Moving a session to the current rules (a new round) is still being built for v0.25.0 |
 | `busy` | Another save to the same files is in progress, or another command holds the state folder | Try again shortly. If it persists, check whether another `pqcaton-ui` or command is running |
 | `recovery` | Saving is stopped in the recovery required state | Follow [section 8](#8-recovery) |
 | `view-only` | This platform does not save | Run it on Linux |

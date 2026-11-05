@@ -5,6 +5,9 @@ package main
 
 import (
 	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -39,5 +42,43 @@ func TestAnotherUpstreamRulesetIsNotRewritten(t *testing.T) {
 				t.Error("the session file was rewritten")
 			}
 		})
+	}
+}
+
+// IC-U140 — **세션 파일이 없는 것과 규칙 판이 빈 옛 파일을 가른다.** 결과가 있는 화면에서, 규칙 판이 빈 옛 세션
+// 파일은 옮기지도 저장하지도 않고(409 `ruleset-changed`, 바이트 그대로) 오늘의 규칙 판을 찍지 않는다. 파일이 없으면
+// 저장이 지금 규칙 판의 새 세션을 쓴다.
+func TestEmptyRulesetFileIsKeptButMissingFileStartsFresh(t *testing.T) {
+	s, dir := withDecl(t)
+	s.results = filepath.Join(dir, "results")
+	if err := os.MkdirAll(s.results, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	old := session()
+	old.RulesetVersion = ""
+	old.Reviewer = "옛 검토자"
+	if err := review.Save(s.path, old); err != nil {
+		t.Fatal(err)
+	}
+	before := readFile(t, s.path)
+	form := url.Values{"reviewer": {"보안팀"}}
+	w := postForm(t, s, "/save", withRev(form, s.revFor(ui.ScreenReview)))
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedRulesetChanged) {
+		t.Fatalf("an old file without a ruleset was not refused: %d\n%s", w.Code, w.Body.String())
+	}
+	if readFile(t, s.path) != before {
+		t.Error("the old session file was rewritten")
+	}
+
+	if err := os.Remove(s.path); err != nil {
+		t.Fatal(err)
+	}
+	w = postForm(t, s, "/save", withRev(form, s.revFor(ui.ScreenReview)))
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("saving without a session file: %d\n%s", w.Code, w.Body.String())
+	}
+	got, err := review.Load(s.path)
+	if err != nil || got.RulesetVersion != review.RulesetVersion {
+		t.Errorf("the new session does not carry today's ruleset: %q (%v)", got.RulesetVersion, err)
 	}
 }

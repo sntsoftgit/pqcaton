@@ -64,8 +64,8 @@ var (
 		KO: "이 세션은 이미 확정되었습니다. 바꾸려면 새 세션을 여십시오.",
 		EN: "This session is already finalized. Open a new session to make changes."}
 	tRefusedRulesetChanged = T{
-		KO: "이 세션은 지금과 다른 상류 규칙 판으로 열렸습니다. 두 규칙 판이 섞이지 않도록 저장하거나 확정하지 않았습니다. 새 회차를 열어 지금 규칙으로 다시 판정하십시오.",
-		EN: "This session was opened under a different upstream ruleset. To keep the two rulesets from mixing, nothing was saved or finalized. Open a new round and judge it again under the current rules."}
+		KO: "이 세션은 지금과 다른 상류 규칙 판으로 열렸거나 규칙 판이 적혀 있지 않습니다. 두 규칙 판이 섞이지 않도록 저장하거나 확정하지 않았고, 세션 파일은 그대로입니다. 지금 규칙으로 넘어가는 새 회차 기능은 v0.25.0에서 작업 중입니다. 그때까지는 pqcaton v0.24.1을 쓰십시오.",
+		EN: "This session was opened under a different upstream ruleset, or records none. To keep the two rulesets from mixing, nothing was saved or finalized, and the session file is unchanged. Moving a session to the current rules (a new round) is still being built for v0.25.0. Until then, use pqcaton v0.24.1."}
 	tRefusedBusy = T{
 		KO: "다른 저장이 아직 끝나지 않았습니다. 잠시 뒤 다시 시도하십시오.",
 		EN: "Another save has not finished yet. Try again in a moment."}

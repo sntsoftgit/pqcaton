@@ -602,6 +602,7 @@ func sub(parts ...string) string { return strings.Join(parts, " · ") }
 // 사람이 적은 판정은 [review.Carry]가 들고 간다. 파일에 쓰는 것은 저장·확정할 때뿐이다.
 func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	prev, err := review.Load(s.path)
+	loadErr := err
 	if err != nil && (s.results == "" || !os.IsNotExist(err)) {
 		return prev, nil, err
 	}
@@ -620,7 +621,18 @@ func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 	if err != nil {
 		return prev, nil, err
 	}
-	return review.Carry(prev, b.Session), b.Warnings, nil
+	return carryStored(prev, loadErr, b.Session), b.Warnings, nil
+}
+
+// carryStored: 저장된 세션을 다시 세운 세션으로 옮긴다. **파일이 없는 것과 규칙 판이 빈 옛 파일을 여기서 가른다.**
+// 값만으로는 둘이 같은 얼굴이라 review.Carry가 가르지 못한다. 파일이 없으면(loadErr가 「없음」) 새 세션이다.
+// 파일이 있는데 규칙 판이 비었으면 옛 빌드가 연 세션이라 옮기지 않고 그대로 돌려준다. 옮기면 옛 결론이 지금
+// 규칙의 근거에 실리고, 저장하면서 오늘의 규칙 판이 찍혀 「어느 규칙으로 본 판정인가」의 증거가 사라진다.
+func carryStored(prev review.Session, loadErr error, next review.Session) review.Session {
+	if loadErr == nil && prev.RulesetVersion == "" {
+		return prev
+	}
+	return review.Carry(prev, next)
 }
 
 func (s *server) review(w http.ResponseWriter, r *http.Request) {
@@ -661,10 +673,11 @@ func (s *server) applyReview(r *http.Request) (review.Session, error) {
 	return ui.ApplyReview(sf, r.PostForm), nil
 }
 
-// sameUpstreamRuleset: 세션이 지금 도구와 같은 상류 규칙 판인가. 다르면 그 세션 파일은 다시 쓰지 않는다
-// (review.Carry가 옮기지 않고 저장된 세션을 그대로 돌려준 경우다). 저장 · 확정 · 새 회차가 모두 이것을 본다.
+// sameUpstreamRuleset: 세션이 지금 도구와 같은 상류 규칙 판인가. 다르거나 비었으면 그 세션 파일은 다시 쓰지
+// 않는다(옮기지 않고 저장된 세션을 그대로 돌려준 경우다. carryStored). 저장 · 확정 · 새 회차가 모두 이것을 본다.
+// 파일이 없는 경우는 여기까지 오지 않는다: 결과가 있으면 새 세션이 지금 규칙 판을 들고, 없으면 읽기에서 멈춘다.
 func sameUpstreamRuleset(sf review.Session) error {
-	if sf.RulesetVersion != "" && review.UpstreamRuleset(sf.RulesetVersion) != review.UpstreamRuleset(review.RulesetVersion) {
+	if review.UpstreamRuleset(sf.RulesetVersion) != review.UpstreamRuleset(review.RulesetVersion) {
 		return &review.RulesetChanged{Session: sf.RulesetVersion, Tool: review.RulesetVersion}
 	}
 	return nil

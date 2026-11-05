@@ -76,6 +76,7 @@ func (s *server) load() *world {
 	// 리뷰 세션: 관측 결과가 있으면 같은 대조 결과로 다시 세우고 사람이 적은 것을 옮긴다
 	// (reviewSession과 같은 계산이다).
 	prev, err := review.Load(s.path)
+	loadErr := err
 	wd.reviewID = prev.SessionID
 	switch {
 	case err != nil && (s.results == "" || !os.IsNotExist(err)):
@@ -90,7 +91,7 @@ func (s *server) load() *world {
 			wd.reviewErr = err
 			break
 		}
-		wd.review, wd.reviewWarn = review.Carry(prev, b.Session), b.Warnings
+		wd.review, wd.reviewWarn = carryStored(prev, loadErr, b.Session), b.Warnings
 	}
 
 	wd.scopeMissing = s.scopeMissing()

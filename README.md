@@ -2,6 +2,9 @@
 
 **개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.md) · [설계](docs/design.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
+> **`main`은 v0.25.0 개발 중입니다.** 상류 pqcota v0.10.6 의존성은 반영됐지만, 옛 세션을 지금 규칙으로 넘기는 규칙 전환
+> 회차는 아직 완성되지 않았습니다. 운영에는 [v0.24.1 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.24.1)를 쓰십시오.
+
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** 관측은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가
 하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.**
 
