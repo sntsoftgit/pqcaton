@@ -57,7 +57,7 @@ answers() { docker exec "$CTL" curl -fsS -o /dev/null http://127.0.0.1:8765/ 2>/
 if answers; then
   echo "▶ pqcaton-ui is already running in $CTL — reusing it (./demo/scripts/ui.sh stop to restart)"
 else
-  echo "▶ 1/3 build pqcaton-ui for $CTL…"
+  echo "▶ 1/3 build pqcaton-ui for ${CTL}…"
   TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
   if [ -n "${PQCATON_BIN_DIR:-}" ]; then
     echo "   using the prebuilt binary from $PQCATON_BIN_DIR"
@@ -81,7 +81,7 @@ else
     exit 1
   fi
 
-  echo "▶ 2/3 workspace $WS…"
+  echo "▶ 2/3 workspace ${WS}…"
   # **처음 한 번만 채운다.** 데모가 이미 가진 것을 실제 운영자가 화면에 넣는 자리에 둔다. 선언(01) ·
   # 자산 스코프 정책(상류 적재와 같은 파일이어야 스냅샷 지문이 상류 이력과 맞는다) · 접근 정보(03) ·
   # 수집기(03, pqcota-discovery가 빌드한 모양 그대로) · 지금까지의 관측 결과(04). 03에서 다시 관측하면
