@@ -29,8 +29,13 @@ import (
 )
 
 const (
-	receiptDir    = "receipts"
+	receiptDir = "receipts"
+	// receiptFormat: 지금 쓰는 형식. 읽기는 receiptFormatPolicy까지 받는다.
 	receiptFormat = 1
+	// receiptFormatPolicy: 자산 스코프 정책 지문(ScopePolicy)을 담는 형식. 이 형식을 쓰기 시작하면 이 형식을 모르는
+	// 옛 판(v0.25.x 이하)은 영수증을 읽지 못하고 멈춘다. 그것이 의도다: 옛 판이 정책 검사 없이 계획을 서명하는 길이
+	// 남지 않는다.
+	receiptFormatPolicy = 2
 )
 
 // 확정 결과.
@@ -89,10 +94,24 @@ type Receipt struct {
 	Finished time.Time     `json:"finished"`
 	Outputs  []ReceiptFile `json:"outputs"`
 	Ledger   []LedgerRange `json:"ledger"`
+	// ScopePolicy: 이 확정이 쓴 출력을 만든 자산 스코프 정책의 지문(scope.PolicyDigest). 형식 2부터 있다.
+	ScopePolicy string `json:"scope_policy,omitempty"`
 }
 
 // Identity: 영수증의 동일성.
 func (r Receipt) Identity() Identity { return Identity{r.Kind, r.Org, r.SessionID} }
+
+// PolicyDigest — 이 영수증이 적은 자산 스코프 정책의 지문. 형식 1 영수증은 이 칸이 생기기 전의 것이라 ok가
+// false다. 형식 2인데 칸이 비어 있어도 false다.
+//
+// **지문이 없는 것을 규칙 0개의 지문으로 읽지 않는다.** 그렇게 읽으면 정책 없이 만든 계획과 정책을 모르는 옛
+// 계획이 같은 얼굴이 되어, 정책을 비운 작업 폴더에서 옛 계획이 검사를 통과한다.
+func (r Receipt) PolicyDigest() (string, bool) {
+	if r.Format < receiptFormatPolicy || r.ScopePolicy == "" {
+		return "", false
+	}
+	return r.ScopePolicy, true
+}
 
 // Outcome: 확정의 결과.
 type Outcome struct {
@@ -550,7 +569,8 @@ func (s *State) parseReceipt(p string) (*Receipt, error) {
 		return nil, err
 	}
 	var r Receipt
-	if err := json.Unmarshal(b, &r); err != nil || r.Format != receiptFormat {
+	// 형식 1과 2를 읽는다. 그보다 새 형식은 이 판이 모르는 칸이 있을 수 있으므로 손상으로 다룬다.
+	if err := json.Unmarshal(b, &r); err != nil || r.Format < 1 || r.Format > receiptFormatPolicy {
 		return nil, fmt.Errorf("%w: receipt %s; keep a copy and run pqcaton-ui -recover-status", ErrDamaged, p)
 	}
 	return &r, nil

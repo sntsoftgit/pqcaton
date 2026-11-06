@@ -13,6 +13,7 @@ import (
 
 	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
 	discoveryv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/discovery/v1"
+	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/ingest"
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/normalize"
@@ -205,3 +206,69 @@ func TestAliasedSourcesKeepEveryEvidence(t *testing.T) {
 }
 
 func timeAt(s int64) time.Time { return time.Unix(1700000000+s, 0).UTC() }
+
+// twoLibs: openssl 라이브러리 둘(libcrypto · libssl)을 한 결과에 담는다. 정책이 하나만 빼게 하려는 모양이다.
+func twoLibs(src string, at int64) *discoveryv1.CollectionResult {
+	r := resultFiles(src, "openssl-collector", at, "3.0.2")
+	r.CbomCyclonedx = []byte(`{"bomFormat":"CycloneDX","specVersion":"1.6","components":[
+      {"type":"cryptographic-asset","name":"libcrypto","properties":[
+        {"name":"pqcota:crypto_runtime","value":"openssl"},
+        {"name":"pqcota:openssl.version","value":"3.0.2"},
+        {"name":"pqcota:openssl.fork","value":"OpenSSL"}]},
+      {"type":"cryptographic-asset","name":"libssl","properties":[
+        {"name":"pqcota:crypto_runtime","value":"openssl"},
+        {"name":"pqcota:openssl.version","value":"3.0.2"},
+        {"name":"pqcota:openssl.fork","value":"OpenSSL"}]}]}`)
+	return r
+}
+
+// IC-S20 — 정책을 건 상류 적재와 이 리포의 대조가 같은 결과 폴더에서 **바이트까지 같은** v1 지문을 낸다. IC-R18은
+// 정책 없이만 잰다. 활성화가 상류 재적재와 짝을 이루려면 정책을 건 경우도 같아야 한다. 정책이 실제로 무언가를
+// 뺐는지도 함께 본다(정책 없는 지문과 달라야 한다). 빼지 못했다면 이 시험은 정책 없는 경우를 두 번 잰 셈이다.
+func TestSnapshotDigestMatchesUpstreamIngestUnderPolicy(t *testing.T) {
+	dir := t.TempDir()
+	writeResults(t, dir, twoLibs("web-01.corp", 100))
+	policy := &kscope.AssetPolicy{Rules: []kscope.AssetRule{{Exclude: true, Runtime: "openssl", Lib: "libssl*"}}}
+
+	upstream := func(p *kscope.AssetPolicy) string {
+		t.Helper()
+		results, flaws := resultio.LoadDir(dir)
+		if len(flaws) != 0 {
+			t.Fatal(flaws)
+		}
+		store := history.NewMemStore()
+		if _, err := ingest.IngestWith(results, ingest.IngestOptions{
+			SnapshotPrefix: "ingest-t", RulesetVersion: normalize.RulesetVersion, Store: store, AssetPolicy: p}); err != nil {
+			t.Fatal(err)
+		}
+		snap, err := store.Latest("web-01.corp")
+		if err != nil || snap == nil {
+			t.Fatalf("upstream ingest left no snapshot: %v", err)
+		}
+		return history.ContentHashV1(snap)
+	}
+	want, unscoped := upstream(policy), upstream(nil)
+	if want == unscoped {
+		t.Fatal("precondition: the policy excluded nothing, so this would only repeat IC-R18")
+	}
+
+	d := decl.Declaration{Org: "acme", Scope: []string{"web"},
+		Nodes:  []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"web-01.corp"}}},
+		Assets: []decl.Asset{{Node: "web", Runtime: "openssl", Component: "libcrypto"}}}
+	r, err := report.BuildWith(dir, d, policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, a := range r.Assets {
+		for _, s := range a.Sources {
+			found = true
+			if s.Snapshot.Digest != want {
+				t.Errorf("digest under the policy differs from upstream's\n got  %s\n want %s", s.Snapshot.Digest, want)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("the reconciliation carries no evidence")
+	}
+}

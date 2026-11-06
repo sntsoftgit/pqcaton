@@ -239,3 +239,75 @@ func TestIdentityIsChecked(t *testing.T) {
 	}
 	same(t, w.snapshot(t), before)
 }
+
+// IC-W59 — 형식 1 영수증이 남은 상태 디렉토리를 이 판으로 연다. 영수증은 읽히고(복구 필요가 되지 않는다) 같은
+// 확정을 다시 보내면 「이미 확정됨」이다. 그 영수증의 정책 지문은 「확인할 수 없음」이며, **지문이 없는 것을 규칙
+// 0개의 지문으로 읽지 않는다.** 형식 2는 지문이 있을 때만 지문을 돌려준다. 이 판이 모르는 더 새 형식은 손상이다.
+func TestReceiptFormatsAndPolicyDigest(t *testing.T) {
+	w := newWorld(t)
+	s := w.open(t, nil)
+	if _, err := w.finalize(s, sessA, planV2, ledgerAdd); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	p := s.receiptPath(sessA)
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(read(t, p)), &raw); err != nil {
+		t.Fatal(err)
+	}
+	rewrite := func(format any, policy any) {
+		t.Helper()
+		raw["format"] = format
+		if policy == nil {
+			delete(raw, "scope_policy")
+		} else {
+			raw["scope_policy"] = policy
+		}
+		b, err := json.Marshal(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const digest = "scope-policy-v1:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+	for _, c := range []struct {
+		name     string
+		format   any
+		policy   any
+		want     string
+		wantOK   bool
+		readable bool
+	}{
+		{"format 1 as written today", 1, nil, "", false, true},
+		{"format 1 carrying a digest it cannot have", 1, digest, "", false, true},
+		{"format 2 with a digest", 2, digest, digest, true, true},
+		{"format 2 with the field missing", 2, nil, "", false, true},
+		{"format 2 with an empty field", 2, "", "", false, true},
+		{"a newer format", 3, digest, "", false, false},
+	} {
+		rewrite(c.format, c.policy)
+		re := w.open(t, nil)
+		rc, err := re.readReceipt(sessA)
+		if !c.readable {
+			if !errors.Is(err, ErrDamaged) {
+				t.Errorf("%s: err = %v, want ErrDamaged", c.name, err)
+			}
+			re.Close()
+			continue
+		}
+		if err != nil || rc == nil {
+			t.Fatalf("%s: receipt not read: %v", c.name, err)
+		}
+		got, ok := rc.PolicyDigest()
+		if got != c.want || ok != c.wantOK {
+			t.Errorf("%s: PolicyDigest() = %q, %v; want %q, %v", c.name, got, ok, c.want, c.wantOK)
+		}
+		// 같은 확정을 다시 보내도 복구 필요가 아니다.
+		if out, err := w.finalize(re, sessA, planV2, ledgerAdd); err != nil || out.Status != OutcomeAlready {
+			t.Errorf("%s: finalize again = %+v, %v; want %s", c.name, out, err, OutcomeAlready)
+		}
+		re.Close()
+	}
+}
