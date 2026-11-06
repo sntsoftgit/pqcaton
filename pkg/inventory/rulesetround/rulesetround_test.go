@@ -13,6 +13,7 @@ import (
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/rulesetround"
+	invscope "github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 )
 
@@ -21,14 +22,17 @@ const newID = "11111111-2222-4333-8444-555555555555"
 func oldSession() review.Session {
 	return review.Session{Note: review.Note, Scope: "org://acme", SessionID: "00000000-0000-4000-8000-000000000001",
 		RulesetVersion: "pqcota-enrich/v0" + strings.TrimPrefix(review.RulesetVersion, review.UpstreamRuleset(review.RulesetVersion)),
-		Reviewer:       "보안팀", Signature: "sig", PolicyDecisions: map[string]string{"openssl/libssl": "교체"},
+		// 옛 규칙 판이지만 정책 지문은 있다(같은 정책). 지문이 없는 세션은 규칙 전환이 아니라 기준선 회차로 넘어간다.
+		ScopePolicyDigestV1: invscope.PolicyDigest(nil),
+		Reviewer:            "보안팀", Signature: "sig", PolicyDecisions: map[string]string{"openssl/libssl": "교체"},
 		Items: []review.Item{{ID: "n1/openssl/libssl", Node: "n1", Runtime: "openssl", Policy: "openssl/libssl", State: "UNDECLARED",
 			Mandatory: true, Conclusion: "교체한다", Plan: true, Level: "L2", Kind: "REMEDIATION_KIND_CONFIG_ONLY"}}}
 }
 
 func rebuilt() (review.Session, error) {
 	return review.Session{Note: review.Note, Scope: "org://acme", SessionID: "ignored", RulesetVersion: review.RulesetVersion,
-		PolicyDecisions: map[string]string{"openssl/libssl": ""},
+		ScopePolicyDigestV1: invscope.PolicyDigest(nil),
+		PolicyDecisions:     map[string]string{"openssl/libssl": ""},
 		Items: []review.Item{{ID: "n1/openssl/libssl", Node: "n1", Runtime: "openssl", Policy: "openssl/libssl", State: "UNDECLARED",
 			Mandatory: true, Level: "L2", Sources: []review.EvidenceSource{{FindingID: "f-v3", Path: "/usr/lib/libssl.so.3", SourceNodeID: "n1"}}}}}, nil
 }

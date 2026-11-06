@@ -27,7 +27,11 @@ templ reviewNextPage(v ReviewView) {
 // 없거나, 다 찼거나.
 templ reviewNextTodo(v ReviewView) {
 	{{ s := v.Summary() }}
-	if v.RulesetChanged {
+	if v.NeedsBaseline() {
+		@scopeBaselineBox(v.Page)
+	} else if v.Unactivated() {
+		@scopeUnactivatedBox(v.Page)
+	} else if v.RulesetChanged {
 		@rulesetRoundBox(v.Page)
 	} else if v.Finalized {
 		@newRoundBox(v.Page, tRoundReviewHead, tRoundReviewBody, ReviewNewPath, tRoundReviewDo)
@@ -115,6 +119,36 @@ templ rulesetRoundBox(p Page) {
 			@csrfField(p)
 			<button class="primary">{ tRulesetRoundDo.In(p.Lang) }</button>
 		</form>
+	</div>
+}
+
+// scopeBaselineBox — 정책 기록이 없는 옛 세션의 화면 위쪽. 할 일이 남았다는 상자다. 지금 scope-assets.csv가 상류 적재에
+// 쓴 정책이라는 운영자 확인을 받고 기준선 회차를 여는 POST(요청 보호 · rev)를 둔다. 확인은 기록될 뿐 상류 적재를 증명하지
+// 않는다는 것도 적는다.
+templ scopeBaselineBox(p Page) {
+	<div class="next ruleset" role="status">
+		<div class="next-icon">!</div>
+		<div>
+			<strong>{ tScopeBaselineHead.In(p.Lang) }</strong>
+			<span>{ tScopeBaselineBody.In(p.Lang) }</span>
+		</div>
+		<form method="post" action={ templ.SafeURL(ReviewScopeBaselinePath) }>
+			@csrfField(p)
+			<label class="check"><input type="checkbox" name={ ScopeBaselineConfirmField } required/> { tScopeBaselineConfirm.In(p.Lang) }</label>
+			<p class="hint">{ tScopeConfirmLimit.In(p.Lang) }</p>
+			<button class="primary">{ tScopeBaselineDo.In(p.Lang) }</button>
+		</form>
+	</div>
+}
+
+// scopeUnactivatedBox — 활성화 기록 없이 정책이 바뀐 세션의 화면 위쪽. 회차 단추를 두지 않고 할 수 있는 두 가지만 적는다.
+templ scopeUnactivatedBox(p Page) {
+	<div class="next ruleset" role="status">
+		<div class="next-icon">!</div>
+		<div>
+			<strong>{ tScopeUnactivatedHead.In(p.Lang) }</strong>
+			<span>{ tScopeUnactivatedBody.In(p.Lang) }</span>
+		</div>
 	</div>
 }
 

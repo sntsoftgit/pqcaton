@@ -25,6 +25,14 @@ import (
 // RoundReasonRuleset: 회차 표지의 Reason. 규칙 전환 회차다.
 const RoundReasonRuleset = "ruleset-change"
 
+// RoundReceipt — 회차와 한 트랜잭션으로 쓸 형식 2 영수증. 동일성은 (Kind, 조직, 옛 세션 ID)라 같은 옛 세션에서 같은 종류의
+// 회차는 한 번만 열린다. 영수증은 조직 · 옛 세션 파일의 해시 · 정책 지문 · 새 세션 ID를 잇는다. 출력은 적지 않는다(판정
+// 세션의 확정 영수증과 「대체됨」 판단이 섞이지 않게 한다).
+type RoundReceipt struct {
+	Kind        string
+	ScopePolicy string
+}
+
 // RulesetRound: 규칙 전환 회차에 쓸 것. build가 잠금 안에서 만든다.
 type RulesetRound struct {
 	// FromPath: 옛 세션 파일. 저장소가 잠금 안에서 이 바이트를 읽어 해시를 표지에 적고, ArchivePath에 옮긴다.
@@ -36,6 +44,11 @@ type RulesetRound struct {
 	Session, Report Change
 	FromRuleset     string
 	ToRuleset       string
+	// Reason: 회차 표지의 사유. 비면 RoundReasonRuleset이다. FromPolicy · ToPolicy: 정책 회차의 두 지문.
+	Reason               string
+	FromPolicy, ToPolicy string
+	// Receipt: 있으면 회차와 한 트랜잭션으로 형식 2 영수증을 쓴다. 이미 있으면 ErrStale이고 아무것도 쓰지 않는다.
+	Receipt *RoundReceipt
 }
 
 // OpenRulesetRound: 세션 from에서 규칙 전환 회차 to를 연다. targets는 쓸 파일들(보관본 · 새 세션 · 보고서)이다.
@@ -97,9 +110,13 @@ func (s *State) OpenRulesetRound(from, to Identity, targets []string, chk Check,
 			return err
 		}
 		sum := sha256.Sum256(old)
+		reason := r.Reason
+		if reason == "" {
+			reason = RoundReasonRuleset
+		}
 		mark := Round{Format: roundFormat, Kind: from.Kind, Org: from.Org, From: from.SessionID, To: to.SessionID,
-			Opened: time.Now().UTC(), Reason: RoundReasonRuleset, FromRuleset: r.FromRuleset, ToRuleset: r.ToRuleset,
-			FromSHA256: hex.EncodeToString(sum[:])}
+			Opened: time.Now().UTC(), Reason: reason, FromRuleset: r.FromRuleset, ToRuleset: r.ToRuleset,
+			FromSHA256: hex.EncodeToString(sum[:]), FromPolicy: r.FromPolicy, ToPolicy: r.ToPolicy}
 		tx := Tx{Kind: to.Kind, Org: to.Org, SessionID: to.SessionID, Replace: []Change{r.Session}}
 		if fromAbs != sessAbs {
 			// 새 세션을 다른 자리에 쓴다. 그 자리는 없던 파일이어야 한다(남의 파일을 덮지 않는다).
@@ -162,15 +179,63 @@ func (s *State) OpenRulesetRound(from, to Identity, targets []string, chk Check,
 			return err
 		}
 		tx.Create = append(tx.Create, Change{Path: p, Content: append(b, '\n')})
+		var rc2 *Receipt
+		if r.Receipt != nil {
+			// 회차의 형식 2 영수증. 형식 2를 쓰면 이 형식을 모르는 옛 판이 이 상태 폴더를 열지 못한다(의도다).
+			if !policyDigestShape.MatchString(r.Receipt.ScopePolicy) {
+				return fmt.Errorf("%w: %q", ErrPolicyDigest, r.Receipt.ScopePolicy)
+			}
+			rid := Identity{Kind: r.Receipt.Kind, Org: from.Org, SessionID: from.SessionID}
+			if err := rid.check(); err != nil {
+				return err
+			}
+			if prev, err := s.readReceipt(rid); err != nil || prev != nil {
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("%w: a %s round was already opened from %s", ErrStale, r.Receipt.Kind, from)
+			}
+			nr, err := s.newReceipt(Tx{Kind: rid.Kind, Org: rid.Org, SessionID: rid.SessionID, PayloadSHA256: hex.EncodeToString(sum[:])}, r.Receipt.ScopePolicy)
+			if err != nil {
+				return err
+			}
+			nr.Round = &ReceiptRound{FromSessionSHA256: hex.EncodeToString(sum[:]), ToSessionID: to.SessionID}
+			rc2 = &nr
+			rp := s.receiptPath(rid)
+			if err := mkdirPrivate(filepath.Dir(rp)); err != nil {
+				return err
+			}
+			tx.Create = append(tx.Create, Change{Path: rp})
+		}
 		rec, err := s.plan(tx)
 		if err != nil {
 			return err
+		}
+		if rc2 != nil {
+			// 영수증의 txid는 기록의 txid와 같아야 하므로 plan 뒤에 내용을 채운다(finalizeLocked와 같다).
+			rc2.TxID = rec.TxID
+			b, err := json.MarshalIndent(rc2, "", "  ")
+			if err != nil {
+				return err
+			}
+			last := len(tx.Create) - 1
+			tx.Create[last].Content = append(b, '\n')
+			rec.Items[len(rec.Items)-1].After = Sum(tx.Create[last].Content)
 		}
 		if err := chk.verify(); err != nil {
 			return err
 		}
 		return s.run1(rec, tx)
 	})
+}
+
+// RoundReceiptOf — 옛 세션 from에서 연 kind 종류 회차의 영수증. 없으면 nil이다.
+func (s *State) RoundReceiptOf(kind string, from Identity) (*Receipt, error) {
+	id := Identity{Kind: kind, Org: from.Org, SessionID: from.SessionID}
+	if err := id.check(); err != nil {
+		return nil, err
+	}
+	return s.readReceipt(id)
 }
 
 // RoundFrom: 세션 from에서 연 회차의 표지. 없으면 nil.

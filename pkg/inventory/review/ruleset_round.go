@@ -23,14 +23,18 @@ const RulesetChangeReportFormat = 1
 
 // RulesetChangeReport — 변환 보고서. 옛 세션과 새 세션을 자산 키로 짝지어 무엇이 달라졌는지 적는다.
 type RulesetChangeReport struct {
-	Format        int          `json:"format"`
-	Note          string       `json:"_how_to_read"`
-	FromRuleset   string       `json:"from_ruleset"`
-	ToRuleset     string       `json:"to_ruleset"`
-	FromSessionID string       `json:"from_session_id"`
-	ToSessionID   string       `json:"to_session_id"`
-	Archive       string       `json:"archive,omitempty"`
-	Items         []ItemChange `json:"items"`
+	Format        int    `json:"format"`
+	Note          string `json:"_how_to_read"`
+	FromRuleset   string `json:"from_ruleset"`
+	ToRuleset     string `json:"to_ruleset"`
+	FromSessionID string `json:"from_session_id"`
+	ToSessionID   string `json:"to_session_id"`
+	Archive       string `json:"archive,omitempty"`
+	// Reason · FromPolicy · ToPolicy — 정책 회차의 보고서면 그 종류와 두 정책 지문(옛 세션에 지문이 없으면 FromPolicy는 빈다).
+	Reason     string       `json:"reason,omitempty"`
+	FromPolicy string       `json:"from_policy,omitempty"`
+	ToPolicy   string       `json:"to_policy,omitempty"`
+	Items      []ItemChange `json:"items"`
 }
 
 // ItemChange — 항목 하나의 변화. Change는 only-old(새 규칙에서는 없다) · only-new(새 규칙에서 생겼다) · changed · same.
@@ -64,6 +68,45 @@ const reportNote = "The upstream ruleset changed between these two sessions. Ass
 // RulesetRound — 옛 세션(old)을 지금 규칙으로 다시 세운 세션(rebuilt)에 넘긴다. 새 세션은 newID를 들고, 서명과
 // 검토자는 비고, 현재 결론과 계획 칸은 rebuilt 그대로(비어 있다)다. 옛 값은 참고값으로만 붙는다.
 func RulesetRound(old, rebuilt Session, newID, reportName, archiveName string) (Session, RulesetChangeReport) {
+	next := carryAsPrevious(old, rebuilt, newID)
+	next.RulesetChange = &RulesetChangeRef{FromSessionID: old.SessionID, FromRuleset: old.RulesetVersion, Report: reportName, Archive: archiveName}
+	return next, reportOf(old, next, archiveName)
+}
+
+// ScopeChangeRef — 정책 회차의 기록. 보고서는 세션 파일과 같은 폴더의 그 이름이다.
+type ScopeChangeRef struct {
+	Reason        string `json:"reason"`
+	FromSessionID string `json:"from_session_id"`
+	FromPolicy    string `json:"from_policy,omitempty"`
+	ToPolicy      string `json:"to_policy"`
+	Report        string `json:"report"`
+	Archive       string `json:"archive,omitempty"`
+}
+
+// 정책 회차의 종류.
+const (
+	ScopeRoundBaseline = "scope-baseline"
+)
+
+const scopeReportNote = "The asset-scope policy this session is judged under changed or was adopted as a baseline. What is managed " +
+	"and the snapshot fingerprints follow the policy, so an entry that looks removed, added or changed may come from the policy " +
+	"alone. Entries the new policy no longer manages are listed here and are not carried. Conclusions of the old session are " +
+	"carried only as reference values (previous); nothing here was judged under the new policy."
+
+// PolicyRound — 옛 세션(old)을 지금 정책(과 지금 규칙)으로 다시 세운 세션(rebuilt)에 넘긴다. [RulesetRound]와 같이 옛 결론은
+// 참고값으로만 붙고, 새 정책에서 빠진 항목은 새 세션에 없고 보고서에만 남는다. reason은 ScopeRound*다.
+func PolicyRound(old, rebuilt Session, newID, reportName, archiveName, reason string) (Session, RulesetChangeReport) {
+	next := carryAsPrevious(old, rebuilt, newID)
+	next.ScopeChange = &ScopeChangeRef{Reason: reason, FromSessionID: old.SessionID, FromPolicy: old.ScopePolicyDigestV1,
+		ToPolicy: rebuilt.ScopePolicyDigestV1, Report: reportName, Archive: archiveName}
+	r := reportOf(old, next, archiveName)
+	r.Note, r.Reason, r.FromPolicy, r.ToPolicy = scopeReportNote, reason, old.ScopePolicyDigestV1, rebuilt.ScopePolicyDigestV1
+	return next, r
+}
+
+// carryAsPrevious — 두 회차가 함께 쓰는 넘김. 새 세션은 newID를 들고, 서명과 검토자는 비고, 현재 결론과 계획 칸은 rebuilt
+// 그대로(비어 있다)다. 옛 값은 참고값으로만 붙는다.
+func carryAsPrevious(old, rebuilt Session, newID string) Session {
 	next := rebuilt
 	next.SessionID, next.Signature, next.Reviewer = newID, "", ""
 	next.Items = append([]Item(nil), rebuilt.Items...)
@@ -93,8 +136,7 @@ func RulesetRound(old, rebuilt Session, newID, reportName, archiveName string) (
 			next.PreviousPolicyDecisions[pol] = c
 		}
 	}
-	next.RulesetChange = &RulesetChangeRef{FromSessionID: old.SessionID, FromRuleset: old.RulesetVersion, Report: reportName, Archive: archiveName}
-	return next, reportOf(old, next, archiveName)
+	return next
 }
 
 func hasHumanValues(it Item) bool {

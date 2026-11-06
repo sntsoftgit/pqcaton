@@ -114,13 +114,28 @@ type ReviewView struct {
 	RulesetVersion string
 	// RulesetChanged — 세션이 지금 도구와 다른 상류 규칙 판이다(비었어도). 칸을 잠그고 규칙 전환 회차 단추를 둔다.
 	RulesetChanged bool
+	// ScopeLock — 저장된 세션을 지금 자산 스코프 정책으로 이어 쓸 수 없는 까닭(review.ScopeLock*). 비면 이어 쓴다. 칸을
+	// 잠그고, 기준선이면 운영자 확인과 기준선 회차 단추를, 승인되지 않은 변경이면 두 가지 할 일만 보인다.
+	ScopeLock string
 	// RulesetChange · Report — 이 세션이 규칙 전환 회차로 열렸으면 그 기록과 변환 보고서(서버가 읽어 넣는다. 없으면 nil).
 	RulesetChange *review.RulesetChangeRef
 	Report        *review.RulesetChangeReport
 }
 
 // Locked — 칸을 잠그는가. 확정됐거나, 다른 규칙 판의 세션이다.
-func (v ReviewView) Locked() bool { return v.Finalized || v.RulesetChanged }
+func (v ReviewView) Locked() bool { return v.Finalized || v.RulesetChanged || v.ScopeLock != "" }
+
+// 정책 잠금의 두 종류. 화면 파일들이 review를 들여오지 않고 쓰도록 여기 옮겨 둔다.
+const (
+	scopeLockBaseline    = review.ScopeLockBaseline
+	scopeLockUnactivated = review.ScopeLockUnactivated
+)
+
+// NeedsBaseline — 정책 기록이 없는 옛 세션이라 기준선 회차가 필요하다.
+func (v ReviewView) NeedsBaseline() bool { return v.ScopeLock == scopeLockBaseline }
+
+// Unactivated — 활성화 기록 없이 정책이 바뀌었다. 회차 단추 없이 두 가지 할 일만 보인다.
+func (v ReviewView) Unactivated() bool { return v.ScopeLock == scopeLockUnactivated }
 
 // ReportChanges — 보고서에서 달라진 항목(같음은 뺀다).
 func (v ReviewView) ReportChanges() []review.ItemChange {
@@ -658,6 +673,8 @@ type ReviewSummary struct {
 	Autopass int
 	// RulesetChanged — 세션이 지금과 다른 상류 규칙 판이다. 잠겨 있어 결론이 다 차 있어도 확정할 수 없다.
 	RulesetChanged bool
+	// ScopeLock — 정책 잠금(review.ScopeLock*). 잠겨 있어 결론이 다 차 있어도 확정할 수 없다.
+	ScopeLock string
 }
 
 // Summary — 요약의 숫자.
@@ -665,7 +682,7 @@ func (v ReviewView) Summary() ReviewSummary {
 	s := ReviewSummary{
 		Policies: len(v.Policies), Autopass: len(v.Autopass),
 		Signed:         strings.TrimSpace(v.Reviewer) != "" && strings.TrimSpace(v.Signature) != "",
-		RulesetChanged: v.RulesetChanged,
+		RulesetChanged: v.RulesetChanged, ScopeLock: v.ScopeLock,
 	}
 	for _, p := range v.Policies {
 		if strings.TrimSpace(p.Conclusion) == "" {
@@ -677,7 +694,9 @@ func (v ReviewView) Summary() ReviewSummary {
 }
 
 // Ready — 확정할 수 있나. **결론이 다 찼고 서명도 있어야** 한다.
-func (s ReviewSummary) Ready() bool { return s.Open == 0 && s.Signed && !s.RulesetChanged }
+func (s ReviewSummary) Ready() bool {
+	return s.Open == 0 && s.Signed && !s.RulesetChanged && s.ScopeLock == ""
+}
 
 // reviewEditAnchor — 요약에서 판정 폼으로 보내는 자리.
 const reviewEditAnchor = "review-edit"

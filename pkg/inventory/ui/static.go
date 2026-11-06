@@ -46,7 +46,11 @@ const (
 	ReviewNewPath = "/review/new"
 	// ReviewRulesetRoundPath — 다른 상류 규칙 판의 세션에서 규칙 전환 회차를 여는 POST.
 	ReviewRulesetRoundPath = "/review/ruleset-round"
-	ScopeNewPath           = "/scope/new"
+	// ReviewScopeBaselinePath — 정책 기록이 없는 옛 세션에서 운영자 확인을 받아 기준선 회차를 여는 POST.
+	ReviewScopeBaselinePath = "/review/scope-baseline"
+	// ScopeBaselineConfirmField — 기준선 회차의 운영자 확인 칸. 체크하지 않으면 회차를 열지 않는다.
+	ScopeBaselineConfirmField = "ingest-confirmed"
+	ScopeNewPath              = "/scope/new"
 	// HostsSavePath — 03 관측 화면의 접근 정보 저장.
 	HostsSavePath = "/observe/hosts"
 	// RunPath — 관측 실행. GET은 상태 조각, POST는 시작이다. RunStopPath — 돌고 있는 실행을 멈춘다.

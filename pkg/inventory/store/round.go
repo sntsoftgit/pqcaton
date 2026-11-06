@@ -57,6 +57,9 @@ type Round struct {
 	ReceiptSHA256 string `json:"from_receipt_sha256,omitempty"`
 	Archive       string `json:"archive,omitempty"`
 	Report        string `json:"report,omitempty"`
+	// FromPolicy · ToPolicy: 정책 회차의 두 자산 스코프 정책 지문(옛 세션에 지문이 없으면 FromPolicy는 빈다).
+	FromPolicy string `json:"from_policy,omitempty"`
+	ToPolicy   string `json:"to_policy,omitempty"`
 }
 
 func (s *State) roundPath(from Identity) string {

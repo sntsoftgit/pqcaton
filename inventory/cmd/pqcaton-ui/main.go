@@ -522,6 +522,7 @@ func (s *server) handler() http.Handler {
 	r.Post("/finalize", s.finalize)
 	r.Post(ui.ReviewNewPath, s.reviewNew)
 	r.Post(ui.ReviewRulesetRoundPath, s.reviewRulesetRound)
+	r.Post(ui.ReviewScopeBaselinePath, s.reviewScopeBaseline)
 	r.Post(ui.ScopeNewPath, s.scopeNew)
 
 	// 옛 주소(v0.21의 `-next`, v0.22의 `/classic/…`). 옛 화면은 v0.23.0에서 없어졌고, 북마크가 죽지 않게
@@ -631,7 +632,11 @@ func (s *server) reviewSession() (review.Session, []review.Warning, error) {
 // 파일이 있는데 규칙 판이 비었으면 옛 빌드가 연 세션이라 옮기지 않고 그대로 돌려준다. 옮기면 옛 결론이 지금
 // 규칙의 근거에 실리고, 저장하면서 오늘의 규칙 판이 찍혀 「어느 규칙으로 본 판정인가」의 증거가 사라진다.
 func carryStored(prev review.Session, loadErr error, next review.Session) review.Session {
-	if loadErr == nil && prev.RulesetVersion == "" {
+	// 파일이 없으면 다시 세운 세션이 곧 새 세션이다. 빈 세션을 Carry에 넘기면 정책 지문이 비어 있어 옮기지 않고 빈 것을 돌려준다.
+	if loadErr != nil {
+		return next
+	}
+	if prev.RulesetVersion == "" {
 		return prev
 	}
 	return review.Carry(prev, next)
@@ -659,6 +664,7 @@ func (s *server) review(w http.ResponseWriter, r *http.Request) {
 	page.Rev = rev
 	v := ui.NewReviewView(sf, page)
 	v.Finalized = wd.reviewFinal.Locked()
+	v.ScopeLock = s.scopeLockOf(sf)
 	if c := sf.RulesetChange; c != nil && c.Report != "" && filepath.Base(c.Report) == c.Report {
 		if b, err := os.ReadFile(filepath.Join(filepath.Dir(s.path), c.Report)); err == nil {
 			if rep, err := review.DecodeReport(b); err == nil {
@@ -676,10 +682,86 @@ func (s *server) applyReview(r *http.Request) (review.Session, error) {
 	if err != nil {
 		return sf, err
 	}
+	// 정책 잠금을 규칙 판보다 먼저 본다. 정책 기록이 없는 세션은 기준선 회차가 규칙도 함께 넘긴다.
+	if err := s.sameScopePolicy(sf); err != nil {
+		return sf, err
+	}
 	if err := sameUpstreamRuleset(sf); err != nil {
 		return sf, err
 	}
 	return ui.ApplyReview(sf, r.PostForm), nil
+}
+
+// sameScopePolicy: 저장된 세션을 지금 활성 정책으로 이어 쓸 수 있는가. 정책 기록이 없으면 기준선 회차가, 활성화 기록 없이
+// 정책이 바뀌었으면 이전 정책 복원이나 정식 활성화가 넘어가는 길이다(review.ScopeChanged). 저장 · 확정 · 회차가 모두 본다.
+func (s *server) sameScopePolicy(sf review.Session) error {
+	active, err := scope.PolicyFileDigest(s.scopeAssets)
+	if err != nil {
+		return err
+	}
+	if l := review.ScopeLock(sf, active); l != "" {
+		return &review.ScopeChanged{Lock: l, Session: sf.ScopePolicyDigestV1, Active: active}
+	}
+	return nil
+}
+
+// scopeLockOf: 화면과 카드가 보일 정책 잠금. 활성 정책을 읽지 못하면 잠그지 않고 빈 값이다(그때는 저장 · 확정이
+// 읽기 오류로 막힌다). 결과 없이 세션 파일만 쓰는 서버도 같은 판정이다.
+func (s *server) scopeLockOf(sf review.Session) string {
+	active, err := scope.PolicyFileDigest(s.scopeAssets)
+	if err != nil {
+		return ""
+	}
+	return review.ScopeLock(sf, active)
+}
+
+// reviewScopeBaseline: 정책 기록이 없는 옛 세션에서 기준선 회차를 연다(POST). 운영자가 지금 scope-assets.csv가 상류 적재에
+// 쓴 정책이라고 확인해야 열고, 확인은 회차의 scope-baseline 영수증으로 남는다. 정책 파일이 없으면 규칙 0개 정책을 채택하고,
+// 형식 오류 · 읽기 실패는 열지 않는다. 같은 옛 세션에서 두 번 열 수 없다.
+func (s *server) reviewScopeBaseline(w http.ResponseWriter, r *http.Request) {
+	back := ui.ScreenReview
+	if !s.writable(w, r, back) {
+		return
+	}
+	if s.results == "" || s.decl == "" {
+		errorPage(w, r, http.StatusConflict, ui.ErrInputMissing, nil)
+		return
+	}
+	if r.PostForm.Get(ui.ScopeBaselineConfirmField) != "on" {
+		s.refuse(w, r, http.StatusBadRequest, ui.RefusedScopeConfirm, back, nil)
+		return
+	}
+	active, err := scope.PolicyFileDigest(s.scopeAssets)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "scope baseline:", err)
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
+		return
+	}
+	req := rulesetround.Request{OldPath: s.path, OutPath: s.path, Org: s.orgName(), NewID: review.NewSessionID(), Baseline: active,
+		Rebuild: func() (review.Session, error) {
+			d, err := decl.Load(s.decl)
+			if err != nil {
+				return review.Session{}, err
+			}
+			policy, err := s.assetPolicy()
+			if err != nil {
+				return review.Session{}, err
+			}
+			b, err := review.FromResultsWith(s.results, d, s.orgName(), policy)
+			if err != nil {
+				return review.Session{}, err
+			}
+			return b.Session, nil
+		}}
+	if _, err := rulesetround.Open(s.st, req, s.check(r), s.waitTime()); err != nil {
+		if errors.Is(err, rulesetround.ErrNotBaseline) {
+			s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
+			return
+		}
+		s.fail(w, r, back, err, file(ui.PickLang(r), "session", s.path))
+		return
+	}
+	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeRulesetRoundOpened)}, nil)
 }
 
 // sameUpstreamRuleset: 세션이 지금 도구와 같은 상류 규칙 판인가. 다르거나 비었으면 그 세션 파일은 다시 쓰지

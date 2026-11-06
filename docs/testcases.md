@@ -205,6 +205,7 @@
 | **[IC-W53](../inventory/cmd/pqcaton-decide/newround_test.go) ✅** | 명령 `new-round`를 -o 없이 · 다른 자리의 -o로 · 같은 명령을 다시 · 옛 세션 자리의 -o로 | -o가 없으면 아무것도 하지 않는다. 다른 자리면 옛 파일이 **바이트 그대로 남고** 새 세션과 보고서가 생긴다. 다시 돌리면 거절되고 파일이 늘지 않는다. 옛 자리면 옛 바이트가 보관본으로 옮겨진다 |
 | **[IC-W58](../pkg/inventory/store/receipt_test.go) ✅** | 정책 지문을 주어 확정 · 지문의 모양이 아닌 값을 주어 확정 · 확정한 계획 파일로 영수증 찾기 | 지문을 주면 영수증이 형식 2이고 그 지문을 적으며, 출력과 같은 트랜잭션의 마지막 항목이다. **형식 2는 지문 없이 쓸 수 없다**: 모양이 아니면 ErrPolicyDigest이고 계획도 영수증도 쓰지 않는다. 계획 파일은 그것을 지금 내용 그대로 쓴 세션의 영수증으로만 이어진다(다른 세션 · 바뀐 파일 · 쓸 수 없는 동일성은 거절) |
 | **[IC-W59](../pkg/inventory/store/receipt_test.go) ✅** | 형식 1 영수증 · 지문을 담은 형식 1 · 형식 2(지문 있음 · 칸 없음 · 빈 칸) · 더 새 형식을 이 판으로 읽음 | 형식 1과 2는 읽히고 같은 확정을 다시 보내면 「이미 확정됨」이다. 정책 지문은 형식 2에 값이 있을 때만 나온다. **지문이 없는 것을 규칙 0개의 지문으로 읽지 않는다.** 더 새 형식은 손상이다 |
+| **[IC-W61](../pkg/inventory/rulesetround/baseline_test.go) ✅** | 기준선 회차를 적용 중 · 끝난 자리에서 멈춘 뒤 다시 열어 복구 | 보관본 · 새 세션 · 보고서 · 표지 · scope-baseline 영수증이 **다 있거나 다 없다** |
 
 ### P. 확정 계획 & 핸드오프 (§3.7, §5, [인벤토리 설계 §4](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) ✅
 | TC | Given → When | Then |
@@ -245,6 +246,10 @@
 | [IC-P37](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅ | 계획 ID의 조직이 이 작업 폴더의 조직이 아님 | 「동일성」에서 거절한다 |
 | **[IC-P38](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅** | 그 세션의 영수증이 없음(다른 작업 폴더에서 옮겨 온 계획) | 「영수증 없음」으로 거절한다. 옮긴 계획은 상류 `pqcota-approve` · `pqcota-provision`으로 다룬다 |
 | **[IC-P39](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅** | 확정한 뒤 계획 파일이 바뀜 | 「계획 파일 해시」에서 거절한다 |
+| **[IC-P40](../pkg/inventory/review/scope_policy_test.go) ✅** | 저장된 세션과 다시 세운 세션의 정책 지문: 같음 · note만 바뀜 · 저장된 쪽에 없음 · 다름 | 앞의 둘은 결론을 옮긴다. 뒤의 둘은 **옮기지 않고 저장된 세션을 그대로 돌려준다**(규칙 판과 같은 기준) |
+| **[IC-P41](../pkg/inventory/rulesetround/baseline_test.go) ✅** | 지문 없는 옛 세션에서 기준선 회차 · 같은 옛 세션에서 다시 | 새 세션은 지금 정책의 지문과 기준선 기록을 들고, 남은 항목은 옛 결론이 참고값으로만 붙으며 현재 결론은 빈다. 새 정책에서 빠진 항목은 보고서에만 남는다. 옛 세션은 바이트 그대로 보관되고, scope-baseline 형식 2 영수증이 조직 · 옛 세션 해시 · 정책 지문 · 새 세션 ID를 잇는다. 다시 열면 거절되고 파일이 늘지 않는다 |
+| [IC-P42](../pkg/inventory/rulesetround/baseline_test.go) ✅ | 지문이 이미 있는 세션에서 기준선 · 확인한 정책과 다시 세운 세션의 정책이 다름 | `ErrNotBaseline` · `ErrStale`이고 아무것도 쓰지 않는다 |
+| **[IC-P43](../pkg/inventory/rulesetround/baseline_test.go) ✅** | 지문 없는 세션에서 규칙 전환 · 다시 세운 세션의 지문이 다른 규칙 전환 | 기준선 잠금 · 승인되지 않은 변경으로 거절한다. **규칙 전환이 정책을 운영자 확인 없이 채택하지 않는다** |
 
 ### E. 통신 엣지 대조와 토폴로지 ([인벤토리 설계 §6](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) 🔶: 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector([디스커버리 설계 §2.3](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/discovery/design.md))가 공급
 | TC | Given → When | Then |
@@ -480,7 +485,10 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U144](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 판별 표(`docs/compatibility.md`)의 맨 위 줄 · 릴리스 노트 맨 위 절 · `go.mod` | 맨 위 줄의 pqcaton 판(범위면 끝 판)이 노트 맨 위의 판과 같고, `go.mod`의 pqcota 계열 모듈이 모두 같은 판이며 **고정한 pqcota 판이 그 판과 같다.** README(맨 위 소개 · 사전 준비 · 맞는 조합)와 데모 안내가 적은 판도 그 판이고, v0.25.0 뒤의 노트 절은 「받는 쪽이 달라지는 것」 첫 항목에 `함께 쓰는 pqcota: vX`를 적는다 |
 | **[IC-U149](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅** | 확인 페이지를 연 뒤 계획의 영수증이 사라짐 · 정책 A에서 서명 · 생성한 뒤 정책이 B로 바뀜 | 서명은 **잠금 안의 재검사**가 409 `plan-scope`로 막는다. 활성화 뒤에는 생성 양식이 없고 생성이 409이며, 계획 · 서명 · 플레이북이 바이트 그대로다. 보관은 되고 세 파일을 지우지 않고 옮긴다 |
 | **[IC-U151](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅** | 형식 1 영수증의 계획을 서명 전 · 서명하고 플레이북까지 만든 뒤 | 서명 양식 · 생성 양식이 없고 서명 확인 · 생성이 409다. 이미 만든 플레이북은 바이트 그대로다. 화면이 「현재 정책에서 05의 새 판정 회차를 열어 다시 확정」을 안내한다 |
-| **[IC-U153](../inventory/cmd/pqcaton-ui/scope_session_test.go) ✅** | 정책 기록이 없는 옛 세션 · 정책 A로 세운 세션을 다른 정책으로 · 정책 없이 · 둘 다 정책 없음으로 화면에서 확정 | 앞의 셋은 확인 페이지에서 409 `scope-policy`이고 어떤 파일도 바뀌지 않는다. 마지막은 확인 페이지가 열린다 |
+| **[IC-U153](../inventory/cmd/pqcaton-ui/scope_session_test.go) ✅** | 정책 기록이 없는 옛 세션 · 정책 A로 세운 세션을 다른 정책으로 · 정책 없이 · 둘 다 정책 없음으로 화면에서 확정 | 첫째는 409 `scope-baseline`, 둘째와 셋째는 409 `scope-unactivated`이고 어떤 파일도 바뀌지 않는다. 마지막은 확인 페이지가 열린다 |
+| **[IC-U154](../inventory/cmd/pqcaton-ui/scope_lock_test.go) ✅** | 정책 기록이 없는 옛 세션으로 05 화면 · 저장 · 확인 없는 기준선 · 확인한 기준선 · 같은 요청 다시 | 기준선 상자 · 확인 칸 · 「확인만 기록한다」가 보이고 05 카드가 「정책 기준선을 채택해야 합니다」다. 저장은 409 `scope-baseline`, 확인 없이는 400 `scope-confirm`이고 아무것도 쓰지 않는다. 확인하면 새 세션(새 ID, 지금 정책, 현재 결론 빔)과 보관본 · 형식 2 영수증이 생긴다. 다시 보내면 거절되고 파일이 늘지 않는다 |
+| **[IC-U155](../inventory/cmd/pqcaton-ui/scope_lock_test.go) ✅** | 정책 A로 저장한 뒤 `scope-assets.csv`를 손으로 B로 바꿈 · 다시 A로 복원 | 05가 잠기고 회차 단추가 없으며 이전 정책 복원과 정식 활성화만 안내한다. 저장은 409 `scope-unactivated`이고 파일은 그대로다. 복원하면 다시 저장된다 |
+| [IC-U156](../inventory/cmd/pqcaton-ui/scope_lock_test.go) ✅ | note · 주석만 바꾼 정책 | 잠기지 않고 저장된다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 

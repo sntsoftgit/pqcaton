@@ -111,6 +111,14 @@ func TestScopeAssetsAreReadEachTime(t *testing.T) {
 	if err := os.WriteFile(s.scopeAssets, []byte("action,runtime,lib,app_key,note\nexclude,*,*,/usr/sbin/sshd*,\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// v0.26.0부터 저장된 세션의 정책과 지금 정책이 다르면 판정 화면이 잠긴다(scope_lock_test.go). 여기서는 「정책을 매번 읽는다」만
+	// 재므로 저장된 세션을 지우고 지금 입력으로 다시 남긴다. 서버가 시작할 때 읽은 정책을 들고 있다면 아래에서 옛 정책이 나온다.
+	if err := os.Remove(s.path); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.materialize(); err != nil {
+		t.Fatal(err)
+	}
 	w := get(t, s, ui.ScreenReview)
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /review = %d", w.Code)

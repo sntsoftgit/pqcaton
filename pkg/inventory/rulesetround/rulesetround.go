@@ -29,6 +29,12 @@ const Kind = "review"
 // ErrSameRuleset — 세션이 이미 지금 상류 규칙 판이다. 넘길 것이 없다.
 var ErrSameRuleset = errors.New("the session is already under the current upstream ruleset")
 
+// ErrNotBaseline — 기준선 회차를 열려 했는데 세션에 이미 정책 지문이 있다. 기준선은 지문 없는 옛 세션에서 한 번만 연다.
+var ErrNotBaseline = errors.New("the session already records an asset-scope policy; a baseline round is only for sessions made before v0.26.0")
+
+// ScopeBaselineReceipt — 기준선 회차의 영수증 종류.
+const ScopeBaselineReceipt = review.ScopeRoundBaseline
+
 // ErrOrgMismatch — 옛 세션 · 다시 세운 세션 · 요청한 조직이 같지 않다. 항목 ID가 같아도 다른 조직의 결론을 옮기지 않는다.
 var ErrOrgMismatch = errors.New("the old session, the rebuilt session and the requested organization are not the same organization")
 
@@ -68,6 +74,10 @@ type Request struct {
 	NewID      string
 	// Rebuild: 지금 규칙으로 결과에서 세운 세션. 저장소의 잠금 안에서 부른다.
 	Rebuild func() (review.Session, error)
+	// Baseline: 비어 있지 않으면 **기준선 회차**다. 값은 운영자가 상류 적재에 쓴 정책이라고 확인한 지금 정책의 지문이다.
+	// 정책 지문이 없는 옛 세션에서만 열고, 다시 세운 세션의 지문이 이 값이어야 하며, scope-baseline 형식 2 영수증을 함께
+	// 쓴다. 비어 있으면 규칙 전환 회차다.
+	Baseline string
 }
 
 // Result — 연 회차.
@@ -95,6 +105,18 @@ func Names(oldPath, outPath string, old review.Session, oldBytes []byte) (archiv
 	return archive, report
 }
 
+// baselineNames — 기준선 회차의 보관본과 보고서 자리. 규칙 전환 회차와 이름이 겹치지 않는다.
+func baselineNames(oldPath, outPath string, old review.Session, oldBytes []byte) (archive, report string) {
+	key := old.SessionID
+	if !safeKey.MatchString(key) {
+		key = strings.TrimPrefix(internalID(oldPath, "", oldBytes), "unnamed-")[:12]
+	}
+	base := strings.TrimSuffix(filepath.Base(oldPath), filepath.Ext(oldPath))
+	outBase := strings.TrimSuffix(filepath.Base(outPath), filepath.Ext(outPath))
+	return filepath.Join(filepath.Dir(oldPath), base+".scope-baseline-"+key+".json"),
+		filepath.Join(filepath.Dir(outPath), outBase+".scope-baseline-report-"+key+".json")
+}
+
 // Targets — 잠글 파일들(새 세션 · 보고서 · 보관본). 옛 세션을 읽어 이름을 정한다.
 func Targets(req Request) ([]string, error) {
 	old, raw, err := load(req.OldPath)
@@ -117,7 +139,13 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 	if err != nil {
 		return Result{}, err
 	}
-	if !changed(old) {
+	switch {
+	case req.Baseline != "" && old.ScopePolicyDigestV1 != "":
+		return Result{}, ErrNotBaseline
+	case req.Baseline == "" && old.ScopePolicyDigestV1 == "":
+		// 정책 기록이 없는 세션을 규칙 전환으로 넘기면 지금 정책을 운영자 확인 없이 채택하는 셈이다. 기준선 회차가 규칙도 함께 넘긴다.
+		return Result{}, &review.ScopeChanged{Lock: review.ScopeLockBaseline}
+	case req.Baseline == "" && !changed(old):
 		return Result{}, ErrSameRuleset
 	}
 	if err := sameOrg(old.Scope, req.Org, "", false); err != nil {
@@ -141,7 +169,8 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 		if err != nil {
 			return store.RulesetRound{}, err
 		}
-		if a, r := req.names(cur, curRaw); a != archive || r != report || !changed(cur) {
+		if a, r := req.names(cur, curRaw); a != archive || r != report || cur.ScopePolicyDigestV1 != old.ScopePolicyDigestV1 ||
+			(req.Baseline == "" && !changed(cur)) {
 			return store.RulesetRound{}, fmt.Errorf("%w: %s changed while the round was being opened", store.ErrStale, req.OldPath)
 		}
 		rebuilt, err := req.Rebuild()
@@ -155,7 +184,23 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 		if archived {
 			archiveName = filepath.Base(archive)
 		}
-		next, rep := review.RulesetRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName)
+		var (
+			next review.Session
+			rep  review.RulesetChangeReport
+		)
+		if req.Baseline != "" {
+			// 운영자가 확인한 정책과 다시 세운 세션이 읽은 정책이 같아야 한다. 그 사이 파일이 바뀌었으면 쓰지 않는다.
+			if rebuilt.ScopePolicyDigestV1 != req.Baseline {
+				return store.RulesetRound{}, fmt.Errorf("%w: the asset-scope policy changed while the baseline round was being opened", store.ErrStale)
+			}
+			next, rep = review.PolicyRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName, review.ScopeRoundBaseline)
+		} else {
+			if rebuilt.ScopePolicyDigestV1 != cur.ScopePolicyDigestV1 {
+				return store.RulesetRound{}, &review.ScopeChanged{Lock: review.ScopeLockUnactivated,
+					Session: cur.ScopePolicyDigestV1, Active: rebuilt.ScopePolicyDigestV1}
+			}
+			next, rep = review.RulesetRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName)
+		}
 		sb, err := review.Encode(next)
 		if err != nil {
 			return store.RulesetRound{}, err
@@ -169,13 +214,21 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 		if archived {
 			out.ArchivePath = archive
 		}
+		if req.Baseline != "" {
+			out.Reason, out.ToPolicy = review.ScopeRoundBaseline, req.Baseline
+			out.Receipt = &store.RoundReceipt{Kind: ScopeBaselineReceipt, ScopePolicy: req.Baseline}
+		}
 		return out, nil
 	})
 	return res, err
 }
 
 func (req Request) names(old review.Session, raw []byte) (archive, report string) {
-	archive, report = Names(req.OldPath, req.OutPath, old, raw)
+	if req.Baseline != "" {
+		archive, report = baselineNames(req.OldPath, req.OutPath, old, raw)
+	} else {
+		archive, report = Names(req.OldPath, req.OutPath, old, raw)
+	}
 	if req.ReportPath != "" {
 		report = req.ReportPath
 	}

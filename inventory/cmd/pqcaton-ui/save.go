@@ -111,7 +111,7 @@ func (s *server) declInputs() []store.Input {
 // inputsFor: 화면(GET) 또는 저장 주소(POST)가 덮는 입력. 양식이 없는 화면은 nil이다.
 func (s *server) inputsFor(where string) []store.Input {
 	switch where {
-	case ui.ScreenReview, "/save", "/finalize", "/finalize/confirm", ui.ReviewNewPath, ui.ReviewRulesetRoundPath:
+	case ui.ScreenReview, "/save", "/finalize", "/finalize/confirm", ui.ReviewNewPath, ui.ReviewRulesetRoundPath, ui.ReviewScopeBaselinePath:
 		return s.reviewInputs()
 	case ui.ScreenScope, "/scope/save", "/scope/rules", "/scope/finalize", "/scope/finalize/confirm", ui.ScopeNewPath:
 		if s.scope == "" {
@@ -249,6 +249,12 @@ func refusedKind(err error) (string, int) {
 		return ui.RefusedRulesetChanged, http.StatusConflict
 	case errors.Is(err, review.ErrScopePolicy):
 		return ui.RefusedScopePolicy, http.StatusConflict
+	case errors.Is(err, review.ErrScopeChanged):
+		var sc *review.ScopeChanged
+		if errors.As(err, &sc) && sc.Lock == review.ScopeLockBaseline {
+			return ui.RefusedScopeBaseline, http.StatusConflict
+		}
+		return ui.RefusedScopeUnactivated, http.StatusConflict
 	case errors.Is(err, store.ErrTargetBusy):
 		return ui.RefusedBusy, http.StatusConflict
 	case errors.Is(err, store.ErrNeedsRecovery):

@@ -178,6 +178,13 @@ func Carry(prev, next Session) Session {
 	if prev.RulesetVersion != "" && UpstreamRuleset(prev.RulesetVersion) != UpstreamRuleset(next.RulesetVersion) {
 		return prev
 	}
+	// **자산 스코프 정책 지문이 다르거나 저장된 세션에 없으면 옮기지 않는다.** 규칙 판과 같은 기준이다. 정책이 다르면
+	// 관리 대상과 스냅샷 지문이 달라져, 옛 결론이 사람이 본 적 없는 근거에 붙는다. 지문이 없는 옛 세션은 어떤 정책으로
+	// 판정했는지 모르므로 빈 정책으로 읽지 않는다. 넘어가는 길은 기준선 회차나 정책 전환 회차다. 지문은 의미 지문이라
+	// note · 공백만 바뀐 정책은 같다.
+	if prev.ScopePolicyDigestV1 != next.ScopePolicyDigestV1 {
+		return prev
+	}
 	was := map[string]Item{}
 	for _, it := range All(prev) {
 		was[it.ID] = it

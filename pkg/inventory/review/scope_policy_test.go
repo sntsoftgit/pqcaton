@@ -39,3 +39,35 @@ func TestCheckScopePolicy(t *testing.T) {
 		t.Error("a missing digest is not reported as a policy mismatch")
 	}
 }
+
+// IC-P40 — **정책 지문이 다르거나 저장된 세션에 없으면 Carry가 결론을 옮기지 않는다.** 같으면 옮긴다. note만 바뀐 정책은
+// 의미 지문이 같으므로 옮긴다.
+func TestCarryStopsAtAPolicyChange(t *testing.T) {
+	a := invscope.PolicyDigest(&kscope.AssetPolicy{Rules: []kscope.AssetRule{{Exclude: true, AppKey: "/usr/sbin/sshd*", Note: "first"}}})
+	aNote := invscope.PolicyDigest(&kscope.AssetPolicy{Rules: []kscope.AssetRule{{Exclude: true, AppKey: "/usr/sbin/sshd*", Note: "reworded"}}})
+	b := invscope.PolicyDigest(&kscope.AssetPolicy{Rules: []kscope.AssetRule{{Exclude: true, AppKey: "/usr/bin/python*"}}})
+	item := func(conclusion string) []review.Item {
+		return []review.Item{{ID: "n1/openssl/libssl", Policy: "openssl/libssl", Conclusion: conclusion}}
+	}
+	for _, c := range []struct {
+		name          string
+		stored, now   string
+		wantConcluded bool
+	}{
+		{"same policy", a, a, true},
+		{"only the note changed", a, aNote, true},
+		{"no digest stored", "", a, false},
+		{"another policy", a, b, false},
+	} {
+		prev := review.Session{RulesetVersion: review.RulesetVersion, ScopePolicyDigestV1: c.stored, Items: item("교체한다")}
+		next := review.Session{RulesetVersion: review.RulesetVersion, ScopePolicyDigestV1: c.now, Items: item("")}
+		got := review.Carry(prev, next)
+		carried := got.ScopePolicyDigestV1 == c.now && len(got.Items) == 1 && got.Items[0].Conclusion == "교체한다"
+		if carried != c.wantConcluded {
+			t.Errorf("%s: carried = %v, want %v (got digest %q)", c.name, carried, c.wantConcluded, got.ScopePolicyDigestV1)
+		}
+		if !c.wantConcluded && got.ScopePolicyDigestV1 != c.stored {
+			t.Errorf("%s: a refused carry should hand back the stored session", c.name)
+		}
+	}
+}

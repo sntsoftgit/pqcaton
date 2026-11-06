@@ -72,6 +72,8 @@ type Session struct {
 	PreviousPolicyDecisions map[string]string `json:"previous_policy_decisions,omitempty"`
 	// RulesetChange — 이 세션이 규칙 전환 회차로 열렸으면 그 기록. 화면이 보고서를 찾고 머리에 알린다.
 	RulesetChange *RulesetChangeRef `json:"ruleset_change,omitempty"`
+	// ScopeChange — 이 세션이 정책 회차(기준선 · 전환)로 열렸으면 그 기록.
+	ScopeChange *ScopeChangeRef `json:"scope_change,omitempty"`
 }
 
 // RulesetChangeRef — 규칙 전환 회차의 기록. 보고서는 세션 파일과 같은 폴더의 그 이름이다.
@@ -358,6 +360,45 @@ func (e *RulesetChanged) Error() string {
 }
 
 func (e *RulesetChanged) Unwrap() error { return ErrRulesetChanged }
+
+// ErrScopeChanged — 저장된 세션의 자산 스코프 정책 지문이 지금 활성 정책과 다르거나 없다. 저장 · 확정하지 않는다.
+var ErrScopeChanged = errors.New("asset-scope policy changed")
+
+// 정책 잠금의 종류.
+const (
+	// ScopeLockBaseline — 세션에 정책 지문이 없다(이 판보다 먼저 만든 세션). 운영자가 지금 정책을 기준선으로 채택하는
+	// 기준선 회차로 넘어간다.
+	ScopeLockBaseline = "baseline"
+	// ScopeLockUnactivated — 세션의 지문과 지금 정책이 다르고, 그 변경을 잇는 활성화 영수증이 없다. 회차를 열지 않고
+	// 이전 정책 복원이나 정식 활성화만 안내한다.
+	ScopeLockUnactivated = "unactivated"
+)
+
+// ScopeChanged — [ErrScopeChanged]에 종류와 두 지문을 싣는다. 명령이 읽는 영어 문장이다.
+type ScopeChanged struct{ Lock, Session, Active string }
+
+func (e *ScopeChanged) Error() string {
+	if e.Lock == ScopeLockBaseline {
+		return "this session records no asset-scope policy (it was made before v0.26.0). Nothing was saved or finalized. " +
+			"Adopt the current scope-assets.csv as the baseline in a new round, after confirming it is the policy the upstream ingest used"
+	}
+	return fmt.Sprintf("this session was judged under %s, but the active asset-scope policy is %s and no activation records that change. "+
+		"Nothing was saved or finalized. Restore the previous policy file, or re-ingest upstream with the new policy and activate it", e.Session, e.Active)
+}
+
+func (e *ScopeChanged) Unwrap() error { return ErrScopeChanged }
+
+// ScopeLock — 저장된 세션 sf를 지금 정책(지문 active)으로 이어 쓸 수 있는가. 되면 빈 값이다. 3단계 전환 회차 전에는
+// 지문이 다르면 언제나 ScopeLockUnactivated다.
+func ScopeLock(sf Session, active string) string {
+	switch {
+	case sf.ScopePolicyDigestV1 == "":
+		return ScopeLockBaseline
+	case sf.ScopePolicyDigestV1 != active:
+		return ScopeLockUnactivated
+	}
+	return ""
+}
 
 // UpstreamRuleset — 결합 판에서 상류 쪽(`pqcota-enrich/…`)을 꺼낸다. 계획 규칙 판이 붙어 있지 않으면 통째로 상류 판이다.
 func UpstreamRuleset(rulesetVersion string) string {

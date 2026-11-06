@@ -96,6 +96,14 @@ type Receipt struct {
 	Ledger   []LedgerRange `json:"ledger"`
 	// ScopePolicy: 이 확정이 쓴 출력을 만든 자산 스코프 정책의 지문(scope.PolicyDigest). 형식 2부터 있다.
 	ScopePolicy string `json:"scope_policy,omitempty"`
+	// Round: 정책 회차의 영수증이면 그 회차가 잇는 것(옛 세션 파일의 해시 · 새 세션 ID). 동일성의 SessionID는 옛 세션이다.
+	Round *ReceiptRound `json:"round,omitempty"`
+}
+
+// ReceiptRound — 정책 회차 영수증이 잇는 옛 세션과 새 세션.
+type ReceiptRound struct {
+	FromSessionSHA256 string `json:"from_session_sha256"`
+	ToSessionID       string `json:"to_session_id"`
 }
 
 // Identity: 영수증의 동일성.

@@ -198,7 +198,9 @@ func (s *server) steps(wd *world) ui.StepState {
 	if wd.reviewErr != nil {
 		unavailable("review", wd.reviewErr)
 	} else {
-		got := ui.NewReviewView(wd.review, ui.Page{}).Summary()
+		rv := ui.NewReviewView(wd.review, ui.Page{})
+		rv.ScopeLock = s.scopeLockOf(wd.review)
+		got := rv.Summary()
 		st.Review = &got
 	}
 	st.ReviewFinal, st.ScopeFinal = wd.reviewFinal, wd.scopeFinal
