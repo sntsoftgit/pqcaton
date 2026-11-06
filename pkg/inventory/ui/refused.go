@@ -44,6 +44,9 @@ const (
 	// RefusedPlanScope — 계획이 이 작업 폴더의 확정 기록과 이어지지 않거나, 그 계획을 만든 자산 스코프 정책이 지금 활성
 	// 정책과 달라 서명 · 생성하지 않았다(409).
 	RefusedPlanScope = "plan-scope"
+	// RefusedScopePolicy — 판정 세션이 기록한 자산 스코프 정책이 지금 정책과 다르거나 세션에 정책 기록이 없어 확정하지
+	// 않았다(409).
+	RefusedScopePolicy = "scope-policy"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
 	ErrNotFound     = "not-found"     // 404
@@ -68,6 +71,7 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedRulesetChanged: {body: tRefusedRulesetChanged},
 	RefusedPlanRuleset:    {tSignRefusedHead, tRefusedPlanRuleset},
 	RefusedPlanScope:      {tSignRefusedHead, tRefusedPlanScope},
+	RefusedScopePolicy:    {body: tRefusedScopePolicy},
 	ErrNotFound:           {tErrNotFoundHead, tErrNotFound},
 	ErrMethod:             {tErrMethodHead, tErrMethod},
 	ErrBadRequest:         {tErrBadRequestHead, tErrBadRequest},

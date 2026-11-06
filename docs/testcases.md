@@ -34,6 +34,7 @@
 | **[IC-R25](../pkg/inventory/report/managed_test.go) ✅** | 관리 자산 하나 · 정책이 뺀 자산 하나 · 미관측 자산 하나 | **관측 자산 수는 정책이 뺀 것도 센다**(2). 관리 수는 따로 든다(1). 머리의 관측 수와 런타임별 합계가 같다 | 관리 근거의 수로 세면 머리에서 「관측 2」라 하고 바로 아래 합계는 5라고 하는 리포트가 나온다. 제외를 부재로 세는 것이고, 이 판이 닫으려는 바로 그 결함이다 |
 | **[IC-R26](../pkg/inventory/reconcile/path_test.go) ✅** | 한 노드에 같은 이름의 OpenSSL 셋(경로 둘 · 경로 모름 하나) | 한 자산 키 아래 근거 셋이 되고 **근거마다 설치 경로를 든다.** 모르는 경로는 빈 값이다 | 자산 키에는 경로가 없다. 근거에서 경로를 잃으면 사람이 두 설치를 가르지 못한다 |
 | **[IC-R27](../pkg/inventory/report/jca_test.go) ✅** | JCA 결과가 있고 PQC 서비스 목록이 없는 노드 · 목록이 있는(비어 있어도) 노드 · JCA 결과가 없는 노드 | **첫째만** 「v0.10.6 JCA 수집 결과임을 확인할 수 없음」으로 알린다 | JCA를 관측하지 않은 것과 옛 수집기일 수 있는 것을 같은 경고로 섞으면 어느 쪽인지 알 수 없다. 판은 단정하지 않는다 |
+| **[IC-R28](../pkg/inventory/review/scope_policy_test.go) ✅** | 세션의 정책 지문과 확정할 때의 정책 지문: 지문 없음 · 다름(정책으로 열고 없이 닫음 · 반대) · 같음 · 둘 다 정책 없음 | 같을 때만 통과한다. 지문이 없으면 `ErrScopePolicyMissing`이고 **빈 정책으로 읽지 않는다.** 다르면 `ErrScopePolicy`다. 정책 없음도 지문이 있다 |
 | **[IC-R6](../pkg/inventory/reconcile/fingerprint_test.go) ✅** | **`finding_id`는 같은데 버전·검출 방법·증거 강도·강화 판정·알고리즘·로드한 앱이 달라진 관측** | **지문이 달라진다.** 상류의 id는 `sha256(노드\|이름\|런타임\|fork)`라 자산이 같으면 같아서, id만 보면 이 변화가 통째로 「그대로」로 읽힌다. 대조가 그 지문을 세션까지 들고 간다 |
 
 ### O. 대조의 조직 축 (설계 §1.1) ✅
@@ -139,6 +140,10 @@
 | **[IC-D26](../pkg/inventory/decision/migrate_pg_test.go) ✅** | v0.17 모양의 Postgres 원장(`record_kind` · `confidence_evaluated` 열 없음)을 이 판이 엶 · 옛 행 하나 · 새 미평가 행 · 계획 선택 행 | 두 열이 `ADD COLUMN IF NOT EXISTS … DEFAULT`로 더해지고, **옛 행은 평가된 판정으로 이행**된다(기본값 `TRUE`). 새 행은 명시적으로 저장된다. 최신 판정은 계획 선택 행을 세지 않는다. 전용 스키마에서 돌아 공유 표의 모양을 흔들지 않는다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D27](../pkg/inventory/decision/schema_pg_test.go) ✅** | 같은 데이터베이스의 두 스키마에 같은 이름의 표(하나는 이 판의 모양, 하나는 옛 모양) · 각각을 보는 연결 | 옛 표를 보는 연결은 **준비되지 않았다**, 새 표를 보는 연결은 **준비됐다**. `to_regclass`가 고른 관계의 OID를 `pg_attribute`에 맞댄다 | 표 이름으로만 세면 앞은 다른 스키마의 열을 보고 준비됐다고 하고, 뒤는 열이 넷이라 준비되지 않았다고 한다. `PQCOTA_TEST_DSN`이 있을 때만 |
 | **[IC-D28](../pkg/inventory/review/installations_test.go) ✅** | 근거 하나의 설치 경로만 바꿈 · 경로 칸을 비운 근거 | 경로가 바뀌면 **근거 해시가 바뀐다.** 경로를 모르는 근거의 해시는 칸이 생기기 전과 같다 | 경로가 다르면 다른 설치를 본 것이라 지난 판정 · 확인의 근거가 아니다 |
+| **[IC-D29](../inventory/cmd/pqcaton-decide/scope_policy_test.go) ✅** | 정책 지문이 없는 옛 세션 파일을 `close`(-o · 표준출력) | 거절하고 새 세션을 열라고 안내한다. 계획도 세션도 쓰지 않는다 |
+| **[IC-D30](../inventory/cmd/pqcaton-decide/scope_policy_test.go) ✅** | 정책 A로 연 세션을 정책 B로 · `-scope-assets` 없이 · 정책 A로 `close` | 앞의 둘은 거절하고 아무것도 쓰지 않는다. A면 확정하고 영수증이 형식 2로 A의 지문을 적는다 |
+| [IC-D31](../inventory/cmd/pqcaton-decide/scope_policy_test.go) ✅ | 정책 없이 연 세션을 `-scope-assets` 없이 `close` | 확정하고 영수증이 형식 2로 규칙 0개의 지문을 적는다 |
+| **[IC-D32](../inventory/cmd/pqcaton-decide/scope_policy_test.go) ✅** | `open`을 `-scope-assets`와 함께 · 없이 | 세션에 실제로 읽은 정책의 지문(없으면 규칙 0개의 지문)이 적힌다. 지문 칸이 빈 세션은 나오지 않는다 |
 
 ### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 저장소 계층 완료, 화면 연결 전
 화면과 명령이 파일을 바꿀 때 지나가는 한 길입니다. 상용 지원은 Linux 로컬 파일시스템뿐입니다.
@@ -475,6 +480,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U144](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 판별 표(`docs/compatibility.md`)의 맨 위 줄 · 릴리스 노트 맨 위 절 · `go.mod` | 맨 위 줄의 pqcaton 판(범위면 끝 판)이 노트 맨 위의 판과 같고, `go.mod`의 pqcota 계열 모듈이 모두 같은 판이며 **고정한 pqcota 판이 그 판과 같다.** README(맨 위 소개 · 사전 준비 · 맞는 조합)와 데모 안내가 적은 판도 그 판이고, v0.25.0 뒤의 노트 절은 「받는 쪽이 달라지는 것」 첫 항목에 `함께 쓰는 pqcota: vX`를 적는다 |
 | **[IC-U149](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅** | 확인 페이지를 연 뒤 계획의 영수증이 사라짐 · 정책 A에서 서명 · 생성한 뒤 정책이 B로 바뀜 | 서명은 **잠금 안의 재검사**가 409 `plan-scope`로 막는다. 활성화 뒤에는 생성 양식이 없고 생성이 409이며, 계획 · 서명 · 플레이북이 바이트 그대로다. 보관은 되고 세 파일을 지우지 않고 옮긴다 |
 | **[IC-U151](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅** | 형식 1 영수증의 계획을 서명 전 · 서명하고 플레이북까지 만든 뒤 | 서명 양식 · 생성 양식이 없고 서명 확인 · 생성이 409다. 이미 만든 플레이북은 바이트 그대로다. 화면이 「현재 정책에서 05의 새 판정 회차를 열어 다시 확정」을 안내한다 |
+| **[IC-U153](../inventory/cmd/pqcaton-ui/scope_session_test.go) ✅** | 정책 기록이 없는 옛 세션 · 정책 A로 세운 세션을 다른 정책으로 · 정책 없이 · 둘 다 정책 없음으로 화면에서 확정 | 앞의 셋은 확인 페이지에서 409 `scope-policy`이고 어떤 파일도 바뀌지 않는다. 마지막은 확인 페이지가 열린다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 

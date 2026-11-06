@@ -35,8 +35,10 @@ func session() review.Session {
 		RulesetVersion: review.RulesetVersion,
 		// 세션 id도 열 때 박는다. 없으면 확정이 막힌다 — 원장 행이 가리킬 세션이 없는 계획이
 		// 나오기 때문이다.
-		SessionID:       "01234567-89ab-4cde-8f01-23456789abcd",
-		PolicyDecisions: map[string]string{"openssl/libssl": ""},
+		SessionID: "01234567-89ab-4cde-8f01-23456789abcd",
+		// 정책 지문도 열 때 박는다. 이 서버는 정책 없이 돌므로 규칙 0개의 지문이다. 없으면 확정이 막힌다.
+		ScopePolicyDigestV1: scope.PolicyDigest(nil),
+		PolicyDecisions:     map[string]string{"openssl/libssl": ""},
 		Items: []review.Item{
 			{ID: "host://local/openssl/libssl", Policy: "openssl/libssl",
 				Node: "host://local", Runtime: "openssl", State: "UNDECLARED",

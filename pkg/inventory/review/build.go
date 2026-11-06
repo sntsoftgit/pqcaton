@@ -18,6 +18,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
+	invscope "github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 )
 
 // Built — 세운 세션과, 그것을 세우며 알게 된 것.
@@ -95,7 +96,13 @@ func FromResultsWith(resultsDir string, d decl.Declaration, orgName string, poli
 	if err != nil {
 		return nil, err
 	}
-	return FromReport(r, d, orgName)
+	b, err := FromReport(r, d, orgName)
+	if err != nil {
+		return nil, err
+	}
+	// 대조에 건 그 정책의 지문을 세션에 박는다. 확정이 다시 읽은 정책과 견준다.
+	b.Session.ScopePolicyDigestV1 = invscope.PolicyDigest(policy)
+	return b, nil
 }
 
 // orgFor — 세션의 조직. **선언에 조직이 적혀 있다.** 따로 주지 않았으면 선언의 것을 쓰고, 둘이

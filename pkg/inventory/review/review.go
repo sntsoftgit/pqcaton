@@ -45,6 +45,11 @@ type Session struct {
 	// RulesetVersion — 이 세션을 연 시점의 규칙 판. **여는 순간 박고 확정할 때 다시 찍지
 	// 않는다.** 검토 도중 도구가 올라가도 실제 검토 근거가 보존되어야 하기 때문이다.
 	RulesetVersion string `json:"ruleset_version,omitempty"`
+	// ScopePolicyDigestV1 — 이 세션을 세울 때 **실제로 읽은** 자산 스코프 정책의 지문(scope.PolicyDigest). 정책 없이
+	// 세웠으면 규칙 0개의 지문이다. 확정은 정책을 다시 읽어 이 값과 견주고, 같을 때만 그 지문을 계획과 영수증의 근거로
+	// 쓴다(CheckScopePolicy). 세션 값만 믿으면 손으로 고친 지문을, 확정 때 준 정책만 믿으면 세션을 세울 때와 다른 파일을
+	// 받아들인다. 비어 있으면 이 칸이 생기기 전의 파일이다. **빈 정책으로 읽지 않는다.**
+	ScopePolicyDigestV1 string `json:"scope_policy_digest_v1,omitempty"`
 	// SessionID — 이 세션의 동일성. **열 때 만들고, 다시 열어도 그대로다.** 계약으로 나가는 계획의
 	// id가 이 값을 담고 판정 원장 행도 이 값을 들고 가서, 계획에서 원장으로 되짚는 식별자가 된다.
 	// 「어느 계획 사건인가」를 답하는 값이라 내용 해시가 아니다 — 같은 내용이 두 번 승인·실행될

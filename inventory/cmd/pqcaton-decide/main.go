@@ -37,6 +37,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/rulesetround"
+	invscope "github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 )
 
@@ -55,13 +56,17 @@ const usage = `usage:
         to observe another node, run pqcota's collector there and gather the results
         with pqcaton-report. Without /proc (non-Linux) this refuses
 
-  pqcaton-decide close <session.json> -o <plan.json> [-judgments <file>] [-org <name>] [-state-dir <dir>]
+  pqcaton-decide close <session.json> -o <plan.json> [-scope-assets <csv>] [-judgments <file>] [-org <name>] [-state-dir <dir>]
         Check the judgments and write the finalized plan to -o. The session, the plan
         (the previous one kept as .prev), the judgments (-judgments, audit record) and a
         receipt are written as one transaction, through the same state directory as
         pqcaton-ui. Finalizing the same session again writes nothing.
         Without -o the plan goes to stdout and nothing else is written; -judgments then
-        is refused, as the ledger and stdout cannot be one transaction
+        is refused, as the ledger and stdout cannot be one transaction.
+        Give -scope-assets the same file the session was opened with: close reads it again and
+        refuses unless it matches the policy recorded in the session (no -scope-assets means
+        "no policy", which a session opened with a policy file does not match). A session file
+        that records no policy is refused; open a new one
 
   pqcaton-decide new-round <old-session.json> -decl <declaration.json> -results <results-dir> -o <new-session.json>
         [-report <file>] [-scope-assets <csv>] [-org <name>] [-state-dir <dir>]
@@ -129,7 +134,7 @@ func main() {
 		err = open(pos[0], node, *orgName, *results, *scopeAssets, *view)
 	case "close":
 		need(1)
-		err = closeSession(pos[0], *judgments, *orgName, *out, *stateDir)
+		err = closeSession(pos[0], *judgments, *orgName, *out, *stateDir, *scopeAssets)
 	case "new-round":
 		need(1)
 		err = newRound(pos[0], *declPath, *results, *scopeAssets, *orgName, *out, *reportPath, *stateDir)
@@ -225,7 +230,9 @@ func session(declPath, node, orgName, resultsDir, scopeAssets string) (review.Se
 	autopass, queue := reconcile.BuildReviewQueue(recs)
 
 	sf = review.Session{Note: review.Note, Scope: node, PolicyDecisions: map[string]string{},
-		RulesetVersion: review.RulesetVersion, SessionID: review.NewSessionID()}
+		RulesetVersion: review.RulesetVersion, SessionID: review.NewSessionID(),
+		// 스캔에 건 그 정책의 지문. close가 다시 읽은 정책과 견준다.
+		ScopePolicyDigestV1: invscope.PolicyDigest(policy)}
 	for _, it := range queue {
 		item := review.ItemOf(it.Rec, it.Mandatory)
 		sf.Items = append(sf.Items, item)
@@ -274,9 +281,14 @@ func sessionFromResults(declPath, orgName, resultsDir, scopeAssets string) (revi
 
 // ── close ──────────────────────────────────────────────────────────────────
 
-func closeSession(path, judgmentPath, orgName, out, stateDir string) error {
+// activePolicy: close가 다시 읽은 정책의 지문. -scope-assets가 없으면 「정책 없음」의 지문이다.
+func activePolicy(scopeAssets string) (string, error) {
+	return invscope.PolicyFileDigest(scopeAssets)
+}
+
+func closeSession(path, judgmentPath, orgName, out, stateDir, scopeAssets string) error {
 	if out != "" {
-		return closeToFile(path, judgmentPath, orgName, out, stateDir)
+		return closeToFile(path, judgmentPath, orgName, out, stateDir, scopeAssets)
 	}
 	// **원장과 표준출력은 한 트랜잭션으로 묶이지 않는다.** 출력 도중 파이프가 끊기면 원장에만 판정이
 	// 남는다. 원장에 쓰려면 -o로 파일에 낸다.
@@ -285,6 +297,13 @@ func closeSession(path, judgmentPath, orgName, out, stateDir string) error {
 	}
 	sf, err := review.Load(path)
 	if err != nil {
+		return err
+	}
+	active, err := activePolicy(scopeAssets)
+	if err != nil {
+		return err
+	}
+	if err := review.CheckScopePolicy(sf, active); err != nil {
 		return err
 	}
 	// **관문은 review.Finalize 하나다.** 화면도 같은 것을 쓴다 — 관문이 둘이면 언젠가
@@ -350,7 +369,7 @@ func newRound(oldPath, declPath, resultsDir, scopeAssets, orgName, out, reportPa
 	return nil
 }
 
-func closeToFile(path, judgmentPath, orgName, out, stateDir string) error {
+func closeToFile(path, judgmentPath, orgName, out, stateDir, scopeAssets string) error {
 	if stateDir == "" {
 		stateDir = store.DefaultDir(path)
 	}
@@ -368,6 +387,13 @@ func closeToFile(path, judgmentPath, orgName, out, stateDir string) error {
 	if err != nil {
 		return err
 	}
+	active, err := activePolicy(scopeAssets)
+	if err != nil {
+		return err
+	}
+	if err := review.CheckScopePolicy(sf, active); err != nil {
+		return err
+	}
 	payload, err := review.PayloadSHA256(sf, orgName, withJudg)
 	if err != nil {
 		return err
@@ -375,9 +401,16 @@ func closeToFile(path, judgmentPath, orgName, out, stateDir string) error {
 	id := store.Identity{Kind: "review", Org: orgName, SessionID: sf.SessionID}
 	var written review.Output
 	res, err := st.FinalizeChecked(id, targets, store.Check{}, payload, store.CommandWait, func() (store.Parts, error) {
-		// 잠금 안에서 다시 읽는다. 그 사이 세션이 바뀌었으면 지문이 달라 쓰지 않는다.
+		// 잠금 안에서 다시 읽는다. 그 사이 세션이 바뀌었으면 지문이 달라 쓰지 않는다. 정책도 다시 읽어 대조한다.
 		sf, err := review.Load(path)
 		if err != nil {
+			return store.Parts{}, err
+		}
+		active, err := activePolicy(scopeAssets)
+		if err != nil {
+			return store.Parts{}, err
+		}
+		if err := review.CheckScopePolicy(sf, active); err != nil {
 			return store.Parts{}, err
 		}
 		o, err := review.Outputs(sf, orgName, withJudg, time.Now().Unix())
@@ -389,7 +422,8 @@ func closeToFile(path, judgmentPath, orgName, out, stateDir string) error {
 			return store.Parts{}, err
 		}
 		written = o
-		parts := store.Parts{PayloadSHA256: p, Replace: []store.Change{
+		// 대조가 통과한 지문만 계획과 형식 2 영수증의 근거로 쓴다.
+		parts := store.Parts{PayloadSHA256: p, ScopePolicy: active, Replace: []store.Change{
 			{Path: path, Content: o.Session}, {Path: out, Content: o.Plan, Backup: true}}}
 		if withJudg && len(o.Judgments) > 0 {
 			parts.Append = []store.Addition{{Path: judgmentPath, Data: o.Judgments}}

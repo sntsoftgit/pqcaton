@@ -91,6 +91,11 @@ func (s *server) load() *world {
 			wd.reviewErr = err
 			break
 		}
+		// 대조에 건 정책의 지문(reviewSession의 review.FromResultsWith와 같은 값). 이 세션은 카드가 읽는다.
+		if b.Session.ScopePolicyDigestV1, err = scope.PolicyFileDigest(s.scopeAssets); err != nil {
+			wd.reviewErr = err
+			break
+		}
 		wd.review, wd.reviewWarn = carryStored(prev, loadErr, b.Session), b.Warnings
 	}
 

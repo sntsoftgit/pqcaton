@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	invscope "github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 )
 
@@ -21,7 +22,9 @@ func ready(t *testing.T, dir string) string {
 	sf := review.Session{
 		Note: review.Note, Scope: "host://local", RulesetVersion: review.RulesetVersion,
 		SessionID: "01234567-89ab-4cde-8f01-23456789abcd",
-		Reviewer:  "보안팀", Signature: "sig",
+		// 정책 없이 연 세션이다. close를 -scope-assets 없이 부르면 대조가 통과한다.
+		ScopePolicyDigestV1: invscope.PolicyDigest(nil),
+		Reviewer:            "보안팀", Signature: "sig",
 		PolicyDecisions: map[string]string{"openssl/libssl": "PQC 라이브러리로 교체한다"},
 		Items: []review.Item{{ID: "host://local/openssl/libssl", Policy: "openssl/libssl",
 			Node: "host://local", Runtime: "openssl", State: "UNDECLARED", Conf: 0.6, Mandatory: true,
@@ -70,7 +73,7 @@ func TestCloseNeedsOutputForLedger(t *testing.T) {
 	dir := t.TempDir()
 	sess := ready(t, dir)
 	ledger := filepath.Join(dir, "judgments.jsonl")
-	out, err := stdout(t, func() error { return closeSession(sess, ledger, "local", "", "") })
+	out, err := stdout(t, func() error { return closeSession(sess, ledger, "local", "", "", "") })
 	if !errors.Is(err, store.ErrNeedOutput) || !strings.Contains(err.Error(), "-o") {
 		t.Fatalf("err = %v, want ErrNeedOutput naming -o", err)
 	}
@@ -78,7 +81,7 @@ func TestCloseNeedsOutputForLedger(t *testing.T) {
 		t.Errorf("a refused close wrote something: stdout %q, ledger %q", out, read(t, ledger))
 	}
 
-	out, err = stdout(t, func() error { return closeSession(sess, "", "local", "", "") })
+	out, err = stdout(t, func() error { return closeSession(sess, "", "local", "", "", "") })
 	if err != nil || !strings.Contains(out, "IN_REVIEW") {
 		t.Fatalf("stdout close: %v\n%s", err, out)
 	}
@@ -94,7 +97,7 @@ func TestCloseToFileIsOnce(t *testing.T) {
 	sess := ready(t, dir)
 	plan := filepath.Join(dir, "plan.json")
 	ledger := filepath.Join(dir, "judgments.jsonl")
-	out, err := stdout(t, func() error { return closeSession(sess, ledger, "local", plan, "") })
+	out, err := stdout(t, func() error { return closeSession(sess, ledger, "local", plan, "", "") })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +109,7 @@ func TestCloseToFileIsOnce(t *testing.T) {
 	}
 	snap := []string{read(t, sess), read(t, plan), read(t, ledger)}
 
-	if _, err := stdout(t, func() error { return closeSession(sess, ledger, "local", plan, "") }); err != nil {
+	if _, err := stdout(t, func() error { return closeSession(sess, ledger, "local", plan, "", "") }); err != nil {
 		t.Fatal(err)
 	}
 	if again := []string{read(t, sess), read(t, plan), read(t, ledger)}; strings.Join(again, "|") != strings.Join(snap, "|") {
@@ -139,7 +142,7 @@ func TestCloseRefusedWhileServerRuns(t *testing.T) {
 	ledger := filepath.Join(dir, "judgments.jsonl")
 	before := read(t, sess)
 	start := time.Now()
-	_, err = stdout(t, func() error { return closeSession(sess, ledger, "local", plan, "") })
+	_, err = stdout(t, func() error { return closeSession(sess, ledger, "local", plan, "", "") })
 	if !errors.Is(err, store.ErrBusy) {
 		t.Fatalf("err = %v, want ErrBusy", err)
 	}

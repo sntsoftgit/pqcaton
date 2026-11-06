@@ -761,6 +761,10 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return store.Parts{}, err
 		}
+		// 세션이 세워질 때 읽은 정책과 지금 정책을 대조한다. 명령의 close와 같은 관문이다.
+		if err := review.CheckScopePolicy(sf, pd); err != nil {
+			return store.Parts{}, err
+		}
 		written = o
 		parts := store.Parts{PayloadSHA256: p, ScopePolicy: pd, Replace: []store.Change{
 			{Path: s.path, Content: o.Session}, {Path: s.planOut, Content: o.Plan, Backup: true}}}

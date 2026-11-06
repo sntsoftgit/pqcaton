@@ -139,6 +139,14 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		// 확정과 같은 정책 대조. 맞지 않으면 확인 페이지를 내지 않고 거절한다.
+		pd, err := scope.PolicyFileDigest(s.scopeAssets)
+		if err != nil {
+			return err
+		}
+		if err := review.CheckScopePolicy(sf, pd); err != nil {
+			return err
+		}
 		if o, err = review.Outputs(sf, s.orgName(), withJudg, 0); err != nil {
 			return err
 		}
@@ -146,7 +154,7 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 		id = s.reviewID()
 		return err
 	})
-	if errors.Is(err, review.ErrRulesetChanged) {
+	if errors.Is(err, review.ErrRulesetChanged) || errors.Is(err, review.ErrScopePolicy) {
 		// 규칙 판이 다른 세션은 화면에서 고칠 것이 아니라 새 회차로 넘어갈 일이다. 거절 페이지로 보인다.
 		s.fail(w, r, back, err)
 		return
