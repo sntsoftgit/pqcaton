@@ -182,8 +182,11 @@ body.wb .hero { display: flex; justify-content: space-between; align-items: end;
                 gap: 24px; padding: 22px 0 18px; }
 body.wb .hero h1 { margin: 0; font-size: 1.6rem; letter-spacing: -.02em; }
 body.wb .hero p { margin: 7px 0 0; color: var(--muted); }
+/* 작업 파일 경로. **줄어들지 않게 두고 폭의 상한만 준다.** 줄어들게 두면 옆의 설명 글이 자리를 먼저
+   차지하고, anywhere의 최소 폭은 글자 하나라 1280px에서도 경로가 파일 이름 가운데서 여러 줄로
+   갈라졌다. 상한보다 긴 경로만 그 안에서 줄을 바꾼다. */
 body.wb .source { color: var(--muted); font-size: .85rem; text-align: right;
-                  overflow-wrap: anywhere; max-width: 34rem; }
+                  overflow-wrap: anywhere; flex: 0 0 auto; max-width: min(34rem, 45%); }
 body.wb .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
                  gap: 8px; margin: 0 0 24px; }
 body.wb .step { min-height: 68px; display: flex; align-items: center; gap: 10px;
@@ -208,7 +211,7 @@ body.wb .dot.ok { background: var(--green); }
 @media (max-width: 980px) {
   body.wb .steps { grid-template-columns: repeat(2, 1fr); }
   body.wb .topbar, body.wb .hero { align-items: start; flex-direction: column; }
-  body.wb .source { text-align: left; }
+  body.wb .source { text-align: left; max-width: 100%; }
 }
 @media (max-width: 650px) {
   body.wb { padding: 0 16px 40px; }

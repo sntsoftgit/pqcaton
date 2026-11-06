@@ -46,7 +46,9 @@ func TestEveryTableScrollsInItsBox(t *testing.T) {
 	}
 	css := get(t, s, ui.StaticPath+"app.css").Body.String()
 	for _, want := range []string{"body.wb .table-wrap { overflow-x: auto;", "body.wb fieldset { min-width: 0; }", "box-sizing: border-box", "@media (max-width: 650px)",
-		"body.wb .context { color: var(--muted); font-size: .9rem; min-width: 0; max-width: 100%;"} {
+		"body.wb .context { color: var(--muted); font-size: .9rem; min-width: 0; max-width: 100%;",
+		// 작업 파일 경로가 줄어들어 파일 이름 가운데서 갈라지지 않는다(1280px에서 갈라졌다).
+		"overflow-wrap: anywhere; flex: 0 0 auto; max-width: min(34rem, 45%); }"} {
 		if !strings.Contains(css, want) {
 			t.Errorf("the stylesheet has no %q", want)
 		}
