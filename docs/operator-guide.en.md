@@ -3,6 +3,9 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
+> **`main` is under development for v0.26.0.** Activating the asset-scope policy finalized in 02 for reconciliation, and the
+> check in 06 of the policy a plan was made under, are being built. For operation, use the [v0.25.0 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.25.0).
+
 This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.25.0.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.

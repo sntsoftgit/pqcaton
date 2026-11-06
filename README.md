@@ -2,6 +2,9 @@
 
 **개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.md) · [설계](docs/design.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
+> **`main`은 v0.26.0 개발 중입니다.** 02에서 확정한 자산 스코프 정책을 대조에 쓰는 「새 정책 활성화」와, 06이 계획을 만든
+> 정책을 확인하는 검사를 만들고 있습니다. 운영에는 [v0.25.0 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.25.0)를 쓰십시오.
+
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** 관측은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가
 하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.** 이 판은 pqcota **v0.10.6**과 함께
 씁니다. pqcaton 판마다 함께 쓰는 pqcota 판은 [판별 표](docs/compatibility.md)에 있습니다.

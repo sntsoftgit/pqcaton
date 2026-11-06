@@ -3,6 +3,9 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
+> **`main`은 v0.26.0 개발 중입니다.** 02에서 확정한 자산 스코프 정책을 대조에 쓰는 「새 정책 활성화」와, 06이 계획을 만든
+> 정책을 확인하는 검사를 만들고 있습니다. 운영에는 [v0.25.0 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.25.0)를 쓰십시오.
+
 이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.25.0 기준입니다.
 영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
