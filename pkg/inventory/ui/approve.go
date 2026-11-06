@@ -38,7 +38,21 @@ type ApproveView struct {
 	RulesetProblem string
 	// RulesetSigned — 맞지 않는 것이 서명된 계획(plan.signed.json) 쪽이다. 지금 계획(plan.json)은 맞을 수 있다.
 	RulesetSigned bool
+	// ScopeProblem — 지금 계획(plan.json)을 이 작업 폴더의 확정 기록에 잇지 못했거나, 그 계획을 만든 자산 스코프 정책이
+	// 지금 활성 정책과 다른 사유(PlanScope*). 비면 맞다. 맞지 않으면 서명 · 생성 양식을 내지 않는다. 보관은 그대로 할
+	// 수 있고, 있는 계획 · 서명 · 플레이북은 그대로 둔다.
+	ScopeProblem string
 }
+
+// 06이 계획을 서명 · 생성하지 않는 정책 쪽 사유. 검사 순서(계획 ID 형식 → 동일성 → 계획 파일 해시 → 정책 지문)와 같다.
+const (
+	PlanScopeBadID        = "bad-id"       // 계획 ID가 05가 쓰는 모양이 아니다
+	PlanScopeIdentity     = "identity"     // 계획 ID의 조직이 이 작업 폴더의 조직이 아니다
+	PlanScopeNoReceipt    = "no-receipt"   // 그 세션의 확정 영수증이 이 상태 디렉토리에 없다
+	PlanScopePlanHash     = "plan-hash"    // 계획 파일이 그 영수증이 적은 내용이 아니다
+	PlanScopeUnverifiable = "unverifiable" // 영수증에 정책 지문이 없다(이 판보다 먼저 확정)
+	PlanScopeMismatch     = "mismatch"     // 계획을 만든 정책이 지금 활성 정책과 다르다
+)
 
 // PlanSummary — 계획에서 승인자가 볼 것.
 type PlanSummary struct {
@@ -128,19 +142,37 @@ func (v ApproveView) Summary() ApproveSummary {
 // CanSign — 서명 양식을 낼 수 있는가. 계획이 있고, 키가 쓸 만하고, **서명한 계획 파일이 아직 없어야 한다.** 있는
 // 파일은 어떤 경우에도 덮지 않는다(낡았으면 운영자가 먼저 보관한다).
 func (v ApproveView) CanSign() bool {
-	return v.Writable && v.Plan != nil && v.Key.State == KeyOK && v.Signed.State == SignNone && v.RulesetProblem == ""
+	return v.Writable && v.Plan != nil && v.Key.State == KeyOK && v.Signed.State == SignNone && v.RulesetProblem == "" &&
+		v.ScopeProblem == ""
 }
 
 // CanArchive — 지난 서명을 보관할 수 있는가. 지금 계획과 맞지 않거나 이 키로 확인되지 않는 서명이 있을 때, 그리고 규칙 판이
 // 맞지 않는 서명된 계획이 있을 때다(그 계획으로는 다시 서명도 생성도 하지 않으므로, 옮겨 두어야 새 회차의 계획을 서명한다).
 func (v ApproveView) CanArchive() bool {
 	return v.Writable && (v.Signed.State == SignStale || v.Signed.State == SignInvalid ||
-		(v.RulesetProblem != "" && v.Signed.State != SignNone))
+		((v.RulesetProblem != "" || v.ScopeProblem != "") && v.Signed.State != SignNone))
 }
 
 // CanGenerate — 생성 양식을 낼 수 있는가. 서명이 지금 계획과 맞고 이 키로 확인돼야 한다.
 func (v ApproveView) CanGenerate() bool {
-	return v.Writable && v.Signed.State == SignValid && v.Key.State == KeyOK && v.RulesetProblem == ""
+	return v.Writable && v.Signed.State == SignValid && v.Key.State == KeyOK && v.RulesetProblem == "" && v.ScopeProblem == ""
+}
+
+// ScopeText — 정책 쪽 거절의 화면 말. **지금 계획(plan.json)의 문제로 적는다.** 서명한 계획의 문제로 읽히면 운영자가
+// 서명을 보관하면 풀린다고 여긴다.
+func (v ApproveView) ScopeText() string {
+	switch v.ScopeProblem {
+	case "":
+		return ""
+	case PlanScopeBadID, PlanScopeIdentity, PlanScopeNoReceipt:
+		return tPlanScopeNotHere.In(v.Page.Lang)
+	case PlanScopePlanHash:
+		return tPlanScopeChanged.In(v.Page.Lang)
+	case PlanScopeMismatch:
+		return tPlanScopeMismatch.In(v.Page.Lang)
+	default:
+		return tPlanScopeUnverifiable.In(v.Page.Lang)
+	}
 }
 
 // RulesetText — 규칙 판 거절의 화면 말.

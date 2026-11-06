@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,6 +21,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
@@ -28,8 +30,54 @@ import (
 func keyReady(t *testing.T) (*server, string) {
 	t.Helper()
 	s := everyScreen(t)
+	bindPlan(t, s, planJSON)
 	s.approvalKey = filepath.Join(t.TempDir(), "approval.key")
 	return s, writeKey(t, s.approvalKey)
+}
+
+// bindPlan: 05 확정이 하는 그대로 계획을 쓴다. 계획과 형식 2 영수증(지금 활성 정책의 지문)이 한 트랜잭션이다. 06은 이
+// 작업 폴더의 확정 기록과 이어진 계획만 서명 · 생성한다.
+func bindPlan(t *testing.T, s *server, content string) string {
+	t.Helper()
+	pd, err := scope.PolicyFileDigest(s.scopeAssets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bindPlanUnder(t, s, content, pd)
+}
+
+// bindPlanUnder: bindPlan과 같되 영수증에 적을 정책 지문을 고른다. 비우면 형식 1 영수증이다(이 판보다 먼저 확정한 계획).
+// 계획 ID는 이 작업 폴더의 판정 세션 plan-N(아직 확정하지 않은 가장 작은 N)이고, 그 ID를 돌려준다.
+func bindPlanUnder(t *testing.T, s *server, content, policy string) string {
+	t.Helper()
+	plan := &provisioningv1.FinalizedPlan{}
+	if err := protojson.Unmarshal([]byte(content), plan); err != nil {
+		t.Fatal(err)
+	}
+	var id store.Identity
+	for n := 1; ; n++ {
+		id = store.Identity{Kind: kindReview, Org: s.orgName(), SessionID: fmt.Sprintf("plan-%d", n)}
+		rc, err := s.st.Finalized(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rc == nil {
+			break
+		}
+	}
+	plan.Id = planIDPrefix + id.Org + ":" + id.SessionID
+	b, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b = append(b, '\n')
+	if _, err := s.st.FinalizeChecked(id, []string{s.planOut}, store.Check{}, store.Sum(b), time.Second, func() (store.Parts, error) {
+		return store.Parts{PayloadSHA256: store.Sum(b), ScopePolicy: policy,
+			Replace: []store.Change{{Path: s.planOut, Content: b, Backup: true}}}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return plan.Id
 }
 
 // writeKey: 새 키 쌍을 만들어 pqcota-keygen의 출력 모양으로 쓰고 공개 키를 돌려준다.
@@ -268,9 +316,7 @@ func TestPlaybooksMatchUpstreamAndGoStale(t *testing.T) {
 	s, _ := keyReady(t)
 	// 빈 곳을 세는 것을 보려면 실제로 빈 곳이 있어야 한다. 목표 알고리즘을 비운 계획이다(근거와 규칙 판은 05가 싣는 그대로다).
 	gapped := strings.Replace(planJSON, `"targetAlgorithm":"ML-KEM (FIPS 203)"`, `"targetAlgorithm":""`, 1)
-	if err := os.WriteFile(s.planOut, []byte(gapped), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	bindPlan(t, s, gapped)
 	if w := signVia(t, s, "보안팀장"); w.Code != http.StatusSeeOther {
 		t.Fatalf("sign = %d", w.Code)
 	}
@@ -305,9 +351,7 @@ func TestPlaybooksMatchUpstreamAndGoStale(t *testing.T) {
 	}
 
 	changed := strings.Replace(planJSON, "ML-KEM (FIPS 203)", "ML-KEM-768", 1)
-	if err := os.WriteFile(s.planOut, []byte(changed), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	bindPlan(t, s, changed)
 	page = get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
 	if got := cards(t, page)["06"]; got != "서명이 지금 계획과 맞지 않습니다" {
 		t.Errorf("card 06 after the plan changed = %q", got)
@@ -448,9 +492,7 @@ func TestOldRulesetPlansAreViewedNotSignedOrGenerated(t *testing.T) {
 		t.Fatal("the fixture did not change")
 	}
 	s, _ := keyReady(t)
-	if err := os.WriteFile(s.planOut, []byte(old), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	bindPlan(t, s, old)
 	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
 	if strings.Contains(page, `action="`+ui.SignConfirmPath+`"`) || !strings.Contains(page, "다른 상류 규칙 판으로 판정됐습니다") {
 		t.Errorf("the 06 screen offers to sign an old-ruleset plan, or does not say why not")
@@ -495,9 +537,7 @@ func TestOldRulesetPlansAreViewedNotSignedOrGenerated(t *testing.T) {
 		t.Error("existing playbooks were overwritten")
 	}
 	// 지금 계획을 지금 규칙 판으로 바꾸면(새 회차에서 다시 확정한 뒤) 맞지 않는 것은 서명된 계획 쪽이고, 화면이 그렇게 말한다.
-	if err := os.WriteFile(s.planOut, []byte(planJSON), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	bindPlan(t, s, planJSON)
 	page = get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
 	if !strings.Contains(page, "서명한 계획(plan.signed.json)이 지금과 다른 상류 규칙 판으로") || strings.Contains(page, "이 계획은 지금과 다른 상류 규칙 판으로") {
 		t.Error("the screen does not say that it is the signed plan whose ruleset differs")

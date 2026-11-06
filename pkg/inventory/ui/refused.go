@@ -41,6 +41,9 @@ const (
 	RefusedRulesetChanged = "ruleset-changed"
 	// RefusedPlanRuleset — 계획의 규칙 판이 지금 도구와 맞지 않아 서명 · 생성하지 않았다(409).
 	RefusedPlanRuleset = "plan-ruleset"
+	// RefusedPlanScope — 계획이 이 작업 폴더의 확정 기록과 이어지지 않거나, 그 계획을 만든 자산 스코프 정책이 지금 활성
+	// 정책과 달라 서명 · 생성하지 않았다(409).
+	RefusedPlanScope = "plan-scope"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
 	ErrNotFound     = "not-found"     // 404
@@ -64,6 +67,7 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
 	RefusedRulesetChanged: {body: tRefusedRulesetChanged},
 	RefusedPlanRuleset:    {tSignRefusedHead, tRefusedPlanRuleset},
+	RefusedPlanScope:      {tSignRefusedHead, tRefusedPlanScope},
 	ErrNotFound:           {tErrNotFoundHead, tErrNotFound},
 	ErrMethod:             {tErrMethodHead, tErrMethod},
 	ErrBadRequest:         {tErrBadRequestHead, tErrBadRequest},

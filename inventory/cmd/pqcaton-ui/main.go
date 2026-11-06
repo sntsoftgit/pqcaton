@@ -755,8 +755,14 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return store.Parts{}, err
 		}
+		// 이 계획을 만든 활성 정책의 지문. 영수증(형식 2)에 계획과 한 트랜잭션으로 적고, 06이 지금 활성 정책과 견준다.
+		// 세션과 같은 잠금 안에서 같은 파일을 읽는다. 그 사이 파일이 바뀌면 rev 재확인이 쓰기를 막는다.
+		pd, err := scope.PolicyFileDigest(s.scopeAssets)
+		if err != nil {
+			return store.Parts{}, err
+		}
 		written = o
-		parts := store.Parts{PayloadSHA256: p, Replace: []store.Change{
+		parts := store.Parts{PayloadSHA256: p, ScopePolicy: pd, Replace: []store.Change{
 			{Path: s.path, Content: o.Session}, {Path: s.planOut, Content: o.Plan, Backup: true}}}
 		if withJudg && len(o.Judgments) > 0 {
 			parts.Append = []store.Addition{{Path: s.judgments, Data: o.Judgments}}

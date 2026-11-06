@@ -158,7 +158,17 @@ type Parts struct {
 	Replace       []Change
 	Append        []Addition
 	PayloadSHA256 string
+	// ScopePolicy: 출력을 만든 자산 스코프 정책의 지문(scope.PolicyDigest). 주면 영수증을 형식 2로 쓰고 이 값을 적는다.
+	// 비우면 형식 1이다. **형식 2는 지문 없이 쓸 수 없다**: 형식은 이 값이 있는지로만 정해지고, 값은 지문의 모양이어야
+	// 한다(ErrPolicyDigest). 영수증은 출력과 같은 트랜잭션의 마지막 항목이라 계획과 지문이 따로 남지 않는다.
+	ScopePolicy string
 }
+
+// ErrPolicyDigest: 영수증에 적으려는 정책 지문이 지문의 모양이 아니다. 아무것도 쓰지 않았다.
+var ErrPolicyDigest = errors.New("store: not a scope policy digest")
+
+// policyDigestShape: scope.PolicyDigest의 모양(판 접두어 + SHA-256). 저장소는 scope를 모르므로 모양만 본다.
+var policyDigestShape = regexp.MustCompile(`^scope-policy-v[1-9][0-9]*:[0-9a-f]{64}$`)
 
 // FinalizeChecked: 세션을 확정한다. 순서는 잠금 → 남은 기록 복구 → 영수증 확인 → rev 확인 →
 // build → payload 확인 → 쓰기이고, 모두 한 잠금 안에서 일어난다.
@@ -194,12 +204,15 @@ func (s *State) FinalizeChecked(id Identity, targets []string, chk Check, payloa
 		if parts.PayloadSHA256 != payloadSHA256 {
 			return fmt.Errorf("%w: the content to finalize is not what was confirmed", ErrStale)
 		}
+		if parts.ScopePolicy != "" && !policyDigestShape.MatchString(parts.ScopePolicy) {
+			return fmt.Errorf("%w: %q", ErrPolicyDigest, parts.ScopePolicy)
+		}
 		tx := Tx{Kind: id.Kind, Org: id.Org, SessionID: id.SessionID, PayloadSHA256: payloadSHA256,
 			Replace: parts.Replace, Append: parts.Append}
 		if err := within(tx, targets); err != nil {
 			return err
 		}
-		out, err = s.finalizeLocked(id, tx, chk)
+		out, err = s.finalizeLocked(id, tx, chk, parts.ScopePolicy)
 		return err
 	})
 	return out, err
@@ -220,8 +233,8 @@ func (s *State) Finalize(id Identity, payloadSHA256 string, replace []Change, ad
 }
 
 // finalizeLocked: 영수증을 마지막 항목으로 붙여 트랜잭션을 한다. 잠금 안에서 부른다.
-func (s *State) finalizeLocked(id Identity, tx Tx, chk Check) (Outcome, error) {
-	rc, err := s.newReceipt(tx)
+func (s *State) finalizeLocked(id Identity, tx Tx, chk Check, scopePolicy string) (Outcome, error) {
+	rc, err := s.newReceipt(tx, scopePolicy)
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -406,10 +419,52 @@ func (s *State) Finalized(id Identity) (*Receipt, error) {
 	return s.readReceipt(id)
 }
 
+// Validate: 영수증의 동일성으로 쓸 수 있는가(종류 · 조직 · 세션 ID에 경로 구분자나 「..」가 없다).
+func (id Identity) Validate() error { return id.check() }
+
+// ErrNoReceipt: 그 세션의 영수증이 없다(확정하지 않았거나 다른 상태 디렉토리에서 확정했다).
+var ErrNoReceipt = errors.New("store: no receipt for this session")
+
+// ErrOutputMismatch: 영수증이 그 파일을 출력으로 적지 않았거나, 파일의 지금 내용이 영수증이 적은 것과 다르다.
+var ErrOutputMismatch = errors.New("store: the file is not what this session finalized")
+
+// OutputReceipt — path를 **지금 내용 그대로** 쓴 세션 id의 영수증. 06이 계획 파일을 그 계획을 쓴 확정에 잇는 자리다.
+// 영수증이 없으면 ErrNoReceipt, 영수증의 출력에 path가 없거나 해시가 다르면 ErrOutputMismatch다. 동일성이 쓸 수 없는
+// 모양이면 그 오류를 그대로 돌려준다.
+func (s *State) OutputReceipt(id Identity, path string) (*Receipt, error) {
+	rc, err := s.Finalized(id)
+	if err != nil {
+		return nil, err
+	}
+	if rc == nil {
+		return nil, fmt.Errorf("%w (%s)", ErrNoReceipt, id)
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	cur, _, err := hashFile(abs)
+	if err != nil {
+		return nil, err
+	}
+	for _, o := range rc.Outputs {
+		if o.Path == s.rel(abs) && o.SHA256 == cur {
+			return rc, nil
+		}
+	}
+	return nil, fmt.Errorf("%w (%s, %s)", ErrOutputMismatch, id, s.rel(abs))
+}
+
 // newReceipt: 쓰기 전 지금 상태로 영수증을 만든다. 잠금 안에서 부른다.
-func (s *State) newReceipt(tx Tx) (Receipt, error) {
+func (s *State) newReceipt(tx Tx, scopePolicy string) (Receipt, error) {
 	rc := Receipt{Format: receiptFormat, Kind: tx.Kind, Org: tx.Org, SessionID: tx.SessionID,
 		PayloadSHA256: tx.PayloadSHA256, Finished: time.Now().UTC()}
+	if scopePolicy != "" {
+		if !policyDigestShape.MatchString(scopePolicy) {
+			return rc, fmt.Errorf("%w: %q", ErrPolicyDigest, scopePolicy)
+		}
+		rc.Format, rc.ScopePolicy = receiptFormatPolicy, scopePolicy
+	}
 	// 순번은 잠금 안에서 지금까지의 최댓값 + 1이다. 같은 출력을 쓰는 확정은 같은 디렉토리 잠금을
 	// 지나므로 차례로 번호를 받는다. 출력이 겹치지 않는 확정끼리는 번호가 같을 수 있지만, 그때는
 	// 앞뒤를 물을 일이 없다.

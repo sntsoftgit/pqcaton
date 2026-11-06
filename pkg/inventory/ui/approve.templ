@@ -79,6 +79,9 @@ templ approveSign(v ApproveView) {
 	if v.RulesetProblem != "" {
 		<p class="msg bad">{ v.RulesetText() }</p>
 	}
+	if v.ScopeProblem != "" {
+		<p class="msg bad">{ v.ScopeText() }</p>
+	}
 	switch v.Signed.State {
 		case SignValid:
 			<p class="msg ok">{ tSignedValid.F(v.Page.Lang, joinNames(v.Signed.Approvers), v.Signed.At.Format("2006-01-02 15:04")) }</p>
@@ -164,6 +167,8 @@ templ approveGenerate(v ApproveView) {
 		</form>
 	} else if v.RulesetProblem != "" {
 		<p class="lede">{ tGenRulesetBlocked.In(v.Page.Lang) }</p>
+	} else if v.ScopeProblem != "" {
+		<p class="lede">{ tGenScopeBlocked.In(v.Page.Lang) }</p>
 	} else if v.Signed.State != SignValid {
 		<p class="lede">{ tGenNeedsSign.In(v.Page.Lang) }</p>
 	}

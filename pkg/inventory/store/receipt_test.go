@@ -311,3 +311,70 @@ func TestReceiptFormatsAndPolicyDigest(t *testing.T) {
 		re.Close()
 	}
 }
+
+// IC-W58 — 정책 지문을 주면 영수증이 형식 2이고 그 지문을 적는다. 영수증은 출력과 같은 트랜잭션의 마지막 항목이다.
+// **형식 2는 지문 없이 쓸 수 없다**: 지문의 모양이 아니면 ErrPolicyDigest이고 계획도 영수증도 쓰지 않는다.
+// OutputReceipt는 계획 파일을 지금 내용 그대로 쓴 세션의 영수증만 돌려준다.
+func TestFinalizeRecordsThePolicyDigest(t *testing.T) {
+	const digest = "scope-policy-v1:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+	finalize := func(s *State, w world, id Identity, policy string) (Outcome, error) {
+		payload := Sum([]byte(planV2 + ledgerAdd))
+		return s.FinalizeChecked(id, []string{w.plan, w.session, w.ledger}, Check{}, payload, time.Second, func() (Parts, error) {
+			return Parts{PayloadSHA256: payload, ScopePolicy: policy,
+				Replace: []Change{{Path: w.plan, Content: []byte(planV2), Backup: true}, {Path: w.session, Content: []byte("finalized\n")}},
+				Append:  []Addition{{Path: w.ledger, Data: []byte(ledgerAdd)}}}, nil
+		})
+	}
+
+	w := newWorld(t)
+	s := w.open(t, nil)
+	snap := w.snapshot(t)
+	for _, bad := range []string{"not-a-digest", "scope-policy-v1:abc", "scope-policy-v0:" + strings.Repeat("a", 64), digest + "\n"} {
+		if _, err := finalize(s, w, sessA, bad); !errors.Is(err, ErrPolicyDigest) {
+			t.Errorf("policy %q: err = %v, want ErrPolicyDigest", bad, err)
+		}
+	}
+	for k, v := range w.snapshot(t) {
+		if snap[k] != v {
+			t.Errorf("%s changed although the digest was refused", k)
+		}
+	}
+	if rc, _ := s.readReceipt(sessA); rc != nil {
+		t.Fatal("a receipt was written for a refused digest")
+	}
+
+	out, err := finalize(s, w, sessA, digest)
+	if err != nil || out.Status != OutcomeDone {
+		t.Fatalf("finalize = %+v, %v", out, err)
+	}
+	rc, err := s.readReceipt(sessA)
+	if err != nil || rc == nil {
+		t.Fatal(err)
+	}
+	if got, ok := rc.PolicyDigest(); rc.Format != receiptFormatPolicy || !ok || got != digest {
+		t.Errorf("receipt format %d digest %q %v; want format %d with %q", rc.Format, got, ok, receiptFormatPolicy, digest)
+	}
+	if rc.TxID == "" || len(rc.Outputs) != 2 {
+		t.Errorf("receipt %+v is not the last item of the finalize transaction", rc)
+	}
+
+	if got, err := s.OutputReceipt(sessA, w.plan); err != nil || got.TxID != rc.TxID {
+		t.Errorf("OutputReceipt for the finalized plan = %v, %v", got, err)
+	}
+	other := Identity{Kind: "review", Org: "local", SessionID: "never-finalized"}
+	if _, err := s.OutputReceipt(other, w.plan); !errors.Is(err, ErrNoReceipt) {
+		t.Errorf("another session: err = %v, want ErrNoReceipt", err)
+	}
+	if _, err := s.OutputReceipt(sessA, w.ledger); !errors.Is(err, ErrOutputMismatch) {
+		t.Errorf("a file the session did not output as a replacement: err = %v, want ErrOutputMismatch", err)
+	}
+	if err := os.WriteFile(w.plan, []byte(planV2+" "), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.OutputReceipt(sessA, w.plan); !errors.Is(err, ErrOutputMismatch) {
+		t.Errorf("the plan changed after finalize: err = %v, want ErrOutputMismatch", err)
+	}
+	if _, err := s.OutputReceipt(Identity{Kind: "review", Org: "../x", SessionID: "s"}, w.plan); err == nil {
+		t.Error("an unusable identity was looked up")
+	}
+}

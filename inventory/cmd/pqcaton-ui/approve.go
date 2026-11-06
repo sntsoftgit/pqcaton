@@ -70,6 +70,10 @@ func (s *server) approveInputs() []store.Input {
 	if s.approvalKey != "" {
 		in = append(in, store.Input{Name: "approval-key", Path: s.approvalKey})
 	}
+	// **활성 정책도 넣는다.** 06은 계획을 만든 정책과 이것을 견주므로, 화면을 그린 뒤 정책이 바뀌면 오래된 화면이다.
+	if s.scopeAssets != "" {
+		in = append(in, store.Input{Name: "scope-assets", Path: s.scopeAssets})
+	}
 	return in
 }
 
@@ -234,6 +238,11 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	// 규칙 판이 맞지 않는 계획은 서명하지 않는다. 서명된 계획이 있으면 그것도 본다(생성은 서명된 계획으로 한다).
 	if err := review.CheckPlanRuleset(plan); err != nil {
 		v.RulesetProblem = rulesetReason(err)
+	}
+	// 이 작업 폴더에서 확정한 계획인가, 그 계획을 만든 정책이 지금 활성 정책인가. 생성은 서명한 계획으로 하지만 서명한
+	// 계획은 지금 계획과 내용이 같아야 하므로(sameContent) 지금 계획 하나를 보면 된다.
+	if err := s.checkPlanScope(plan); err != nil {
+		v.ScopeProblem = planScopeReason(err)
 	}
 	signed, err := loadPlanFile(s.signedPath())
 	if err != nil {
@@ -424,6 +433,11 @@ func (s *server) approveSignConfirm(w http.ResponseWriter, r *http.Request) {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
 		return
 	}
+	if err := s.checkPlanScope(plan); err != nil {
+		fmt.Fprintln(os.Stderr, "approve:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanScope, back, nil)
+		return
+	}
 	l := ui.PickLang(r)
 	lines := ui.SignConfirmLines(l, plan.GetId(), len(plan.GetActions()), strings.SplitN(payload, "|", 2)[0], approver, key.Fingerprint)
 	files := []ui.FileRef{file(l, "plan", s.planOut), file(l, "signed-plan", s.signedPath())}
@@ -481,6 +495,10 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 		if err := review.CheckPlanRuleset(plan); err != nil {
 			return nil, err
 		}
+		// 잠금 안에서 다시 잰다. 확인 페이지를 연 뒤에 정책이 활성화됐거나 계획이 바뀌었으면 서명하지 않는다.
+		if err := s.checkPlanScope(plan); err != nil {
+			return nil, err
+		}
 		if err := provisioning.PrepareApproval(plan, s.now()); err != nil {
 			return nil, fmt.Errorf("%w: %v", errNotApprovable, err)
 		}
@@ -497,6 +515,10 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, review.ErrPlanRuleset):
 		fmt.Fprintln(os.Stderr, "approve:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
+		return
+	case errors.Is(err, errPlanScope):
+		fmt.Fprintln(os.Stderr, "approve:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanScope, back, nil)
 		return
 	case errors.Is(err, errExists):
 		s.refuse(w, r, http.StatusConflict, ui.RefusedSignedExists, back, []ui.FileRef{file(l, "signed-plan", s.signedPath())})
@@ -577,6 +599,17 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 	errNotReady := errors.New("not ready")
 	id := store.Identity{Kind: kindProvision, Org: s.orgName(), SessionID: "playbooks"}
 	err := s.st.SaveChecked(id, []string{s.provisionPath(), s.rollbackPath()}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
+		// 잠금 안에서 정책 지문을 다시 잰다. 정책 문제를 「준비 안 됨」보다 먼저 알린다.
+		plan, err := loadPlanFile(s.planOut)
+		if err != nil {
+			return nil, err
+		}
+		if plan == nil {
+			return nil, errNotReady
+		}
+		if err := s.checkPlanScope(plan); err != nil {
+			return nil, err
+		}
 		v, err := s.approveModel(ui.Page{})
 		if err != nil {
 			return nil, err
@@ -604,6 +637,11 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, review.ErrPlanRuleset) {
 		fmt.Fprintln(os.Stderr, "generate:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
+		return
+	}
+	if errors.Is(err, errPlanScope) {
+		fmt.Fprintln(os.Stderr, "generate:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanScope, back, nil)
 		return
 	}
 	if errors.Is(err, errNotReady) {
