@@ -117,6 +117,8 @@ type ReviewView struct {
 	// ScopeLock — 저장된 세션을 지금 자산 스코프 정책으로 이어 쓸 수 없는 까닭(review.ScopeLock*). 비면 이어 쓴다. 칸을
 	// 잠그고, 기준선이면 운영자 확인과 기준선 회차 단추를, 승인되지 않은 변경이면 두 가지 할 일만 보인다.
 	ScopeLock string
+	// Activation — 02에서 확정한 정책이 활성 정책과 달라 활성화할 수 있으면 그 내용. 없으면 nil이다.
+	Activation *ActivationOffer
 	// RulesetChange · Report — 이 세션이 규칙 전환 회차로 열렸으면 그 기록과 변환 보고서(서버가 읽어 넣는다. 없으면 nil).
 	RulesetChange *review.RulesetChangeRef
 	Report        *review.RulesetChangeReport
@@ -768,4 +770,9 @@ func RenderLayerCreate(w io.Writer, v LayerCreateView) error {
 // RenderDeclCreate — 선언 만들기 화면을 그린다.
 func RenderDeclCreate(w io.Writer, v DeclCreateView) error {
 	return declCreatePage(v).Render(context.Background(), w)
+}
+
+// ActivationOffer — 05 위쪽에 띄우는 「새 정책 활성화」. From · To는 활성 정책과 02 확정 정책의 지문이다.
+type ActivationOffer struct {
+	From, To string
 }

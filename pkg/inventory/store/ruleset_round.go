@@ -49,6 +49,9 @@ type RulesetRound struct {
 	FromPolicy, ToPolicy string
 	// Receipt: 있으면 회차와 한 트랜잭션으로 형식 2 영수증을 쓴다. 이미 있으면 ErrStale이고 아무것도 쓰지 않는다.
 	Receipt *RoundReceipt
+	// PolicyReplace · PolicyArchive: 활성화 회차가 함께 쓰는 것. 활성 정책 파일을 새 정책으로 바꾸고(Replace), 옛 정책의
+	// 바이트를 보관본으로 만든다(Create, 없던 자리여야 한다). 둘 다 잠금 전에 대상으로 밝혀야 한다.
+	PolicyReplace, PolicyArchive *Change
 }
 
 // OpenRulesetRound: 세션 from에서 규칙 전환 회차 to를 연다. targets는 쓸 파일들(보관본 · 새 세션 · 보고서)이다.
@@ -138,6 +141,12 @@ func (s *State) OpenRulesetRound(from, to Identity, targets []string, chk Check,
 		if abs, err := filepath.Abs(r.Report.Path); err == nil {
 			mark.Report = s.rel(abs)
 		}
+		if r.PolicyReplace != nil {
+			tx.Replace = append(tx.Replace, *r.PolicyReplace)
+		}
+		if r.PolicyArchive != nil {
+			tx.Create = append(tx.Create, *r.PolicyArchive)
+		}
 		if rc != nil {
 			// 확정된 세션이었다. 영수증은 고치지 않고, 그 해시를 표지에 적어 옛 영수증 · 옛 세션 · 새 세션을 잇는다.
 			rb, err := s.readPrivate(s.receiptPath(from))
@@ -199,7 +208,7 @@ func (s *State) OpenRulesetRound(from, to Identity, targets []string, chk Check,
 			if err != nil {
 				return err
 			}
-			nr.Round = &ReceiptRound{FromSessionSHA256: hex.EncodeToString(sum[:]), ToSessionID: to.SessionID}
+			nr.Round = &ReceiptRound{FromSessionSHA256: hex.EncodeToString(sum[:]), ToSessionID: to.SessionID, FromPolicy: r.FromPolicy}
 			rc2 = &nr
 			rp := s.receiptPath(rid)
 			if err := mkdirPrivate(filepath.Dir(rp)); err != nil {

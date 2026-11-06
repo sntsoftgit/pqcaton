@@ -111,7 +111,9 @@ func (s *server) declInputs() []store.Input {
 // inputsFor: 화면(GET) 또는 저장 주소(POST)가 덮는 입력. 양식이 없는 화면은 nil이다.
 func (s *server) inputsFor(where string) []store.Input {
 	switch where {
-	case ui.ScreenReview, "/save", "/finalize", "/finalize/confirm", ui.ReviewNewPath, ui.ReviewRulesetRoundPath, ui.ReviewScopeBaselinePath:
+	case ui.ScreenReview, "/save", "/finalize", "/finalize/confirm", ui.ReviewNewPath, ui.ReviewRulesetRoundPath, ui.ReviewScopeBaselinePath,
+		// 활성화의 rev는 판정 화면과 같은 입력이다. 후보 정책은 확인 지문(payload)과 회차의 잠금 안 재검사가 덮는다.
+		ui.ReviewScopeActivateConfirmPath, ui.ReviewScopeActivatePath:
 		return s.reviewInputs()
 	case ui.ScreenScope, "/scope/save", "/scope/rules", "/scope/finalize", "/scope/finalize/confirm", ui.ScopeNewPath:
 		if s.scope == "" {

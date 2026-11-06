@@ -50,6 +50,11 @@ const (
 	ReviewScopeBaselinePath = "/review/scope-baseline"
 	// ScopeBaselineConfirmField — 기준선 회차의 운영자 확인 칸. 체크하지 않으면 회차를 열지 않는다.
 	ScopeBaselineConfirmField = "ingest-confirmed"
+	// ReviewScopeActivateConfirmPath · ReviewScopeActivatePath — 02에서 확정한 정책을 활성화하는 확인(POST)과 실행(POST).
+	ReviewScopeActivateConfirmPath = "/review/scope-activate/confirm"
+	ReviewScopeActivatePath        = "/review/scope-activate"
+	// ScopeActivateConfirmField — 상류 적재를 새 정책으로 다시 마쳤다는 운영자 진술. 체크하지 않으면 활성화하지 않는다.
+	ScopeActivateConfirmField = "reingested"
 	ScopeNewPath              = "/scope/new"
 	// HostsSavePath — 03 관측 화면의 접근 정보 저장.
 	HostsSavePath = "/observe/hosts"

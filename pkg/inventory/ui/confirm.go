@@ -37,6 +37,23 @@ type ConfirmView struct {
 	Token, Exp, Payload, SessionID string
 	// Sign — 확정이 아니라 06의 승인 서명을 확인한다. 제목 · 안내 · 단추 · 돌아가기의 말이 서명의 것이 된다.
 	Sign bool
+	// Activate — 확정이 아니라 자산 스코프 정책 활성화를 확인한다. 말이 활성화의 것이 된다.
+	Activate bool
+}
+
+// ActivateConfirmTitle: 정책 활성화 확인 페이지의 제목.
+func ActivateConfirmTitle(l Lang) string { return tActivateConfirmTitle.In(l) }
+
+// ActivateConfirmLines: 활성화 확인 페이지에 적을 것. 두 지문, 바뀌는 파일과 보관 자리, 되돌리기 제한과 백업 위치, 운영자
+// 진술의 한계를 모두 적는다.
+func ActivateConfirmLines(l Lang, from, to, policy, policyArchive, candidate string) []string {
+	return []string{
+		tActivateLineFrom.F(l, from), tActivateLineTo.F(l, to, candidate),
+		tActivateLineFiles.F(l, policy, policyArchive),
+		tActivateLineRound.In(l),
+		tActivateLineDowngrade.In(l),
+		tScopeConfirmLimit.In(l),
+	}
 }
 
 // confirmOwn: 확인 페이지가 직접 싣는 필드. 받은 폼에서 다시 싣지 않는다.

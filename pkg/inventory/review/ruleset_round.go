@@ -86,6 +86,8 @@ type ScopeChangeRef struct {
 // 정책 회차의 종류.
 const (
 	ScopeRoundBaseline = "scope-baseline"
+	// ScopeRoundActivation — 02에서 확정한 정책을 활성화하며 연 회차.
+	ScopeRoundActivation = "scope-activation"
 )
 
 const scopeReportNote = "The asset-scope policy this session is judged under changed or was adopted as a baseline. What is managed " +

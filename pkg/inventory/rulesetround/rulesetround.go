@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	invscope "github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 )
 
@@ -34,6 +35,22 @@ var ErrNotBaseline = errors.New("the session already records an asset-scope poli
 
 // ScopeBaselineReceipt — 기준선 회차의 영수증 종류.
 const ScopeBaselineReceipt = review.ScopeRoundBaseline
+
+// ScopeActivationReceipt — 활성화 회차의 영수증 종류.
+const ScopeActivationReceipt = review.ScopeRoundActivation
+
+// ErrSamePolicy — 활성 정책과 후보 정책이 의미상 같다. 활성화할 것이 없다(아무것도 쓰지 않는다).
+var ErrSamePolicy = errors.New("the candidate policy is the active policy; nothing to activate")
+
+// ErrNoCandidate — 활성화할 후보 정책 파일이 없거나 읽을 수 없거나 형식이 틀렸다. 활성화하지 않는다.
+var ErrNoCandidate = errors.New("the candidate policy is missing or cannot be read")
+
+// Activation — 활성화 회차의 입력. PolicyPath는 활성 정책 파일(scope-assets.csv, 없어도 된다), CandidatePath는 02에서 확정한
+// 정책(asset-scope.csv, 있어야 한다). From · To는 확인 페이지가 본 두 지문이다. 잠금 안에서 다시 재어 다르면 ErrStale이다.
+type Activation struct {
+	PolicyPath, CandidatePath string
+	From, To                  string
+}
 
 // ErrOrgMismatch — 옛 세션 · 다시 세운 세션 · 요청한 조직이 같지 않다. 항목 ID가 같아도 다른 조직의 결론을 옮기지 않는다.
 var ErrOrgMismatch = errors.New("the old session, the rebuilt session and the requested organization are not the same organization")
@@ -78,6 +95,9 @@ type Request struct {
 	// 정책 지문이 없는 옛 세션에서만 열고, 다시 세운 세션의 지문이 이 값이어야 하며, scope-baseline 형식 2 영수증을 함께
 	// 쓴다. 비어 있으면 규칙 전환 회차다.
 	Baseline string
+	// Activation: 있으면 **활성화 회차**다. 활성 정책을 후보 정책으로 바꾸고, 옛 정책을 보관하고, 옛 세션을 새 정책으로 다시
+	// 세운 새 세션에 넘기며, scope-activation 형식 2 영수증을 쓴다. 모두 한 트랜잭션이다. Rebuild는 **후보 정책으로** 세워야 한다.
+	Activation *Activation
 }
 
 // Result — 연 회차.
@@ -105,6 +125,52 @@ func Names(oldPath, outPath string, old review.Session, oldBytes []byte) (archiv
 	return archive, report
 }
 
+// activationNames — 활성화 회차의 보관본 · 보고서 · 정책 보관본 자리. 정책 보관본은 옛 정책 지문과 옛 세션으로 가른다(같은
+// 이름이 있으면 ErrExists로 아무것도 쓰지 않는다).
+func activationNames(oldPath, outPath, policyPath, from string, old review.Session, oldBytes []byte) (archive, report, policyArchive string) {
+	key := old.SessionID
+	if !safeKey.MatchString(key) {
+		key = strings.TrimPrefix(internalID(oldPath, "", oldBytes), "unnamed-")[:12]
+	}
+	base := strings.TrimSuffix(filepath.Base(oldPath), filepath.Ext(oldPath))
+	outBase := strings.TrimSuffix(filepath.Base(outPath), filepath.Ext(outPath))
+	pol := strings.TrimPrefix(from, "scope-policy-v1:")
+	if len(pol) > 12 {
+		pol = pol[:12]
+	}
+	pbase := strings.TrimSuffix(filepath.Base(policyPath), filepath.Ext(policyPath))
+	return filepath.Join(filepath.Dir(oldPath), base+".scope-activation-"+key+".json"),
+		filepath.Join(filepath.Dir(outPath), outBase+".scope-activation-report-"+key+".json"),
+		filepath.Join(filepath.Dir(policyPath), pbase+".activation-"+pol+"-"+key+filepath.Ext(policyPath))
+}
+
+// ActivationNames — 활성화 회차가 쓸 자리(세션 보관본 · 보고서 · 정책 보관본). 확인 페이지가 보인다.
+func ActivationNames(req Request) (archive, report, policyArchive string, err error) {
+	if req.Activation == nil {
+		return "", "", "", errors.New("not an activation request")
+	}
+	old, raw, err := load(req.OldPath)
+	if err != nil {
+		return "", "", "", err
+	}
+	archive, report, policyArchive = activationNames(req.OldPath, req.OutPath, req.Activation.PolicyPath, req.Activation.From, old, raw)
+	return archive, report, policyArchive, nil
+}
+
+// ActivationEvidence — 옛 세션(동일성 old, 파일 바이트 oldBytes)이 정책 from에서 to로 정식 활성화됐다는 증거가 있는가.
+// scope-activation 영수증이 **이 조직 · 이 옛 세션 · 옛 세션의 바이트 · 옛 지문 · 새 지문**을 모두 정확히 이을 때만 참이다.
+// 다른 조직이나 세션의 영수증, 다른 지문을 잇는 영수증은 증거가 아니다.
+func ActivationEvidence(st *store.State, old store.Identity, oldBytes []byte, from, to string) (bool, error) {
+	rc, err := st.RoundReceiptOf(ScopeActivationReceipt, old)
+	if err != nil || rc == nil {
+		return false, err
+	}
+	sum := sha256.Sum256(oldBytes)
+	got, ok := rc.PolicyDigest()
+	return ok && rc.Org == old.Org && rc.SessionID == old.SessionID && rc.Round != nil &&
+		rc.Round.FromSessionSHA256 == hex.EncodeToString(sum[:]) && rc.Round.FromPolicy == from && got == to && from != "", nil
+}
+
 // baselineNames — 기준선 회차의 보관본과 보고서 자리. 규칙 전환 회차와 이름이 겹치지 않는다.
 func baselineNames(oldPath, outPath string, old review.Session, oldBytes []byte) (archive, report string) {
 	key := old.SessionID
@@ -129,6 +195,10 @@ func Targets(req Request) ([]string, error) {
 	if same(req.OldPath, req.OutPath) {
 		t = append(t[1:], archive)
 	}
+	if a := req.Activation; a != nil {
+		_, _, pa := activationNames(req.OldPath, req.OutPath, a.PolicyPath, a.From, old, raw)
+		t = append(t, a.PolicyPath, pa)
+	}
 	return t, nil
 }
 
@@ -139,7 +209,18 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 	if err != nil {
 		return Result{}, err
 	}
+	if a := req.Activation; a != nil {
+		switch {
+		case a.From == a.To:
+			return Result{}, ErrSamePolicy
+		case old.ScopePolicyDigestV1 == "":
+			return Result{}, &review.ScopeChanged{Lock: review.ScopeLockBaseline}
+		case old.ScopePolicyDigestV1 != a.From:
+			return Result{}, &review.ScopeChanged{Lock: review.ScopeLockUnactivated, Session: old.ScopePolicyDigestV1, Active: a.From}
+		}
+	}
 	switch {
+	case req.Activation != nil:
 	case req.Baseline != "" && old.ScopePolicyDigestV1 != "":
 		return Result{}, ErrNotBaseline
 	case req.Baseline == "" && old.ScopePolicyDigestV1 == "":
@@ -170,7 +251,7 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 			return store.RulesetRound{}, err
 		}
 		if a, r := req.names(cur, curRaw); a != archive || r != report || cur.ScopePolicyDigestV1 != old.ScopePolicyDigestV1 ||
-			(req.Baseline == "" && !changed(cur)) {
+			(req.Baseline == "" && req.Activation == nil && !changed(cur)) {
 			return store.RulesetRound{}, fmt.Errorf("%w: %s changed while the round was being opened", store.ErrStale, req.OldPath)
 		}
 		rebuilt, err := req.Rebuild()
@@ -188,7 +269,19 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 			next review.Session
 			rep  review.RulesetChangeReport
 		)
-		if req.Baseline != "" {
+		var act *activationFiles
+		if req.Activation != nil {
+			// 잠금 안에서 두 정책을 다시 읽어 확인 페이지가 본 지문과 견준다. 후보가 없거나 깨졌으면 활성화하지 않는다.
+			af, err := readActivation(*req.Activation)
+			if err != nil {
+				return store.RulesetRound{}, err
+			}
+			if rebuilt.ScopePolicyDigestV1 != req.Activation.To {
+				return store.RulesetRound{}, fmt.Errorf("%w: the rebuilt session is not under the candidate policy", store.ErrStale)
+			}
+			act = &af
+			next, rep = review.PolicyRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName, review.ScopeRoundActivation)
+		} else if req.Baseline != "" {
 			// 운영자가 확인한 정책과 다시 세운 세션이 읽은 정책이 같아야 한다. 그 사이 파일이 바뀌었으면 쓰지 않는다.
 			if rebuilt.ScopePolicyDigestV1 != req.Baseline {
 				return store.RulesetRound{}, fmt.Errorf("%w: the asset-scope policy changed while the baseline round was being opened", store.ErrStale)
@@ -218,13 +311,54 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 			out.Reason, out.ToPolicy = review.ScopeRoundBaseline, req.Baseline
 			out.Receipt = &store.RoundReceipt{Kind: ScopeBaselineReceipt, ScopePolicy: req.Baseline}
 		}
+		if a := req.Activation; a != nil {
+			out.Reason, out.FromPolicy, out.ToPolicy = review.ScopeRoundActivation, a.From, a.To
+			out.Receipt = &store.RoundReceipt{Kind: ScopeActivationReceipt, ScopePolicy: a.To}
+			out.PolicyReplace = &store.Change{Path: a.PolicyPath, Content: act.candidate}
+			if act.active != nil {
+				_, _, pa := activationNames(req.OldPath, req.OutPath, a.PolicyPath, a.From, cur, curRaw)
+				out.PolicyArchive = &store.Change{Path: pa, Content: act.active}
+			}
+		}
 		return out, nil
 	})
 	return res, err
 }
 
+// activationFiles — 잠금 안에서 읽은 두 정책의 바이트. active는 활성 정책 파일이 없으면 nil이다.
+type activationFiles struct{ active, candidate []byte }
+
+// readActivation — 두 정책을 읽어 지문을 견준다. 활성 정책 파일이 없으면 규칙 0개 정책이다. 후보는 있어야 하고 읽혀야 한다.
+func readActivation(a Activation) (activationFiles, error) {
+	var af activationFiles
+	cand, err := os.ReadFile(a.CandidatePath)
+	if err != nil {
+		return af, fmt.Errorf("%w: %v", ErrNoCandidate, err)
+	}
+	to, err := invscope.PolicyFileDigest(a.CandidatePath)
+	if err != nil {
+		return af, fmt.Errorf("%w: %v", ErrNoCandidate, err)
+	}
+	from, err := invscope.PolicyFileDigest(a.PolicyPath)
+	if err != nil {
+		return af, err
+	}
+	if from != a.From || to != a.To {
+		return af, fmt.Errorf("%w: a policy changed after the confirmation", store.ErrStale)
+	}
+	if b, err := os.ReadFile(a.PolicyPath); err == nil {
+		af.active = b
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return af, err
+	}
+	af.candidate = cand
+	return af, nil
+}
+
 func (req Request) names(old review.Session, raw []byte) (archive, report string) {
-	if req.Baseline != "" {
+	if a := req.Activation; a != nil {
+		archive, report, _ = activationNames(req.OldPath, req.OutPath, a.PolicyPath, a.From, old, raw)
+	} else if req.Baseline != "" {
 		archive, report = baselineNames(req.OldPath, req.OutPath, old, raw)
 	} else {
 		archive, report = Names(req.OldPath, req.OutPath, old, raw)

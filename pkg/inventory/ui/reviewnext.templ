@@ -27,6 +27,9 @@ templ reviewNextPage(v ReviewView) {
 // 없거나, 다 찼거나.
 templ reviewNextTodo(v ReviewView) {
 	{{ s := v.Summary() }}
+	if v.Activation != nil && v.ScopeLock == "" {
+		@scopeActivateBox(v.Page)
+	}
 	if v.NeedsBaseline() {
 		@scopeBaselineBox(v.Page)
 	} else if v.Unactivated() {
@@ -137,6 +140,24 @@ templ scopeBaselineBox(p Page) {
 			<label class="check"><input type="checkbox" name={ ScopeBaselineConfirmField } required/> { tScopeBaselineConfirm.In(p.Lang) }</label>
 			<p class="hint">{ tScopeConfirmLimit.In(p.Lang) }</p>
 			<button class="primary">{ tScopeBaselineDo.In(p.Lang) }</button>
+		</form>
+	</div>
+}
+
+// scopeActivateBox — 02에서 확정한 정책이 활성 정책과 다를 때 05 위쪽. 상류 재적재를 마쳤다는 운영자 진술(한계 문구와 함께)을
+// 받고 확인 페이지로 간다(요청 보호 · rev).
+templ scopeActivateBox(p Page) {
+	<div class="next ruleset" role="status">
+		<div class="next-icon">!</div>
+		<div>
+			<strong>{ tActivateHead.In(p.Lang) }</strong>
+			<span>{ tActivateBody.In(p.Lang) }</span>
+		</div>
+		<form method="post" action={ templ.SafeURL(ReviewScopeActivateConfirmPath) }>
+			@csrfField(p)
+			<label class="check"><input type="checkbox" name={ ScopeActivateConfirmField } required/> { tActivateConfirm.In(p.Lang) }</label>
+			<p class="hint">{ tScopeConfirmLimit.In(p.Lang) }</p>
+			<button class="primary">{ tActivateNext.In(p.Lang) }</button>
 		</form>
 	</div>
 }

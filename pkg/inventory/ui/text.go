@@ -88,6 +88,20 @@ var (
 	tRefusedScopeConfirm = T{
 		KO: "상류 적재에 이 정책을 썼다는 확인이 없어 기준선 회차를 열지 않았습니다. 확인 칸에 체크한 뒤 다시 하십시오.",
 		EN: "The baseline round was not opened because there is no confirmation that the upstream ingest used this policy. Tick the confirmation and try again."}
+	tRefusedScopeSame           = T{KO: "02에서 확정한 정책이 이미 활성 정책과 같습니다(note · 공백만 다를 수 있습니다). 활성화할 것이 없어 아무것도 쓰지 않았습니다.", EN: "The policy finalized in 02 is already the active policy (only notes or spacing may differ). There is nothing to activate, so nothing was written."}
+	tRefusedScopeNotFinalized   = T{KO: "02에서 확정한 정책이 없거나, 확정한 뒤 asset-scope.csv가 바뀌었거나, 읽을 수 없어 활성화하지 않았습니다. 02에서 확정하십시오.", EN: "There is no policy finalized in 02, asset-scope.csv changed after it was finalized, or it cannot be read, so nothing was activated. Finalize it in 02."}
+	tActivateHead               = T{KO: "02에서 확정한 정책을 활성화할 수 있습니다", EN: "The policy finalized in 02 can be activated"}
+	tActivateBody               = T{KO: "02에서 확정한 정책(asset-scope.csv)이 지금 대조에 쓰는 활성 정책(scope-assets.csv)과 다릅니다. 상류 적재를 새 정책으로 다시 한 뒤 활성화하십시오. 활성화하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다.", EN: "The policy finalized in 02 (asset-scope.csv) differs from the active policy used for reconciliation (scope-assets.csv). Re-ingest upstream with the new policy, then activate it. Activation opens a new round rebuilt from the results; earlier conclusions are carried only as previous values."}
+	tActivateConfirm            = T{KO: "상류 적재를 이 정책으로 다시 마쳤음을 확인했습니다.", EN: "I confirmed the upstream ingest was redone with this policy."}
+	tActivateNext               = T{KO: "활성화 전 확인으로", EN: "Review before activating"}
+	tActivateConfirmTitle       = T{KO: "정책 활성화 전 확인", EN: "Before activating the policy"}
+	tActivateConfirmBody        = T{KO: "아래 내용으로 자산 스코프 정책을 활성화합니다. 아직 아무것도 쓰지 않았습니다.", EN: "The asset-scope policy will be activated as below. Nothing has been written yet."}
+	tActivateDo                 = T{KO: "새 정책 활성화", EN: "Activate the new policy"}
+	tActivateLineFrom           = T{KO: "지금 활성 정책: %s", EN: "Active policy now: %s"}
+	tActivateLineTo             = T{KO: "새 활성 정책: %s (%s)", EN: "New active policy: %s (%s)"}
+	tActivateLineFiles          = T{KO: "%s를 새 정책으로 바꾸고, 옛 정책은 %s로 보관합니다.", EN: "%s is replaced by the new policy; the old policy is archived as %s."}
+	tActivateLineRound          = T{KO: "판정 세션은 보관되고, 새 정책으로 다시 세운 새 회차가 열립니다. 지난 결론은 「지난 판정」으로만 옮겨지고 새 정책에서 빠진 항목은 변환 보고서에만 남습니다. 옛 정책으로 만든 계획은 06에서 서명 · 생성되지 않습니다.", EN: "The review session is archived and a new round rebuilt under the new policy opens. Earlier conclusions are carried only as previous values, and items the new policy no longer manages stay only in the change report. Plans made under the old policy are not signed or generated in 06."}
+	tActivateLineDowngrade      = T{KO: "이 작업을 하면 이 작업 폴더를 v0.25.x 이하로 다시 열 수 없습니다. 필요하면 먼저 작업 폴더를 백업하십시오(운영자 안내서 7절).", EN: "After this, the workspace cannot be opened with v0.25.x or earlier; back it up first if you may need to (operator guide section 7)."}
 	tScopeBaselineHead          = T{KO: "정책 기준선을 채택해야 합니다", EN: "Adopt a policy baseline"}
 	tScopeBaselineBody          = T{KO: "이 세션은 이 판보다 먼저 만들어져 어느 자산 스코프 정책으로 판정했는지 기록이 없습니다. 지금 scope-assets.csv를 기준선으로 채택하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다. 옛 세션 파일은 보관됩니다. 이 작업을 하면 이 작업 폴더를 v0.25.x 이하로 다시 열 수 없습니다. 필요하면 먼저 작업 폴더를 백업하십시오(운영자 안내서 7절).", EN: "This session was made before this version and records no asset-scope policy. Adopting the current scope-assets.csv as the baseline opens a new round rebuilt from the results; earlier conclusions are carried only as previous values. The old session file is archived. After this, the workspace cannot be opened with v0.25.x or earlier; back it up first if you may need to (operator guide section 7)."}
 	tScopeBaselineConfirm       = T{KO: "지금 scope-assets.csv가 상류 적재에 사용한 정책임을 확인했습니다.", EN: "I confirmed the current scope-assets.csv is the policy the upstream ingest used."}

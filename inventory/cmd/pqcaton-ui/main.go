@@ -523,6 +523,8 @@ func (s *server) handler() http.Handler {
 	r.Post(ui.ReviewNewPath, s.reviewNew)
 	r.Post(ui.ReviewRulesetRoundPath, s.reviewRulesetRound)
 	r.Post(ui.ReviewScopeBaselinePath, s.reviewScopeBaseline)
+	r.Post(ui.ReviewScopeActivateConfirmPath, s.scopeActivateConfirm)
+	r.Post(ui.ReviewScopeActivatePath, s.scopeActivate)
 	r.Post(ui.ScopeNewPath, s.scopeNew)
 
 	// 옛 주소(v0.21의 `-next`, v0.22의 `/classic/…`). 옛 화면은 v0.23.0에서 없어졌고, 북마크가 죽지 않게
@@ -665,6 +667,11 @@ func (s *server) review(w http.ResponseWriter, r *http.Request) {
 	v := ui.NewReviewView(sf, page)
 	v.Finalized = wd.reviewFinal.Locked()
 	v.ScopeLock = s.scopeLockOf(sf)
+	if v.ScopeLock == "" {
+		if o, err := s.activationOffer(); err == nil {
+			v.Activation = o
+		}
+	}
 	if c := sf.RulesetChange; c != nil && c.Report != "" && filepath.Base(c.Report) == c.Report {
 		if b, err := os.ReadFile(filepath.Join(filepath.Dir(s.path), c.Report)); err == nil {
 			if rep, err := review.DecodeReport(b); err == nil {

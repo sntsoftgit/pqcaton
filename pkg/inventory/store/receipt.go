@@ -104,6 +104,8 @@ type Receipt struct {
 type ReceiptRound struct {
 	FromSessionSHA256 string `json:"from_session_sha256"`
 	ToSessionID       string `json:"to_session_id"`
+	// FromPolicy: 옛 세션이 판정된 정책의 지문. 활성화 회차만 채운다(기준선 회차의 옛 세션에는 지문이 없다).
+	FromPolicy string `json:"from_policy,omitempty"`
 }
 
 // Identity: 영수증의 동일성.

@@ -481,6 +481,8 @@ screen.
 | `scope-baseline` | The review session records no asset-scope policy (made before this version), so nothing was saved or finalized | At the top of the review screen, confirm the current `scope-assets.csv` is the policy the upstream ingest used and open the baseline round |
 | `scope-unactivated` | `scope-assets.csv` changed without an activation record, so nothing was saved or finalized | Restore the previous policy file, or re-ingest upstream with the new policy and go through the policy activation |
 | `scope-confirm` | The baseline round was requested without confirming the upstream ingest used this policy | Tick the confirmation and try again |
+| `scope-same` | The policy finalized in 02 is already the active policy (only notes or spacing may differ), so there is nothing to activate. Nothing was written | Nothing to do |
+| `scope-not-finalized` | There is no policy finalized in 02, `asset-scope.csv` changed after it was finalized, or it cannot be read, so nothing was activated | Finalize it in 02. A hand-edited file is not activated |
 | `ruleset-changed` | The session was opened under a different upstream ruleset, or records none, so nothing was saved or finalized, to keep the two from mixing | Press "Start a new round under the current rules" at the top of the review screen (the command is `pqcaton-decide new-round`). Earlier conclusions are carried only as reference values, so judge each item again |
 | `busy` | Another save to the same files is in progress, or another command holds the state folder | Try again shortly. If it persists, check whether another `pqcaton-ui` or command is running |
 | `recovery` | Saving is stopped in the recovery required state | Follow [section 8](#8-recovery) |

@@ -53,6 +53,10 @@ const (
 	RefusedScopeUnactivated = "scope-unactivated"
 	// RefusedScopeConfirm — 상류 적재에 쓴 정책이라는 확인 없이 기준선 회차를 요청했다(400).
 	RefusedScopeConfirm = "scope-confirm"
+	// RefusedScopeSame — 02에서 확정한 정책이 이미 활성 정책과 같아 활성화할 것이 없다. 아무것도 쓰지 않았다(409).
+	RefusedScopeSame = "scope-same"
+	// RefusedScopeNotFinalized — 02에서 확정한 정책이 없거나, 02 확정 뒤 바뀌었거나, 읽을 수 없어 활성화하지 않았다(409).
+	RefusedScopeNotFinalized = "scope-not-finalized"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.
 	ErrNotFound     = "not-found"     // 404
@@ -74,20 +78,22 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
-	RefusedRulesetChanged:   {body: tRefusedRulesetChanged},
-	RefusedPlanRuleset:      {tSignRefusedHead, tRefusedPlanRuleset},
-	RefusedPlanScope:        {tSignRefusedHead, tRefusedPlanScope},
-	RefusedScopePolicy:      {body: tRefusedScopePolicy},
-	RefusedScopeBaseline:    {body: tRefusedScopeBaseline},
-	RefusedScopeUnactivated: {body: tRefusedScopeUnactivated},
-	RefusedScopeConfirm:     {body: tRefusedScopeConfirm},
-	ErrNotFound:             {tErrNotFoundHead, tErrNotFound},
-	ErrMethod:               {tErrMethodHead, tErrMethod},
-	ErrBadRequest:           {tErrBadRequestHead, tErrBadRequest},
-	ErrInputMissing:         {tErrInputMissingHead, tErrInputMissing},
-	ErrInputBroken:          {tErrInputBrokenHead, tErrInputBroken},
-	ErrForbidden:            {tErrForbiddenHead, tErrForbidden},
-	ErrInternal:             {tErrInternalHead, tErrInternal},
+	RefusedRulesetChanged:    {body: tRefusedRulesetChanged},
+	RefusedPlanRuleset:       {tSignRefusedHead, tRefusedPlanRuleset},
+	RefusedPlanScope:         {tSignRefusedHead, tRefusedPlanScope},
+	RefusedScopePolicy:       {body: tRefusedScopePolicy},
+	RefusedScopeBaseline:     {body: tRefusedScopeBaseline},
+	RefusedScopeUnactivated:  {body: tRefusedScopeUnactivated},
+	RefusedScopeConfirm:      {body: tRefusedScopeConfirm},
+	RefusedScopeSame:         {body: tRefusedScopeSame},
+	RefusedScopeNotFinalized: {body: tRefusedScopeNotFinalized},
+	ErrNotFound:              {tErrNotFoundHead, tErrNotFound},
+	ErrMethod:                {tErrMethodHead, tErrMethod},
+	ErrBadRequest:            {tErrBadRequestHead, tErrBadRequest},
+	ErrInputMissing:          {tErrInputMissingHead, tErrInputMissing},
+	ErrInputBroken:           {tErrInputBrokenHead, tErrInputBroken},
+	ErrForbidden:             {tErrForbiddenHead, tErrForbidden},
+	ErrInternal:              {tErrInternalHead, tErrInternal},
 }
 
 // RefusedKinds — 알려진 종류 전부(시험이 문구 목록과 견준다).

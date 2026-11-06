@@ -91,17 +91,23 @@ func (s *server) confirmed(w http.ResponseWriter, r *http.Request, kind, back st
 // rev와 다르면 미리 보지 않고 409다.
 func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, action, saveAction, back string,
 	id store.Identity, cur, payload string, lines []string, files []ui.FileRef) {
-	s.confirmPageWith(w, r, kind, action, saveAction, back, id, cur, payload, lines, files, false)
+	s.confirmPageWith(w, r, kind, action, saveAction, back, id, cur, payload, lines, files, "")
 }
 
 // signConfirmPage: 06 승인 서명의 확인 페이지. 저장만 하는 단추가 없고, 말이 서명의 것이다.
 func (s *server) signConfirmPage(w http.ResponseWriter, r *http.Request, kind, action, back string,
 	id store.Identity, cur, payload string, lines []string, files []ui.FileRef) {
-	s.confirmPageWith(w, r, kind, action, "", back, id, cur, payload, lines, files, true)
+	s.confirmPageWith(w, r, kind, action, "", back, id, cur, payload, lines, files, "sign")
+}
+
+// activateConfirmPage: 정책 활성화의 확인 페이지. 저장만 하는 단추가 없고, 말이 활성화의 것이다.
+func (s *server) activateConfirmPage(w http.ResponseWriter, r *http.Request, kind, action, back string,
+	id store.Identity, cur, payload string, lines []string, files []ui.FileRef) {
+	s.confirmPageWith(w, r, kind, action, "", back, id, cur, payload, lines, files, "activate")
 }
 
 func (s *server) confirmPageWith(w http.ResponseWriter, r *http.Request, kind, action, saveAction, back string,
-	id store.Identity, cur, payload string, lines []string, files []ui.FileRef, sign bool) {
+	id store.Identity, cur, payload string, lines []string, files []ui.FileRef, mode string) {
 	rev := r.PostForm.Get(ui.RevField)
 	if cur == "" || cur != rev {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, files)
@@ -110,11 +116,14 @@ func (s *server) confirmPageWith(w http.ResponseWriter, r *http.Request, kind, a
 	exp := strconv.FormatInt(s.now().Add(confirmTTL).Unix(), 10)
 	p := s.page(r, "", "")
 	p.Title = ui.ConfirmTitle(p.Lang)
-	if sign {
+	switch mode {
+	case "sign":
 		p.Title = ui.SignConfirmTitle(p.Lang)
+	case "activate":
+		p.Title = ui.ActivateConfirmTitle(p.Lang)
 	}
 	p.Rev = rev
-	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files, Sign: sign,
+	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files, Sign: mode == "sign", Activate: mode == "activate",
 		Hidden: ui.CarryForm(r.PostForm), Exp: exp, Payload: payload, SessionID: id.SessionID,
 		Token: s.confirmToken(kind, id.SessionID, rev, payload, exp)}
 	html(w, r, func(out io.Writer) error { return ui.RenderConfirm(out, v) })
