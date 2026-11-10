@@ -1159,6 +1159,10 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	page.Org = res.Org
 	v := ui.NewSurveyView(res, page)
 	v.SVG = renderDOT(v.DOT)
+	// 05와 같은 판정이다. 할 수 없으면(같은 정책 · 확정하지 않은 후보 · 잠긴 세션) 알리지 않는다.
+	if o, err := s.activationOffer(); err == nil {
+		v.Activation = o
+	}
 	html(w, r, func(out io.Writer) error { return ui.RenderSurvey(out, v) })
 }
 

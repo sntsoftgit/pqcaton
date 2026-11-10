@@ -92,6 +92,10 @@ var (
 	tRefusedScopeNotFinalized   = T{KO: "02에서 확정한 정책이 없거나, 확정한 뒤 asset-scope.csv가 바뀌었거나, 읽을 수 없어 활성화하지 않았습니다. 02에서 확정하십시오.", EN: "There is no policy finalized in 02, asset-scope.csv changed after it was finalized, or it cannot be read, so nothing was activated. Finalize it in 02."}
 	tActivateHead               = T{KO: "02에서 확정한 정책을 활성화할 수 있습니다", EN: "The policy finalized in 02 can be activated"}
 	tActivateBody               = T{KO: "02에서 확정한 정책(asset-scope.csv)이 지금 대조에 쓰는 활성 정책(scope-assets.csv)과 다릅니다. 상류 적재를 새 정책으로 다시 한 뒤 활성화하십시오. 활성화하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다.", EN: "The policy finalized in 02 (asset-scope.csv) differs from the active policy used for reconciliation (scope-assets.csv). Re-ingest upstream with the new policy, then activate it. Activation opens a new round rebuilt from the results; earlier conclusions are carried only as previous values."}
+	tSurveyActivateHead         = T{KO: "02에서 확정한 정책이 아직 활성화되지 않았습니다", EN: "The policy finalized in 02 is not active yet"}
+	tSurveyActivateBody         = T{KO: "이 화면은 현재 활성 정책(scope-assets.csv)으로 대조했습니다. 02에서 확정한 정책(asset-scope.csv)은 아직 대조에 반영되지 않았습니다. 새 정책을 반영하려면 그 정책으로 상류 적재를 다시 마친 뒤 05에서 활성화하십시오.", EN: "This comparison uses the active policy (scope-assets.csv). The policy finalized in 02 (asset-scope.csv) has not yet been applied to reconciliation. To apply it, complete upstream ingestion with that policy, then activate it in 05."}
+	tSurveyActivatePolicy       = T{KO: "활성 정책 → 02에서 확정한 정책:", EN: "Active policy → policy finalized in 02:"}
+	tSurveyActivateGo           = T{KO: "05에서 활성화하기", EN: "Activate in 05"}
 	tActivateConfirm            = T{KO: "상류 적재를 이 정책으로 다시 마쳤음을 확인했습니다.", EN: "I confirmed the upstream ingest was redone with this policy."}
 	tActivateNext               = T{KO: "활성화 전 확인으로", EN: "Review before activating"}
 	tActivateConfirmTitle       = T{KO: "정책 활성화 전 확인", EN: "Before activating the policy"}

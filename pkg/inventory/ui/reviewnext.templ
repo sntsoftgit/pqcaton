@@ -174,7 +174,7 @@ templ scopeBaselineBox(p Page) {
 // scopeActivateBox — 02에서 확정한 정책이 활성 정책과 다를 때 05 위쪽. 상류 재적재를 마쳤다는 운영자 진술(한계 문구와 함께)을
 // 받고 확인 페이지로 간다(요청 보호 · rev).
 templ scopeActivateBox(p Page) {
-	<div class="next ruleset" role="status">
+	<div class="next ruleset" role="status" id={ scopeActivateAnchor }>
 		<div class="next-icon">!</div>
 		<div>
 			<strong>{ tActivateHead.In(p.Lang) }</strong>

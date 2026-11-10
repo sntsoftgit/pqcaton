@@ -33,6 +33,10 @@ type SurveyView struct {
 	// SVG — 그려진 토폴로지. `dot`이 있으면 채운다. 우리가 만든 DOT에서 `dot`이
 	// 낸 것이라 밖에서 온 값이 아니다 — 그래서 그대로 내보낸다.
 	SVG string
+
+	// Activation — 02에서 확정한 정책이 활성 정책과 달라 활성화할 수 있으면 그 두 지문(05의 활성화 상자와 같은 판정). 04는
+	// 이 대조가 활성 정책으로 한 것이라고 알리고 05의 활성화 상자로 잇기만 한다. 활성화 양식은 05에만 둔다. 없으면 nil이다.
+	Activation *ActivationOffer
 }
 
 // AssetRow — 자산 한 줄.

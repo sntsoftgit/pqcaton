@@ -706,6 +706,9 @@ func (s ReviewSummary) Ready() bool {
 // reviewEditAnchor — 요약에서 판정 폼으로 보내는 자리.
 const reviewEditAnchor = "review-edit"
 
+// scopeActivateAnchor — 05의 활성화 상자. 04의 안내가 이리로 잇는다.
+const scopeActivateAnchor = "scope-activate"
+
 // RenderReview — 판정 화면(`/review`).
 func RenderReview(w io.Writer, v ReviewView) error {
 	return reviewNextPage(v).Render(context.Background(), w)

@@ -104,3 +104,72 @@ func TestActivateTheFinalizedPolicy(t *testing.T) {
 		t.Errorf("activating a hand-edited candidate = %d, want 409 %s", w.Code, ui.RefusedScopeNotFinalized)
 	}
 }
+
+// IC-U158 — **04도 02에서 확정한 정책이 아직 활성화되지 않았다고 알린다.** 05의 활성화 상자와 같은 판정이다. 확정한 후보가
+// 활성 정책과 다르면 04에 안내(두 지문, 이 대조가 활성 정책으로 한 것이라는 문장)와 05의 활성화 상자로 가는 링크가 있고,
+// 활성화 양식은 없다. 05에는 그 링크가 가리키는 상자가 있다. 세션이 잠겼거나(활성화 기록 없이 바뀐 정책), 후보를 손으로
+// 고쳤거나, 활성화한 뒤에는 알리지 않는다.
+func TestSurveyTellsThePolicyIsNotActiveYet(t *testing.T) {
+	s, _ := keyReady(t)
+	observed(t, s.results, "web", "libssl.so.3", "/usr/sbin/nginx")
+	observed(t, s.results, "web", "libcrypto.so.3", "/usr/bin/python3")
+	setPolicy(t, s, policyA)
+	savedSession(t, s)
+	finalizeCandidate(t, s, policyB)
+	from, _ := scope.PolicyFileDigest(s.scopeAssets)
+	to, _ := scope.PolicyFileDigest(s.scopeOut)
+
+	link := `href="` + ui.ScreenReview + `#scope-activate"`
+	shown := func(t *testing.T, lang string) bool {
+		t.Helper()
+		page := get(t, s, ui.ScreenSurvey+"?lang="+lang).Body.String()
+		if hasForm(page, ui.ReviewScopeActivateConfirmPath) || hasForm(page, ui.ReviewScopeActivatePath) {
+			t.Fatalf("%s: the reconciliation screen has an activation form", lang)
+		}
+		return strings.Contains(page, link)
+	}
+	for _, lang := range []string{"ko", "en"} {
+		page := get(t, s, ui.ScreenSurvey+"?lang="+lang).Body.String()
+		head := map[string]string{"ko": "02에서 확정한 정책이 아직 활성화되지 않았습니다", "en": "The policy finalized in 02 is not active yet"}[lang]
+		if !shown(t, lang) || !strings.Contains(page, head) || !strings.Contains(page, from) || !strings.Contains(page, to) {
+			t.Fatalf("%s: the reconciliation screen does not tell the finalized policy is not active yet", lang)
+		}
+	}
+	if review := get(t, s, ui.ScreenReview+"?lang=ko").Body.String(); !strings.Contains(review, `id="scope-activate"`) {
+		t.Fatal("the review screen has no activation box for the link to land on")
+	}
+
+	setPolicy(t, s, policyA+"exclude,*,*,/opt/legacy*,hand edit\n")
+	if shown(t, "ko") {
+		t.Error("the notice is shown for a session locked by a policy changed without activation")
+	}
+	setPolicy(t, s, policyA)
+	if !shown(t, "ko") {
+		t.Fatal("the notice did not come back after restoring the active policy")
+	}
+
+	finalized := readFile(t, s.scopeOut)
+	if err := os.WriteFile(s.scopeOut, []byte(finalized+"exclude,*,*,/opt/*,hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if shown(t, "ko") {
+		t.Error("the notice is shown for a candidate edited by hand after finalizing")
+	}
+	if err := os.WriteFile(s.scopeOut, []byte(finalized), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !shown(t, "ko") {
+		t.Fatal("the notice did not come back after restoring the finalized candidate")
+	}
+
+	w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{ui.ScopeActivateConfirmField: {"on"}})
+	if w.Code != http.StatusOK {
+		t.Fatalf("activation confirm = %d", w.Code)
+	}
+	if w := postFormLang(t, s, ui.ReviewScopeActivatePath, "ko", hiddenFields(w.Body.String())); w.Code != http.StatusSeeOther {
+		t.Fatalf("activate = %d", w.Code)
+	}
+	if shown(t, "ko") {
+		t.Error("the notice is still shown after the activation")
+	}
+}
