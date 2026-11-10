@@ -94,6 +94,14 @@ const usage = `usage:
         with a scope-activation receipt. If the two policies mean the same, nothing is written. A candidate
         that is not exactly what 02 finalized is refused
 
+  pqcaton-decide activate-scope ... -dry-run
+        Check only the local preconditions (the session is under the active policy, the candidate is what
+        02 finalized). Nothing is written and upstream is not looked at
+
+  pqcaton-decide scope-status <session.json> [-scope-assets <csv>]
+        Print the active policy digest, the session's digest and id, and the policy lock (none,
+        baseline, unactivated), one per line
+
   pqcaton-decide delta <judgments.jsonl> <declaration> [node] [-org <name>] [-results <dir>]
         Compare recorded judgments against the current observation and pick out
         **only those whose basis changed**. Give it the same input as open, or the
@@ -124,6 +132,7 @@ func main() {
 	verifyUp := fs.Bool("verify-upstream", false, "baseline, activate-scope: look every snapshot under the new policy up in the upstream history (PQCOTA_DSN)")
 	confirmIngest := fs.Bool("confirm-ingest", false, "baseline, activate-scope: state that the upstream ingest used the new policy (recorded, not a proof)")
 	upstreamOrg := fs.String("upstream-org", "", "baseline, activate-scope: organization in the upstream history (default: -org)")
+	dry := fs.Bool("dry-run", false, "activate-scope: check the local preconditions only; write nothing and do not look upstream")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
 	var pos []string
 	var flags []string
@@ -168,9 +177,12 @@ func main() {
 		if sub == "baseline" {
 			err = baselineRound(pos[0], *declPath, *results, *scopeAssets, *orgName, *stateDir, uorg, *verifyUp, *confirmIngest)
 		} else {
-			scopeSessionPath = *scopeSession
+			scopeSessionPath, dryRun = *scopeSession, *dry
 			err = activateScope(pos[0], *declPath, *results, *scopeAssets, *candidate, *orgName, *stateDir, uorg, *verifyUp, *confirmIngest)
 		}
+	case "scope-status":
+		need(1)
+		err = scopeStatus(pos[0], *scopeAssets)
 	case "delta":
 		need(2)
 		node := localscan.DefaultNode

@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
-.PHONY: all check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt build test generate verify-generated check-reuse
+.PHONY: all e2e-demo check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt build test generate verify-generated check-reuse
 
 all: check-licenses check-text check-prose check-lang check-cases check-fmt build test
 
@@ -78,6 +78,11 @@ build:
 
 test:
 	go test ./... -count=1
+
+# 데모 종단 검증(IC-U152). 상류 pqcota 데모를 처음부터 띄우므로 일반 make에는 넣지 않는다. 필요한 환경(PQCOTA_DIR과
+# 상류 다섯 리포 · docker · go · python3)이 없으면 건너뛰지 않고 실패한다. 릴리스 전에 전용 환경에서 반드시 통과시킨다.
+e2e-demo:
+	go test -tags e2edemo -count=1 -timeout 60m -v ./demo/e2e/
 
 # ── 화면 템플릿 ────────────────────────────────────────────────────────────
 #

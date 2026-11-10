@@ -325,10 +325,10 @@ var (
 	tKindAuto           = T{KO: "고르지 않음", EN: "not chosen"}
 	tHooks              = T{KO: "활성화 훅 (L3 전용)", EN: "Activation hooks (used at L3 only)"}
 	tInstallsHead       = T{KO: "같은 자산 키 아래 설치(경로를 확인하지 못한 설치 후보 포함)가 둘 이상입니다. 이 판정과 조치는 아래 설치 전부에 적용됩니다.", EN: "There is more than one installation under this asset key (counting candidates whose path could not be confirmed). This judgment and its action apply to all of the installations below."}
-	tPrevHead           = T{KO: "지난 판정(다른 규칙 판, 참고값이며 현재 값이 아닙니다):", EN: "Earlier judgment (another ruleset; a reference value, not the current one):"}
+	tPrevHead           = T{KO: "지난 판정(이전 회차의 참고값이며 현재 값이 아닙니다):", EN: "Earlier judgment (from the previous round; a reference value, not the current one):"}
 	tPrevConclusion     = T{KO: "결론", EN: "conclusion"}
 	tPrevInPlan         = T{KO: "· 계획에 넣었음:", EN: "· was in the plan:"}
-	tPrevPolicy         = T{KO: "지난 정책 결론(다른 규칙 판, 참고값):", EN: "Earlier policy conclusion (another ruleset; a reference value):"}
+	tPrevPolicy         = T{KO: "지난 정책 결론(이전 회차의 참고값):", EN: "Earlier policy conclusion (from the previous round; a reference value):"}
 	tAdopt              = T{KO: "다시 채택", EN: "Adopt again"}
 	tRulesetRoundHead   = T{KO: "이 세션은 지금과 다른 상류 규칙 판으로 열렸습니다", EN: "This session was opened under a different upstream ruleset"}
 	tRulesetRoundBody   = T{KO: "자산 ID와 스냅샷 지문이 다른 규칙으로 셈해져 그대로는 저장 · 확정하지 않습니다. 새 회차를 열면 옛 세션을 보관하고, 지난 결론은 참고값으로만 옮기며, 변환 보고서를 씁니다.", EN: "Asset ids and snapshot fingerprints were computed by different rules, so it is not saved or finalized as it is. A new round archives the old session, carries earlier conclusions only as reference values, and writes a change report."}

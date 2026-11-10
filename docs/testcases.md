@@ -88,7 +88,7 @@
 | [IC-S18](../pkg/inventory/scope/digest_test.go) ✅ | 빈 칸과 `*` · 패턴의 대소문자 | 빈 칸과 `*`는 지문이 같다. 대소문자가 다르면 지문이 다르다(상류 glob이 가린다) |
 | **[IC-S19](../pkg/inventory/scope/digest_test.go) ✅** | 정책 파일 없음 · 빈 경로 · 규칙 0개 파일 · 읽을 수 없는 파일 · 형식이 틀린 파일 | 앞의 셋은 지문이 같다. 뒤의 둘은 **빈 정책이 되지 않고 오류다.** 빈 정책으로 읽으면 깨진 정책이 「제한 없음」으로 비교를 통과한다 |
 | **[IC-S20](../pkg/inventory/report/provenance_test.go) ✅** | 같은 결과 폴더를 정책을 건 상류 적재와 이 리포의 대조에 넣음 | 노드의 v1 지문이 바이트까지 같다. 정책이 실제로 무언가를 뺐는지(정책 없는 지문과 다른지)도 함께 본다. IC-R18은 정책 없이만 잰다 |
-| **[IC-S21](../pkg/inventory/upstream/upstream_test.go) ✅** | 정책 B로 적재한 상류 이력에서 B로 대조한 근거 · 정책 없이 대조한 근거 · 근거 없음을 찾음 | B의 근거는 모두 찾히고, 다른 정책의 근거는 빠진 것으로 나온다. 근거가 없으면 증명된 것이 아니다 |
+| **[IC-S21](../pkg/inventory/upstream/upstream_test.go) ✅** | 정책 B로 적재한 상류 이력에서 B로 대조한 근거 · 정책 없이 대조한 근거를 찾음 · 그 뒤 정책 없이 다시 적재 · 근거 없음 | B의 근거는 모두 찾히고 다른 정책의 근거는 빠진 것으로 나온다. 다시 적재한 뒤에는 B의 스냅샷이 남아 있어도 **노드의 최신이 아니므로** 빠진 것으로 나온다. 근거가 없으면 증명된 것이 아니다 |
 
 ### C. confidence 스코어링 (§3.5): 부분
 | TC | Given → When | Then |
@@ -148,6 +148,7 @@
 | **[IC-D33](../inventory/cmd/pqcaton-decide/scope_cmd_test.go) ✅** | `activate-scope`를 뒷받침 없이 · 둘 다 · 손으로 고친 후보로 · 진술로 · 같은 정책으로 다시 | 뒷받침은 꼭 하나다. 손으로 고친 후보는 거절하고 아무것도 쓰지 않는다. 진술로 활성화하면 정책이 바뀌고 새 세션이 새 지문을 들며 영수증의 basis가 operator-statement다. 같은 정책이면 아무것도 쓰지 않는다 |
 | **[IC-D34](../inventory/cmd/pqcaton-decide/scope_cmd_test.go) ✅** | `activate-scope -verify-upstream`을 PQCOTA_DSN 없이 · 상류가 옛 정책으로만 적재됨 · 새 정책으로 적재됨 | 앞의 둘은 거절하고 아무것도 쓰지 않는다. 마지막은 활성화하고 basis가 upstream-verified다 |
 | **[IC-D35](../inventory/cmd/pqcaton-decide/scope_cmd_test.go) ✅** | `baseline`을 지문 있는 세션에서 · 상류에 없는데 -verify-upstream · 진술로 | 지문 있는 세션은 거절, 상류에 없으면 거절하고 아무것도 쓰지 않는다. 진술로 열면 새 세션이 지금 정책의 지문을 들고 basis가 operator-statement다 |
+| **[IC-D36](../inventory/cmd/pqcaton-decide/scope_cmd_test.go) ✅** | `activate-scope -dry-run`을 준비된 상태 · 손으로 고친 후보 · 같은 정책 · 지금 정책으로 판정되지 않은 세션으로, 그리고 `scope-status` | 차례로 통과 · `ErrNoCandidate` · `ErrSamePolicy` · 정책 잠금이고, 어느 경우에도 정책 · 세션 · 영수증이 그대로다. `scope-status`는 활성 정책 · 세션 지문 · 세션 ID · 잠금을 한 줄씩 적는다 |
 
 ### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 저장소 계층 완료, 화면 연결 전
 화면과 명령이 파일을 바꿀 때 지나가는 한 길입니다. 상용 지원은 Linux 로컬 파일시스템뿐입니다.
@@ -493,6 +494,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U144](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 판별 표(`docs/compatibility.md`)의 맨 위 줄 · 릴리스 노트 맨 위 절 · `go.mod` | 맨 위 줄의 pqcaton 판(범위면 끝 판)이 노트 맨 위의 판과 같고, `go.mod`의 pqcota 계열 모듈이 모두 같은 판이며 **고정한 pqcota 판이 그 판과 같다.** README(맨 위 소개 · 사전 준비 · 맞는 조합)와 데모 안내가 적은 판도 그 판이고, v0.25.0 뒤의 노트 절은 「받는 쪽이 달라지는 것」 첫 항목에 `함께 쓰는 pqcota: vX`를 적는다 |
 | **[IC-U149](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅** | 확인 페이지를 연 뒤 계획의 영수증이 사라짐 · 정책 A에서 서명 · 생성한 뒤 정책이 B로 바뀜 | 서명은 **잠금 안의 재검사**가 409 `plan-scope`로 막는다. 활성화 뒤에는 생성 양식이 없고 생성이 409이며, 계획 · 서명 · 플레이북이 바이트 그대로다. 보관은 되고 세 파일을 지우지 않고 옮긴다 |
 | **[IC-U151](../inventory/cmd/pqcaton-ui/plan_scope_test.go) ✅** | 형식 1 영수증의 계획을 서명 전 · 서명하고 플레이북까지 만든 뒤 | 서명 양식 · 생성 양식이 없고 서명 확인 · 생성이 409다. 이미 만든 플레이북은 바이트 그대로다. 화면이 「현재 정책에서 05의 새 판정 회차를 열어 다시 확정」을 안내한다 |
+| **[IC-U152](../demo/e2e/e2e_test.go) ✅** | 데모 종단(`make e2e-demo`): 화면이 떠 있는 채 apply-scope · 손으로 고친 후보 · 상류 재적재 없이 확인 · apply-scope · 화면 | 앞의 셋은 상류 적재 전에(셋째는 확인에서) 거절하고 정책 · 세션 · 계획 · 영수증 바이트와 상류 스냅샷 수가 그대로다. 성공하면 활성 정책 · 새 세션 · 활성화 영수증의 지문이 같고 basis가 upstream-verified다. 06은 옛 계획을 막고 05는 지난 결론을 참고값으로만 보인다. 환경이 없으면 건너뛰지 않고 실패한다. 상류 데모는 **이번 실행만의 dind 컨테이너 안의 데몬**에 띄우므로, 호스트에 같은 이름의 pqcota 데모가 떠 있어도 부딪히지 않고 건드리지 않는다. 끝나면(실패해도) 그 dind 컨테이너와 볼륨이 호스트에 남지 않는다. 안쪽에서도 정리는 up.sh보다 먼저 걸고 이번 실행의 생성 파일 라벨이 붙은 자원만 지운다 |
 | **[IC-U153](../inventory/cmd/pqcaton-ui/scope_session_test.go) ✅** | 정책 기록이 없는 옛 세션 · 정책 A로 세운 세션을 다른 정책으로 · 정책 없이 · 둘 다 정책 없음으로 화면에서 확정 | 첫째는 409 `scope-baseline`, 둘째와 셋째는 409 `scope-unactivated`이고 어떤 파일도 바뀌지 않는다. 마지막은 확인 페이지가 열린다 |
 | **[IC-U154](../inventory/cmd/pqcaton-ui/scope_lock_test.go) ✅** | 정책 기록이 없는 옛 세션으로 05 화면 · 저장 · 확인 없는 기준선 · 확인한 기준선 · 같은 요청 다시 | 기준선 상자 · 확인 칸 · 「확인만 기록한다」가 보이고 05 카드가 「정책 기준선을 채택해야 합니다」다. 저장은 409 `scope-baseline`, 확인 없이는 400 `scope-confirm`이고 아무것도 쓰지 않는다. 확인하면 새 세션(새 ID, 지금 정책, 현재 결론 빔)과 보관본 · 형식 2 영수증이 생긴다. 다시 보내면 거절되고 파일이 늘지 않는다 |
 | **[IC-U155](../inventory/cmd/pqcaton-ui/scope_lock_test.go) ✅** | 정책 A로 저장한 뒤 `scope-assets.csv`를 손으로 B로 바꿈 · 다시 A로 복원 | 05가 잠기고 회차 단추가 없으며 이전 정책 복원과 정식 활성화만 안내한다. 저장은 409 `scope-unactivated`이고 파일은 그대로다. 복원하면 다시 저장된다 |

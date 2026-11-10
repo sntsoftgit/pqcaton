@@ -203,8 +203,9 @@ for it in s.get("autopass_candidates") or []:
 json.dump(s, open("/work/session.json", "w"), ensure_ascii=False, indent=2)
 print("   %d reviewed + %d auto-passed asset(s) go into the plan · session %s" % (n, m, s.get("session_id", "?")))
 PY'
+# 세션을 연 정책을 닫을 때도 다시 준다. close는 이 파일을 다시 읽어 세션에 적힌 지문과 대조한다.
 docker exec pqcota-ctl bash -lc \
-  'pqcaton-decide close /work/session.json -org demo-corp -judgments /work/judgments.jsonl -o /work/plan.json'
+  "pqcaton-decide close /work/session.json -scope-assets $SCOPE -org demo-corp -judgments /work/judgments.jsonl -o /work/plan.json"
 docker cp pqcota-ctl:/work/plan.json "$SAMPLE_DIR/plan.json" 2>/dev/null || true
 # **공백과 세션 id를 고른다.** protojson은 콜론 뒤 공백을 일부러 흔들고, 계획 id에는 실행마다
 # 새로 뽑는 세션 UUID가 들어 있다. 그대로 두면 데모를 돌릴 때마다 기대 파일이 더러워져

@@ -6,6 +6,9 @@
 // 정책 활성화 · 기준선 채택은 「상류 적재를 이 정책으로 마쳤다」를 전제로 한다. 화면의 체크는 운영자 진술일 뿐이라 증명하지
 // 못한다. 명령은 여기서 증명한다: 이 리포가 그 정책으로 결과를 대조해 얻은 노드별 v1 지문(history.ContentHashV1)이 상류
 // 이력에 **하나도 빠짐없이** 있어야 한다. 지문이 같다는 것은 상류가 같은 결과를 같은 규칙 · 같은 정책으로 적재했다는 뜻이다.
+//
+// 조회는 조직(이력 핸들)과 노드로 좁힌다. 그리고 **그 노드의 최신 스냅샷이 그 지문이어야** 한다. 과거 실행에 같은 지문이
+// 있었다는 것만으로는 지금 상류가 이 정책으로 적재돼 있다는 뜻이 아니다(그 뒤 다른 정책으로 다시 적재했을 수 있다).
 package upstream
 
 import (
@@ -24,13 +27,15 @@ type Ref struct{ Node, Ruleset, Digest string }
 // Lookup — 상류 이력. history.PgStore와 history.MemStore가 이것을 만족한다.
 type Lookup interface {
 	ByContentHashV1(node, ruleset, digest string) (*history.Snapshot, error)
+	Latest(node string) (*history.Snapshot, error)
 }
 
 // ErrNothingToVerify — 대조 결과에 근거가 하나도 없다. 증명할 것이 없으면 증명된 것이 아니다.
 var ErrNothingToVerify = errors.New("upstream: the reconciliation carries no evidence to look up")
 
-// ErrMissing — 상류 이력에 없는 스냅샷이 있다. 상류 적재가 이 정책으로 끝나지 않았다.
-var ErrMissing = errors.New("upstream: snapshots are missing from the upstream history")
+// ErrMissing — 상류 이력에 없는 스냅샷이 있거나, 있어도 그 노드의 최신 스냅샷이 아니다. 지금 상류가 이 정책으로 적재돼
+// 있지 않다.
+var ErrMissing = errors.New("upstream: snapshots are missing from the upstream history, or are not the latest for their node")
 
 // Refs — 대조 결과의 근거가 가리키는 스냅샷들. 겹치지 않게 정렬해 돌려준다.
 func Refs(r *report.Result) []Ref {
@@ -66,7 +71,11 @@ func Verify(l Lookup, refs []Ref) ([]Ref, error) {
 		if err != nil {
 			return nil, err
 		}
-		if snap == nil {
+		latest, err := l.Latest(ref.Node)
+		if err != nil {
+			return nil, err
+		}
+		if snap == nil || latest == nil || history.ContentHashV1(latest) != ref.Digest {
 			missing = append(missing, ref)
 		}
 	}

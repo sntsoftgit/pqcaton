@@ -19,6 +19,10 @@
 # 쓰는 법:
 #   ./demo/scripts/ui.sh         화면을 띄우고(이미 떠 있으면 그대로 쓴다) 중계를 연다. Ctrl+C는 중계만 닫는다.
 #   ./demo/scripts/ui.sh stop    컨테이너 안의 화면을 끝낸다. 다시 빌드한 화면을 띄우려면 stop 뒤에 다시 연다.
+#   ./demo/scripts/ui.sh start   화면만 띄우고 중계는 열지 않는다(종단 검증이 쓴다).
+#   ./demo/scripts/ui.sh apply-scope
+#                                02에서 확정한 정책을 상류에 다시 적재하고, 노드별 지문이 상류 이력의 최신 스냅샷으로 모두
+#                                찾히면 활성화한다. 화면이 떠 있으면 아무것도 하지 않는다(stop → apply-scope → ui.sh 순서).
 #   PQCATON_UI_PORT=8766 ...     이 기계에서 받을 포트(기본 8765). 이 기계에서 다른 화면을 이미 띄웠을 때 바꾼다.
 set -euo pipefail
 DEMO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # pqcaton/demo
@@ -44,42 +48,91 @@ if [ "${1:-}" = "stop" ]; then
   fi
   exit 0
 fi
-if [ $# -gt 0 ]; then
-  echo "usage: $0 [stop]"; exit 2
+MODE="${1:-}"
+case "$MODE" in
+  ""|start|apply-scope) ;;
+  *) echo "usage: $0 [stop|start|apply-scope]"; exit 2 ;;
+esac
+if [ "$MODE" = "" ]; then
+  command -v python3 >/dev/null || { echo "❌ python3 not found on this machine — the relay needs it"; exit 1; }
 fi
-
-command -v python3 >/dev/null || { echo "❌ python3 not found on this machine — the relay needs it"; exit 1; }
 docker exec "$CTL" test -f /work/declaration.json || { echo "❌ no /work/declaration.json — run ./demo/scripts/extend.sh first"; exit 1; }
+
+# install_bin NAME PKG: linux용으로 빌드해(또는 PQCATON_BIN_DIR에서 가져와) 컨테이너에 넣고, 거기서 실제로 도는지 본다.
+# extend.sh 1/8과 같은 이유로 컨테이너용으로 빌드한다. 아키텍처는 컨테이너에 묻는다.
+install_bin() {
+  local name="$1" pkg="$2" tmp arch
+  tmp="$(mktemp -d)"
+  if [ -n "${PQCATON_BIN_DIR:-}" ]; then
+    echo "   using the prebuilt $name from $PQCATON_BIN_DIR"
+    cp "$PQCATON_BIN_DIR/$name" "$tmp/" || { rm -rf "$tmp"; return 1; }
+  else
+    case "$(docker exec "$CTL" uname -m)" in
+      x86_64|amd64)  arch=amd64 ;;
+      aarch64|arm64) arch=arm64 ;;
+      *) echo "❌ unsupported $CTL architecture: $(docker exec "$CTL" uname -m)"; rm -rf "$tmp"; return 1 ;;
+    esac
+    echo "   target: linux/$arch ($CTL) — $name"
+    ( cd "$REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -o "$tmp/$name" "$pkg" ) || { rm -rf "$tmp"; return 1; }
+  fi
+  docker cp -q "$tmp/$name" "$CTL:/usr/local/bin/$name"
+  rm -rf "$tmp"
+  local rc=0
+  docker exec "$CTL" bash -c "/usr/local/bin/$name -h >/dev/null 2>&1" || rc=$?
+  if [ "$rc" -eq 126 ] || [ "$rc" -eq 127 ] || [ "$rc" -eq 255 ]; then
+    echo "❌ $name does not run inside $CTL (exit $rc) — it must be a linux/$(docker exec "$CTL" uname -m) binary"
+    return 1
+  fi
+}
 
 # 컨테이너 안에서 화면이 답하는가. curl은 Host를 127.0.0.1:8765로 보내 화면의 Host 검사를 지난다.
 answers() { docker exec "$CTL" curl -fsS -o /dev/null http://127.0.0.1:8765/ 2>/dev/null; }
+
+if [ "$MODE" = "apply-scope" ]; then
+  # 상류 이력(데모 DB)과 거기서 쓰는 조직. pqcota 데모의 demo.sh와 같은 값이다.
+  DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
+  UPSTREAM_ORG=default
+  # 0) 화면이 떠 있으면 아무것도 하지 않는다. 상류 적재도 시작하지 않는다. 화면이 작업 폴더를 쥔 동안 바꾸면 화면이 본 것과
+  #    파일이 어긋난다.
+  if docker exec "$CTL" pgrep -x pqcaton-ui >/dev/null; then
+    echo "❌ pqcaton-ui is running in $CTL — nothing was done. Stop it first:"
+    echo "   ./demo/scripts/ui.sh stop  →  ./demo/scripts/ui.sh apply-scope  →  ./demo/scripts/ui.sh"
+    exit 1
+  fi
+  # 1) 적재 전에 모두 점검한다: 작업 폴더의 파일 · 결과 · 필요한 프로그램 · DB.
+  echo "▶ 1/4 check ${WS}, the programs and the upstream DB…"
+  docker exec "$CTL" bash -c "
+    set -e
+    for f in $WS/asset-scope.csv $WS/scope-session.json $WS/session.json $WS/declaration.json; do
+      [ -f \$f ] || { echo \"❌ missing \$f — finalize the policy in 02 first\"; exit 1; }
+    done
+    ls $WS/results/*.json* >/dev/null 2>&1 || { echo '❌ no results in $WS/results'; exit 1; }
+    command -v pqcota-ingest >/dev/null || { echo '❌ pqcota-ingest not found in $CTL'; exit 1; }
+  "
+  docker exec pqcota-demo-pg pg_isready -q || { echo "❌ the upstream DB (pqcota-demo-pg) is not ready"; exit 1; }
+  install_bin pqcaton-decide ./inventory/cmd/pqcaton-decide
+  # 지역 전제(세션이 지금 정책으로 판정됨 · 후보가 02 확정 그대로 · 두 정책이 다름). 아무것도 쓰지 않는다.
+  ACT="activate-scope $WS/session.json -decl $WS/declaration.json -results $WS/results -scope-assets $WS/scope-assets.csv \
+    -candidate $WS/asset-scope.csv -scope-session $WS/scope-session.json -org demo-corp"
+  docker exec "$CTL" bash -c "pqcaton-decide $ACT -dry-run"
+  # 2) 상류 적재. 화면이 실제로 쓰는 결과 폴더와 02에서 확정한 정책으로 한다.
+  echo "▶ 2/4 re-ingest upstream with the finalized policy ($WS/asset-scope.csv, $WS/results)…"
+  docker exec -e PQCOTA_DSN="$DSN" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
+  # 3) 확인과 활성화. 노드별 지문이 상류 이력(조직 default)의 그 노드 최신 스냅샷으로 하나라도 찾히지 않으면 쓰지 않는다.
+  echo "▶ 3/4 verify the snapshots upstream and activate…"
+  docker exec -e PQCOTA_DSN="$DSN" "$CTL" bash -c "pqcaton-decide $ACT -verify-upstream -upstream-org $UPSTREAM_ORG"
+  # 4) 결과.
+  echo "▶ 4/4 status"
+  docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv" | sed 's/^/   /'
+  echo "✅ activated. Start the screen again: ./demo/scripts/ui.sh"
+  exit 0
+fi
 
 if answers; then
   echo "▶ pqcaton-ui is already running in $CTL — reusing it (./demo/scripts/ui.sh stop to restart)"
 else
   echo "▶ 1/3 build pqcaton-ui for ${CTL}…"
-  TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-  if [ -n "${PQCATON_BIN_DIR:-}" ]; then
-    echo "   using the prebuilt binary from $PQCATON_BIN_DIR"
-    cp "$PQCATON_BIN_DIR/pqcaton-ui" "$TMP/"
-  else
-    # extend.sh 1/8과 같은 이유로 컨테이너용으로 빌드한다. 아키텍처는 컨테이너에 묻는다.
-    case "$(docker exec "$CTL" uname -m)" in
-      x86_64|amd64)  CTL_ARCH=amd64 ;;
-      aarch64|arm64) CTL_ARCH=arm64 ;;
-      *) echo "❌ unsupported $CTL architecture: $(docker exec "$CTL" uname -m)"; exit 1 ;;
-    esac
-    echo "   target: linux/$CTL_ARCH ($CTL)"
-    ( cd "$REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH=$CTL_ARCH go build -o "$TMP/pqcaton-ui" ./inventory/cmd/pqcaton-ui )
-  fi
-  docker cp -q "$TMP/pqcaton-ui" "$CTL":/usr/local/bin/pqcaton-ui
-  # 아래에서 셸을 python으로 바꾸므로(exec) EXIT trap이 돌지 않는다. 여기서 지운다.
-  rm -rf "$TMP"; trap - EXIT
-  rc=0; docker exec "$CTL" bash -c "/usr/local/bin/pqcaton-ui -h >/dev/null 2>&1" || rc=$?
-  if [ "$rc" -eq 126 ] || [ "$rc" -eq 127 ] || [ "$rc" -eq 255 ]; then
-    echo "❌ pqcaton-ui does not run inside $CTL (exit $rc) — it must be a linux/$(docker exec "$CTL" uname -m) binary"
-    exit 1
-  fi
+  install_bin pqcaton-ui ./inventory/cmd/pqcaton-ui
 
   echo "▶ 2/3 workspace ${WS}…"
   # **처음 한 번만 채운다.** 데모가 이미 가진 것을 실제 운영자가 화면에 넣는 자리에 둔다. 선언(01) ·
@@ -115,6 +168,11 @@ else
   docker exec -d "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org demo-corp -approval-key $KEY >>$LOG 2>&1"
   for _ in $(seq 1 40); do answers && break; sleep 0.5; done
   answers || { echo "❌ pqcaton-ui did not answer — last lines of $CTL:$LOG:"; docker exec "$CTL" tail -20 "$LOG"; exit 1; }
+fi
+
+if [ "$MODE" = "start" ]; then
+  echo "✅ pqcaton-ui is running in $CTL (127.0.0.1:8765 inside the container); no relay was opened"
+  exit 0
 fi
 
 # 중계. 이 기계의 127.0.0.1:$PORT에서 받고, 연결마다 docker exec로 컨테이너 안의 127.0.0.1:8765에 잇는다.

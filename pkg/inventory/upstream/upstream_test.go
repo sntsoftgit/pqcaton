@@ -41,8 +41,10 @@ func result(node string) *discoveryv1.CollectionResult {
 	}
 }
 
-// IC-S21 — **상류 이력 확인은 그 정책으로 적재한 스냅샷만 찾는다.** 정책 B로 적재한 상류에서, B로 대조한 근거는 모두 찾히고
-// A(정책 없음)로 대조한 근거는 빠진 것으로 나온다. 근거가 하나도 없으면 증명된 것이 아니다.
+// IC-S21 — **상류 이력 확인은 그 정책으로 적재한 스냅샷이 노드의 최신일 때만 통과한다.** 정책 B로 적재한 상류에서, B로
+// 대조한 근거는 모두 찾히고 A(정책 없음)로 대조한 근거는 빠진 것으로 나온다. 그 뒤 상류를 정책 없이 다시 적재하면, B의
+// 스냅샷이 이력에 남아 있어도 최신이 아니므로 빠진 것으로 나온다(과거 실행의 같은 지문으로 통과하지 않는다). 근거가 하나도
+// 없으면 증명된 것이 아니다.
 func TestVerifyFindsOnlyTheIngestedPolicy(t *testing.T) {
 	dir := t.TempDir()
 	for i, n := range []string{"web-01", "db-01"} {
@@ -81,6 +83,14 @@ func TestVerifyFindsOnlyTheIngestedPolicy(t *testing.T) {
 	}
 	if missing, err := upstream.Verify(store, upstream.Refs(underNone)); !errors.Is(err, upstream.ErrMissing) || len(missing) != 2 {
 		t.Errorf("snapshots under another policy: missing %v, err %v; want both missing", missing, err)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	if _, err := ingest.IngestWith(results, ingest.IngestOptions{SnapshotPrefix: "t2", RulesetVersion: normalize.RulesetVersion,
+		Store: store}); err != nil {
+		t.Fatal(err)
+	}
+	if missing, err := upstream.Verify(store, refs); !errors.Is(err, upstream.ErrMissing) || len(missing) != 2 {
+		t.Errorf("B's snapshots after a newer ingest without the policy: missing %v, err %v; want both (not latest)", missing, err)
 	}
 	if _, err := upstream.Verify(store, nil); !errors.Is(err, upstream.ErrNothingToVerify) {
 		t.Errorf("no evidence: err = %v, want ErrNothingToVerify", err)

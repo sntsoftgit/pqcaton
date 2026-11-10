@@ -229,3 +229,54 @@ func TestBaselineCommand(t *testing.T) {
 		t.Errorf("receipt basis: %+v", rc)
 	}
 }
+
+// IC-D36 — **-dry-run은 지역 전제만 보고 아무것도 쓰지 않는다.** 준비가 됐으면 nil, 손으로 고친 후보는 ErrNoCandidate, 두
+// 정책이 같으면 ErrSamePolicy, 세션이 지금 정책으로 판정되지 않았으면 정책 잠금이다. 어느 경우에도 정책 · 세션 · 상태 폴더의
+// 영수증이 그대로다. scope-status는 활성 정책 · 세션 지문 · 잠금을 한 줄씩 적는다.
+func TestActivateScopeDryRunAndStatus(t *testing.T) {
+	w := newScopeWorld(t)
+	dryRun = true
+	defer func() { dryRun = false }()
+	snap := func() string { return read(t, w.active) + read(t, w.sess) + read(t, w.candidate) }
+	before := snap()
+	if err := w.activate(false, false); err != nil {
+		t.Fatalf("ready: %v", err)
+	}
+	if err := os.WriteFile(w.candidate, []byte(cmdPolicyB+"exclude,*,*,/opt/*,hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.activate(false, false); !errors.Is(err, rulesetround.ErrNoCandidate) {
+		t.Errorf("hand-edited: err = %v", err)
+	}
+	if err := os.WriteFile(w.candidate, []byte(cmdPolicyA), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.activate(false, false); !errors.Is(err, rulesetround.ErrSamePolicy) {
+		t.Errorf("same policy: err = %v", err)
+	}
+	if err := os.WriteFile(w.candidate, []byte(cmdPolicyB), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(w.active, []byte(cmdPolicyA+"exclude,*,*,/srv/*,moved\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var sc *review.ScopeChanged
+	if err := w.activate(false, false); !errors.As(err, &sc) {
+		t.Errorf("session not under the active policy: err = %v", err)
+	}
+	if err := os.WriteFile(w.active, []byte(cmdPolicyA), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if snap() != before {
+		t.Error("a dry run changed a file")
+	}
+	old, _ := review.Load(w.sess)
+	if rc := roundReceipt(t, w, rulesetround.ScopeActivationReceipt, old.SessionID); rc != nil {
+		t.Error("a dry run wrote a receipt")
+	}
+	out, err := stdout(t, func() error { return scopeStatus(w.sess, w.active) })
+	active, _ := invscope.PolicyFileDigest(w.active)
+	if err != nil || out != "active "+active+"\nsession "+old.ScopePolicyDigestV1+"\nsession_id "+old.SessionID+"\nlock none\n" {
+		t.Errorf("scope-status = %q, %v", out, err)
+	}
+}

@@ -144,8 +144,10 @@ can.
 | `session.json` | The review session | Screen (05) |
 | `layers/*.csv` | Asset scope layers. They stack in name order, and where rules clash on the same asset the later layer applies | Screen (02) |
 | `scope-session.json` | The scope session | Screen (02) |
-| `asset-scope.csv` | The finalized asset scope policy. When present, it is the baseline for the next review | Screen (02 finalize) |
-| `scope-assets.csv` | The same policy given to pqcota ingest (`pqcota-ingest`). When present, reconciliation uses it | Operator |
+| `asset-scope.csv` | The asset scope policy finalized in 02. The baseline for the next review; reconciliation does not use it until it is activated | Screen (02 finalize) |
+| `scope-assets.csv` | The active policy. 04 and 05 reconcile with it, and it must be the one given to pqcota ingest (`pqcota-ingest -scope-assets`) | Operator, screen (policy activation) |
+| `scope-assets.activation-<digest>-<session id>.csv` | The previous active policy, archived when a new policy was activated | Screen (policy activation) |
+| `session.scope-activation-<session id>.json` · `session.scope-baseline-<session id>.json` | The previous review session, archived when a policy round opened. The `…-report-…json` beside it is the change report | Screen (policy round) |
 | `plan.json` | The finalized plan (the contract format pqcota reads) | Screen (05 finalize) |
 | `plan.signed.json` | The approved plan (FINALIZED). `plan.json` stays as it is. Never overwritten once present | Screen (06 approval) |
 | `plan.provision.yml` · `plan.rollback.yml` | The apply and rollback playbooks | Screen (06 generation) |
@@ -236,6 +238,32 @@ required).
    reconciliation is wrong without any error.
 2. **02 Asset scope.** The first time, enter a layer name to create an empty layer. Write the rules, a conclusion for each
    changed rule, sign, and finalize. Finalizing creates `asset-scope.csv`.
+
+   **The policy finalized in 02 is not used for reconciliation right away.** Reconciliation (04, 05) uses the active
+   policy `scope-assets.csv`. If it differs from the policy the upstream ingest used, pqcota cannot find the evidence of
+   the plans made in 05. To use the finalized policy, first redo the upstream ingest with it, giving the workspace's
+   `results/` as the results folder.
+
+   ```bash
+   pqcota-ingest -scope-assets <workspace>/asset-scope.csv <workspace>/results
+   ```
+
+   Then, under "The policy finalized in 02 can be activated" at the top of 05, tick the confirmation and activate through
+   the confirmation page. The tick is only the operator's statement; pqcaton does not prove the upstream ingest itself. To
+   check the upstream history for real, stop the screen and activate from the command line. `pqcaton-decide activate-scope -verify-upstream` goes on
+   only when every node's digest under the new policy is found as that node's latest snapshot in the upstream history.
+
+   ```bash
+   PQCOTA_DSN=<upstream DB> pqcaton-decide activate-scope <workspace>/session.json -decl <workspace>/declaration.json \
+     -results <workspace>/results -scope-assets <workspace>/scope-assets.csv -candidate <workspace>/asset-scope.csv \
+     -scope-session <workspace>/scope-session.json -org <organization> -verify-upstream
+   ```
+
+   Activation archives the previous policy and review session and opens a new round rebuilt under the new policy. Earlier
+   conclusions are carried only as previous values, and items the new policy no longer manages stay only in the change
+   report. Plans already finalized are not signed or generated in 06, so finalize again in the new round. **If
+   `scope-assets.csv` is edited by hand without an activation record,** 05 locks and saving and finalizing are blocked.
+   Then restore the previous policy file, or follow the steps above.
 3. **03 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS, SSH or WinRM),
    and save. They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
    on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation"
@@ -285,6 +313,12 @@ required).
    conclusion must change, press "Start a new review" on the 05 screen ("Start a new scope review" on the 02 screen). A new
    round starts under a new session id: conclusions and plan fields carry over, and a new signature is needed. The earlier
    round's plan and ledger entries stay as they are.
+   **06 signs and generates only plans finalized in this workspace.** Finalizing in 05 records, in the state folder's
+   receipt together with the plan, the digest of the policy the plan was made under, and 06 compares it with the active
+   policy. A plan brought in from another workspace, or finalized before this version, can only be viewed and archived.
+   Approve and generate a plan brought in from elsewhere with pqcota's `pqcota-approve` and `pqcota-provision`. To handle a
+   plan finalized before this version in 06, open a new review round in 05 under the current policy and finalize again.
+
 
 The inventory lookup (beside the cards) is not a step: come in any time, search with conditions, and see one asset's
 judgment history.
@@ -423,6 +457,27 @@ cut). Send the diagnostics file and the files you kept. The diagnostics file hol
 contents.
 
 ## 9. Upgrading
+
+### v0.25 to v0.26
+
+v0.26 records the asset scope policy's digest in the review session and the finalize receipt, and uses the policy
+finalized in 02 for reconciliation only through the formal steps.
+
+1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back the workspace up as in
+   [section 7](#7-backup-and-restore). **There is a point of no return.** Finalizing 05, activating a policy or opening a
+   baseline round in this version writes format 2 receipts into the state folder. From then on the workspace cannot be
+   opened with v0.25.x or earlier. The older version reports a format 2 receipt as "receipt … keep a copy and run
+   pqcaton-ui -recover-status" and stops. It is not damage; the older version cannot read the newer receipt. To go back
+   to the older version, restore the backup.
+2. Replace the binary with `go install` from [section 2](#2-installation) and start the screen. Upstream stays at v0.10.6.
+3. **A review session made before this version records no policy, so 05 locks.** At the top of 05, tick "I confirmed
+   the current scope-assets.csv is the policy the upstream ingest used" and open the baseline round. The old session is
+   archived, a new round rebuilt under the current policy opens, and earlier conclusions are carried only as previous
+   values. On the command line it is `pqcaton-decide baseline`.
+4. Plans finalized before this version can only be viewed and archived in 06. Sign the plan finalized again in the
+   baseline round.
+5. Operators who finalize from the command line give `pqcaton-decide close` the same `-scope-assets` the session was
+   opened with. If it differs from the session's policy, nothing is finalized.
 
 ### v0.24 to v0.25
 

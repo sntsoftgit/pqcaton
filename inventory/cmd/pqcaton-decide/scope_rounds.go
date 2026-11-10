@@ -159,13 +159,19 @@ func baselineRound(oldPath, declPath, resultsDir, scopeAssets, orgName, stateDir
 	return nil
 }
 
+// dryRun — 쓰기 전에 지역 전제만 본다(상류는 보지 않고 아무것도 쓰지 않는다). 데모가 상류 적재 전에 부른다.
+var dryRun bool
+
 func activateScope(oldPath, declPath, resultsDir, scopeAssets, candidate, orgName, stateDir, upstreamOrg string, verify, confirm bool) error {
 	if declPath == "" || resultsDir == "" || scopeAssets == "" || candidate == "" {
 		return errors.New("activate-scope needs -decl, -results, -scope-assets (the active policy file, may not exist yet) and -candidate (asset-scope.csv finalized in 02)")
 	}
-	basis, err := scopeBasis(verify, confirm)
-	if err != nil {
-		return err
+	basis := rulesetround.BasisOperator
+	if !dryRun {
+		var err error
+		if basis, err = scopeBasis(verify, confirm); err != nil {
+			return err
+		}
 	}
 	if _, err := os.Stat(candidate); err != nil {
 		return fmt.Errorf("%w: %v", rulesetround.ErrNoCandidate, err)
@@ -180,7 +186,13 @@ func activateScope(oldPath, declPath, resultsDir, scopeAssets, candidate, orgNam
 	}
 	if from == to {
 		fmt.Fprintln(os.Stderr, "the candidate policy is already the active policy; nothing to activate, nothing was written")
+		if dryRun {
+			return rulesetround.ErrSamePolicy
+		}
 		return nil
+	}
+	if dryRun {
+		return activationPreflight(oldPath, candidate, orgName, stateDir, from)
 	}
 	if verify {
 		if err := verifyUpstream(declPath, resultsDir, candidate, upstreamOrg); err != nil {
@@ -199,5 +211,48 @@ func activateScope(oldPath, declPath, resultsDir, scopeAssets, candidate, orgNam
 	}
 	fmt.Fprintf(os.Stderr, "activated %s (was %s, %s)\n   new round %s\n   archive: %s\n   report:  %s\n", to, from, basis, res.NewSessionID, res.Archive, res.Report)
 	fmt.Fprintln(os.Stderr, "   earlier conclusions are reference values only (\"previous\"); plans made under the old policy are not signed or generated")
+	return nil
+}
+
+// activationPreflight — 활성화의 지역 전제: 판정 세션이 지금 활성 정책으로 판정됐고(잠금 없음), 후보가 02 확정이 쓴 그대로다.
+// 상태 폴더를 읽기만 한다.
+func activationPreflight(oldPath, candidate, orgName, stateDir, from string) error {
+	sf, err := review.Load(oldPath)
+	if err != nil {
+		return err
+	}
+	if l := review.ScopeLock(sf, from); l != "" {
+		return &review.ScopeChanged{Lock: l, Session: sf.ScopePolicyDigestV1, Active: from}
+	}
+	if stateDir == "" {
+		stateDir = store.DefaultDir(oldPath)
+	}
+	st, err := store.OpenCommand(stateDir, []string{oldPath, candidate}, store.Options{})
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	if err := candidateFinalized(st, candidate, orgName); err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stderr, "dry run: ready to activate (nothing was written, upstream not looked at)")
+	return nil
+}
+
+// scopeStatus — 활성 정책 · 판정 세션 · 정책 잠금을 적는다. 데모와 종단 검증이 읽는다(한 줄에 이름과 값).
+func scopeStatus(sessPath, scopeAssets string) error {
+	active, err := invscope.PolicyFileDigest(scopeAssets)
+	if err != nil {
+		return err
+	}
+	sf, err := review.Load(sessPath)
+	if err != nil {
+		return err
+	}
+	lock := review.ScopeLock(sf, active)
+	if lock == "" {
+		lock = "none"
+	}
+	fmt.Printf("active %s\nsession %s\nsession_id %s\nlock %s\n", active, sf.ScopePolicyDigestV1, sf.SessionID, lock)
 	return nil
 }
