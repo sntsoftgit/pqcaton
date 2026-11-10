@@ -41,10 +41,11 @@ const ScopeActivationReceipt = review.ScopeRoundActivation
 
 // 상류 적재를 뒷받침한 것(영수증의 basis).
 const (
-	// BasisOperator — 운영자 진술. 상류 적재를 증명하지 않는다. 화면의 체크가 이것이다.
-	BasisOperator = "operator-statement"
-	// BasisUpstream — 새 정책의 노드별 지문을 상류 이력에서 모두 찾았다(명령의 -verify-upstream).
-	BasisUpstream = "upstream-verified"
+	// BasisOperator — 운영자 진술. 상류 적재를 증명하지 않는다. 화면의 체크와 -confirm-ingest가 이것이다. 이전 정책으로
+	// 되돌릴 때는 이것만 쓸 수 있다: 상류는 같은 지문의 스냅샷을 다시 적재해도 새로 만들지 않아 최신이 되지 않는다.
+	BasisOperator = review.ScopeBasisOperator
+	// BasisUpstream — 새 정책의 노드별 지문을 상류 이력의 노드별 최신 스냅샷에서 모두 찾았다(명령의 -verify-upstream).
+	BasisUpstream = review.ScopeBasisUpstream
 )
 
 // ErrSamePolicy — 활성 정책과 후보 정책이 의미상 같다. 활성화할 것이 없다(아무것도 쓰지 않는다).
@@ -290,13 +291,13 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 				return store.RulesetRound{}, fmt.Errorf("%w: the rebuilt session is not under the candidate policy", store.ErrStale)
 			}
 			act = &af
-			next, rep = review.PolicyRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName, review.ScopeRoundActivation)
+			next, rep = review.PolicyRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName, review.ScopeRoundActivation, req.basis())
 		} else if req.Baseline != "" {
 			// 운영자가 확인한 정책과 다시 세운 세션이 읽은 정책이 같아야 한다. 그 사이 파일이 바뀌었으면 쓰지 않는다.
 			if rebuilt.ScopePolicyDigestV1 != req.Baseline {
 				return store.RulesetRound{}, fmt.Errorf("%w: the asset-scope policy changed while the baseline round was being opened", store.ErrStale)
 			}
-			next, rep = review.PolicyRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName, review.ScopeRoundBaseline)
+			next, rep = review.PolicyRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName, review.ScopeRoundBaseline, req.basis())
 		} else {
 			if rebuilt.ScopePolicyDigestV1 != cur.ScopePolicyDigestV1 {
 				return store.RulesetRound{}, &review.ScopeChanged{Lock: review.ScopeLockUnactivated,

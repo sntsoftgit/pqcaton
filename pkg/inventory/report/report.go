@@ -45,6 +45,10 @@ type Result struct {
 
 	Assets []reconcile.Reconciled
 	Edges  []reconcile.ReconciledEdge
+	// Snapshots — 원천 노드마다 정규화한 스냅샷의 위치(원천 노드 · v1 지문 · 규칙 판). **관리 자산이 하나도 없는 노드도
+	// 든다.** 정책이 노드의 자산을 모두 뺀 것도 정책 변경의 결과이므로, 상류 확인(upstream.Refs)은 자산의 근거가 아니라
+	// 이것을 본다. 원천 노드의 순서는 결과를 읽은 순서다.
+	Snapshots []reconcile.SnapshotLocation
 	// PolicyConflicts — 선언은 관리 대상으로 적었는데 정책이 뺀 자산(CONFIRMED + EXCLUDED_BY_POLICY).
 	// **둘이 어긋난 것이고, 어느 쪽을 고칠지는 기계가 정하지 않는다.** 경고문이 자산 식별자·원천 노드·
 	// 앱 식별자 전부를 값으로 알린다 - 사람이 정책 파일에서 그 식별자에 걸리는 줄을 찾는다.
@@ -141,6 +145,8 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 		if err != nil {
 			return nil, fmt.Errorf("normalizing %s: %w", src, err)
 		}
+		out.Snapshots = append(out.Snapshots, reconcile.SnapshotLocation{SourceNodeID: src,
+			Digest: history.ContentHashV1(snap), RulesetVersion: snap.RulesetVersion})
 		observedAssets = append(observedAssets, eng.AssetsFromSnapshotAs(snap, node)...)
 		// **정책이 뺀 것을 알려면 정책 없이 한 번 더 정규화해야 한다.** 정책은 Normalize 안에서
 		// 걸리고 제외분은 개수만 남기 때문이다. 관리 근거는 위의 snap(상류와 지문이 같은 것)에서

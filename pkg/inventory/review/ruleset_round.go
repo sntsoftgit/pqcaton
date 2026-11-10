@@ -81,7 +81,18 @@ type ScopeChangeRef struct {
 	ToPolicy      string `json:"to_policy"`
 	Report        string `json:"report"`
 	Archive       string `json:"archive,omitempty"`
+	// Basis — 이 회차를 연 근거(ScopeBasis*). 영수증의 round.basis와 같은 값이다. 05가 이것을 보이므로, 운영자 진술로
+	// 연 회차는 「상류 이력으로 증명하지 않았다」가 화면에 남는다. 비어 있으면 운영자 진술로 읽는다.
+	Basis string `json:"basis,omitempty"`
 }
+
+// 정책 회차를 연 근거(영수증의 round.basis · ScopeChangeRef.Basis).
+const (
+	// ScopeBasisOperator — 운영자 진술. 상류 적재를 증명하지 않는다. 화면의 체크와 명령의 -confirm-ingest가 이것이다.
+	ScopeBasisOperator = "operator-statement"
+	// ScopeBasisUpstream — 새 정책의 노드별 지문을 상류 이력의 노드별 최신 스냅샷에서 모두 찾았다(명령의 -verify-upstream).
+	ScopeBasisUpstream = "upstream-verified"
+)
 
 // 정책 회차의 종류.
 const (
@@ -96,11 +107,11 @@ const scopeReportNote = "The asset-scope policy this session is judged under cha
 	"carried only as reference values (previous); nothing here was judged under the new policy."
 
 // PolicyRound — 옛 세션(old)을 지금 정책(과 지금 규칙)으로 다시 세운 세션(rebuilt)에 넘긴다. [RulesetRound]와 같이 옛 결론은
-// 참고값으로만 붙고, 새 정책에서 빠진 항목은 새 세션에 없고 보고서에만 남는다. reason은 ScopeRound*다.
-func PolicyRound(old, rebuilt Session, newID, reportName, archiveName, reason string) (Session, RulesetChangeReport) {
+// 참고값으로만 붙고, 새 정책에서 빠진 항목은 새 세션에 없고 보고서에만 남는다. reason은 ScopeRound*, basis는 ScopeBasis*다.
+func PolicyRound(old, rebuilt Session, newID, reportName, archiveName, reason, basis string) (Session, RulesetChangeReport) {
 	next := carryAsPrevious(old, rebuilt, newID)
 	next.ScopeChange = &ScopeChangeRef{Reason: reason, FromSessionID: old.SessionID, FromPolicy: old.ScopePolicyDigestV1,
-		ToPolicy: rebuilt.ScopePolicyDigestV1, Report: reportName, Archive: archiveName}
+		ToPolicy: rebuilt.ScopePolicyDigestV1, Report: reportName, Archive: archiveName, Basis: basis}
 	r := reportOf(old, next, archiveName)
 	r.Note, r.Reason, r.FromPolicy, r.ToPolicy = scopeReportNote, reason, old.ScopePolicyDigestV1, rebuilt.ScopePolicyDigestV1
 	return next, r

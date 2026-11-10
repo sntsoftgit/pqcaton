@@ -122,6 +122,9 @@ type ReviewView struct {
 	// RulesetChange · Report — 이 세션이 규칙 전환 회차로 열렸으면 그 기록과 변환 보고서(서버가 읽어 넣는다. 없으면 nil).
 	RulesetChange *review.RulesetChangeRef
 	Report        *review.RulesetChangeReport
+	// ScopeChange — 이 세션이 정책 회차(기준선 · 활성화)로 열렸으면 그 기록. 05가 정책과 근거를 보인다. 근거가 운영자
+	// 진술이면 상류 이력으로 증명하지 않았다고 적는다.
+	ScopeChange *review.ScopeChangeRef
 }
 
 // Locked — 칸을 잠그는가. 확정됐거나, 다른 규칙 판의 세션이다.
@@ -182,7 +185,7 @@ func NewReviewView(sf review.Session, page Page) ReviewView {
 	sort.Strings(order)
 	v := ReviewView{Page: page, Scope: sf.Scope, Reviewer: sf.Reviewer,
 		Signature: sf.Signature, Autopass: sf.Autopass, LegacyAutopass: sf.LegacyAutopass,
-		RulesetVersion: sf.RulesetVersion, RulesetChange: sf.RulesetChange,
+		RulesetVersion: sf.RulesetVersion, RulesetChange: sf.RulesetChange, ScopeChange: sf.ScopeChange,
 		RulesetChanged: review.UpstreamRuleset(sf.RulesetVersion) != review.UpstreamRuleset(review.RulesetVersion)}
 	for _, name := range order {
 		v.Policies = append(v.Policies, *byPolicy[name])

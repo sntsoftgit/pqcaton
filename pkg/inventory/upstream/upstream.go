@@ -5,7 +5,7 @@
 //
 // 정책 활성화 · 기준선 채택은 「상류 적재를 이 정책으로 마쳤다」를 전제로 한다. 화면의 체크는 운영자 진술일 뿐이라 증명하지
 // 못한다. 명령은 여기서 증명한다: 이 리포가 그 정책으로 결과를 대조해 얻은 노드별 v1 지문(history.ContentHashV1)이 상류
-// 이력에 **하나도 빠짐없이** 있어야 한다. 지문이 같다는 것은 상류가 같은 결과를 같은 규칙 · 같은 정책으로 적재했다는 뜻이다.
+// 이력에 **하나도 빠짐없이** 있어야 한다. 결과 폴더의 원천 노드는 관리 자산이 0개여도 모두 대상이다. 지문이 같다는 것은 상류가 같은 결과를 같은 규칙 · 같은 정책으로 적재했다는 뜻이다.
 //
 // 조회는 조직(이력 핸들)과 노드로 좁힌다. 그리고 **그 노드의 최신 스냅샷이 그 지문이어야** 한다. 과거 실행에 같은 지문이
 // 있었다는 것만으로는 지금 상류가 이 정책으로 적재돼 있다는 뜻이 아니다(그 뒤 다른 정책으로 다시 적재했을 수 있다).
@@ -37,18 +37,26 @@ var ErrNothingToVerify = errors.New("upstream: the reconciliation carries no evi
 // 있지 않다.
 var ErrMissing = errors.New("upstream: snapshots are missing from the upstream history, or are not the latest for their node")
 
-// Refs — 대조 결과의 근거가 가리키는 스냅샷들. 겹치지 않게 정렬해 돌려준다.
+// Refs — 대조 결과가 기대하는 상류 스냅샷들. **결과 폴더에 있는 모든 원천 노드**의 스냅샷(report.Result.Snapshots)이고,
+// 관리 자산이 0개인 노드도 든다. 정책이 노드의 자산을 모두 빼면 그 노드의 스냅샷은 비지만(제외 건수만 남는다) 상류는 그것도
+// 적재하므로 지문을 견줄 수 있다. 상류가 그 스냅샷을 갖고 있지 않으면 확인은 실패한다. 자산 근거가 가리키는 스냅샷도
+// 더한다(같은 것이라 겹치지 않는다). 겹치지 않게 정렬해 돌려준다.
 func Refs(r *report.Result) []Ref {
 	seen := map[Ref]bool{}
 	var out []Ref
+	add := func(ref Ref) {
+		if ref.Digest == "" || seen[ref] {
+			return
+		}
+		seen[ref] = true
+		out = append(out, ref)
+	}
+	for _, s := range r.Snapshots {
+		add(Ref{Node: s.SourceNodeID, Ruleset: s.RulesetVersion, Digest: s.Digest})
+	}
 	for _, a := range r.Assets {
 		for _, s := range a.Sources {
-			ref := Ref{Node: s.Snapshot.SourceNodeID, Ruleset: s.Snapshot.RulesetVersion, Digest: s.Snapshot.Digest}
-			if ref.Digest == "" || seen[ref] {
-				continue
-			}
-			seen[ref] = true
-			out = append(out, ref)
+			add(Ref{Node: s.Snapshot.SourceNodeID, Ruleset: s.Snapshot.RulesetVersion, Digest: s.Snapshot.Digest})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {

@@ -33,8 +33,15 @@ const DirName = ".pqcaton"
 const (
 	stateFile   = "state.json"
 	runLockFile = "run.lock"
-	stateFormat = 1
 	idBytes     = 16
+	// stateFormatLegacy: v0.25.x 이하가 만들고 읽는 상태 문서 형식. 그 판은 이 값이 아니면 상태 디렉토리를 열지 않는다
+	// (화면은 시작하지 않고, 상태를 쓰는 명령도 멈춘다).
+	stateFormatLegacy = 1
+	// stateFormat: 자산 스코프 정책 지문을 담는 형식 2 영수증이 있을 수 있는 상태 디렉토리. **옛 판이 이 작업 폴더를
+	// 열지 못하게 하는 장치다.** 옛 판은 형식 2 영수증을 읽기 전까지는 멈추지 않아서, 화면을 띄우고 활성화 전 계획에 서명
+	// 양식까지 낸다. 그래서 형식 2 영수증을 쓰기 직전에 상태 문서를 이 형식으로 올린다(raiseFormat). 새로 만드는 상태
+	// 디렉토리는 처음부터 이 형식이다. 읽기는 두 형식을 받는다.
+	stateFormat = 2
 )
 
 // 상태 디렉토리와 그 안의 파일 권한. 영수증에 무엇을 언제 확정했는지가 담기므로 남이 읽지 못하게 한다.
@@ -78,6 +85,11 @@ type State struct {
 	// active: 이 프로세스에서 지금 진행 중인 트랜잭션. 복구가 남의 진행 중인 기록을 끝내지 않게 한다.
 	mu     sync.Mutex
 	active map[string]bool
+
+	// format: 상태 문서의 형식(stateFormatLegacy | stateFormat). raiseFormat이 올린다. 트랜잭션 안에서 부르므로 mu와
+	// 다른 잠금(fmtMu)으로 지킨다.
+	fmtMu  sync.Mutex
+	format int
 }
 
 // Options: Open의 선택 사항.
@@ -177,7 +189,7 @@ func ReadStateID(dir string) (string, error) {
 		return "", err
 	}
 	var doc stateDoc
-	if err := json.Unmarshal(b, &doc); err != nil || doc.Format != stateFormat || !idPattern.MatchString(doc.StateID) {
+	if err := json.Unmarshal(b, &doc); err != nil || !knownStateFormat(doc.Format) || !idPattern.MatchString(doc.StateID) {
 		return "", fmt.Errorf("%w: %s", ErrDamaged, filepath.Join(dir, stateFile))
 	}
 	return doc.StateID, nil
@@ -202,11 +214,65 @@ func (s *State) ensureID() error {
 		return err
 	}
 	var doc stateDoc
-	if err := json.Unmarshal(b, &doc); err != nil || doc.Format != stateFormat || !idPattern.MatchString(doc.StateID) {
+	if err := json.Unmarshal(b, &doc); err != nil || !knownStateFormat(doc.Format) || !idPattern.MatchString(doc.StateID) {
 		return fmt.Errorf("%w: %s is damaged or from another version; restore it from a backup of this state directory", ErrDamaged, p)
 	}
 	s.ID = doc.StateID
+	s.format = doc.Format
 	return nil
+}
+
+func knownStateFormat(f int) bool { return f == stateFormatLegacy || f == stateFormat }
+
+// raiseFormat: 상태 문서를 형식 2로 올린다. 이미 그 형식이면 아무것도 하지 않는다. ID는 그대로 둔다. 형식 2 영수증을
+// 쓰기 직전에 부른다(newReceipt). 영수증을 쓰다 멈춰도 되돌리지 않는다: 옛 판을 조금 일찍 막는 쪽으로만 어긋난다.
+// fsync한 임시 파일을 이름 바꾸기로 붙이므로 반쯤 쓴 상태 문서가 보이는 순간이 없다.
+func (s *State) raiseFormat() error {
+	s.fmtMu.Lock()
+	defer s.fmtMu.Unlock()
+	if s.format == stateFormat {
+		return nil
+	}
+	p := filepath.Join(s.Dir, stateFile)
+	b, _ := json.Marshal(stateDoc{Format: stateFormat, StateID: s.ID})
+	if err := s.fault(FaultStateFormat, p); err != nil {
+		return err
+	}
+	if err := replaceSynced(p, append(b, '\n')); err != nil {
+		return fmt.Errorf("raise the state format of %s: %w", p, err)
+	}
+	s.format = stateFormat
+	return nil
+}
+
+// replaceSynced: 내용을 다 쓰고 fsync한 임시 파일로 p를 바꾼다.
+func replaceSynced(p string, content []byte) error {
+	dir := filepath.Dir(p)
+	tmp, err := os.CreateTemp(dir, "."+filepath.Base(p)+".new-*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	defer os.Remove(name)
+	if err := tmp.Chmod(filePerm); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(content); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(name, p); err != nil {
+		return err
+	}
+	return syncDir(dir)
 }
 
 // checkTree: 상태 디렉토리 안의 모든 것이 링크가 아니고, 내 것이고, 남에게 닫혀 있는가.

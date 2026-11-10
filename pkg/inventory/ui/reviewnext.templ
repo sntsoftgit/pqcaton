@@ -1,6 +1,10 @@
 package ui
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+)
 
 // reviewNextPage — 판정 화면의 다음 판.
 //
@@ -18,6 +22,7 @@ templ reviewNextPage(v ReviewView) {
 			<h3 id={ reviewEditAnchor }>{ tNextReviewEditHead.In(v.Page.Lang) }</h3>
 			<p class="lede">{ tNextReviewEditLede.In(v.Page.Lang) }</p>
 			@rulesetReport(v)
+			@scopeRoundNote(v)
 			@reviewForm(v)
 		</div>
 	}
@@ -104,6 +109,28 @@ templ rulesetReport(v ReviewView) {
 				</ul>
 			} else if v.Report == nil {
 				<p class="hint">{ tReportMissing.In(v.Page.Lang) }</p>
+			}
+		</section>
+	}
+}
+
+// scopeRoundNote — 이 세션을 연 정책 회차(기준선 · 활성화)와 그 근거. **운영자 진술로 연 회차는 그것이 상류 이력으로
+// 증명한 것이 아니라고 화면에 남긴다**(영수증의 round.basis와 같은 값). 근거가 비어 있으면 운영자 진술로 읽는다.
+templ scopeRoundNote(v ReviewView) {
+	if v.ScopeChange != nil {
+		<section class="ruleset-change">
+			<h3>{ tScopeRoundHead.In(v.Page.Lang) }</h3>
+			<p class="hint">
+				{ tScopeRoundPolicy.In(v.Page.Lang) }
+				if v.ScopeChange.FromPolicy != "" {
+					<code>{ v.ScopeChange.FromPolicy }</code> →
+				}
+				<code>{ v.ScopeChange.ToPolicy }</code>
+			</p>
+			if v.ScopeChange.Basis == review.ScopeBasisUpstream {
+				<p class="hint">{ tScopeBasisUpstream.In(v.Page.Lang) }</p>
+			} else {
+				<p class="hint"><strong>{ tScopeBasisOperator.In(v.Page.Lang) }</strong></p>
 			}
 		</section>
 	}

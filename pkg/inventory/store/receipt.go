@@ -476,6 +476,11 @@ func (s *State) newReceipt(tx Tx, scopePolicy string) (Receipt, error) {
 		if !policyDigestShape.MatchString(scopePolicy) {
 			return rc, fmt.Errorf("%w: %q", ErrPolicyDigest, scopePolicy)
 		}
+		// 형식 2 영수증을 쓰기 전에 상태 문서를 형식 2로 올린다. 그 뒤로 옛 판(v0.25.x 이하)은 이 상태 디렉토리를 열지
+		// 않는다. 옛 판은 영수증을 읽기 전까지 멈추지 않아 활성화 전 계획에 서명 양식을 내기 때문이다.
+		if err := s.raiseFormat(); err != nil {
+			return rc, err
+		}
 		rc.Format, rc.ScopePolicy = receiptFormatPolicy, scopePolicy
 	}
 	// 순번은 잠금 안에서 지금까지의 최댓값 + 1이다. 같은 출력을 쓰는 확정은 같은 디렉토리 잠금을

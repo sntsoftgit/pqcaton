@@ -336,6 +336,10 @@ var (
 	tReportHead         = T{KO: "규칙 전환 보고서", EN: "Ruleset change report"}
 	tReportNote         = T{KO: "상류 규칙 판이 바뀌었습니다. 아래에 사라짐 · 생김 · 바뀜으로 보이는 것은 규칙이 바뀐 것만으로 생겼을 수 있고, 그것만으로 설치가 없어지거나 생기거나 바뀐 것은 아닙니다.", EN: "The upstream ruleset changed. What shows below as removed, added or changed may come from the rule change alone, and is not by itself an installation removed, added or changed."}
 	tReportFrom         = T{KO: "옛 규칙 판과 보고서:", EN: "Old ruleset and report:"}
+	tScopeRoundHead     = T{KO: "이 회차를 연 정책 변경", EN: "The policy change that opened this round"}
+	tScopeRoundPolicy   = T{KO: "자산 스코프 정책:", EN: "Asset-scope policy:"}
+	tScopeBasisUpstream = T{KO: "근거: 새 정책으로 적재한 스냅샷을 상류 이력의 노드별 최신 스냅샷에서 모두 확인했습니다(-verify-upstream).", EN: "Basis: the snapshots ingested under the new policy were found as the latest snapshot of every node in the upstream history (-verify-upstream)."}
+	tScopeBasisOperator = T{KO: "근거: 운영자 진술입니다. 상류 적재를 이 정책으로 마쳤다는 확인을 기록했을 뿐, 상류 이력으로 증명하지 않았습니다.", EN: "Basis: an operator statement. It records a confirmation that the upstream ingest used this policy; it was not proven against the upstream history."}
 	tReportInstalls     = T{KO: "설치 %d개", EN: "%d installations"}
 	tReportMissing      = T{KO: "보고서 파일을 읽지 못했습니다.", EN: "The report file could not be read."}
 	tChangeOnlyOld      = T{KO: "지금 규칙에서는 없음", EN: "not under the current rules"}

@@ -28,6 +28,8 @@ const (
 	FaultPrepareSync   = "prepare.sync"
 	FaultInstallRename = "install.rename"
 	FaultInstallSync   = "install.syncdir"
+	// FaultStateFormat: 상태 문서를 형식 2로 올리기 직전(raiseFormat).
+	FaultStateFormat = "state.format"
 )
 
 var preparedPattern = regexp.MustCompile(`^\..+\.pqcaton-([0-9a-f]{32})\.tmp$`)

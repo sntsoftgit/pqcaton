@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,16 +23,23 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/upstream"
 )
 
 func result(node string) *discoveryv1.CollectionResult {
-	cbom := `{"bomFormat":"CycloneDX","specVersion":"1.6","components":[
-      {"type":"cryptographic-asset","name":"libcrypto","properties":[{"name":"pqcota:crypto_runtime","value":"openssl"},
-        {"name":"pqcota:openssl.version","value":"3.0.2"},{"name":"pqcota:openssl.fork","value":"OpenSSL"}]},
-      {"type":"cryptographic-asset","name":"libssl","properties":[{"name":"pqcota:crypto_runtime","value":"openssl"},
-        {"name":"pqcota:openssl.version","value":"3.0.2"},{"name":"pqcota:openssl.fork","value":"OpenSSL"}]}]}`
+	return resultLibs(node, "libcrypto", "libssl")
+}
+
+// resultLibs — 노드 하나의 openssl 수집 결과. 라이브러리 이름을 노드마다 달리 줄 수 있다.
+func resultLibs(node string, libs ...string) *discoveryv1.CollectionResult {
+	var comps []string
+	for _, l := range libs {
+		comps = append(comps, `{"type":"cryptographic-asset","name":"`+l+`","properties":[{"name":"pqcota:crypto_runtime","value":"openssl"},
+        {"name":"pqcota:openssl.version","value":"3.0.2"},{"name":"pqcota:openssl.fork","value":"OpenSSL"}]}`)
+	}
+	cbom := `{"bomFormat":"CycloneDX","specVersion":"1.6","components":[` + strings.Join(comps, ",") + `]}`
 	return &discoveryv1.CollectionResult{
 		Envelope: &commonv1.Envelope{TargetNodeId: node, CollectorId: "openssl-collector",
 			CollectedAt:     timestamppb.New(time.Unix(1700000100, 0).UTC()),
@@ -94,5 +102,61 @@ func TestVerifyFindsOnlyTheIngestedPolicy(t *testing.T) {
 	}
 	if _, err := upstream.Verify(store, nil); !errors.Is(err, upstream.ErrNothingToVerify) {
 		t.Errorf("no evidence: err = %v, want ErrNothingToVerify", err)
+	}
+}
+
+// IC-S21 — **관리 자산이 0개가 된 노드도 확인한다.** web-01은 libcrypto · libssl, db-01은 libssl · libgcrypt를 쓴다. 정책 B
+// (libssl 제외)로 적재한 상류에서, 정책 C(B + libgcrypt 제외)는 web-01을 B와 같게 두고 db-01의 관리 자산만 0개로 만든다.
+// 다시 적재하지 않았으면 db-01의 빈 스냅샷이 상류의 최신이 아니므로 반드시 거절한다(자산 근거만 보면 web-01만 남아 통과해
+// 버린다). C로 다시 적재하면 상류가 빈 스냅샷도 적재하므로 통과한다.
+func TestVerifyChecksNodesLeftWithNoManagedAssets(t *testing.T) {
+	dir := t.TempDir()
+	for i, r := range []*discoveryv1.CollectionResult{resultLibs("web-01", "libcrypto", "libssl"), resultLibs("db-01", "libssl", "libgcrypt")} {
+		b, _ := protojson.Marshal(r)
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("r%d.json", i)), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	policyB := &kscope.AssetPolicy{Rules: []kscope.AssetRule{{Exclude: true, Runtime: "openssl", Lib: "libssl*"}}}
+	policyC := &kscope.AssetPolicy{Rules: append(append([]kscope.AssetRule(nil), policyB.Rules...),
+		kscope.AssetRule{Exclude: true, Runtime: "openssl", Lib: "libgcrypt*"})}
+	results, flaws := resultio.LoadDir(dir)
+	if len(flaws) != 0 {
+		t.Fatal(flaws)
+	}
+	store := history.NewMemStore()
+	if _, err := ingest.IngestWith(results, ingest.IngestOptions{SnapshotPrefix: "t", RulesetVersion: normalize.RulesetVersion,
+		Store: store, AssetPolicy: policyB}); err != nil {
+		t.Fatal(err)
+	}
+	d := decl.Declaration{Org: "acme", Scope: []string{"web", "db"},
+		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"web-01"}},
+			{Name: "db", IPs: []string{"10.0.0.2"}, ObservedAs: []string{"db-01"}}}}
+	underC, err := report.BuildWith(dir, d, policyC)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range underC.Assets {
+		for _, src := range a.Sources {
+			if src.Snapshot.SourceNodeID == "db-01" && a.Managed == reconcile.Managed {
+				t.Fatalf("db-01 still has a managed asset under C: %+v", a.Key)
+			}
+		}
+	}
+	refs := upstream.Refs(underC)
+	if len(refs) != 2 {
+		t.Fatalf("refs under C = %v, want both nodes (db-01 has no managed asset but is still checked)", refs)
+	}
+	missing, err := upstream.Verify(store, refs)
+	if !errors.Is(err, upstream.ErrMissing) || len(missing) != 1 || missing[0].Node != "db-01" {
+		t.Fatalf("db-01 left with no managed assets, not re-ingested: missing %v, err %v; want db-01 refused", missing, err)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	if _, err := ingest.IngestWith(results, ingest.IngestOptions{SnapshotPrefix: "t2", RulesetVersion: normalize.RulesetVersion,
+		Store: store, AssetPolicy: policyC}); err != nil {
+		t.Fatal(err)
+	}
+	if missing, err := upstream.Verify(store, refs); err != nil || len(missing) != 0 {
+		t.Errorf("after re-ingesting under C: missing %v, err %v; want all found (the empty snapshot is stored upstream)", missing, err)
 	}
 }

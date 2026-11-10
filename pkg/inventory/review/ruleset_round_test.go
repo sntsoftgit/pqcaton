@@ -121,3 +121,25 @@ func TestAdoptAndReport(t *testing.T) {
 		t.Errorf("the report head: %+v", back)
 	}
 }
+
+// IC-P47 — **정책 회차의 기록은 다시 세워도 남는다.** 화면은 세션을 읽을 때마다 입력에서 다시 세우고 옛 세션의 칸을 옮긴다.
+// 정책 회차 기록(근거 포함)이 빠지면 05가 그 회차를 운영자 진술로 열었는지 보이지 못하고, 화면이 세션을 다시 쓰면 기록이
+// 사라진다.
+func TestCarryKeepsTheScopeChange(t *testing.T) {
+	const from = "scope-policy-v1:" + "1111111111111111111111111111111111111111111111111111111111111111"
+	const to = "scope-policy-v1:" + "2222222222222222222222222222222222222222222222222222222222222222"
+	old := v3Rebuilt()
+	old.SessionID, old.ScopePolicyDigestV1 = "s-old", from
+	rebuilt := v3Rebuilt()
+	rebuilt.ScopePolicyDigestV1 = to
+	next, _ := review.PolicyRound(old, rebuilt, "s-new", "r.json", "a.json", review.ScopeRoundActivation, review.ScopeBasisUpstream)
+	if next.ScopeChange == nil || next.ScopeChange.Basis != review.ScopeBasisUpstream {
+		t.Fatalf("the policy round did not record its basis: %+v", next.ScopeChange)
+	}
+	again := v3Rebuilt()
+	again.ScopePolicyDigestV1 = to
+	carried := review.Carry(next, again)
+	if carried.SessionID != "s-new" || carried.ScopeChange == nil || *carried.ScopeChange != *next.ScopeChange {
+		t.Errorf("rebuilding the session dropped the scope change record: %+v", carried.ScopeChange)
+	}
+}

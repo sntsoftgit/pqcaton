@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -377,4 +378,132 @@ func TestFinalizeRecordsThePolicyDigest(t *testing.T) {
 	if _, err := s.OutputReceipt(Identity{Kind: "review", Org: "../x", SessionID: "s"}, w.plan); err == nil {
 		t.Error("an unusable identity was looked up")
 	}
+}
+
+// IC-W63: **상태 문서의 형식이 옛 판을 막는다.** 새 상태 디렉토리는 형식 2로 만든다. 옛 판(형식 1)의 상태 디렉토리는 그대로
+// 열고, 형식 1 영수증만 쓰는 동안은 형식 1로 둔다. 정책 지문을 담은 확정(형식 2 영수증)을 하기 직전에 형식 2로 올리고 ID와
+// 권한(0600)은 그대로다. 올리는 자리에서 멈추면 영수증도 출력도 쓰지 않는다. 형식 1 · 2가 아닌 상태 문서는 손상이다.
+func TestStateFormatRaisedBeforePolicyReceipt(t *testing.T) {
+	const digest = "scope-policy-v1:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+	readDoc := func(t *testing.T, dir string) stateDoc {
+		t.Helper()
+		b, err := os.ReadFile(filepath.Join(dir, stateFile))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var d stateDoc
+		if err := json.Unmarshal(b, &d); err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	legacy := func(t *testing.T, w world) string {
+		t.Helper()
+		if err := os.Mkdir(w.stateDir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		id := strings.Repeat("ab", 16)
+		b, _ := json.Marshal(stateDoc{Format: stateFormatLegacy, StateID: id})
+		if err := os.WriteFile(filepath.Join(w.stateDir, stateFile), append(b, '\n'), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	policyFinalize := func(s *State, w world) (Outcome, error) {
+		payload := Sum([]byte(planV2 + ledgerAdd))
+		return s.FinalizeChecked(sessA, []string{w.plan, w.session, w.ledger}, Check{}, payload, time.Second, func() (Parts, error) {
+			return Parts{PayloadSHA256: payload, ScopePolicy: digest,
+				Replace: []Change{{Path: w.plan, Content: []byte(planV2), Backup: true}, {Path: w.session, Content: []byte("finalized\n")}},
+				Append:  []Addition{{Path: w.ledger, Data: []byte(ledgerAdd)}}}, nil
+		})
+	}
+
+	t.Run("a new state directory starts at format 2", func(t *testing.T) {
+		w := newWorld(t)
+		w.open(t, nil)
+		if d := readDoc(t, w.stateDir); d.Format != stateFormat {
+			t.Errorf("new state format = %d, want %d", d.Format, stateFormat)
+		}
+	})
+
+	t.Run("a legacy state stays at format 1 while only format 1 receipts are written", func(t *testing.T) {
+		w := newWorld(t)
+		id := legacy(t, w)
+		s := w.open(t, nil)
+		if s.ID != id {
+			t.Fatalf("legacy state id = %s, want %s", s.ID, id)
+		}
+		if _, err := w.finalize(s, sessA, planV2, ledgerAdd); err != nil {
+			t.Fatal(err)
+		}
+		if d := readDoc(t, w.stateDir); d.Format != stateFormatLegacy || d.StateID != id {
+			t.Errorf("after a format 1 receipt: state %+v, want format 1 with the same id", d)
+		}
+	})
+
+	t.Run("raised just before the first format 2 receipt", func(t *testing.T) {
+		w := newWorld(t)
+		id := legacy(t, w)
+		stop := errors.New("stop at the state format")
+		s := w.open(t, func(point, path string) error {
+			if point == FaultStateFormat {
+				return stop
+			}
+			return nil
+		})
+		snap := w.snapshot(t)
+		if _, err := policyFinalize(s, w); !errors.Is(err, stop) {
+			t.Fatalf("finalize with a fault at the state format: err = %v, want the fault", err)
+		}
+		for k, v := range w.snapshot(t) {
+			if snap[k] != v {
+				t.Errorf("%s changed although the state format was not raised", k)
+			}
+		}
+		if rc, _ := s.readReceipt(sessA); rc != nil {
+			t.Fatal("a receipt was written although the state format was not raised")
+		}
+		if d := readDoc(t, w.stateDir); d.Format != stateFormatLegacy {
+			t.Fatalf("state format after the fault = %d, want 1", d.Format)
+		}
+		s.Close()
+
+		s = w.open(t, nil)
+		if out, err := policyFinalize(s, w); err != nil || out.Status != OutcomeDone {
+			t.Fatalf("finalize = %+v, %v", out, err)
+		}
+		if d := readDoc(t, w.stateDir); d.Format != stateFormat || d.StateID != id {
+			t.Errorf("after a format 2 receipt: state %+v, want format %d with id %s", d, stateFormat, id)
+		}
+		if m := mode(t, filepath.Join(w.stateDir, stateFile)); m != filePerm {
+			t.Errorf("state.json mode = %#o, want %#o", m, filePerm)
+		}
+		if rc, err := s.readReceipt(sessA); err != nil || rc == nil || rc.Format != receiptFormatPolicy {
+			t.Errorf("receipt = %+v, %v; want format 2", rc, err)
+		}
+		s.Close()
+		if again := open(t, w.stateDir); again.ID != id {
+			t.Errorf("reopened id = %s, want %s", again.ID, id)
+		}
+		if got, err := ReadStateID(w.stateDir); err != nil || got != id {
+			t.Errorf("ReadStateID = %q, %v", got, err)
+		}
+	})
+
+	t.Run("an unknown state format is damage", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), DirName)
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		b, _ := json.Marshal(stateDoc{Format: stateFormat + 1, StateID: strings.Repeat("cd", 16)})
+		if err := os.WriteFile(filepath.Join(dir, stateFile), b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Open(dir, Options{Warn: quiet, UID: -1}); !errors.Is(err, ErrDamaged) {
+			t.Errorf("Open of format %d: err = %v, want ErrDamaged", stateFormat+1, err)
+		}
+		if _, err := ReadStateID(dir); !errors.Is(err, ErrDamaged) {
+			t.Errorf("ReadStateID of format %d: err = %v, want ErrDamaged", stateFormat+1, err)
+		}
+	})
 }

@@ -6,7 +6,8 @@
 # pqcota 데모를 처음부터 띄우고, 화면 작업 폴더에서 05를 옛 정책으로 확정한 뒤, 02에서 새 정책을 확정하고,
 # ui.sh apply-scope(상류 재적재 → 상류 이력 확인 → 활성화)까지 간다. 실패 경로마다 정책 · 세션 · 계획 · 영수증의
 # 바이트와 상류 스냅샷 수가 그대로인지 보고, 성공 뒤에는 세 지문(활성 정책 · 새 세션 · 활성화 영수증)이 같은지, 06이 옛
-# 계획을 막는지, 05에 지난 결론이 참고값으로만 보이는지 본다. 끝나면(실패해도) 화면 · 데모 컨테이너를 내린다.
+# 계획을 막는지, 05에 지난 결론이 참고값으로만 보이는지 본다. 마지막으로 v0.25.0 태그로 빌드한 옛 바이너리가 이 작업 폴더의
+# 복사본에서 시작하지 않고 아무것도 바꾸지 않는지 본다. 끝나면(실패해도) 화면 · 데모 컨테이너를 내린다.
 #
 # E2E_KEEP_WS=<폴더>를 주면 정리하기 전에(실패해도) 작업 폴더를 그 폴더로, /work 전체를 <폴더>.work로 꺼내 둔다.
 # 성공한 작업 폴더는 옛 판 거절 시험에 쓴다. 성공했는지는 로그의 마지막 ✅ 줄로 가린다.
@@ -212,17 +213,17 @@ docker exec "$CTL" test -f "$WS/plan.json" || fail "05 did not write plan.json"
 # 새 정책은 **어느 노드에서도 처음 보는 스냅샷**을 내야 한다. 두 가지를 피한다.
 #   - 아무것도 바꾸지 못하는 규칙: 스냅샷 지문이 옛 정책과 같아, 다시 적재하지 않아도 확인이 통과한다(4c가 통과해 버린다).
 #   - 예전 상태로 되돌리는 규칙: 상류 저장소는 같은 지문의 스냅샷이 이력에 있으면 새로 만들지 않고, 노드의 최신(seq가 가장
-#     큰 것)은 옛 정책 스냅샷으로 남는다. 다시 적재해도 확인이 거절한다.
-# 데모에서 노드마다 옛 정책이 빼는 것은 하나씩이라, 그것만 되살리면 정책 없이 처음 적재한 상태로 돌아간다. 그래서 pay-app만
-# 바꾼다: sshd-session(pay-app에만 있다)이 쓰는 libcrypto를 되살리고 JCA를 뺀다. pay-app은 「libcrypto만 관리, 1건 제외」라는
-# 처음 보는 상태가 되고, pay-db(05의 libssl 정책)와 web-gw는 그대로다.
-step "3) 02: finalize a new policy (the old rules, then pay-app keeps libcrypto and drops JCA)"
+#     큰 것)은 옛 정책 스냅샷으로 남는다. 다시 적재해도 확인이 거절한다(이전 정책 복귀는 -confirm-ingest만 쓴다).
+# 그리고 **한 노드의 관리 자산을 0개로 만든다.** 관리 자산이 없는 노드도 확인 대상인지(4c)를 보려는 것이다. 옛 정책 뒤에
+# JCA 제외를 더하면 pay-app은 관리 자산 0개 · 2건 제외라는 처음 보는 상태가 되고, pay-db(05의 libssl 정책)와 web-gw는
+# 그대로다.
+step "3) 02: finalize a new policy (the old rules, then drop JCA: pay-app is left with no managed assets)"
 TMPB="$(mktemp -d)"
 ( cd "$REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH="$(docker exec "$CTL" uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')" \
     go build -o "$TMPB/pqcaton-scope" ./inventory/cmd/pqcaton-scope )
 docker cp -q "$TMPB/pqcaton-scope" "$CTL:/usr/local/bin/pqcaton-scope"
 rm -rf "$TMPB"
-docker exec "$CTL" bash -c "mkdir -p $WS/layers && { cat $WS/scope-assets.csv; echo 'include,openssl,libcrypto*,/usr/lib/openssh/sshd-session*,e2e: keep observing what sshd-session uses'; echo 'exclude,jca,*,*,e2e: JCA is managed elsewhere'; } > $WS/layers/demo.csv"
+docker exec "$CTL" bash -c "mkdir -p $WS/layers && { cat $WS/scope-assets.csv; echo 'exclude,jca,*,*,e2e: JCA is managed elsewhere'; } > $WS/layers/demo.csv"
 docker exec "$CTL" bash -c "pqcaton-scope open $WS/layers/demo.csv -base $WS/scope-assets.csv -org $ORG > $WS/scope-session.json"
 edit_json "$WS/scope-session.json" <<'PY'
 import json, sys
@@ -251,7 +252,7 @@ if "$UI" apply-scope; then fail "apply-scope activated a hand-edited candidate";
 unchanged "$B" "$C" "hand-edited candidate"
 docker exec "$CTL" bash -c "cp /tmp/e2e-candidate.bak $WS/asset-scope.csv && rm /tmp/e2e-candidate.bak"
 
-step "4c) verify upstream without re-ingesting: the latest snapshots are under the old policy, so refused"
+step "4c) verify upstream without re-ingesting: pay-app has no managed assets now, and its latest snapshot is still the old one, so refused"
 B="$(snap)"; C="$(count)"
 if docker exec -e PQCOTA_DSN="$DSN" "$CTL" pqcaton-decide activate-scope "$WS/session.json" -decl "$WS/declaration.json" \
     -results "$WS/results" -scope-assets "$WS/scope-assets.csv" -candidate "$WS/asset-scope.csv" \
@@ -288,7 +289,49 @@ grep -q "was made under an asset-scope policy other than the active one" <<<"$AP
 if grep -q 'action="/approve/sign/confirm"' <<<"$APPROVE"; then fail "06 offers to sign the old plan"; fi
 REVIEW="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/review?lang=en')"
 grep -q "Earlier policy conclusion (from the previous round; a reference value)" <<<"$REVIEW" || fail "05 does not show the earlier conclusions as references"
+grep -q "were found as the latest snapshot of every node in the upstream history" <<<"$REVIEW" || fail "05 does not show the upstream-verified basis of this round"
 "$UI" stop
+
+# 옛 판은 형식 2 영수증을 읽기 전까지 멈추지 않아 활성화 전 계획에 서명 양식까지 낸다. 그래서 이 판은 형식 2 영수증을 쓰기
+# 직전에 상태 문서를 형식 2로 올린다. 그것이 실제로 옛 바이너리를 막는지, 이 저장소의 v0.25.0 태그로 빌드한 바이너리를
+# 성공한 작업 폴더의 복사본에 돌려 본다: 화면은 시작하지 않고(듣는 포트가 없으니 05 · 06의 어떤 양식도 없다), 상태를 쓰는
+# 명령도 멈추며, 파일 · 영수증 · 트랜잭션 기록 · 준비 파일이 하나도 바뀌거나 늘지 않는다.
+step "7) the old version (v0.25.0, built from its tag) on a copy of this workspace: does not start, changes nothing"
+git -C "$REPO_DIR" rev-parse -q --verify 'refs/tags/v0.25.0^{commit}' >/dev/null || fail "the tag v0.25.0 is not in $REPO_DIR (git fetch --tags)"
+OLDB="$(mktemp -d)"
+git -C "$REPO_DIR" archive v0.25.0 | tar -x -C "$OLDB"
+OLD_ARCH="$(docker exec "$CTL" uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+( cd "$OLDB" && CGO_ENABLED=0 GOOS=linux GOARCH="$OLD_ARCH" go build -o "$OLDB/bin/pqcaton-ui" ./inventory/cmd/pqcaton-ui \
+    && CGO_ENABLED=0 GOOS=linux GOARCH="$OLD_ARCH" go build -o "$OLDB/bin/pqcaton-decide" ./inventory/cmd/pqcaton-decide )
+docker cp -q "$OLDB/bin/pqcaton-ui" "$CTL:/usr/local/bin/pqcaton-ui-v025"
+docker cp -q "$OLDB/bin/pqcaton-decide" "$CTL:/usr/local/bin/pqcaton-decide-v025"
+rm -rf "$OLDB"
+OLDWS=/work/ui-v025
+docker exec "$CTL" bash -c "rm -rf $OLDWS && cp -a $WS $OLDWS"
+FMT="$(docker exec "$CTL" python3 -c "import json; print(json.load(open('$OLDWS/.pqcaton/state.json'))['format'])")"
+[ "$FMT" = 2 ] || fail "the state document is format $FMT after the activation, want 2"
+old_measure() {
+  docker exec "$CTL" bash -c "cd $OLDWS && echo tree \$({ find . -type f -print0 | sort -z | xargs -0 sha256sum; find . \( -type f -o -type d \) -printf '%p %m %s\n' | sort; } | sha256sum | cut -c1-16) \
+    files \$(find . -type f | wc -l) receipts \$(find .pqcaton/receipts -type f | wc -l) txn \$(find .pqcaton/txn -type f 2>/dev/null | wc -l) \
+    prepared \$(find . -name '*.pqcaton-*.tmp' | wc -l)"
+}
+B="$(old_measure)"
+set +e
+OUT="$(docker exec "$CTL" timeout 20 pqcaton-ui-v025 -workspace "$OLDWS" -no-browser -addr 127.0.0.1:8799 2>&1)"; RC=$?
+set -e
+[ "$RC" != 0 ] && [ "$RC" != 124 ] || fail "v0.25.0 pqcaton-ui did not refuse to start (exit $RC): $OUT"
+grep -q "damaged or from another version" <<<"$OUT" || fail "v0.25.0 pqcaton-ui refused for another reason: $OUT"
+if docker exec "$CTL" curl -fsS -o /dev/null http://127.0.0.1:8799/approve 2>/dev/null; then fail "something answers on the v0.25.0 screen port"; fi
+echo "   v0.25.0 pqcaton-ui: exit $RC, $(grep -m1 -o 'state.json is damaged or from another version' <<<"$OUT")"
+set +e
+OUT="$(docker exec "$CTL" bash -c "a=\$(ls $OLDWS/session.scope-activation-*.json | grep -v report); timeout 20 pqcaton-decide-v025 close \$a -o $OLDWS/plan.json -org $ORG -state-dir $OLDWS/.pqcaton" 2>&1)"; RC=$?
+set -e
+[ "$RC" != 0 ] && grep -q "damaged or from another version" <<<"$OUT" || fail "v0.25.0 pqcaton-decide close did not stop at the state document (exit $RC): $OUT"
+echo "   v0.25.0 pqcaton-decide close: exit $RC"
+A="$(old_measure)"
+[ "$A" = "$B" ] || fail "the old version changed the workspace copy: before $B, after $A"
+echo "   unchanged (v0.25.0): $A"
+docker exec "$CTL" rm -rf "$OLDWS" /usr/local/bin/pqcaton-ui-v025 /usr/local/bin/pqcaton-decide-v025
 
 echo
 echo "✅ e2e: policy activation passed (old $OLD_DIGEST → new $ACTIVE)"

@@ -252,6 +252,8 @@ required).
    the confirmation page. The tick is only the operator's statement; pqcaton does not prove the upstream ingest itself. To
    check the upstream history for real, stop the screen and activate from the command line. `pqcaton-decide activate-scope -verify-upstream` goes on
    only when every node's digest under the new policy is found as that node's latest snapshot in the upstream history.
+   Every node in the results folder is checked, including a node left with no managed assets under the new policy: a
+   policy that drops all of a node's assets is a result of the policy change too.
 
    ```bash
    PQCOTA_DSN=<upstream DB> pqcaton-decide activate-scope <workspace>/session.json -decl <workspace>/declaration.json \
@@ -264,6 +266,13 @@ required).
    report. Plans already finalized are not signed or generated in 06, so finalize again in the new round. **If
    `scope-assets.csv` is edited by hand without an activation record,** 05 locks and saving and finalizing are blocked.
    Then restore the previous policy file, or follow the steps above.
+
+   **Going back to a previous policy cannot use `pqcaton-decide activate-scope -verify-upstream`.** Upstream pqcota
+   v0.10.6 does not create a new snapshot when one with the same digest is already in its history, and the node's latest
+   snapshot does not change. So a re-ingest under the previous policy cannot be proven from the upstream history. In that
+   case, after the upstream ingest, activate with the tick in 05 or `pqcaton-decide activate-scope -confirm-ingest`. This is
+   an operator statement: the receipt records `basis` as `operator-statement`, and 05 shows "it was not proven against the
+   upstream history" under "The policy change that opened this round".
 3. **03 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS, SSH or WinRM),
    and save. They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
    on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation"
@@ -465,10 +474,13 @@ finalized in 02 for reconciliation only through the formal steps.
 
 1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back the workspace up as in
    [section 7](#7-backup-and-restore). **There is a point of no return.** Finalizing 05, activating a policy or opening a
-   baseline round in this version writes format 2 receipts into the state folder. From then on the workspace cannot be
-   opened with v0.25.x or earlier. The older version reports a format 2 receipt as "receipt … keep a copy and run
-   pqcaton-ui -recover-status" and stops. It is not damage; the older version cannot read the newer receipt. To go back
-   to the older version, restore the backup.
+   baseline round in this version writes format 2 receipts into the state folder, and just before that the state document
+   (`.pqcaton/state.json`) is raised to format 2. A state folder this version creates starts at format 2. From then on
+   v0.25.x or earlier does not open the workspace: the screen does not start, and commands that write the state folder
+   stop with "state.json is damaged or from another version". It is not damage; the older version cannot read the newer
+   state folder. The older version does not stop until it reads a format 2 receipt, and until then it even offers to sign
+   a plan made before an activation, so this version stops it at start through the state document. To go back to the
+   older version, restore the backup.
 2. Replace the binary with `go install` from [section 2](#2-installation) and start the screen. Upstream stays at v0.10.6.
 3. **A review session made before this version records no policy, so 05 locks.** At the top of 05, tick "I confirmed
    the current scope-assets.csv is the policy the upstream ingest used" and open the baseline round. The old session is

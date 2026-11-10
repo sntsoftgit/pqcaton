@@ -80,7 +80,8 @@ func TestActivationRoundReplacesThePolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	if next.SessionID != newID || next.ScopePolicyDigestV1 != a.To || next.ScopeChange == nil ||
-		next.ScopeChange.Reason != review.ScopeRoundActivation || next.ScopeChange.FromPolicy != a.From {
+		next.ScopeChange.Reason != review.ScopeRoundActivation || next.ScopeChange.FromPolicy != a.From ||
+		next.ScopeChange.Basis != rulesetround.BasisOperator {
 		t.Fatalf("new session: id %s digest %s change %+v", next.SessionID, next.ScopePolicyDigestV1, next.ScopeChange)
 	}
 	for _, it := range review.All(next) {
