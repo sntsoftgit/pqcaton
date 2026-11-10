@@ -117,7 +117,7 @@ func TestOperatorGuideInstallsTheLatestRelease(t *testing.T) {
 
 var (
 	readmeUp  = regexp.MustCompile(`pqcota \*\*(v\d+\.\d+\.\d+)\*\*`)
-	demoUp    = regexp.MustCompile(`pqcota는 (v\d+\.\d+\.\d+)으로 받습니다|git clone --branch (v\d+\.\d+\.\d+) `)
+	demoUp    = regexp.MustCompile(`pqcota는 (v\d+\.\d+\.\d+)(?:으로|로) 받습니다|git clone --branch (v\d+\.\d+\.\d+) `)
 	noteUp    = regexp.MustCompile("(?s)^## v[^\n]*\n.*?\n### [^\n]*\n\\s*- [^\n]*pqcota:\\s*[`*]*(v\\d+\\.\\d+\\.\\d+)")
 	compatTop = regexp.MustCompile(`(?m)^\| (v\d+\.\d+\.\d+)(?: ~ (v\d+\.\d+\.\d+))? \| (v\d+\.\d+\.\d+) \|`)
 	goModUp   = regexp.MustCompile(`(?m)^\s*github\.com/randyinthedev-hash/(pqcota[a-z-]*) (v\d+\.\d+\.\d+)`)

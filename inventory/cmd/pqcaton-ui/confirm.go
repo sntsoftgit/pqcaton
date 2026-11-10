@@ -28,6 +28,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/sign"
+
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
@@ -163,7 +165,8 @@ func (s *server) finalizeConfirm(w http.ResponseWriter, r *http.Request) {
 		id = s.reviewID()
 		return err
 	})
-	if errors.Is(err, review.ErrRulesetChanged) || errors.Is(err, review.ErrScopePolicy) || errors.Is(err, review.ErrScopeChanged) {
+	if errors.Is(err, review.ErrRulesetChanged) || errors.Is(err, review.ErrScopePolicy) || errors.Is(err, review.ErrScopeChanged) ||
+		errors.Is(err, sign.ErrNUL) {
 		// 규칙 판이 다른 세션은 화면에서 고칠 것이 아니라 새 회차로 넘어갈 일이다. 거절 페이지로 보인다.
 		s.fail(w, r, back, err)
 		return

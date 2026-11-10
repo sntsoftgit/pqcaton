@@ -22,6 +22,7 @@ import (
 	"time"
 
 	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/sign"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
@@ -249,6 +250,9 @@ func refusedKind(err error) (string, int) {
 		return ui.RefusedFinalized, http.StatusConflict
 	case errors.Is(err, review.ErrRulesetChanged):
 		return ui.RefusedRulesetChanged, http.StatusConflict
+	case errors.Is(err, sign.ErrNUL):
+		// 확정하면 만들어질 계획의 문자열에 NUL이 있다(review.ToContract가 상류 sign.CheckPlanText로 본다).
+		return ui.RefusedSessionText, http.StatusConflict
 	case errors.Is(err, review.ErrScopePolicy):
 		return ui.RefusedScopePolicy, http.StatusConflict
 	case errors.Is(err, review.ErrScopeChanged):

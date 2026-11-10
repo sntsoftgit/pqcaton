@@ -12,7 +12,7 @@
 # E2E_KEEP_WS=<폴더>를 주면 정리하기 전에(실패해도) 작업 폴더를 그 폴더로, /work 전체를 <폴더>.work로 꺼내 둔다.
 # 성공한 작업 폴더는 옛 판 거절 시험에 쓴다. 성공했는지는 로그의 마지막 ✅ 줄로 가린다.
 #
-# 전제: PQCOTA_DIR = 상류 pqcota v0.10.6 체크아웃(옆에 pqcota-common · -inventory · -discovery · -provisioning). docker · go.
+# 전제: PQCOTA_DIR = 상류 pqcota v0.10.7 체크아웃(옆에 pqcota-common · -inventory · -discovery · -provisioning). docker · go.
 #
 # **따로 띄운 Docker 데몬 안에서 돈다.** 상류 데모는 컨테이너 · 볼륨 · 네트워크에 고정 이름(pqcota-ctl 등)을 쓴다. 같은
 # 호스트에서 pqcota 쪽이 데모를 띄워 쓰고 있으면 이름이 부딪힌다. 그래서 이 스크립트는 먼저 이번 실행만의 dind 컨테이너
@@ -291,6 +291,80 @@ REVIEW="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/review?lang=en')"
 grep -q "Earlier policy conclusion (from the previous round; a reference value)" <<<"$REVIEW" || fail "05 does not show the earlier conclusions as references"
 grep -q "were found as the latest snapshot of every node in the upstream history" <<<"$REVIEW" || fail "05 does not show the upstream-verified basis of this round"
 "$UI" stop
+
+# 지금 활성 정책으로 만든 계획은 06에서 서명되고 플레이북이 만들어져야 한다. 상류 v0.10.7의 승인 정규형 검사
+# (sign.CheckPlanText)를 지난 계획이 실제로 서명 · 생성까지 가는지를 화면 요청으로 잰다. 새 회차를 데모 확장과 같은 방식으로
+# 판정해 확정하고, 06 화면의 서명 양식 → 확인 페이지 → 서명, 생성 양식 → 생성을 화면이 보내는 그대로 보낸다.
+step "6b) 05 → 06 under the new policy: finalize the new round, then sign and generate through the screen"
+edit_json "$WS/session.json" <<'PY'
+import json, sys
+p = sys.argv[1]; s = json.load(open(p))
+s["reviewer"], s["signature"] = "e2e", "e2e-signature"
+for k in s.get("policy_decisions", {}):
+    s["policy_decisions"][k] = "e2e: replace"
+def pick(it):
+    it["include_in_plan"] = True
+    it["remediation_kind"] = "REMEDIATION_KIND_CONFIG_ONLY"
+    it["target_algorithm"] = "ML-KEM (FIPS 203)"
+    it["deploy_level"] = "L2"
+    it["rollback_note"] = "remove the staged config fragment"
+    ins = sorted({e.get("path") or "finding:" + e["finding_id"] for e in it.get("evidence_sources") or []})
+    if len(ins) > 1:
+        it["installations_confirmed"] = ins
+for it in s.get("items", []):
+    if it["state"] in ("CONFIRMED", "UNDECLARED") and it.get("managed") != "EXCLUDED_BY_POLICY":
+        pick(it)
+for it in s.get("autopass_candidates") or []:
+    if isinstance(it, dict):
+        pick(it)
+json.dump(s, open(p, "w"), ensure_ascii=False, indent=2)
+PY
+docker exec "$CTL" pqcaton-decide close "$WS/session.json" -o "$WS/plan.json" -scope-assets "$WS/scope-assets.csv" -org "$ORG" >/dev/null
+N_ACTIONS="$(docker exec "$CTL" python3 -c "import json; print(len(json.load(open('$WS/plan.json')).get('actions', [])))")"
+[ "$N_ACTIONS" -gt 0 ] || fail "the new round's plan has no actions to sign"
+"$UI" start
+docker exec -i "$CTL" python3 - <<'PY' || fail "06 did not sign and generate the plan made under the active policy"
+import html, re, sys, urllib.parse, urllib.request, http.cookiejar
+base = "http://127.0.0.1:8765"
+op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+def get(path):
+    return op.open(base + path).read().decode()
+def post(path, data):
+    req = urllib.request.Request(base + path, data=urllib.parse.urlencode(data, doseq=True).encode(),
+        headers={"Origin": base, "Content-Type": "application/x-www-form-urlencoded"})
+    r = op.open(req)
+    return r.status, r.read().decode()
+def form(page, action):
+    m = re.search(r'<form[^>]*action="' + re.escape(action) + r'"[^>]*>(.*?)</form>', page, re.S)
+    if not m:
+        sys.exit("no form posting to " + action)
+    fields = {}
+    for tag in re.findall(r"<input[^>]*>", m.group(1)):
+        name = re.search(r'name="([^"]*)"', tag)
+        if not name:
+            continue
+        value = re.search(r'value="([^"]*)"', tag)
+        if 'type="hidden"' in tag or 'type="text"' in tag:
+            fields[name.group(1)] = html.unescape(value.group(1)) if value else ""
+        elif 'type="checkbox"' in tag:
+            fields[name.group(1)] = "on"
+    return fields
+page = get("/approve?lang=en")
+f = form(page, "/approve/sign/confirm")
+f["approver"] = "e2e-approver"
+st, confirm = post("/approve/sign/confirm?lang=en", f)
+st, _ = post("/approve/sign?lang=en", form(confirm, "/approve/sign"))
+page = get("/approve?lang=en")
+g = form(page, "/approve/generate")
+g["level"] = "l2"
+st, _ = post("/approve/generate?lang=en", g)
+print("   06: signed and generated through the screen")
+PY
+"$UI" stop
+SIGNED_STATUS="$(docker exec "$CTL" python3 -c "import json; p=json.load(open('$WS/plan.signed.json')); print(p['status'], len(p.get('approvalSignatures', [])))")"
+[ "$SIGNED_STATUS" = "PLAN_STATUS_FINALIZED 1" ] || fail "the signed plan is $SIGNED_STATUS"
+docker exec "$CTL" bash -c "test -s $WS/plan.provision.yml && test -s $WS/plan.rollback.yml" || fail "06 wrote no playbooks"
+echo "   signed plan: $SIGNED_STATUS · actions $N_ACTIONS · playbooks written"
 
 # 옛 판은 형식 2 영수증을 읽기 전까지 멈추지 않아 활성화 전 계획에 서명 양식까지 낸다. 그래서 이 판은 형식 2 영수증을 쓰기
 # 직전에 상태 문서를 형식 2로 올린다. 그것이 실제로 옛 바이너리를 막는지, 이 저장소의 v0.25.0 태그로 빌드한 바이너리를

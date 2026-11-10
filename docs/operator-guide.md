@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.26.1 기준입니다.
+이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.26.2 기준입니다.
 영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
@@ -47,7 +47,7 @@
 **바이너리.** Go 1.26.10이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.26.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.26.2
 ```
 
 **Linux: 서비스와 실행기.** 서비스는 로그인할 때 화면을 띄우고(브라우저는 열지 않음), 실행기는 서비스를 시작한 뒤 화면을
@@ -57,8 +57,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.2/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.2/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -73,7 +73,7 @@ journalctl --user -u pqcaton-ui.service
 화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.2/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -84,8 +84,9 @@ chmod +x ~/Desktop/pqcaton-ui.command
   노드에서는 root 권한(`become`)으로 실행하므로 그 계정에 sudo 권한이 있어야 합니다. 처음 접속하는 노드는 미리 `ssh`로
   한 번 접속해 호스트 키를 받아 둡니다. Windows 노드를 관측하려면 `ansible.windows` 컬렉션도 필요합니다.
 - **수집기.** 작업 폴더의 `collectors` 폴더(또는 `-collectors <폴더>`)에 pqcota-discovery를 빌드한 결과를 아래 모양으로
-  둡니다. 판은 pqcota v0.10.6으로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다. 이 화면은 읽은 수집 결과를
-  v0.10.6 규칙 묶음으로 정규화합니다. 그 전 판의 `pqcota-jvmscan` · `collector.jar`는 provider별 PQC 서비스 목록을 싣지 않아
+  둡니다. 판은 pqcota v0.10.7로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다. 이 화면은 읽은 수집 결과를
+  v0.10.7 규칙 묶음(`pqcota-enrich/v3`)으로 정규화합니다. v0.10.7 전의 `pqcota-jvmscan`은 JVM이 둘 이상인 노드에서 결과를
+  여러 줄로 써서, 그 노드가 든 적재 요청 전체가 거절됩니다. 그 전 판의 `pqcota-jvmscan` · `collector.jar`는 provider별 PQC 서비스 목록을 싣지 않아
   JCA 준비도가 `unknown`이 되고, 03 · 04 화면이 그 노드를 「v0.10.6 JCA 수집 결과임을 확인할 수 없습니다」로 알립니다
   (README의 「맞는 조합」).
 
@@ -102,7 +103,7 @@ collectors/
 사용자가 읽을 수 있거나 작업 폴더 안에 있으면 쓰지 않습니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.6
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.7
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 ```
@@ -250,7 +251,7 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
    회차에서 다시 확정합니다. **활성화 기록 없이 `scope-assets.csv`를 손으로 바꾸면** 05가 잠기고 저장 · 확정이 막힙니다.
    그때는 이전 정책 파일을 복원하거나 위 절차를 밟습니다.
 
-   **이전 정책으로 되돌릴 때는 `pqcaton-decide activate-scope -verify-upstream`을 쓸 수 없습니다.** 상류 pqcota v0.10.6은
+   **이전 정책으로 되돌릴 때는 `pqcaton-decide activate-scope -verify-upstream`을 쓸 수 없습니다.** 상류 pqcota(v0.10.7까지)는
    이력에 같은 지문의 스냅샷이 있으면 다시 적재해도 새 스냅샷을 만들지 않고, 노드의 최신 스냅샷도 바뀌지 않습니다. 그래서
    이전 정책으로 다시 적재했다는 사실을 상류 이력으로 증명할 수 없습니다. 이때는 상류 적재를 마친 뒤 05의 확인 칸이나
    `pqcaton-decide activate-scope -confirm-ingest`로 활성화합니다. 이것은 운영자 진술입니다. 영수증의 `basis`에
@@ -437,6 +438,18 @@ pkill -INT -u "$USER" -x pqcaton-ui
 
 ## 9. 판 올리기
 
+### v0.26.x에서 v0.26.2로
+
+v0.26.2는 상류 pqcota v0.10.7을 반영하는 보안 패치입니다. 상태 형식 · 세션 · 계획 형식과 규칙 묶음(`pqcota-enrich/v3`)은
+v0.26.1과 같아 작업 폴더를 그대로 엽니다.
+
+1. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다.
+2. **상류도 v0.10.7로 올립니다.** 특히 `pqcota-approve` · `pqcota-provision`은 v0.10.7이어야 합니다. v0.10.6의 승인 서명은
+   문자열에 NUL 문자가 든 계획에서 다른 계획에도 통과할 수 있었습니다. 노드의 `pqcota-jvmscan`도 v0.10.7로 바꿉니다.
+3. 문자열에 NUL 문자가 든 계획은 05가 확정하지 않고(`session-text`), 이미 확정된 그런 계획은 06이 서명 · 생성하지 않습니다
+   (`plan-text`). 그런 계획은 새 판정 회차를 열어 그 값을 고친 뒤 다시 확정합니다. NUL 문자가 없는 계획은 승인 정규형이
+   v0.10.6과 같아, 이미 한 승인이 그대로 유효합니다.
+
 ### v0.25에서 v0.26으로
 
 v0.26은 판정 세션과 확정 영수증에 자산 스코프 정책의 지문을 남기고, 02에서 확정한 정책을 정식 절차로만 대조에 씁니다.
@@ -502,6 +515,8 @@ v0.25는 상류 pqcota v0.10.6의 규칙 묶음(`pqcota-enrich/v3`)으로 정규
 | `finalized` | 이미 확정한 세션이라 저장하지 않았습니다 | 새 세션에서 합니다 |
 | `plan-ruleset` | 계획이 지금과 다른 상류 규칙 판으로 판정됐거나 근거의 규칙 판을 확인할 수 없어, 서명 · 생성하지 않았습니다. 있는 파일은 그대로입니다 | 새 회차에서 다시 확정합니다. 상류를 v0.10.5 이하로 운영한다면 pqcaton v0.24.x나 상류 `pqcota-provision` v0.10.5로 생성합니다 |
 | `plan-scope` | 계획이 이 작업 폴더에서 확정한 기록과 이어지지 않거나(다른 곳에서 옮겨 왔거나, 확정한 뒤 계획 파일이 바뀌었거나, 이 판보다 먼저 확정해 정책 기록이 없음), 그 계획을 만든 자산 스코프 정책이 지금 활성 정책과 달라 서명 · 생성하지 않았습니다. 있는 파일은 그대로입니다 | 현재 정책에서 05의 새 판정 회차를 열어 다시 확정합니다. 다른 곳에서 옮겨 온 계획은 `pqcota-approve`와 `pqcota-provision`으로 승인하고 생성합니다 |
+| `plan-text` | 계획(또는 서명한 계획)의 문자열에 NUL 문자가 있어 서명 · 생성하지 않았습니다. 그런 계획은 승인이 다른 계획에서도 통과할 수 있어 pqcota가 서명과 생성을 거절합니다. 있는 파일은 그대로입니다 | 새 판정 회차를 열어 해당 값을 고친 뒤 다시 확정합니다. 서명한 계획에 있으면 먼저 보관합니다 |
+| `session-text` | 확정하면 만들어질 계획의 문자열에 NUL 문자가 있어 확정하지 않았습니다. 세션 · 계획 · 영수증은 그대로입니다 | 해당 값을 고친 뒤 다시 확정합니다 |
 | `scope-policy` | 판정 세션을 세울 때 쓴 자산 스코프 정책이 지금 정책과 다르거나, 세션에 정책 기록이 없어(이 판보다 먼저 만든 세션) 확정하지 않았습니다. 파일은 그대로입니다 | 세션을 세울 때와 같은 정책으로 확정하거나, 지금 정책으로 새 세션을 엽니다. 명령은 `pqcaton-decide close`에 세션을 열 때와 같은 `-scope-assets`를 줍니다 |
 | `scope-baseline` | 판정 세션에 자산 스코프 정책 기록이 없어(이 판보다 먼저 만든 세션) 저장 · 확정하지 않았습니다 | 판정 화면 위쪽에서 지금 `scope-assets.csv`가 상류 적재에 쓴 정책임을 확인하고 기준선 회차를 엽니다 |
 | `scope-unactivated` | `scope-assets.csv`가 활성화 기록 없이 바뀌어 저장 · 확정하지 않았습니다 | 이전 정책 파일을 복원하거나, 상류를 새 정책으로 다시 적재한 뒤 정식 정책 활성화를 거칩니다 |

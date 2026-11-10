@@ -76,6 +76,18 @@ var (
 	tRefusedPlanScope        = T{
 		KO: "이 계획은 이 작업 폴더에서 확정한 기록과 이어지지 않거나, 지금 활성 자산 스코프 정책과 다른 정책으로 만들어졌습니다. 서명하거나 플레이북을 만들지 않았고, 있는 파일은 그대로입니다. 현재 정책에서 05의 새 판정 회차를 열어 다시 확정하십시오. 다른 곳에서 옮겨 온 계획은 pqcota-approve와 pqcota-provision으로 승인하고 생성하십시오.",
 		EN: "This plan does not lead back to a finalize recorded in this workspace, or it was made under an asset-scope policy other than the active one. Nothing was signed or generated, and the existing files are unchanged. Open a new review round in 05 under the current policy and finalize again. A plan brought in from elsewhere is approved and generated with pqcota-approve and pqcota-provision."}
+	tRefusedPlanText = T{
+		KO: "현재 계획(plan.json)의 문자열에 NUL 문자가 있어 안전하게 승인할 수 없습니다. pqcota는 이런 계획의 서명과 생성을 거절합니다. 새 판정 회차를 열어 해당 값을 고친 뒤 다시 확정하십시오.",
+		EN: "The current plan (plan.json) contains a NUL character in a string and cannot be approved safely. pqcota refuses to sign or generate such a plan. Open a new review round, correct the affected value, and finalize it again."}
+	tSignedPlanText = T{
+		KO: "서명한 계획(plan.signed.json)의 문자열에 NUL 문자가 있어 안전하게 승인할 수 없습니다. pqcota는 이런 계획의 서명과 생성을 거절합니다. 서명한 계획을 보관하고, 새 판정 회차를 열어 해당 값을 고친 뒤 다시 확정하십시오.",
+		EN: "The signed plan (plan.signed.json) contains a NUL character in a string and cannot be approved safely. pqcota refuses to sign or generate such a plan. Archive the signed plan, open a new review round, correct the affected value, and finalize it again."}
+	tGenTextBlocked = T{
+		KO: "계획의 문자열에 NUL 문자가 있어 플레이북을 만들지 않습니다.",
+		EN: "The plan contains a NUL character in a string, so no playbooks are generated."}
+	tRefusedSessionText = T{
+		KO: "확정하면 만들어질 계획의 문자열에 NUL 문자가 있어 확정하지 않았습니다. 세션 · 계획 · 영수증은 그대로입니다. pqcota는 이런 계획의 서명과 생성을 거절합니다. 해당 값을 고친 뒤 다시 확정하십시오.",
+		EN: "The plan this finalize would write contains a NUL character in a string, so nothing was finalized. The session, plan and receipt are unchanged. pqcota refuses to sign or generate such a plan. Correct the affected value and finalize again."}
 	tRefusedScopePolicy = T{
 		KO: "이 판정 세션을 세울 때 쓴 자산 스코프 정책이 지금 정책과 다르거나, 세션에 정책 기록이 없습니다(이 판보다 먼저 만든 세션). 확정하지 않았고 파일은 그대로입니다. 세션을 세울 때와 같은 정책으로 확정하거나, 지금 정책으로 새 세션을 여십시오.",
 		EN: "The asset-scope policy this review session was built under differs from the current one, or the session records no policy (it was made before this version). Nothing was finalized and the files are unchanged. Finalize under the policy the session was built with, or open a new session under the current policy."}

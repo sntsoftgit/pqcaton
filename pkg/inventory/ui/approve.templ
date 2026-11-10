@@ -76,6 +76,9 @@ templ approveSign(v ApproveView) {
 			<span>{ v.Key.Text(v.Page.Lang) }</span>
 		</li>
 	</ul>
+	if v.TextProblem {
+		<p class="msg bad">{ v.TextText() }</p>
+	}
 	if v.RulesetProblem != "" {
 		<p class="msg bad">{ v.RulesetText() }</p>
 	}
@@ -165,6 +168,8 @@ templ approveGenerate(v ApproveView) {
 				@tip(v.Page.Lang, tGenHint.In(v.Page.Lang))
 			</div>
 		</form>
+	} else if v.TextProblem {
+		<p class="lede">{ tGenTextBlocked.In(v.Page.Lang) }</p>
 	} else if v.RulesetProblem != "" {
 		<p class="lede">{ tGenRulesetBlocked.In(v.Page.Lang) }</p>
 	} else if v.ScopeProblem != "" {

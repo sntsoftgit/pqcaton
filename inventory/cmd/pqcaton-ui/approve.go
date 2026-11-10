@@ -235,6 +235,10 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 		return v, nil
 	}
 	v.Plan = planSummary(plan)
+	// 문자열에 NUL이 든 계획은 승인 정규형이 모호해 서명 · 생성하지 않는다(상류 sign.CheckPlanText). 옛 판에서 확정됐을 수 있다.
+	if sign.CheckPlanText(plan) != nil {
+		v.TextProblem = true
+	}
 	// 규칙 판이 맞지 않는 계획은 서명하지 않는다. 서명된 계획이 있으면 그것도 본다(생성은 서명된 계획으로 한다).
 	if err := review.CheckPlanRuleset(plan); err != nil {
 		v.RulesetProblem = rulesetReason(err)
@@ -254,6 +258,9 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	}
 	if t := signed.GetFinalizedAt(); t != nil {
 		v.Signed.At = t.AsTime().Local()
+	}
+	if !v.TextProblem && sign.CheckPlanText(signed) != nil {
+		v.TextProblem, v.TextSigned = true, true
 	}
 	for _, sig := range signed.GetApprovalSignatures() {
 		if name, _, ok := strings.Cut(sig, ":"); ok && v.Approver == "" {
@@ -428,6 +435,11 @@ func (s *server) approveSignConfirm(w http.ResponseWriter, r *http.Request) {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
+	if err := sign.CheckPlanText(plan); err != nil {
+		fmt.Fprintln(os.Stderr, "approve:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanText, back, nil)
+		return
+	}
 	if err := review.CheckPlanRuleset(plan); err != nil {
 		fmt.Fprintln(os.Stderr, "approve:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
@@ -492,6 +504,10 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil, err
 		}
+		// 잠금 안에서도 본다. 서명은 sign.SignApproval도 거절하지만, 그 전에 같은 검사로 「plan-text」를 낸다.
+		if err := sign.CheckPlanText(plan); err != nil {
+			return nil, err
+		}
 		if err := review.CheckPlanRuleset(plan); err != nil {
 			return nil, err
 		}
@@ -512,6 +528,10 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 	})
 	l := ui.PickLang(r)
 	switch {
+	case errors.Is(err, sign.ErrNUL):
+		fmt.Fprintln(os.Stderr, "approve:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanText, back, nil)
+		return
 	case errors.Is(err, review.ErrPlanRuleset):
 		fmt.Fprintln(os.Stderr, "approve:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
@@ -607,6 +627,16 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 		if plan == nil {
 			return nil, errNotReady
 		}
+		// 지금 계획과 서명한 계획 모두 문자열에 NUL이 없어야 한다. 서명한 계획에 있으면 승인 확인이 이미 거부로 돌리지만,
+		// 「준비 안 됨」이 아니라 그 까닭(plan-text)을 알린다.
+		if err := sign.CheckPlanText(plan); err != nil {
+			return nil, err
+		}
+		if pre, err := loadPlanFile(s.signedPath()); err == nil && pre != nil {
+			if err := sign.CheckPlanText(pre); err != nil {
+				return nil, err
+			}
+		}
 		if err := s.checkPlanScope(plan); err != nil {
 			return nil, err
 		}
@@ -634,6 +664,11 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 			{Path: s.rollbackPath(), Content: []byte(provisioning.GenerateRollbackPlaybook(signed, level))},
 		}, nil
 	})
+	if errors.Is(err, sign.ErrNUL) {
+		fmt.Fprintln(os.Stderr, "generate:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanText, back, nil)
+		return
+	}
 	if errors.Is(err, review.ErrPlanRuleset) {
 		fmt.Fprintln(os.Stderr, "generate:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)

@@ -4,7 +4,10 @@
 package review_test
 
 import (
+	"errors"
 	"testing"
+
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/sign"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
@@ -69,5 +72,34 @@ func TestNoHooksMeansNoHookBlock(t *testing.T) {
 	}
 	if got.GetActions()[0].GetActivation() != nil {
 		t.Error("훅을 적지 않았는데 빈 묶음이 붙었다")
+	}
+}
+
+// IC-P48 — **승인 정규형이 모호해지는 계획은 계약으로 만들지 않는다.** 사람이 적는 실행 필드(목표 알고리즘 · 근거 관측 ·
+// 활성화 훅 · 설정 산출물 · 되돌림 메모) 가운데 어느 하나에 NUL이 있으면 상류 sign.CheckPlanText의 ErrNUL로 거절하고 계획을
+// 돌려주지 않는다. 확정(화면 · 명령의 close)은 이 함수를 거치므로 그런 계획은 파일과 영수증이 되지 않는다. NUL이 없으면 그대로다.
+func TestNULInAPlanFieldIsNotMadeIntoAContract(t *testing.T) {
+	s := &decision.Session{Status: decision.Finalized, Scope: "ring-0", Signature: "reviewer-1:sig"}
+	p, err := decision.BuildPlan(s, []decision.PlanItem{{NodeID: "pay-db", DeployAutomationLevel: "L2"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := review.Item{Runtime: "openssl", Kind: "REMEDIATION_KIND_CONFIG_ONLY", TargetAlgorithm: "ML-KEM (FIPS 203)", FindingID: "f-1"}
+	if _, err := review.ToContract(p, []review.Item{base}, "test-rules/v1", "sess-1"); err != nil {
+		t.Fatalf("a plan without NUL: %v", err)
+	}
+	for name, set := range map[string]func(*review.Item){
+		"target algorithm": func(it *review.Item) { it.TargetAlgorithm = "ML-KEM\x00X" },
+		"finding id":       func(it *review.Item) { it.FindingID = "f-1\x00" },
+		"activation hook":  func(it *review.Item) { it.Activate = "systemctl reload\x00app" },
+		"config artifact":  func(it *review.Item) { it.Config = "X\x00Y" },
+		"rollback note":    func(it *review.Item) { it.RollbackNote = "undo\x00it" },
+	} {
+		it := base
+		set(&it)
+		got, err := review.ToContract(p, []review.Item{it}, "test-rules/v1", "sess-1")
+		if !errors.Is(err, sign.ErrNUL) || got != nil {
+			t.Errorf("%s with NUL: plan %v, err %v; want no plan and sign.ErrNUL", name, got != nil, err)
+		}
 	}
 }

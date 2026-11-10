@@ -9,10 +9,10 @@ go 1.26.10
 // **넷은 같은 태그로 함께 올린다.** 단계 모듈은 따로 릴리스하지 않아서, 하나만 올리면
 // 상류가 검증한 적 없는 조합이 된다. `replace` 없이 공개 태그로 받는다.
 require (
-	github.com/randyinthedev-hash/pqcota-common v0.10.6
-	github.com/randyinthedev-hash/pqcota-discovery v0.10.6
-	github.com/randyinthedev-hash/pqcota-inventory v0.10.6
-	github.com/randyinthedev-hash/pqcota-provisioning v0.10.6
+	github.com/randyinthedev-hash/pqcota-common v0.10.7
+	github.com/randyinthedev-hash/pqcota-discovery v0.10.7
+	github.com/randyinthedev-hash/pqcota-inventory v0.10.7
+	github.com/randyinthedev-hash/pqcota-provisioning v0.10.7
 )
 
 require (

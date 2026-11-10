@@ -1,0 +1,9 @@
+{
+  "note": "Values produced with github.com/randyinthedev-hash/pqcota-common v0.10.6 (sign.CanonicalPlan, sign.SignApproval, sign.VerifyApprovals) before pqcaton moved to v0.10.7. Key seed: sha256(\"pqcaton v0.26.2 golden approval key\"), approver \"golden\".",
+  "public_key": "foLOtyToOO2uU4P/7o9DzSm9So1TbEw3/+WUivm8sxI=",
+  "canonical_ok_sha256": "619b500b30967b4fe02e056a176863781a1b93181383af41fec19bb169d99be2",
+  "approval_ok": "golden:ed25519:ILmGgvp/4OdVBaDZfA7yL0pB8BWQknZJx2iwyI0eW7fRTMRGHp7B36V/3uEF0z3/aqbTXXY2ZQl+Q7sJytOsCg==",
+  "canonical_nul_sha256": "c12d7ba17d7435afafa04b63d70767b38f4347de5c5c6a0168b0c48a37d41187",
+  "approval_nul_a": "golden:ed25519:LTpbf8i5T2oV/QXcPv1Hc3QRXZvQ9fKqsbswx0fTwhOV8m9Vp6j0GJJJG7s+lOfgeKRO7sTy0OmcNwZTGY6IAA==",
+  "v0106_nul_b_with_approval_a": "approved"
+}

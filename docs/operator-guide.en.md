@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.26.1.
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.26.2.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -50,7 +50,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 **The binary.** Go 1.26.10 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.26.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.26.2
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
@@ -61,8 +61,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.2/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.2/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -78,7 +78,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.2/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -89,9 +89,11 @@ machine. The screen checks both before it starts and, when something is missing,
   and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
   with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
 - **Collectors.** Put the build output of pqcota-discovery in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this. Keep them on pqcota v0.10.6 (the pqcota version for each pqcaton version is in the
+  <folder>`), shaped like this. Keep them on pqcota v0.10.7 (the pqcota version for each pqcaton version is in the
   [version table](compatibility.md), in Korean), and the `collector.jar` put on the nodes on the same version.
-  This screen normalizes the collection results it reads with the v0.10.6 ruleset. An earlier `pqcota-jvmscan` or
+  This screen normalizes the collection results it reads with the v0.10.7 ruleset (`pqcota-enrich/v3`). A
+  `pqcota-jvmscan` earlier than v0.10.7 writes its results over several lines on a node with two or more JVMs, and the
+  whole ingest request that holds that node is refused. An earlier `pqcota-jvmscan` or
   `collector.jar` does not carry the per-provider list of PQC services, so the JCA readiness becomes `unknown`, and the 03
   and 04 screens name such nodes as "the JCA results cannot be confirmed as v0.10.6 collection results" (see the version
   table under 「맞는 조합」 in the README).
@@ -110,7 +112,7 @@ collectors/
 it or when it sits inside the workspace.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.6
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.7
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 ```
@@ -268,7 +270,7 @@ required).
    Then restore the previous policy file, or follow the steps above.
 
    **Going back to a previous policy cannot use `pqcaton-decide activate-scope -verify-upstream`.** Upstream pqcota
-   v0.10.6 does not create a new snapshot when one with the same digest is already in its history, and the node's latest
+   (up to v0.10.7) does not create a new snapshot when one with the same digest is already in its history, and the node's latest
    snapshot does not change. So a re-ingest under the previous policy cannot be proven from the upstream history. In that
    case, after the upstream ingest, activate with the tick in 05 or `pqcaton-decide activate-scope -confirm-ingest`. This is
    an operator statement: the receipt records `basis` as `operator-statement`, and 05 shows "it was not proven against the
@@ -467,6 +469,19 @@ contents.
 
 ## 9. Upgrading
 
+### v0.26.x to v0.26.2
+
+v0.26.2 is a security patch that takes in upstream pqcota v0.10.7. The state format, the session and plan formats and the
+ruleset (`pqcota-enrich/v3`) are the same as v0.26.1, so the workspace opens as it is.
+
+1. Stop the screen and replace the binary with `go install` from [section 2](#2-installation).
+2. **Upgrade upstream to v0.10.7 too.** `pqcota-approve` and `pqcota-provision` in particular must be v0.10.7: an
+   approval signature in v0.10.6 could also pass on a different plan when a string in the plan contains a NUL character.
+   Replace `pqcota-jvmscan` on the nodes with v0.10.7 as well.
+3. A plan with a NUL character in a string is not finalized by 05 (`session-text`), and such a plan finalized earlier is
+   not signed or generated by 06 (`plan-text`). Open a new review round, correct the value, and finalize again. A plan
+   without a NUL character has the same approval canonical form as in v0.10.6, so existing approvals stay valid.
+
 ### v0.25 to v0.26
 
 v0.26 records the asset scope policy's digest in the review session and the finalize receipt, and uses the policy
@@ -544,6 +559,8 @@ screen.
 | `finalized` | The session is already finalized, so nothing was saved | Do it in a new session |
 | `plan-ruleset` | The plan was judged under a different upstream ruleset, or the ruleset of its evidence cannot be confirmed, so nothing was signed or generated. Existing files are unchanged | Finalize it again in a new round. If upstream still runs v0.10.5 or earlier, generate with pqcaton v0.24.x or upstream `pqcota-provision` v0.10.5 |
 | `plan-scope` | The plan does not lead back to a finalize recorded in this workspace (it was brought in from elsewhere, the plan file changed after it was finalized, or it was finalized before this version and records no policy), or the asset-scope policy it was made under differs from the active one, so nothing was signed or generated. Existing files are unchanged | Open a new review round in 05 under the current policy and finalize again. Approve and generate a plan brought in from elsewhere with `pqcota-approve` and `pqcota-provision` |
+| `plan-text` | The plan (or the signed plan) contains a NUL character in a string, so nothing was signed or generated. An approval of such a plan could also pass on a different plan, so pqcota refuses to sign or generate it. Existing files are unchanged | Open a new review round, correct the value and finalize again. If the signed plan has it, archive that first |
+| `session-text` | The plan this finalize would write contains a NUL character in a string, so nothing was finalized. The session, plan and receipt are unchanged | Correct the value and finalize again |
 | `scope-policy` | The asset-scope policy the review session was built under differs from the current one, or the session records no policy (made before this version), so nothing was finalized. The files are unchanged | Finalize under the policy the session was built with, or open a new session under the current policy. On the command line, give `pqcaton-decide close` the same `-scope-assets` the session was opened with |
 | `scope-baseline` | The review session records no asset-scope policy (made before this version), so nothing was saved or finalized | At the top of the review screen, confirm the current `scope-assets.csv` is the policy the upstream ingest used and open the baseline round |
 | `scope-unactivated` | `scope-assets.csv` changed without an activation record, so nothing was saved or finalized | Restore the previous policy file, or re-ingest upstream with the new policy and go through the policy activation |

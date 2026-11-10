@@ -42,6 +42,9 @@ type ApproveView struct {
 	// 지금 활성 정책과 다른 사유(PlanScope*). 비면 맞다. 맞지 않으면 서명 · 생성 양식을 내지 않는다. 보관은 그대로 할
 	// 수 있고, 있는 계획 · 서명 · 플레이북은 그대로 둔다.
 	ScopeProblem string
+	// TextProblem — 지금 계획(또는 서명한 계획)의 문자열에 NUL 문자가 있다. 승인 정규형이 모호해 서명 · 생성하지 않는다.
+	// TextSigned — 그것이 서명한 계획(plan.signed.json) 쪽이다.
+	TextProblem, TextSigned bool
 }
 
 // 06이 계획을 서명 · 생성하지 않는 정책 쪽 사유. 검사 순서(계획 ID 형식 → 동일성 → 계획 파일 해시 → 정책 지문)와 같다.
@@ -143,19 +146,20 @@ func (v ApproveView) Summary() ApproveSummary {
 // 파일은 어떤 경우에도 덮지 않는다(낡았으면 운영자가 먼저 보관한다).
 func (v ApproveView) CanSign() bool {
 	return v.Writable && v.Plan != nil && v.Key.State == KeyOK && v.Signed.State == SignNone && v.RulesetProblem == "" &&
-		v.ScopeProblem == ""
+		v.ScopeProblem == "" && !v.TextProblem
 }
 
 // CanArchive — 지난 서명을 보관할 수 있는가. 지금 계획과 맞지 않거나 이 키로 확인되지 않는 서명이 있을 때, 그리고 규칙 판이
 // 맞지 않는 서명된 계획이 있을 때다(그 계획으로는 다시 서명도 생성도 하지 않으므로, 옮겨 두어야 새 회차의 계획을 서명한다).
 func (v ApproveView) CanArchive() bool {
 	return v.Writable && (v.Signed.State == SignStale || v.Signed.State == SignInvalid ||
-		((v.RulesetProblem != "" || v.ScopeProblem != "") && v.Signed.State != SignNone))
+		((v.RulesetProblem != "" || v.ScopeProblem != "" || v.TextProblem) && v.Signed.State != SignNone))
 }
 
 // CanGenerate — 생성 양식을 낼 수 있는가. 서명이 지금 계획과 맞고 이 키로 확인돼야 한다.
 func (v ApproveView) CanGenerate() bool {
-	return v.Writable && v.Signed.State == SignValid && v.Key.State == KeyOK && v.RulesetProblem == "" && v.ScopeProblem == ""
+	return v.Writable && v.Signed.State == SignValid && v.Key.State == KeyOK && v.RulesetProblem == "" && v.ScopeProblem == "" &&
+		!v.TextProblem
 }
 
 // ScopeText — 정책 쪽 거절의 화면 말. **지금 계획(plan.json)의 문제로 적는다.** 서명한 계획의 문제로 읽히면 운영자가
@@ -172,6 +176,18 @@ func (v ApproveView) ScopeText() string {
 		return tPlanScopeMismatch.In(v.Page.Lang)
 	default:
 		return tPlanScopeUnverifiable.In(v.Page.Lang)
+	}
+}
+
+// TextText — 문자열 속 NUL로 서명 · 생성하지 않는 까닭의 화면 말. 서명한 계획 쪽이면 그 계획을 가리킨다.
+func (v ApproveView) TextText() string {
+	switch {
+	case !v.TextProblem:
+		return ""
+	case v.TextSigned:
+		return tSignedPlanText.In(v.Page.Lang)
+	default:
+		return tRefusedPlanText.In(v.Page.Lang)
 	}
 }
 

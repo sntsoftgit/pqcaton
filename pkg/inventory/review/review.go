@@ -24,6 +24,7 @@ import (
 
 	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
 	provisioningv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/provisioning/v1"
+	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/sign"
 	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/normalize"
@@ -973,6 +974,12 @@ func ToContract(p *decision.JudgedPlan, items []Item, rulesetVersion, sessionID 
 			ConfigArtifact:  it.Config,
 			RollbackNote:    rollbackNoteOf(it, rulesetVersion),
 		})
+	}
+	// **승인 정규형이 모호해지는 계획은 확정하지 않는다.** 문자열에 NUL이 있으면 서로 다른 계획이 같은 정규형이 되어, 한
+	// 계획의 승인이 다른 계획에서 통과한다(상류 v0.10.6까지). 상류가 서명 · 승인 확인 · 생성에서 쓰는 검사를 가장 이른 자리인
+	// 여기서도 부른다. 확정된 계획은 고칠 수 없으므로, 쓰기 전에 막아야 새 회차를 열지 않고 그 자리에서 고친다.
+	if err := sign.CheckPlanText(out); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

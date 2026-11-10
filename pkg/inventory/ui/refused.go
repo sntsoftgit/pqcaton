@@ -44,6 +44,12 @@ const (
 	// RefusedPlanScope — 계획이 이 작업 폴더의 확정 기록과 이어지지 않거나, 그 계획을 만든 자산 스코프 정책이 지금 활성
 	// 정책과 달라 서명 · 생성하지 않았다(409).
 	RefusedPlanScope = "plan-scope"
+	// RefusedPlanText — 계획(또는 서명한 계획)의 문자열에 NUL 문자가 있어 서명 · 생성하지 않았다(409). 그런 계획은 승인
+	// 정규형이 모호해 한 계획의 승인이 다른 계획에서 통과할 수 있다(상류 sign.CheckPlanText). 확정된 계획이라 새 회차로 고친다.
+	RefusedPlanText = "plan-text"
+	// RefusedSessionText — 확정하면 만들어질 계획의 문자열에 NUL 문자가 있어 확정하지 않았다(409). 세션 · 계획 · 영수증은
+	// 그대로이고, 아직 확정 전이라 그 자리에서 값을 고친다.
+	RefusedSessionText = "session-text"
 	// RefusedScopePolicy — 판정 세션이 기록한 자산 스코프 정책이 지금 정책과 다르거나 세션에 정책 기록이 없어 확정하지
 	// 않았다(409).
 	RefusedScopePolicy = "scope-policy"
@@ -81,6 +87,8 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedRulesetChanged:    {body: tRefusedRulesetChanged},
 	RefusedPlanRuleset:       {tSignRefusedHead, tRefusedPlanRuleset},
 	RefusedPlanScope:         {tSignRefusedHead, tRefusedPlanScope},
+	RefusedPlanText:          {tSignRefusedHead, tRefusedPlanText},
+	RefusedSessionText:       {body: tRefusedSessionText},
 	RefusedScopePolicy:       {body: tRefusedScopePolicy},
 	RefusedScopeBaseline:     {body: tRefusedScopeBaseline},
 	RefusedScopeUnactivated:  {body: tRefusedScopeUnactivated},

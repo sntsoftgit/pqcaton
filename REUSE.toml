@@ -27,6 +27,7 @@ path = [
     "tools/**/*.tsv",
     "tools/**/*.txt",
     "demo/expected-output/**",
+    "inventory/cmd/pqcaton-ui/testdata/nul/*.json",
     "site/**",
     "pkg/inventory/ui/static/app.css",
 ]
