@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
@@ -68,7 +69,23 @@ func (s *server) activationCheck() (*ui.ActivationOffer, error) {
 	if err := s.sameScopePolicy(sf); err != nil {
 		return nil, err
 	}
-	return &ui.ActivationOffer{From: from, To: to}, nil
+	o := &ui.ActivationOffer{From: from, To: to}
+	// 05의 「상류 재적재」 명령에 보일 경로. 작업 폴더(세션 파일이 있는 폴더) 기준이다. 그 밖에 있으면 절대 경로로 둔다.
+	dir := filepath.Dir(s.path)
+	for _, p := range []struct {
+		dst  *string
+		path string
+	}{{&o.Candidate, s.scopeOut}, {&o.Results, s.results}} {
+		if p.path == "" {
+			continue
+		}
+		if rel, err := filepath.Rel(dir, p.path); err == nil && !strings.HasPrefix(rel, "..") {
+			*p.dst = rel
+		} else {
+			*p.dst = p.path
+		}
+	}
+	return o, nil
 }
 
 // activationOffer: 05 위쪽에 띄울 활성화. 할 수 없으면 nil이다(까닭은 활성화를 누를 때 거절문으로 알린다).

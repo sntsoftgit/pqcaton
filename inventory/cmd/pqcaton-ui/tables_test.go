@@ -48,7 +48,11 @@ func TestEveryTableScrollsInItsBox(t *testing.T) {
 	for _, want := range []string{"body.wb .table-wrap { overflow-x: auto;", "body.wb fieldset { min-width: 0; }", "box-sizing: border-box", "@media (max-width: 650px)",
 		"body.wb .context { color: var(--muted); font-size: .9rem; min-width: 0; max-width: 100%;",
 		// 작업 파일 경로가 줄어들어 파일 이름 가운데서 갈라지지 않는다(1280px에서 갈라졌다).
-		"overflow-wrap: anywhere; flex: 0 0 auto; max-width: min(34rem, 45%); }"} {
+		"overflow-wrap: anywhere; flex: 0 0 auto; max-width: min(34rem, 45%); }",
+		// 좁은 화면에서 단추를 양식에 담은 상자의 양식이 첫 칸을 넓혀 글 칸이 찌그러지지 않는다(v0.23.0부터 그랬다).
+		".ui-next .next > form { grid-column: 1 / -1; }",
+		// 05의 활성화 단계는 01~06 단계 카드(.steps)와 다른 이름이라 그 격자를 물려받지 않는다.
+		".ui-next .activation-steps { display: block;"} {
 		if !strings.Contains(css, want) {
 			t.Errorf("the stylesheet has no %q", want)
 		}

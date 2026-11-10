@@ -939,6 +939,12 @@ func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 		v = v.Editable(files)
 	}
 	v.Finalized = wd.scopeFinal.Locked()
+	// 02를 방금 확정했고(확정 알림) 그 정책이 05와 같은 판정으로 활성화를 기다리면 다음 단계를 잇는다.
+	if ui.HasNotice(r.URL.Query().Get(ui.MsgParam), ui.NoticeFinalizedPolicy) {
+		if o, err := s.activationOffer(); err == nil && o != nil {
+			v.ActivationNext = true
+		}
+	}
 	html(w, r, func(out io.Writer) error { return ui.RenderScope(out, v) })
 }
 

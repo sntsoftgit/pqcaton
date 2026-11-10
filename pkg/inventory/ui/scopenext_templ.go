@@ -91,6 +91,10 @@ func scopeNextPage(v ScopeView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			templ_7745c5c3_Err = scopeActivationNext(v).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			templ_7745c5c3_Err = scopeNextTodo(v).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -107,7 +111,7 @@ func scopeNextPage(v ScopeView) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(tNextLayerSection.In(v.Page.Lang))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 20, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 21, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -120,7 +124,7 @@ func scopeNextPage(v ScopeView) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(tNextLayerNote.In(v.Page.Lang))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 21, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 22, Col: 43}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -148,7 +152,7 @@ func scopeNextPage(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(scopeEditAnchor)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 29, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 30, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -161,7 +165,7 @@ func scopeNextPage(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeEditHead.In(v.Page.Lang))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 29, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 30, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -174,7 +178,7 @@ func scopeNextPage(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeEditLede.In(v.Page.Lang))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 30, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 31, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -239,7 +243,7 @@ func scopeNextTodo(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeTodo.F(v.Page.Lang, s.Changes))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 46, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 47, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -257,7 +261,7 @@ func scopeNextTodo(v ScopeView) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeAudited.F(v.Page.Lang, s.Audited))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 48, Col: 56}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 49, Col: 56}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -275,7 +279,7 @@ func scopeNextTodo(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var14 templ.SafeURL
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + scopeEditAnchor))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 51, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 52, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -288,7 +292,7 @@ func scopeNextTodo(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeGo.In(v.Page.Lang))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 51, Col: 98}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 52, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -306,7 +310,7 @@ func scopeNextTodo(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeDone.In(v.Page.Lang))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 57, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 58, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -319,7 +323,7 @@ func scopeNextTodo(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeDoneBody.F(v.Page.Lang, s.Rules))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 58, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 59, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -363,7 +367,7 @@ func scopeNextMetrics(v ScopeView) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(s.Layers))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 68, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 69, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -376,7 +380,7 @@ func scopeNextMetrics(v ScopeView) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeMetricLayers.In(v.Page.Lang))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 69, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 70, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -389,7 +393,7 @@ func scopeNextMetrics(v ScopeView) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(s.Rules))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 72, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 73, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -402,7 +406,7 @@ func scopeNextMetrics(v ScopeView) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeMetricRules.In(v.Page.Lang))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 73, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 74, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -437,7 +441,7 @@ func scopeNextMetrics(v ScopeView) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(s.Changes))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 76, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 77, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -450,7 +454,7 @@ func scopeNextMetrics(v ScopeView) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(tNextScopeMetricChanges.In(v.Page.Lang))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 77, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 78, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -493,7 +497,7 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(e.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 86, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 87, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -506,7 +510,7 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Path)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 87, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 88, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 		if templ_7745c5c3_Err != nil {
@@ -519,7 +523,7 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(baseName(e.Path))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 87, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 88, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -532,7 +536,7 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(tNextLayerRules.F(l, len(e.Rules)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 90, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 91, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -545,7 +549,7 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(e.Index + 1))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 92, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 93, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -558,7 +562,7 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 		var templ_7745c5c3_Var33 templ.SafeURL
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + layerBlockID(e.Index)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 93, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 94, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -571,7 +575,7 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(tNextGoEdit.In(l))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 93, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 94, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
@@ -580,6 +584,118 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</a></article>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// scopeActivationNext — 02 확정 직후, 그 정책이 아직 대조에 반영되지 않았을 때의 다음 단계. **먼저 04에서 현재 활성
+// 정책으로 계산한 대조를 보게 하고**, 05의 활성화 절차는 보조 링크로 둔다. 상류 재적재를 마치기 전에 바로 적용해도 된다는
+// 인상을 주지 않으려는 것이다.
+func scopeActivationNext(v ScopeView) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var35 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var35 == nil {
+			templ_7745c5c3_Var35 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		if v.ActivationNext {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<div class=\"next ruleset\" role=\"status\"><div class=\"next-icon\">!</div><div><strong>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var36 string
+			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(tScopeNextHead.In(v.Page.Lang))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 106, Col: 44}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</strong> <span>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var37 string
+			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(tScopeNextBody.In(v.Page.Lang))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 107, Col: 42}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</span></div><div class=\"next-actions\"><a class=\"primary\" href=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var38 templ.SafeURL
+			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(ScreenSurvey))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 110, Col: 57}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var39 string
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(tScopeNextSurvey.In(v.Page.Lang))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 110, Col: 94}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</a> <a class=\"quiet\" href=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var40 templ.SafeURL
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(ScreenReview + "#" + scopeActivateAnchor))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 111, Col: 83}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var41 string
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(tScopeNextSteps.In(v.Page.Lang))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 111, Col: 119}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</a></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		return nil
 	})

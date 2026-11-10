@@ -102,6 +102,14 @@ tr.htmx-added td { animation: settle .5s ease-out; }
 .ui-next .next strong, .ui-next .next span { display: block; }
 .ui-next .next span { color: #76511a; font-size: .9rem; }
 .ui-next .next.done span { color: var(--green); }
+/* 링크 둘을 셋째 칸에 나란히(02 확정 뒤 다음 단계). */
+.ui-next .next-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+/* 05의 활성화 상자: 단계 목록이 글 칸 전체를 쓴다. 번호는 <ol>이 붙인다. */
+.ui-next .next.activation > div:nth-child(2) { grid-column: 2 / -1; }
+.ui-next .activation-steps { display: block; margin: .7rem 0 0; padding-left: 1.4rem; }
+.ui-next .activation-steps li { margin: .7rem 0; }
+.ui-next .activation-steps code { display: block; margin: .3rem 0; overflow-wrap: anywhere; }
+.ui-next .activation-steps .check { margin: .3rem 0; }
 .ui-next .primary, .ui-next .quiet { display: inline-block; border-radius: 8px;
                  padding: .58rem .85rem; border: 1px solid var(--blue); background: var(--blue);
                  color: #fff; font-weight: 700; white-space: nowrap; text-decoration: none; }
@@ -137,6 +145,11 @@ tr.htmx-added td { animation: settle .5s ease-out; }
   .ui-next .metrics { grid-template-columns: 1fr; }
   .ui-next .next { grid-template-columns: auto 1fr; }
   .ui-next .next .primary { grid-column: 1 / -1; }
+  .ui-next .next .next-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  /* 단추를 양식에 담은 상자(새 회차 등): 격자 칸을 차지하는 것은 양식이다. 양식도 한 줄 전체로 둔다. 그러지 않으면
+     양식이 첫 칸을 넓혀 글 칸이 찌그러진다(v0.23.0부터). */
+  .ui-next .next > form { grid-column: 1 / -1; }
+  .ui-next .next-actions .primary { grid-column: auto; }
   .ui-next .node-card { grid-template-columns: 1fr 1fr; }
   .ui-next .node-card .quiet { grid-column: 1 / -1; }
 }

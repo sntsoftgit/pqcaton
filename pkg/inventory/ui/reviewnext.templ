@@ -33,7 +33,7 @@ templ reviewNextPage(v ReviewView) {
 templ reviewNextTodo(v ReviewView) {
 	{{ s := v.Summary() }}
 	if v.Activation != nil && v.ScopeLock == "" {
-		@scopeActivateBox(v.Page)
+		@scopeActivateBox(v.Page, *v.Activation)
 	}
 	if v.NeedsBaseline() {
 		@scopeBaselineBox(v.Page)
@@ -171,21 +171,37 @@ templ scopeBaselineBox(p Page) {
 	</div>
 }
 
-// scopeActivateBox — 02에서 확정한 정책이 활성 정책과 다를 때 05 위쪽. 상류 재적재를 마쳤다는 운영자 진술(한계 문구와 함께)을
-// 받고 확인 페이지로 간다(요청 보호 · rev).
-templ scopeActivateBox(p Page) {
-	<div class="next ruleset" role="status" id={ scopeActivateAnchor }>
+// scopeActivateBox — 02에서 확정한 정책이 활성 정책과 다를 때 05 위쪽. **활성화에 필요한 순서를 단계로 보인다**: 상류
+// 재적재 → 재적재 확인(운영자 진술, 한계 문구와 함께) → 정책 활성화(확인 페이지를 거친다, 요청 보호 · rev). 번호는 의미 있는
+// <ol>이다. 화면은 상류 DB를 보지 않으므로 지금 몇 단계인지는 표시하지 않는다.
+templ scopeActivateBox(p Page, o ActivationOffer) {
+	<div class="next ruleset activation" role="status" id={ scopeActivateAnchor }>
 		<div class="next-icon">!</div>
 		<div>
 			<strong>{ tActivateHead.In(p.Lang) }</strong>
 			<span>{ tActivateBody.In(p.Lang) }</span>
+			<form method="post" action={ templ.SafeURL(ReviewScopeActivateConfirmPath) }>
+				@csrfField(p)
+				<ol class="activation-steps">
+					<li>
+						<strong>{ tActivateStep1.In(p.Lang) }</strong>
+						<span>{ tActivateStep1Body.In(p.Lang) }</span>
+						<code>{ o.IngestCommand() }</code>
+						<span class="hint">{ tActivateStep1Hint.In(p.Lang) }</span>
+					</li>
+					<li>
+						<strong>{ tActivateStep2.In(p.Lang) }</strong>
+						<label class="check"><input type="checkbox" name={ ScopeActivateConfirmField } required/> { tActivateConfirm.In(p.Lang) }</label>
+						<span class="hint">{ tScopeConfirmLimit.In(p.Lang) }</span>
+					</li>
+					<li>
+						<strong>{ tActivateStep3.In(p.Lang) }</strong>
+						<span>{ tActivateStep3Body.In(p.Lang) }</span>
+						<button class="primary">{ tActivateNext.In(p.Lang) }</button>
+					</li>
+				</ol>
+			</form>
 		</div>
-		<form method="post" action={ templ.SafeURL(ReviewScopeActivateConfirmPath) }>
-			@csrfField(p)
-			<label class="check"><input type="checkbox" name={ ScopeActivateConfirmField } required/> { tActivateConfirm.In(p.Lang) }</label>
-			<p class="hint">{ tScopeConfirmLimit.In(p.Lang) }</p>
-			<button class="primary">{ tActivateNext.In(p.Lang) }</button>
-		</form>
 	</div>
 }
 

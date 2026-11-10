@@ -245,8 +245,10 @@ required).
    pqcota-ingest -scope-assets <workspace>/asset-scope.csv <workspace>/results
    ```
 
-   Until it is activated, the top of 04 also shows "The policy finalized in 02 is not active yet", so that reconciliation is
-   read as made under the active policy. Then, under "The policy finalized in 02 can be activated" at the top of 05, tick the confirmation and activate through
+   After finalizing 02, "Next" under the finalize notice leads to "View current reconciliation in 04" and "View the
+   activation steps in 05", and until it is activated the top of 04 also shows "The policy finalized in 02 is not active
+   yet", so that reconciliation is read as made under the active policy. "The policy finalized in 02 can be activated" at
+   the top of 05 shows three steps: re-ingest upstream, confirm the re-ingest, activate the policy. Tick the confirmation and activate through
    the confirmation page. The tick is only the operator's statement; pqcaton does not prove the upstream ingest itself. To
    check the upstream history for real, stop the screen and activate from the command line. `pqcaton-decide activate-scope -verify-upstream` goes on
    only when every node's digest under the new policy is found as that node's latest snapshot in the upstream history.

@@ -173,3 +173,57 @@ func TestSurveyTellsThePolicyIsNotActiveYet(t *testing.T) {
 		t.Error("the notice is still shown after the activation")
 	}
 }
+
+// IC-U159 — **02 확정 직후, 그 정책이 활성화를 기다릴 때만 다음 단계를 잇는다.** 확정 알림과 활성화 대기(05와 같은 판정)가
+// 모두 있으면 02에 다음 단계와 두 링크(04의 현재 대조 · 05의 활성화 절차)가 있다. 알림이 없거나, 후보가 활성 정책과
+// 같거나, 05가 잠겼으면(활성화 기록 없이 바뀐 정책) 없다. 05의 활성화 상자는 세 단계를 순서대로 보이고, 04의 단추는 「활성화
+// 절차 보기」다.
+func TestScopeFinalizeLeadsToTheActivationSteps(t *testing.T) {
+	s, _ := keyReady(t)
+	observed(t, s.results, "web", "libssl.so.3", "/usr/sbin/nginx")
+	observed(t, s.results, "web", "libcrypto.so.3", "/usr/bin/python3")
+	setPolicy(t, s, policyA)
+	savedSession(t, s)
+	finalizeCandidate(t, s, policyB)
+
+	finalized := url.QueryEscape(ui.EncodeNotices([]ui.Notice{ui.N(ui.NoticeFinalizedPolicy, 2, "policy")}))
+	survey, steps := `href="`+ui.ScreenSurvey+`"`, `href="`+ui.ScreenReview+`#scope-activate"`
+	next := func(t *testing.T, lang, query string) (string, bool) {
+		t.Helper()
+		page := get(t, s, ui.ScreenScope+"?lang="+lang+query).Body.String()
+		return page, strings.Contains(page, steps)
+	}
+	for _, lang := range []string{"ko", "en"} {
+		page, ok := next(t, lang, "&"+ui.MsgParam+"="+finalized)
+		want := map[string]string{"ko": "먼저 04에서 현재 활성 정책으로 계산한 대조 결과를 확인하십시오",
+			"en": "First review the reconciliation produced with the currently active policy in 04"}[lang]
+		if !ok || !strings.Contains(page, survey) || !strings.Contains(page, want) {
+			t.Fatalf("%s: no next step after finalizing a policy that waits for activation", lang)
+		}
+		if strings.Index(page, survey) > strings.Index(page, steps) {
+			t.Errorf("%s: the 04 link is not the first (main) action", lang)
+		}
+	}
+	if _, ok := next(t, "ko", ""); ok {
+		t.Error("the next step is shown without the finalize notice")
+	}
+
+	review := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
+	i1, i2, i3 := strings.Index(review, "상류 재적재"), strings.Index(review, "재적재 확인"), strings.Index(review, "정책 활성화")
+	if !strings.Contains(review, `<ol class="activation-steps">`) || i1 < 0 || !(i1 < i2 && i2 < i3) ||
+		!strings.Contains(review, "pqcota-ingest -scope-assets asset-scope.csv results") {
+		t.Errorf("the activation box does not show the three steps in order with the command (%d %d %d)", i1, i2, i3)
+	}
+	if page := get(t, s, ui.ScreenSurvey+"?lang=ko").Body.String(); !strings.Contains(page, "05에서 활성화 절차 보기") {
+		t.Error("the reconciliation screen's button is not 「05에서 활성화 절차 보기」")
+	}
+
+	setPolicy(t, s, policyA+"exclude,*,*,/opt/legacy*,hand edit\n")
+	if _, ok := next(t, "ko", "&"+ui.MsgParam+"="+finalized); ok {
+		t.Error("the next step is shown while 05 is locked")
+	}
+	setPolicy(t, s, policyB)
+	if _, ok := next(t, "ko", "&"+ui.MsgParam+"="+finalized); ok {
+		t.Error("the next step is shown when the finalized policy is already the active one")
+	}
+}

@@ -70,6 +70,17 @@ type Notice struct {
 	Args []string
 }
 
+// HasNotice — 질의의 알림(raw)에 code가 있는가. 화면이 알림에 정해 둔 후속 안내를 붙일지 정할 때 쓴다. 알림의 인자는
+// 보지 않는다.
+func HasNotice(raw, code string) bool {
+	for _, n := range DecodeNotices(raw) {
+		if n.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
 // N — 알림을 만든다. 정수는 십진수로 적는다.
 func N(code string, args ...any) Notice {
 	n := Notice{Code: code}

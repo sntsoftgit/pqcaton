@@ -781,4 +781,19 @@ func RenderDeclCreate(w io.Writer, v DeclCreateView) error {
 // ActivationOffer — 05 위쪽에 띄우는 「새 정책 활성화」. From · To는 활성 정책과 02 확정 정책의 지문이다.
 type ActivationOffer struct {
 	From, To string
+	// Candidate · Results — 05의 「상류 재적재」 단계에 보일 명령의 두 경로. 작업 폴더(세션 파일이 있는 폴더) 기준의
+	// 상대 경로다. 비면 기본 이름(asset-scope.csv · results)을 보인다.
+	Candidate, Results string
+}
+
+// IngestCommand — 05의 「상류 재적재」 단계에 보일 명령. 작업 폴더에서 실행하는 상대 경로다.
+func (o ActivationOffer) IngestCommand() string {
+	c, r := o.Candidate, o.Results
+	if c == "" {
+		c = "asset-scope.csv"
+	}
+	if r == "" {
+		r = "results"
+	}
+	return "pqcota-ingest -scope-assets " + c + " " + r
 }
