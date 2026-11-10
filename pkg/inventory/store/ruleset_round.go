@@ -31,6 +31,7 @@ const RoundReasonRuleset = "ruleset-change"
 type RoundReceipt struct {
 	Kind        string
 	ScopePolicy string
+	Basis       string
 }
 
 // RulesetRound: 규칙 전환 회차에 쓸 것. build가 잠금 안에서 만든다.
@@ -208,7 +209,8 @@ func (s *State) OpenRulesetRound(from, to Identity, targets []string, chk Check,
 			if err != nil {
 				return err
 			}
-			nr.Round = &ReceiptRound{FromSessionSHA256: hex.EncodeToString(sum[:]), ToSessionID: to.SessionID, FromPolicy: r.FromPolicy}
+			nr.Round = &ReceiptRound{FromSessionSHA256: hex.EncodeToString(sum[:]), ToSessionID: to.SessionID, FromPolicy: r.FromPolicy,
+				Basis: r.Receipt.Basis}
 			rc2 = &nr
 			rp := s.receiptPath(rid)
 			if err := mkdirPrivate(filepath.Dir(rp)); err != nil {

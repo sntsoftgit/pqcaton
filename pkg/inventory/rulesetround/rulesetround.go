@@ -39,6 +39,14 @@ const ScopeBaselineReceipt = review.ScopeRoundBaseline
 // ScopeActivationReceipt — 활성화 회차의 영수증 종류.
 const ScopeActivationReceipt = review.ScopeRoundActivation
 
+// 상류 적재를 뒷받침한 것(영수증의 basis).
+const (
+	// BasisOperator — 운영자 진술. 상류 적재를 증명하지 않는다. 화면의 체크가 이것이다.
+	BasisOperator = "operator-statement"
+	// BasisUpstream — 새 정책의 노드별 지문을 상류 이력에서 모두 찾았다(명령의 -verify-upstream).
+	BasisUpstream = "upstream-verified"
+)
+
 // ErrSamePolicy — 활성 정책과 후보 정책이 의미상 같다. 활성화할 것이 없다(아무것도 쓰지 않는다).
 var ErrSamePolicy = errors.New("the candidate policy is the active policy; nothing to activate")
 
@@ -98,6 +106,8 @@ type Request struct {
 	// Activation: 있으면 **활성화 회차**다. 활성 정책을 후보 정책으로 바꾸고, 옛 정책을 보관하고, 옛 세션을 새 정책으로 다시
 	// 세운 새 세션에 넘기며, scope-activation 형식 2 영수증을 쓴다. 모두 한 트랜잭션이다. Rebuild는 **후보 정책으로** 세워야 한다.
 	Activation *Activation
+	// Basis: 영수증에 적을 뒷받침(BasisOperator · BasisUpstream). 비면 BasisOperator다.
+	Basis string
 }
 
 // Result — 연 회차.
@@ -309,11 +319,11 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 		}
 		if req.Baseline != "" {
 			out.Reason, out.ToPolicy = review.ScopeRoundBaseline, req.Baseline
-			out.Receipt = &store.RoundReceipt{Kind: ScopeBaselineReceipt, ScopePolicy: req.Baseline}
+			out.Receipt = &store.RoundReceipt{Kind: ScopeBaselineReceipt, ScopePolicy: req.Baseline, Basis: req.basis()}
 		}
 		if a := req.Activation; a != nil {
 			out.Reason, out.FromPolicy, out.ToPolicy = review.ScopeRoundActivation, a.From, a.To
-			out.Receipt = &store.RoundReceipt{Kind: ScopeActivationReceipt, ScopePolicy: a.To}
+			out.Receipt = &store.RoundReceipt{Kind: ScopeActivationReceipt, ScopePolicy: a.To, Basis: req.basis()}
 			out.PolicyReplace = &store.Change{Path: a.PolicyPath, Content: act.candidate}
 			if act.active != nil {
 				_, _, pa := activationNames(req.OldPath, req.OutPath, a.PolicyPath, a.From, cur, curRaw)
@@ -323,6 +333,13 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 		return out, nil
 	})
 	return res, err
+}
+
+func (req Request) basis() string {
+	if req.Basis == "" {
+		return BasisOperator
+	}
+	return req.Basis
 }
 
 // activationFiles — 잠금 안에서 읽은 두 정책의 바이트. active는 활성 정책 파일이 없으면 nil이다.

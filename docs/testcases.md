@@ -88,6 +88,7 @@
 | [IC-S18](../pkg/inventory/scope/digest_test.go) ✅ | 빈 칸과 `*` · 패턴의 대소문자 | 빈 칸과 `*`는 지문이 같다. 대소문자가 다르면 지문이 다르다(상류 glob이 가린다) |
 | **[IC-S19](../pkg/inventory/scope/digest_test.go) ✅** | 정책 파일 없음 · 빈 경로 · 규칙 0개 파일 · 읽을 수 없는 파일 · 형식이 틀린 파일 | 앞의 셋은 지문이 같다. 뒤의 둘은 **빈 정책이 되지 않고 오류다.** 빈 정책으로 읽으면 깨진 정책이 「제한 없음」으로 비교를 통과한다 |
 | **[IC-S20](../pkg/inventory/report/provenance_test.go) ✅** | 같은 결과 폴더를 정책을 건 상류 적재와 이 리포의 대조에 넣음 | 노드의 v1 지문이 바이트까지 같다. 정책이 실제로 무언가를 뺐는지(정책 없는 지문과 다른지)도 함께 본다. IC-R18은 정책 없이만 잰다 |
+| **[IC-S21](../pkg/inventory/upstream/upstream_test.go) ✅** | 정책 B로 적재한 상류 이력에서 B로 대조한 근거 · 정책 없이 대조한 근거 · 근거 없음을 찾음 | B의 근거는 모두 찾히고, 다른 정책의 근거는 빠진 것으로 나온다. 근거가 없으면 증명된 것이 아니다 |
 
 ### C. confidence 스코어링 (§3.5): 부분
 | TC | Given → When | Then |
@@ -144,6 +145,9 @@
 | **[IC-D30](../inventory/cmd/pqcaton-decide/scope_policy_test.go) ✅** | 정책 A로 연 세션을 정책 B로 · `-scope-assets` 없이 · 정책 A로 `close` | 앞의 둘은 거절하고 아무것도 쓰지 않는다. A면 확정하고 영수증이 형식 2로 A의 지문을 적는다 |
 | [IC-D31](../inventory/cmd/pqcaton-decide/scope_policy_test.go) ✅ | 정책 없이 연 세션을 `-scope-assets` 없이 `close` | 확정하고 영수증이 형식 2로 규칙 0개의 지문을 적는다 |
 | **[IC-D32](../inventory/cmd/pqcaton-decide/scope_policy_test.go) ✅** | `open`을 `-scope-assets`와 함께 · 없이 | 세션에 실제로 읽은 정책의 지문(없으면 규칙 0개의 지문)이 적힌다. 지문 칸이 빈 세션은 나오지 않는다 |
+| **[IC-D33](../inventory/cmd/pqcaton-decide/scope_cmd_test.go) ✅** | `activate-scope`를 뒷받침 없이 · 둘 다 · 손으로 고친 후보로 · 진술로 · 같은 정책으로 다시 | 뒷받침은 꼭 하나다. 손으로 고친 후보는 거절하고 아무것도 쓰지 않는다. 진술로 활성화하면 정책이 바뀌고 새 세션이 새 지문을 들며 영수증의 basis가 operator-statement다. 같은 정책이면 아무것도 쓰지 않는다 |
+| **[IC-D34](../inventory/cmd/pqcaton-decide/scope_cmd_test.go) ✅** | `activate-scope -verify-upstream`을 PQCOTA_DSN 없이 · 상류가 옛 정책으로만 적재됨 · 새 정책으로 적재됨 | 앞의 둘은 거절하고 아무것도 쓰지 않는다. 마지막은 활성화하고 basis가 upstream-verified다 |
+| **[IC-D35](../inventory/cmd/pqcaton-decide/scope_cmd_test.go) ✅** | `baseline`을 지문 있는 세션에서 · 상류에 없는데 -verify-upstream · 진술로 | 지문 있는 세션은 거절, 상류에 없으면 거절하고 아무것도 쓰지 않는다. 진술로 열면 새 세션이 지금 정책의 지문을 들고 basis가 operator-statement다 |
 
 ### W. 저장 안전성 (`pkg/inventory/store`) 🔶: 저장소 계층 완료, 화면 연결 전
 화면과 명령이 파일을 바꿀 때 지나가는 한 길입니다. 상용 지원은 Linux 로컬 파일시스템뿐입니다.

@@ -78,6 +78,22 @@ const usage = `usage:
         moved to an archive next to it first. All of this and a round marker are one transaction, through
         the same state directory as pqcaton-ui; the same round is opened only once
 
+  pqcaton-decide baseline <session.json> -decl <declaration.json> -results <results-dir> [-scope-assets <csv>]
+        (-verify-upstream | -confirm-ingest) [-org <name>] [-upstream-org <name>] [-state-dir <dir>]
+        Adopt the current asset-scope policy as the **baseline** for a session made before v0.26.0 (it records
+        no policy). A new round rebuilt from the results opens; earlier conclusions go only into "previous".
+        With -verify-upstream every snapshot under this policy must be in the upstream history (PQCOTA_DSN),
+        or nothing is written; -confirm-ingest is your statement and not a proof. The choice is kept in the
+        scope-baseline receipt. A session can take a baseline round only once
+
+  pqcaton-decide activate-scope <session.json> -decl <declaration.json> -results <results-dir>
+        -scope-assets <active.csv> -candidate <asset-scope.csv> -scope-session <scope-session.json>
+        (-verify-upstream | -confirm-ingest) [-org <name>] [-upstream-org <name>] [-state-dir <dir>]
+        Activate the policy finalized in 02: the active policy file is replaced (the old one archived), the
+        review session is archived and a new round rebuilt under the new policy opens, all in one transaction
+        with a scope-activation receipt. If the two policies mean the same, nothing is written. A candidate
+        that is not exactly what 02 finalized is refused
+
   pqcaton-decide delta <judgments.jsonl> <declaration> [node] [-org <name>] [-results <dir>]
         Compare recorded judgments against the current observation and pick out
         **only those whose basis changed**. Give it the same input as open, or the
@@ -103,6 +119,11 @@ func main() {
 	stateDir := fs.String("state-dir", "", "close -o, new-round: state directory (default: .pqcaton next to the session file). Use the one pqcaton-ui uses")
 	declPath := fs.String("decl", "", "new-round: declaration (declaration.json) to reconcile the results against")
 	reportPath := fs.String("report", "", "new-round: where to write the change report (default: beside the new session)")
+	candidate := fs.String("candidate", "", "activate-scope: the policy finalized in 02 (asset-scope.csv)")
+	scopeSession := fs.String("scope-session", "", "activate-scope: the 02 scope session that finalized -candidate")
+	verifyUp := fs.Bool("verify-upstream", false, "baseline, activate-scope: look every snapshot under the new policy up in the upstream history (PQCOTA_DSN)")
+	confirmIngest := fs.Bool("confirm-ingest", false, "baseline, activate-scope: state that the upstream ingest used the new policy (recorded, not a proof)")
+	upstreamOrg := fs.String("upstream-org", "", "baseline, activate-scope: organization in the upstream history (default: -org)")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
 	var pos []string
 	var flags []string
@@ -138,6 +159,18 @@ func main() {
 	case "new-round":
 		need(1)
 		err = newRound(pos[0], *declPath, *results, *scopeAssets, *orgName, *out, *reportPath, *stateDir)
+	case "baseline", "activate-scope":
+		need(1)
+		uorg := *upstreamOrg
+		if uorg == "" {
+			uorg = *orgName
+		}
+		if sub == "baseline" {
+			err = baselineRound(pos[0], *declPath, *results, *scopeAssets, *orgName, *stateDir, uorg, *verifyUp, *confirmIngest)
+		} else {
+			scopeSessionPath = *scopeSession
+			err = activateScope(pos[0], *declPath, *results, *scopeAssets, *candidate, *orgName, *stateDir, uorg, *verifyUp, *confirmIngest)
+		}
 	case "delta":
 		need(2)
 		node := localscan.DefaultNode

@@ -106,6 +106,9 @@ type ReceiptRound struct {
 	ToSessionID       string `json:"to_session_id"`
 	// FromPolicy: 옛 세션이 판정된 정책의 지문. 활성화 회차만 채운다(기준선 회차의 옛 세션에는 지문이 없다).
 	FromPolicy string `json:"from_policy,omitempty"`
+	// Basis: 상류 적재를 무엇으로 뒷받침했나. "operator-statement"(운영자 진술, 증명이 아니다) 또는 "upstream-verified"(새
+	// 정책의 노드별 지문을 상류 이력에서 모두 찾았다).
+	Basis string `json:"basis,omitempty"`
 }
 
 // Identity: 영수증의 동일성.
