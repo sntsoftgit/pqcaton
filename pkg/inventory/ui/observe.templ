@@ -54,7 +54,7 @@ templ runChecks(l Lang, r ObserveRun) {
 			<li class="bad">{ tRunNotWritable.In(l) }</li>
 		}
 		for _, c := range r.Checks {
-			<li class={ templ.KV("ok", c.OK), templ.KV("bad", !c.OK && c.Blocking), templ.KV("warn", !c.OK && !c.Blocking) }>
+			<li data-check={ string(c.Item) } class={ templ.KV("ok", c.OK), templ.KV("bad", !c.OK && c.Blocking), templ.KV("warn", !c.OK && !c.Blocking) }>
 				if c.OK {
 					{ "✓ " }
 				} else {
@@ -68,6 +68,13 @@ templ runChecks(l Lang, r ObserveRun) {
 				if !c.OK {
 					<br/>
 					<span>{ c.Missing(l) }</span>
+				}
+				if len(c.Files) > 0 {
+					<ul class="collector-files">
+						for _, f := range c.Files {
+							<li data-collector-state={ f.State }><code>{ f.Path }</code>{ " " }{ f.Line(l) }</li>
+						}
+					</ul>
 				}
 			</li>
 		}

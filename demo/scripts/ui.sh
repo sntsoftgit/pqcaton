@@ -165,7 +165,9 @@ else
   '
 
   echo "▶ 3/3 start pqcaton-ui in $CTL (127.0.0.1:8765 inside the container)…"
-  docker exec -d "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org demo-corp -approval-key $KEY >>$LOG 2>&1"
+  # 상류 데모는 수집기를 pqcota 리포에서 옆 폴더 replace 로 빌드한다. replace 한 소스는 판을 확인할 수 없어 화면에서는 「확인 불가」이고,
+  # 기본으로는 관측을 시작하지 않는다. 데모는 그것을 알고 -allow-unverified-collectors 로 띄운다(03 화면과 이 로그에 남는다).
+  docker exec -d "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org demo-corp -approval-key $KEY -allow-unverified-collectors >>$LOG 2>&1"
   for _ in $(seq 1 40); do answers && break; sleep 0.5; done
   answers || { echo "❌ pqcaton-ui did not answer — last lines of $CTL:$LOG:"; docker exec "$CTL" tail -20 "$LOG"; exit 1; }
 fi

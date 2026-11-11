@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -100,7 +101,28 @@ const (
 	RunJar         RunItem = "jar"
 	// RunStuckItem — 끝내지 못한 지난 실행의 프로세스가 있다.
 	RunStuckItem RunItem = "stuck"
+	// 수집기 판(collectorver). 모두 확인되면 RunCollectorVersion 하나만 통과로 보인다.
+	RunCollectorVersion RunItem = "collector-version"
+	// RunCollectorMismatch — 고정 판이 아닌 판이 보이거나 수집기끼리 판이 섞였다. 어떤 옵션으로도 넘기지 못한다.
+	RunCollectorMismatch RunItem = "collector-mismatch"
+	// RunCollectorUnverified — 판을 확인할 수 없다. -allow-unverified-collectors 로만 넘긴다.
+	RunCollectorUnverified RunItem = "collector-unverified"
+	// RunCollectorAllowed — 확인할 수 없는 수집기를 -allow-unverified-collectors 로 허용했다(경고로 보인다).
+	RunCollectorAllowed RunItem = "collector-allowed"
+	// RunJarVersion — collector.jar 에 판 정보가 없다(경고만). RunJarMismatch — 판이 있는데 다르다(막는다).
+	RunJarVersion  RunItem = "jar-version"
+	RunJarMismatch RunItem = "jar-mismatch"
 )
+
+// CollectorFile — 수집기 파일 하나의 판 판정(collectorver.File 을 화면에 옮긴 것).
+type CollectorFile struct {
+	Path         string
+	State        string // verified · mismatch · unverified
+	Reason       string // collectorver.Reason
+	Declared     string
+	Revision     string
+	DepsReplaced bool
+}
 
 // RunCheck — 점검 하나. Blocking이 아닌 것은 빠져도 시작하지만 그 관측이 빠진다는 것을 알린다.
 type RunCheck struct {
@@ -109,6 +131,8 @@ type RunCheck struct {
 	Blocking bool
 	// Detail — 찾은 자리(명령의 경로 · 폴더). 운영자 자신의 기계 경로라 보인다.
 	Detail string
+	// Files — 수집기 판 점검이면 파일마다의 판정.
+	Files []CollectorFile
 }
 
 // Text — 점검의 이름.
@@ -125,6 +149,33 @@ func (c RunCheck) Missing(l Lang) string {
 		return t.In(l)
 	}
 	return ""
+}
+
+// Line — 「선언된 판: … · 실제 소스: … · 상태」. 수집기 자신은 맞고 의존만 replace 면
+// 「수집기 소스 v0.10.7 확인 · replace 의존 소스 확인 불가」다.
+func (f CollectorFile) Line(l Lang) string {
+	if f.Reason == "deps-replaced" {
+		return fmt.Sprintf(tCVDepsReplaced.In(l), f.Declared)
+	}
+	declared := f.Declared
+	if declared == "" {
+		declared = tCVNone.In(l)
+	}
+	var source string
+	switch {
+	case f.Reason == "" && f.Revision != "":
+		rev := f.Revision
+		if len(rev) > 12 {
+			rev = rev[:12]
+		}
+		source = fmt.Sprintf(tCVTagCommit.In(l), rev)
+	case f.Reason == "":
+		source = declared
+	default:
+		source = collectorReasonText[f.Reason].In(l)
+	}
+	parts := []string{fmt.Sprintf(tCVDeclared.In(l), declared), fmt.Sprintf(tCVSource.In(l), source), collectorStateText[f.State].In(l)}
+	return strings.Join(parts, " · ")
 }
 
 // RunState — 실행의 상태.

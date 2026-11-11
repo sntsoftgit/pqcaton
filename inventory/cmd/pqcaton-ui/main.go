@@ -51,6 +51,7 @@ import (
 	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
 	"github.com/randyinthedev-hash/pqcota-common/pkg/org"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/collectorver"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/reconcile"
@@ -162,6 +163,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		where = "workspace " + c.workspace
 	}
 	fmt.Fprintf(stderr, "screen: %s  (%s)\n", url, where)
+	s.stderr = stderr
+	// 확인 불가 수집기를 허용했으면 시작할 때 한 번 그 목록을 적는다. 관측을 시작할 때도 다시 적는다(startRun).
+	if s.allowUnverified && s.hosts != "" && s.st != nil {
+		logAllowed(stderr, "start", s.preflight())
+	}
 	if !c.noBrowser {
 		openBrowser(url, stderr)
 	}
@@ -433,6 +439,13 @@ type server struct {
 	// collectors: 수집기 폴더(-collectors, 작업 폴더 모드의 기본은 그 안의 collectors). run: 관측 실행 하나.
 	collectors string
 	run        runner
+	// collectorPin: 수집기가 맞춰야 하는 상류 판(collectorPin()). allowUnverified: -allow-unverified-collectors.
+	// checkCollector: 수집기 하나를 판정한다(nil 이면 collectorver.CheckGo). 시험이 바꾼다.
+	collectorPin    string
+	allowUnverified bool
+	checkCollector  func(path, rel, want string) collectorver.File
+	// stderr: 허용한 확인 불가 수집기처럼 화면 밖에도 남겨야 하는 것을 적는다. nil 이면 적지 않는다.
+	stderr io.Writer
 	// approvalKey: 승인 서명 키 파일(-approval-key). 서명할 때마다 다시 읽고 점검한다.
 	approvalKey string
 	// st: 상태 디렉토리. nil이면 보기 전용이다(저장을 지원하지 않는 플랫폼).

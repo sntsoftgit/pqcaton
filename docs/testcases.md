@@ -510,6 +510,12 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U162](../inventory/cmd/pqcaton-ui/nul_test.go) ✅** | 옛 판에서 확정된 NUL 계획으로 06 화면 · 서명 확인 · 서명(확인 양식을 갖춰 잠금 안까지) · 생성 | **네 자리 모두 `plan-text`다.** 화면은 서명 · 생성 양식이 없고 새 판정 회차로 고치라는 까닭을 두 말로 보인다. 나머지는 409이고 작업 폴더는 바이트 그대로다 |
 | **[IC-U163](../inventory/cmd/pqcaton-ui/nul_test.go) ✅** | 지금 계획은 깨끗하고 서명한 계획에 NUL | 화면이 서명한 계획의 문제로 까닭을 보이고 생성 양식이 없으며 보관은 할 수 있다. 생성은 409 `plan-text`이고 파일은 그대로다 |
 | **[IC-U164](../inventory/cmd/pqcaton-ui/nul_test.go) ✅** | 되돌림 메모에 NUL을 넣고 05 확정 요청 | **확인 페이지부터 409 `session-text`이고 확정하지 않는다.** 세션 · 계획 · 영수증은 바이트 그대로이고, 거절문은 확정 전이라 그 자리에서 고치라고 안내한다 |
+| **[IC-U165](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 수집기가 모두 고정 판으로 확인됨(의존에도 replace 없음) | **통과하고 파일마다 판과 출처를 보인다**(「선언된 판 · 실제 소스: 태그 커밋 · 확인됨」) |
+| **[IC-U166](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 옛 판 수집기, 또는 수집기끼리 판이 섞임 | **시작하지 않고(409 `run-not-ready`), `-allow-unverified-collectors`로도 넘기지 못한다**. 옛 `pqcota-jvmscan`이 적재 요청을 통째로 막던 사고가 여기 걸린다 |
+| **[IC-U167](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 판을 확인할 수 없는 수집기(상류 데모처럼 replace로 빌드, 태그 체크아웃이어도 의존이 replace) | **기본으로 시작하지 않는다**. 「실제 소스: 로컬 replace(devel) · 확인 불가」나 「수집기 소스 v0.10.7 확인 · replace 의존 소스 확인 불가」로 보인다. `-allow-unverified-collectors`로 띄운 화면만 허용하고, 허용한 사실과 파일 목록을 화면과 표준 오류에 남긴다. 작업 폴더에는 남기지 않는다 |
+| **[IC-U168](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | `collector.jar`에 판 정보가 없음 / 다른 판 | 판이 없으면 **경고만 하고 시작은 된다**(override를 요구하지 않는다). 판이 있는데 다르면 막는다 |
+| [IC-U169](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅ | `-allow-unverified-collectors`를 주거나 주지 않고 시작 | 기본은 꺼져 있고, 주면 서버에 그대로 닿는다 |
+| **[IC-U170](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 화면이 `pqcota-discovery`를 링크하지 않음 | **그래도 고정 판을 안다**. discovery가 있으면 그 판, 없으면 `pqcota-common`의 판을 쓴다. discovery만 찾던 때는 데모에서 모든 수집기가 「고정한 판을 알 수 없음」이 됐다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 
@@ -663,6 +669,24 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-UI32](../pkg/inventory/ui/ui_test.go) ✅** | 제거·다시 불러오기 | **묻고 지운다**(hx-confirm). 물음에 「저장해야 파일에 반영된다」까지 적혀 있다. 화면에서 지운 것과 파일에서 지운 것은 다르다 |
 | **[IC-UI30](../pkg/inventory/ui/ui_test.go) ✅** | 손으로 고친 파일의 IP 없는 스코프 이름 | 표에는 올린다. 저장하면 빠지지만, 화면에서 지우면 IP를 채워 넣을 자리조차 없다 |
 | **[IC-UI25](../pkg/inventory/ui/ui_test.go) ✅** | 노드 · 런타임 · 컴포넌트 · 상태로 찾기 | 자유 문자열이 **아무 칸에나** 걸리고, 상태 조건과 함께 주면 둘 다 걸린다. 어느 칸인지 미리 고르게 하면 **무엇을 찾는지 모를 때 여는 화면**에서 그 칸을 알아야 한다 |
+
+### CV. 수집기 판 확인 (`pkg/inventory/collectorver`) ✅
+
+수집기를 실행하지 않고 Go 빌드 정보와 JAR의 manifest · `pom.properties`만 읽는다. 픽스처는 리포에 바이너리를 넣지 않고 시험
+중에 상류와 같은 모양(의존 모듈을 옆 폴더 replace로 가리키고 태그를 단 git 체크아웃)으로 빌드한다.
+
+| TC | Given → When | Then |
+|---|---|---|
+| **[IC-CV1](../pkg/inventory/collectorver/collectorver_test.go) ✅** | 깨끗한 태그 체크아웃에서 빌드(의존은 옆 폴더 replace) | **확인 불가(replace 의존)**. 수집기 자신의 판 · 커밋은 읽히지만 replace한 의존의 실제 소스는 알 수 없다. 지금의 상류 빌드가 모두 이렇다 |
+| **[IC-CV2](../pkg/inventory/collectorver/collectorver_test.go) ✅** | 옛 판(v0.10.6) 태그에서 빌드 | **맞지 않음**. v0.26.2 때의 옛 `pqcota-jvmscan` 위험을 막는다 |
+| **[IC-CV3](../pkg/inventory/collectorver/collectorver_test.go) ✅** | `-buildvcs=false` · 고친 트리 · 태그 뒤 커밋 | 모두 **확인 불가**(devel · dirty · 의사 판). 판이 찍혀 있어도 그대로 믿지 않는다 |
+| **[IC-CV4](../pkg/inventory/collectorver/collectorver_test.go) ✅** | 상류 데모처럼 다른 모듈에서 replace로 끌어와 빌드 | 선언된 판이 맞아도 **확인 불가**(로컬 replace), 선언된 판은 보인다. 로컬 replace가 옛 소스여도 통과시키지 않는다 |
+| [IC-CV5](../pkg/inventory/collectorver/collectorver_test.go) ✅ | Windows 교차 빌드(PE) | 같은 빌드 정보로 읽는다(의존이 replace라 리눅스와 같이 확인 불가). Windows 수집기도 같은 기준으로 본다 |
+| [IC-CV6](../pkg/inventory/collectorver/collectorver_test.go) ✅ | 빌드 정보 없는 파일 · 다른 모듈 · 고정 판을 모르는 화면 | **확인 불가**. 읽을 수 없는 것을 통과로 세지 않는다 |
+| **[IC-CV7](../pkg/inventory/collectorver/collectorver_test.go) ✅** | `collector.jar`: 지금 상류처럼 판 없음 · `Implementation-Version` · `pom.properties` · 다른 판 · 깨진 파일 | 판 없음은 확인 불가(판 없음), 같은 판은 확인됨, 다른 판은 맞지 않음, 깨진 파일은 확인 불가. JAR은 실행하지 않고 판을 읽는다 |
+| [IC-CV8](../pkg/inventory/collectorver/collectorver_test.go) ✅ | 수집기끼리 다른 정식 판 | 섞였다고 알린다. 하나하나가 맞아 보여도 섞인 묶음은 막는다 |
+| **[IC-CV9](../pkg/inventory/collectorver/collectorver_test.go) ✅** | 옆 `pqcota-common`을 v0.10.6으로 바꿔 빌드 | **결코 확인됨이 되지 않는다**(확인 불가, replace 의존). 빌드 정보에 실제 소스 판이 드러나지 않는다는 실물의 한계를 시험으로 고정한다 |
+| **[IC-CV10](../pkg/inventory/collectorver/collectorver_test.go) ✅** | replace 없이 의존을 그 판으로 받아 태그에서 빌드 | **확인됨**. 상류가 그런 릴리스 빌드를 내면 override 없이 통과한다 |
 
 ### R2. 여러 노드 대조 (`pkg/inventory/report`) ✅
 | TC | Given → When | Then |

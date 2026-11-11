@@ -284,6 +284,29 @@ PY
 
 step "6) the screen: 06 refuses the plan made under the old policy; 05 shows earlier conclusions only as references"
 "$UI" start
+# 데모의 수집기는 replace 빌드라 판을 확인할 수 없다. 03이 그것을 파일마다 보이고, -allow-unverified-collectors 로 허용한
+# 상태가 화면과 로그에 남는지 본다. collector.jar 는 판을 싣지 않아 경고만 보인다.
+OBSERVE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/observe?lang=en')"
+grep -q 'data-check="collector-allowed"' <<<"$OBSERVE" || fail "03 does not show that unverified collectors are allowed"
+LINES="$(grep -oE 'data-collector-state="[a-z]+"><code>[^<]*</code>[^<]*' <<<"$OBSERVE" | sed -E 's/^data-collector-state="([a-z]+)"><code>([^<]*)<\/code>/\1 \2/')"
+echo "$LINES" | sed 's/^/   03 collector: /'
+grep -q '^unverified ' <<<"$LINES" || fail "03 does not list the unverified collectors"
+if grep -qE '^(verified|mismatch) ' <<<"$LINES"; then fail "a demo collector is not 'cannot be verified' (the demo builds them with local replaces)"; fi
+if grep -q "the version this screen pins is unknown" <<<"$LINES"; then fail "03 does not know the upstream version this screen pins"; fi
+if docker exec "$CTL" test -f "$WS/collectors/collector.jar"; then
+  grep -q 'data-check="jar-version"' <<<"$OBSERVE" || fail "03 does not warn that collector.jar carries no version"
+  JAR_NOTE="collector.jar has no version (warning only)"
+else
+  JAR_NOTE="no collector.jar in this demo"
+fi
+grep -q 'action="/observe/run"' <<<"$OBSERVE" || fail "03 does not offer to start although the allowance is given"
+docker exec "$CTL" grep -q -- "-allow-unverified-collectors lets these collectors run" /work/ui.log || fail "the allowance is not in the screen log"
+# 화면이 고정한 판: go.mod 가 정한 상류 판이어야 한다. 이 판은 화면이 요구하는 판일 뿐, 수집기의 실제 판을 뜻하지 않는다.
+PIN="$(awk '$1=="github.com/randyinthedev-hash/pqcota-common"{print $2}' "$REPO_DIR/go.mod")"
+[ -n "$PIN" ] || fail "cannot read the pinned upstream version from go.mod"
+grep -o 'data-check="collector-allowed".\{0,300\}' <<<"$OBSERVE" | grep -q "<code>$PIN</code>" || fail "03 does not show the pinned version $PIN"
+docker exec "$CTL" grep -q -- "(pinned $PIN)" /work/ui.log || fail "the screen log does not name the pinned version $PIN"
+echo "   03: pinned $PIN; every collector cannot be verified, allowed by -allow-unverified-collectors; $JAR_NOTE"
 APPROVE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/approve?lang=en')"
 grep -q "was made under an asset-scope policy other than the active one" <<<"$APPROVE" || fail "06 does not say the plan is under another policy"
 if grep -q 'action="/approve/sign/confirm"' <<<"$APPROVE"; then fail "06 offers to sign the old plan"; fi

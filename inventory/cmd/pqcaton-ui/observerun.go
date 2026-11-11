@@ -280,6 +280,7 @@ func (s *server) preflight() []ui.RunCheck {
 		return out
 	}
 	var linux, windows bool
+	var dirs []string // 판을 볼 아키텍처 폴더: 수집기가 다 갖춰진 것만
 	for _, h := range hosts {
 		if h.OS == inventory.OSWindows {
 			windows = true
@@ -295,12 +296,24 @@ func (s *server) preflight() []ui.RunCheck {
 			}
 		}
 		add(ui.RunLinuxBins, len(arches) > 0, true, strings.Join(arches, " · "))
+		dirs = append(dirs, arches...)
 	}
 	if windows {
-		add(ui.RunWindowsBins, hasAll(filepath.Join(s.collectors, "windows-amd64"), "pqcota-cngscan.exe", "pqcota-jvmscan.exe"),
-			true, filepath.Join(s.collectors, "windows-amd64"))
+		ok := hasAll(filepath.Join(s.collectors, "windows-amd64"), "pqcota-cngscan.exe", "pqcota-jvmscan.exe")
+		add(ui.RunWindowsBins, ok, true, filepath.Join(s.collectors, "windows-amd64"))
+		if ok {
+			dirs = append(dirs, "windows-amd64")
+		}
 	}
-	add(ui.RunJar, isFile(filepath.Join(s.collectors, "collector.jar")), false, filepath.Join(s.collectors, "collector.jar"))
+	out = append(out, s.versionChecks(s.collectorFiles(dirs))...)
+	jar := filepath.Join(s.collectors, "collector.jar")
+	if !isFile(jar) {
+		add(ui.RunJar, false, false, jar)
+	} else if c := s.jarCheck(jar); c != nil {
+		out = append(out, *c)
+	} else {
+		add(ui.RunJar, true, false, jar)
+	}
 	return out
 }
 
@@ -374,6 +387,7 @@ func (s *server) startRun(window int) error {
 		s.closeRun(j)
 		return nil
 	}
+	logAllowed(s.stderr, "observation "+id, s.preflight())
 	hosts, err := s.loadHosts()
 	if err != nil {
 		return fail(fmt.Errorf("cannot read %s: %w", wsHosts, err))

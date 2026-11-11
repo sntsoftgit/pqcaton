@@ -3,6 +3,9 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
+> **`main` is under development for v0.27.0.** The collector version check in 03, a default location for the 06 approval key,
+> and process details for "needs reclaiming" are being built. For operation, use the [v0.26.3 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.26.3).
+
 This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.26.3.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
@@ -105,6 +108,26 @@ collectors/
 ├── windows-amd64/   pqcota-cngscan.exe · pqcota-jvmscan.exe (when there are Windows nodes)
 └── collector.jar    without it, the provider chains of running JVMs are not observed
 ```
+
+**Collector versions.** Before an observation starts, 03 checks the version of each collector. It does not run them; it
+reads only the Go build information. "Verified" is only a build whose collector itself is at the pinned version (tag, commit, no modification) and whose
+dependencies carry no replace either.
+
+**Every upstream build today is "cannot be verified".** Collectors cannot be installed with `go install`: they are built
+with `go build` in a pqcota-discovery checkout that has pqcota-common and pqcota-inventory next to it, and the dependencies
+come in as replaces of those folders. A pqcota-common of another version next to it does not show in the build information,
+so the screen does not count such a build as verified. A build from a tag checkout (v0.10.7) shows as "collector source
+v0.10.7 verified · replaced dependency sources cannot be verified". Check that the two repositories next to it are at the
+same tag, then start with the option below.
+
+- **Does not match.** When another version shows, or the collectors mix versions, the observation does not start, and no
+  option lets it through. Replace them with collectors rebuilt at that version.
+- **Cannot be verified.** Collectors whose version cannot be trusted do not start by default either: built with a
+  replace from another repository as the upstream demo does, built with `go build -buildvcs=false`, built from a modified tree, or
+  files with no build information. To use them knowingly, start the screen with `-allow-unverified-collectors`. The
+  allowance and the list of files show on the 03 screen and on standard error, and are not kept in the workspace.
+- **`collector.jar`.** Upstream does not put a version in it, so the screen only warns that its version was not checked
+  and the observation still starts. When it carries a version that differs, the observation does not start.
 
 **Getting the approval key ready.** Signing approvals on the 06 screen needs an approval key. Save the output of
 `pqcota-keygen` to a file **outside** the workspace, readable only by its owner, and start the screen with

@@ -80,12 +80,14 @@ check-fmt:
 # `go install ...@v0.26.2` 가 실패했다. 발행한 뒤 프록시에서 처음 드러났다.
 #
 # 도구는 x/mod 를 쓰는 별도 모듈이라(본 모듈의 의존성을 늘리지 않는다) 그 디렉토리에서 돌린다.
+#
+# 도구의 시험 출력은 통과할 때만 숨긴다. 실패한 출력까지 버리면 make 가 종료코드 2만 남기고 무엇이 틀렸는지 알 수 없다.
 check-modzip:
-	@cd tools/checkmodzip && go test -count=1 . >/dev/null && go run . ../..
+	@cd tools/checkmodzip && { out=$$(go test -count=1 . 2>&1) || { echo "$$out"; echo "✗ checkmodzip tool tests failed"; exit 1; }; } && go run . ../..
 
-# 발행 관문 도구의 시험. 도구가 별도 모듈이라 `go test ./...`가 보지 않으므로 여기서 돌린다.
+# 발행 관문 도구의 시험. 도구가 별도 모듈이라 `go test ./...`가 보지 않으므로 여기서 돌린다. 출력은 위와 같이 다룬다.
 check-releasecheck:
-	@cd tools/releasecheck && go test -count=1 ./... >/dev/null && echo "✓ releasecheck tool tests passed"
+	@cd tools/releasecheck && { out=$$(go test -count=1 ./... 2>&1) || { echo "$$out"; echo "✗ releasecheck tool tests failed"; exit 1; }; } && echo "✓ releasecheck tool tests passed"
 
 build:
 	go build ./...

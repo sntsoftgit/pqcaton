@@ -100,6 +100,9 @@ func runReady(t *testing.T, mode string) *server {
 	if err := os.WriteFile(filepath.Join(s.results, oldResult), []byte(`{"envelope":{}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// 가짜 수집기는 Go 바이너리가 아니라 판이 「확인 불가」다. 이 시험들은 실행 자체를 재므로 그것을 허용한다.
+	// 판 점검은 collectors_test.go 가 잰다.
+	s.allowUnverified = true
 	t.Cleanup(func() {
 		s.shutdownRun()
 		ansibleCommand = old

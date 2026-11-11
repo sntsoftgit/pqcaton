@@ -1117,13 +1117,19 @@ var (
 )
 
 var runItemText = map[RunItem]T{
-	RunHosts:       {KO: "관측할 노드", EN: "Nodes to observe"},
-	RunAnsible:     {KO: "ansible-playbook", EN: "ansible-playbook"},
-	RunCollectors:  {KO: "수집기 폴더", EN: "Collector folder"},
-	RunLinuxBins:   {KO: "Linux 수집기", EN: "Linux collectors"},
-	RunWindowsBins: {KO: "Windows 수집기", EN: "Windows collectors"},
-	RunJar:         {KO: "JVM 관측 에이전트(collector.jar)", EN: "JVM observation agent (collector.jar)"},
-	RunStuckItem:   {KO: "끝내지 못한 지난 관측", EN: "Earlier observation not stopped"},
+	RunHosts:               {KO: "관측할 노드", EN: "Nodes to observe"},
+	RunAnsible:             {KO: "ansible-playbook", EN: "ansible-playbook"},
+	RunCollectors:          {KO: "수집기 폴더", EN: "Collector folder"},
+	RunLinuxBins:           {KO: "Linux 수집기", EN: "Linux collectors"},
+	RunWindowsBins:         {KO: "Windows 수집기", EN: "Windows collectors"},
+	RunJar:                 {KO: "JVM 관측 에이전트(collector.jar)", EN: "JVM observation agent (collector.jar)"},
+	RunStuckItem:           {KO: "끝내지 못한 지난 관측", EN: "Earlier observation not stopped"},
+	RunCollectorVersion:    {KO: "수집기 판", EN: "Collector versions"},
+	RunCollectorMismatch:   {KO: "수집기 판이 맞지 않음", EN: "Collector versions do not match"},
+	RunCollectorUnverified: {KO: "수집기 판을 확인할 수 없음", EN: "Collector versions cannot be verified"},
+	RunCollectorAllowed:    {KO: "판을 확인하지 못한 수집기를 허용함", EN: "Unverified collectors allowed"},
+	RunJarVersion:          {KO: "collector.jar 판", EN: "collector.jar version"},
+	RunJarMismatch:         {KO: "collector.jar 판이 맞지 않음", EN: "collector.jar version does not match"},
 }
 
 var runItemMissing = map[RunItem]T{
@@ -1146,6 +1152,50 @@ var runItemMissing = map[RunItem]T{
 	RunJar: {
 		KO: "없어도 시작하지만, 실행 중인 JVM의 provider 체인은 관측하지 않습니다",
 		EN: "The observation starts without it, but the provider chains of running JVMs are not observed"},
+	RunCollectorMismatch: {
+		KO: "옆에 적힌 판으로 빌드한 수집기로 바꾸십시오. 판이 맞지 않는 수집기는 -allow-unverified-collectors로도 쓸 수 없습니다",
+		EN: "Replace them with collectors built at the version shown. Collectors of another version cannot be used even with -allow-unverified-collectors"},
+	RunCollectorUnverified: {
+		KO: "상류 태그 체크아웃에서 다시 빌드한 수집기를 두십시오. 판을 확인하지 못한 채로 쓰려면 화면을 -allow-unverified-collectors로 시작하십시오",
+		EN: "Put collectors rebuilt from an upstream tag checkout. To use them without a verified version, start the screen with -allow-unverified-collectors"},
+	RunCollectorAllowed: {
+		KO: "-allow-unverified-collectors로 시작해, 판을 확인하지 못한 수집기로 관측합니다. 이 허용은 화면을 끄면 사라지고 작업 폴더에 남지 않습니다",
+		EN: "Started with -allow-unverified-collectors: the observation uses collectors whose version is not verified. The allowance ends with the screen and is not kept in the workspace"},
+	RunJarVersion: {
+		KO: "collector.jar에 판 정보가 없어 판을 확인하지 못했습니다. 시작은 막지 않습니다",
+		EN: "collector.jar carries no version information, so its version was not checked. The observation still starts"},
+	RunJarMismatch: {
+		KO: "collector.jar의 판이 옆에 적힌 판과 다릅니다. 같은 판으로 빌드한 것으로 바꾸십시오",
+		EN: "The version of collector.jar differs from the version shown. Replace it with one built at that version"},
+}
+
+// 수집기 파일 한 줄: 「선언된 판: v0.10.7 · 실제 소스: 로컬 replace(devel) · 확인 불가」.
+var (
+	tCVDeclared     = T{KO: "선언된 판: %s", EN: "declared version: %s"}
+	tCVSource       = T{KO: "실제 소스: %s", EN: "actual source: %s"}
+	tCVNone         = T{KO: "없음", EN: "none"}
+	tCVTagCommit    = T{KO: "태그 커밋 %s", EN: "tag commit %s"}
+	tCVDepsReplaced = T{KO: "수집기 소스 %s 확인 · replace 의존 소스 확인 불가", EN: "collector source %s verified · replaced dependency sources cannot be verified"}
+)
+
+var collectorStateText = map[string]T{
+	"verified":   {KO: "확인됨", EN: "verified"},
+	"mismatch":   {KO: "맞지 않음", EN: "does not match"},
+	"unverified": {KO: "확인 불가", EN: "cannot be verified"},
+}
+
+var collectorReasonText = map[string]T{
+	"no-build-info":  {KO: "Go 빌드 정보 없음", EN: "no Go build information"},
+	"other-module":   {KO: "상류 수집기가 아닌 모듈", EN: "a module other than the upstream collectors"},
+	"local-replace":  {KO: "로컬 replace(devel)", EN: "local replace (devel)"},
+	"devel":          {KO: "판 없음(devel)", EN: "no version (devel)"},
+	"dirty":          {KO: "고친 트리(dirty)", EN: "modified tree (dirty)"},
+	"pseudo-version": {KO: "태그가 아닌 커밋", EN: "a commit that is not a tag"},
+	"old-version":    {KO: "다른 판", EN: "another version"},
+	"no-version":     {KO: "판 정보 없음", EN: "no version information"},
+	"unreadable":     {KO: "읽을 수 없음", EN: "unreadable"},
+	"no-pin":         {KO: "이 화면이 고정한 판을 알 수 없음", EN: "the version this screen pins is unknown"},
+	"deps-replaced":  {KO: "replace 의존 소스 확인 불가", EN: "replaced dependency sources cannot be verified"},
 }
 
 // ── 06 승인 · 생성 ──────────────────────────────────────────────────────────
