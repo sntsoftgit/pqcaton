@@ -83,14 +83,44 @@ st_git() {
 		if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then echo "tag $VERSION already exists locally"; return 1; fi
 		if [ -n "$(git ls-remote --tags origin "refs/tags/$VERSION")" ]; then echo "tag $VERSION already exists on origin"; return 1; fi
 	fi
-	# 종단 검증이 빌드하는 옛 판 태그. 판을 여기 박지 않고 종단 스크립트에서 읽는다. 5분을 돈 뒤에 없다고 멈추지 않게 먼저 본다.
-	local need t
-	need="$(grep -oE "refs/tags/v[0-9]+\.[0-9]+\.[0-9]+\^\{commit\}" demo/scripts/e2e-scope.sh | sed -E 's#refs/tags/##; s#\^\{commit\}##' | sort -u)"
-	[ -n "$need" ] || { echo "found no tag the end-to-end demo builds from (demo/scripts/e2e-scope.sh)"; return 1; }
-	for t in $need; do
-		git rev-parse -q --verify "refs/tags/$t^{commit}" >/dev/null || { echo "the end-to-end demo needs tag $t, which is not here after fetching"; return 1; }
+	echo "✓ main, clean, HEAD = origin/main = $h"
+}
+
+# 사전 조건. 무엇이 없어서 멈췄는지가 그 단계 이름으로 드러나게, 쓰는 단계보다 먼저 한곳에서 본다.
+# Docker 는 두 모드 모두 쓴다(REUSE 와 뒷정리 비교). 종단 검증의 조건은 demo/e2e/e2e_test.go 가 보는 것과 같고 full 에서만 본다.
+st_preflight() {
+	local bad=0 p
+	for p in git go make bash docker; do
+		command -v "$p" >/dev/null || { echo "missing: $p"; bad=1; }
 	done
-	echo "✓ main, clean, HEAD = origin/main = $h; tags for the end-to-end demo: $(echo $need)"
+	docker info >/dev/null 2>&1 || { echo "docker is not usable (docker info failed)"; bad=1; }
+	if [ "$MODE" != full ]; then
+		[ "$bad" -eq 0 ] && echo "✓ docker usable; end-to-end prerequisites not checked (release-check-fast)"
+		return "$bad"
+	fi
+	command -v python3 >/dev/null || { echo "missing: python3"; bad=1; }
+	docker image inspect docker:dind >/dev/null 2>&1 || { echo "missing: the docker:dind image (docker pull docker:dind)"; bad=1; }
+	local up
+	up="$(cd "$REPO" && go list -m -f '{{.Version}}' github.com/randyinthedev-hash/pqcota-common)"
+	if [ -z "${PQCOTA_DIR:-}" ]; then
+		echo "missing: PQCOTA_DIR (the upstream pqcota checkout at $up)"; bad=1
+	else
+		[ -f "$PQCOTA_DIR/demo/scripts/up.sh" ] || { echo "missing: PQCOTA_DIR/demo/scripts/up.sh"; bad=1; }
+		local r got
+		for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do
+			got="$(git -C "$PQCOTA_DIR/../$r" describe --tags --exact-match HEAD 2>/dev/null || true)"
+			[ "$got" = "$up" ] || { echo "the upstream repository $r is at '${got:-?}', not at $up that go.mod pins"; bad=1; }
+		done
+	fi
+	# 종단 검증이 빌드하는 옛 판 태그. 판을 여기 박지 않고 종단 스크립트에서 읽는다(git 단계가 태그를 받아 두었다).
+	local need t
+	need="$(grep -oE "refs/tags/v[0-9]+\.[0-9]+\.[0-9]+\^\{commit\}" "$REPO/demo/scripts/e2e-scope.sh" | sed -E 's#refs/tags/##; s#\^\{commit\}##' | sort -u)"
+	[ -n "$need" ] || { echo "found no tag the end-to-end demo builds from (demo/scripts/e2e-scope.sh)"; bad=1; }
+	for t in $need; do
+		git -C "$REPO" rev-parse -q --verify "refs/tags/$t^{commit}" >/dev/null || { echo "the end-to-end demo needs tag $t, which is not here after fetching"; bad=1; }
+	done
+	[ "$bad" -eq 0 ] && echo "✓ docker, docker:dind, upstream at $up, tags for the end-to-end demo: $(echo $need)"
+	return "$bad"
 }
 
 st_tools() {
@@ -249,6 +279,7 @@ st_leftovers() {
 
 step args st_args
 step git st_git
+step preflight st_preflight
 step tools st_tools
 note "commit: $(git -C "$REPO" rev-parse HEAD)"
 note "go: $(cat "$WORK/goversion") (GOTOOLCHAIN=auto)"
