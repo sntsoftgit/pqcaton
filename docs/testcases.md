@@ -529,14 +529,15 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U181](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 명시한 공개 키만, 기본 위치에 개인 키 | 기본 개인 키를 읽지 않는다. 06이 「확인용 공개 키만 지정했습니다」를 보이고, 서명은 하지 않고 생성은 한다 |
 | **[IC-U182](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 잘못된 기본 개인 키(0644)와 정상 기본 공개 키 | **서명은 막고 확인 · 생성은 한다** |
 | **[IC-U183](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 정상 기본 개인 키와 다른 사용자가 고칠 수 있는 기본 공개 키 | **구성 오류로 서명도 생성도 막는다**. 06과 표준 오류가 알린다 |
-| **[IC-U184](../inventory/cmd/pqcaton-ui/procinfo_linux_test.go) ✅** | 「회수 필요」로 남긴 프로세스가 살아 있음(비밀 인자 · 비밀 환경 변수를 가짐) | **PID · 부모 PID · 묶음 · 사용자 · 실행 파일 · 시작 시각을 보이고, 인자는 가린 값만, 환경 변수는 싣지 않는다** |
-| **[IC-U185](../inventory/cmd/pqcaton-ui/procinfo_linux_test.go) ✅** | 남긴 프로세스가 이미 종료됨 | 오류가 아니라 「이미 종료됨」으로 보인다 |
-| **[IC-U186](../inventory/cmd/pqcaton-ui/procinfo_linux_test.go) ✅** | PID는 같은데 시작 시각이 다름(PID 재사용) | **「다른 프로세스로 바뀜」이고 세부를 싣지 않는다**. 회수 대상으로 안내하지 않는다 |
-| **[IC-U187](../inventory/cmd/pqcaton-ui/procinfo_linux_test.go) ✅** | 조회 권한 없음 · 다른 사용자의 프로세스(조회기 주입) / 시작 시각 없는 기록 / 조회 실패 | 「조회 권한 없음」은 **실행 파일과 인자를 모델에 싣지 않는다**. 「같은 프로세스인지 확인할 수 없음」 · 「조회 실패」로 보인다. 이 기계의 PID 1이 다른 사용자의 것이면 실물로도 잰다(보조) |
-| **[IC-U188](../inventory/cmd/pqcaton-ui/procinfo_linux_test.go) ✅** | 비밀이 든 인자 | DSN 사용자 정보 · password= · token= 꼴 · …_KEY= 꼴 · 값을 받는 비밀 플래그의 다음 인자 · PEM 개인 키를 가리고 나머지는 둔다 |
-| **[IC-U189](../inventory/cmd/pqcaton-ui/procinfo_linux_test.go) ✅** | 03 화면에서 남은 프로세스 보기와 「다시 확인」 | 가린 인자만 HTML에 싣고 **끝내는 단추가 없다**. 두 번 불러도 작업 폴더가 한 바이트도 바뀌지 않는다 |
+| **[IC-U184](../inventory/cmd/pqcaton-ui/procinfo_unix_test.go) ✅** | 「회수 필요」로 남긴 프로세스가 살아 있음(비밀 인자 · 비밀 환경 변수를 가짐) | **PID · 부모 PID · 묶음 · 사용자 · 실행 파일 · 시작 시각을 보이고, 인자는 가린 값만, 환경 변수는 싣지 않는다** |
+| **[IC-U185](../inventory/cmd/pqcaton-ui/procinfo_unix_test.go) ✅** | 남긴 프로세스가 이미 종료됨 | 오류가 아니라 「이미 종료됨」으로 보인다 |
+| **[IC-U186](../inventory/cmd/pqcaton-ui/procinfo_unix_test.go) ✅** | PID는 같은데 시작 시각이 다름(PID 재사용) | **「다른 프로세스로 바뀜」이고 세부를 싣지 않는다**. 회수 대상으로 안내하지 않는다 |
+| **[IC-U187](../inventory/cmd/pqcaton-ui/procinfo_unix_test.go) ✅** | 조회 권한 없음 · 다른 사용자의 프로세스(조회기 주입) / 시작 시각 없는 기록 / 조회 실패 | 「조회 권한 없음」은 **실행 파일과 인자를 모델에 싣지 않는다**. 「같은 프로세스인지 확인할 수 없음」 · 「조회 실패」로 보인다. 이 기계의 PID 1이 다른 사용자의 것이면 실물로도 잰다(보조) |
+| **[IC-U188](../inventory/cmd/pqcaton-ui/procinfo_unix_test.go) ✅** | 비밀이 든 인자 | DSN 사용자 정보 · password= · token= 꼴 · …_KEY= 꼴 · 값을 받는 비밀 플래그의 다음 인자 · PEM 개인 키를 가리고 나머지는 둔다 |
+| **[IC-U189](../inventory/cmd/pqcaton-ui/procinfo_unix_test.go) ✅** | 03 화면에서 남은 프로세스 보기와 「다시 확인」 | 가린 인자만 HTML에 싣고 **끝내는 단추가 없다**. 두 번 불러도 작업 폴더가 한 바이트도 바뀌지 않는다 |
 | [IC-U190](../inventory/cmd/pqcaton-ui/procinfo_darwin_test.go) ✅ | macOS의 kern.procargs2 응답 | 실행 파일과 인자 argc개만 읽고, 뒤에 붙은 환경은 돌려주지 않는다(실제 조회는 최종 검증에서) |
-| **[IC-U191](../inventory/cmd/pqcaton-ui/procinfo_linux_test.go) ✅** | 시작 시각을 남기지 않은 이전 판의 기록(PID만 있음) | 사라지지 않고 **「같은 프로세스인지 확인할 수 없음」**으로 보인다. 살아 있는 PID여도 세부와 인자를 싣지 않는다 |
+| **[IC-U191](../inventory/cmd/pqcaton-ui/procinfo_unix_test.go) ✅** | 시작 시각을 남기지 않은 이전 판의 기록(PID만 있음) | 사라지지 않고 **「같은 프로세스인지 확인할 수 없음」**으로 보인다. 살아 있는 PID여도 세부와 인자를 싣지 않는다 |
+| **[IC-U192](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 실제 `os.UserConfigDir()`의 기본 위치가 공백이 든 경로(macOS의 `Application Support` 같은 것) | **개인 키와 공개 키를 읽고 서명한다**. macOS는 `~/Library/Application Support/pqcaton/`, Linux는 `$XDG_CONFIG_HOME/pqcaton/`이다. 명시 키 우선과 `-no-default-approval-key`도 같은 자리에서 맞다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 

@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io/fs"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -19,6 +20,11 @@ import (
 func readProc(pid int) (procFacts, error) {
 	var f procFacts
 	kp, err := unix.SysctlKinfoProc("kern.proc.pid", pid)
+	// 없는 PID 에는 커널이 빈 응답을 돌려주고, x/sys 는 그 길이 차이를 EIO 로 바꾼다. 이 조회에서 EIO 는 「그런 프로세스 없음」이다
+	// (Intel Mac 에서 확인: 끝난 프로세스가 「조회 실패」로 보였다).
+	if errors.Is(err, unix.EIO) {
+		return f, errNoSuchProcess
+	}
 	if err != nil {
 		return f, err
 	}
@@ -70,7 +76,9 @@ func procArgs(buf []byte) (exe string, args []string, ok bool) {
 }
 
 func procGone(err error) bool {
-	return errors.Is(err, errNoSuchProcess) || errors.Is(err, unix.ESRCH) || errors.Is(err, unix.ENOENT)
+	return errors.Is(err, errNoSuchProcess) || errors.Is(err, unix.ESRCH) || errors.Is(err, unix.ENOENT) || errors.Is(err, fs.ErrNotExist)
 }
 
-func procDenied(err error) bool { return errors.Is(err, unix.EPERM) || errors.Is(err, unix.EACCES) }
+func procDenied(err error) bool {
+	return errors.Is(err, unix.EPERM) || errors.Is(err, unix.EACCES) || errors.Is(err, fs.ErrPermission)
+}

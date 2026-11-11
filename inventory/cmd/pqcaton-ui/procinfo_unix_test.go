@@ -1,6 +1,10 @@
 // SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 // SPDX-License-Identifier: BUSL-1.1
 
+// 실제 프로세스를 띄워 플랫폼의 조회기(Linux 는 /proc, macOS 는 sysctl)로 읽는다. 두 플랫폼에서 같은 시험이 돈다.
+
+//go:build linux || darwin
+
 package main
 
 import (
@@ -13,14 +17,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// 「회수 필요」 프로세스 정보(procinfo). 실제 프로세스를 띄워 /proc 에서 읽는다. macOS 의 실제 조회는 v0.27.0 최종 검증에서 본다.
+// 「회수 필요」 프로세스 정보(procinfo).
 
 // 인자와 환경에 넣는 비밀. 화면과 정보 어디에도 나오면 안 된다.
 var procSecrets = []string{"hunter2", "s3cret", "abc123token", "xyzsignkey", "envsecretvalue"}
@@ -35,8 +38,8 @@ func liveProc(t *testing.T) (*exec.Cmd, ui.ProcRecord) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
-	for i := 0; i < 50; i++ { // exec 이 끝나 cmdline 이 바뀔 때까지 잠깐 기다린다
-		if b, _ := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", cmd.Process.Pid)); strings.Contains(string(b), "hunter2") {
+	for i := 0; i < 50; i++ { // exec 이 끝나 인자가 바뀔 때까지 잠깐 기다린다
+		if f, err := readProc(cmd.Process.Pid); err == nil && strings.Contains(strings.Join(f.Args, " "), "hunter2") {
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -127,11 +130,11 @@ func TestStuckProcessDeniedUnconfirmedFailed(t *testing.T) {
 // IC-U187 보조 — 이 기계의 PID 1 이 다른 사용자의 것이면 실물로도 「조회 권한 없음」이다. 조건이 맞지 않는 환경에서는 잴 것이
 // 없다(핵심 판정은 위의 주입 시험이 확정적으로 잰다).
 func TestStuckProcessPID1WhenOthers(t *testing.T) {
-	fi, err := os.Stat("/proc/1")
+	f, err := readProc(1)
 	if err != nil {
-		t.Skip("/proc/1 cannot be read here: " + err.Error())
+		t.Skip("PID 1 cannot be read here: " + err.Error())
 	}
-	if st, ok := fi.Sys().(*syscall.Stat_t); !ok || int(st.Uid) == os.Getuid() {
+	if f.UID == os.Getuid() {
 		t.Skip("PID 1 belongs to this user here, so it is not another user's process")
 	}
 	start, err := procStart(1)

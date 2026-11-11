@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -398,5 +399,65 @@ func TestGoodKeyWithBrokenVerifyKeyIsAConfigurationError(t *testing.T) {
 	}
 	if w := postForm(t, s, ui.GeneratePath, withRev(url.Values{"level": {"l2"}}, s.revFor(ui.ScreenApprove))); w.Code == http.StatusSeeOther {
 		t.Error("generation went through a configuration error")
+	}
+}
+
+// IC-U192 — **실제 os.UserConfigDir() 의 기본 위치에서, 공백이 든 경로여도 개인 키와 공개 키를 읽는다.** macOS 는
+// ~/Library/Application Support/pqcaton/, Linux 는 $XDG_CONFIG_HOME/pqcaton/ 이다. 사용자 설정 폴더를 바꿔치기하지 않고 진짜
+// 함수로 잰다(HOME · XDG_CONFIG_HOME 만 공백이 든 임시 폴더로 둔다). 명시 키 우선과 -no-default-approval-key 도 같은 자리에서 본다.
+func TestRealUserConfigDirWithSpaces(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("the screen saves only on Linux and macOS")
+	}
+	home := filepath.Join(t.TempDir(), "home with space")
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "config dir"))
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, "config dir")
+	if runtime.GOOS == "darwin" {
+		want = filepath.Join(home, "Library", "Application Support")
+	}
+	if dir != want {
+		t.Fatalf("os.UserConfigDir() = %q, want %q", dir, want)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pqcaton"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	keyFile := filepath.Join(dir, "pqcaton", "approval.key")
+	pub := writeKey(t, keyFile)
+	writePub(t, filepath.Join(dir, "pqcaton", "approval.pub"), pub, 0o644)
+
+	s, _ := keyReady(t)
+	k, v := resolveKeys("", "", false, os.UserConfigDir)
+	s.approvalKey, s.keySource, s.keyWhere = k.path, k.source, k.where
+	s.verifyKey, s.verifySource, s.verifyWhere = v.path, v.source, v.where
+	if s.approvalKey != keyFile || !strings.Contains(s.approvalKey, " ") {
+		t.Fatalf("the default key path is %q, want %q", s.approvalKey, keyFile)
+	}
+	key, priv := s.readKey()
+	if key.State != ui.KeyOK || priv == "" || s.readVerify().State != ui.KeyOK {
+		t.Fatalf("keys at a path with spaces: key %s, verify %s", key.State, s.readVerify().State)
+	}
+	page := approvePage(t, s, "ko")
+	if !strings.Contains(page, "기본 승인 키를 사용합니다.") || !strings.Contains(page, "사용자 설정 폴더의 pqcaton/approval.key") ||
+		strings.Contains(page, priv) || strings.Contains(page, home) {
+		t.Errorf("the screen does not use the default key at the real location, or shows too much")
+	}
+	if w := signVia(t, s, "보안팀장"); w.Code != http.StatusSeeOther {
+		t.Fatalf("sign with the key at a path with spaces = %d", w.Code)
+	}
+
+	other := filepath.Join(t.TempDir(), "explicit key.key")
+	writeKey(t, other)
+	k, v = resolveKeys(other, "", false, os.UserConfigDir)
+	if k.path != other || k.source != ui.KeyExplicit || v.path != "" {
+		t.Errorf("an explicit key did not win over the real default location: %+v %+v", k, v)
+	}
+	k, v = resolveKeys("", "", true, os.UserConfigDir)
+	if k.path != "" || v.path != "" || k.source != ui.KeySearchOff {
+		t.Errorf("-no-default-approval-key still reads the real default location: %+v %+v", k, v)
 	}
 }
