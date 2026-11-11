@@ -60,7 +60,7 @@ type runMark struct {
 	Suspect []int
 }
 
-func killMarked(runMark, time.Duration) ([]int, error) { return nil, nil }
+func killMarked(runMark, time.Duration) ([]markedProc, error) { return nil, nil }
 
 func readSupervisor(string) *supervisorRecord { return nil }
 
@@ -76,6 +76,21 @@ func markedProcs(runMark) ([]markedProc, error) { return nil, nil }
 
 var findMarked = markedProcs
 
-func reaped([]int, error) string { return "" }
+func reaped([]markedProc, error) string { return "" }
 
-func reapRun(runMark, time.Duration) ([]int, error) { return nil, nil }
+type stuckProc struct {
+	PID   int    `json:"pid"`
+	Start string `json:"start"`
+}
+
+func pidsOf(ps []markedProc) []int {
+	var out []int
+	for _, p := range ps {
+		out = append(out, p.PID)
+	}
+	return out
+}
+
+func stuckProcs([]markedProc) []stuckProc { return nil }
+
+func reapRun(runMark, time.Duration) ([]markedProc, error) { return nil, nil }

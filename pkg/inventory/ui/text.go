@@ -1169,6 +1169,36 @@ var runItemMissing = map[RunItem]T{
 		EN: "The version of collector.jar differs from the version shown. Replace it with one built at that version"},
 }
 
+// 「회수 필요」 프로세스 정보(03).
+var (
+	tProcHead        = T{KO: "남은 프로세스", EN: "Processes left behind"}
+	tProcRecheck     = T{KO: "다시 확인", EN: "Check again"}
+	tProcRecheckHint = T{KO: "다시 읽기만 합니다. 파일 · 기록은 바꾸지 않고, 프로세스를 끝내지도 않습니다.", EN: "This only reads again. It changes no file or record and stops no process."}
+	tProcPID         = T{KO: "PID", EN: "PID"}
+	tProcPPID        = T{KO: "부모 PID", EN: "Parent PID"}
+	tProcPGID        = T{KO: "프로세스 묶음", EN: "Process group"}
+	tProcUser        = T{KO: "사용자", EN: "User"}
+	tProcExe         = T{KO: "실행 파일", EN: "Executable"}
+	tProcStarted     = T{KO: "시작 시각", EN: "Started"}
+	tProcArgs        = T{KO: "인자 보기(비밀값은 가림)", EN: "Show arguments (secrets masked)"}
+	tProcNoAccess    = T{KO: "읽을 권한 없음", EN: "no permission to read"}
+)
+
+var procStateText = map[ProcState]T{
+	ProcSame: {KO: "이 관측이 남긴 프로세스입니다. 아래 정보로 확인한 뒤 운영자가 정상 종료하고 화면을 다시 시작하십시오.",
+		EN: "A process this observation left behind. Check it with the details below, stop it normally, then restart the screen."},
+	ProcGone: {KO: "이미 종료됨. 화면을 다시 시작하면 남은 정리를 이어서 합니다.",
+		EN: "Already ended. Restart the screen and it carries on with the cleanup that is left."},
+	ProcReused: {KO: "다른 프로세스로 바뀜: 같은 PID를 다른 프로세스가 쓰고 있습니다. 회수 대상이 아니니 끝내지 마십시오.",
+		EN: "Replaced by another process: another process now uses this PID. It is not to be reclaimed; do not stop it."},
+	ProcDenied: {KO: "조회 권한 없음: 이 화면을 띄운 사용자의 프로세스가 아니거나 읽을 수 없습니다. 소속을 확인할 수 없으니 끝내지 마십시오.",
+		EN: "No permission: the process is not this user's or cannot be read. Its belonging cannot be checked; do not stop it."},
+	ProcFailed: {KO: "조회 실패: 프로세스 정보를 읽지 못했습니다. 잠시 뒤 다시 확인하십시오.",
+		EN: "Lookup failed: the process details could not be read. Check again in a moment."},
+	ProcUnconfirmed: {KO: "같은 프로세스인지 확인할 수 없음: 시작 시각을 남기지 않은 이전 판의 기록입니다. 끝내기 전에 운영자 안내서의 확인 명령으로 직접 확인하십시오.",
+		EN: "Cannot tell whether it is the same process: an earlier version did not record its start time. Before stopping it, check it yourself with the command in the operator guide."},
+}
+
 // 수집기 파일 한 줄: 「선언된 판: v0.10.7 · 실제 소스: 로컬 replace(devel) · 확인 불가」.
 var (
 	tCVDeclared     = T{KO: "선언된 판: %s", EN: "declared version: %s"}

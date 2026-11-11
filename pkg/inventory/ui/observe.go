@@ -131,8 +131,9 @@ type RunCheck struct {
 	Blocking bool
 	// Detail — 찾은 자리(명령의 경로 · 폴더). 운영자 자신의 기계 경로라 보인다.
 	Detail string
-	// Files — 수집기 판 점검이면 파일마다의 판정.
+	// Files — 수집기 판 점검이면 파일마다의 판정. Procs — 끝내지 못한 지난 관측이면 남긴 프로세스의 지금 상태.
 	Files []CollectorFile
+	Procs []ProcInfo
 }
 
 // Text — 점검의 이름.
@@ -212,7 +213,42 @@ type RunStatus struct {
 	// Stuck · StuckWhy — 끝내지 못했거나 확인하지 못한 이 실행의 프로세스와 그 까닭.
 	Stuck    []int
 	StuckWhy string
+	// StuckProcs — Stuck 을 남길 때 찾은 PID와 시작 시각. 지금 상태는 시작 전 점검(RunStuckItem)의 Procs 가 보인다.
+	StuckProcs []ProcRecord
 }
+
+// ProcRecord — 「회수 필요」로 남긴 프로세스 하나(찾을 때의 PID와 시작 시각).
+type ProcRecord struct {
+	PID   int
+	Start string
+}
+
+// ProcState — 남긴 프로세스의 지금 상태.
+type ProcState string
+
+const (
+	ProcSame        ProcState = "same"        // 남긴 그 프로세스가 아직 있다(PID와 시작 시각이 같다)
+	ProcGone        ProcState = "gone"        // 이미 종료됨
+	ProcReused      ProcState = "reused"      // 같은 PID를 다른 프로세스가 쓴다. 회수 대상이 아니다
+	ProcDenied      ProcState = "denied"      // 조회 권한이 없거나 이 사용자의 프로세스가 아니다
+	ProcFailed      ProcState = "failed"      // 조회하지 못했다
+	ProcUnconfirmed ProcState = "unconfirmed" // 시작 시각을 남기지 않은 옛 기록이라 같은 프로세스인지 확인할 수 없다
+)
+
+// ProcInfo — 화면에 보일 프로세스 정보. **Args 는 서버에서 이미 가린 값이다.** 원문 인자는 템플릿에 넘기지 않는다(접힌
+// 내용도 HTML 에 들어가므로). 환경 변수는 읽지도 싣지도 않는다. ProcSame 이 아니면 PID 밖의 칸은 비어 있다.
+type ProcInfo struct {
+	PID, PPID, PGID int
+	State           ProcState
+	User, Exe       string
+	Started         string
+	Args            string
+	// ExeDenied · ArgsDenied — 그 칸만 읽을 권한이 없었다.
+	ExeDenied, ArgsDenied bool
+}
+
+// StateText — 상태 한 줄과 할 일.
+func (p ProcInfo) StateText(l Lang) string { return procStateText[p.State].In(l) }
 
 // StagingPaths — 노드에 남을 수 있는 스테이징 폴더(실행 ID가 붙는다).
 func (s RunStatus) StagingPaths() string {

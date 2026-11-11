@@ -344,10 +344,23 @@ required).
    observation. A process whose ownership cannot be shown may be unrelated, so it is not stopped and the observation is
    left as "recovery needed" instead. macOS does not let the environment of some Apple programs (such as `/bin/sh` and
    `/usr/bin/ssh`) be read, so for those a live process of this observation, as the parent or in the same process group,
-   stands in for the run marker. When "recovery needed" shows, check the PIDs on the 03 screen.
+   stands in for the run marker. When "recovery needed" shows, look at "Processes left behind" on the 03
+   screen. The screen compares the PID and start time found when the run was marked with the process there now, and only
+   when it is the same process shows its PID, parent PID, process group, user, executable and start time. The arguments
+   are folded, and even unfolded the secrets in them (passwords, tokens, user information in a DSN, keys) are masked.
+   Environment variables are not shown. "Check again" only reads again and changes nothing, and the screen has no button
+   that stops a process. There are five states.
+
+   - **A process this observation left behind**: the one to stop after checking.
+   - **Already ended**: restart the screen and it carries on with the cleanup that is left.
+   - **Replaced by another process**: another process uses the PID. Do not stop it.
+   - **No permission, or lookup failed**: its belonging cannot be checked, so do not stop it. After a failed lookup, check
+     again in a moment.
+   - **Cannot tell whether it is the same process**: a record from an earlier version that kept no start time. Only then
+     look yourself in a terminal.
 
    ```bash
-   ps -p <PID> -o pid=,ppid=,pgid=,user=,command=
+   ps -p <PID> -o pid=,ppid=,pgid=,user=,lstart=,command=
    ```
 
    Only when a process is confirmed to have been started by this observation, stop it normally and start the screen

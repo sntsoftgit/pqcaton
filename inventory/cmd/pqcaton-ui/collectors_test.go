@@ -1,6 +1,10 @@
 // SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 // SPDX-License-Identifier: BUSL-1.1
 
+// 관측 실행 시험(observerun_test.go 의 runReady)에 기대므로 그것과 같이 유닉스에서만 돈다.
+
+//go:build unix
+
 package main
 
 import (

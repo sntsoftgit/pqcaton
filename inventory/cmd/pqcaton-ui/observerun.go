@@ -120,6 +120,9 @@ type runManifest struct {
 	// 지우거나 옮기지 않았다.
 	Stuck    []int  `json:"stuck,omitempty"`
 	StuckWhy string `json:"stuck_why,omitempty"`
+	// StuckProcs — Stuck 과 같은 프로세스를 찾을 때의 시작 시각과 함께 남긴 것. 화면은 이것으로 그 PID가 아직 같은 프로세스인지
+	// 가린다. 이 칸이 없는 옛 기록은 같은 프로세스인지 확인할 수 없는 것으로 보인다.
+	StuckProcs []stuckProc `json:"stuck_procs,omitempty"`
 	// NodeCleanup: 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
 	NodeCleanup string `json:"node_cleanup,omitempty"`
 	// Swapping: results/와 맞바꾸기 직전에 적는다. 이 표시로 끊겼으면 다음 시작이 results/의 기록으로 교환 여부를 가린다.
@@ -146,8 +149,8 @@ func (r *runner) status() *ui.RunStatus {
 	m := j.m
 	return &ui.RunStatus{ID: m.ID, State: m.State, Started: m.Started, Ended: m.Ended, Received: m.Received,
 		Exit: m.Exit, Window: m.Window, Dropped: j.dropped, Missing: m.Missing, NodeCleanup: m.NodeCleanup, Stuck: m.Stuck,
-		StuckWhy: m.StuckWhy,
-		Log:      strings.Join(j.log, "\n")}
+		StuckWhy: m.StuckWhy, StuckProcs: procRecords(m.StuckProcs),
+		Log: strings.Join(j.log, "\n")}
 }
 
 func (r *runner) running() bool {
@@ -272,8 +275,8 @@ func (s *server) preflight() []ui.RunCheck {
 	add(ui.RunHosts, err == nil && len(hosts) > 0, true, fmt.Sprint(len(hosts)))
 	path, err := exec.LookPath(ansibleCommand)
 	add(ui.RunAnsible, err == nil, true, path)
-	if stuck := s.stuckRuns(); len(stuck) > 0 {
-		add(ui.RunStuckItem, false, true, strings.Join(stuck, " · "))
+	if stuck, procs := s.stuckRuns(); len(stuck) > 0 {
+		out = append(out, ui.RunCheck{Item: ui.RunStuckItem, OK: false, Blocking: true, Detail: strings.Join(stuck, " · "), Procs: procs})
 	}
 	add(ui.RunCollectors, s.collectors != "" && isDir(s.collectors), true, s.collectors)
 	if s.collectors == "" || !isDir(s.collectors) {
@@ -317,22 +320,25 @@ func (s *server) preflight() []ui.RunCheck {
 	return out
 }
 
-// stuckRuns: 끝내지 못한 프로세스가 남은 실행(「실행 ID: PID…」). 있으면 새 관측을 시작하지 않는다.
-func (s *server) stuckRuns() []string {
+// stuckRuns: 끝내지 못한 프로세스가 남은 실행(「실행 ID: PID…」)과 그 프로세스들의 지금 상태. 있으면 새 관측을 시작하지
+// 않는다. 상태는 읽기만 한다(procinfo).
+func (s *server) stuckRuns() ([]string, []ui.ProcInfo) {
 	if s.results == "" {
-		return nil
+		return nil, nil
 	}
 	ents, err := os.ReadDir(s.runsDir())
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	var out []string
+	var procs []ui.ProcInfo
 	for _, e := range ents {
 		if m := readManifest(filepath.Join(s.runsDir(), e.Name()), e.Name()); e.IsDir() && m.State == ui.RunStuck {
 			out = append(out, fmt.Sprintf("%s: %v %s", m.ID, m.Stuck, m.StuckWhy))
+			procs = append(procs, stuckInfo(procRecords(m.StuckProcs), m.Stuck)...)
 		}
 	}
-	return out
+	return out, procs
 }
 
 func isDir(p string) bool  { fi, err := os.Stat(p); return err == nil && fi.IsDir() }
@@ -498,7 +504,7 @@ func (s *server) finishRun(j *runJob) {
 	stuck, err := reapMarked(runMark{Marker: runMarker(j.m.ID), Suspect: []int{j.cmd.Process.Pid}}, stopGrace)
 	if why := reaped(stuck, err); why != "" {
 		r.mu.Lock()
-		j.m.State, j.m.Stuck, j.m.StuckWhy, j.m.Ended = ui.RunStuck, stuck, why, time.Now()
+		j.m.State, j.m.Stuck, j.m.StuckProcs, j.m.StuckWhy, j.m.Ended = ui.RunStuck, pidsOf(stuck), stuckProcs(stuck), why, time.Now()
 		r.appendLocked("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 		m := j.m
 		if j.logFile != nil {
@@ -901,7 +907,7 @@ func (s *server) recoverRuns() {
 			}
 			stuck, err := reapMarked(mark, stopGrace)
 			if why := reaped(stuck, err); why != "" {
-				m.State, m.Stuck, m.StuckWhy = ui.RunStuck, stuck, why
+				m.State, m.Stuck, m.StuckProcs, m.StuckWhy = ui.RunStuck, pidsOf(stuck), stuckProcs(stuck), why
 				_ = writeManifest(dir, m)
 				logf("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 				break
@@ -911,7 +917,7 @@ func (s *server) recoverRuns() {
 			if m.State != ui.RunRunning && m.State != ui.RunStuck && invErr != nil {
 				break
 			}
-			m.Stuck, m.StuckWhy = nil, ""
+			m.Stuck, m.StuckProcs, m.StuckWhy = nil, nil, ""
 			if cur := s.currentRun(); m.Swapping && cur != nil && cur.ID == m.ID {
 				// 교환은 끝났다. 새 결과가 지금 결과다.
 				m.State, m.Swapping = ui.RunDone, false

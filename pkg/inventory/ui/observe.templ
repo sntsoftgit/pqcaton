@@ -69,6 +69,9 @@ templ runChecks(l Lang, r ObserveRun) {
 					<br/>
 					<span>{ c.Missing(l) }</span>
 				}
+				if len(c.Procs) > 0 {
+					@runProcs(l, c.Procs)
+				}
 				if len(c.Files) > 0 {
 					<ul class="collector-files">
 						for _, f := range c.Files {
@@ -213,4 +216,42 @@ templ hostRow(l Lang, i int, h HostRow) {
 		</td>
 		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveHostAsk.In(l))</td>
 	</tr>
+}
+
+// runProcs — 「회수 필요」로 남긴 프로세스의 지금 상태. **끝내는 단추는 두지 않는다.** 끝내는 일은 운영자가 확인한 뒤 한다.
+// 「다시 확인」은 같은 화면을 다시 읽을 뿐(GET)이고 아무것도 쓰지 않는다. 인자는 서버에서 가린 값만 온다.
+templ runProcs(l Lang, procs []ProcInfo) {
+	<h4 id="run-procs">{ tProcHead.In(l) }</h4>
+	<ul class="checks">
+		for _, p := range procs {
+			<li data-proc-state={ string(p.State) } class={ templ.KV("ok", p.State == ProcGone), templ.KV("bad", p.State == ProcSame), templ.KV("warn", p.State != ProcSame && p.State != ProcGone) }>
+				<strong>{ tProcPID.In(l) } { strconv.Itoa(p.PID) }</strong>
+				<br/>
+				<span>{ p.StateText(l) }</span>
+				if p.State == ProcSame {
+					<dl class="proc">
+						<dt>{ tProcPPID.In(l) }</dt><dd><code>{ strconv.Itoa(p.PPID) }</code></dd>
+						<dt>{ tProcPGID.In(l) }</dt><dd><code>{ strconv.Itoa(p.PGID) }</code></dd>
+						<dt>{ tProcUser.In(l) }</dt><dd><code>{ p.User }</code></dd>
+						<dt>{ tProcExe.In(l) }</dt>
+						<dd>
+							if p.ExeDenied {
+								{ tProcNoAccess.In(l) }
+							} else {
+								<code>{ p.Exe }</code>
+							}
+						</dd>
+						<dt>{ tProcStarted.In(l) }</dt><dd><code>{ p.Started }</code></dd>
+					</dl>
+					if p.ArgsDenied {
+						<p class="hint">{ tProcArgs.In(l) }: { tProcNoAccess.In(l) }</p>
+					} else {
+						<details><summary>{ tProcArgs.In(l) }</summary><pre class="run-log">{ p.Args }</pre></details>
+					}
+				}
+			</li>
+		}
+	</ul>
+	<p><a href={ templ.SafeURL(ScreenObserve + "?" + LangParam + "=" + string(l) + "#run-procs") }>{ tProcRecheck.In(l) }</a></p>
+	@tip(l, tProcRecheckHint.In(l))
 }

@@ -674,7 +674,7 @@ func TestSupervisorFinishesWhenTheScreenGoes(t *testing.T) {
 func TestStuckRunIsLeftAlone(t *testing.T) {
 	s := runReady(t, "ok")
 	old := reapMarked
-	reapMarked = func(runMark, time.Duration) ([]int, error) { return []int{4242}, nil }
+	reapMarked = func(runMark, time.Duration) ([]markedProc, error) { return []markedProc{{PID: 4242, Start: "1"}}, nil }
 	id := "20261029T000003-eeeeeeeeeeee"
 	dir := filepath.Join(s.runsDir(), id)
 	if err := os.MkdirAll(filepath.Join(dir, "next"), 0o700); err != nil {
@@ -792,9 +792,9 @@ func TestCleanupOrphansAreReaped(t *testing.T) {
 	s = runReady(t, "fail")
 	old := reapMarked
 	calls := 0
-	reapMarked = func(m runMark, d time.Duration) ([]int, error) {
+	reapMarked = func(m runMark, d time.Duration) ([]markedProc, error) {
 		if calls++; calls >= 2 { // 관측 회수는 지나고, 정리 뒤의 회수가 실패한다
-			return []int{4343}, nil
+			return []markedProc{{PID: 4343, Start: "1"}}, nil
 		}
 		return old(m, d)
 	}

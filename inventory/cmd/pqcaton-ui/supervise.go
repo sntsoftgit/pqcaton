@@ -153,7 +153,7 @@ var (
 // killMarked: 표지를 가진 프로세스(자기 자신 빼고)를 끝낸다. 끝내라고 알리고, grace까지 기다리고, 남으면 강제로 끝내고,
 // 다시 기다린다. 끝내 남은 PID를 돌려준다(비면 다 끝났다). **프로세스를 확인하지 못하면 오류다** — 「확인할 수 없음」은
 // 「남은 것 없음」이 아니다. 부르는 쪽은 둘 다 「회수 필요」로 닫는다.
-func killMarked(rm runMark, grace time.Duration) ([]int, error) {
+func killMarked(rm runMark, grace time.Duration) ([]markedProc, error) {
 	ps, err := findMarked(rm)
 	if err != nil || len(ps) == 0 {
 		return nil, err
@@ -178,23 +178,44 @@ func killMarked(rm runMark, grace time.Duration) ([]int, error) {
 	if err != nil {
 		return nil, err
 	}
-	var left []int
-	for _, p := range ps {
-		left = append(left, p.PID)
-	}
-	return left, nil
+	// 남은 프로세스는 찾은 그대로(PID와 시작 시각) 돌려준다. 시작 시각을 나중에 따로 읽으면 그 사이 PID가 다른 프로세스에
+	// 다시 쓰일 수 있다. 화면은 이 짝으로 같은 프로세스인지 가린다(procinfo).
+	return ps, nil
 }
 
 // errUnproven: 기록된 묶음에 증명되지 않는 프로세스가 남았다. 끝내지 않고, 없다고 치지도 않는다.
-type errUnproven struct{ pids []int }
+type errUnproven struct{ procs []markedProc }
 
 func (e errUnproven) Error() string {
-	return fmt.Sprintf("processes %v in the run's recorded process group cannot be shown to belong to it, so they were not stopped", e.pids)
+	return fmt.Sprintf("processes %v in the run's recorded process group cannot be shown to belong to it, so they were not stopped", pidsOf(e.procs))
+}
+
+// pidsOf: 프로세스들의 PID.
+func pidsOf(ps []markedProc) []int {
+	var out []int
+	for _, p := range ps {
+		out = append(out, p.PID)
+	}
+	return out
+}
+
+// stuckProc: 「회수 필요」로 남긴 프로세스 하나. 남길 때 찾은 그대로의 PID와 시작 시각이다.
+type stuckProc struct {
+	PID   int    `json:"pid"`
+	Start string `json:"start"`
+}
+
+func stuckProcs(ps []markedProc) []stuckProc {
+	var out []stuckProc
+	for _, p := range ps {
+		out = append(out, stuckProc{PID: p.PID, Start: p.Start})
+	}
+	return out
 }
 
 // reapRun: 이 실행의 프로세스를 끝내고(killMarked), 기록된 묶음에 증명되지 않는 프로세스가 남았는지 본다. 남았으면
 // errUnproven이다.
-func reapRun(rm runMark, grace time.Duration) ([]int, error) {
+func reapRun(rm runMark, grace time.Duration) ([]markedProc, error) {
 	stuck, err := killMarked(rm, grace)
 	if err != nil || len(stuck) > 0 || len(rm.Suspect) == 0 {
 		return stuck, err
@@ -204,11 +225,7 @@ func reapRun(rm runMark, grace time.Duration) ([]int, error) {
 		return nil, err
 	}
 	if len(sus) > 0 {
-		var pids []int
-		for _, p := range sus {
-			pids = append(pids, p.PID)
-		}
-		return pids, errUnproven{pids}
+		return sus, errUnproven{sus}
 	}
 	return nil, nil
 }
@@ -231,14 +248,14 @@ func waitMarkedGone(rm runMark, limit time.Duration) (bool, error) {
 }
 
 // reaped: killMarked의 결과를 「회수 필요」의 까닭으로. 비면 다 끝났다.
-func reaped(stuck []int, err error) string {
+func reaped(stuck []markedProc, err error) string {
 	switch {
 	case errors.As(err, new(errUnproven)):
 		return err.Error()
 	case err != nil:
 		return "could not inspect the processes: " + err.Error()
 	case len(stuck) > 0:
-		return fmt.Sprintf("processes %v did not end", stuck)
+		return fmt.Sprintf("processes %v did not end", pidsOf(stuck))
 	}
 	return ""
 }
@@ -349,7 +366,7 @@ func supervise(dir, ansible string) int {
 	// Ansible이 끝나도 표지를 가진 자식(세션을 떼어 나간 것 포함)이 남을 수 있다. 다 끝낸다.
 	stuck, err := reapRun(mine, stopGrace)
 	if why := reaped(stuck, err); why != "" {
-		_ = writeDurable(filepath.Join(dir, supervisorFile), supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start, Stuck: stuck, StuckWhy: why})
+		_ = writeDurable(filepath.Join(dir, supervisorFile), supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start, Stuck: pidsOf(stuck), StuckWhy: why})
 		say("pqcaton: %s", why)
 		if orphaned {
 			markStuck(dir, m, stuck, why)
@@ -387,8 +404,8 @@ func finishOrphaned(dir string, m runManifest) {
 }
 
 // markStuck: 「회수 필요」로 적는다. 인벤토리 · 받던 것 · 노드 정리는 그대로 둔다(남은 프로세스가 아직 쓸 수 있다).
-func markStuck(dir string, m runManifest, stuck []int, why string) {
-	m.State, m.Stuck, m.StuckWhy = ui.RunStuck, stuck, why
+func markStuck(dir string, m runManifest, stuck []markedProc, why string) {
+	m.State, m.Stuck, m.StuckProcs, m.StuckWhy = ui.RunStuck, pidsOf(stuck), stuckProcs(stuck), why
 	_ = writeManifest(dir, m)
 	appendRunLog(dir)("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 }
