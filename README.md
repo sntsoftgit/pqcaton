@@ -1,6 +1,3 @@
-> **`main`은 v0.27.0 개발 중입니다.** 03의 수집기 판 확인, 06 승인 키의 기본 위치, 「회수 필요」 프로세스 정보를 만들고
-> 있습니다. 운영에는 [v0.26.3 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.26.3)를 쓰십시오.
-
 # pqcaton
 
 **개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.md) · [설계](docs/design.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)

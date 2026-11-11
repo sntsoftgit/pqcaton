@@ -3,10 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main` is under development for v0.27.0.** The collector version check in 03, a default location for the 06 approval key,
-> and process details for "needs reclaiming" are being built. For operation, use the [v0.26.3 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.26.3).
-
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.26.3.
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.27.0.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -53,7 +50,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 **The binary.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.26.3
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.27.0
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
@@ -64,8 +61,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.3/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.3/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -81,7 +78,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.3/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -532,6 +529,26 @@ cut). Send the diagnostics file and the files you kept. The diagnostics file hol
 contents.
 
 ## 9. Upgrading
+
+### v0.26.x to v0.27.0
+
+v0.27.0 keeps the state format, the session and plan formats and the ruleset (`pqcota-enrich/v3`) of v0.26.3, so the
+workspace opens as it is. The pqcota version to use is still v0.10.7.
+
+1. Stop the screen and replace the binary with `go install` from [section 2](#2-installation). If you run v0.26.2, its
+   security fix is in this version as well.
+2. **03 checks the collector versions before an observation starts.** Upstream builds today take their dependencies as
+   replaces of the folders next to them, so they all show as "cannot be verified", and the observation does not start by
+   default. Check that the two repositories next to them are at the same tag, then start the screen with
+   `-allow-unverified-collectors` ("Collector versions" in [section 2](#2-installation)). If the screen runs as a
+   service, add it to the service's `ExecStart` too. Collectors of another version cannot be used even with this
+   option; rebuild them at v0.10.7.
+3. **With the approval key at the default location no flag is needed.** A setup that keeps using `-approval-key` works as
+   before. To move to the default location, follow "Getting the approval key ready" in [section 2](#2-installation) and
+   put the verification key (`approval.pub`) there as well. When a key given explicitly cannot be used, the screen now
+   does not start.
+4. When "needs reclaiming" shows, "Processes left behind" on 03 shows their state. Records left before this version have
+   no start time and show as "cannot tell whether it is the same process".
 
 ### v0.26.x to v0.26.3
 

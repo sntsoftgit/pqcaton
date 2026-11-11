@@ -3,10 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main`은 v0.27.0 개발 중입니다.** 03의 수집기 판 확인, 06 승인 키의 기본 위치, 「회수 필요」 프로세스 정보를 만들고
-> 있습니다. 운영에는 [v0.26.3 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.26.3)를 쓰십시오.
-
-이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.26.3 기준입니다.
+이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.27.0 기준입니다.
 영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
@@ -50,7 +47,7 @@
 **바이너리.** Go 1.26.11이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.26.3
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.27.0
 ```
 
 **Linux: 서비스와 실행기.** 서비스는 로그인할 때 화면을 띄우고(브라우저는 열지 않음), 실행기는 서비스를 시작한 뒤 화면을
@@ -60,8 +57,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.3/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.3/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -76,7 +73,7 @@ journalctl --user -u pqcaton-ui.service
 화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.26.3/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -491,6 +488,22 @@ pkill -INT -u "$USER" -x pqcaton-ui
 파일 내용은 없습니다.
 
 ## 9. 판 올리기
+
+### v0.26.x에서 v0.27.0으로
+
+v0.27.0은 상태 형식 · 세션 · 계획 형식과 규칙 묶음(`pqcota-enrich/v3`)이 v0.26.3과 같아 작업 폴더를 그대로 엽니다. 함께 쓰는
+pqcota도 v0.10.7 그대로입니다.
+
+1. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다. v0.26.2를 쓰고 있다면 v0.26.2의 보안 수정도 이 판에 들어 있습니다.
+2. **03이 관측을 시작하기 전에 수집기의 판을 봅니다.** 지금의 상류 빌드는 의존 모듈을 옆 폴더 replace로 빌드하므로 모두
+   「확인 불가」로 보이고, 기본으로는 관측을 시작하지 않습니다. 옆의 두 리포도 같은 태그인지 확인한 뒤 화면을
+   `-allow-unverified-collectors`로 띄웁니다([2절](#2-설치)의 「수집기의 판」). 서비스로 띄운다면 서비스의 `ExecStart`에도
+   더합니다. 판이 맞지 않는 수집기는 이 옵션으로도 쓸 수 없으니 v0.10.7로 다시 빌드합니다.
+3. **승인 키를 기본 위치에 두면 플래그가 필요 없습니다.** `-approval-key`를 그대로 쓰는 설정은 그대로 동작합니다. 기본 위치로
+   옮기려면 [2절](#2-설치)의 「승인 키 준비」대로 두고, 확인용 공개 키(`approval.pub`)도 함께 둡니다. 명시한 키가 잘못됐으면 이제
+   화면이 시작하지 않습니다.
+4. 「회수 필요」가 보이면 03의 「남은 프로세스」가 상태를 보입니다. 이 판보다 먼저 남긴 기록은 시작 시각이 없어 「같은
+   프로세스인지 확인할 수 없음」으로 보입니다.
 
 ### v0.26.x에서 v0.26.3으로
 
