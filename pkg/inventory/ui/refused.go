@@ -47,6 +47,9 @@ const (
 	// RefusedPlanText — 계획(또는 서명한 계획)의 문자열에 NUL 문자가 있어 서명 · 생성하지 않았다(409). 그런 계획은 승인
 	// 정규형이 모호해 한 계획의 승인이 다른 계획에서 통과할 수 있다(상류 sign.CheckPlanText). 확정된 계획이라 새 회차로 고친다.
 	RefusedPlanText = "plan-text"
+	// RefusedPlanFields — 계획(또는 서명한 계획)에 소스 근거나 가이드(상류 v0.11.0)가 있어 서명 · 생성하지 않았다(409).
+	// 계획이 손상된 것이 아니라 06 이 아직 그 내용을 검토 · 생성하지 않는다. 상류 pqcota-approve · pqcota-provision 으로 다룬다.
+	RefusedPlanFields = "plan-fields"
 	// RefusedSessionText — 확정하면 만들어질 계획의 문자열에 NUL 문자가 있어 확정하지 않았다(409). 세션 · 계획 · 영수증은
 	// 그대로이고, 아직 확정 전이라 그 자리에서 값을 고친다.
 	RefusedSessionText = "session-text"
@@ -88,6 +91,7 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedPlanRuleset:       {tSignRefusedHead, tRefusedPlanRuleset},
 	RefusedPlanScope:         {tSignRefusedHead, tRefusedPlanScope},
 	RefusedPlanText:          {tSignRefusedHead, tRefusedPlanText},
+	RefusedPlanFields:        {tSignRefusedHead, tRefusedPlanFields},
 	RefusedSessionText:       {body: tRefusedSessionText},
 	RefusedScopePolicy:       {body: tRefusedScopePolicy},
 	RefusedScopeBaseline:     {body: tRefusedScopeBaseline},

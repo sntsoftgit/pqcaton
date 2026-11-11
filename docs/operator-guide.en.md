@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.27.0.
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.27.1.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -50,7 +50,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 **The binary.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.27.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.27.1
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
@@ -61,8 +61,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -78,7 +78,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -88,10 +88,11 @@ machine. The screen checks both before it starts and, when something is missing,
 - **Ansible.** `ansible-playbook` is looked up on the `PATH`. Nodes are reached over SSH (Windows nodes over SSH or WinRM),
   and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
   with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
-- **Collectors.** Put the build output of pqcota-discovery in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this. Keep them on pqcota v0.10.7 (the pqcota version for each pqcaton version is in the
+- **Collectors.** Put the collectors of the upstream release in the workspace's `collectors` folder (or `-collectors
+  <folder>`), shaped like this. Keep them on pqcota v0.11.0 (the pqcota version for each pqcaton version is in the
   [version table](compatibility.md), in Korean), and the `collector.jar` put on the nodes on the same version.
-  This screen normalizes the collection results it reads with the v0.10.7 ruleset (`pqcota-enrich/v3`). A
+  This screen normalizes the collection results it reads with the v0.11.0 ruleset (`pqcota-enrich/v3`, the same as
+  v0.10.7). A
   `pqcota-jvmscan` earlier than v0.10.7 writes its results over several lines on a node with two or more JVMs, and the
   whole ingest request that holds that node is refused. An earlier `pqcota-jvmscan` or
   `collector.jar` does not carry the per-provider list of PQC services, so the JCA readiness becomes `unknown`, and the 03
@@ -106,16 +107,30 @@ collectors/
 └── collector.jar    without it, the provider chains of running JVMs are not observed
 ```
 
+From v0.11.0 upstream publishes the collectors as release assets. Check the archives you download against the
+`SHA256SUMS` published with them before unpacking (on macOS use `shasum -a 256` instead of `sha256sum`). For arm64 nodes
+take `pqcota-linux-arm64.tar.gz`, and for Windows nodes `pqcota-windows-amd64.zip`, the same way, into the `linux-arm64`
+and `windows-amd64` folders.
+
+```bash
+mkdir -p ~/pqcaton/collectors && cd ~/pqcaton/collectors
+for f in pqcota-linux-amd64.tar.gz collector.jar SHA256SUMS; do curl -fsSLO "https://github.com/randyinthedev-hash/pqcota/releases/download/v0.11.0/$f"; done
+sha256sum -c --ignore-missing SHA256SUMS
+tar -xzf pqcota-linux-amd64.tar.gz && mv pqcota-linux-amd64 linux-amd64
+```
+
 **Collector versions.** Before an observation starts, 03 checks the version of each collector. It does not run them; it
 reads only the Go build information. "Verified" is only a build whose collector itself is at the pinned version (tag, commit, no modification) and whose
 dependencies carry no replace either.
 
-**Every upstream build today is "cannot be verified".** Collectors cannot be installed with `go install`: they are built
-with `go build` in a pqcota-discovery checkout that has pqcota-common and pqcota-inventory next to it, and the dependencies
-come in as replaces of those folders. A pqcota-common of another version next to it does not show in the build information,
-so the screen does not count such a build as verified. A build from a tag checkout (v0.10.7) shows as "collector source
-v0.10.7 verified · replaced dependency sources cannot be verified". Check that the two repositories next to it are at the
-same tag, then start with the option below.
+**Every upstream collector today, the release assets included, is "cannot be verified".** The release assets, like a
+build of your own next to the sibling folders, take their dependencies as replaces of those folders. A pqcota-common of
+another version next to it does not show in the build information, so the screen does not count such a build as verified.
+A release asset shows as "declared version: v0.11.0 · actual source: local replace (devel) · cannot be verified", and a
+build of your own from a tag checkout as "collector source v0.11.0 verified · replaced dependency sources cannot be
+verified". Once the archives match `SHA256SUMS`, or you have checked that the two repositories next to it are at the same
+tag, start with the option below. Upstream has been asked to carry version information
+([pqcota-discovery#1](https://github.com/randyinthedev-hash/pqcota-discovery/issues/1)).
 
 - **Does not match.** When another version shows, or the collectors mix versions, the observation does not start, and no
   option lets it through. Replace them with collectors rebuilt at that version.
@@ -133,7 +148,7 @@ and it is used without any flag. The screen neither creates this file nor change
 every signature. The last line puts the public key alone in `approval.pub`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.7
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.11.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
@@ -530,6 +545,21 @@ contents.
 
 ## 9. Upgrading
 
+### v0.27.0 to v0.27.1
+
+v0.27.1 takes in upstream pqcota v0.11.0. The state format, the session and plan formats and the ruleset
+(`pqcota-enrich/v3`) are the same as v0.27.0, so the workspace opens as it is.
+
+1. **Upgrade the upstream tools that read records first.** The v0.10.7 `pqcota-records` cannot read records that v0.11.0
+   writes. Replace `pqcota-records` on the same database with v0.11.0 before upgrading `pqcota-ingest`, `pqcota-approve` and
+   `pqcota-provision`. Keep the five repositories at the same tag.
+2. Stop the screen and replace the binary with `go install` from [section 2](#2-installation).
+3. Take the collectors from the v0.11.0 release assets as [section 2](#2-installation) shows, checking them against
+   `SHA256SUMS`. The release assets are "cannot be verified" too, so `-allow-unverified-collectors` is still needed.
+4. **06 does not sign or generate a plan that carries source evidence or an approval guide** (`plan-fields`). Plans made
+   by 05 carry no such fields, so the procedure you use stays the same. Check such a plan with `pqcota-approve --review`,
+   then approve and generate it with the upstream tools.
+
 ### v0.26.x to v0.27.0
 
 v0.27.0 keeps the state format, the session and plan formats and the ruleset (`pqcota-enrich/v3`) of v0.26.3, so the
@@ -641,6 +671,7 @@ screen.
 | `finalized` | The session is already finalized, so nothing was saved | Do it in a new session |
 | `plan-ruleset` | The plan was judged under a different upstream ruleset, or the ruleset of its evidence cannot be confirmed, so nothing was signed or generated. Existing files are unchanged | Finalize it again in a new round. If upstream still runs v0.10.5 or earlier, generate with pqcaton v0.24.x or upstream `pqcota-provision` v0.10.5 |
 | `plan-scope` | The plan does not lead back to a finalize recorded in this workspace (it was brought in from elsewhere, the plan file changed after it was finalized, or it was finalized before this version and records no policy), or the asset-scope policy it was made under differs from the active one, so nothing was signed or generated. Existing files are unchanged | Open a new review round in 05 under the current policy and finalize again. Approve and generate a plan brought in from elsewhere with `pqcota-approve` and `pqcota-provision` |
+| `plan-fields` | The plan (or the signed plan) carries source evidence or an approval guide (upstream v0.11.0), so nothing was signed or generated. The plan is not damaged: pqcaton does not yet review that content on 06 or put it into playbooks. Existing files are unchanged | Check the content with `pqcota-approve --review`, then approve and generate with `pqcota-approve` and `pqcota-provision`. A signed plan that has it can be archived |
 | `plan-text` | The plan (or the signed plan) contains a NUL character in a string, so nothing was signed or generated. An approval of such a plan could also pass on a different plan, so pqcota refuses to sign or generate it. Existing files are unchanged | Open a new review round, correct the value and finalize again. If the signed plan has it, archive that first |
 | `session-text` | The plan this finalize would write contains a NUL character in a string, so nothing was finalized. The session, plan and receipt are unchanged | Correct the value and finalize again |
 | `scope-policy` | The asset-scope policy the review session was built under differs from the current one, or the session records no policy (made before this version), so nothing was finalized. The files are unchanged | Finalize under the policy the session was built with, or open a new session under the current policy. On the command line, give `pqcaton-decide close` the same `-scope-assets` the session was opened with |

@@ -84,6 +84,9 @@ templ approveSign(v ApproveView) {
 	if v.TextProblem {
 		<p class="msg bad">{ v.TextText() }</p>
 	}
+	if v.FieldsProblem {
+		<p class="msg bad" data-refusal="plan-fields">{ v.FieldsText() }</p>
+	}
 	if v.RulesetProblem != "" {
 		<p class="msg bad">{ v.RulesetText() }</p>
 	}
@@ -175,6 +178,8 @@ templ approveGenerate(v ApproveView) {
 		</form>
 	} else if v.TextProblem {
 		<p class="lede">{ tGenTextBlocked.In(v.Page.Lang) }</p>
+	} else if v.FieldsProblem {
+		<p class="lede">{ tGenFieldsBlocked.In(v.Page.Lang) }</p>
 	} else if v.RulesetProblem != "" {
 		<p class="lede">{ tGenRulesetBlocked.In(v.Page.Lang) }</p>
 	} else if v.ScopeProblem != "" {

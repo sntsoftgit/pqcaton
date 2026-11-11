@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.27.0 기준입니다.
+이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.27.1 기준입니다.
 영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
@@ -47,7 +47,7 @@
 **바이너리.** Go 1.26.11이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.27.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.27.1
 ```
 
 **Linux: 서비스와 실행기.** 서비스는 로그인할 때 화면을 띄우고(브라우저는 열지 않음), 실행기는 서비스를 시작한 뒤 화면을
@@ -57,8 +57,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -73,7 +73,7 @@ journalctl --user -u pqcaton-ui.service
 화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.0/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -83,9 +83,9 @@ chmod +x ~/Desktop/pqcaton-ui.command
 - **Ansible.** `ansible-playbook`을 `PATH`에서 찾습니다. 노드에는 SSH(Windows 노드는 SSH나 WinRM)로 접속하고, Linux
   노드에서는 root 권한(`become`)으로 실행하므로 그 계정에 sudo 권한이 있어야 합니다. 처음 접속하는 노드는 미리 `ssh`로
   한 번 접속해 호스트 키를 받아 둡니다. Windows 노드를 관측하려면 `ansible.windows` 컬렉션도 필요합니다.
-- **수집기.** 작업 폴더의 `collectors` 폴더(또는 `-collectors <폴더>`)에 pqcota-discovery를 빌드한 결과를 아래 모양으로
-  둡니다. 판은 pqcota v0.10.7로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다. 이 화면은 읽은 수집 결과를
-  v0.10.7 규칙 묶음(`pqcota-enrich/v3`)으로 정규화합니다. v0.10.7 전의 `pqcota-jvmscan`은 JVM이 둘 이상인 노드에서 결과를
+- **수집기.** 작업 폴더의 `collectors` 폴더(또는 `-collectors <폴더>`)에 상류 릴리스의 수집기를 아래 모양으로 둡니다. 판은
+  pqcota v0.11.0으로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다.
+  이 화면은 읽은 수집 결과를 v0.11.0 규칙 묶음(`pqcota-enrich/v3`, v0.10.7과 같음)으로 정규화합니다. v0.10.7 전의 `pqcota-jvmscan`은 JVM이 둘 이상인 노드에서 결과를
   여러 줄로 써서, 그 노드가 든 적재 요청 전체가 거절됩니다. 그 전 판의 `pqcota-jvmscan` · `collector.jar`는 provider별 PQC 서비스 목록을 싣지 않아
   JCA 준비도가 `unknown`이 되고, 03 · 04 화면이 그 노드를 「v0.10.6 JCA 수집 결과임을 확인할 수 없습니다」로 알립니다
   (README의 「맞는 조합」).
@@ -98,14 +98,26 @@ collectors/
 └── collector.jar    없으면 실행 중인 JVM의 provider 체인은 관측하지 않습니다
 ```
 
+상류는 v0.11.0부터 수집기를 릴리스 자산으로 냅니다. 받은 압축 파일을 함께 게시된 `SHA256SUMS`로 확인한 뒤 풉니다(macOS에서는
+`sha256sum` 대신 `shasum -a 256`). arm64 노드는 `pqcota-linux-arm64.tar.gz`, Windows 노드는 `pqcota-windows-amd64.zip`을 같은
+방식으로 받아 `linux-arm64` · `windows-amd64` 폴더에 둡니다.
+
+```bash
+mkdir -p ~/pqcaton/collectors && cd ~/pqcaton/collectors
+for f in pqcota-linux-amd64.tar.gz collector.jar SHA256SUMS; do curl -fsSLO "https://github.com/randyinthedev-hash/pqcota/releases/download/v0.11.0/$f"; done
+sha256sum -c --ignore-missing SHA256SUMS
+tar -xzf pqcota-linux-amd64.tar.gz && mv pqcota-linux-amd64 linux-amd64
+```
+
 **수집기의 판.** 03은 관측을 시작하기 전에 수집기마다 판을 봅니다. 수집기를 실행하지 않고, Go 빌드 정보만 읽습니다.
 「확인됨」은 수집기 자신이 고정 판(태그 · 커밋 · 수정 없음)이고, 의존 모듈에도 replace가 없는 빌드뿐입니다.
 
-**지금의 상류 빌드는 모두 「확인 불가」입니다.** 수집기는 `go install`로 받을 수 없고, pqcota-common · pqcota-inventory를
-옆에 둔 pqcota-discovery 체크아웃에서 `go build`로 빌드합니다. 그때 의존 모듈은 옆 폴더 replace로 들어갑니다. 옆
-pqcota-common이 다른 판이어도 빌드 정보에는 드러나지 않으므로, 화면은 이것을 확인한 것으로 세지 않습니다. 태그
-체크아웃(v0.10.7)에서 빌드했다면 「수집기 소스 v0.10.7 확인 · replace 의존 소스 확인 불가」로 보입니다. 옆의 두 리포도
-같은 태그인지 운영자가 확인한 뒤 아래 옵션으로 시작합니다.
+**지금의 상류 수집기는 릴리스 자산까지 모두 「확인 불가」입니다.** 릴리스 자산도, 옆 폴더를 두고 직접 빌드한 것도 의존
+모듈을 옆 폴더 replace로 빌드합니다. 옆 pqcota-common이 다른 판이어도 빌드 정보에는 드러나지 않으므로, 화면은 이것을
+확인한 것으로 세지 않습니다. 릴리스 자산은 「선언된 판: v0.11.0 · 실제 소스: 로컬 replace(devel) · 확인 불가」로, 태그
+체크아웃에서 직접 빌드했다면 「수집기 소스 v0.11.0 확인 · replace 의존 소스 확인 불가」로 보입니다. `SHA256SUMS`로 압축 파일을
+확인했거나 옆의 두 리포가 같은 태그인지 확인한 뒤 아래 옵션으로 시작합니다. 상류에 판 정보를 실어 달라고 요청했습니다
+([pqcota-discovery#1](https://github.com/randyinthedev-hash/pqcota-discovery/issues/1)).
 
 - **맞지 않음.** 다른 판이 보이거나 수집기끼리 판이 섞였으면 관측을 시작하지 않습니다. 이것은 어떤 옵션으로도 넘길 수
   없습니다. 그 판으로 다시 빌드한 수집기로 바꿉니다.
@@ -122,7 +134,7 @@ pqcota-common이 다른 판이어도 빌드 정보에는 드러나지 않으므�
 않고, 서명할 때마다 다시 읽습니다. 마지막 줄은 공개 키만 `approval.pub`에 따로 둡니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.7
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.11.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
@@ -489,6 +501,20 @@ pkill -INT -u "$USER" -x pqcaton-ui
 
 ## 9. 판 올리기
 
+### v0.27.0에서 v0.27.1로
+
+v0.27.1은 상류 pqcota v0.11.0을 반영합니다. 상태 형식 · 세션 · 계획 형식과 규칙 묶음(`pqcota-enrich/v3`)이 v0.27.0과 같아
+작업 폴더를 그대로 엽니다.
+
+1. **기록을 읽는 상류 도구부터 올립니다.** v0.11.0이 쓴 기록은 v0.10.7의 `pqcota-records`가 읽지 못합니다. 같은 DB를 쓰는
+   `pqcota-records`를 v0.11.0으로 바꾼 뒤에 `pqcota-ingest` · `pqcota-approve` · `pqcota-provision`을 올립니다. 다섯 리포를 같은
+   태그로 둡니다.
+2. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다.
+3. 수집기는 [2절](#2-설치)대로 v0.11.0 릴리스 자산을 받아 `SHA256SUMS`로 확인한 뒤 둡니다. 릴리스 자산도 「확인 불가」라
+   `-allow-unverified-collectors`는 그대로 필요합니다.
+4. **소스 근거나 승인 가이드가 든 계획은 06이 서명 · 생성하지 않습니다**(`plan-fields`). 05가 만드는 계획에는 그 필드가 없어
+   지금 쓰는 절차는 그대로입니다. 그런 계획은 `pqcota-approve --review`로 확인한 뒤 상류 도구로 승인하고 생성합니다.
+
 ### v0.26.x에서 v0.27.0으로
 
 v0.27.0은 상태 형식 · 세션 · 계획 형식과 규칙 묶음(`pqcota-enrich/v3`)이 v0.26.3과 같아 작업 폴더를 그대로 엽니다. 함께 쓰는
@@ -583,6 +609,7 @@ v0.25는 상류 pqcota v0.10.6의 규칙 묶음(`pqcota-enrich/v3`)으로 정규
 | `finalized` | 이미 확정한 세션이라 저장하지 않았습니다 | 새 세션에서 합니다 |
 | `plan-ruleset` | 계획이 지금과 다른 상류 규칙 판으로 판정됐거나 근거의 규칙 판을 확인할 수 없어, 서명 · 생성하지 않았습니다. 있는 파일은 그대로입니다 | 새 회차에서 다시 확정합니다. 상류를 v0.10.5 이하로 운영한다면 pqcaton v0.24.x나 상류 `pqcota-provision` v0.10.5로 생성합니다 |
 | `plan-scope` | 계획이 이 작업 폴더에서 확정한 기록과 이어지지 않거나(다른 곳에서 옮겨 왔거나, 확정한 뒤 계획 파일이 바뀌었거나, 이 판보다 먼저 확정해 정책 기록이 없음), 그 계획을 만든 자산 스코프 정책이 지금 활성 정책과 달라 서명 · 생성하지 않았습니다. 있는 파일은 그대로입니다 | 현재 정책에서 05의 새 판정 회차를 열어 다시 확정합니다. 다른 곳에서 옮겨 온 계획은 `pqcota-approve`와 `pqcota-provision`으로 승인하고 생성합니다 |
+| `plan-fields` | 계획(또는 서명한 계획)에 소스 근거나 승인 가이드(상류 v0.11.0)가 있어 서명 · 생성하지 않았습니다. 계획이 손상된 것은 아니고, pqcaton이 아직 그 내용을 06에서 검토하거나 플레이북에 싣지 않습니다. 있는 파일은 그대로입니다 | `pqcota-approve --review`로 내용을 확인한 뒤 `pqcota-approve` · `pqcota-provision`으로 승인하고 생성합니다. 서명한 계획에 있으면 보관할 수 있습니다 |
 | `plan-text` | 계획(또는 서명한 계획)의 문자열에 NUL 문자가 있어 서명 · 생성하지 않았습니다. 그런 계획은 승인이 다른 계획에서도 통과할 수 있어 pqcota가 서명과 생성을 거절합니다. 있는 파일은 그대로입니다 | 새 판정 회차를 열어 해당 값을 고친 뒤 다시 확정합니다. 서명한 계획에 있으면 먼저 보관합니다 |
 | `session-text` | 확정하면 만들어질 계획의 문자열에 NUL 문자가 있어 확정하지 않았습니다. 세션 · 계획 · 영수증은 그대로입니다 | 해당 값을 고친 뒤 다시 확정합니다 |
 | `scope-policy` | 판정 세션을 세울 때 쓴 자산 스코프 정책이 지금 정책과 다르거나, 세션에 정책 기록이 없어(이 판보다 먼저 만든 세션) 확정하지 않았습니다. 파일은 그대로입니다 | 세션을 세울 때와 같은 정책으로 확정하거나, 지금 정책으로 새 세션을 엽니다. 명령은 `pqcaton-decide close`에 세션을 열 때와 같은 `-scope-assets`를 줍니다 |

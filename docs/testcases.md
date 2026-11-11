@@ -538,6 +538,9 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | [IC-U190](../inventory/cmd/pqcaton-ui/procinfo_darwin_test.go) ✅ | macOS의 kern.procargs2 응답 | 실행 파일과 인자 argc개만 읽고, 뒤에 붙은 환경은 돌려주지 않는다(실제 조회는 최종 검증에서) |
 | **[IC-U191](../inventory/cmd/pqcaton-ui/procinfo_unix_test.go) ✅** | 시작 시각을 남기지 않은 이전 판의 기록(PID만 있음) | 사라지지 않고 **「같은 프로세스인지 확인할 수 없음」**으로 보인다. 살아 있는 PID여도 세부와 인자를 싣지 않는다 |
 | **[IC-U192](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 실제 `os.UserConfigDir()`의 기본 위치가 공백이 든 경로(macOS의 `Application Support` 같은 것) | **개인 키와 공개 키를 읽고 서명한다**. macOS는 `~/Library/Application Support/pqcaton/`, Linux는 `$XDG_CONFIG_HOME/pqcaton/`이다. 명시 키 우선과 `-no-default-approval-key`도 같은 자리에서 맞다 |
+| [IC-U193](../inventory/cmd/pqcaton-ui/planfields_test.go) ✅ | 새 필드가 없는 계획(상류 v0.11.0 모듈) | 지금처럼 서명하고 플레이북을 만든다 |
+| **[IC-U194](../inventory/cmd/pqcaton-ui/planfields_test.go) ✅** | 소스 근거나 승인 가이드가 든 계획(이 작업 폴더에서 확정해 영수증과 맞음) | **화면 상태 · 서명 확인 · 실제 서명(잠금 안) · 생성(잠금 안)의 네 자리에서 409 `plan-fields`이고 승인 서명이 붙지 않는다**. 화면은 서명 · 생성 양식을 내지 않고 「계획이 손상된 것은 아니며 pqcaton이 아직 그 내용을 검토 · 생성하지 않는다」는 한계를 보인다. 작업 폴더는 바이트 그대로다 |
+| **[IC-U195](../inventory/cmd/pqcaton-ui/planfields_test.go) ✅** | 서명한 계획(plan.signed.json)에 승인 가이드 | 생성하지 않고(409 `plan-fields`) 보관만 허용한다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 

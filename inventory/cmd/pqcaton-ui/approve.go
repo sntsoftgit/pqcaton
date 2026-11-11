@@ -247,6 +247,10 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	if sign.CheckPlanText(plan) != nil {
 		v.TextProblem = true
 	}
+	// 소스 근거 · 가이드가 든 계획은 06 이 아직 검토 · 생성하지 않는다(planfields.go). 네 자리가 같은 판정을 쓴다.
+	if checkPlanFields(plan) != nil {
+		v.FieldsProblem = true
+	}
 	// 규칙 판이 맞지 않는 계획은 서명하지 않는다. 서명된 계획이 있으면 그것도 본다(생성은 서명된 계획으로 한다).
 	if err := review.CheckPlanRuleset(plan); err != nil {
 		v.RulesetProblem = rulesetReason(err)
@@ -269,6 +273,9 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	}
 	if !v.TextProblem && sign.CheckPlanText(signed) != nil {
 		v.TextProblem, v.TextSigned = true, true
+	}
+	if !v.FieldsProblem && checkPlanFields(signed) != nil {
+		v.FieldsProblem, v.FieldsSigned = true, true
 	}
 	for _, sig := range signed.GetApprovalSignatures() {
 		if name, _, ok := strings.Cut(sig, ":"); ok && v.Approver == "" {
@@ -448,6 +455,11 @@ func (s *server) approveSignConfirm(w http.ResponseWriter, r *http.Request) {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanText, back, nil)
 		return
 	}
+	if err := checkPlanFields(plan); err != nil {
+		fmt.Fprintln(os.Stderr, "approve:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanFields, back, nil)
+		return
+	}
 	if err := review.CheckPlanRuleset(plan); err != nil {
 		fmt.Fprintln(os.Stderr, "approve:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanRuleset, back, nil)
@@ -516,6 +528,10 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 		if err := sign.CheckPlanText(plan); err != nil {
 			return nil, err
 		}
+		// 소스 근거 · 가이드는 상류 서명 함수가 막지 않는다. 쓰기 직전에 여기서 막는다.
+		if err := checkPlanFields(plan); err != nil {
+			return nil, err
+		}
 		if err := review.CheckPlanRuleset(plan); err != nil {
 			return nil, err
 		}
@@ -539,6 +555,10 @@ func (s *server) approveSign(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, sign.ErrNUL):
 		fmt.Fprintln(os.Stderr, "approve:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanText, back, nil)
+		return
+	case errors.Is(err, errPlanFields):
+		fmt.Fprintln(os.Stderr, "approve:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanFields, back, nil)
 		return
 	case errors.Is(err, review.ErrPlanRuleset):
 		fmt.Fprintln(os.Stderr, "approve:", err)
@@ -640,8 +660,15 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 		if err := sign.CheckPlanText(plan); err != nil {
 			return nil, err
 		}
+		if err := checkPlanFields(plan); err != nil {
+			return nil, err
+		}
 		if pre, err := loadPlanFile(s.signedPath()); err == nil && pre != nil {
 			if err := sign.CheckPlanText(pre); err != nil {
+				return nil, err
+			}
+			// 서명한 계획에 소스 근거 · 가이드가 있으면 06 은 만들지 않는다(GenerateProvisioningPlaybook 은 그것을 싣지 않는다).
+			if err := checkPlanFields(pre); err != nil {
 				return nil, err
 			}
 		}
@@ -675,6 +702,11 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, sign.ErrNUL) {
 		fmt.Fprintln(os.Stderr, "generate:", err)
 		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanText, back, nil)
+		return
+	}
+	if errors.Is(err, errPlanFields) {
+		fmt.Fprintln(os.Stderr, "generate:", err)
+		s.refuse(w, r, http.StatusConflict, ui.RefusedPlanFields, back, nil)
 		return
 	}
 	if errors.Is(err, review.ErrPlanRuleset) {

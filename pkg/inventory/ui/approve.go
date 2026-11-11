@@ -47,6 +47,9 @@ type ApproveView struct {
 	// TextProblem — 지금 계획(또는 서명한 계획)의 문자열에 NUL 문자가 있다. 승인 정규형이 모호해 서명 · 생성하지 않는다.
 	// TextSigned — 그것이 서명한 계획(plan.signed.json) 쪽이다.
 	TextProblem, TextSigned bool
+	// FieldsProblem — 지금 계획(또는 서명한 계획)에 pqcaton 이 아직 검토 · 생성하지 않는 상류 필드(소스 근거 · 가이드)가 있다.
+	// FieldsSigned — 그것이 서명한 계획 쪽이다. 서명도 생성도 하지 않고, 서명한 계획이면 보관만 한다.
+	FieldsProblem, FieldsSigned bool
 }
 
 // 06이 계획을 서명 · 생성하지 않는 정책 쪽 사유. 검사 순서(계획 ID 형식 → 동일성 → 계획 파일 해시 → 정책 지문)와 같다.
@@ -173,20 +176,21 @@ func (v ApproveView) Summary() ApproveSummary {
 // 파일은 어떤 경우에도 덮지 않는다(낡았으면 운영자가 먼저 보관한다).
 func (v ApproveView) CanSign() bool {
 	return v.Writable && v.Plan != nil && v.Key.State == KeyOK && v.Signed.State == SignNone && v.RulesetProblem == "" &&
-		v.ScopeProblem == "" && !v.TextProblem
+		v.ScopeProblem == "" && !v.TextProblem && !v.FieldsProblem
 }
 
 // CanArchive — 지난 서명을 보관할 수 있는가. 지금 계획과 맞지 않거나 이 키로 확인되지 않는 서명이 있을 때, 그리고 규칙 판이
 // 맞지 않는 서명된 계획이 있을 때다(그 계획으로는 다시 서명도 생성도 하지 않으므로, 옮겨 두어야 새 회차의 계획을 서명한다).
 func (v ApproveView) CanArchive() bool {
 	return v.Writable && (v.Signed.State == SignStale || v.Signed.State == SignInvalid ||
-		((v.RulesetProblem != "" || v.ScopeProblem != "" || v.TextProblem) && v.Signed.State != SignNone))
+		((v.RulesetProblem != "" || v.ScopeProblem != "" || v.TextProblem || v.FieldsProblem) && v.Signed.State != SignNone))
 }
 
 // CanGenerate — 생성 양식을 낼 수 있는가. 서명이 지금 계획과 맞고 확인돼야 한다. **개인 키는 요구하지 않는다** — 개인 키는 새
 // 승인 서명에만 필요하고, 서명의 확인은 확인용 공개 키로도 한다.
 func (v ApproveView) CanGenerate() bool {
-	return v.Writable && v.Signed.State == SignValid && v.RulesetProblem == "" && v.ScopeProblem == "" && !v.TextProblem
+	return v.Writable && v.Signed.State == SignValid && v.RulesetProblem == "" && v.ScopeProblem == "" && !v.TextProblem &&
+		!v.FieldsProblem
 }
 
 // PublicKey — 서명된 계획을 확인하는 공개 키. 개인 키가 쓸 만하면 그 공개 키, 아니면 확인용 공개 키다. 둘 다 없으면 빈 값이다.
@@ -264,6 +268,18 @@ func (v ApproveView) TextText() string {
 		return tSignedPlanText.In(v.Page.Lang)
 	default:
 		return tRefusedPlanText.In(v.Page.Lang)
+	}
+}
+
+// FieldsText — 소스 근거 · 가이드로 서명 · 생성하지 않는 까닭의 화면 말. 서명한 계획 쪽이면 그 계획을 가리킨다.
+func (v ApproveView) FieldsText() string {
+	switch {
+	case !v.FieldsProblem:
+		return ""
+	case v.FieldsSigned:
+		return tSignedPlanFields.In(v.Page.Lang)
+	default:
+		return tRefusedPlanFields.In(v.Page.Lang)
 	}
 }
 

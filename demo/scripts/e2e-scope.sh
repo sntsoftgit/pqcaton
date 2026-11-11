@@ -12,7 +12,7 @@
 # E2E_KEEP_WS=<폴더>를 주면 정리하기 전에(실패해도) 작업 폴더를 그 폴더로, /work 전체를 <폴더>.work로 꺼내 둔다.
 # 성공한 작업 폴더는 옛 판 거절 시험에 쓴다. 성공했는지는 로그의 마지막 ✅ 줄로 가린다.
 #
-# 전제: PQCOTA_DIR = 상류 pqcota v0.10.7 체크아웃(옆에 pqcota-common · -inventory · -discovery · -provisioning). docker · go.
+# 전제: PQCOTA_DIR = go.mod 가 고정한 판의 상류 pqcota 체크아웃(옆에 pqcota-common · -inventory · -discovery · -provisioning). docker · go.
 #
 # **따로 띄운 Docker 데몬 안에서 돈다.** 상류 데모는 컨테이너 · 볼륨 · 네트워크에 고정 이름(pqcota-ctl 등)을 쓴다. 같은
 # 호스트에서 pqcota 쪽이 데모를 띄워 쓰고 있으면 이름이 부딪힌다. 그래서 이 스크립트는 먼저 이번 실행만의 dind 컨테이너

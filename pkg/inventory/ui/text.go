@@ -82,6 +82,15 @@ var (
 	tSignedPlanText = T{
 		KO: "서명한 계획(plan.signed.json)의 문자열에 NUL 문자가 있어 안전하게 승인할 수 없습니다. pqcota는 이런 계획의 서명과 생성을 거절합니다. 서명한 계획을 보관하고, 새 판정 회차를 열어 해당 값을 고친 뒤 다시 확정하십시오.",
 		EN: "The signed plan (plan.signed.json) contains a NUL character in a string and cannot be approved safely. pqcota refuses to sign or generate such a plan. Archive the signed plan, open a new review round, correct the affected value, and finalize it again."}
+	tRefusedPlanFields = T{
+		KO: "현재 계획(plan.json)에 소스 근거나 승인 가이드가 들어 있습니다. 계획이 손상된 것은 아닙니다. pqcaton은 아직 그 내용을 06에서 검토하거나 플레이북에 싣지 않으므로 이 계획에 서명하지 않습니다. pqcota-approve --review로 내용을 확인한 뒤 pqcota-approve와 pqcota-provision으로 승인하고 생성하십시오.",
+		EN: "The current plan (plan.json) carries source evidence or an approval guide. The plan is not damaged: pqcaton does not yet review that content on 06 or put it into playbooks, so it does not sign this plan. Check the content with pqcota-approve --review, then approve and generate with pqcota-approve and pqcota-provision."}
+	tSignedPlanFields = T{
+		KO: "서명한 계획(plan.signed.json)에 소스 근거나 승인 가이드가 들어 있습니다. 계획이 손상된 것은 아닙니다. pqcaton은 아직 그 내용을 검토하거나 플레이북에 싣지 않으므로 이 계획으로 플레이북을 만들지 않습니다. 서명한 계획은 보관할 수 있고, 생성은 pqcota-provision으로 하십시오.",
+		EN: "The signed plan (plan.signed.json) carries source evidence or an approval guide. The plan is not damaged: pqcaton does not yet review that content or put it into playbooks, so it does not generate from this plan. The signed plan can be archived; generate with pqcota-provision."}
+	tGenFieldsBlocked = T{
+		KO: "계획에 소스 근거나 승인 가이드가 있어 pqcaton은 플레이북을 만들지 않습니다. pqcota-provision으로 만드십시오.",
+		EN: "The plan carries source evidence or an approval guide, so pqcaton does not generate playbooks. Generate them with pqcota-provision."}
 	tGenTextBlocked = T{
 		KO: "계획의 문자열에 NUL 문자가 있어 플레이북을 만들지 않습니다.",
 		EN: "The plan contains a NUL character in a string, so no playbooks are generated."}
