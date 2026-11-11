@@ -516,6 +516,19 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U168](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | `collector.jar`에 판 정보가 없음 / 다른 판 | 판이 없으면 **경고만 하고 시작은 된다**(override를 요구하지 않는다). 판이 있는데 다르면 막는다 |
 | [IC-U169](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅ | `-allow-unverified-collectors`를 주거나 주지 않고 시작 | 기본은 꺼져 있고, 주면 서버에 그대로 닿는다 |
 | **[IC-U170](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 화면이 `pqcota-discovery`를 링크하지 않음 | **그래도 고정 판을 안다**. discovery가 있으면 그 판, 없으면 `pqcota-common`의 판을 쓴다. discovery만 찾던 때는 데모에서 모든 수집기가 「고정한 판을 알 수 없음」이 됐다 |
+| **[IC-U171](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 기본 위치에 다른 키가 있는데 `-approval-key`를 줌(`-no-default-approval-key`를 함께 줘도) | **명시한 키로 서명한다**. 명시 경로가 언제나 우선하고, 후자는 기본 검색만 끈다 |
+| [IC-U172](../inventory/cmd/pqcaton-ui/keys_test.go) ✅ | 기본 위치에 키가 있는데 `-no-default-approval-key`로 시작 | 기본 키 · 확인용 공개 키를 쓰지 않는다. 06이 「자동 검색을 껐습니다」를 보이고 서명 양식을 내지 않는다 |
+| [IC-U173](../inventory/cmd/pqcaton-ui/keys_test.go) ✅ | 기본 위치에 키가 없음 | **정상 시작하고 새 서명만 하지 않는다**. 표준 오류에 찾은 자리를 한 줄 남긴다 |
+| **[IC-U174](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 기본 위치에 정상 키 | 그 키로 서명한다. 06에는 「사용자 설정 폴더의 pqcaton/approval.key」와 지문만 보이고, **화면 · 표준 오류 · 서명한 계획 어디에도 개인 키가 없다**. 표준 오류에는 전체 경로가 남는다 |
+| **[IC-U175](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 기본 위치의 키가 다른 사용자도 읽을 수 있거나(0644) 심볼릭 링크 | **정상 시작하되 06과 표준 오류에 분명히 알리고 서명을 막는다**(409) |
+| **[IC-U176](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 명시한 `-approval-key` · `-approval-verify-key`가 잘못됨 | **화면을 시작하지 않는다**(종료 1). 화면 주소도 남기지 않는다. 알리지 않고 다른 모드로 열지 않는다 |
+| **[IC-U177](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 개인 키 없이 이미 서명된 계획 | 확인용 공개 키(`approval.pub`)가 있으면 **확인하고 플레이북을 만든다**. 없으면 확인하지 못한 것으로 두고 그 파일을 두라고 안내한다. 새 서명은 어느 경우에도 하지 않는다 |
+| [IC-U178](../inventory/cmd/pqcaton-ui/keys_test.go) ✅ | 기본 위치의 개인 키와 확인용 공개 키가 서로 다른 키 / 둘 다 명시했는데 다른 키 | 기본 짝이면 서명도 확인도 하지 않고 06과 표준 오류가 알린다. 둘 다 명시했으면 **화면을 시작하지 않는다** |
+| [IC-U179](../inventory/cmd/pqcaton-ui/keys_test.go) ✅ | 확인용 공개 키 파일이 다른 사용자도 읽기만 됨 / 고칠 수 있음 / 개인 키 줄을 담음 | 읽기만 되면 받는다. 고칠 수 있거나 개인 키를 담으면 받지 않는다 |
+| **[IC-U180](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 명시한 개인 키, 기본 위치에 다른 키의 `approval.pub` | **기본 공개 키를 읽지 않는다**. 명시한 키에서 공개 키를 뽑아 서명 · 확인 · 생성한다 |
+| **[IC-U181](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 명시한 공개 키만, 기본 위치에 개인 키 | 기본 개인 키를 읽지 않는다. 06이 「확인용 공개 키만 지정했습니다」를 보이고, 서명은 하지 않고 생성은 한다 |
+| **[IC-U182](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 잘못된 기본 개인 키(0644)와 정상 기본 공개 키 | **서명은 막고 확인 · 생성은 한다** |
+| **[IC-U183](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 정상 기본 개인 키와 다른 사용자가 고칠 수 있는 기본 공개 키 | **구성 오류로 서명도 생성도 막는다**. 06과 표준 오류가 알린다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 

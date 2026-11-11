@@ -23,8 +23,10 @@ type ApproveView struct {
 	Page
 	// Plan — 05에서 확정한 계획. nil이면 아직 없다.
 	Plan *PlanSummary
-	// Key — 승인 키 점검.
-	Key KeyCheck
+	// Key — 승인 키(서명용 개인 키) 점검. Verify — 확인용 공개 키 파일 점검. 서명된 계획의 확인은 Key 가 쓸 만하면 그
+	// 공개 키로, 아니면 Verify 로 한다.
+	Key    KeyCheck
+	Verify KeyCheck
 	// Signed — 서명한 계획(plan.signed.json)의 상태.
 	Signed SignedState
 	// Playbooks — 만든 플레이북의 상태.
@@ -81,12 +83,37 @@ const (
 	KeyLink       KeyState = "link"
 	KeyOwner      KeyState = "owner"
 	KeyLinks      KeyState = "links"
+	// KeyMissing — 기본 위치에 키가 없다(정상 시작, 서명만 비활성). KeyDisabled — -no-default-approval-key 로 기본 검색을 껐다.
+	KeyMissing  KeyState = "missing"
+	KeyDisabled KeyState = "disabled"
+	// KeyMismatch — 개인 키의 공개 키와 확인용 공개 키가 다르다. 서명도 확인도 하지 않는다.
+	KeyMismatch KeyState = "mismatch"
+	// KeyHasPrivate — 확인용 공개 키 파일에 개인 키가 들어 있다. 공개 키 파일은 읽기를 넓게 열 수 있으므로 받지 않는다.
+	KeyHasPrivate KeyState = "has-private"
+	// KeyConflict — 쓸 만한 개인 키와 쓸 수 없는 확인용 공개 키를 함께 골랐다. 구성 오류라 서명도 생성도 하지 않는다.
+	KeyConflict KeyState = "conflict"
+	// KeyUnwritable — 확인용 공개 키를 다른 사용자가 고칠 수 있다.
+	KeyUnwritable KeyState = "writable"
+)
+
+// KeySource — 키를 어디서 정했나.
+type KeySource string
+
+const (
+	KeyExplicit      KeySource = "explicit" // -approval-key · -approval-verify-key
+	KeyDefault       KeySource = "default"  // os.UserConfigDir()/pqcaton/
+	KeySearchOff     KeySource = "off"      // -no-default-approval-key
+	KeyOtherGiven    KeySource = "other"    // 다른 하나(개인 키나 공개 키)를 명시해 기본 위치를 읽지 않음
+	KeyDefaultFolder           = "pqcaton"  // 사용자 설정 폴더 안의 폴더
 )
 
 // KeyCheck — 승인 키 점검. Public은 확인 키(공개 키)다. pqcota-provision에 넘길 때 쓴다.
 type KeyCheck struct {
 	State  KeyState
+	Source KeySource
+	// Path — 해석한 전체 경로(로그와 확인 토큰). Where — 화면에 보일 자리: 기본 위치면 사용자 설정 폴더 기준의 상대 위치다.
 	Path   string
+	Where  string
 	Public string
 	// Fingerprint — 공개 키의 지문. 확인 페이지가 보이고 확인 토큰이 덮는다.
 	Fingerprint string
@@ -156,10 +183,59 @@ func (v ApproveView) CanArchive() bool {
 		((v.RulesetProblem != "" || v.ScopeProblem != "" || v.TextProblem) && v.Signed.State != SignNone))
 }
 
-// CanGenerate — 생성 양식을 낼 수 있는가. 서명이 지금 계획과 맞고 이 키로 확인돼야 한다.
+// CanGenerate — 생성 양식을 낼 수 있는가. 서명이 지금 계획과 맞고 확인돼야 한다. **개인 키는 요구하지 않는다** — 개인 키는 새
+// 승인 서명에만 필요하고, 서명의 확인은 확인용 공개 키로도 한다.
 func (v ApproveView) CanGenerate() bool {
-	return v.Writable && v.Signed.State == SignValid && v.Key.State == KeyOK && v.RulesetProblem == "" && v.ScopeProblem == "" &&
-		!v.TextProblem
+	return v.Writable && v.Signed.State == SignValid && v.RulesetProblem == "" && v.ScopeProblem == "" && !v.TextProblem
+}
+
+// PublicKey — 서명된 계획을 확인하는 공개 키. 개인 키가 쓸 만하면 그 공개 키, 아니면 확인용 공개 키다. 둘 다 없으면 빈 값이다.
+func (v ApproveView) PublicKey() string {
+	if v.Key.State == KeyOK {
+		return v.Key.Public
+	}
+	if v.Verify.State == KeyOK {
+		return v.Verify.Public
+	}
+	return ""
+}
+
+// KeyLines — 06 의 키 점검 문구. canVerify 는 개인 키 없이도 서명된 계획을 확인할 수 있는가(확인용 공개 키가 쓸 만한가)다.
+func (k KeyCheck) Lines(l Lang, canVerify bool) []string {
+	after := tKeyNoVerify.In(l)
+	if canVerify {
+		after = tKeyCanVerify.In(l)
+	}
+	switch {
+	case k.State == KeyOK && k.Source == KeyDefault:
+		return []string{tKeyDefaultOK.In(l), tKeyWhere.F(l, k.Where), tKeyFingerprint.F(l, k.Fingerprint)}
+	case k.State == KeyOK:
+		return []string{tKeyExplicitOK.In(l), tKeyFingerprint.F(l, k.Fingerprint)}
+	case k.State == KeyDisabled:
+		return []string{tKeyDisabledText.In(l)}
+	case k.State == KeyNotGiven && k.Source == KeyOtherGiven:
+		return []string{tKeyVerifyOnlyText.In(l), after}
+	case k.State == KeyMissing || k.State == KeyNotGiven:
+		return []string{tKeyMissingText.In(l), after}
+	case k.State == KeyMismatch:
+		return []string{tKeyMismatchText.In(l)}
+	case k.State == KeyConflict:
+		return []string{tKeyConflictText.In(l)}
+	case k.Source == KeyDefault:
+		return []string{tKeyDefaultBad.F(l, k.Text(l)), after}
+	}
+	return []string{k.Text(l), after}
+}
+
+// VerifyLine — 확인용 공개 키 한 줄. 기본 위치에 없으면 빈 값이다(보이지 않는다).
+func (k KeyCheck) VerifyLine(l Lang) string {
+	switch {
+	case k.State == KeyOK:
+		return tVerifyKeyOK.F(l, k.Where, k.Fingerprint)
+	case k.State == KeyMissing || k.State == KeyNotGiven || k.State == KeyDisabled || k.State == "":
+		return ""
+	}
+	return tVerifyKeyBad.F(l, k.Where, k.Text(l))
 }
 
 // ScopeText — 정책 쪽 거절의 화면 말. **지금 계획(plan.json)의 문제로 적는다.** 서명한 계획의 문제로 읽히면 운영자가

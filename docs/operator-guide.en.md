@@ -129,22 +129,50 @@ same tag, then start with the option below.
 - **`collector.jar`.** Upstream does not put a version in it, so the screen only warns that its version was not checked
   and the observation still starts. When it carries a version that differs, the observation does not start.
 
-**Getting the approval key ready.** Signing approvals on the 06 screen needs an approval key. Save the output of
-`pqcota-keygen` to a file **outside** the workspace, readable only by its owner, and start the screen with
-`-approval-key <file>`. The screen reads the file again at every signature, and does not use it when other users can read
-it or when it sits inside the workspace.
+**Getting the approval key ready.** Signing new approvals on the 06 screen needs an approval key. By default the screen
+looks for `pqcaton/approval.key` in the user configuration folder (`~/.config/pqcaton/` on Linux,
+`~/Library/Application Support/pqcaton/` on macOS). Save the output of `pqcota-keygen` there, readable only by its owner,
+and it is used without any flag. The screen neither creates this file nor changes its permissions, and reads it again at
+every signature. The last line puts the public key alone in `approval.pub`.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.7
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
+grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
 ```
 
-When the screen runs as a service, add the flag to the service.
+On macOS only the location differs.
+
+```bash
+mkdir -p "$HOME/Library/Application Support/pqcaton"
+(umask 077 && pqcota-keygen > "$HOME/Library/Application Support/pqcaton/approval.key")
+grep '^PQCOTA_VERIFY_KEY=' "$HOME/Library/Application Support/pqcaton/approval.key" > "$HOME/Library/Application Support/pqcaton/approval.pub"
+```
+
+- **The verification key (`approval.pub`).** With it, plans already signed are checked and their playbooks generated even
+  without the private key. A file that holds a private key line, or that other users can change, is not taken. When both
+  files are there they must be the same key; if not, signing and checking are both blocked.
+- **Unusable keys.** When there is no file at the default location, the screen starts normally and only does not sign.
+  When there is one with wrong permissions, owner, links or format, the screen starts, but 06 and standard error say why
+  and new signatures are blocked. 06 shows only the location relative to the user configuration folder and the key
+  fingerprint; the private key shows nowhere.
+- **Keys elsewhere.** Give them with `-approval-key <file>` and `-approval-verify-key <file>`. When a file given this way
+  cannot be used, or both are given and are different keys, the screen does not start. To stop looking at the default
+  location, start with `-no-default-approval-key`. It turns off both default files; files given explicitly are still used.
+- **The order of choice.** The explicit private key, the explicit verification key, the default private key, then the
+  default verification key. **Once either is given explicitly, neither default file is read.** With only a private key,
+  its public key is derived and it signs, checks and generates; with only a verification key, it checks and generates.
+  A broken private key next to a good verification key blocks signing only, and checking and generation go on. A good
+  private key next to a verification key chosen with it that cannot be used, or is another key, is a configuration error
+  that blocks both signing and generation.
+
+When the screen runs as a service and the key is not at the default location, add the flag to the service. A key at the
+default location needs nothing.
 
 ```bash
 mkdir -p ~/.config/systemd/user/pqcaton-ui.service.d
-printf '[Service]\nExecStart=\nExecStart=%%h/.local/bin/pqcaton-ui -no-browser -approval-key %%h/.config/pqcaton/approval.key\n' > ~/.config/systemd/user/pqcaton-ui.service.d/approval.conf
+printf '[Service]\nExecStart=\nExecStart=%%h/.local/bin/pqcaton-ui -no-browser -approval-key %%h/secrets/pqcaton-approval.key\n' > ~/.config/systemd/user/pqcaton-ui.service.d/approval.conf
 systemctl --user daemon-reload
 systemctl --user restart pqcaton-ui.service
 ```

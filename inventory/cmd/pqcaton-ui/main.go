@@ -127,6 +127,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 			}
 		}
 	}
+	// 승인 키: 명시한 키가 잘못됐으면 아무것도 열지 않고 멈춘다. 기본 위치의 키는 한 줄씩 알리기만 한다(keys.go).
+	if err := s.checkKeysAtStart(stderr); err != nil {
+		fmt.Fprintln(stderr, "❌", err)
+		return 1
+	}
 	if err := s.openState(c.stateDir); err != nil {
 		if errors.Is(err, store.ErrBusy) {
 			if err := openRunning(c.stateDirOf(), c.noBrowser, stderr); err != nil {
@@ -446,8 +451,14 @@ type server struct {
 	checkCollector  func(path, rel, want string) collectorver.File
 	// stderr: 허용한 확인 불가 수집기처럼 화면 밖에도 남겨야 하는 것을 적는다. nil 이면 적지 않는다.
 	stderr io.Writer
-	// approvalKey: 승인 서명 키 파일(-approval-key). 서명할 때마다 다시 읽고 점검한다.
-	approvalKey string
+	// approvalKey: 승인 서명 키 파일(-approval-key, 없으면 기본 위치). 서명할 때마다 다시 읽고 점검한다. keySource · keyWhere:
+	// 그 자리를 어디서 정했나와 화면에 보일 자리. verifyKey 들: 확인용 공개 키(approval.pub)의 같은 셋. 규칙은 keys.go.
+	approvalKey  string
+	keySource    ui.KeySource
+	keyWhere     string
+	verifyKey    string
+	verifySource ui.KeySource
+	verifyWhere  string
 	// st: 상태 디렉토리. nil이면 보기 전용이다(저장을 지원하지 않는 플랫폼).
 	st *store.State
 	// recovering: 시작할 때 복구 필요가 남아 있었다. 다시 띄울 때까지 모든 화면이 503이다.

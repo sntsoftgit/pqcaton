@@ -180,7 +180,7 @@ func TestUnusableKeysDoNotSign(t *testing.T) {
 		set    func(t *testing.T, s *server)
 		ko, en string
 	}{
-		{"not given", func(t *testing.T, s *server) { s.approvalKey = "" }, "-approval-key &lt;파일&gt;로 시작하십시오", "Start with -approval-key &lt;file&gt;"},
+		{"not given", func(t *testing.T, s *server) { s.approvalKey = "" }, "승인 키가 없습니다. 새 승인에 서명하려면", "There is no approval key. To sign new approvals"},
 		{"open", func(t *testing.T, s *server) { _ = os.Chmod(s.approvalKey, 0o644) }, "chmod 600", "chmod 600"},
 		{"symlink", func(t *testing.T, s *server) {
 			l := filepath.Join(t.TempDir(), "link.key")

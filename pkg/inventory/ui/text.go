@@ -1347,4 +1347,28 @@ var keyText = map[KeyState]T{
 	KeyLinks: {
 		KO: "하드 링크가 더 있습니다. 다른 이름으로 바뀔 수 있으니 링크가 하나인 파일로 두십시오",
 		EN: "it has more hard links, so it can change under another name: keep it as a file with a single link"},
+	KeyHasPrivate: {
+		KO: "확인용 공개 키 파일에 개인 키가 들어 있습니다. PQCOTA_VERIFY_KEY 줄만 두십시오",
+		EN: "the verification key file holds a private key: keep only the PQCOTA_VERIFY_KEY line"},
+	KeyUnwritable: {
+		KO: "다른 사용자도 고칠 수 있습니다. chmod go-w로 소유자만 고치게 하십시오",
+		EN: "other users can change it: make it writable by its owner only with chmod go-w"},
 }
+
+// 06 의 승인 키 문구(서명용 개인 키와 확인용 공개 키).
+var (
+	tKeyDefaultOK      = T{KO: "기본 승인 키를 사용합니다.", EN: "The default approval key is used."}
+	tKeyExplicitOK     = T{KO: "지정한 승인 키를 사용합니다.", EN: "The approval key given at start is used."}
+	tKeyWhere          = T{KO: "위치: 사용자 설정 폴더의 %s", EN: "Location: %s in the user configuration folder"}
+	tKeyFingerprint    = T{KO: "키 지문: %s", EN: "Key fingerprint: %s"}
+	tKeyMissingText    = T{KO: "승인 키가 없습니다. 새 승인에 서명하려면 기본 위치에 키를 만들거나 -approval-key로 지정하십시오.", EN: "There is no approval key. To sign new approvals, create the key at the default location or give it with -approval-key."}
+	tKeyDefaultBad     = T{KO: "기본 승인 키를 사용할 수 없습니다: %s. 새 승인 서명은 막혔습니다. 파일의 소유자 · 권한 · 링크 · 형식을 확인하십시오.", EN: "The default approval key cannot be used: %s. New approval signatures are blocked. Check the file's owner, permissions, links and format."}
+	tKeyDisabledText   = T{KO: "기본 승인 키 자동 검색을 껐습니다. 새 승인에 서명하려면 -approval-key로 키를 지정하십시오.", EN: "The automatic search for the default approval key is off. To sign new approvals, give the key with -approval-key."}
+	tKeyMismatchText   = T{KO: "승인 키와 확인용 공개 키가 서로 다른 키입니다. 새 승인 서명과 서명 확인을 막았습니다. 두 파일을 같은 pqcota-keygen 출력으로 맞추십시오.", EN: "The approval key and the verification key are different keys. New signatures and signature checks are blocked. Make both files come from the same pqcota-keygen output."}
+	tKeyConflictText   = T{KO: "고른 확인용 공개 키를 쓸 수 없어 구성이 맞지 않습니다. 새 승인 서명과 플레이북 생성을 막았습니다. 아래 확인용 공개 키 줄을 보십시오.", EN: "The verification key chosen cannot be used, so the configuration is inconsistent. New signatures and playbook generation are blocked. See the verification key line below."}
+	tKeyVerifyOnlyText = T{KO: "확인용 공개 키만 지정했습니다. 새 승인에 서명하려면 -approval-key로 개인 키를 지정하십시오.", EN: "Only a verification key was given. To sign new approvals, give the private key with -approval-key."}
+	tKeyCanVerify      = T{KO: "이미 서명된 계획은 확인용 공개 키로 계속 확인하고 생성할 수 있습니다.", EN: "Plans already signed can still be checked and generated with the verification key."}
+	tKeyNoVerify       = T{KO: "이미 서명된 계획을 확인하고 생성하려면 확인용 공개 키(pqcaton/approval.pub)를 두십시오.", EN: "To check and generate plans already signed, put the verification key (pqcaton/approval.pub)."}
+	tVerifyKeyOK       = T{KO: "확인용 공개 키: %s · 키 지문: %s", EN: "Verification key: %s · key fingerprint: %s"}
+	tVerifyKeyBad      = T{KO: "확인용 공개 키를 사용할 수 없습니다(%s): %s", EN: "The verification key cannot be used (%s): %s"}
+)

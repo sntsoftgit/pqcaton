@@ -119,21 +119,45 @@ pqcota-common이 다른 판이어도 빌드 정보에는 드러나지 않으므�
 - **`collector.jar`.** 상류가 판을 싣지 않아 판을 확인하지 못했다는 경고만 보이고, 시작은 막지 않습니다. 판이 실려
   있는데 다르면 막습니다.
 
-**승인 키 준비.** 06 화면에서 승인 서명을 하려면 승인 키가 필요합니다. `pqcota-keygen`의 출력을 작업 폴더 **밖**의
-파일에 소유자만 읽게 저장하고, 화면을 `-approval-key <파일>`로 띄웁니다. 화면은 서명할 때마다 이 파일을 다시 읽고, 다른
-사용자가 읽을 수 있거나 작업 폴더 안에 있으면 쓰지 않습니다.
+**승인 키 준비.** 06 화면에서 새 승인에 서명하려면 승인 키가 필요합니다. 화면은 사용자 설정 폴더의
+`pqcaton/approval.key`를 기본으로 찾습니다(Linux는 `~/.config/pqcaton/`, macOS는 `~/Library/Application Support/pqcaton/`).
+그 자리에 `pqcota-keygen`의 출력을 소유자만 읽게 저장하면 플래그 없이 씁니다. 화면은 이 파일을 만들거나 권한을 고치지
+않고, 서명할 때마다 다시 읽습니다. 마지막 줄은 공개 키만 `approval.pub`에 따로 둡니다.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.10.7
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
+grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
 ```
 
-서비스로 띄운다면 서비스에 플래그를 더합니다.
+macOS에서는 자리만 다릅니다.
+
+```bash
+mkdir -p "$HOME/Library/Application Support/pqcaton"
+(umask 077 && pqcota-keygen > "$HOME/Library/Application Support/pqcaton/approval.key")
+grep '^PQCOTA_VERIFY_KEY=' "$HOME/Library/Application Support/pqcaton/approval.key" > "$HOME/Library/Application Support/pqcaton/approval.pub"
+```
+
+- **확인용 공개 키(`approval.pub`).** 개인 키 없이도 이미 서명된 계획을 확인하고 플레이북을 만들 수 있게 합니다. 개인 키 줄이
+  든 파일이나 다른 사용자가 고칠 수 있는 파일은 받지 않습니다. 두 파일이 모두 있으면 같은 키여야 하고, 다르면 서명과 확인을
+  모두 막습니다.
+- **잘못된 키.** 기본 위치의 파일이 없으면 화면은 정상으로 뜨고 새 서명만 하지 않습니다. 있는데 권한 · 소유자 · 링크 · 형식이
+  잘못됐으면 화면은 뜨지만 06과 표준 오류에 까닭을 보이고 새 서명을 막습니다. 06에는 사용자 설정 폴더 기준의 위치와 키
+  지문만 보이고, 개인 키는 어디에도 보이지 않습니다.
+- **다른 자리에 둘 때.** `-approval-key <파일>`과 `-approval-verify-key <파일>`로 줍니다. 명시한 파일이 잘못됐거나, 둘 다
+  명시했는데 서로 다른 키면 화면을 시작하지 않습니다. 기본 위치를 찾지 않게 하려면 `-no-default-approval-key`로 띄웁니다. 이
+  옵션은 기본 위치의 두 파일을 모두 끄고, 명시한 파일은 그래도 씁니다.
+- **고르는 순서.** 명시한 개인 키, 명시한 공개 키, 기본 위치의 개인 키, 기본 위치의 공개 키 순서입니다. **하나라도 명시하면
+  기본 위치는 둘 다 읽지 않습니다.** 개인 키만 있으면 그 키에서 공개 키를 뽑아 서명 · 확인 · 생성을 모두 하고, 공개 키만
+  있으면 확인 · 생성만 합니다. 개인 키가 잘못됐고 공개 키가 정상이면 서명만 막고 확인 · 생성은 합니다. 개인 키는 정상인데
+  함께 고른 공개 키를 쓸 수 없거나 다른 키면 구성 오류로 서명과 생성을 모두 막습니다.
+
+서비스로 띄우면서 기본 위치가 아닌 키를 쓴다면 서비스에 플래그를 더합니다. 기본 위치에 두었다면 필요 없습니다.
 
 ```bash
 mkdir -p ~/.config/systemd/user/pqcaton-ui.service.d
-printf '[Service]\nExecStart=\nExecStart=%%h/.local/bin/pqcaton-ui -no-browser -approval-key %%h/.config/pqcaton/approval.key\n' > ~/.config/systemd/user/pqcaton-ui.service.d/approval.conf
+printf '[Service]\nExecStart=\nExecStart=%%h/.local/bin/pqcaton-ui -no-browser -approval-key %%h/secrets/pqcaton-approval.key\n' > ~/.config/systemd/user/pqcaton-ui.service.d/approval.conf
 systemctl --user daemon-reload
 systemctl --user restart pqcaton-ui.service
 ```

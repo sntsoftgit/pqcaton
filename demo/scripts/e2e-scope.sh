@@ -383,6 +383,16 @@ g["level"] = "l2"
 st, _ = post("/approve/generate?lang=en", g)
 print("   06: signed and generated through the screen")
 PY
+# 데모는 -approval-key 로 키를 명시한다. 명시하면 기본 위치(사용자 설정 폴더)는 읽지 않으므로 화면 로그에 기본 위치 줄이 없어야
+# 한다. 개인 키 내용은 06 화면에도, 서명한 계획에도, 화면 로그에도 없어야 한다(키 경로와 지문만 보인다).
+if docker exec "$CTL" grep -q "default location" /work/ui.log; then fail "the screen looked at the default key location although -approval-key was given"; fi
+PRIV="$(docker exec "$CTL" sed -n 's/^PQCOTA_SIGN_KEY=//p' /work/ui-approval.key)"
+[ -n "$PRIV" ] || fail "cannot read the demo approval key"
+APPROVE_SIGNED="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/approve?lang=en')"
+grep -q "The approval key given at start is used." <<<"$APPROVE_SIGNED" || fail "06 does not say the explicit approval key is used"
+if grep -qF -- "$PRIV" <<<"$APPROVE_SIGNED"; then fail "the private key is on the 06 screen"; fi
+if docker exec "$CTL" grep -qF -- "$PRIV" /work/ui.log "$WS/plan.signed.json"; then fail "the private key is in the screen log or the signed plan"; fi
+echo "   06: explicit -approval-key used, no default-location lookup, the private key appears nowhere"
 "$UI" stop
 SIGNED_STATUS="$(docker exec "$CTL" python3 -c "import json; p=json.load(open('$WS/plan.signed.json')); print(p['status'], len(p.get('approvalSignatures', [])))")"
 [ "$SIGNED_STATUS" = "PLAN_STATUS_FINALIZED 1" ] || fail "the signed plan is $SIGNED_STATUS"

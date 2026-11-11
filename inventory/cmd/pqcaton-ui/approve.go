@@ -70,6 +70,9 @@ func (s *server) approveInputs() []store.Input {
 	if s.approvalKey != "" {
 		in = append(in, store.Input{Name: "approval-key", Path: s.approvalKey})
 	}
+	if s.verifyKey != "" {
+		in = append(in, store.Input{Name: "approval-verify-key", Path: s.verifyKey})
+	}
 	// **활성 정책도 넣는다.** 06은 계획을 만든 정책과 이것을 견주므로, 화면을 그린 뒤 정책이 바뀌면 오래된 화면이다.
 	if s.scopeAssets != "" {
 		in = append(in, store.Input{Name: "scope-assets", Path: s.scopeAssets})
@@ -105,33 +108,27 @@ func inside(dir, p string) bool {
 // 다른 곳에서 바뀔 수 있다) 이 사용자의 것이 아니면 거부한다. 「작업 폴더 밖」은 문자열이 아니라 실제 경로로 본다
 // (작업 폴더를 가리키는 링크 폴더를 거쳐도 걸린다).
 func (s *server) readKey() (ui.KeyCheck, string) {
-	k := ui.KeyCheck{Path: s.approvalKey}
+	k := ui.KeyCheck{Path: s.approvalKey, Source: s.keySource, Where: s.keyWhere}
+	if k.Source == "" && s.approvalKey != "" {
+		k.Source, k.Where = ui.KeyExplicit, s.approvalKey
+	}
 	if s.approvalKey == "" {
-		k.State = ui.KeyNotGiven
+		switch s.keySource {
+		case ui.KeySearchOff:
+			k.State = ui.KeyDisabled
+		case ui.KeyDefault:
+			k.State = ui.KeyMissing
+		default:
+			k.State = ui.KeyNotGiven
+		}
 		return k, ""
 	}
-	fi, err := os.Lstat(s.approvalKey)
-	switch {
-	case err != nil:
-		k.State = ui.KeyUnreadable
-		return k, ""
-	case fi.Mode()&fs.ModeSymlink != 0:
-		k.State = ui.KeyLink
-		return k, ""
-	case !fi.Mode().IsRegular():
-		k.State = ui.KeyUnreadable
-		return k, ""
+	fi, st := s.fileProblem(s.approvalKey)
+	if st == ui.KeyMissing && k.Source != ui.KeyDefault {
+		st = ui.KeyUnreadable // 명시한 파일이 없으면 「없음」이 아니라 읽을 수 없는 것이다
 	}
-	if home := s.keyHome(); home != "" && inside(home, s.approvalKey) {
-		k.State = ui.KeyInside
-		return k, ""
-	}
-	if !ownedByMe(fi) {
-		k.State = ui.KeyOwner
-		return k, ""
-	}
-	if links(fi) > 1 {
-		k.State = ui.KeyLinks
+	if st != ui.KeyOK {
+		k.State = st
 		return k, ""
 	}
 	if fi.Mode().Perm()&0o077 != 0 {
@@ -226,6 +223,17 @@ func verifyWith(public string, signed *provisioningv1.FinalizedPlan) sign.Approv
 func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	v := ui.ApproveView{Page: page, Writable: s.st != nil && !s.recovering && len(s.diag) == 0}
 	v.Key, _ = s.readKey()
+	v.Verify = s.readVerify()
+	// 쓸 만한 개인 키와 함께 확인용 공개 키를 골랐으면 둘이 맞아야 한다. 공개 키를 쓸 수 없으면 구성 오류(서명 · 생성 모두
+	// 막음), 서로 다른 키면 어느 쪽도 믿지 않는다. 잘못된 개인 키와 정상 공개 키는 서명만 막고 확인 · 생성은 공개 키로 한다.
+	if v.Key.State == ui.KeyOK && verifyChosen(v.Verify.State) {
+		switch {
+		case v.Verify.State != ui.KeyOK:
+			v.Key.State = ui.KeyConflict
+		case v.Key.Public != v.Verify.Public:
+			v.Key.State, v.Verify.State = ui.KeyMismatch, ui.KeyMismatch
+		}
+	}
 	v.Signed.State = ui.SignNone
 	plan, err := loadPlanFile(s.planOut)
 	if err != nil {
@@ -270,11 +278,11 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	switch {
 	case !sameContent(plan, signed):
 		v.Signed.State = ui.SignStale
-	case v.Key.State != ui.KeyOK:
-		// 확인할 키가 없으면 맞는지 말할 수 없다. 서명은 있지만 확인하지 못한 것으로 둔다.
+	case v.PublicKey() == "":
+		// 확인할 공개 키가 없으면(개인 키도 확인용 공개 키도 쓸 수 없으면) 맞는지 말할 수 없다. 확인하지 못한 것으로 둔다.
 		v.Signed.State = ui.SignInvalid
 	default:
-		chk := verifyWith(v.Key.Public, signed)
+		chk := verifyWith(v.PublicKey(), signed)
 		if len(chk.Rejected) > 0 || len(chk.Approved) == 0 {
 			v.Signed.State = ui.SignInvalid
 		} else {

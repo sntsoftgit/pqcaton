@@ -78,6 +78,8 @@ type startConfig struct {
 	collectors           string // 수집기 폴더. 작업 폴더 모드에서 주지 않으면 그 안의 collectors
 	approvalKey          string // 승인 서명 키 파일(작업 폴더 밖)
 	allowUnverified      bool   // -allow-unverified-collectors
+	verifyKey            string // 확인용 공개 키 파일(-approval-verify-key)
+	noDefaultKey         bool   // -no-default-approval-key
 }
 
 // errUsage: 사용법이 틀렸다(종료 코드 2).
@@ -106,6 +108,8 @@ func parseStart(args []string, stderr io.Writer) (startConfig, error) {
 	fs.StringVar(&c.diagnostics, "diagnostics", "", "with -recover-status: also write the report as JSON to this new file (0600)")
 	fs.StringVar(&c.collectors, "collectors", "", "collector folder for running observations from the screen: linux-amd64/, linux-arm64/, windows-amd64/ and collector.jar as pqcota-discovery builds them (default in a workspace: its collectors folder)")
 	fs.BoolVar(&c.allowUnverified, "allow-unverified-collectors", false, "start observations even when a collector's version cannot be verified (local replace, devel or dirty builds, no build information). Collectors of another version are still refused. The allowance is shown on the screen and here, and is not kept in the workspace")
+	fs.StringVar(&c.verifyKey, "approval-verify-key", "", "verification key for the 06 screen: a file holding only the PQCOTA_VERIFY_KEY line of pqcota-keygen, outside the workspace and writable only by its owner. Plans already signed are checked and generated with it even without the private key (default: approval.pub next to the default approval key)")
+	fs.BoolVar(&c.noDefaultKey, "no-default-approval-key", false, "do not look for approval.key and approval.pub in the user configuration folder (pqcaton/ under it). An -approval-key or -approval-verify-key given is still used")
 	fs.StringVar(&c.approvalKey, "approval-key", "", "approval signing key for the 06 screen: the output of pqcota-keygen saved to a file outside the workspace, readable only by its owner (chmod 600)")
 	fs.StringVar(&c.stateDir, "state-dir", "", "state directory holding transaction records and receipts (default: .pqcaton next to the session file). Commands that change the same files must use the same one")
 
@@ -215,12 +219,23 @@ func (c startConfig) inWorkspace() (startConfig, error) {
 	return c, nil
 }
 
+// userConfigDir: 승인 키의 기본 위치가 놓이는 폴더. 시험이 바꾼다.
+var userConfigDir = os.UserConfigDir
+
 // server: 설정으로 서버를 만든다(아직 상태 디렉토리는 열지 않는다).
 func (c startConfig) server() *server {
+	key, verify := resolveKeys(c.approvalKey, c.verifyKey, c.noDefaultKey, userConfigDir)
+	s := c.serverBase()
+	s.approvalKey, s.keySource, s.keyWhere = key.path, key.source, key.where
+	s.verifyKey, s.verifySource, s.verifyWhere = verify.path, verify.source, verify.where
+	return s
+}
+
+func (c startConfig) serverBase() *server {
 	return &server{path: c.session, decl: c.decl, results: c.results, scope: c.scope,
 		layers: c.layers, base: c.base, scopeAssets: c.scopeAssets, judgments: c.judgments,
 		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace, hosts: c.hosts, collectors: absPath(c.collectors),
-		approvalKey: absPath(c.approvalKey), collectorPin: collectorPin(), allowUnverified: c.allowUnverified,
+		collectorPin: collectorPin(), allowUnverified: c.allowUnverified,
 		orgFromDecl: c.workspace != "" && !c.orgGiven}
 }
 

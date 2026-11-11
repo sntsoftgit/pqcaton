@@ -68,13 +68,18 @@ templ approveSign(v ApproveView) {
 				{ "✗ " }
 			}
 			<strong>{ tKeyItem.In(v.Page.Lang) }</strong>
-			if v.Key.Path != "" {
+			if v.Key.Source == KeyExplicit && v.Key.Path != "" {
 				{ " " }
 				<code>{ v.Key.Path }</code>
 			}
-			<br/>
-			<span>{ v.Key.Text(v.Page.Lang) }</span>
+			for _, line := range v.Key.Lines(v.Page.Lang, v.Verify.State == KeyOK) {
+				<br/>
+				<span>{ line }</span>
+			}
 		</li>
+		if line := v.Verify.VerifyLine(v.Page.Lang); line != "" {
+			<li data-key="verify" class={ templ.KV("ok", v.Verify.State == KeyOK), templ.KV("bad", v.Verify.State != KeyOK) }>{ line }</li>
+		}
 	</ul>
 	if v.TextProblem {
 		<p class="msg bad">{ v.TextText() }</p>
@@ -93,9 +98,9 @@ templ approveSign(v ApproveView) {
 		case SignInvalid:
 			<p class="msg bad">{ tSignedInvalid.In(v.Page.Lang) }</p>
 	}
-	if v.Key.State == KeyOK && v.Key.Public != "" && v.Approver != "" {
+	if pub := v.PublicKey(); pub != "" && v.Approver != "" {
 		@tip(v.Page.Lang, tVerifyKeyHint.In(v.Page.Lang))
-		<pre class="run-log">{ "PQCOTA_APPROVAL_KEYS=" + v.Approver + "=" + v.Key.Public }</pre>
+		<pre class="run-log">{ "PQCOTA_APPROVAL_KEYS=" + v.Approver + "=" + pub }</pre>
 	}
 	if v.CanArchive() {
 		<form method="post" action={ templ.SafeURL(ArchivePath) }>
