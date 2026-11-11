@@ -1,0 +1,16 @@
+plain line stays
+PQCOTA_SIGN_KEY=c2VjcmV0LWtleS1ub3QtcmVhbA==
+export AWS_SECRET_ACCESS_KEY=abc/def+ghi
+GITHUB_TOKEN=ghp_notarealtoken123
+DB_PASSWORD=hunter2 next
+dsn postgres://pqcota:s3cret@db:5432/pqcota?sslmode=disable
+dsn postgres://onlyuser@db/pqcota
+key=value dsn: host=db user=pqcota password=s3cret dbname=x
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAAB
+-----END OPENSSH PRIVATE KEY-----
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEINotARealKeyNotARealKeyNotARealKey00
+-----END PRIVATE KEY-----
+after the key
+https://proxy.golang.org/github.com/x/@v/v1.0.0.info

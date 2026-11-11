@@ -30,6 +30,8 @@ path = [
     "inventory/cmd/pqcaton-ui/testdata/plantext/*.json",
     "tools/checkmodzip/go.mod",
     "tools/checkmodzip/go.sum",
+    "tools/releasecheck/go.mod",
+    "tools/releasecheck/go.sum",
     "site/**",
     "pkg/inventory/ui/static/app.css",
 ]

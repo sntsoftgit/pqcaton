@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
-.PHONY: all e2e-demo check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt check-modzip build test generate verify-generated check-reuse
+.PHONY: all e2e-demo check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt check-modzip check-releasecheck build test generate verify-generated check-reuse release-check release-check-fast release-verify
 
-all: check-licenses check-text check-prose check-lang check-cases check-fmt check-modzip build test
+all: check-licenses check-text check-prose check-lang check-cases check-fmt check-modzip check-releasecheck build test
 
 # 라이선스 관문: 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
@@ -83,6 +83,10 @@ check-fmt:
 check-modzip:
 	@cd tools/checkmodzip && go test -count=1 . >/dev/null && go run . ../..
 
+# 발행 관문 도구의 시험. 도구가 별도 모듈이라 `go test ./...`가 보지 않으므로 여기서 돌린다.
+check-releasecheck:
+	@cd tools/releasecheck && go test -count=1 ./... >/dev/null && echo "✓ releasecheck tool tests passed"
+
 build:
 	go build ./...
 
@@ -122,3 +126,17 @@ verify-generated:
 REUSE_IMAGE := fsfe/reuse:6.2.0@sha256:85462a75c0f8efda09ddd190b92816b70e7662577c8427429e11e1b9f25a992e
 check-reuse:
 	@docker run --rm -v "$(CURDIR)":/data:ro $(REUSE_IMAGE) lint
+
+# ── 발행 관문 ──────────────────────────────────────────────────────────────
+#
+# 태그를 달기 전에 release-check, 발행한 뒤에 release-verify. 둘 다 ubuntu-dev에서 돌리고, 태그를 달거나 발행하지 않는다.
+# release-check 의 요약이 발행 승인의 근거다. release-check-fast 는 종단 검증을 빼서 발행 근거가 아니다.
+# release-verify 가 실패하면 릴리스를 마친 것으로 보지 않는다. 무엇을 재는지는 tools/releasecheck/의 두 스크립트 머리에 있다.
+release-check:
+	@VERSION="$(VERSION)" RELEASE_DATE="$(RELEASE_DATE)" bash tools/releasecheck/release-check.sh full
+
+release-check-fast:
+	@VERSION="$(VERSION)" RELEASE_DATE="$(RELEASE_DATE)" bash tools/releasecheck/release-check.sh fast
+
+release-verify:
+	@VERSION="$(VERSION)" COMMIT="$(COMMIT)" H1="$(H1)" bash tools/releasecheck/release-verify.sh

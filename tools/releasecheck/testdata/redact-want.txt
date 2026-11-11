@@ -1,0 +1,12 @@
+plain line stays
+PQCOTA_SIGN_KEY=***
+export AWS_SECRET_ACCESS_KEY=***
+GITHUB_TOKEN=***
+DB_PASSWORD=*** next
+dsn postgres://***@db:5432/pqcota?sslmode=disable
+dsn postgres://***@db/pqcota
+key=value dsn: host=db user=pqcota password=*** dbname=x
+[private key block redacted]
+[private key block redacted]
+after the key
+https://proxy.golang.org/github.com/x/@v/v1.0.0.info
