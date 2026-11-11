@@ -1,0 +1,5 @@
+module github.com/sntsoftgit/pqcaton/tools/checkmodzip
+
+go 1.26.11
+
+require golang.org/x/mod v0.43.0

@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
-.PHONY: all e2e-demo check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt build test generate verify-generated check-reuse
+.PHONY: all e2e-demo check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt check-modzip build test generate verify-generated check-reuse
 
-all: check-licenses check-text check-prose check-lang check-cases check-fmt build test
+all: check-licenses check-text check-prose check-lang check-cases check-fmt check-modzip build test
 
 # 라이선스 관문: 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
@@ -72,6 +72,16 @@ check-fmt:
 		echo "✗ gofmt 가 고칠 것이 남았다. gofmt -w . 로 맞출 것:"; echo "$$out"; exit 1; \
 	fi; \
 	echo "✓ gofmt check passed"
+
+# 모듈 관문: 이 리포를 Go 모듈로 받을 수 있는지 잰다(go 명령이 모듈 zip 을 만들 때 쓰는 검사).
+#
+# **빌드 · 시험 · 종단 검증은 모두 체크아웃에서 돌아 이것을 보지 않는다.** v0.26.2는 시험 픽스처
+# 디렉토리 이름(`testdata/nul`)이 Windows 예약어라 모듈 zip 이 만들어지지 않았고, 안내서의
+# `go install ...@v0.26.2` 가 실패했다. 발행한 뒤 프록시에서 처음 드러났다.
+#
+# 도구는 x/mod 를 쓰는 별도 모듈이라(본 모듈의 의존성을 늘리지 않는다) 그 디렉토리에서 돌린다.
+check-modzip:
+	@cd tools/checkmodzip && go test -count=1 . >/dev/null && go run . ../..
 
 build:
 	go build ./...

@@ -29,7 +29,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// golden — testdata/nul/golden-v0.10.6.json. pqcota-common v0.10.6으로 만든 값이다(이 판이 v0.10.7로 올리기 전).
+// golden — testdata/plantext/golden-v0.10.6.json. pqcota-common v0.10.6으로 만든 값이다(이 판이 v0.10.7로 올리기 전).
 type golden struct {
 	PublicKey    string `json:"public_key"`
 	CanonicalOK  string `json:"canonical_ok_sha256"`
@@ -41,7 +41,7 @@ type golden struct {
 func loadGolden(t *testing.T) golden {
 	t.Helper()
 	var g golden
-	if err := json.Unmarshal([]byte(readFile(t, filepath.Join("testdata", "nul", "golden-v0.10.6.json"))), &g); err != nil {
+	if err := json.Unmarshal([]byte(readFile(t, filepath.Join("testdata", "plantext", "golden-v0.10.6.json"))), &g); err != nil {
 		t.Fatal(err)
 	}
 	return g
@@ -49,7 +49,7 @@ func loadGolden(t *testing.T) golden {
 
 func nulFixture(t *testing.T, name string) (*provisioningv1.FinalizedPlan, string) {
 	t.Helper()
-	raw := readFile(t, filepath.Join("testdata", "nul", name))
+	raw := readFile(t, filepath.Join("testdata", "plantext", name))
 	p := &provisioningv1.FinalizedPlan{}
 	if err := protojson.Unmarshal([]byte(raw), p); err != nil {
 		t.Fatal(err)
@@ -69,7 +69,7 @@ func goldenKey() string {
 }
 
 // IC-U160 — **NUL이 없는 계획은 v0.10.6과 정규형이 바이트까지 같고, 그 판의 승인이 그대로 유효하다.** v0.10.6으로 만든
-// 정규형 해시 · 승인 서명(testdata/nul/golden-v0.10.6.json)과 견준다. 같은 키로 지금 서명하면 같은 서명이 나오고, 그 판의
+// 정규형 해시 · 승인 서명(testdata/plantext/golden-v0.10.6.json)과 견준다. 같은 키로 지금 서명하면 같은 서명이 나오고, 그 판의
 // 승인이 지금 VerifyApprovals에서 승인으로 남는다.
 func TestNULFreePlanKeepsItsCanonicalFormAndApprovals(t *testing.T) {
 	g := loadGolden(t)
