@@ -108,6 +108,9 @@ trap 'exit 130' INT TERM
 # 공개 명령을 바이너리 이름으로: 경로의 마지막 마디.
 binname() { local p="${1%@*}"; echo "${p##*/}"; }
 
+# ko_label — 릴리스 본문 맨 위 한국어 노트 링크의 글자. 언어 이름은 checkdocs 의 langs.tsv 한 곳에 둔다.
+ko_label() { awk -F'\t' '$1=="ko"{print $2; exit}' "$REPO/tools/checkdocs/langs.tsv"; }
+
 # need_version — VERSION 이 vX.Y.Z 꼴인지.
 need_version() {
 	if [ -z "${VERSION:-}" ]; then echo "VERSION is required, e.g. make $KIND VERSION=v1.2.3"; return 1; fi

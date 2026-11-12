@@ -121,7 +121,8 @@ pqcaton [v0.24.1](https://github.com/sntsoftgit/pqcaton/tree/v0.24.1) there. Eve
 Copyright 2026 SNT Soft Co., Ltd. The copyright holders are listed in [AUTHORS](AUTHORS).
 
 [**BUSL-1.1**](LICENSE) · **each release converts to Apache-2.0 four years after its publication.** The conversion date of each version
-is in the [release notes](RELEASE_NOTES.md) (v0.1.0 to v0.5.0: 2030-08-11).
+is in the [release notes](RELEASE_NOTES.md), for the versions before the English edition began in the Korean edition
+[RELEASE_NOTES.ko.md](RELEASE_NOTES.ko.md) (v0.1.0 to v0.5.0: 2030-08-11).
 
 - Evaluation, development and testing are free without a size limit
 - Production is free up to 5 managed nodes

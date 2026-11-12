@@ -192,22 +192,44 @@ func checkNotes(notes, version, date, draft string) error {
 	return nil
 }
 
+// markers — 되풀이해 줄 수 있는 플래그. 노트마다 작성 중 표지가 말이 달라 둘을 받는다.
+type markers []string
+
+func (m *markers) String() string     { return strings.Join(*m, ",") }
+func (m *markers) Set(v string) error { *m = append(*m, v); return nil }
+
+// notes: 영어 노트와 한국어 노트를 모두 본다. 맨 위 판 · 날짜 · 전환일이 둘 다 맞아야 한다.
 func cmdNotes(args []string) error {
 	fs := flag.NewFlagSet("notes", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "repository root")
 	version := fs.String("version", "", "version being released")
 	date := fs.String("date", "", "release date YYYY-MM-DD")
-	draft := fs.String("draft-marker", "", "heading marker of an unfinished section")
+	var drafts markers
+	fs.Var(&drafts, "draft-marker", "heading marker of an unfinished section (repeatable)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	data, err := os.ReadFile(filepath.Join(*repo, "RELEASE_NOTES.md"))
+	en, ko, err := readNotes(*repo)
 	if err != nil {
 		return err
 	}
-	if err := checkNotes(string(data), *version, *date, *draft); err != nil {
-		return err
+	for _, n := range []struct{ name, text string }{{notesEN, en}, {notesKO, ko}} {
+		if err := checkNotesAll(n.text, *version, *date, drafts); err != nil {
+			return fmt.Errorf("%s: %w", n.name, err)
+		}
 	}
-	fmt.Printf("✓ notes: %s dated %s, Apache-2.0 change date four years later\n", *version, *date)
+	fmt.Printf("✓ notes: %s dated %s in %s and %s, Apache-2.0 change date four years later\n", *version, *date, notesEN, notesKO)
+	return nil
+}
+
+func checkNotesAll(text, version, date string, drafts []string) error {
+	if len(drafts) == 0 {
+		return checkNotes(text, version, date, "")
+	}
+	for _, d := range drafts {
+		if err := checkNotes(text, version, date, d); err != nil {
+			return err
+		}
+	}
 	return nil
 }

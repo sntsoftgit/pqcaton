@@ -28,8 +28,9 @@ VERSION="${VERSION:-}"
 # shellcheck source=lib.sh
 source "$REPO/tools/releasecheck/lib.sh"
 
-# 노트에서 작성 중인 절의 제목 표지. Go 문자열에는 한국어를 두지 않으므로 여기서 넘긴다.
+# 노트에서 작성 중인 절의 제목 표지(한국어 노트 · 영어 노트). Go 문자열에는 한국어를 두지 않으므로 여기서 넘긴다.
 DRAFT_MARKER='작성 중'
+DRAFT_MARKER_EN='in progress'
 # 발행일은 시작할 때 한 번 정한다. 도중에 자정이 지나도 바꾸지 않는다.
 RELEASE_DATE="${RELEASE_DATE:-$(TZ=Asia/Seoul date +%F)}"
 
@@ -134,7 +135,11 @@ st_tools() {
 }
 
 st_notes() {
-	"$WORK/rc" notes -repo "$REPO" -version "$VERSION" -date "$RELEASE_DATE" -draft-marker "$DRAFT_MARKER"
+	"$WORK/rc" notes -repo "$REPO" -version "$VERSION" -date "$RELEASE_DATE" -draft-marker "$DRAFT_MARKER" -draft-marker "$DRAFT_MARKER_EN"
+	# 릴리스 본문: 영어 절 그대로, 링크는 태그 고정, 맨 위에 한국어 노트의 같은 판으로 가는 링크. 발행은 이 파일을 본문으로 쓴다.
+	"$WORK/rc" body -repo "$REPO" -version "$VERSION" -ko-label "$(ko_label)" > "$RUN/release-body.md"
+	echo "release body: $RUN/release-body.md ($(wc -l < "$RUN/release-body.md") lines)"
+	head -n 1 "$RUN/release-body.md"
 	cd "$REPO"
 	# 판 시험 IC-U112 · IC-U144: 안내서 · 판별 표 · go.mod · README · 데모 안내의 판. 같은 규칙을 여기서 다시 짜지 않는다.
 	local out
@@ -286,6 +291,7 @@ note "go: $(cat "$WORK/goversion") (GOTOOLCHAIN=auto)"
 note "govulncheck: $(cat "$WORK/vulnversion") (vulnerability DB as of the run)"
 while read -r line; do note "upstream: $line"; done < "$WORK/upstream"
 step notes-and-versions st_notes
+note "release body: $RUN/release-body.md (gh release create --notes-file)"
 step make st_make
 step verify-generated st_generated
 step reuse st_reuse

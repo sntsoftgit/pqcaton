@@ -8,6 +8,7 @@
 #
 # H1 은 release-check 가 그 커밋으로 뜬 모듈 zip 해시다. 원격 태그 · Go 프록시의 .info · .mod · .zip ·
 # sum.golang.org 기록을 그것과 견주고, 깨끗한 캐시에서 실제 프록시와 체크섬 DB 로 공개 명령을 설치해 본다.
+# 끝으로 GitHub 릴리스 본문이 그 커밋의 영어 노트 절과 같은지, 맨 위 한국어 노트 링크가 열리는지 본다.
 # 프록시가 아직 그 판을 모르면 실패한다(잠시 뒤 다시 돌린다).
 set -euo pipefail
 
@@ -82,6 +83,24 @@ st_sumdb() {
 	echo "✓ sum.golang.org records $H1 and the go.mod hash"
 }
 
+# 릴리스 본문: 그 커밋의 노트로 만든 본문과 실제 본문이 같고, 맨 위 한국어 링크가 열리며 그 앵커가 태그의 한국어 노트에 있는지.
+st_body() {
+	local mod repo u code
+	mod="$(cat "$WORK/module")"
+	repo="${mod#github.com/}"
+	mkdir -p "$WORK/notes"
+	for f in go.mod RELEASE_NOTES.md RELEASE_NOTES.ko.md; do
+		git -C "$REPO" show "$COMMIT:$f" > "$WORK/notes/$f"
+	done
+	"$WORK/rc" body -repo "$WORK/notes" -version "$VERSION" -ko-label "$(ko_label)" > "$WORK/want-body.md"
+	fetch "https://api.github.com/repos/$repo/releases/tags/$VERSION" "$WORK/release.json"
+	fetch "https://raw.githubusercontent.com/$repo/$VERSION/RELEASE_NOTES.ko.md" "$WORK/ko-at-tag.md"
+	u="$("$WORK/rc" bodycheck -want "$WORK/want-body.md" -release "$WORK/release.json" -ko "$WORK/ko-at-tag.md")"
+	code="$(curl -sS --retry 3 --retry-delay 5 -o /dev/null -w '%{http_code}' "$u")"
+	[ "$code" = 200 ] || { echo "the Korean notes link $u answered $code"; return 1; }
+	echo "✓ the release body equals the English $VERSION section; $u opens (200) and has the anchor"
+}
+
 # 공개 명령은 그 커밋의 문서에서 뽑는다. 깨끗한 캐시 · 실제 프록시 · 체크섬 DB 로 설치한다.
 st_install() {
 	local mod
@@ -119,3 +138,4 @@ step proxy-mod st_mod
 step proxy-zip st_zip
 step sumdb st_sumdb
 step install st_install
+step release-body st_body

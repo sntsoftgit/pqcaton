@@ -1,7 +1,5 @@
 # 짝(x.md ↔ x.ko.md)이 없어도 되는 문서. 한 줄에 경로와 그 문서의 말(en · ko)을 적고, 까닭은 위 주석에 적는다(checkdocs).
 #
-# 판 ④에서 영어 기본 + 한국어 짝으로 바꾼다. 그때까지 한국어 원문 그대로다.
-RELEASE_NOTES.md	ko
 # 옮긴 문서의 옛 공개 경로. 예전 릴리스 본문과 페이지가 가리킨다. 새 자리를 알리기만 한다.
 docs/operator-guide.en.md	en
 docs/design.md	en

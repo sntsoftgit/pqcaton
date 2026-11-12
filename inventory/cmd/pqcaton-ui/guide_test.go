@@ -178,11 +178,14 @@ func TestCompatibilityTableIsCurrent(t *testing.T) {
 		}
 	}
 	// v0.25.0 뒤의 절은 첫 소제목(「받는 쪽이 달라지는 것」)의 첫 항목에 함께 쓰는 pqcota를 적는다(그 전 절은 소급하지 않는다).
+	// 영어 노트와 한국어 노트 둘 다 본다(v0.28.0부터 두 언어).
 	if string(note[1]) != "v0.25.0" {
-		notes := read("RELEASE_NOTES.md")
-		top := notes[latestNote.FindIndex(notes)[0]:]
-		if m := noteUp.FindSubmatch(top); m == nil || string(m[1]) != pinned {
-			t.Errorf("the first item of the latest release section does not name `pqcota: %s`", pinned)
+		for _, f := range []string{"RELEASE_NOTES.md", "RELEASE_NOTES.ko.md"} {
+			notes := read(f)
+			top := notes[latestNote.FindIndex(notes)[0]:]
+			if m := noteUp.FindSubmatch(top); m == nil || string(m[1]) != pinned {
+				t.Errorf("%s: the first item of the latest release section does not name `pqcota: %s`", f, pinned)
+			}
 		}
 	}
 }

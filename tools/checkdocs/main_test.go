@@ -309,3 +309,40 @@ func TestLinksAcrossLines(t *testing.T) {
 	m["README.ko.md"] += "\n[긴 이름](NOTES.md)을 보십시오.\n"
 	expect(t, run(m))
 }
+
+// IC-DC15 — **릴리스 노트 짝은 판 절로 견준다.** notes.txt의 짝은 문서 전체를 견주지 않는다. 한국어판에 영어판보다 앞선 판의 절이 더
+// 있어도 되지만, 영어판의 판 절은 한국어판 앞부분과 같은 차례 · 같은 날짜여야 하고, 함께 있는 판마다 Apache-2.0 전환일 · 판 번호 ·
+// 케이스 ID · 셸 명령 · 링크한 파일이 같아야 한다.
+func TestReleaseNotesPairsCompareBySection(t *testing.T) {
+	notes := func() memFS {
+		m := good()
+		m["RN.md"] = "English · [KO](RN.ko.md)\n\n# Release notes\n\n## v1.2.3: New (2026-11-12)\n\n**Apache-2.0 conversion: 2030-11-12**\n\n- pqcota v0.11.0 ([table](README.md)), IC-U1.\n\n## Earlier versions\n\nSee [RN.ko.md](RN.ko.md).\n"
+		m["RN.ko.md"] = "[English](RN.md) · KO\n\n# 릴리스 노트\n\n## 로드맵\n\n## v1.2.3: 새 판 (2026-11-12)\n\n**Apache-2.0 전환: 2030-11-12**\n\n- pqcota v0.11.0 ([표](README.ko.md)), IC-U1.\n\n## v1.2.2: 옛 판 (2026-11-10)\n\n**Apache-2.0 전환: 2030-11-10**\n\n- [안내](docs/guide.ko.md), v1.0.0\n"
+		return m
+	}
+	cfg := testCfg
+	cfg.notes = map[string]bool{"RN.md": true}
+	runN := func(m memFS) []string { return checkIn(m, m.files(), cfg) }
+	expect(t, runN(notes()))
+	for name, tc := range map[string]struct{ from, to, want string }{
+		"date":    {"## v1.2.3: 새 판 (2026-11-12)", "## v1.2.3: 새 판 (2026-11-13)", "release 1 is v1.2.3 (2026-11-12) in English but v1.2.3 (2026-11-13) in Korean"},
+		"order":   {"## v1.2.3: 새 판 (2026-11-12)", "## v1.2.4: 다음 (2026-11-12)", "release 1 is v1.2.3"},
+		"apache":  {"**Apache-2.0 전환: 2030-11-12**", "**Apache-2.0 전환: 2030-11-11**", "Apache-2.0 conversion dates differ"},
+		"version": {"- pqcota v0.11.0 ([표]", "- pqcota v0.10.7 ([표]", "versions differ"},
+		"case":    {"IC-U1.\n\n## v1.2.2", "IC-U2.\n\n## v1.2.2", "case ids differ"},
+		"link":    {"([표](README.ko.md))", "([표](docs/guide.ko.md))", "linked files differ"},
+	} {
+		m := notes()
+		if !strings.Contains(m["RN.ko.md"], tc.from) {
+			t.Fatalf("%s: fixture lacks %q", name, tc.from)
+		}
+		m["RN.ko.md"] = strings.Replace(m["RN.ko.md"], tc.from, tc.to, 1)
+		expect(t, runN(m), tc.want)
+	}
+	// 한국어판에서 그 판이 빠지면 다음 판과 견주게 되어 차례가 어긋난다. 판 절이 하나도 없으면 없다고 막는다.
+	m := notes()
+	m["RN.ko.md"] = strings.Replace(m["RN.ko.md"], "## v1.2.3: 새 판 (2026-11-12)", "## 다음 판", 1)
+	expect(t, runN(m), "release 1 is v1.2.3 (2026-11-12) in English but v1.2.2 (2026-11-10) in Korean")
+	m["RN.ko.md"] = strings.Replace(m["RN.ko.md"], "## v1.2.2: 옛 판 (2026-11-10)", "## 옛 판", 1)
+	expect(t, runN(m), "v1.2.3 is not in RN.ko.md")
+}

@@ -2,7 +2,7 @@
 
 # pqcaton
 
-**개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](#한-그림으로)
+**개요** · [릴리스 노트](RELEASE_NOTES.ko.md) · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](#한-그림으로)
 
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** [pqcota](https://github.com/randyinthedev-hash/pqcota)가 시스템이 쓰는 암호를
 관측하면, pqcaton은 **그 관측을 조직이 선언한 것과 대조하고, 결정이 필요한 것을 리뷰 큐에 올리고, 사람이 내린 판정을 확정해**
@@ -118,7 +118,7 @@ v0.10.5 이하는 규칙 묶음이 달라 근거가 찾히지 않으므로 그�
 Copyright 2026 (주)에스앤티소프트 (SNT Soft Co., Ltd.). 저작권자는 [AUTHORS](AUTHORS)에 적혀 있습니다.
 
 [**BUSL-1.1**](LICENSE) · **각 릴리스가 공개일로부터 4년 뒤 Apache-2.0으로 전환됩니다.** 버전별 전환일은
-[릴리스 노트](RELEASE_NOTES.md)에 있습니다(v0.1.0~v0.5.0은 2030-08-11).
+[릴리스 노트](RELEASE_NOTES.ko.md)에 있습니다(v0.1.0~v0.5.0은 2030-08-11).
 
 - 평가·개발·테스트는 규모 제한 없이 무료
 - 프로덕션은 관리 노드 5대까지 무료

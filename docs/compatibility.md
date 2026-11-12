@@ -19,7 +19,7 @@ The newest version is on top. "Pinned" is the upstream version that version's `g
 of that upstream version (`normalize.RulesetVersion`); **when it differs, the same collection results give different asset IDs and
 snapshot fingerprints**, so versions with different rulesets cannot be mixed. "End-to-end" is the upstream version the demo was run with
 from start to finish (observe → reconcile → judge → approve → generate → apply → roll back). The sources are that version's section of
-the [release notes](../RELEASE_NOTES.md) and the ruleset constant read from that upstream version's source.
+the [release notes](../RELEASE_NOTES.md) (v0.27.1 and earlier: the Korean edition [RELEASE_NOTES.ko.md](../RELEASE_NOTES.ko.md)) and the ruleset constant read from that upstream version's source.
 
 | pqcaton | Pinned pqcota | Ruleset | End-to-end | Conditions |
 |---|---|---|---|---|
@@ -45,8 +45,9 @@ version of the end-to-end run or the conditions.
 ## When releasing
 
 For a new version, add a row at the top of this table, or widen the pqcaton range of the top row if the upstream version stays the same.
-The release notes of that version put `함께 쓰는 pqcota: vX` (pqcota used with it) and a link to this table in the first item of
-"받는 쪽이 달라지는 것" (what changes for the receiving side), from the versions after v0.25.0. A test checks that the top row's pqcaton
+The release notes of that version, in both languages, put the pqcota version used with it (`pqcota: vX` in English, `함께 쓰는 pqcota: vX`
+in Korean) and a link to this table in the first item of "What changes for the receiving side" (`받는 쪽이 달라지는 것`), from the versions
+after v0.25.0. A test checks that the top row's pqcaton
 version is the version on top of the release notes, that the pinned pqcota version equals the version of every pqcota module in `go.mod`
 (the modules must share one version), that the README (intro, prerequisites, matching versions) and the demo guide name that version,
 and that the notes sections after v0.25.0 name the version used with it in the first item (IC-U144).

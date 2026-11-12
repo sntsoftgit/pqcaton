@@ -30,6 +30,10 @@
 //     영어판에서 한 번만 세고, 여기서는 두 판이 같은지만 본다. `-sync-cases`는 케이스 관문이 영어판의 링크를 다시 찍은 뒤 한국어판의
 //     첫 칸을 영어판대로 맞춘다.
 //
+//  7. **릴리스 노트.** notes.txt에 적은 짝(영어판 경로)은 문서 전체를 견주지 않는다. 한국어판에는 영어판보다 앞선 판의 절이 더 있어도
+//     되지만, 영어판의 판 절(`## vX.Y.Z: … (YYYY-MM-DD)`)은 차례와 날짜까지 한국어판의 앞부분과 같아야 하고, 두 판에 함께 있는 판마다
+//     Apache-2.0 전환일 · 판 번호 · 케이스 ID · 셸 명령 · 링크 파일이 같아야 한다.
+//
 // 영어판이 한국어 원문의 **요약**인 짝은 summary.txt에 적는다. 그 짝은 내용(판 번호 · 케이스 ID · 셸 명령)을 견주지 않는 대신, 영어판
 // 앞쪽(제목 뒤 열 줄 안)에 요약임을 밝히는 말(summary)이 있어야 한다.
 //
@@ -113,10 +117,12 @@ type config struct {
 	summary map[string]bool
 	// tables — 케이스 표를 행 단위로 견주는 짝(tables.txt, 영어판 경로).
 	tables map[string]bool
+	// notes — 릴리스 노트 짝(notes.txt, 영어판 경로).
+	notes map[string]bool
 }
 
 func loadConfig(dir string) (config, error) {
-	c := config{single: map[string]bool{}, koSingle: map[string]bool{}, alias: map[string]bool{}, summary: map[string]bool{}, tables: map[string]bool{}}
+	c := config{single: map[string]bool{}, koSingle: map[string]bool{}, alias: map[string]bool{}, summary: map[string]bool{}, tables: map[string]bool{}, notes: map[string]bool{}}
 	b, err := os.ReadFile(filepath.Join(dir, "langs.tsv"))
 	if err != nil {
 		return c, err
@@ -151,7 +157,7 @@ func loadConfig(dir string) (config, error) {
 		c.single[f[0]] = true
 		c.koSingle[f[0]] = f[1] == "ko"
 	}
-	for name, into := range map[string]map[string]bool{"summary.txt": c.summary, "tables.txt": c.tables} {
+	for name, into := range map[string]map[string]bool{"summary.txt": c.summary, "tables.txt": c.tables, "notes.txt": c.notes} {
 		b, err := os.ReadFile(filepath.Join(dir, name))
 		if os.IsNotExist(err) {
 			continue
@@ -392,6 +398,8 @@ func checkIn(fsys readFS, files []string, cfg config) []string {
 			if !saysSummary(d.lines) {
 				add("%s: listed in summary.txt but does not say near the top that it is a summary", f)
 			}
+		} else if hasPair && !isKoFile && cfg.notes[f] {
+			problems = append(problems, compareNotes(f, d.lines, pair, docs[pair].lines)...)
 		} else if hasPair && !isKoFile {
 			ko := docs[pair]
 			if a, b := diffSet(d.versions, ko.versions); a != "" || b != "" {
@@ -779,6 +787,108 @@ func logicalLines(lines []string) []logicalLine {
 			text += " " + strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(lines[i]), ">"))
 		}
 		out = append(out, logicalLine{n: n, text: text})
+	}
+	return out
+}
+
+// noteHeading — 릴리스 노트의 판 절 제목.
+var noteHeading = regexp.MustCompile(`^## (v\d+\.\d+\.\d+): .*\((\d{4}-\d{2}-\d{2})\)\s*$`)
+
+// apacheDate — 판 절의 Apache-2.0 전환일 줄.
+var apacheDate = regexp.MustCompile(`\*\*Apache-2\.0 [^:*]*: (\d{4}-\d{2}-\d{2})\*\*`)
+
+// noteSection — 판 절 하나(제목 줄의 판 · 날짜와 그 아래 줄들).
+type noteSection struct {
+	version, date string
+	line          int
+	body          []string
+}
+
+func noteSections(lines []string) []noteSection {
+	var out []noteSection
+	cur := -1
+	for i, l := range lines {
+		if strings.HasPrefix(l, "## ") {
+			cur = -1
+			if m := noteHeading.FindStringSubmatch(l); m != nil {
+				out = append(out, noteSection{version: m[1], date: m[2], line: i + 1})
+				cur = len(out) - 1
+			}
+			continue
+		}
+		if cur >= 0 {
+			out[cur].body = append(out[cur].body, l)
+		}
+	}
+	return out
+}
+
+// compareNotes — 영어판의 판 절이 한국어판 앞부분과 같은 차례 · 날짜이고, 함께 있는 판마다 사실이 같은가.
+func compareNotes(en string, enLines []string, ko string, koLines []string) []string {
+	var out []string
+	add := func(format string, a ...any) { out = append(out, fmt.Sprintf(format, a...)) }
+	es, ks := noteSections(enLines), noteSections(koLines)
+	if len(es) == 0 {
+		return []string{fmt.Sprintf("%s: no release section (## vX.Y.Z: … (YYYY-MM-DD))", en)}
+	}
+	for i, e := range es {
+		if i >= len(ks) {
+			add("%s:%d: %s is not in %s", en, e.line, e.version, ko)
+			continue
+		}
+		k := ks[i]
+		if e.version != k.version || e.date != k.date {
+			add("%s:%d ↔ %s:%d: release %d is %s (%s) in English but %s (%s) in Korean", en, e.line, ko, k.line, i+1, e.version, e.date, k.version, k.date)
+			continue
+		}
+		section := func(b []string) (*doc, string) {
+			d := &doc{versions: map[string]bool{}, cases: map[string]bool{}}
+			apache := ""
+			inFence, shell := false, false
+			for _, l := range b {
+				if fenceRe.MatchString(l) {
+					if !inFence {
+						lang := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(l), "`"))
+						shell = lang == "bash" || lang == "sh" || lang == "shell" || lang == "console"
+					}
+					inFence = !inFence
+					continue
+				}
+				if m := apacheDate.FindStringSubmatch(l); m != nil && apache == "" {
+					apache = m[1]
+				}
+				for _, v := range versionRe.FindAllString(l, -1) {
+					d.versions[v] = true
+				}
+				for _, c := range caseRe.FindAllString(l, -1) {
+					d.cases[c] = true
+				}
+				if inFence && shell {
+					if c := commandLine(l); c != "" {
+						d.commands = append(d.commands, c)
+					}
+				}
+			}
+			return d, apache
+		}
+		ed, ea := section(e.body)
+		kd, ka := section(k.body)
+		tag := fmt.Sprintf("%s ↔ %s (%s)", en, ko, e.version)
+		if ea == "" || ea != ka {
+			add("%s: Apache-2.0 conversion dates differ or are missing (%q vs %q)", tag, ea, ka)
+		}
+		if a, b := diffSet(ed.versions, kd.versions); a != "" || b != "" {
+			add("%s: versions differ (only in English: %s; only in Korean: %s)", tag, a, b)
+		}
+		if a, b := diffSet(ed.cases, kd.cases); a != "" || b != "" {
+			add("%s: case ids differ (only in English: %s; only in Korean: %s)", tag, a, b)
+		}
+		if j := firstDiff(ed.commands, kd.commands); j >= 0 {
+			add("%s: shell commands differ at command %d (%q vs %q)", tag, j+1, at(ed.commands, j), at(kd.commands, j))
+		}
+		if a, b := diffSet(fileLinks(append([]string{""}, e.body...)), fileLinks(append([]string{""}, k.body...))); a != "" || b != "" {
+			add("%s: linked files differ (only in English: %s; only in Korean: %s)", tag, a, b)
+		}
 	}
 	return out
 }

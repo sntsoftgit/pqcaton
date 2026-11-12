@@ -2,7 +2,7 @@
 
 # 여정
 
-[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · **여정** · [설계](developers.ko.md) · [검증 기준](testcases.ko.md) · [데모](../demo/README.ko.md) · [구조 그림](../README.ko.md#한-그림으로)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.ko.md) · **여정** · [설계](developers.ko.md) · [검증 기준](testcases.ko.md) · [데모](../demo/README.ko.md) · [구조 그림](../README.ko.md#한-그림으로)
 
 이 문서는 관측부터 확정까지를 **처음부터 끝까지** 따라갑니다. **명령을 어떤 차례로 돌리고
 무엇을 넣는지도 여기 있습니다.** 왜 그렇게 만들었는지는 [설계](developers.ko.md)에 있습니다.

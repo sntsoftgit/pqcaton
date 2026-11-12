@@ -34,7 +34,8 @@ Contact: **kty@sntsoft.co.kr**
 
 **Each version has its own clock.** Whichever version you received, four years after the day it was published it becomes Apache-2.0.
 That happens automatically and the company cannot stop it; the license terms themselves say so. **The conversion date of each
-version is written in the [release notes](../RELEASE_NOTES.md).**
+version is written in the [release notes](../RELEASE_NOTES.md), for the versions before the English edition began in the Korean edition
+[RELEASE_NOTES.ko.md](../RELEASE_NOTES.ko.md).**
 
 | Version | Published | Converts to Apache-2.0 |
 |---|---|---|

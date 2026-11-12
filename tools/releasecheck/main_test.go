@@ -224,3 +224,126 @@ func TestRedactFixtures(t *testing.T) {
 		t.Fatalf("redact output differs\n--- got\n%s--- want\n%s", got, want)
 	}
 }
+
+const fixtureEN = `English · [Korean](RELEASE_NOTES.ko.md)
+
+# Release notes
+
+## v1.2.3: Scope rounds go through the history (2026-11-11)
+
+**Apache-2.0 conversion: 2030-11-11**
+
+- See [the table](docs/compatibility.md), [notes](#v122-older-2026-11-10), [up](./README.md#how-it-fits-together) and [pqcota](https://github.com/u/common/issues/1).
+- In code, ` + "`[x](docs/a.md)`" + ` stays.
+
+` + "```" + `
+[y](docs/b.md)
+` + "```" + `
+
+## v1.2.2: older (2026-11-10)
+
+**Apache-2.0 conversion: 2030-11-10**
+`
+
+const fixtureKO = `[English](RELEASE_NOTES.md) · Korean
+
+# notes
+
+## v1.2.3: Korean title, with ` + "`code`" + ` (2026-11-11)
+
+**Apache-2.0 change: 2030-11-11**
+
+- [table](docs/compatibility.ko.md)
+
+## v1.2.2: older (2026-11-10)
+
+**Apache-2.0 change: 2030-11-10**
+`
+
+func TestBodyRewritesLinksToTheTag(t *testing.T) {
+	b, err := releaseBody(fixtureEN, fixtureKO, "github.com/o/app", "v1.2.3", "KO")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob := "https://github.com/o/app/blob/v1.2.3/"
+	for _, want := range []string{
+		"[KO](" + blob + "RELEASE_NOTES.ko.md#v123-korean-title-with-code-2026-11-11)\n\n**Apache-2.0 conversion: 2030-11-11**",
+		"[the table](" + blob + "docs/compatibility.md)",
+		"[notes](" + blob + "RELEASE_NOTES.md#v122-older-2026-11-10)",
+		"[up](" + blob + "README.md#how-it-fits-together)",
+		"[pqcota](https://github.com/u/common/issues/1)",
+		"`[x](docs/a.md)`",
+		"\n[y](docs/b.md)\n",
+	} {
+		if !strings.Contains(b, want) {
+			t.Errorf("body lacks %q:\n%s", want, b)
+		}
+	}
+	if strings.Contains(b, "## v1.2.2") || strings.Contains(b, "## v1.2.3") {
+		t.Errorf("body must hold only the section text:\n%s", b)
+	}
+	// 한국어 절의 상대 링크도 같은 규칙으로 바뀐다(한국어 노트만 본문으로 쓰는 날을 위해).
+	ko, err := rewriteLinks("[t](docs/compatibility.ko.md) [h](#v123-title)", "https://github.com/o/app/blob/v1.2.3")
+	if err != nil || ko != "[t]("+blob+"docs/compatibility.ko.md) [h]("+blob+"RELEASE_NOTES.md#v123-title)" {
+		t.Errorf("Korean links: %q %v", ko, err)
+	}
+}
+
+func TestBodyRefuses(t *testing.T) {
+	for name, tc := range map[string]struct{ en, ko, version, label string }{
+		"no Korean section": {fixtureEN, strings.Replace(fixtureKO, "## v1.2.3", "## v1.2.0", 1), "v1.2.3", "KO"},
+		"other date":        {fixtureEN, strings.Replace(fixtureKO, "(2026-11-11)", "(2026-11-12)", 1), "v1.2.3", "KO"},
+		"no English":        {fixtureEN, fixtureKO, "v1.2.4", "KO"},
+		"empty label":       {fixtureEN, fixtureKO, "v1.2.3", ""},
+		"escaping link":     {strings.Replace(fixtureEN, "docs/compatibility.md", "../x.md", 1), fixtureKO, "v1.2.3", "KO"},
+	} {
+		if _, err := releaseBody(tc.en, tc.ko, "github.com/o/app", tc.version, tc.label); err == nil {
+			t.Errorf("%s: want an error, got none", name)
+		}
+	}
+}
+
+func TestBodyCheck(t *testing.T) {
+	want, err := releaseBody(fixtureEN, fixtureKO, "github.com/o/app", "v1.2.3", "KO")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 웹에서 고친 본문은 CRLF 가 된다. 그것은 같은 본문이다.
+	u, err := checkBody(want, strings.ReplaceAll(want, "\n", "\r\n")+"  \r\n", fixtureKO)
+	if err != nil || u != "https://github.com/o/app/blob/v1.2.3/RELEASE_NOTES.ko.md" {
+		t.Fatalf("want ok, got %q %v", u, err)
+	}
+	if _, err := checkBody(want, strings.Replace(want, "older", "newer", 1)+"\nextra", fixtureKO); err == nil {
+		t.Error("a different body: want an error")
+	}
+	if _, err := checkBody(want, want, strings.Replace(fixtureKO, "Korean title", "Other title", 1)); err == nil {
+		t.Error("missing Korean anchor: want an error")
+	}
+	if _, err := checkBody("x", "x", fixtureKO); err == nil {
+		t.Error("no Korean link on top: want an error")
+	}
+}
+
+func TestNotesBothFiles(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, s string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(s), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("RELEASE_NOTES.md", fixtureEN)
+	write("RELEASE_NOTES.ko.md", fixtureKO)
+	args := []string{"-repo", dir, "-version", "v1.2.3", "-date", "2026-11-11", "-draft-marker", "DRAFT", "-draft-marker", "in progress"}
+	if err := cmdNotes(args); err != nil {
+		t.Fatalf("want ok, got %v", err)
+	}
+	write("RELEASE_NOTES.ko.md", strings.Replace(fixtureKO, "2030-11-11", "2030-11-12", 1))
+	if err := cmdNotes(args); err == nil || !strings.Contains(err.Error(), "RELEASE_NOTES.ko.md") {
+		t.Fatalf("a wrong Korean date: want an error naming the Korean notes, got %v", err)
+	}
+	write("RELEASE_NOTES.ko.md", fixtureKO)
+	write("RELEASE_NOTES.md", strings.Replace(fixtureEN, "# Release notes", "# Release notes\n\n## next (in progress)", 1))
+	if err := cmdNotes(args); err == nil || !strings.Contains(err.Error(), "RELEASE_NOTES.md") {
+		t.Fatalf("an English draft first: want an error, got %v", err)
+	}
+}

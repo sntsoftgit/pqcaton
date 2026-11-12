@@ -2,7 +2,7 @@
 
 # 설계: 인벤토리 거버넌스
 
-[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.ko.md) · **설계** · [검증 기준](testcases.ko.md) · [데모](../demo/README.ko.md) · [구조 그림](../README.ko.md#한-그림으로)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.ko.md) · [여정](journey.ko.md) · **설계** · [검증 기준](testcases.ko.md) · [데모](../demo/README.ko.md) · [구조 그림](../README.ko.md#한-그림으로)
 
 pqcota가 **관측**하고, 이 리포가 **그 관측을 판정으로 잇습니다.**
 
