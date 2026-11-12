@@ -31,7 +31,8 @@ jobs:
         with:
           python-version-file: tools/site/python-version
       - name: 도구 설치(해시 고정)
-        run: pip install --disable-pip-version-check --no-cache-dir --require-hashes --only-binary :all: -r tools/site/requirements.txt
+        run: |
+          pip install --disable-pip-version-check --no-cache-dir --require-hashes --only-binary :all: -r tools/site/requirements.txt
       - name: 빌드와 링크 검사
         run: tools/site/build.sh "$RUNNER_TEMP/site/site"
       - name: 판 기록
