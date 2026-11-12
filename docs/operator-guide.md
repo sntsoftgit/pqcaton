@@ -5,7 +5,10 @@ English · [한국어](operator-guide.ko.md)
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.28.0.
+> **`main` is in development for v0.29.0.** It is taking in upstream pqcota v0.13.0 (ruleset `pqcota-enrich/v4`). For
+> production use the [v0.28.0 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.28.0) with pqcota v0.11.0.
+
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.29.0.
 The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -52,7 +55,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 **The binary.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.28.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.29.0
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
@@ -64,8 +67,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.29.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.29.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -81,7 +84,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.29.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -120,10 +123,12 @@ machine. The screen checks both before it starts and, when something is missing,
   and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
   with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
 - **Collectors.** Put the collectors of the upstream release in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this. Keep them on pqcota v0.11.0 (the pqcota version for each pqcaton version is in the
-  [version table](compatibility.md), in Korean), and the `collector.jar` put on the nodes on the same version.
-  This screen normalizes the collection results it reads with the v0.11.0 ruleset (`pqcota-enrich/v3`, the same as
-  v0.10.7). A
+  <folder>`), shaped like this. Keep them on pqcota v0.13.0 (the pqcota version for each pqcaton version is in the
+  [version table](compatibility.md)), and the `collector.jar` put on the nodes on the same version.
+  This screen normalizes the collection results it reads with the v0.13.0 ruleset (`pqcota-enrich/v4`). From v0.12.0
+  `pqcota-jvmscan` reports the JVMs that run the same application as one deployment, and from v0.13.0 `pqcota-nodescan` and
+  `pqcota-netcap` give a user service the app key `user@<uid>.service/<unit>` and give each edge to the application that
+  opened the connection. A
   `pqcota-jvmscan` earlier than v0.10.7 writes its results over several lines on a node with two or more JVMs, and the
   whole ingest request that holds that node is refused. An earlier `pqcota-jvmscan` or
   `collector.jar` does not carry the per-provider list of PQC services, so the JCA readiness becomes `unknown`, and the 03
@@ -145,7 +150,7 @@ and `windows-amd64` folders.
 
 ```bash
 mkdir -p ~/pqcaton/collectors && cd ~/pqcaton/collectors
-for f in pqcota-linux-amd64.tar.gz collector.jar SHA256SUMS; do curl -fsSLO "https://github.com/randyinthedev-hash/pqcota/releases/download/v0.11.0/$f"; done
+for f in pqcota-linux-amd64.tar.gz collector.jar SHA256SUMS; do curl -fsSLO "https://github.com/randyinthedev-hash/pqcota/releases/download/v0.13.0/$f"; done
 sha256sum -c --ignore-missing SHA256SUMS
 tar -xzf pqcota-linux-amd64.tar.gz && mv pqcota-linux-amd64 linux-amd64
 ```
@@ -157,8 +162,8 @@ dependencies carry no replace either.
 **Every upstream collector today, the release assets included, is "cannot be verified".** The release assets, like a
 build of your own next to the sibling folders, take their dependencies as replaces of those folders. A pqcota-common of
 another version next to it does not show in the build information, so the screen does not count such a build as verified.
-A release asset shows as "declared version: v0.11.0 · actual source: local replace (devel) · cannot be verified", and a
-build of your own from a tag checkout as "collector source v0.11.0 verified · replaced dependency sources cannot be
+A release asset shows as "declared version: v0.13.0 · actual source: local replace (devel) · cannot be verified", and a
+build of your own from a tag checkout as "collector source v0.13.0 verified · replaced dependency sources cannot be
 verified". Once the archives match `SHA256SUMS`, or you have checked that the two repositories next to it are at the same
 tag, start with the option below. Upstream has been asked to carry version information
 ([pqcota-discovery#1](https://github.com/randyinthedev-hash/pqcota-discovery/issues/1)).
@@ -179,7 +184,7 @@ and it is used without any flag. The screen neither creates this file nor change
 every signature. The last line puts the public key alone in `approval.pub`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.11.0
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.13.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
@@ -602,6 +607,45 @@ cut). Send the diagnostics file and the files you kept. The diagnostics file hol
 contents.
 
 ## 9. Upgrading
+
+### v0.28.0 to v0.29.0
+
+v0.29.0 takes in upstream pqcota v0.13.0. Upstream v0.12.0 moved the ruleset to `pqcota-enrich/v4` (JCA deployment identity), so the
+sessions and plans built with v0.28.0 move on through a ruleset change round. The state format and the session and plan formats are
+the same as v0.28.0. There is no need to pass through upstream v0.12.0; upgrade straight to v0.13.0.
+
+1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back up the workspace as
+   [section 7](#7-backup-and-restore) shows. Back up the upstream database too.
+2. **Upgrade the upstream tools that read the same database first.** The v0.11.0 `pqcota-inventory` cannot open the history of a
+   node that holds a snapshot written by v0.12.0 or later, and the v0.11.0 `pqcota-provision --dsn` can write the playbook on such a
+   database and then fail with exit status 1. Keep the five repositories together at v0.13.0. If you do not upgrade upstream yet,
+   keep pqcaton at v0.28.0 too.
+3. Replace the three collectors on the nodes (`pqcota-nodescan`, `pqcota-netcap`, `pqcota-jvmscan`) and `collector.jar` with the
+   v0.13.0 release assets as [section 2](#2-installation) shows. The release assets are also "cannot be verified", so
+   `-allow-unverified-collectors` is still needed.
+4. Replace the binary with the `go install` of [section 2](#2-installation), start the screen and observe again on 03. **Re-ingest the
+   pqcota history with v4 too.** The ruleset is part of the snapshot fingerprint, so with a history that v0.11.0 ingested under v3
+   the activation and baseline reconciliation on 05 do not pass. Re-ingest with
+   `PQCOTA_ORG=<judgment org> pqcota-ingest -scope-assets <workspace>/scope-assets.csv <workspace>/results`.
+5. When 05 shows "This session was opened under a different upstream ruleset", press "Start a new round under the current rules"
+   (`pqcaton-decide new-round` on the command line). **Earlier conclusions move over only as reference values.** The evidence of Java
+   assets changes to new per-deployment findings, so they show as "changed" in the report, and "removed" and "added" can include the
+   effect of the identity rule change. Judge each item again or press "Adopt again". No rule links old conclusions to the new
+   evidence automatically.
+6. **If an asset scope rule has a user service `user@<uid>.service` in its `app_key`, fix it.** The v0.13.0 collectors give a user
+   service the app key `user@<uid>.service/<unit>`, so the old value no longer matches. Find such rules as below, fix them on 02,
+   finalize, and activate on 05.
+
+   ```bash
+   grep -n 'user@[0-9]*\.service' <workspace>/asset-scope.csv <workspace>/scope-assets.csv
+   ```
+
+7. **Do not compare an edge's observation count (`observed_count`) across the upgrade.** From v0.13.0 it counts the distinct
+   connections seen in the observation window, not handshake messages. A lower count does not mean less traffic. Edges are also
+   split per application that opened the connection, which upstream's diff shows as removed and added without a ruleset warning.
+   pqcaton counts an edge by source, destination, port and protocol, so its reconciliation states stay the same.
+8. The 06 screen does not sign or generate a plan of the v3 ruleset. A v3 plan already signed and its playbooks are only viewed and
+   archived. Sign the plan finalized in the new round.
 
 ### v0.27.1 to v0.28.0
 

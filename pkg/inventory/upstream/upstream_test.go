@@ -160,3 +160,70 @@ func TestVerifyChecksNodesLeftWithNoManagedAssets(t *testing.T) {
 		t.Errorf("after re-ingesting under C: missing %v, err %v; want all found (the empty snapshot is stored upstream)", missing, err)
 	}
 }
+
+// IC-S25 — **규칙 판은 스냅샷 지문의 입력이다. v3로 적재한 이력은 v4 대조를 통과하지 못하고, v4로 다시 적재하면 통과한다.**
+// 같은 수집 결과를 같은 규칙 판으로 정규화하면 지문이 같고(지문 알고리즘은 호환된다), v3와 v4로 정규화하면 지문이 다르다
+// (`ContentHashV1`이 규칙 판을 읽는다). 상류가 v3(pqcota v0.11.0)로 적재해 둔 이력에서 이 판(v4)의 대조 근거는 모두
+// 빠진 것으로 나온다. 같은 결과를 v4로 다시 적재하면 v3 스냅샷이 이력에 남아 있어도 통과한다.
+func TestVerifyRefusesV3HistoryUnderV4(t *testing.T) {
+	const v3 = "pqcota-enrich/v3"
+	if normalize.RulesetVersion != "pqcota-enrich/v4" {
+		t.Fatalf("this version pins pqcota-enrich/v4, got %q", normalize.RulesetVersion)
+	}
+	dir := t.TempDir()
+	for i, n := range []string{"web-01", "db-01"} {
+		b, _ := protojson.Marshal(result(n))
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("r%d.json", i)), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	results, flaws := resultio.LoadDir(dir)
+	if len(flaws) != 0 {
+		t.Fatal(flaws)
+	}
+	hash := func(ruleset string) string {
+		s, err := normalize.Normalize(results[:1], "snap:x", "web-01", ruleset, history.NewMemStore(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return history.ContentHashV1(s)
+	}
+	if hash(v3) != hash(v3) || hash(normalize.RulesetVersion) != hash(normalize.RulesetVersion) {
+		t.Fatal("the same snapshot under the same ruleset hashed differently")
+	}
+	if hash(v3) == hash(normalize.RulesetVersion) {
+		t.Fatal("v3 and v4 snapshots of the same results hashed the same: the ruleset is no longer part of the fingerprint")
+	}
+
+	store := history.NewMemStore()
+	if _, err := ingest.IngestWith(results, ingest.IngestOptions{SnapshotPrefix: "v3", RulesetVersion: v3, Store: store}); err != nil {
+		t.Fatal(err)
+	}
+	d := decl.Declaration{Org: "acme", Scope: []string{"web", "db"},
+		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}, ObservedAs: []string{"web-01"}},
+			{Name: "db", IPs: []string{"10.0.0.2"}, ObservedAs: []string{"db-01"}}}}
+	r, err := report.BuildWith(dir, d, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs := upstream.Refs(r)
+	if len(refs) != 2 {
+		t.Fatalf("refs: %v", refs)
+	}
+	for _, ref := range refs {
+		if ref.Ruleset != normalize.RulesetVersion {
+			t.Fatalf("a reference carries ruleset %q, want %q", ref.Ruleset, normalize.RulesetVersion)
+		}
+	}
+	if missing, err := upstream.Verify(store, refs); !errors.Is(err, upstream.ErrMissing) || len(missing) != 2 {
+		t.Errorf("v4 evidence against a v3 history: missing %v, err %v; want both missing", missing, err)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	if _, err := ingest.IngestWith(results, ingest.IngestOptions{SnapshotPrefix: "v4", RulesetVersion: normalize.RulesetVersion,
+		Store: store}); err != nil {
+		t.Fatal(err)
+	}
+	if missing, err := upstream.Verify(store, refs); err != nil || len(missing) != 0 {
+		t.Errorf("after re-ingesting with v4: missing %v, err %v; want none", missing, err)
+	}
+}

@@ -59,7 +59,7 @@ The core story (against the declaration). **No asset-scope policy applies to edg
 - **Edge reconciliation**: it reconciles the edge set core observed as it is. core `demo.sh` re-collects with **retry-until-complete**
   up to the target edges (complete even on the first run), so the extension's edges are consistent too. Depending on the capture window,
   one more UNDECLARED edge may appear.
-- **Versions and IPs**: the same as the [core expected-output](https://github.com/randyinthedev-hash/pqcota/blob/v0.11.0/demo/expected-output/README.md).
+- **Versions and IPs**: the same as the [core expected-output](https://github.com/randyinthedev-hash/pqcota/blob/v0.13.0/demo/expected-output/README.md).
   Base image digests pin the version strings; only the IPs change on every run (unrelated to the story).
 - **Declaration rules**: changing `DECLARED_PROTOS` in [`../scripts/declare.py`](../scripts/declare.py) changes the distribution. Adding
   `ssh` makes UNDECLARED disappear, the picture of an organization with a perfect declaration.

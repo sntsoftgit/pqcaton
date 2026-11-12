@@ -4,10 +4,13 @@ English · [한국어](README.ko.md)
 
 **Overview** · [Release notes](RELEASE_NOTES.md) · [Journey](docs/journey.md) · [Design](docs/developers.md) · [Acceptance criteria](docs/testcases.md) · [Demo](demo/README.md) · [Structure diagram](#how-it-fits-together)
 
+> **`main` is in development for v0.29.0.** It is taking in upstream pqcota v0.13.0 (ruleset `pqcota-enrich/v4`). For
+> production use the [v0.28.0 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.28.0) with pqcota v0.11.0.
+
 **The place to decide what to change in a PQC migration.** [pqcota](https://github.com/randyinthedev-hash/pqcota) observes which
 cryptography your systems use; pqcaton **reconciles those observations with what your organization declared, puts what needs a decision
 in a review queue, and finalizes the decisions people make** into a plan pqcota can approve and carry out. This version is used with
-pqcota **v0.11.0** ([version table](docs/compatibility.md)).
+pqcota **v0.13.0** ([version table](docs/compatibility.md)).
 
 > **Source-available, not open source.** It is [BUSL-1.1](LICENSE): free up to 5 managed nodes, a contract beyond that, and **each
 > release converts to Apache-2.0 four years later** ([license guide](docs/licensing.md)).
@@ -59,7 +62,7 @@ own. A longer architecture page is [docs/index.html](docs/index.html).
 
 <a id="써보기"></a>
 
-You need **Go** (the version in [`go.mod`](go.mod)) and, for observation, approval and generation, pqcota **v0.11.0** with its five
+You need **Go** (the version in [`go.mod`](go.mod)) and, for observation, approval and generation, pqcota **v0.13.0** with its five
 repositories at the same tag. Graphviz (`dot`) is optional; without it the topology comes out as DOT source.
 
 **Around once on this machine (Linux).** The shortcut scans this machine itself (`/proc`); on macOS and Windows, reconcile the
@@ -100,11 +103,12 @@ pqcaton-ui
 
 ## Matching versions
 
-This repository is built with pqcota **v0.11.0** (`pqcota-common`, `pqcota-inventory`, `pqcota-discovery` and `pqcota-provisioning` at the
-same tag, pinned in `go.mod`) and was checked end to end with it. pqcaton normalizes observations with the ruleset built into it
-(`pqcota-enrich/v3`) and carries those snapshot fingerprints as the evidence of plans, so upstream's `pqcota-ingest` and
-`pqcota-provision` must use the same ruleset. With pqcota v0.10.5 or earlier the ruleset differs and the evidence is not found; use
-pqcaton [v0.24.1](https://github.com/sntsoftgit/pqcaton/tree/v0.24.1) there. Every combination is in the
+This repository is built with pqcota **v0.13.0** (`pqcota-common`, `pqcota-inventory`, `pqcota-discovery` and `pqcota-provisioning` at the
+same tag, pinned in `go.mod`). The end-to-end check with that version is done before release. pqcaton normalizes observations with
+the ruleset built into it (`pqcota-enrich/v4`) and carries those snapshot fingerprints as the evidence of plans, so upstream's
+`pqcota-ingest` and `pqcota-provision` must use the same ruleset. For pqcota v0.10.6 to v0.11.0, whose ruleset is v3, use pqcaton
+[v0.28.0](https://github.com/sntsoftgit/pqcaton/tree/v0.28.0); for v0.10.5 or earlier, use pqcaton
+[v0.24.1](https://github.com/sntsoftgit/pqcaton/tree/v0.24.1). Every combination is in the
 [version table](docs/compatibility.md).
 
 ## What pqcaton does not do

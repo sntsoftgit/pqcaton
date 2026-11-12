@@ -63,7 +63,7 @@
 - **엣지 대조 구성**: core가 관측한 엣지 집합을 그대로 대조합니다. core `demo.sh`가 **retry-until-complete**로
   목표 엣지까지 재수집하므로(첫 실행도 완전) 확장 결과의 엣지도 일관됩니다. 캡처 구간에 따라
   UNDECLARED 엣지가 하나 더 나타날 수 있습니다.
-- **버전·IP**: [core expected-output](https://github.com/randyinthedev-hash/pqcota/blob/v0.11.0/demo/expected-output/README.ko.md)과 같습니다.
+- **버전·IP**: [core expected-output](https://github.com/randyinthedev-hash/pqcota/blob/v0.13.0/demo/expected-output/README.ko.md)과 같습니다.
   base 이미지 digest 핀으로 버전 문자열을 고정하고, IP만 실행할 때마다 달라집니다(서사와는 무관합니다).
 - **선언 규칙**: [`../scripts/declare.py`](../scripts/declare.py)의 `DECLARED_PROTOS`를 바꾸면
   분포가 달라집니다. `ssh`를 넣으면 UNDECLARED가 사라집니다. 선언이 완벽한 조직의 모습입니다.

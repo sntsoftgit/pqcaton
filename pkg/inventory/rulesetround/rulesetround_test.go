@@ -249,3 +249,55 @@ func TestTwoUnnamedSessionsEachOpenARound(t *testing.T) {
 		}
 	}
 }
+
+// IC-P53 — **v0.28.0(v3)이 쓴 세션 파일로 v4 회차를 연다.** 상태 폴더 옆의 v3 세션 파일에서 회차를 열면 세션 파일은 v4
+// 새 세션이 되고(새 ID, 현재 결론 비움, 옛 결론은 참고값), 보관본은 옛 v3 바이트 그대로이며, 보고서는 v3에서 v4로 바뀌었다고
+// 적는다. 같은 요청을 다시 보내면 이미 지금 규칙 판이라 아무것도 쓰지 않는다.
+func TestV3SessionFileOpensAV4Round(t *testing.T) {
+	const v3 = "pqcota-enrich/v3+pqcaton-plan/v3"
+	dir := filepath.Join(t.TempDir(), "ws")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "session.json")
+	old := oldSession()
+	old.RulesetVersion = v3
+	if err := review.Save(path, old); err != nil {
+		t.Fatal(err)
+	}
+	oldBytes, _ := os.ReadFile(path)
+	st := openState(t, dir, nil)
+	defer st.Close()
+	res, err := rulesetround.Open(st, request(path), store.Check{}, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, err := review.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next.RulesetVersion != review.RulesetVersion || review.UpstreamRuleset(next.RulesetVersion) != "pqcota-enrich/v4" || next.SessionID != newID {
+		t.Fatalf("the new session: ruleset %q id %q", next.RulesetVersion, next.SessionID)
+	}
+	if it := next.Items[0]; it.Conclusion != "" || it.Previous == nil || it.Previous.Conclusion != "교체한다" || it.Previous.RulesetVersion != v3 {
+		t.Errorf("current or reference values: %+v / %+v", it, it.Previous)
+	}
+	if b, _ := os.ReadFile(res.Archive); string(b) != string(oldBytes) {
+		t.Error("the archive is not the v3 session byte for byte")
+	}
+	rb, err := os.ReadFile(res.Report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := review.DecodeReport(rb)
+	if err != nil || rep.FromRuleset != v3 || rep.ToRuleset != review.RulesetVersion {
+		t.Errorf("the report: from %q to %q (%v)", rep.FromRuleset, rep.ToRuleset, err)
+	}
+	before, _ := os.ReadDir(dir)
+	if _, err := rulesetround.Open(st, request(path), store.Check{}, time.Second); !errors.Is(err, rulesetround.ErrSameRuleset) && !errors.Is(err, store.ErrStale) {
+		t.Errorf("the same request again: %v", err)
+	}
+	if after, _ := os.ReadDir(dir); len(after) != len(before) {
+		t.Error("a second request made files")
+	}
+}

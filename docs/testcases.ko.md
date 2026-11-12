@@ -94,6 +94,7 @@
 | **[IC-S22](../pkg/inventory/upstream/reconcile_test.go) ✅** | 정책 B로 적재한 pqcota 이력을 B로 대조 · 정책 없이만 적재된 이력을 B로 대조 · B로 적재한 뒤 정책 없이 다시 적재하고 B로 대조 · 근거 없는 결과 폴더 | **화면과 명령이 함께 쓰는 판정(`upstream.Reconcile`)이다.** 차례로 통과(확인 시각 · 조직 · 노드별 지문의 기록) · `ErrMissing` · `ErrMissing`과 `ErrRevert`(있지만 최신이 아님, 이전 정책 복귀가 이렇게 보인다) · `ErrNothingToVerify`다 |
 | **[IC-S23](../pkg/inventory/upstream/reconcile_test.go) ✅** | 조회 하나하나는 제한보다 짧지만 합이 넘는 이력 · 제한 안에 끝나는 이력 | **대조 전체가 제한 시간 하나에 묶인다.** 앞은 제한 시간에 바로 `ErrUnreachable`(timed out)로 돌아오고, 뒤는 통과한다. 노드마다 시간을 새로 주지 않는다 |
 | **[IC-S24](../pkg/inventory/upstream/reconcile_test.go) ✅** | 호스트 · 사용자 · 비밀번호를 실은 오류로 실패하는 이력에 Reconcile · Probe, 읽히는 이력에 Probe, 빈 DSN · 닿지 않는 DSN으로 OpenPg | **조회 오류는 연결 정보 없이 분류만 남긴다.** 실패는 모두 `ErrUnreachable`이고 그 값들이 없다. 읽히는 이력은 통과한다. 빈 DSN은 `ErrNoDSN`이다 |
+| **[IC-S25](../pkg/inventory/upstream/upstream_test.go) ✅** | 같은 결과를 한 규칙 판으로 두 번 정규화 · v3와 v4로 정규화 · v3 이력(pqcota v0.11.0)을 이 판의 근거(v4)로 확인 · 그 뒤 v4로 다시 적재 | **규칙 판은 스냅샷 지문의 입력이다.** 같은 규칙 판이면 지문이 같고(알고리즘은 호환된다), v3와 v4면 다르다. v3 이력에서는 모든 참조가 빠진 것으로 나오고, v4로 다시 적재하면 v3 스냅샷이 남아 있어도 통과한다 |
 
 ### C. confidence 스코어링 (§3.5): 부분
 | TC | Given → When | Then |
@@ -271,6 +272,9 @@
 | **[IC-P48](../pkg/inventory/review/plan_fields_test.go) ✅** | 목표 알고리즘 · 근거 관측 · 활성화 훅 · 설정 산출물 · 되돌림 메모에 NUL을 넣어 계약으로 · NUL 없음 | **계약을 만들지 않고 상류 `sign.CheckPlanText`의 ErrNUL로 거절한다.** 확정(화면 · 명령의 close)이 이 함수를 거치므로 그런 계획은 파일과 영수증이 되지 않는다. NUL이 없으면 그대로다 |
 | **[IC-P49](../pkg/inventory/rulesetround/activation_test.go) ✅** | 대조 기록 없이 활성화 · 대조 기록 없이 기준선 · 대조 기록과 함께 활성화 | **정책 회차는 pqcota 이력 대조 기록 없이 열리지 않는다.** 앞의 둘은 `ErrNoUpstreamCheck`이고 아무것도 쓰지 않는다. 마지막은 처리 기록의 basis가 upstream-verified이고 전환 보고서에 `upstream_check`가 실리며, 보고서 형식 판은 1 그대로라 v0.27.x의 해석이 읽는다 |
 | **[IC-P50](../pkg/inventory/review/ruleset_round_test.go) ✅** | 형식 판 1 보고서: upstream_check 없음(v0.27.x 이하) · 있음 · 이 판이 모르는 선택 필드까지 · 다른 형식 판 | **형식 판 1은 모르는 필드를 무시하는 계약이다.** 앞의 셋은 읽히고 아는 필드는 그대로이며, upstream_check는 없으면 nil이고 있으면 다시 써도 남는다. 다른 형식 판은 거절한다 |
+| **[IC-P51](../pkg/inventory/review/upstream_v4_test.go) ✅** | 이 판의 결합 규칙 판 · 판정과 서명을 마친 v3 세션 · 최상위가 v3인 계획 · 근거 하나가 v3인 v4 계획 · v4 계획 | **이 판은 상류 규칙 판 v4에 묶인다**(`pqcota-enrich/v4+pqcaton-plan/v3`). v3 세션은 확정하지 않고(`ErrRulesetChanged`), v3 계획 둘은 사유를 갈라 거절하며, v4 계획은 지나간다 |
+| **[IC-P52](../pkg/inventory/review/upstream_v4_test.go) ✅** | JCA 결론이 있는 v3 세션을, JCA 자산이 배포본 둘(새 finding id)에 기대는 v4로 다시 세움 · 사라진 항목 하나 · 새 항목 하나 | **JCA 식별이 바뀐 항목의 결론은 현재 결론으로 넘어가지 않는다.** `Carry`는 아무것도 옮기지 않는다. 규칙 전환 회차는 현재 결론을 비우고 옛 결론을 참고값으로만 둔다. 보고서는 JCA 항목을 changed(근거 변경, 옛 finding과 새 finding, 옛 결론)로, 사라진 항목을 only-old로, 새 항목을 only-new로 가른다. 서명만으로는 확정되지 않는다. 옛 id와 새 id를 잇는 규칙은 없다 |
+| **[IC-P53](../pkg/inventory/rulesetround/rulesetround_test.go) ✅** | 상태 폴더 옆의 v0.28.0(v3) 세션 파일로 회차를 엶 · 같은 요청을 다시 | **v3 세션 파일로 v4 회차를 연다.** 세션 파일은 v4 새 세션이 되고(새 ID, 현재 결론 비움, 옛 결론은 참고값), 보관본은 v3 바이트 그대로이며, 보고서는 규칙 판이 v3에서 v4로 바뀌었다고 적는다. 같은 요청을 다시 보내면 아무것도 쓰지 않는다 |
 
 ### E. 통신 엣지 대조와 토폴로지 ([인벤토리 설계 §6](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/inventory/design.md)) 🔶: 엔진·렌더·저장 완료(unit); 라이브 관측은 network-collector([디스커버리 설계 §2.3](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/discovery/design.md))가 공급
 | TC | Given → When | Then |
