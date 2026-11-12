@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.27.1.
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.28.0.
 The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -50,7 +50,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 **The binary.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.27.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.28.0
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
@@ -62,8 +62,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -79,7 +79,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -601,6 +601,25 @@ contents.
 
 ## 9. Upgrading
 
+### v0.27.1 to v0.28.0
+
+From v0.28.0 the screen does not start without the pqcota history, and activating a policy or adopting a baseline always
+goes through the pqcota history reconciliation. The state format, the session and plan formats and the ruleset
+(`pqcota-enrich/v3`) are the same as v0.27.1, so the workspace opens as it is. Upstream stays at v0.11.0.
+
+1. **Put the connection in place first.** Create `pqcota.env` (0600, one line `PQCOTA_DSN=<connection>`) as "pqcota
+   connection" in [section 2](#2-installation) shows, or have `PQCOTA_DSN` in the shell that starts the screen. A service
+   or a launcher needs the file. Without it the screen does not start.
+2. **Ingest pqcota under the organization of the judgments.** The pqcota history's organization must be the organization
+   of the judgments. If you ingested under another organization (such as the default one), ingest again with
+   `PQCOTA_ORG=<organization of the judgments> pqcota-ingest -scope-assets <workspace>/scope-assets.csv <workspace>/results`.
+   Commands that gave `-upstream-org` a value other than the organization of the judgments now stop.
+3. Stop the screen and replace the binary with `go install` from [section 2](#2-installation).
+4. **Fix scripts that used `pqcaton-decide activate-scope -confirm-ingest`.** This version stops without writing anything when given that flag. Activate
+   in 05 of the screen, or run `pqcaton-decide activate-scope` without the flag while `PQCOTA_DSN` is set.
+5. **An activation that goes back to an earlier policy cannot be done in this version** (`upstream-revert`). There is no
+   operator statement to use instead as in v0.27.x, so wait until the upstream issue is resolved or finalize a new policy.
+
 ### v0.27.0 to v0.27.1
 
 v0.27.1 takes in upstream pqcota v0.11.0. The state format, the session and plan formats and the ruleset
@@ -609,7 +628,7 @@ v0.27.1 takes in upstream pqcota v0.11.0. The state format, the session and plan
 1. **Upgrade the upstream tools that read records first.** The v0.10.7 `pqcota-records` cannot read records that v0.11.0
    writes. Replace `pqcota-records` on the same database with v0.11.0 before upgrading `pqcota-ingest`, `pqcota-approve` and
    `pqcota-provision`. Keep the five repositories at the same tag.
-2. Stop the screen and replace the binary with `go install` from [section 2](#2-installation).
+2. Stop the screen and take v0.27.1 with `go install …@v0.27.1`.
 3. Take the collectors from the v0.11.0 release assets as [section 2](#2-installation) shows, checking them against
    `SHA256SUMS`. The release assets are "cannot be verified" too, so `-allow-unverified-collectors` is still needed.
 4. **06 does not sign or generate a plan that carries source evidence or an approval guide** (`plan-fields`). Plans made

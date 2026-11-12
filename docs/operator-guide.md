@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.27.1 기준입니다.
+이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.28.0 기준입니다.
 영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
@@ -47,7 +47,7 @@
 **바이너리.** Go 1.26.11이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.27.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.28.0
 ```
 
 **Linux: 서비스와 실행기.** 서비스는 로그인할 때 화면을 띄우고(브라우저는 열지 않음), 실행기는 서비스를 시작한 뒤 화면을
@@ -57,8 +57,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -73,7 +73,7 @@ journalctl --user -u pqcaton-ui.service
 화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.28.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -547,6 +547,22 @@ pkill -INT -u "$USER" -x pqcaton-ui
 
 ## 9. 판 올리기
 
+### v0.27.1에서 v0.28.0으로
+
+v0.28.0부터 화면은 pqcota 이력 없이 시작하지 않고, 정책 활성화와 기준선 채택은 언제나 pqcota 이력 대조를 거칩니다. 상태 형식 ·
+세션 · 계획 형식과 규칙 묶음(`pqcota-enrich/v3`)은 v0.27.1과 같아 작업 폴더를 그대로 엽니다. 상류는 v0.11.0 그대로입니다.
+
+1. **연결 정보를 먼저 둡니다.** [2절](#2-설치) 「pqcota 연결」대로 `pqcota.env`(0600, `PQCOTA_DSN=<연결 정보>` 한 줄)를 만들거나,
+   화면을 띄우는 셸에 `PQCOTA_DSN`을 둡니다. 서비스 · 실행기로 띄운다면 파일이 있어야 합니다. 없으면 화면이 시작하지 않습니다.
+2. **pqcota 적재를 판정 조직으로 합니다.** pqcota 이력의 조직은 판정 조직이어야 합니다. 지금까지 다른 조직(기본 조직 등)에
+   적재했다면 `PQCOTA_ORG=<판정 조직> pqcota-ingest -scope-assets <작업 폴더>/scope-assets.csv <작업 폴더>/results`로 다시 적재합니다.
+   `-upstream-org`에 판정 조직과 다른 값을 주던 명령은 이제 멈춥니다.
+3. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다.
+4. **`pqcaton-decide activate-scope -confirm-ingest`를 쓰던 스크립트를 고칩니다.** 이 판은 그 플래그를 받으면 아무것도 쓰지 않고 멈춥니다. 활성화는 화면 05에서
+   하거나, `PQCOTA_DSN`을 둔 채 `pqcaton-decide activate-scope`를 플래그 없이 돌립니다.
+5. **이전 정책으로 되돌리는 활성화는 이 판에서 할 수 없습니다**(`upstream-revert`). 되돌려야 하면 v0.27.x에서 하던 운영자 진술을
+   대신할 길이 없으므로, 상류 이슈가 풀릴 때까지 기다리거나 새 정책으로 확정합니다.
+
 ### v0.27.0에서 v0.27.1로
 
 v0.27.1은 상류 pqcota v0.11.0을 반영합니다. 상태 형식 · 세션 · 계획 형식과 규칙 묶음(`pqcota-enrich/v3`)이 v0.27.0과 같아
@@ -555,7 +571,7 @@ v0.27.1은 상류 pqcota v0.11.0을 반영합니다. 상태 형식 · 세션 · 
 1. **기록을 읽는 상류 도구부터 올립니다.** v0.11.0이 쓴 기록은 v0.10.7의 `pqcota-records`가 읽지 못합니다. 같은 DB를 쓰는
    `pqcota-records`를 v0.11.0으로 바꾼 뒤에 `pqcota-ingest` · `pqcota-approve` · `pqcota-provision`을 올립니다. 다섯 리포를 같은
    태그로 둡니다.
-2. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다.
+2. 화면을 끄고 v0.27.1을 `go install …@v0.27.1`로 받습니다.
 3. 수집기는 [2절](#2-설치)대로 v0.11.0 릴리스 자산을 받아 `SHA256SUMS`로 확인한 뒤 둡니다. 릴리스 자산도 「확인 불가」라
    `-allow-unverified-collectors`는 그대로 필요합니다.
 4. **소스 근거나 승인 가이드가 든 계획은 06이 서명 · 생성하지 않습니다**(`plan-fields`). 05가 만드는 계획에는 그 필드가 없어

@@ -19,6 +19,7 @@ pqcaton의 판마다 함께 쓰는 상류 [pqcota](https://github.com/randyinthe
 
 | pqcaton | 고정한 pqcota | 규칙 묶음 | 종단 검증 | 함께 쓰는 조건 |
 |---|---|---|---|---|
+| v0.28.0 | v0.11.0 | `pqcota-enrich/v3` | v0.11.0 | 상류 다섯 리포를 v0.11.0으로 함께 둡니다. 화면은 `PQCOTA_DSN`(또는 `pqcota.env`) 없이 시작하지 않고, 정책 활성화 · 기준선 채택은 pqcota 이력 대조를 거칩니다. pqcota 이력의 조직이 판정 조직이어야 하므로 적재도 그 조직으로 합니다(`PQCOTA_ORG`). 이전 정책 복귀는 막힙니다([pqcota-inventory#1](https://github.com/randyinthedev-hash/pqcota-inventory/issues/1)) |
 | v0.27.1 | v0.11.0 | `pqcota-enrich/v3` | v0.11.0 | 상류 다섯 리포를 v0.11.0으로 함께 둡니다. 규칙 묶음과 스냅샷 지문은 v0.10.7과 같아 그 이력에서도 근거가 찾힙니다. 기록을 읽는 `pqcota-records`는 v0.11.0이 새 기록을 쓰기 전에 올립니다. 소스 근거 · 가이드가 든 계획은 06이 서명 · 생성하지 않으므로 `pqcota-approve` · `pqcota-provision`으로 다룹니다. 릴리스 자산의 수집기도 「확인 불가」라 `-allow-unverified-collectors`로 띄웁니다 |
 | v0.27.0 | v0.10.7 | `pqcota-enrich/v3` | v0.10.7 | 상류 다섯 리포를 v0.10.7로 함께 둡니다. 03이 수집기의 판을 보며, 지금의 상류 빌드는 의존을 옆 폴더 replace로 빌드해 「확인 불가」이므로 `-allow-unverified-collectors`로 띄웁니다(상류에 판 정보를 요청함: [pqcota-discovery#1](https://github.com/randyinthedev-hash/pqcota-discovery/issues/1)) |
 | v0.26.2 ~ v0.26.3 | v0.10.7 | `pqcota-enrich/v3` | v0.10.7 | v0.26.2는 `go install`로 받을 수 없어 v0.26.3을 씁니다(코드 동작은 같습니다). 상류 다섯 리포를 v0.10.7로 함께 둡니다. 규칙 묶음과 스냅샷 지문은 v0.10.6과 같아 v0.10.6이 쌓은 상류 이력에서도 근거가 찾히지만, `pqcota-approve` · `pqcota-provision`은 v0.10.7로 둡니다. v0.10.6의 승인 서명은 문자열에 NUL 문자가 든 계획에서 다른 계획에도 통과할 수 있었습니다(상류 v0.10.7의 보안 수정). 노드의 `pqcota-jvmscan`도 v0.10.7로 바꿉니다 |
