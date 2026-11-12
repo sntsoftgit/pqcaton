@@ -213,12 +213,47 @@ func stuckProcs(ps []markedProc) []stuckProc {
 	return out
 }
 
-// reapRun: 이 실행의 프로세스를 끝내고(killMarked), 기록된 묶음에 증명되지 않는 프로세스가 남았는지 본다. 남았으면
+// 회수의 재시도 계약. **한 번 비었다고 끝내지 않는다.** 막 생긴 자식은 exec 도중에 환경이 빈 채로 읽혀(리눅스
+// /proc/<pid>/environ) 표지가 보이지 않을 수 있다. 정리 명령이 자식을 세션째 떼어 내보내고 곧바로 끝나면 바로 그 자식이
+// 그렇다. 그래서
+//   - reapSettle 간격을 둔 **연속 두 번의 검색이 모두 비었을 때만** 정리가 끝났다고 본다.
+//   - 뒤늦게 나타난 프로세스는 끝낸 뒤(killMarked) 다시 연속 두 번 빈 것을 확인한다.
+//   - 끝내기는 reapRounds번까지다. 그 뒤에도 나타나거나 끝내지 못하면 성공으로 치지 않고 돌려준다(부르는 쪽이 「회수 필요」로
+//     적는다). 검색 오류도 「남은 것 없음」이 아니다.
+//
+// 대기는 유한하다: 끝내기마다 killMarked의 grace와 강제 종료 대기(5초), 빈 검색마다 reapSettle.
+var reapSettle = 300 * time.Millisecond
+
+const reapRounds = 3
+
+// reapRun: 위 계약대로 이 실행의 프로세스를 끝내고, 기록된 묶음에 증명되지 않는 프로세스가 남았는지 본다. 남았으면
 // errUnproven이다.
 func reapRun(rm runMark, grace time.Duration) ([]markedProc, error) {
-	stuck, err := killMarked(rm, grace)
-	if err != nil || len(stuck) > 0 || len(rm.Suspect) == 0 {
-		return stuck, err
+	empty, kills := 0, 0
+	for empty < 2 {
+		ps, err := findMarked(rm)
+		if err != nil {
+			return nil, err
+		}
+		if len(ps) == 0 {
+			empty++
+			if empty < 2 {
+				time.Sleep(reapSettle)
+			}
+			continue
+		}
+		empty = 0
+		if kills == reapRounds {
+			return ps, nil
+		}
+		kills++
+		stuck, err := killMarked(rm, grace)
+		if err != nil || len(stuck) > 0 {
+			return stuck, err
+		}
+	}
+	if len(rm.Suspect) == 0 {
+		return nil, nil
 	}
 	sus, err := findSuspects(rm)
 	if err != nil {

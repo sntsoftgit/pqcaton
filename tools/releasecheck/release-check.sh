@@ -87,6 +87,19 @@ st_git() {
 	echo "✓ main, clean, HEAD = origin/main = $h"
 }
 
+# 후보 커밋의 GitHub 검사. 필수 워크플로가 그 커밋에서 모두 성공해야 한다(없거나 진행 중이거나 실패면 멈춘다).
+# release-check가 통과해도 GitHub의 ci가 실패한 커밋을 내보낸 일(v0.29.0)이 계기다. push한 정확한 커밋을 본다(git 단계가
+# HEAD = origin/main을 확인했다).
+REQUIRED_WORKFLOWS=".github/workflows/ci.yml,.github/workflows/site.yml"
+st_checks() {
+	local mod repo h
+	mod="$(cd "$REPO" && go list -m -f '{{.Path}}')"
+	repo="${mod#github.com/}"
+	h="$(git -C "$REPO" rev-parse HEAD)"
+	curl -fsS --retry 3 --retry-delay 5 -o "$WORK/runs.json" "https://api.github.com/repos/$repo/actions/runs?head_sha=$h&per_page=100"
+	"$WORK/rc" checks -runs "$WORK/runs.json" -commit "$h" -require "$REQUIRED_WORKFLOWS"
+}
+
 # 사전 조건. 무엇이 없어서 멈췄는지가 그 단계 이름으로 드러나게, 쓰는 단계보다 먼저 한곳에서 본다.
 # Docker 는 두 모드 모두 쓴다(REUSE 와 뒷정리 비교). 종단 검증의 조건은 demo/e2e/e2e_test.go 가 보는 것과 같고 full 에서만 본다.
 st_preflight() {
@@ -290,6 +303,7 @@ note "commit: $(git -C "$REPO" rev-parse HEAD)"
 note "go: $(cat "$WORK/goversion") (GOTOOLCHAIN=auto)"
 note "govulncheck: $(cat "$WORK/vulnversion") (vulnerability DB as of the run)"
 while read -r line; do note "upstream: $line"; done < "$WORK/upstream"
+step github-checks st_checks
 step notes-and-versions st_notes
 note "release body: $RUN/release-body.md (gh release create --notes-file)"
 step make st_make

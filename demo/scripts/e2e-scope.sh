@@ -514,5 +514,79 @@ A="$(old_measure)"
 echo "   unchanged (v0.25.0): $A"
 docker exec "$CTL" rm -rf "$OLDWS" /usr/local/bin/pqcaton-ui-v025 /usr/local/bin/pqcaton-decide-v025
 
+# 8) 03에서 실제 관측을 화면이 보내는 그대로 돌린다: 노드 하나를 멈춰 실패하는 관측, 그 노드를 되살려 성공하는 관측.
+# 둘 다 끝난 뒤 이 실행의 표지(PQCATON_RUN=)를 가진 프로세스가 컨트롤러에 하나도 남지 않아야 하고, 「회수 필요」로 닫히지도
+# 않아야 한다(v0.29.1, IC-U202: 한 번 비었다고 회수를 끝내지 않는다). 성공한 관측은 결과 폴더를 바꾸므로 맨 끝에 둔다.
+step "8) real observations from 03: a failing one and a successful one leave no process of the run behind"
+marked() {
+  docker exec "$CTL" sh -c 'for e in /proc/[0-9]*/environ; do tr "\000" "\n" < "$e" 2>/dev/null | grep -q "^PQCATON_RUN=" && echo "${e%/environ}"; done' || true
+}
+observe_run() {  # observe_run <want state> — 03의 시작 양식을 보내고, 그 실행이 끝날 때까지 기다려 상태를 견준다.
+  docker exec -i "$CTL" python3 - "$1" "$WS" <<'PY'
+import html, json, os, re, sys, time, urllib.parse, urllib.request, http.cookiejar
+want, ws = sys.argv[1], sys.argv[2]
+base = "http://127.0.0.1:8765"
+op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+page = op.open(base + "/observe?lang=en").read().decode()
+m = re.search(r'<form[^>]*action="/observe/run"[^>]*>(.*?)</form>', page, re.S)
+if not m:
+    sys.exit("03 offers no observation to start")
+fields = {}
+for tag in re.findall(r"<input[^>]*>", m.group(1)):
+    name, value = re.search(r'name="([^"]*)"', tag), re.search(r'value="([^"]*)"', tag)
+    if name:
+        fields[name.group(1)] = html.unescape(value.group(1)) if value else ""
+fields["window"] = "5"
+runs = os.path.join(ws, "observations")
+before = set(os.listdir(runs)) if os.path.isdir(runs) else set()
+req = urllib.request.Request(base + "/observe/run?lang=en", data=urllib.parse.urlencode(fields).encode(),
+    headers={"Origin": base, "Content-Type": "application/x-www-form-urlencoded"})
+op.open(req).read()
+# 끝남은 화면이 다시 시작 양식을 내놓을 때다(실행 중에는 내놓지 않는다). 그때 기록을 읽는다. 기록만 보면 회수가 끝나기
+# 전의 상태(뒤에 「회수 필요」로 바뀔 수 있다)를 읽을 수 있다.
+deadline = time.time() + 600
+while time.time() < deadline:
+    time.sleep(2)
+    new = sorted(set(os.listdir(runs)) - before) if os.path.isdir(runs) else []
+    if not new or 'action="/observe/run"' not in op.open(base + "/observe?lang=en").read().decode():
+        continue
+    st = json.load(open(os.path.join(runs, new[-1], "manifest.json"))).get("state")
+    if st != want:
+        sys.exit("observation %s ended %s, want %s" % (new[-1], st, want))
+    print("   03: observation %s ended %s" % (new[-1], st))
+    sys.exit(0)
+sys.exit("the observation did not end in 10 minutes")
+PY
+}
+"$UI" start >/dev/null
+docker stop -t 2 pay-db >/dev/null
+observe_run failed || fail "the observation with a stopped node did not end as failed"
+LEFT="$(marked)"; [ -z "$LEFT" ] || fail "processes of the failed observation were left: $LEFT"
+echo "   after the failed observation: no process with the run marker"
+docker start pay-db >/dev/null
+# 준비 완료: 컨테이너가 돈다는 것만으로는 모자란다. hosts.csv의 모든 노드에서 sshd가 응답하고, 그 호스트 키(키 종류 · 값의
+# 정규화한 집합)가 비지 않았으며 이미 받아 둔 키 집합에 모두 들어 있어야 성공 관측을 시작한다(관측은 SSH로 접속한다).
+# 출력 줄의 순서에는 기대지 않는다.
+nodes_ready() {
+  docker exec "$CTL" sh -c 'tail -n +2 '"$WS"'/hosts.csv | while IFS=, read -r _ _ ip port _; do
+    h=$ip; [ "$port" = 22 ] || h="[$ip]:$port"
+    got=$(ssh-keyscan -T 2 -p "$port" "$ip" 2>/dev/null | awk "!/^#/ && NF>=3{print \$2\" \"\$3}" | sort -u)
+    known=$(ssh-keygen -F "$h" 2>/dev/null | awk "!/^#/ && NF>=3{print \$2\" \"\$3}" | sort -u)
+    [ -n "$got" ] || exit 1
+    printf "%s\n" "$known" > /tmp/pqcaton-known.$$
+    extra=$(printf "%s\n" "$got" | comm -23 - /tmp/pqcaton-known.$$)
+    rm -f /tmp/pqcaton-known.$$
+    [ -z "$extra" ] || exit 1
+  done'
+}
+READY=""
+for _ in $(seq 1 60); do nodes_ready && { READY=yes; break; }; sleep 1; done
+[ -n "$READY" ] || fail "the nodes did not come back (sshd answering with the known host key) within 60 seconds"
+echo "   pay-db is back: every node answers SSH with its known host key"
+observe_run done || fail "the observation with every node up did not end as done"
+LEFT="$(marked)"; [ -z "$LEFT" ] || fail "processes of the successful observation were left: $LEFT"
+echo "   after the successful observation: no process with the run marker"
+"$UI" stop >/dev/null
+
 echo
 echo "✅ e2e: policy activation passed (old $OLD_DIGEST → new $ACTIVE)"

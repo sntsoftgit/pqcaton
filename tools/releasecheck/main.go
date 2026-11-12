@@ -13,6 +13,7 @@
 //   - notes: 두 릴리스 노트(영어 · 한국어) 맨 위 절의 판 · 날짜 · Apache-2.0 전환일을 본다.
 //   - body · bodycheck: 영어 절로 릴리스 본문을 만들고(링크는 태그 고정, 맨 위에 한국어 노트 링크),
 //     발행 뒤 실제 본문이 그것과 같은지와 한국어 링크의 앵커가 있는지 본다.
+//   - checks: 후보 커밋의 필수 GitHub 워크플로(ci · site)가 모두 성공했는지 본다. 없거나 진행 중이거나 실패면 실패다.
 //   - info · escape: 프록시 .info 확인과 모듈 경로 이스케이프.
 //
 // 도구는 별도 모듈이다. x/mod 와 govulncheck 를 위해 본 모듈의 go.mod 에 의존성을 늘리지 않는다.
@@ -46,6 +47,8 @@ func main() {
 		err = cmdBody(os.Args[2:])
 	case "bodycheck":
 		err = cmdBodyCheck(os.Args[2:])
+	case "checks":
+		err = cmdChecks(os.Args[2:])
 	case "info":
 		err = cmdInfo(os.Args[2:])
 	case "escape":
@@ -60,6 +63,6 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: releasecheck zip|hashzip|hashmod|commands|notes|body|bodycheck|info|escape [flags]")
+	fmt.Fprintln(os.Stderr, "usage: releasecheck zip|hashzip|hashmod|commands|notes|body|bodycheck|checks|info|escape [flags]")
 	os.Exit(2)
 }

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -345,5 +346,44 @@ func TestNotesBothFiles(t *testing.T) {
 	write("RELEASE_NOTES.md", strings.Replace(fixtureEN, "# Release notes", "# Release notes\n\n## next (in progress)", 1))
 	if err := cmdNotes(args); err == nil || !strings.Contains(err.Error(), "RELEASE_NOTES.md") {
 		t.Fatalf("an English draft first: want an error, got %v", err)
+	}
+}
+
+func TestChecksRequireSuccessOnTheCommit(t *testing.T) {
+	const sha = "0123456789abcdef0123456789abcdef01234567"
+	run := func(path, status, conclusion string, attempt int, created string) string {
+		return `{"path":"` + path + `","name":"x","head_sha":"` + sha + `","event":"push","status":"` + status +
+			`","conclusion":"` + conclusion + `","run_attempt":` + strconv.Itoa(attempt) + `,"created_at":"` + created + `","html_url":"u"}`
+	}
+	page := func(runs ...string) []byte {
+		return []byte(`{"total_count":` + strconv.Itoa(len(runs)) + `,"workflow_runs":[` + strings.Join(runs, ",") + `]}`)
+	}
+	req := []string{".github/workflows/ci.yml", ".github/workflows/site.yml"}
+	ok := page(run(req[0], "completed", "success", 1, "2026-11-12T10:00:00Z"), run(req[1], "completed", "success", 1, "2026-11-12T10:00:01Z"))
+	if lines, err := checkRuns(ok, sha, req); err != nil || len(lines) != 2 {
+		t.Fatalf("want both ok, got %v %v", lines, err)
+	}
+	for name, raw := range map[string][]byte{
+		"missing":     page(run(req[0], "completed", "success", 1, "2026-11-12T10:00:00Z")),
+		"in progress": page(run(req[0], "completed", "success", 1, "t"), run(req[1], "in_progress", "", 1, "t")),
+		"failed":      page(run(req[0], "completed", "failure", 1, "t"), run(req[1], "completed", "success", 1, "t")),
+		// 재실행이 실패하면 앞선 성공이 있어도 실패다(가장 나중 시도를 본다).
+		"rerun failed": page(run(req[0], "completed", "success", 1, "t"), run(req[0], "completed", "failure", 2, "t"),
+			run(req[1], "completed", "success", 1, "t")),
+		"other commit": []byte(strings.Replace(string(ok), sha, strings.Repeat("f", 40), 1)),
+		"not a push":   []byte(strings.Replace(string(ok), `"event":"push"`, `"event":"pull_request"`, 1)),
+		"api error":    []byte(`{"message":"API rate limit exceeded"}`),
+		"cut list":     []byte(strings.Replace(string(ok), `"total_count":2`, `"total_count":150`, 1)),
+		"no runs":      page(),
+		"by name only": []byte(strings.ReplaceAll(string(ok), `".github/workflows/`, `"other/`)),
+	} {
+		if _, err := checkRuns(raw, sha, req); err == nil {
+			t.Errorf("%s: want an error, got none", name)
+		}
+	}
+	// 실패한 뒤 재실행이 성공하면 통과한다.
+	retried := page(run(req[0], "completed", "failure", 1, "t"), run(req[0], "completed", "success", 2, "t"), run(req[1], "completed", "success", 1, "t"))
+	if _, err := checkRuns(retried, sha, req); err != nil {
+		t.Errorf("a successful rerun: %v", err)
 	}
 }

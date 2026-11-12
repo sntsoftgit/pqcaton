@@ -74,6 +74,47 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
+## v0.29.1: Fixes the reap after an observation missing a process that had just started (2026-11-12)
+
+**Apache-2.0 conversion: 2030-11-12** (four years from the release date)
+
+**Goal**: fix a defect in the cleanup after an observation. No feature is added. The state format, the session and plan formats, the
+ruleset (`pqcota-enrich/v4`) and the pqcota used with it are the same as v0.29.0, so the workspace opens as it is.
+
+### What changes for the receiving side
+
+- **pqcota: v0.13.0** ([version table](docs/compatibility.md)). The same as v0.29.0.
+- **The reap after an observation does not end on one empty search.** The screen ends the run's processes and then treats the
+  cleanup as finished only when two searches in a row, a wait apart, are both empty. A process that appears late is ended and checked
+  again, and one that is still there or keeps appearing after a fixed number of rounds is not counted as a success: the run closes as
+  "Reclaim needed". The end of an observation can take about 0.3 seconds longer.
+
+### What was fixed
+
+- **The reap after an observation could miss a process that had just started. The defect had been there since v0.27.0.** When a
+  cleanup command sent a child off in its own session and ended at once, the child's environment could read empty in the middle of
+  `exec`, so its run marker did not show. The reap ended on that one search as "nothing left", and the process could stay on the
+  controller. It came to light when IC-U135 failed now and then on GitHub CI (the v0.29.0 release commit too).
+
+### What was built
+
+- New case IC-U202: injected search results measure, deterministically, empty → late → ended, nothing there, a process that appears
+  again every time it is ended, and a search error.
+- The demo end to end (IC-U152) runs two real observations from 03 (one failing with a node stopped, one succeeding with it back).
+  After both, no process with the run marker may be left.
+- A `github-checks` step in the release gate (`make release-check`): the required workflows (ci and site) of the candidate commit must
+  all have succeeded. Missing, in progress or failed stops the gate. The site workflow runs on every push to main.
+- Documentation site tools (`tools/site`, not deployed): main builds the site, checks its links and keeps only a preview
+  ([site guide](docs/site.md)).
+
+### What was checked
+
+- IC-U202 failed in all four cases against the reap code of v0.29.0 and passed in all four with this version. IC-U135 passed 100 times
+  in a row on Linux and 20 times under race.
+- The check results are reported with the summary of the release gate (`make release-check`) when asking to publish.
+
+---
+
 ## v0.29.0: Takes in upstream pqcota v0.13.0 and normalizes with ruleset v4 (2026-11-12)
 
 **Apache-2.0 conversion: 2030-11-12** (four years from the release date)

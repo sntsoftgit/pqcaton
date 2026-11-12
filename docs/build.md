@@ -42,5 +42,5 @@ make verify-generated
 |---|---|
 | `make check-reuse` | Every file has a license and copyright (REUSE, runs in Docker) |
 | `make e2e-demo` | Starts the pqcota demo from scratch and runs the policy activation, judging, approval and generation to the end (needs `PQCOTA_DIR`; see the [demo](../demo/README.md)) |
-| `make release-check VERSION=vX.Y.Z` | Everything before tagging a release, ending with a summary, the module `h1:` hash and the release body (`release-body.md`: the English section with tag-pinned links and a link to the same version in the Korean notes on top) |
+| `make release-check VERSION=vX.Y.Z` | Everything before tagging a release, including that the candidate commit's required GitHub workflows (ci, site) all succeeded, ending with a summary, the module `h1:` hash and the release body (`release-body.md`: the English section with tag-pinned links and a link to the same version in the Korean notes on top) |
 | `make release-verify VERSION=vX.Y.Z COMMIT=… H1=…` | After publishing: the tag, the module proxy, the checksum database and installing from them, and that the release body equals the English section and its Korean link opens |
