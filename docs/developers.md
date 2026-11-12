@@ -2,7 +2,7 @@ English · [한국어](developers.ko.md)
 
 # Design: inventory governance
 
-[Overview](../README.md) · [Release notes](../RELEASE_NOTES.md) · [Journey](journey.md) · **Design** · [Acceptance criteria](testcases.md) · [Demo](../demo/README.md) · [Structure diagram](https://www.sntsoft.co.kr/pqcaton/)
+[Overview](../README.md) · [Release notes](../RELEASE_NOTES.md) · [Journey](journey.md) · **Design** · [Acceptance criteria](testcases.md) · [Demo](../demo/README.md) · [Structure diagram](../README.md#how-it-fits-together)
 
 pqcota **observes**, and this repository **carries those observations through to judgments.**
 
@@ -256,3 +256,69 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO pqcaton_app;
   caller has already checked.
 - **Authorization (who may approve what)**: this layer does not decide who within an organization is entitled to finalize what. It takes
   and keeps the signature but does not ask whether that person is entitled.
+
+---
+
+## 3. Handing the plan to pqcota
+
+This section used to be in the README; it explains what the finalized plan carries and where execution approval happens.
+
+**Judging per policy.** Writing one conclusion per policy in the session file's `policy_decisions` judges all items of that policy at
+once. A review that looks at thousands of machines one by one never ends. An individual `conclusion` is the place for exceptions.
+
+**Finalizing is the gate this repository must pass.** If anything is empty it does not finalize and **tells you what is left.**
+
+```
+❌ cannot finalize: mandatory items are still unjudged — every mandatory item must be judged
+   · the signature is not filled in
+   · no record of why this was decided: local/openssl/libssl-e2f2d68a (UNDECLARED)
+```
+
+> **Command output is in English.** Choose Korean or English for the screen. See
+> [CONTRIBUTING.md, "Which language to use"](../CONTRIBUTING.md#which-language-to-use).
+
+The `plan.json` that comes out is **in the contract format as it is.** We have no format of our own, so pqcota reads it as it is.
+
+**The plan carries its evidence.** Each action states in `evidenceSources` which finding came from which snapshot state. The reference
+holds the snapshot's **content fingerprint** (`pqcota-snapshot-content/v1`) and the **source node** written in the envelope, and the
+source node may differ from the declared name. With `--dsn`, upstream really looks it up in the history and records it, and if it is not
+found the exit status is 3. **For that, this repository must build the same snapshots as the upstream ingest.** It gathers the results per
+source node, normalizes them with the same function as upstream, and **gives `-scope-assets` the same file given to `pqcota-ingest`**.
+Normalizing with another policy (or none) changes the fingerprints and the trace fails. Whether there is a policy is not guessed.
+
+**Judging and approving execution are different steps.** What this repository issues is **a plan whose judging is done**, and in the
+contract's status it is `IN_REVIEW`. The approval field (`approvalSignatures`) and the finalize time go out empty. Both belong to
+approving execution, and upstream's `pqcota-approve` fills them when it signs with the approver's key and raises the plan to
+`FINALIZED`. The signature the reviewer writes here records **"who is recorded as having judged"**; it is not execution approval. So one
+approval step sits in between. That is not a gap left unjoined but **the boundary between the person who judges and the person who
+approves execution**. Joining them would not remove the step: upstream always verifies with the key it registered, so only who holds the
+private key moves.
+
+**Approving on the 06 screen makes this screen hold that private key.** The screen reads the approval key file (`pqcaton/approval.key` in
+the user configuration folder, or the file given with `-approval-key`) and signs with the same upstream function as the commands above, so
+judging and approval happen on one machine by one user. An organization that must separate the person who judges from the person who
+approves does not use 06 and runs the commands below on the approver's machine.
+
+```bash
+# all three below are commands of the pqcota repository.
+eval "$(pqcota-keygen | grep '^PQCOTA_')"
+PQCOTA_APPROVAL_KEY="$PQCOTA_SIGN_KEY" \
+  pqcota-approve --approver reviewer-1 plan.json > plan.signed.json
+PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
+  pqcota-provision --level l2 plan.signed.json > provision.yml
+```
+
+If a plan does not fill every execution field, pqcota still issues the output but **does not end in success** (exit status 3), and the
+warning names what is empty. But it does not get that far: the delegation level and action kind, the target algorithm and the L3
+activation hook are **chosen on our screen, and finalizing is blocked while they are empty.** Stopping it here, before the approval
+signature is added, is better than passing empty values upstream to be caught there.
+
+**One judgment goes to every installation under its asset key.** The asset key is `node/runtime/component`, so the same OpenSSL seen at
+another path becomes two installations under one item. The judgment screen shows all paths and asks to confirm "this action applies to
+every installation below" before finalizing. Different actions per installation cannot be expressed in this version.
+
+**The plans this version issues carry evidence per action (`evidenceSources`), so `pqcota-approve` and `pqcota-provision` v0.8.0 or
+earlier, which do not know that field, cannot read the plan and refuse it.** The `IN_REVIEW` status is accepted from v0.8.0; below that
+only the signature is added, the plan stays `IN_REVIEW`, and the generator refuses it as "not finalized". Besides, approval verification
+closed by default and exit status 3 come from v0.7.0, the controller CLI attached to releases from v0.7.2, and the hardening ruleset as a
+constant from v0.7.3 (end to end through receiving external CBOM from v0.7.4).

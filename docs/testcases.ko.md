@@ -2,7 +2,7 @@
 
 # 테스트케이스: 인벤토리 거버넌스
 
-[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.ko.md) · [설계](developers.ko.md) · **검증 기준** · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.ko.md) · [설계](developers.ko.md) · **검증 기준** · [데모](../demo/README.ko.md) · [구조 그림](../README.ko.md#한-그림으로)
 
 케이스 번호가 곧 테스트 파일 링크입니다. **그 대응은 `make check-cases`가 잽니다**
 (§M). 설계는 [developers.ko.md](developers.ko.md)에 있습니다.
@@ -655,6 +655,8 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-DC10](../tools/checkdocs/main_test.go) ✅** | ID로 짝지은 두 판의 행: 첫 칸 · 열 개수(인라인 코드 안의 세로 막대는 칸을 나누지 않음) · 행 안의 링크 대상이 같음 · 다름 | **두 판의 케이스 표는 행마다 같은 사실이다.** 같으면 통과하고, 첫 칸 · 열 개수 · 링크가 다르면 막는다 |
 | **[IC-DC11](../tools/checkdocs/main_test.go) ✅** | 한쪽에만 있는 케이스 · 한 판 안의 중복 ID · 차례가 다름 · 제목 수가 다름 | 모두 막는다. 케이스는 케이스 관문이 영어판에서 한 번만 세고, 이 관문은 두 판이 같은지만 본다 |
 | **[IC-DC12](../tools/checkdocs/main_test.go) ✅** | 케이스 관문이 영어판 링크를 다시 찍은 뒤 `-sync-cases` | 한국어판의 같은 ID 행 첫 칸만 영어판대로 바뀌고 나머지 칸은 그대로다 |
+| **[IC-DC13](../tools/checkdocs/main_test.go) ✅** | 짝 문서의 한쪽에만 있는 링크 · 한쪽에만 있는 절 · 옛 앵커를 `<a id="…">`로 남김 | **모든 짝은 같은 파일을 가리키고 같은 짜임이다.** 링크 집합과 수준별 제목 수가 다르면 막고, `<a id>`는 앵커로 센다 |
+| **[IC-DC14](../tools/checkdocs/main_test.go) ✅** | 링크 글자가 줄을 넘김(인용 줄 포함) · 한쪽 판에서만 줄을 넘김 | **여러 줄에 걸친 링크도 잰다.** 대상이 없으면 막고, 두 판의 링크 집합은 같게 센다 |
 
 ### V. 선언 형식과 자체 검사 (`pkg/inventory/decl`) ✅
 | TC | Given → When | Then |

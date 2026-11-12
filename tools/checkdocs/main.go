@@ -14,7 +14,8 @@
 //     `[English](x.md) · 한국어`).
 //
 //  3. **짝의 내용.** 두 판이 말하는 사실이 같아야 한다: 판 번호(`v1.2.3`)의 집합, 케이스 ID(`IC-…` · `RUN-…` · `CP-…`)의 집합,
-//     셸 코드 블록의 명령 줄(주석 줄을 빼고 `<…>` 자리 표시를 하나로 본다)이 차례까지 같아야 한다.
+//     셸 코드 블록의 명령 줄(주석 줄을 빼고 `<…>` 자리 표시를 하나로 본다)의 차례, 링크가 가리키는 파일의 집합(한국어 판 이름은
+//     영어 판 이름으로 보고 앵커는 뺀다), 수준별 제목의 수. md 안의 `<a id="…">`는 앵커로 센다(옮긴 제목의 호환 앵커).
 //
 //  4. **언어 일관.** 한국어 문서는 짝이 있는 문서를 한국어 판으로, 영어 문서는 영어 판으로 가리킨다. 다른 말의 판을 일부러
 //     가리키는 링크(「영문본은 [CLA.md](CLA.md)」)는 링크 글자가 언어 이름이거나 그 파일 이름일 때 받는다. 언어 전환 줄은 빼고 본다.
@@ -248,6 +249,9 @@ func readDoc(fsys readFS, name string) (*doc, error) {
 			}
 			continue
 		}
+		for _, m := range idRe.FindAllStringSubmatch(line, -1) {
+			d.anchors[m[1]] = true
+		}
 		if m := headingRe.FindStringSubmatch(line); m != nil {
 			a := slug(m[2])
 			if n := seen[a]; n > 0 {
@@ -348,17 +352,9 @@ func checkIn(fsys readFS, files []string, cfg config) []string {
 		case !cfg.single[f]:
 			add("%s: has no Korean page %s and is not listed in single.txt", f, pair)
 		}
-		// 1 · 4. 링크
-		inFence := false
-		for i, line := range d.lines {
-			if fenceRe.MatchString(line) {
-				inFence = !inFence
-				continue
-			}
-			if inFence {
-				continue
-			}
-			plain := inlineRe.ReplaceAllString(line, "")
+		// 1 · 4. 링크(여러 줄에 걸친 링크는 이어 읽는다)
+		for _, ll := range logicalLines(d.lines) {
+			i, plain := ll.n, inlineRe.ReplaceAllString(ll.text, "")
 			for _, m := range linkRe.FindAllStringSubmatch(plain, -1) {
 				target := m[2]
 				if strings.Contains(target, "://") || strings.HasPrefix(target, "mailto:") {
@@ -406,6 +402,15 @@ func checkIn(fsys readFS, files []string, cfg config) []string {
 			}
 			if i := firstDiff(d.commands, ko.commands); i >= 0 {
 				add("%s ↔ %s: shell commands differ at command %d (%q vs %q)", f, pair, i+1, at(d.commands, i), at(ko.commands, i))
+			}
+			if a, b := diffSet(fileLinks(d.lines), fileLinks(ko.lines)); a != "" || b != "" {
+				add("%s ↔ %s: linked files differ (only in English: %s; only in Korean: %s)", f, pair, a, b)
+			}
+			eh, kh := headingLevels(d.lines), headingLevels(ko.lines)
+			for lv := 1; lv <= 6; lv++ {
+				if eh[lv] != kh[lv] {
+					add("%s ↔ %s: %d level-%d headings vs %d", f, pair, eh[lv], lv, kh[lv])
+				}
 			}
 		}
 	}
@@ -692,12 +697,6 @@ func compareTables(en string, enLines []string, ko string, koLines []string) []s
 			}
 		}
 	}
-	eh, kh := headingLevels(enLines), headingLevels(koLines)
-	for lv := 1; lv <= 6; lv++ {
-		if eh[lv] != kh[lv] {
-			add("%s ↔ %s: %d level-%d headings vs %d", en, ko, eh[lv], lv, kh[lv])
-		}
-	}
 	return out
 }
 
@@ -735,4 +734,51 @@ func syncCases(en, ko string) (int, error) {
 		n++
 	}
 	return n, os.WriteFile(ko, []byte(strings.Join(lines, "\n")), 0o644)
+}
+
+// fileLinks — 코드 밖 링크가 가리키는 리포 안 파일의 집합(바깥 URL은 뺀다). 한국어 판 이름은 영어 판 이름으로 보고 앵커는 뺀다. 첫 줄(언어 전환 줄)과 같은
+// 문서 안 앵커(`#…`)는 뺀다.
+func fileLinks(lines []string) map[string]bool {
+	out := map[string]bool{}
+	for _, ll := range logicalLines(lines) {
+		if ll.n == 0 {
+			continue
+		}
+		for _, m := range linkRe.FindAllStringSubmatch(inlineRe.ReplaceAllString(ll.text, ""), -1) {
+			t, _, _ := strings.Cut(m[2], "#")
+			if t == "" || strings.Contains(t, "://") || strings.HasPrefix(t, "mailto:") {
+				continue
+			}
+			out[strings.Replace(t, ".ko.md", ".md", 1)] = true
+		}
+	}
+	return out
+}
+
+// logicalLine — 코드 블록 밖의 줄. 링크 글자가 줄을 넘기면(「[」가 닫히지 않음) 다음 줄과 이어 하나로 본다. n은 첫 줄의 번호(0부터)다.
+type logicalLine struct {
+	n    int
+	text string
+}
+
+func logicalLines(lines []string) []logicalLine {
+	var out []logicalLine
+	inFence := false
+	for i := 0; i < len(lines); i++ {
+		if fenceRe.MatchString(lines[i]) {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
+		text, n := lines[i], i
+		for j := 0; j < 3 && i+1 < len(lines) && strings.Count(inlineRe.ReplaceAllString(text, ""), "[") > strings.Count(inlineRe.ReplaceAllString(text, ""), "]") &&
+			strings.TrimSpace(lines[i+1]) != "" && !fenceRe.MatchString(lines[i+1]); j++ {
+			i++
+			text += " " + strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(lines[i]), ">"))
+		}
+		out = append(out, logicalLine{n: n, text: text})
+	}
+	return out
 }

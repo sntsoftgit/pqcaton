@@ -2,7 +2,7 @@
 
 # 설계: 인벤토리 거버넌스
 
-[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.ko.md) · **설계** · [검증 기준](testcases.ko.md) · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.ko.md) · **설계** · [검증 기준](testcases.ko.md) · [데모](../demo/README.ko.md) · [구조 그림](../README.ko.md#한-그림으로)
 
 pqcota가 **관측**하고, 이 리포가 **그 관측을 판정으로 잇습니다.**
 
@@ -245,3 +245,49 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO pqcaton_app;
   확인한 조직을 받습니다.
 - **인가(누가 무엇을 승인할 수 있나)**: 조직 안에서 누가 무엇을 확정할 자격이 있는지는
   이 계층이 정하지 않습니다. 서명은 받아 남기지만 그 사람이 그럴 자격인지는 묻지 않습니다.
+
+---
+
+## 3. 계획을 pqcota에 넘기기
+
+예전에 README에 있던 절입니다. 확정한 계획이 무엇을 싣고, 실행 승인이 어디서 일어나는지 설명합니다.
+
+**정책 단위로 판정합니다.** 세션 파일의 `policy_decisions`에 정책 하나당 결론 하나를 적으면
+같은 정책의 항목이 한 번에 판정됩니다. 수천 대를 한 건씩 보는 리뷰는 끝나지 않습니다.
+개별 `conclusion`은 예외를 적는 자리입니다.
+
+**확정이 이 리포에서 반드시 거쳐야 하는 관문입니다.** 하나라도 비면 확정하지 않고 **무엇이 남았는지 알려 줍니다.**
+
+```
+❌ cannot finalize: mandatory items are still unjudged — every mandatory item must be judged
+   · the signature is not filled in
+   · no record of why this was decided: local/openssl/libssl-e2f2d68a (UNDECLARED)
+```
+
+> **명령의 출력은 영어입니다.** 화면에 쓸 말은 한국어와 English 중에서 고릅니다.
+> 자세한 것은 [CONTRIBUTING.md 「어느 말로 쓰나」](../CONTRIBUTING.ko.md#어느-말로-쓰나)에 있습니다.
+
+나온 `plan.json`은 **계약 형식 그대로**입니다. 우리 형식이 따로 없어 pqcota가 그대로 읽습니다.
+
+**계획이 근거를 듭니다.** 조치마다 어느 finding이 어느 스냅샷 상태에서 나왔는지를 `evidenceSources`로 적어 보냅니다. 참조에는 스냅샷의 **내용 지문**(`pqcota-snapshot-content/v1`)과 봉투에 적힌 **원천 노드**가 들어가며, 원천 노드는 선언 이름과 다를 수 있습니다. 상류는 `--dsn`이 있으면 그것을 이력에서 실제로 찾아 레코드에 남기고, 못 찾으면 종료 상태 3입니다. **그러려면 이 리포가 상류 적재와 같은 스냅샷을 만들어야 합니다.** 결과를 원천 노드별로 모아 상류와 같은 함수로 정규화하고, **`-scope-assets`에 `pqcota-ingest`에 준 것과 같은 파일**을 줍니다. 다른 정책(또는 정책 없음)으로 정규화하면 지문이 달라져 되짚기가 실패합니다. 정책 유무는 추정하지 않습니다.
+
+**판정과 실행 승인은 다른 단계입니다.** 이 리포가 내는 것은 **판정이 끝난 계획**이고, 계약의 상태로는 `IN_REVIEW`입니다. 승인 칸(`approvalSignatures`)과 확정 시각은 비어서 나갑니다. 둘 다 실행 승인의 자리라, 상류의 `pqcota-approve`가 승인자의 키로 서명하면서 `FINALIZED`로 올리고 그때 채웁니다. 여기서 검토자가 적는 서명은 **「누가 판정했다고 기록됐나」**를 남기는 것이지 실행 승인이 아닙니다. 그래서 사이에 승인 한 단계가 듭니다. 이것은 이어 붙이지 못한 공백이 아니라 **판정한 사람과 실행을 승인하는 사람을 가르는 경계**입니다. 이어 붙여도 단계가 줄지 않습니다. 상류는 어떤 경우에도 자기가 등록한 키로 검증하므로, 개인키를 누가 쥐느냐만 옮겨 갑니다.
+
+**06 화면에서 승인하면 그 개인키를 이 화면이 쥡니다.** 화면이 승인 키 파일(사용자 설정 폴더의 `pqcaton/approval.key`나 `-approval-key`로 준 파일)을 읽어 위 명령과 같은 상류 함수로 서명하므로, 판정과 승인이 한 기계 · 한 사용자에서 일어납니다. 판정한 사람과 승인하는 사람을 반드시 갈라야 하는 조직은 06을 쓰지 않고 승인자의 기계에서 아래 명령을 실행합니다.
+
+```bash
+# 아래 셋 다 pqcota 리포의 명령입니다.
+eval "$(pqcota-keygen | grep '^PQCOTA_')"
+PQCOTA_APPROVAL_KEY="$PQCOTA_SIGN_KEY" \
+  pqcota-approve --approver reviewer-1 plan.json > plan.signed.json
+PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
+  pqcota-provision --level l2 plan.signed.json > provision.yml
+```
+
+계획이 실행 필드를 다 채우지 못하면 pqcota는 산출물을 내되 **성공으로 끝내지 않습니다**(종료 상태 3). 무엇이 비었는지는 그 경고가 이름으로 알려 줍니다. 다만 그 상태까지 가지 않습니다. 위임 수준과 조치 종류, 목표 알고리즘, L3의 활성화 훅은 **우리 화면에서 고르고, 비면 확정이 막힙니다.** 빈 값을 상류로 넘기고 거기서 걸리게 두는 것보다, 승인 서명이 붙기 전에 이쪽에서 막는 편이 맞기 때문입니다.
+
+**한 판정은 그 자산 키 아래 설치 전부에 갑니다.** 자산 키는 `노드/런타임/컴포넌트`라, 같은 이름의 OpenSSL을 다른 경로에서
+보면 한 항목 아래 설치 둘이 됩니다. 판정 화면이 경로를 모두 보이고, 확정 전에 「이 조치가 아래 설치 전부에 적용됨」을
+확인받습니다. 설치마다 다른 조치는 이 판에서 표현하지 못합니다.
+
+**이 판이 내는 계획은 조치마다 근거(`evidenceSources`)를 담으므로, 그 필드를 모르는 v0.8.0 이하의 `pqcota-approve`·`pqcota-provision`은 계획을 읽지 못하고 거절합니다.** 상태가 `IN_REVIEW`로 나가는 것은 v0.8.0부터 받고, 그 아래에서는 서명만 붙고 `IN_REVIEW`인 채로 남아 생성기가 「확정 아님」으로 거절합니다. 그 밖에 승인 검증이 기본으로 닫힌 것과 종료 상태 3은 v0.7.0부터, 컨트롤러 CLI가 릴리스에 붙는 것은 v0.7.2부터, 강화 규칙 판이 상수로 서는 것은 v0.7.3부터(외부 CBOM 수신 종단까지는 v0.7.4)입니다.

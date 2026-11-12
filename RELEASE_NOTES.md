@@ -1,6 +1,6 @@
 # 릴리스 노트: pqcaton
 
-[개요](README.ko.md) · **릴리스 노트** · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](README.ko.md) · **릴리스 노트** · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](README.ko.md#한-그림으로)
 
 버전별 **목표**와 **성과**를 기록합니다. 버전이 올라갈 때마다 갱신하고, 최신 버전을 맨 위에 둡니다.
 
@@ -2684,7 +2684,7 @@ pqcota에 있습니다. 이 버전은 그 위의 거버넌스만 얹습니다.
   `pqcaton-decide`(판정·확정·델타). **체크아웃만으로 처음부터 끝까지 해볼 수 있습니다**. pqcota 데모도
   Postgres도 없이 이 기계를 관측해 확정 계획까지 만듭니다.
 - **문서**: [여정](docs/journey.ko.md)(자기 서버에 설치해 사용하는 방법) ·
-  [구조 그림](https://www.sntsoft.co.kr/pqcaton/) · [설계](docs/developers.ko.md) ·
+  [구조 그림](README.ko.md#한-그림으로) · [설계](docs/developers.ko.md) ·
   [검증 기준](docs/testcases.ko.md). 케이스 54개(대조 12 · 판정 24 · 러너 17 · 계약 소비 1).
 
 ### 고친 것

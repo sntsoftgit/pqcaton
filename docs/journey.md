@@ -5,7 +5,7 @@ English · [한국어](journey.ko.md)
 > **This English page is a summary, not a full translation.** The journey is a historical record, and its original is the Korean
 > [journey.ko.md](journey.ko.md), which keeps every step, command and table. This page gives its purpose and the main turning points.
 
-[Overview](../README.md) · [Release notes](../RELEASE_NOTES.md) · **Journey** · [Design](developers.md) · [Acceptance criteria](testcases.md) · [Demo](../demo/README.md) · [Structure diagram](https://www.sntsoft.co.kr/pqcaton/)
+[Overview](../README.md) · [Release notes](../RELEASE_NOTES.md) · **Journey** · [Design](developers.md) · [Acceptance criteria](testcases.md) · [Demo](../demo/README.md) · [Structure diagram](../README.md#how-it-fits-together)
 
 ## What the journey is for
 

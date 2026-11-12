@@ -2,7 +2,7 @@ English · [한국어](testcases.ko.md)
 
 # Test cases: inventory governance
 
-[Overview](../README.md) · [Release notes](../RELEASE_NOTES.md) · [Journey](journey.md) · [Design](developers.md) · **Acceptance criteria** · [Demo](../demo/README.md) · [Structure diagram](https://www.sntsoft.co.kr/pqcaton/)
+[Overview](../README.md) · [Release notes](../RELEASE_NOTES.md) · [Journey](journey.md) · [Design](developers.md) · **Acceptance criteria** · [Demo](../demo/README.md) · [Structure diagram](../README.md#how-it-fits-together)
 
 Each case number is a link to its test file. **`make check-cases` measures that correspondence**
 (§M). The design is in [developers.md](developers.md).
@@ -655,6 +655,8 @@ listed with the reason in [`tools/checkdocs/single.txt`](../tools/checkdocs/sing
 | **[IC-DC10](../tools/checkdocs/main_test.go) ✅** | Rows of the two editions paired by ID: the first cell, the number of cells (a vertical bar inside inline code does not split a cell) and the link targets in the row are the same · differ | **The case tables of the two editions state the same facts row by row.** The same pass; a different first cell, cell count or link is blocked |
 | **[IC-DC11](../tools/checkdocs/main_test.go) ✅** | A case on one side only · a duplicate ID within one edition · a different order · a different number of headings | All are blocked. The case gate counts cases once, in the English edition; this gate only checks that the two editions agree |
 | **[IC-DC12](../tools/checkdocs/main_test.go) ✅** | `-sync-cases` after the case gate re-stamps the links of the English edition | Only the first cell of the row with the same ID in the Korean edition changes to the English one; the other cells stay |
+| **[IC-DC13](../tools/checkdocs/main_test.go) ✅** | A link only on one side of a pair · a section only on one side · an old anchor kept as `<a id="…">` | **Every pair links the same files and shares the outline.** Different link sets or heading counts per level are blocked; `<a id>` counts as an anchor |
+| **[IC-DC14](../tools/checkdocs/main_test.go) ✅** | A link text that crosses lines (quoted lines too) · crossing lines in one edition only | **Links across lines are checked too.** A missing target is blocked, and the link sets of the two editions count the same |
 
 ### V. Declaration format and self-check (`pkg/inventory/decl`) ✅
 | TC | Given → When | Then |

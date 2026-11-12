@@ -278,3 +278,34 @@ func TestSyncCasesCopiesOnlyTheFirstCell(t *testing.T) {
 		t.Errorf("after sync:\n%s", b)
 	}
 }
+
+// IC-DC13 — **모든 짝은 같은 파일을 가리키고 같은 짜임이다.** 링크가 가리키는 파일의 집합(한국어 판 이름은 영어 판 이름으로, 앵커는
+// 빼고)과 수준별 제목의 수가 두 판에서 같아야 한다. 한쪽에만 있는 링크나 절은 막는다. md 안의 `<a id="…">`는 앵커로 세므로, 옮긴
+// 제목의 옛 앵커를 호환 앵커로 남길 수 있다.
+func TestPairsLinkTheSameFilesAndShareTheOutline(t *testing.T) {
+	m := good()
+	m["README.ko.md"] += "\n[더](docs/extra.md)\n"
+	m["docs/extra.md"] = "English · [KO](extra.ko.md)\n"
+	m["docs/extra.ko.md"] = "[English](extra.md) · KO\n"
+	expect(t, run(m), "README.md ↔ README.ko.md: linked files differ (only in English: ; only in Korean: docs/extra.md)")
+	m = good()
+	m["README.ko.md"] += "\n## 더\n"
+	expect(t, run(m), "README.md ↔ README.ko.md: 0 level-2 headings vs 1")
+	m = good()
+	m["NOTES.md"] += "\n[old](README.md#써보기)\n"
+	expect(t, run(m), "the anchor #써보기 is not a heading of README.md")
+	m["README.md"] = strings.Replace(m["README.md"], "# pqcaton\n", "# pqcaton\n\n<a id=\"써보기\"></a>\n", 1)
+	expect(t, run(m))
+}
+
+// IC-DC14 — **여러 줄에 걸친 링크도 잰다.** 링크 글자가 줄을 넘겨도(인용 줄의 `>`도 넘어서) 이어 읽어, 대상이 없으면 막고 짝의 링크
+// 집합에도 센다. 한쪽 판에서만 링크가 두 줄에 걸쳐 있어도 두 판의 링크 집합은 같다.
+func TestLinksAcrossLines(t *testing.T) {
+	m := good()
+	m["NOTES.md"] += "\n> See [the guide in\n> two lines](docs/nowhere.md).\n"
+	expect(t, run(m), `NOTES.md:5: the link "docs/nowhere.md" points to nothing`)
+	m = good()
+	m["README.md"] += "\nSee [the long\nname](NOTES.md).\n"
+	m["README.ko.md"] += "\n[긴 이름](NOTES.md)을 보십시오.\n"
+	expect(t, run(m))
+}
