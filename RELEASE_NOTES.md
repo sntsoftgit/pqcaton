@@ -74,33 +74,59 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
-## v0.29.0: Takes in upstream pqcota v0.13.0 and normalizes with ruleset v4 (in progress)
+## v0.29.0: Takes in upstream pqcota v0.13.0 and normalizes with ruleset v4 (2026-11-12)
+
+**Apache-2.0 conversion: 2030-11-12** (four years from the release date)
 
 **Goal**: use upstream pqcota v0.13.0. Upstream v0.12.0 moved the ruleset to `pqcota-enrich/v4` (JCA deployment identity), so this
-version cannot be mixed with v0.28.0. Items whose meaning changed come up as new items to judge, and earlier conclusions stay only as
-reference values in the change report. No compatibility rule links old and new ids. The state format and the session and plan formats
-are the same as v0.28.0.
+version cannot be mixed with v0.28.0. Judgments that rest on evidence whose meaning changed are made again in a new round, and earlier
+conclusions stay only as reference values in the change report. No compatibility rule links old and new ids. The state format and the
+session and plan formats are the same as v0.28.0.
 
 ### What changes for the receiving side
 
 - **pqcota: v0.13.0** ([version table](docs/compatibility.md)). Keep the five upstream repositories together at v0.13.0. There is
-  no need to pass through v0.12.0.
+  no need to pass through v0.12.0. Upgrade the upstream tools that read the same database first, and replace the three collectors on
+  the nodes and `collector.jar` with v0.13.0 too.
 - **The ruleset is `pqcota-enrich/v4`.** The ruleset is an input of the snapshot fingerprint, so with a pqcota history that v0.11.0 or
-  earlier built under v3 the activation and baseline reconciliation on 05 do not pass. Re-ingest the results with v0.13.0. Move the
-  sessions and plans of v0.28.0 on through a ruleset change round; 06 does not sign or generate a v3 plan.
-- **The evidence of Java assets changes to per-deployment findings.** Results of the new `pqcota-jvmscan` have other finding ids, so
-  they show as "changed" in the change report, and "removed" and "added" can include the effect of the identity rule change.
+  earlier built under v3 the activation and baseline reconciliation on 05 do not pass. Re-ingest the results with v0.13.0. 06 does not
+  sign or generate a v3 plan.
+- **This upgrade carries no conclusions.** The ruleset goes from v3 to v4, so a v0.28.0 session moves on through a ruleset change
+  round: the current conclusions are empty and earlier ones stay only as reference values. Judge each item again or press "Adopt again",
+  then finalize and approve on the new evidence.
+- **The JCA item keeps its id; its evidence changes.** pqcaton counts JCA as one item per node (`jca-provider-chain`). The new
+  `pqcota-jvmscan` reports JVMs as per-deployment findings, so that item's evidence (finding ids and fingerprints) changes and it shows
+  as "changed" in the change report.
+- **Edge splitting and the change of `observed_count` do not directly affect pqcaton's judgment items.** Upstream v0.13.0 splits
+  edges per application that opened the connection and counts distinct connections in `observed_count`. pqcaton counts an edge by
+  source, destination, port and protocol, and edges do not enter the judgment queue, so reconciliation states and judgments stay the
+  same. The "observed edges" count at the top of the report counts upstream edges as they are and can grow (4 → 5 in the demo), and
+  `observed_count` is not compared across the upgrade.
 - **If an asset scope rule has `user@<uid>.service` in its `app_key`, fix it.** The v0.13.0 collectors report a user service as
-  `user@<uid>.service/<unit>`.
-- **Do not compare an edge's observation count (`observed_count`) across the upgrade.** From v0.13.0 it counts the distinct connections
-  in the observation window.
+  `user@<uid>.service/<unit>`. Fix it on 02, finalize, and activate on 05 (operator guide, section 9).
+- **Evidence that changes within the same ruleset works as before.** When the item id and the ruleset are the same, the conclusion
+  moves over and the signature is cleared; finalize and approve again on the new evidence (IC-D20). A change of meaning within the same
+  ruleset is announced by upstream raising the ruleset.
 
 ### What was built
 
-- Tests fix the property that the ruleset is part of the snapshot fingerprint: a v3 history fails the v4 check and passes after a v4
-  re-ingest (IC-S25).
-- Refusing v3 sessions and plans (IC-P51), a ruleset change round that does not carry the conclusions of items whose JCA identity
-  changed (IC-P52), and a v4 round opened from a v3 session file (IC-P53).
+- Tests fix the property that the ruleset is part of the snapshot fingerprint: the same ruleset gives the same fingerprint, v3 and v4
+  give different ones, and a v3 history fails the v4 check and passes after a v4 re-ingest (IC-S25).
+- New cases: IC-P51 (refusing v3 sessions and plans), IC-P52 (a ruleset change round that does not carry the conclusion of a JCA item
+  whose evidence became per-deployment) and IC-P53 (a v4 round opened from a v3 session file).
+- The demo's expected results (`demo/expected-output`) were made again from a run of the basic v0.13.0 demo.
+
+### What was checked
+
+- The demo end to end (`make e2e-demo`, upstream v0.13.0): policy activation ran to the end both on the screen and by the command,
+  and 06 signed and generated. The collectors showed as "cannot be verified", like the release assets, so the screen started with
+  `-allow-unverified-collectors`.
+- Upstream v0.13.0 release assets: the downloaded files matched `SHA256SUMS`; the collectors are still replace builds
+  (`pqcota-discovery v0.13.0 => ../pqcota-discovery (devel)`), so "cannot be verified", and `collector.jar` has no version. The three
+  upstream issues (pqcota-inventory#1, pqcota-discovery#1, pqcota#8) are open.
+- The check results are reported with the summary of the release gate (`make release-check`) when asking to publish.
+
+---
 
 ## v0.28.0: Scope rounds always go through the pqcota history reconciliation, and the screen does not start without the pqcota history (2026-11-12)
 

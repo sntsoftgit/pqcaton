@@ -5,9 +5,6 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main`은 v0.29.0 개발 중입니다.** 상류 pqcota v0.13.0(규칙 묶음 `pqcota-enrich/v4`)을 반영하고 있습니다. 운영에는
-> [v0.28.0 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.28.0)와 pqcota v0.11.0을 쓰십시오.
-
 이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.29.0 기준입니다.
 영어판은 [operator-guide.md](operator-guide.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 

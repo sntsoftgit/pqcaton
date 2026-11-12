@@ -5,9 +5,6 @@ English · [한국어](operator-guide.ko.md)
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main` is in development for v0.29.0.** It is taking in upstream pqcota v0.13.0 (ruleset `pqcota-enrich/v4`). For
-> production use the [v0.28.0 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.28.0) with pqcota v0.11.0.
-
 This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.29.0.
 The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.

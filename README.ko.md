@@ -4,9 +4,6 @@
 
 **개요** · [릴리스 노트](RELEASE_NOTES.ko.md) · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](#한-그림으로)
 
-> **`main`은 v0.29.0 개발 중입니다.** 상류 pqcota v0.13.0(규칙 묶음 `pqcota-enrich/v4`)을 반영하고 있습니다. 운영에는
-> [v0.28.0 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.28.0)와 pqcota v0.11.0을 쓰십시오.
-
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** [pqcota](https://github.com/randyinthedev-hash/pqcota)가 시스템이 쓰는 암호를
 관측하면, pqcaton은 **그 관측을 조직이 선언한 것과 대조하고, 결정이 필요한 것을 리뷰 큐에 올리고, 사람이 내린 판정을 확정해**
 pqcota가 승인하고 실행할 수 있는 계획으로 만듭니다. 이 판은 pqcota **v0.13.0**과 함께 씁니다([판별 표](docs/compatibility.ko.md)).
@@ -102,7 +99,7 @@ pqcaton-ui
 ## 맞는 조합
 
 이 리포는 pqcota **v0.13.0**(`pqcota-common` · `pqcota-inventory` · `pqcota-discovery` · `pqcota-provisioning` 넷을 같은 태그로,
-`go.mod`가 고정)으로 만듭니다. 그 판의 종단 검증은 발행 전에 합니다. pqcaton은 자기 안에 든 규칙 묶음(`pqcota-enrich/v4`)으로
+`go.mod`가 고정)으로 만들고 그 판으로 종단 검증했습니다. pqcaton은 자기 안에 든 규칙 묶음(`pqcota-enrich/v4`)으로
 관측을 정규화하고 그 스냅샷 지문을 계획의 근거로 싣습니다. 그래서 상류의 `pqcota-ingest`와 `pqcota-provision`도 같은 규칙 묶음이어야
 합니다. 규칙 묶음이 v3인 pqcota v0.10.6 ~ v0.11.0에는 pqcaton [v0.28.0](https://github.com/sntsoftgit/pqcaton/tree/v0.28.0)을, v0.10.5
 이하에는 pqcaton [v0.24.1](https://github.com/sntsoftgit/pqcaton/tree/v0.24.1)을 씁니다. 모든 조합은 [판별 표](docs/compatibility.ko.md)에 있습니다.

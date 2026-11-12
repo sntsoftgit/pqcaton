@@ -6,7 +6,7 @@
     {
       "id": "a1",
       "targetNodeId": "pay-app",
-      "findingId": "c61c591f135ff81f9113b5d0013db43df2293de42cdb2d0eb496f2b08f79a3ca",
+      "findingId": "8b5f71ec44b8f86655356fb4272a742ec0ac0d5d3bf9e441422969912a9ded92",
       "cryptoRuntime": "CRYPTO_RUNTIME_JCA",
       "kind": "REMEDIATION_KIND_CONFIG_ONLY",
       "automationLevel": "DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL",
@@ -15,13 +15,13 @@
       "rollbackNote": "remove the staged config fragment",
       "evidenceSources": [
         {
-          "findingId": "c61c591f135ff81f9113b5d0013db43df2293de42cdb2d0eb496f2b08f79a3ca",
+          "findingId": "8b5f71ec44b8f86655356fb4272a742ec0ac0d5d3bf9e441422969912a9ded92",
           "snapshot": {
             "sourceNodeId": "pay-app",
             "content": {
               "formatVersion": "pqcota-snapshot-content/v1",
-              "digest": "8b6dfb3f40aefe2ce60f0daa7d856750c9f37936cc7ae9f0dd236dea75aac3e8",
-              "rulesetVersion": "pqcota-enrich/v3"
+              "digest": "3f26adfee743fc28a6f94ab3938751734e18c8a61e30d1b04c76fad27c23be08",
+              "rulesetVersion": "pqcota-enrich/v4"
             }
           }
         }
@@ -44,13 +44,13 @@
             "sourceNodeId": "pay-db",
             "content": {
               "formatVersion": "pqcota-snapshot-content/v1",
-              "digest": "63f0c9d72f6f1c790b2377fbab8d7a6e872d48b33657779c5e52eb99ab01be71",
-              "rulesetVersion": "pqcota-enrich/v3"
+              "digest": "f891c7e490279d7436c979b2dec4e14a1b5087b53838cdf5d1b0f392865e0afa",
+              "rulesetVersion": "pqcota-enrich/v4"
             }
           }
         }
       ]
     }
   ],
-  "rulesetVersion": "pqcota-enrich/v3+pqcaton-plan/v3"
+  "rulesetVersion": "pqcota-enrich/v4+pqcaton-plan/v3"
 }
