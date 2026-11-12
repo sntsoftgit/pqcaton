@@ -469,7 +469,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 
 #### 운영자 안내서 (v0.23.0)
 
-[운영자 안내서](operator-guide.ko.md)와 [operator-guide.md](operator-guide.md)의 명령은 시험이 실제로 돌린다.
+[운영자 안내서](operator-guide.ko.md)와 영어판 [operator-guide.md](operator-guide.md)의 명령은 시험이 실제로 돌린다.
 
 | TC | Given → When | Then |
 |---|---|---|

@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
+# 한국어 사이트(/ko/)에 싣는 문서(원문<TAB>사이트 자리). assemble.py가 리포에서 찾은 목록과 다르면 멈춘다.
+README.ko.md	overview.md
+docs/operator-guide.ko.md	users/operator-guide.md
+docs/journey.ko.md	users/journey.md
+docs/compatibility.ko.md	users/compatibility.md
+demo/README.ko.md	demo/index.md
+demo/expected-output/README.ko.md	demo/expected-output/index.md
+docs/developers.ko.md	developers/index.md
+docs/testcases.ko.md	developers/testcases.md
+docs/build.ko.md	developers/build.md
+docs/environment-variables.ko.md	developers/environment-variables.md
+docs/site.ko.md	developers/site.md
+docs/licensing.ko.md	developers/licensing.md
+RELEASE_NOTES.ko.md	project/release-notes.md
+CONTRIBUTING.ko.md	project/contributing.md
+SECURITY.ko.md	project/security.md
+CLA.ko.md	project/cla.md

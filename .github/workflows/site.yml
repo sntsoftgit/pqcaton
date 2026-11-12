@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
+#
+# 문서 사이트를 만들고 링크를 재고, 미리보기를 Actions artifact로 남긴다. **배포하지 않는다**(pages 권한이 없다).
+# main에서 만든 것은 개발판이다: 모든 쪽에 개발판 띠와 noindex가 붙고(build.sh가 판을 리포에서 구한다), 산출물은 커밋하지 않는다.
+# 실제 배포는 릴리스 태그로만 한다(사이트 개편 3단계). 지금의 docs/ 배포(pages.yml)는 그때까지 그대로다.
+name: site
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', '*.md', 'demo/**', 'tools/site/**', '.github/workflows/site.yml']
+  pull_request:
+    paths: ['docs/**', '*.md', 'demo/**', 'tools/site/**', '.github/workflows/site.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 판을 태그에서 구하므로 태그가 있어야 한다
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: tools/site/python-version
+      - name: 도구 설치(해시 고정)
+        run: pip install --disable-pip-version-check --no-cache-dir --require-hashes --only-binary :all: -r tools/site/requirements.txt
+      - name: 빌드와 링크 검사
+        run: tools/site/build.sh "$RUNNER_TEMP/site/site"
+      - name: 판 기록
+        run: cat "$RUNNER_TEMP/site/site/build-info.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/site
+          retention-days: 14
+          if-no-files-found: error

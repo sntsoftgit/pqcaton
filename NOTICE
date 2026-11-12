@@ -22,5 +22,12 @@ pqcota-provisioning) and does not
 modify pqcota itself. Where pqcota source is included in a distribution of
 pqcaton, it remains under the Apache License, Version 2.0.
 
+The documentation site tools in tools/site (assemble.py, build.sh, check_site.py,
+langswitch.py, mkdocs.base.yml and mkdocs.ko.base.yml) are derived from pqcota's
+tools/site at commit 8a4e9bf060416533fab9d40dcce8427d81e10faa (v0.13.0) and were
+modified for pqcaton. They remain under the Apache License, Version 2.0: each of
+them says so in its header, the changes are listed in docs/site.md, and the
+license text is in LICENSES/Apache-2.0.txt.
+
 pqcaton itself is licensed under the Business Source License 1.1 — see LICENSE.
 Third-party dependency licenses are recorded in licenses.txt.

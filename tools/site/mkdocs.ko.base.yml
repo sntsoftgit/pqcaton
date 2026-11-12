@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Great Honor <randyinthedev@gmail.com>
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+# pqcota tools/site(8a4e9bf0, v0.13.0)의 설정에서 가져왔다. pqcaton에는 앰블럼 그림이 없어 logo · favicon 줄을 뺐다.
+site_name: pqcaton
+docs_dir: docs
+theme:
+  name: material
+  palette:
+    primary: white                       # 앰블럼 색(청록·강조색)이 머리 바탕에 묻히지 않게
+  font: false
+  language: ko
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - search.suggest
+plugins:
+  - search
+markdown_extensions:
+  - tables
+  - md_in_html
+  - toc:
+      permalink: true
+      slugify: !!python/name:slugs.github_slug   # GitHub와 같은 앵커(slugs.py). pqcota는 pymdownx.slugs.slugify를 쓴다
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+validation:
+  links:
+    not_found: warn
+    absolute_links: info
+    unrecognized_links: warn
+    anchors: warn

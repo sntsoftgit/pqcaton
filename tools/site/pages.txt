@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
+# 영어 사이트에 싣는 문서(원문<TAB>사이트 자리). assemble.py가 리포에서 찾은 목록과 다르면 멈춘다.
+README.md	overview.md
+docs/operator-guide.md	users/operator-guide.md
+docs/journey.md	users/journey.md
+docs/compatibility.md	users/compatibility.md
+demo/README.md	demo/index.md
+demo/expected-output/README.md	demo/expected-output/index.md
+docs/developers.md	developers/index.md
+docs/design.md	developers/design.md
+docs/testcases.md	developers/testcases.md
+docs/build.md	developers/build.md
+docs/environment-variables.md	developers/environment-variables.md
+docs/site.md	developers/site.md
+docs/licensing.md	developers/licensing.md
+RELEASE_NOTES.md	project/release-notes.md
+CONTRIBUTING.md	project/contributing.md
+SECURITY.md	project/security.md
+CLA.md	project/cla.md

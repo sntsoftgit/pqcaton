@@ -2,15 +2,69 @@
 
 # 공개 사이트
 
-`docs/` 아래가 그대로 GitHub Pages로 올라갑니다([워크플로](../.github/workflows/pages.yml)). pqcota처럼 사이트의 첫 화면
-(`index.html`)과 문서가 한 자리에 있습니다(예전에는 `site/`에 있었습니다).
-빌드 단계가 없습니다. **정적 파일을 그대로 올립니다.** 정적 사이트 생성기를 두지 않은 이유는
-하나입니다: 지금 페이지가 하나뿐이고, 도구를 먼저 들이면 그 도구를 관리하는 일이 먼저 생깁니다.
+지금은 `docs/` 아래가 그대로 GitHub Pages로 올라갑니다([워크플로](../.github/workflows/pages.yml)). pqcota처럼 사이트의 첫 화면
+(`index.html`)과 문서가 한 자리에 있습니다. **리포의 문서로 만드는 문서 사이트를 더하고 있습니다**([아래](#문서-사이트)). 릴리스
+태그로 배포하기 전까지 켜져 있는 사이트는 지금 그대로입니다.
 
 | 지금 | |
 |---|---|
 | [`index.html`](index.html) | 아키텍처 문서. 자립형 한 장이라 외부 요청이 하나도 없습니다. 한국어와 English로 봅니다 |
 | [`ui-next.html`](ui-next.html) | **v0.22.0 화면 설계의 과거 정적 시안**(2026-08-26). 이 설계는 v0.22.0부터 `pqcaton-ui`의 기본 화면이 되었고, 실제 화면은 그 뒤로 달라진 데가 있습니다. 기록으로 남겨 둔 것이며 데이터를 읽거나 쓰지 않습니다. 한국어와 English로 봅니다 |
+
+## 문서 사이트
+
+리포의 문서([`pages.txt`](../tools/site/pages.txt) · [`pages.ko.txt`](../tools/site/pages.ko.txt)로 고정)가 영어 사이트와
+`/pqcaton/ko/`의 한국어 사이트가 됩니다([`tools/site`](../tools/site)). **기준은 리포의 원본 문서이고, 사이트는 한 릴리스 태그의
+읽기 사본입니다. 둘이 다르면 원본이 우선합니다.** 생성물은 커밋하지 않습니다. [사이트 워크플로](../.github/workflows/site.yml)는 main에서
+사이트를 만들고 재서 Actions artifact로만 남기고, 배포하지 않습니다.
+
+### 빌드의 판
+
+`build.sh`는 판을 입력으로 받지 않습니다. `HEAD`를 가리키는 `vX.Y.Z` 태그가 하나이고, 그 태그의 커밋이 `HEAD`이며, 작업 트리가
+깨끗할 때만 **릴리스** 빌드입니다. 그 밖은 모두 **개발판**이고, 모든 쪽에 「개발판입니다: 릴리스가 아니며 배포하지 않습니다」 띠와
+`noindex`가 붙습니다. 사이트 맨 위의 `build-info.txt`에 판 종류 · 태그 · 전체 커밋 · Python과 Zensical 판 · 고정한 의존성과
+`pip freeze`의 해시를 적습니다. 릴리스 태그로만 배포하고 한 태그의 사이트를 다른 내용으로 다시 만들지 않는 것은 다음 단계에서
+합니다. 급한 문서 수정도 패치 릴리스로 냅니다.
+
+### 빌드가 재는 것
+
+- Python이 고정한 판([`python-version`](../tools/site/python-version))이고, 도구는 해시를 단
+  [`requirements.txt`](../tools/site/requirements.txt)로만 설치하며, `pip freeze`가 [`freeze.txt`](../tools/site/freeze.txt)와 같아야 합니다.
+- 추적하는 문서가 고정한 쪽 목록과 같아야 합니다. 리포 밖으로 나가는 링크, 없는 파일로 가는 링크, 절대 경로는 빌드를 멈춥니다.
+- 빌드 뒤에 모든 HTML(생성한 쪽 · 첫 화면 · `ui-next.html`)의 링크가 사이트 안에서 앵커까지 풀려야 합니다. `/pqcaton/` 접두어가
+  빠진 절대 경로, 사이트 밖으로 나가는 상대 경로, GitHub의 이 리포 `main`을 가리키는 링크는 문제입니다. 옛 주소로 남긴 원본 문서의
+  링크는 리포 안의 파일로 풀려야 합니다. 한국어 쪽에서 영어 쪽으로 가는 링크는 같은 블록에 그렇다고 적어야 합니다(영문 · 영어 ·
+  English). 문제는 0건이어야 합니다.
+- 제목 앵커는 GitHub의 규칙을 따릅니다([`slugs.py`](../tools/site/slugs.py)). GitHub에 맞춰 쓴 앵커가 사이트에서도 열립니다.
+
+### 지키는 주소
+
+`/pqcaton/`은 첫 화면으로 남고 `/pqcaton/ui-next.html`도 그 자리에 남습니다. 모든 `docs/*.md`도 바이트 그대로 사이트 맨 위에
+복사해, 지금 원문이 열리는 주소가 그대로 열립니다. 생성한 쪽은 `overview/` · `users/` · `demo/` · `developers/` · `project/` 아래에
+있습니다. `saas/` 문서는 이 사이트에 넣지 않습니다.
+
+### 도구의 출처
+
+`assemble.py` · `build.sh` · `check_site.py` · `langswitch.py`와 mkdocs 설정 둘은 pqcota `tools/site`의 커밋
+`8a4e9bf060416533fab9d40dcce8427d81e10faa`(v0.13.0)에서 가져왔고, Apache License 2.0 그대로입니다(파일 머리말에 적었고, 라이선스
+본문은 [LICENSES/Apache-2.0.txt](../LICENSES/Apache-2.0.txt), 고지는 [NOTICE](../NOTICE)에 있습니다). pqcaton은 자기 사본을 고정하고,
+빌드할 때 pqcota의 도구를 받아 오지 않습니다. 고친 내역은 다음과 같습니다.
+
+| 파일 | pqcaton에 맞게 고친 것 |
+|---|---|
+| `assemble.py` | 리포 다섯 대신 하나, pqcaton의 사이트 자리, `saas/`와 옛 자리 안내 쪽 빼기, 첫 화면과 `ui-next.html`을 사이트 파일로, 리포 밖 · 없는 파일 · 절대 경로 링크는 남기지 않고 빌드를 멈춤 |
+| `build.sh` | 판을 `HEAD`를 가리키는 태그에서 구함(아니면 개발판), Python과 `pip freeze` 검사, 모든 `docs/*.md`를 옛 주소에 남김, 손으로 쓴 쪽의 `main` 링크를 빌드의 판으로 고정, `stamp.py` |
+| `check_site.py` | `<link>` · `<img>` · `<script>`까지, 옛 주소로 남긴 원본 문서, 접두어 빠짐과 사이트 밖을 문제로 이름 붙임, 이 리포 `main` 링크, 언어 표시 낱말 |
+| `langswitch.py` | 손으로 쓴 쪽인 `ui-next.html`은 건드리지 않음 |
+| `mkdocs.base.yml` · `mkdocs.ko.base.yml` | logo · favicon 줄 빼기, GitHub의 제목 앵커 |
+
+`stamp.py` · `slugs.py` · `local.sh` · `python-version` · `freeze.txt`와 `requirements.txt`의 해시는 pqcaton에서 새로 만들었습니다.
+
+이 기계에서 만들어 보려면(Docker가 필요하고, 산출물은 리포 밖에 생기며 배포하지 않습니다):
+
+```bash
+tools/site/local.sh ~/pqcaton-sandbox/site-out/main
+```
 
 ## 규칙
 
@@ -31,8 +85,8 @@
 
 ## 소개 홈페이지로 넓힐 때
 
-`index.html`을 소개 페이지로 새로 쓰고, 지금 것을 `architecture.html`로 옮깁니다. 머리의
-`<nav>`가 그때 쓰라고 미리 있는 자리입니다.
+`index.html`을 영어 기본의 소개 페이지로 새로 쓰고, 지금 것을 `architectures/`로 옮겨 사이트에서
+`/pqcaton/architectures/`로 남깁니다(사이트 개편 2단계). 머리의 `<nav>`가 그때 쓰라고 미리 있는 자리입니다.
 
 ## 켜져 있습니다
 
