@@ -80,6 +80,7 @@ type startConfig struct {
 	allowUnverified      bool   // -allow-unverified-collectors
 	verifyKey            string // 확인용 공개 키 파일(-approval-verify-key)
 	noDefaultKey         bool   // -no-default-approval-key
+	upstreamOrg          string // -upstream-org: 비었거나 판정 조직과 같아야 한다
 }
 
 // errUsage: 사용법이 틀렸다(종료 코드 2).
@@ -111,6 +112,7 @@ func parseStart(args []string, stderr io.Writer) (startConfig, error) {
 	fs.StringVar(&c.verifyKey, "approval-verify-key", "", "verification key for the 06 screen: a file holding only the PQCOTA_VERIFY_KEY line of pqcota-keygen, outside the workspace and writable only by its owner. Plans already signed are checked and generated with it even without the private key (default: approval.pub next to the default approval key)")
 	fs.BoolVar(&c.noDefaultKey, "no-default-approval-key", false, "do not look for approval.key and approval.pub in the user configuration folder (pqcaton/ under it). An -approval-key or -approval-verify-key given is still used")
 	fs.StringVar(&c.approvalKey, "approval-key", "", "approval signing key for the 06 screen: the output of pqcota-keygen saved to a file outside the workspace, readable only by its owner (chmod 600)")
+	fs.StringVar(&c.upstreamOrg, "upstream-org", "", "organization in the pqcota history; it must be the organization of the judgments (the default), and any other value stops the start. The connection comes from PQCOTA_DSN, or when that is empty from pqcota.env next to the default approval key (owner-only, PQCOTA_DSN=<value> only). The screen does not start without a working pqcota history")
 	fs.StringVar(&c.stateDir, "state-dir", "", "state directory holding transaction records and receipts (default: .pqcaton next to the session file). Commands that change the same files must use the same one")
 
 	// **위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다.** 표준 flag는 첫 비플래그에서 파싱을 멈추므로, 그냥
@@ -235,7 +237,7 @@ func (c startConfig) serverBase() *server {
 	return &server{path: c.session, decl: c.decl, results: c.results, scope: c.scope,
 		layers: c.layers, base: c.base, scopeAssets: c.scopeAssets, judgments: c.judgments,
 		org: c.org, planOut: c.plan, scopeOut: c.scopeOut, workspace: c.workspace, hosts: c.hosts, collectors: absPath(c.collectors),
-		collectorPin: collectorPin(), allowUnverified: c.allowUnverified,
+		collectorPin: collectorPin(), allowUnverified: c.allowUnverified, upstreamOrg: c.upstreamOrg,
 		orgFromDecl: c.workspace != "" && !c.orgGiven}
 }
 

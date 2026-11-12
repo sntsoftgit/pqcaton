@@ -106,8 +106,8 @@ type ReceiptRound struct {
 	ToSessionID       string `json:"to_session_id"`
 	// FromPolicy: 옛 세션이 판정된 정책의 지문. 활성화 회차만 채운다(기준선 회차의 옛 세션에는 지문이 없다).
 	FromPolicy string `json:"from_policy,omitempty"`
-	// Basis: 상류 적재를 무엇으로 뒷받침했나. "operator-statement"(운영자 진술, 증명이 아니다) 또는 "upstream-verified"(새
-	// 정책의 노드별 지문을 상류 이력에서 모두 찾았다).
+	// Basis: 정책 회차의 근거. v0.28.0부터 새로 쓰는 값은 "upstream-verified"(확인 시점에 새 정책의 노드별 지문이 pqcota
+	// 이력의 노드별 최신 스냅샷과 모두 같았다)뿐이다. "operator-statement"(운영자 진술)는 v0.27.x까지의 과거 기록으로 읽는다.
 	Basis string `json:"basis,omitempty"`
 }
 

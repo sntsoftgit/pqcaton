@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BUSL-1.1
 #
 # pqcaton 화면을 systemd 사용자 서비스로 띄운다. 작업 폴더는 ~/pqcaton이다.
+# 화면은 pqcota 이력 없이 시작하지 않는다. 연결 정보는 화면이 ~/.config/pqcaton/pqcota.env(0600, PQCOTA_DSN=… 한 줄)에서
+# 직접 읽는다(권한 · 링크 · 소유자를 검사하고 데이터로만 읽는다). 여기에 값을 적지 않는다.
 # 설치와 사용은 docs/operator-guide.md 의 「설치」 절을 따른다.
 [Unit]
 Description=pqcaton screen (workspace ~/pqcaton)

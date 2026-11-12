@@ -44,15 +44,15 @@ type ConfirmView struct {
 // ActivateConfirmTitle: 정책 활성화 확인 페이지의 제목.
 func ActivateConfirmTitle(l Lang) string { return tActivateConfirmTitle.In(l) }
 
-// ActivateConfirmLines: 활성화 확인 페이지에 적을 것. 두 지문, 바뀌는 파일과 보관 자리, 되돌리기 제한과 백업 위치, 운영자
-// 진술의 한계를 모두 적는다.
-func ActivateConfirmLines(l Lang, from, to, policy, policyArchive, candidate string) []string {
+// ActivateConfirmLines: 활성화 확인 페이지에 적을 것. 두 지문, 바뀌는 파일과 보관 자리, 되돌리기 제한과 백업 위치, 그리고
+// 미리 한 pqcota 이력 대조(노드 수와 확인 시각). 대조는 「확인 시점에 일치했다」고만 적는다. 실행은 처음부터 다시 대조한다.
+func ActivateConfirmLines(l Lang, from, to, policy, policyArchive, candidate string, nodes int, checkedAt string) []string {
 	return []string{
 		tActivateLineFrom.F(l, from), tActivateLineTo.F(l, to, candidate),
+		tActivateLineUpstream.F(l, nodes, checkedAt),
 		tActivateLineFiles.F(l, policy, policyArchive),
 		tActivateLineRound.In(l),
 		tActivateLineDowngrade.In(l),
-		tScopeConfirmLimit.In(l),
 	}
 }
 

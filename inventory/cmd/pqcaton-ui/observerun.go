@@ -443,7 +443,7 @@ func (s *server) startRun(window int) error {
 	cmd.Dir = j.dir
 	// 감독도 표지를 갖는다. 감독이 살아 있는 동안 그 묶음은 표지 프로세스가 있는 묶음이라, 환경을 읽을 수 없는 그 구성원도
 	// 이 실행의 것으로 증명된다.
-	cmd.Env = append(os.Environ(), runMarker(j.m.ID))
+	cmd.Env = append(childEnv(), runMarker(j.m.ID))
 	ownGroup(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -651,7 +651,7 @@ func runCleanup(dir, id string, logf func(string)) (string, string) {
 	logf("pqcaton: removing the staging folders from the nodes")
 	cmd := exec.Command(ansibleCommand, "-i", runInventory, "-e", "@vars.json", "cleanup.yml")
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), runMarker(id), "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
+	cmd.Env = append(childEnv(), runMarker(id), "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
 	ownGroup(cmd)
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out

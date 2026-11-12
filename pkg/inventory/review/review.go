@@ -381,10 +381,10 @@ type ScopeChanged struct{ Lock, Session, Active string }
 func (e *ScopeChanged) Error() string {
 	if e.Lock == ScopeLockBaseline {
 		return "this session records no asset-scope policy (it was made before v0.26.0). Nothing was saved or finalized. " +
-			"Adopt the current scope-assets.csv as the baseline in a new round, after confirming it is the policy the upstream ingest used"
+			"Adopt the current scope-assets.csv as the baseline in a new round, after re-ingesting pqcota with it (the round reconciles the pqcota history first)"
 	}
 	return fmt.Sprintf("this session was judged under %s, but the active asset-scope policy is %s and no activation records that change. "+
-		"Nothing was saved or finalized. Restore the previous policy file, or re-ingest upstream with the new policy and activate it", e.Session, e.Active)
+		"Nothing was saved or finalized. Restore the previous policy file, or re-ingest pqcota with the new policy and activate it", e.Session, e.Active)
 }
 
 func (e *ScopeChanged) Unwrap() error { return ErrScopeChanged }

@@ -329,7 +329,7 @@ func supervise(dir, ansible string) int {
 	mine := runMark{Marker: marker, Suspect: []int{syscall.Getpgrp()}}
 	cmd := exec.Command(ansible, "-i", runInventory, "-e", "@vars.json", "observe.yml")
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), marker, "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
+	cmd.Env = append(childEnv(), marker, "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		say("pqcaton: %v", err)

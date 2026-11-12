@@ -21,8 +21,8 @@
 #   ./demo/scripts/ui.sh stop    컨테이너 안의 화면을 끝낸다. 다시 빌드한 화면을 띄우려면 stop 뒤에 다시 연다.
 #   ./demo/scripts/ui.sh start   화면만 띄우고 중계는 열지 않는다(종단 검증이 쓴다).
 #   ./demo/scripts/ui.sh apply-scope
-#                                02에서 확정한 정책을 상류에 다시 적재하고, 노드별 지문이 상류 이력의 최신 스냅샷으로 모두
-#                                찾히면 활성화한다. 화면이 떠 있으면 아무것도 하지 않는다(stop → apply-scope → ui.sh 순서).
+#                                02에서 확정한 정책으로 pqcota를 다시 적재한다. **활성화는 하지 않는다.** 활성화는 화면(05)이
+#                                pqcota 이력 대조를 거쳐 한다. 화면이 떠 있어도 된다(적재는 작업 폴더를 건드리지 않는다).
 #   PQCATON_UI_PORT=8766 ...     이 기계에서 받을 포트(기본 8765). 이 기계에서 다른 화면을 이미 띄웠을 때 바꾼다.
 set -euo pipefail
 DEMO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # pqcaton/demo
@@ -33,6 +33,10 @@ CTL=pqcota-ctl
 WS=/work/ui
 # 06의 승인 서명 키. 작업 폴더 밖에 0600으로 둔다(운영자 안내서 2절과 같은 자리 규칙).
 KEY=/work/ui-approval.key
+# pqcota 이력(데모 DB). 화면은 이것 없이 시작하지 않는다. pqcota 이력의 조직은 판정 조직(demo-corp)과 같아야 하므로, 재적재도
+# 그 조직으로 한다(PQCOTA_ORG). pqcota 데모의 demo.sh가 기본 조직에 적재한 이력은 이 화면이 보지 않는다.
+DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
+ORG=demo-corp
 LOG=/work/ui.log
 PORT="${PQCATON_UI_PORT:-8765}"
 
@@ -89,42 +93,21 @@ install_bin() {
 answers() { docker exec "$CTL" curl -fsS -o /dev/null http://127.0.0.1:8765/ 2>/dev/null; }
 
 if [ "$MODE" = "apply-scope" ]; then
-  # 상류 이력(데모 DB)과 거기서 쓰는 조직. pqcota 데모의 demo.sh와 같은 값이다.
-  DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
-  UPSTREAM_ORG=default
-  # 0) 화면이 떠 있으면 아무것도 하지 않는다. 상류 적재도 시작하지 않는다. 화면이 작업 폴더를 쥔 동안 바꾸면 화면이 본 것과
-  #    파일이 어긋난다.
-  if docker exec "$CTL" pgrep -x pqcaton-ui >/dev/null; then
-    echo "❌ pqcaton-ui is running in $CTL — nothing was done. Stop it first:"
-    echo "   ./demo/scripts/ui.sh stop  →  ./demo/scripts/ui.sh apply-scope  →  ./demo/scripts/ui.sh"
-    exit 1
-  fi
-  # 1) 적재 전에 모두 점검한다: 작업 폴더의 파일 · 결과 · 필요한 프로그램 · DB.
-  echo "▶ 1/4 check ${WS}, the programs and the upstream DB…"
+  # 1) 적재 전에 점검한다: 작업 폴더의 파일 · 결과 · 필요한 프로그램 · DB.
+  echo "▶ 1/2 check ${WS}, the programs and the pqcota DB…"
   docker exec "$CTL" bash -c "
     set -e
-    for f in $WS/asset-scope.csv $WS/scope-session.json $WS/session.json $WS/declaration.json; do
+    for f in $WS/asset-scope.csv $WS/declaration.json; do
       [ -f \$f ] || { echo \"❌ missing \$f — finalize the policy in 02 first\"; exit 1; }
     done
     ls $WS/results/*.json* >/dev/null 2>&1 || { echo '❌ no results in $WS/results'; exit 1; }
     command -v pqcota-ingest >/dev/null || { echo '❌ pqcota-ingest not found in $CTL'; exit 1; }
   "
-  docker exec pqcota-demo-pg pg_isready -q || { echo "❌ the upstream DB (pqcota-demo-pg) is not ready"; exit 1; }
-  install_bin pqcaton-decide ./inventory/cmd/pqcaton-decide
-  # 지역 전제(세션이 지금 정책으로 판정됨 · 후보가 02 확정 그대로 · 두 정책이 다름). 아무것도 쓰지 않는다.
-  ACT="activate-scope $WS/session.json -decl $WS/declaration.json -results $WS/results -scope-assets $WS/scope-assets.csv \
-    -candidate $WS/asset-scope.csv -scope-session $WS/scope-session.json -org demo-corp"
-  docker exec "$CTL" bash -c "pqcaton-decide $ACT -dry-run"
-  # 2) 상류 적재. 화면이 실제로 쓰는 결과 폴더와 02에서 확정한 정책으로 한다.
-  echo "▶ 2/4 re-ingest upstream with the finalized policy ($WS/asset-scope.csv, $WS/results)…"
-  docker exec -e PQCOTA_DSN="$DSN" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
-  # 3) 확인과 활성화. 노드별 지문이 상류 이력(조직 default)의 그 노드 최신 스냅샷으로 하나라도 찾히지 않으면 쓰지 않는다.
-  echo "▶ 3/4 verify the snapshots upstream and activate…"
-  docker exec -e PQCOTA_DSN="$DSN" "$CTL" bash -c "pqcaton-decide $ACT -verify-upstream -upstream-org $UPSTREAM_ORG"
-  # 4) 결과.
-  echo "▶ 4/4 status"
-  docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv" | sed 's/^/   /'
-  echo "✅ activated. Start the screen again: ./demo/scripts/ui.sh"
+  docker exec pqcota-demo-pg pg_isready -q || { echo "❌ the pqcota DB (pqcota-demo-pg) is not ready"; exit 1; }
+  # 2) pqcota 적재. 화면이 실제로 쓰는 결과 폴더와 02에서 확정한 정책으로 한다.
+  echo "▶ 2/2 re-ingest pqcota with the finalized policy ($WS/asset-scope.csv, $WS/results)…"
+  docker exec -e PQCOTA_DSN="$DSN" -e PQCOTA_ORG="$ORG" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
+  echo "✅ re-ingested. Activate it in 05 (the screen reconciles the pqcota history first): ./demo/scripts/ui.sh"
   exit 0
 fi
 
@@ -167,7 +150,8 @@ else
   echo "▶ 3/3 start pqcaton-ui in $CTL (127.0.0.1:8765 inside the container)…"
   # 상류 데모는 수집기를 pqcota 리포에서 옆 폴더 replace 로 빌드한다. replace 한 소스는 판을 확인할 수 없어 화면에서는 「확인 불가」이고,
   # 기본으로는 관측을 시작하지 않는다. 데모는 그것을 알고 -allow-unverified-collectors 로 띄운다(03 화면과 이 로그에 남는다).
-  docker exec -d "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org demo-corp -approval-key $KEY -allow-unverified-collectors >>$LOG 2>&1"
+  # 화면은 pqcota 이력 없이 시작하지 않는다. 연결 정보는 환경 변수로만 넘긴다(명령줄 인자가 아니다).
+  docker exec -d -e PQCOTA_DSN="$DSN" "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org $ORG -approval-key $KEY -allow-unverified-collectors >>$LOG 2>&1"
   for _ in $(seq 1 40); do answers && break; sleep 0.5; done
   answers || { echo "❌ pqcaton-ui did not answer — last lines of $CTL:$LOG:"; docker exec "$CTL" tail -20 "$LOG"; exit 1; }
 fi

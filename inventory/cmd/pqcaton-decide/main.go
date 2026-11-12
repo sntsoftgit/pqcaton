@@ -79,20 +79,22 @@ const usage = `usage:
         the same state directory as pqcaton-ui; the same round is opened only once
 
   pqcaton-decide baseline <session.json> -decl <declaration.json> -results <results-dir> [-scope-assets <csv>]
-        (-verify-upstream | -confirm-ingest) [-org <name>] [-upstream-org <name>] [-state-dir <dir>]
+        [-org <name>] [-upstream-org <name>] [-state-dir <dir>]
         Adopt the current asset-scope policy as the **baseline** for a session made before v0.26.0 (it records
         no policy). A new round rebuilt from the results opens; earlier conclusions go only into "previous".
-        With -verify-upstream every snapshot under this policy must be in the upstream history (PQCOTA_DSN),
-        or nothing is written; -confirm-ingest is your statement and not a proof. The choice is kept in the
-        scope-baseline receipt. A session can take a baseline round only once
+        The pqcota history (PQCOTA_DSN) is always reconciled first: every node's latest snapshot must match
+        this policy, within 10 seconds in all, or nothing is written. A session can take a baseline round
+        only once
 
   pqcaton-decide activate-scope <session.json> -decl <declaration.json> -results <results-dir>
         -scope-assets <active.csv> -candidate <asset-scope.csv> -scope-session <scope-session.json>
-        (-verify-upstream | -confirm-ingest) [-org <name>] [-upstream-org <name>] [-state-dir <dir>]
+        [-org <name>] [-upstream-org <name>] [-state-dir <dir>]
         Activate the policy finalized in 02: the active policy file is replaced (the old one archived), the
         review session is archived and a new round rebuilt under the new policy opens, all in one transaction
-        with a scope-activation receipt. If the two policies mean the same, nothing is written. A candidate
-        that is not exactly what 02 finalized is refused
+        with a scope-activation record, after the pqcota history (PQCOTA_DSN) matched the candidate policy
+        for every node (10 seconds in all). If the two policies mean the same, nothing is written. A candidate
+        that is not exactly what 02 finalized is refused. -verify-upstream is accepted and changes nothing;
+        -confirm-ingest is no longer supported
 
   pqcaton-decide activate-scope ... -dry-run
         Check only the local preconditions (the session is under the active policy, the candidate is what
@@ -129,9 +131,9 @@ func main() {
 	reportPath := fs.String("report", "", "new-round: where to write the change report (default: beside the new session)")
 	candidate := fs.String("candidate", "", "activate-scope: the policy finalized in 02 (asset-scope.csv)")
 	scopeSession := fs.String("scope-session", "", "activate-scope: the 02 scope session that finalized -candidate")
-	verifyUp := fs.Bool("verify-upstream", false, "baseline, activate-scope: look every snapshot under the new policy up in the upstream history (PQCOTA_DSN)")
-	confirmIngest := fs.Bool("confirm-ingest", false, "baseline, activate-scope: state that the upstream ingest used the new policy (recorded, not a proof)")
-	upstreamOrg := fs.String("upstream-org", "", "baseline, activate-scope: organization in the upstream history (default: -org)")
+	_ = fs.Bool("verify-upstream", false, "baseline, activate-scope: accepted for compatibility; the pqcota history reconciliation always runs (PQCOTA_DSN)")
+	confirmIngest := fs.Bool("confirm-ingest", false, "baseline, activate-scope: no longer supported (an operator statement does not replace the pqcota history reconciliation)")
+	upstreamOrg := fs.String("upstream-org", "", "baseline, activate-scope: organization in the pqcota history; must be -org (the default), any other value is refused before the lookup")
 	dry := fs.Bool("dry-run", false, "activate-scope: check the local preconditions only; write nothing and do not look upstream")
 	// 위치 인자를 먼저 걷고 나머지를 플래그로 넘긴다 - 순서를 사람이 외우지 않게.
 	var pos []string
@@ -170,15 +172,12 @@ func main() {
 		err = newRound(pos[0], *declPath, *results, *scopeAssets, *orgName, *out, *reportPath, *stateDir)
 	case "baseline", "activate-scope":
 		need(1)
-		uorg := *upstreamOrg
-		if uorg == "" {
-			uorg = *orgName
-		}
+		uorg := *upstreamOrg // 비었거나 -org와 같아야 한다(reconcileUpstream이 조회 전에 본다)
 		if sub == "baseline" {
-			err = baselineRound(pos[0], *declPath, *results, *scopeAssets, *orgName, *stateDir, uorg, *verifyUp, *confirmIngest)
+			err = baselineRound(pos[0], *declPath, *results, *scopeAssets, *orgName, *stateDir, uorg, *confirmIngest)
 		} else {
 			scopeSessionPath, dryRun = *scopeSession, *dry
-			err = activateScope(pos[0], *declPath, *results, *scopeAssets, *candidate, *orgName, *stateDir, uorg, *verifyUp, *confirmIngest)
+			err = activateScope(pos[0], *declPath, *results, *scopeAssets, *candidate, *orgName, *stateDir, uorg, *confirmIngest)
 		}
 	case "scope-status":
 		need(1)

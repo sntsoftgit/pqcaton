@@ -4,10 +4,13 @@
 package main
 
 // 05의 새 정책 활성화. 02에서 확정한 정책(asset-scope.csv)이 활성 정책(scope-assets.csv)과 의미상 다르면 05 위쪽에 알리고,
-// 운영자 진술(상류 재적재를 마쳤다)을 받아 확인 페이지를 거쳐 활성화한다. 활성화는 정책 보관본 · 활성 정책 교체 · 옛 세션
-// 보관본 · 새 세션 · 변환 보고서 · 회차 표지 · scope-activation 형식 2 영수증을 한 트랜잭션으로 쓴다(rulesetround.Open).
+// 확인 페이지를 거쳐 활성화한다. 활성화는 정책 보관본 · 활성 정책 교체 · 옛 세션 보관본 · 새 세션 · 변환 보고서 · 회차 표지 ·
+// scope-activation 형식 2 처리 기록을 한 트랜잭션으로 쓴다(rulesetround.Open).
 //
-// **진술은 상류 적재를 증명하지 않는다.** 화면과 확인 페이지가 그 한계를 적는다. 실제 상류 지문 확인은 명령과 데모의 몫이다.
+// **pqcota 이력 대조는 필수다.** 운영자 진술은 받지 않는다. 실행 요청 하나가 순서대로 한다: (1) 입력 스냅샷(확인 페이지가 본
+// rev와 지문), (2) 명령과 같은 upstream.Reconcile로 대조(전체 10초), (3) 실패하면 쓰지 않음, (4) 곧바로 저장소의 잠금,
+// (5) 잠금 안에서 1의 rev를 다시 잼, (6) 그대로일 때만 한 트랜잭션으로 씀. 확인 페이지 요청도 미리 대조해 결과를 보이지만
+// 그 결과로 실행하지 않는다. 대조가 끝난 뒤부터 쓰기가 끝날 때까지의 pqcota 변경은 감지하지 못한다(upstream/reconcile.go).
 //
 // 확인 페이지부터 실행까지 활성 정책 · 후보 정책 · 옛 세션 · 결과 폴더가 그대로여야 한다. 확인 페이지의 지문(payload)에 넷을
 // 담고, 실행은 다시 재어 견주며, 저장소는 rev(같은 넷과 선언)를 잠금 안에서 다시 잰다.
@@ -28,6 +31,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/upstream"
 )
 
 const kindActivate = "activate"
@@ -69,7 +73,7 @@ func (s *server) activationCheck() (*ui.ActivationOffer, error) {
 	if err := s.sameScopePolicy(sf); err != nil {
 		return nil, err
 	}
-	o := &ui.ActivationOffer{From: from, To: to}
+	o := &ui.ActivationOffer{From: from, To: to, Org: s.orgName()}
 	// 05의 「상류 재적재」 명령에 보일 경로. 작업 폴더(세션 파일이 있는 폴더) 기준이다. 그 밖에 있으면 절대 경로로 둔다.
 	dir := filepath.Dir(s.path)
 	for _, p := range []struct {
@@ -146,7 +150,8 @@ func (s *server) activationRequest(o *ui.ActivationOffer) rulesetround.Request {
 		}}
 }
 
-// scopeActivateConfirm: 활성화 전 확인(POST). 아무것도 쓰지 않는다. 운영자 진술이 없으면 400이다.
+// scopeActivateConfirm: 활성화 전 확인(POST). 아무것도 쓰지 않는다. pqcota 이력을 미리 대조해 일치하지 않으면 확인 페이지를
+// 내지 않는다. 일치하면 「확인 시점에 일치했다」와 노드 수 · 확인 시각을 보인다.
 func (s *server) scopeActivateConfirm(w http.ResponseWriter, r *http.Request) {
 	back := ui.ScreenReview
 	if !s.writable(w, r, back) {
@@ -154,10 +159,6 @@ func (s *server) scopeActivateConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.results == "" || s.decl == "" {
 		errorPage(w, r, http.StatusConflict, ui.ErrInputMissing, nil)
-		return
-	}
-	if r.PostForm.Get(ui.ScopeActivateConfirmField) != "on" {
-		s.refuse(w, r, http.StatusBadRequest, ui.RefusedScopeConfirm, back, nil)
 		return
 	}
 	var (
@@ -182,13 +183,22 @@ func (s *server) scopeActivateConfirm(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	res, err := s.reconcileUpstream(s.scopeOut)
+	if err != nil {
+		if !s.upstreamRefuse(w, r, back, err) {
+			s.fail(w, r, back, err, file(ui.PickLang(r), "policy", s.scopeOut))
+		}
+		return
+	}
 	l := ui.PickLang(r)
-	lines := ui.ActivateConfirmLines(l, o.From, o.To, filepath.Base(s.scopeAssets), filepath.Base(names[2]), filepath.Base(s.scopeOut))
+	lines := ui.ActivateConfirmLines(l, o.From, o.To, filepath.Base(s.scopeAssets), filepath.Base(names[2]), filepath.Base(s.scopeOut),
+		nodesOf(res), checkedAt(res.At))
 	files := []ui.FileRef{file(l, "policy", s.scopeOut), file(l, "session", s.path)}
 	s.activateConfirmPage(w, r, kindActivate, ui.ReviewScopeActivatePath, back, s.reviewID(), cur, payload, lines, files)
 }
 
 // scopeActivate: 확인을 거친 활성화(POST). 확인 토큰이 맞고 만료 전이어야 하며, 다시 잰 지문이 확인한 것과 같아야 한다.
+// 그다음 pqcota 이력을 처음부터 다시 대조하고, 일치할 때만 연다(위 순서).
 func (s *server) scopeActivate(w http.ResponseWriter, r *http.Request) {
 	back := ui.ScreenReview
 	if !s.writable(w, r, back) {
@@ -202,10 +212,6 @@ func (s *server) scopeActivate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if r.PostForm.Get(ui.ScopeActivateConfirmField) != "on" {
-		s.refuse(w, r, http.StatusBadRequest, ui.RefusedScopeConfirm, back, nil)
-		return
-	}
 	o, err := s.activationCheck()
 	if err != nil {
 		if !s.activationRefuse(w, r, back, err) {
@@ -213,15 +219,46 @@ func (s *server) scopeActivate(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if now, err := s.activationPayload(o); err != nil || now != payload {
+	// (1) 입력 스냅샷: 확인 페이지가 본 지문과 rev. 지금 입력이 이미 다르면 대조하지 않고 멈춘다.
+	chk := s.check(r)
+	if now, err := s.activationPayload(o); err != nil || now != payload || !s.unchanged(chk) {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
 		return
 	}
-	if _, err := rulesetround.Open(s.st, s.activationRequest(o), s.check(r), s.waitTime()); err != nil {
+	// (2) · (3) pqcota 이력 대조. 실패하면 아무것도 쓰지 않는다.
+	res, err := s.reconcileUpstream(s.scopeOut)
+	if err != nil {
+		if !s.upstreamRefuse(w, r, back, err) {
+			s.fail(w, r, back, err, file(ui.PickLang(r), "policy", s.scopeOut))
+		}
+		return
+	}
+	// (4) ~ (6) 곧바로 잠그고, 잠금 안에서 1의 rev를 다시 잰 뒤 쓴다.
+	req := s.activationRequest(o)
+	req.Upstream = recordOf(res)
+	if _, err := rulesetround.Open(s.st, req, chk, s.waitTime()); err != nil {
 		if !s.activationRefuse(w, r, back, err) {
 			s.fail(w, r, back, err, file(ui.PickLang(r), "session", s.path), file(ui.PickLang(r), "policy", s.scopeAssets))
 		}
 		return
 	}
 	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeRulesetRoundOpened)}, nil)
+}
+
+// nodesOf — 대조한 노드의 수.
+func nodesOf(res upstream.Result) int {
+	seen := map[string]bool{}
+	for _, r := range res.Refs {
+		seen[r.Node] = true
+	}
+	return len(seen)
+}
+
+// unchanged — chk의 입력을 지금 다시 재어 rev가 같은가. rev가 비었으면(화면이 오래됐다) 다르다.
+func (s *server) unchanged(chk store.Check) bool {
+	if chk.Rev == "" {
+		return false
+	}
+	now, err := store.Rev(chk.Inputs)
+	return err == nil && now == chk.Rev
 }

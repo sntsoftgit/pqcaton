@@ -39,14 +39,16 @@ const ScopeBaselineReceipt = review.ScopeRoundBaseline
 // ScopeActivationReceipt — 활성화 회차의 영수증 종류.
 const ScopeActivationReceipt = review.ScopeRoundActivation
 
-// 상류 적재를 뒷받침한 것(영수증의 basis).
+// 정책 회차의 근거(처리 기록의 basis).
 const (
-	// BasisOperator — 운영자 진술. 상류 적재를 증명하지 않는다. 화면의 체크와 -confirm-ingest가 이것이다. 이전 정책으로
-	// 되돌릴 때는 이것만 쓸 수 있다: 상류는 같은 지문의 스냅샷을 다시 적재해도 새로 만들지 않아 최신이 되지 않는다.
+	// BasisOperator — 운영자 진술. v0.27.x까지의 과거 기록으로만 읽는다. v0.28.0부터 새로 쓰지 않는다.
 	BasisOperator = review.ScopeBasisOperator
-	// BasisUpstream — 새 정책의 노드별 지문을 상류 이력의 노드별 최신 스냅샷에서 모두 찾았다(명령의 -verify-upstream).
+	// BasisUpstream — pqcota 이력 대조를 거쳤다(upstream.Reconcile). 새 정책 회차의 근거는 이것뿐이다.
 	BasisUpstream = review.ScopeBasisUpstream
 )
+
+// ErrNoUpstreamCheck — 정책 회차(기준선 · 활성화)에 pqcota 이력 대조 기록이 없다. 운영자 진술로 대신하지 않으므로 열지 않는다.
+var ErrNoUpstreamCheck = errors.New("a scope round needs a pqcota history reconciliation; an operator statement does not replace it")
 
 // ErrSamePolicy — 활성 정책과 후보 정책이 의미상 같다. 활성화할 것이 없다(아무것도 쓰지 않는다).
 var ErrSamePolicy = errors.New("the candidate policy is the active policy; nothing to activate")
@@ -100,15 +102,16 @@ type Request struct {
 	NewID      string
 	// Rebuild: 지금 규칙으로 결과에서 세운 세션. 저장소의 잠금 안에서 부른다.
 	Rebuild func() (review.Session, error)
-	// Baseline: 비어 있지 않으면 **기준선 회차**다. 값은 운영자가 상류 적재에 쓴 정책이라고 확인한 지금 정책의 지문이다.
+	// Baseline: 비어 있지 않으면 **기준선 회차**다. 값은 pqcota 이력 대조를 거친 지금 정책의 지문이다.
 	// 정책 지문이 없는 옛 세션에서만 열고, 다시 세운 세션의 지문이 이 값이어야 하며, scope-baseline 형식 2 영수증을 함께
 	// 쓴다. 비어 있으면 규칙 전환 회차다.
 	Baseline string
 	// Activation: 있으면 **활성화 회차**다. 활성 정책을 후보 정책으로 바꾸고, 옛 정책을 보관하고, 옛 세션을 새 정책으로 다시
 	// 세운 새 세션에 넘기며, scope-activation 형식 2 영수증을 쓴다. 모두 한 트랜잭션이다. Rebuild는 **후보 정책으로** 세워야 한다.
 	Activation *Activation
-	// Basis: 영수증에 적을 뒷받침(BasisOperator · BasisUpstream). 비면 BasisOperator다.
-	Basis string
+	// Upstream: 정책 회차(Baseline · Activation)가 거친 pqcota 이력 대조의 기록. 정책 회차에는 반드시 있어야 하고(없으면
+	// ErrNoUpstreamCheck), 처리 기록의 basis는 BasisUpstream, 전환 보고서의 upstream_check는 이 값이다. 규칙 회차는 비운다.
+	Upstream *review.UpstreamCheck
 }
 
 // Result — 연 회차.
@@ -216,6 +219,9 @@ func Targets(req Request) ([]string, error) {
 // Open — 규칙 전환 회차를 연다. 옛 세션이 이미 지금 상류 규칙 판이면 ErrSameRuleset이다. 저장소의 오류(ErrStale:
 // 이미 연 회차, ErrExists: 보관 자리가 있음 등)는 그대로 돌려준다.
 func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Result, error) {
+	if (req.Activation != nil || req.Baseline != "") && req.Upstream == nil {
+		return Result{}, ErrNoUpstreamCheck
+	}
 	old, raw, err := load(req.OldPath)
 	if err != nil {
 		return Result{}, err
@@ -292,12 +298,14 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 			}
 			act = &af
 			next, rep = review.PolicyRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName, review.ScopeRoundActivation, req.basis())
+			rep.UpstreamCheck = req.Upstream
 		} else if req.Baseline != "" {
 			// 운영자가 확인한 정책과 다시 세운 세션이 읽은 정책이 같아야 한다. 그 사이 파일이 바뀌었으면 쓰지 않는다.
 			if rebuilt.ScopePolicyDigestV1 != req.Baseline {
 				return store.RulesetRound{}, fmt.Errorf("%w: the asset-scope policy changed while the baseline round was being opened", store.ErrStale)
 			}
 			next, rep = review.PolicyRound(cur, rebuilt, req.NewID, filepath.Base(report), archiveName, review.ScopeRoundBaseline, req.basis())
+			rep.UpstreamCheck = req.Upstream
 		} else {
 			if rebuilt.ScopePolicyDigestV1 != cur.ScopePolicyDigestV1 {
 				return store.RulesetRound{}, &review.ScopeChanged{Lock: review.ScopeLockUnactivated,
@@ -336,12 +344,7 @@ func Open(st *store.State, req Request, chk store.Check, wait time.Duration) (Re
 	return res, err
 }
 
-func (req Request) basis() string {
-	if req.Basis == "" {
-		return BasisOperator
-	}
-	return req.Basis
-}
+func (req Request) basis() string { return BasisUpstream }
 
 // activationFiles — 잠금 안에서 읽은 두 정책의 바이트. active는 활성 정책 파일이 없으면 nil이다.
 type activationFiles struct{ active, candidate []byte }

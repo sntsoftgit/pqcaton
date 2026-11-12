@@ -30,9 +30,8 @@ func finalizeCandidate(t *testing.T, s *server, body string) {
 	}
 }
 
-// IC-U157 — **05의 새 정책 활성화.** 02에서 확정한 정책이 활성 정책과 다르면 05에 활성화 상자(운영자 진술 칸과 한계 문구)가
-// 있다. 진술 없이 확인을 요청하면 400이다. 확인 페이지는 두 지문 · 바뀌는 파일 · 되돌리기 제한과 백업 위치를 적고 아무것도
-// 쓰지 않는다. 활성화하면 활성 정책이 바뀌고 옛 정책과 옛 세션이 보관되며, 새 세션은 새 정책의 지문을 든다. 활성화 전에
+// IC-U157 — **05의 새 정책 활성화.** 02에서 확정한 정책이 활성 정책과 다르면 05에 활성화 상자가 있다. pqcota를 새 정책으로
+// 적재한 뒤 확인을 요청하면, 확인 페이지는 두 지문 · 바뀌는 파일 · 되돌리기 제한과 백업 위치를 적고 아무것도 쓰지 않는다. 활성화하면 활성 정책이 바뀌고 옛 정책과 옛 세션이 보관되며, 새 세션은 새 정책의 지문을 든다. 활성화 전에
 // 확정한 계획은 06에서 서명되지 않는다. 같은 활성화를 다시 요청하면 409 `scope-same`이고, 02 확정 뒤 손으로 고친 후보는
 // 409 `scope-not-finalized`다.
 func TestActivateTheFinalizedPolicy(t *testing.T) {
@@ -43,19 +42,15 @@ func TestActivateTheFinalizedPolicy(t *testing.T) {
 	old := savedSession(t, s)
 	bindPlan(t, s, planJSON)
 	finalizeCandidate(t, s, policyB)
+	useUpstream(s, ingestedUnder(t, s, s.scopeOut, nil))
 
 	page := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
-	if !hasForm(page, ui.ReviewScopeActivateConfirmPath) || !strings.Contains(page, "상류 적재를 이 정책으로 다시 마쳤음을 확인했습니다") ||
-		!strings.Contains(page, "직접 증명하지는 않습니다") {
-		t.Fatal("the review screen does not offer the activation with the operator's statement and its limit")
+	if !hasForm(page, ui.ReviewScopeActivateConfirmPath) {
+		t.Fatal("the review screen does not offer the activation")
 	}
 	dir := filepath.Dir(s.path)
 	before := snapshotDir(t, dir)
-	if w := postForm(t, s, ui.ReviewScopeActivateConfirmPath, url.Values{}); w.Code != http.StatusBadRequest ||
-		!strings.Contains(w.Body.String(), ui.RefusedScopeConfirm) {
-		t.Fatalf("confirm without the statement = %d", w.Code)
-	}
-	w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{ui.ScopeActivateConfirmField: {"on"}})
+	w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{})
 	if w.Code != http.StatusOK {
 		t.Fatalf("activation confirm = %d\n%s", w.Code, w.Body.String())
 	}
@@ -92,14 +87,14 @@ func TestActivateTheFinalizedPolicy(t *testing.T) {
 	if code := signConfirm(t, s); code != http.StatusConflict {
 		t.Errorf("signing a plan made before the activation = %d, want 409", code)
 	}
-	if w := postForm(t, s, ui.ReviewScopeActivateConfirmPath, url.Values{ui.ScopeActivateConfirmField: {"on"}}); w.Code != http.StatusConflict ||
+	if w := postForm(t, s, ui.ReviewScopeActivateConfirmPath, url.Values{}); w.Code != http.StatusConflict ||
 		!strings.Contains(w.Body.String(), ui.RefusedScopeSame) {
 		t.Errorf("activating the same policy again = %d, want 409 %s", w.Code, ui.RefusedScopeSame)
 	}
 	if err := os.WriteFile(s.scopeOut, []byte(policyA+"exclude,*,*,/opt/*,hand edit\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if w := postForm(t, s, ui.ReviewScopeActivateConfirmPath, url.Values{ui.ScopeActivateConfirmField: {"on"}}); w.Code != http.StatusConflict ||
+	if w := postForm(t, s, ui.ReviewScopeActivateConfirmPath, url.Values{}); w.Code != http.StatusConflict ||
 		!strings.Contains(w.Body.String(), ui.RefusedScopeNotFinalized) {
 		t.Errorf("activating a hand-edited candidate = %d, want 409 %s", w.Code, ui.RefusedScopeNotFinalized)
 	}
@@ -116,6 +111,7 @@ func TestSurveyTellsThePolicyIsNotActiveYet(t *testing.T) {
 	setPolicy(t, s, policyA)
 	savedSession(t, s)
 	finalizeCandidate(t, s, policyB)
+	useUpstream(s, ingestedUnder(t, s, s.scopeOut, nil))
 	from, _ := scope.PolicyFileDigest(s.scopeAssets)
 	to, _ := scope.PolicyFileDigest(s.scopeOut)
 
@@ -162,7 +158,7 @@ func TestSurveyTellsThePolicyIsNotActiveYet(t *testing.T) {
 		t.Fatal("the notice did not come back after restoring the finalized candidate")
 	}
 
-	w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{ui.ScopeActivateConfirmField: {"on"}})
+	w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{})
 	if w.Code != http.StatusOK {
 		t.Fatalf("activation confirm = %d", w.Code)
 	}
@@ -209,7 +205,7 @@ func TestScopeFinalizeLeadsToTheActivationSteps(t *testing.T) {
 	}
 
 	review := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
-	i1, i2, i3 := strings.Index(review, "상류 재적재"), strings.Index(review, "재적재 확인"), strings.Index(review, "정책 활성화")
+	i1, i2, i3 := strings.Index(review, "<strong>pqcota 재적재</strong>"), strings.Index(review, "<strong>pqcota 재적재 결과 대조</strong>"), strings.Index(review, "<strong>정책 활성화</strong>")
 	if !strings.Contains(review, `<ol class="activation-steps">`) || i1 < 0 || !(i1 < i2 && i2 < i3) ||
 		!strings.Contains(review, "pqcota-ingest -scope-assets asset-scope.csv results") {
 		t.Errorf("the activation box does not show the three steps in order with the command (%d %d %d)", i1, i2, i3)

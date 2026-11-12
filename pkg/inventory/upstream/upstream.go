@@ -1,19 +1,20 @@
 // SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 // SPDX-License-Identifier: BUSL-1.1
 
-// Package upstream — 상류 이력에 스냅샷이 실제로 있는지 본다.
+// Package upstream — pqcota 이력 대조. 새 정책으로 재적재한 pqcota 결과가 실제로 준비됐는지 pqcota 이력과 견준다.
 //
-// 정책 활성화 · 기준선 채택은 「상류 적재를 이 정책으로 마쳤다」를 전제로 한다. 화면의 체크는 운영자 진술일 뿐이라 증명하지
-// 못한다. 명령은 여기서 증명한다: 이 리포가 그 정책으로 결과를 대조해 얻은 노드별 v1 지문(history.ContentHashV1)이 상류
-// 이력에 **하나도 빠짐없이** 있어야 한다. 결과 폴더의 원천 노드는 관리 자산이 0개여도 모두 대상이다. 지문이 같다는 것은 상류가 같은 결과를 같은 규칙 · 같은 정책으로 적재했다는 뜻이다.
+// 정책 활성화 · 기준선 채택은 이 대조를 **반드시** 거친다. pqcaton은 pqcota가 연결되어 동작하는 환경에서만 실행하며, 운영자
+// 진술은 이 대조를 대신하지 못한다. 이 리포가 그 정책으로 결과를 대조해 얻은 노드별 v1 지문(history.ContentHashV1)이 pqcota
+// 이력에 **하나도 빠짐없이** 있어야 한다. 결과 폴더의 원천 노드는 관리 자산이 0개여도 모두 대상이다. 지문이 같다는 것은
+// pqcota가 같은 결과를 같은 규칙 · 같은 정책으로 적재했다는 뜻이다.
 //
 // 조회는 조직(이력 핸들)과 노드로 좁힌다. 그리고 **그 노드의 최신 스냅샷이 그 지문이어야** 한다. 과거 실행에 같은 지문이
-// 있었다는 것만으로는 지금 상류가 이 정책으로 적재돼 있다는 뜻이 아니다(그 뒤 다른 정책으로 다시 적재했을 수 있다).
+// 있었다는 것만으로는 지금 pqcota가 이 정책으로 적재돼 있다는 뜻이 아니다(그 뒤 다른 정책으로 다시 적재했을 수 있다).
+// 대조는 확인 시점의 일치만 말한다(reconcile.go의 한계).
 package upstream
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
@@ -31,11 +32,11 @@ type Lookup interface {
 }
 
 // ErrNothingToVerify — 대조 결과에 근거가 하나도 없다. 증명할 것이 없으면 증명된 것이 아니다.
-var ErrNothingToVerify = errors.New("upstream: the reconciliation carries no evidence to look up")
+var ErrNothingToVerify = errors.New("pqcota history: the results carry no evidence to reconcile")
 
-// ErrMissing — 상류 이력에 없는 스냅샷이 있거나, 있어도 그 노드의 최신 스냅샷이 아니다. 지금 상류가 이 정책으로 적재돼
-// 있지 않다.
-var ErrMissing = errors.New("upstream: snapshots are missing from the upstream history, or are not the latest for their node")
+// ErrMissing — pqcota 이력에 없는 스냅샷이 있거나, 있어도 그 노드의 최신 스냅샷이 아니다. 확인 시점에 pqcota가 이 정책으로
+// 적재돼 있지 않았다.
+var ErrMissing = errors.New("pqcota history: snapshots are missing, or are not the latest for their node")
 
 // Refs — 대조 결과가 기대하는 상류 스냅샷들. **결과 폴더에 있는 모든 원천 노드**의 스냅샷(report.Result.Snapshots)이고,
 // 관리 자산이 0개인 노드도 든다. 정책이 노드의 자산을 모두 빼면 그 노드의 스냅샷은 비지만(제외 건수만 남는다) 상류는 그것도
@@ -68,27 +69,11 @@ func Refs(r *report.Result) []Ref {
 	return out
 }
 
-// Verify — refs가 모두 상류 이력에 있는가. 없으면 ErrNothingToVerify, 빠진 것이 있으면 그것들과 ErrMissing이다.
+// Verify — refs가 모두 상류 이력에 있는가. 없으면 ErrNothingToVerify, 빠진 것이 있으면 그것들과 ErrMissing이다(모두 「있지만
+// 최신이 아님」이면 ErrRevert도 감싼다). 조회 오류는 그대로 돌려준다. 제한 시간과 오류 분류는 [Reconcile]이 한다.
 func Verify(l Lookup, refs []Ref) ([]Ref, error) {
 	if len(refs) == 0 {
 		return nil, ErrNothingToVerify
 	}
-	var missing []Ref
-	for _, ref := range refs {
-		snap, err := l.ByContentHashV1(ref.Node, ref.Ruleset, ref.Digest)
-		if err != nil {
-			return nil, err
-		}
-		latest, err := l.Latest(ref.Node)
-		if err != nil {
-			return nil, err
-		}
-		if snap == nil || latest == nil || history.ContentHashV1(latest) != ref.Digest {
-			missing = append(missing, ref)
-		}
-	}
-	if len(missing) > 0 {
-		return missing, fmt.Errorf("%w: %d of %d (first: node %s, %s)", ErrMissing, len(missing), len(refs), missing[0].Node, missing[0].Digest)
-	}
-	return nil, nil
+	return verify(l, refs)
 }

@@ -4,9 +4,11 @@
 #  종단 검증 — 자산 스코프 정책 활성화(IC-U152). `make e2e-demo`가 부른다.
 #
 # pqcota 데모를 처음부터 띄우고, 화면 작업 폴더에서 05를 옛 정책으로 확정한 뒤, 02에서 새 정책을 확정하고,
-# ui.sh apply-scope(상류 재적재 → 상류 이력 확인 → 활성화)까지 간다. 실패 경로마다 정책 · 세션 · 계획 · 영수증의
-# 바이트와 상류 스냅샷 수가 그대로인지 보고, 성공 뒤에는 세 지문(활성 정책 · 새 세션 · 활성화 영수증)이 같은지, 06이 옛
-# 계획을 막는지, 05에 지난 결론이 참고값으로만 보이는지 본다. 마지막으로 v0.25.0 태그로 빌드한 옛 바이너리가 이 작업 폴더의
+# ui.sh apply-scope(pqcota 재적재만)를 거쳐 **두 길로** 활성화한다: 작업 폴더 복사본에서 명령(pqcaton-decide activate-scope),
+# 그리고 작업 폴더에서 화면(05의 확인 → 활성화). 둘 다 pqcota 이력 대조를 거친다. 실패 경로(재적재 전 · 손으로 고친 후보 ·
+# -confirm-ingest)마다 정책 · 세션 · 계획 · 처리 기록의 바이트와 pqcota 스냅샷 수가 그대로인지 보고, 성공 뒤에는 세 지문(활성
+# 정책 · 새 세션 · 활성화 처리 기록)이 같은지, 근거가 upstream-verified이고 보고서에 upstream_check가 있는지, 06이 옛 계획을
+# 막는지, 05에 지난 결론이 참고값으로만 보이는지 본다. 마지막으로 v0.25.0 태그로 빌드한 옛 바이너리가 이 작업 폴더의
 # 복사본에서 시작하지 않고 아무것도 바꾸지 않는지 본다. 끝나면(실패해도) 화면 · 데모 컨테이너를 내린다.
 #
 # E2E_KEEP_WS=<폴더>를 주면 정리하기 전에(실패해도) 작업 폴더를 그 폴더로, /work 전체를 <폴더>.work로 꺼내 둔다.
@@ -187,7 +189,7 @@ edit_json() { docker exec -i "$CTL" python3 - "$1"; }
 # 바뀌지 않았어야 하는 실패 경로를 견준다.
 unchanged() {
   [ "$(snap)" = "$1" ] || fail "$3: a file or receipt changed"
-  [ "$(count)" = "$2" ] || fail "$3: the upstream history changed"
+  [ "$(count)" = "$2" ] || fail "$3: the pqcota history changed"
   echo "   unchanged ($3): files $(sha256sum <<<"$1" | cut -c1-16) · upstream snapshots $2"
 }
 
@@ -213,7 +215,7 @@ docker exec "$CTL" test -f "$WS/plan.json" || fail "05 did not write plan.json"
 # 새 정책은 **어느 노드에서도 처음 보는 스냅샷**을 내야 한다. 두 가지를 피한다.
 #   - 아무것도 바꾸지 못하는 규칙: 스냅샷 지문이 옛 정책과 같아, 다시 적재하지 않아도 확인이 통과한다(4c가 통과해 버린다).
 #   - 예전 상태로 되돌리는 규칙: 상류 저장소는 같은 지문의 스냅샷이 이력에 있으면 새로 만들지 않고, 노드의 최신(seq가 가장
-#     큰 것)은 옛 정책 스냅샷으로 남는다. 다시 적재해도 확인이 거절한다(이전 정책 복귀는 -confirm-ingest만 쓴다).
+#     큰 것)은 옛 정책 스냅샷으로 남는다. 다시 적재해도 대조가 거절한다(이 판은 이전 정책 복귀를 막는다).
 # 그리고 **한 노드의 관리 자산을 0개로 만든다.** 관리 자산이 없는 노드도 확인 대상인지(4c)를 보려는 것이다. 옛 정책 뒤에
 # JCA 제외를 더하면 pay-app은 관리 자산 0개 · 2건 제외라는 처음 보는 상태가 되고, pay-db(05의 libssl 정책)와 web-gw는
 # 그대로다.
@@ -237,50 +239,122 @@ OLD_ID="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -sco
 OLD_DIGEST="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv" | awk '$1=="active"{print $2}')"
 [ -n "$OLD_ID" ] && [ -n "$OLD_DIGEST" ] || fail "no session id or active digest before activation"
 
-step "4a) apply-scope while the screen runs: refused before the upstream ingest"
-"$UI" start
-B="$(snap)"; C="$(count)"
-if "$UI" apply-scope; then fail "apply-scope ran while the screen was running"; fi
-unchanged "$B" "$C" "screen running"
-"$UI" stop
+# 05의 활성화를 화면이 보내는 그대로 보낸다. $1이 ok면 확인 페이지(「확인 시점에 일치」)를 거쳐 활성화까지 하고, 아니면 확인
+# 요청이 그 거절 종류로 막히는지 본다.
+screen_activate() {
+  docker exec -i "$CTL" python3 - "$1" <<'PY'
+import html, re, sys, urllib.error, urllib.parse, urllib.request, http.cookiejar
+want = sys.argv[1]
+base = "http://127.0.0.1:8765"
+op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+def get(path):
+    return op.open(base + path).read().decode()
+def post(path, data):
+    req = urllib.request.Request(base + path, data=urllib.parse.urlencode(data, doseq=True).encode(),
+        headers={"Origin": base, "Content-Type": "application/x-www-form-urlencoded"})
+    try:
+        r = op.open(req)
+        return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+def form(page, action):
+    m = re.search(r'<form[^>]*action="' + re.escape(action) + r'"[^>]*>(.*?)</form>', page, re.S)
+    if not m:
+        sys.exit("no form posting to " + action)
+    fields = {}
+    for tag in re.findall(r"<input[^>]*>", m.group(1)):
+        name = re.search(r'name="([^"]*)"', tag)
+        value = re.search(r'value="([^"]*)"', tag)
+        if name and 'type="hidden"' in tag:
+            fields[name.group(1)] = html.unescape(value.group(1)) if value else ""
+        elif name and 'type="checkbox"' in tag:
+            sys.exit("the activation takes an operator statement: " + name.group(1))
+    return fields
+page = get("/review?lang=en")
+st, body = post("/review/scope-activate/confirm?lang=en", form(page, "/review/scope-activate/confirm"))
+if want != "ok":
+    if st < 400 or want not in body:
+        sys.exit("confirm = %d, want the refusal %s" % (st, want))
+    print("   05: refused %s (%d)" % (want, st))
+    sys.exit(0)
+if st != 200 or "At the time of checking, the pqcota history matched" not in body:
+    sys.exit("confirm = %d without the reconciliation line" % st)
+st, body = post("/review/scope-activate?lang=en", form(body, "/review/scope-activate"))
+if st != 200 or "/review/scope-activate/confirm" in body:
+    sys.exit("activate = %d, or the activation is still offered" % st)
+print("   05: activated through the screen after the pqcota history reconciliation")
+PY
+}
 
-step "4b) apply-scope with a hand-edited candidate: refused before the upstream ingest"
-docker exec "$CTL" cp "$WS/asset-scope.csv" /tmp/e2e-candidate.bak
-docker exec "$CTL" bash -c "echo 'exclude,*,*,/opt/*,hand edit' >> $WS/asset-scope.csv"
-B="$(snap)"; C="$(count)"
-if "$UI" apply-scope; then fail "apply-scope activated a hand-edited candidate"; fi
-unchanged "$B" "$C" "hand-edited candidate"
-docker exec "$CTL" bash -c "cp /tmp/e2e-candidate.bak $WS/asset-scope.csv && rm /tmp/e2e-candidate.bak"
-
-step "4c) verify upstream without re-ingesting: pay-app has no managed assets now, and its latest snapshot is still the old one, so refused"
-B="$(snap)"; C="$(count)"
-if docker exec -e PQCOTA_DSN="$DSN" "$CTL" pqcaton-decide activate-scope "$WS/session.json" -decl "$WS/declaration.json" \
-    -results "$WS/results" -scope-assets "$WS/scope-assets.csv" -candidate "$WS/asset-scope.csv" \
-    -scope-session "$WS/scope-session.json" -org "$ORG" -verify-upstream -upstream-org default; then
-  fail "activation passed although the upstream was not re-ingested"
-fi
-unchanged "$B" "$C" "upstream not re-ingested"
-
-step "5) apply-scope: re-ingest, verify, activate"
-"$UI" apply-scope
-STATUS="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv")"
-ACTIVE="$(awk '$1=="active"{print $2}' <<<"$STATUS")"
-SESSION="$(awk '$1=="session"{print $2}' <<<"$STATUS")"
-LOCK="$(awk '$1=="lock"{print $2}' <<<"$STATUS")"
-[ "$ACTIVE" != "$OLD_DIGEST" ] || fail "the active policy did not change"
-[ "$ACTIVE" = "$SESSION" ] && [ "$LOCK" = "none" ] || fail "active $ACTIVE, session $SESSION, lock $LOCK"
-RECEIPT="$(docker exec "$CTL" cat "$WS/.pqcaton/receipts/scope-activation/$ORG/$OLD_ID.json")"
-RECEIPT_JSON="$RECEIPT" python3 - "$ACTIVE" "$OLD_DIGEST" "$SESSION" <<'PY' || fail "the activation receipt does not match"
+# 처리 기록과 보고서: 세 지문이 같고, 근거가 upstream-verified이며, 보고서에 upstream_check(비밀값 없음)가 있다.
+activated() {
+  local ws="$1" what="$2"
+  STATUS="$(docker exec "$CTL" pqcaton-decide scope-status "$ws/session.json" -scope-assets "$ws/scope-assets.csv")"
+  ACTIVE="$(awk '$1=="active"{print $2}' <<<"$STATUS")"
+  SESSION="$(awk '$1=="session"{print $2}' <<<"$STATUS")"
+  LOCK="$(awk '$1=="lock"{print $2}' <<<"$STATUS")"
+  [ "$ACTIVE" != "$OLD_DIGEST" ] || fail "$what: the active policy did not change"
+  [ "$ACTIVE" = "$SESSION" ] && [ "$LOCK" = "none" ] || fail "$what: active $ACTIVE, session $SESSION, lock $LOCK"
+  RECEIPT="$(docker exec "$CTL" cat "$ws/.pqcaton/receipts/scope-activation/$ORG/$OLD_ID.json")"
+  REPORT="$(docker exec "$CTL" python3 -c "import json,os; d='$ws'; s=json.load(open(os.path.join(d,'session.json'))); print(open(os.path.join(d,s['scope_change']['report'])).read())")"
+  RECEIPT_JSON="$RECEIPT" REPORT_JSON="$REPORT" python3 - "$ACTIVE" "$OLD_DIGEST" "$SESSION" "$what" "$DSN" "$ORG" <<'PY' || fail "$what: the activation record does not match"
 import json, os, sys
 r = json.loads(os.environ["RECEIPT_JSON"])
 assert r["format"] == 2 and r["scope_policy"] == sys.argv[1], r
 assert r["round"]["from_policy"] == sys.argv[2] and r["round"]["basis"] == "upstream-verified", r
-print("   active policy     %s" % sys.argv[1])
-print("   new session       %s" % sys.argv[3])
-print("   receipt policy    %s (format %d)" % (r["scope_policy"], r["format"]))
-print("   receipt from      %s" % r["round"]["from_policy"])
-print("   receipt basis     %s" % r["round"]["basis"])
+rep = json.loads(os.environ["REPORT_JSON"])
+u = rep.get("upstream_check") or {}
+assert u.get("checked_at") and u.get("org") == sys.argv[6] and u.get("snapshots"), u
+assert sys.argv[5] not in os.environ["REPORT_JSON"] and sys.argv[5] not in os.environ["RECEIPT_JSON"], "the DSN is in the record"
+print("   %s:" % sys.argv[4])
+print("     active policy  %s" % sys.argv[1])
+print("     new session    %s" % sys.argv[3])
+print("     record basis   %s (format %d)" % (r["round"]["basis"], r["format"]))
+print("     upstream check %s · org %s · %d snapshots" % (u["checked_at"], u["org"], len(u["snapshots"])))
 PY
+}
+
+ACT="activate-scope $WS/session.json -decl $WS/declaration.json -results $WS/results -scope-assets $WS/scope-assets.csv \
+  -candidate $WS/asset-scope.csv -scope-session $WS/scope-session.json -org $ORG"
+
+step "4a) the screen before the pqcota re-ingest: pay-app has no managed assets now and its latest snapshot is the old one, so refused"
+"$UI" start
+B="$(snap)"; C="$(count)"
+screen_activate upstream-missing || fail "the screen did not refuse an activation without the re-ingest"
+unchanged "$B" "$C" "screen, pqcota not re-ingested"
+"$UI" stop
+
+step "4b) the command before the re-ingest, with -confirm-ingest, and with a hand-edited candidate: all refused"
+B="$(snap)"; C="$(count)"
+if docker exec -e PQCOTA_DSN="$DSN" "$CTL" bash -c "pqcaton-decide $ACT"; then fail "the command activated without the re-ingest"; fi
+if docker exec -e PQCOTA_DSN="$DSN" "$CTL" bash -c "pqcaton-decide $ACT -confirm-ingest"; then fail "-confirm-ingest activated"; fi
+if docker exec "$CTL" env -u PQCOTA_DSN bash -c "pqcaton-decide $ACT"; then fail "the command activated without PQCOTA_DSN"; fi
+unchanged "$B" "$C" "command, pqcota not re-ingested"
+docker exec "$CTL" cp "$WS/asset-scope.csv" /tmp/e2e-candidate.bak
+docker exec "$CTL" bash -c "echo 'exclude,*,*,/opt/*,hand edit' >> $WS/asset-scope.csv"
+B="$(snap)"; C="$(count)"
+if docker exec -e PQCOTA_DSN="$DSN" "$CTL" bash -c "pqcaton-decide $ACT"; then fail "the command activated a hand-edited candidate"; fi
+unchanged "$B" "$C" "hand-edited candidate"
+docker exec "$CTL" bash -c "cp /tmp/e2e-candidate.bak $WS/asset-scope.csv && rm /tmp/e2e-candidate.bak"
+
+step "5) apply-scope: re-ingest pqcota only (no activation)"
+B="$(snap)"
+"$UI" apply-scope
+[ "$(snap)" = "$B" ] || fail "apply-scope changed the workspace (it only re-ingests pqcota)"
+
+step "5a) the command path, on a copy of the workspace: reconcile and activate"
+CMDWS=/work/ui-command
+docker exec "$CTL" bash -c "rm -rf $CMDWS && cp -a $WS $CMDWS"
+docker exec -e PQCOTA_DSN="$DSN" "$CTL" bash -c "pqcaton-decide ${ACT//$WS/$CMDWS} -verify-upstream" | sed 's/^/   /' \
+  || fail "the command did not activate after the re-ingest"
+activated "$CMDWS" "command"
+docker exec "$CTL" rm -rf "$CMDWS"
+
+step "5b) the screen path, on the workspace: confirm (reconciled at that time) and activate (reconciled again)"
+"$UI" start
+screen_activate ok || fail "the screen did not activate after the re-ingest"
+"$UI" stop
+activated "$WS" "screen"
 
 step "6) the screen: 06 refuses the plan made under the old policy; 05 shows earlier conclusions only as references"
 "$UI" start
@@ -312,7 +386,7 @@ grep -q "was made under an asset-scope policy other than the active one" <<<"$AP
 if grep -q 'action="/approve/sign/confirm"' <<<"$APPROVE"; then fail "06 offers to sign the old plan"; fi
 REVIEW="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/review?lang=en')"
 grep -q "Earlier policy conclusion (from the previous round; a reference value)" <<<"$REVIEW" || fail "05 does not show the earlier conclusions as references"
-grep -q "were found as the latest snapshot of every node in the upstream history" <<<"$REVIEW" || fail "05 does not show the upstream-verified basis of this round"
+grep -q "At the time of checking, the pqcota history matched" <<<"$REVIEW" || fail "05 does not show the pqcota history reconciliation as the basis of this round"
 "$UI" stop
 
 # 지금 활성 정책으로 만든 계획은 06에서 서명되고 플레이북이 만들어져야 한다. 상류 v0.10.7의 승인 정규형 검사

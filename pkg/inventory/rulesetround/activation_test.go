@@ -6,9 +6,11 @@ package rulesetround_test
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -49,7 +51,7 @@ func activationWorld(t *testing.T, active bool, fault func(point, path string) e
 	}
 	raw, _ = os.ReadFile(path)
 	req = rulesetround.Request{OldPath: path, OutPath: path, Org: "acme", NewID: newID, Rebuild: rebuiltUnder(to),
-		Activation: &rulesetround.Activation{PolicyPath: pol, CandidatePath: cand, From: from, To: to}}
+		Activation: &rulesetround.Activation{PolicyPath: pol, CandidatePath: cand, From: from, To: to}, Upstream: upstreamCheck}
 	return path, st, req, raw
 }
 
@@ -81,7 +83,7 @@ func TestActivationRoundReplacesThePolicy(t *testing.T) {
 	}
 	if next.SessionID != newID || next.ScopePolicyDigestV1 != a.To || next.ScopeChange == nil ||
 		next.ScopeChange.Reason != review.ScopeRoundActivation || next.ScopeChange.FromPolicy != a.From ||
-		next.ScopeChange.Basis != rulesetround.BasisOperator {
+		next.ScopeChange.Basis != rulesetround.BasisUpstream {
 		t.Fatalf("new session: id %s digest %s change %+v", next.SessionID, next.ScopePolicyDigestV1, next.ScopeChange)
 	}
 	for _, it := range review.All(next) {
@@ -252,6 +254,74 @@ func TestActivationIsOneTransaction(t *testing.T) {
 		}
 		if rc, _ := st.RoundReceiptOf(rulesetround.ScopeActivationReceipt, oldID); rc != nil {
 			t.Error("a receipt was written for a refused activation")
+		}
+	})
+}
+
+// IC-P49 — **정책 회차는 pqcota 이력 대조 기록 없이 열리지 않는다.** 기준선 · 활성화 모두 대조 기록(Upstream)이 없으면
+// ErrNoUpstreamCheck이고 아무것도 쓰지 않는다(운영자 진술로 대신하는 길이 없다). 기록이 있으면 처리 기록의 basis는
+// upstream-verified이고, 전환 보고서에 upstream_check(확인 시각 · 조직 · 노드별 지문)가 실린다. 보고서 형식 판은 1 그대로라
+// v0.27.x의 해석(형식 판만 보고 모르는 필드는 무시한다)이 새 보고서를 읽는다.
+func TestScopeRoundNeedsUpstreamCheck(t *testing.T) {
+	t.Run("activation without a check", func(t *testing.T) {
+		path, st, req, raw := activationWorld(t, true, nil)
+		defer st.Close()
+		req.Upstream = nil
+		if _, err := rulesetround.Open(st, req, store.Check{}, time.Second); !errors.Is(err, rulesetround.ErrNoUpstreamCheck) {
+			t.Fatalf("err = %v, want ErrNoUpstreamCheck", err)
+		}
+		pol, _ := os.ReadFile(req.Activation.PolicyPath)
+		sess, _ := os.ReadFile(path)
+		if string(pol) != policyAText || string(sess) != string(raw) {
+			t.Error("an activation without a check changed the policy or the session")
+		}
+		if rc, _ := st.RoundReceiptOf(rulesetround.ScopeActivationReceipt, oldID); rc != nil {
+			t.Error("a receipt was written without a check")
+		}
+	})
+	t.Run("baseline without a check", func(t *testing.T) {
+		path, st, raw := legacyWorld(t, nil)
+		defer st.Close()
+		req := baselineRequest(path, policyDigest)
+		req.Upstream = nil
+		if _, err := rulesetround.Open(st, req, store.Check{}, time.Second); !errors.Is(err, rulesetround.ErrNoUpstreamCheck) {
+			t.Fatalf("err = %v, want ErrNoUpstreamCheck", err)
+		}
+		if sess, _ := os.ReadFile(path); string(sess) != string(raw) {
+			t.Error("a baseline without a check changed the session")
+		}
+	})
+	t.Run("activation with a check", func(t *testing.T) {
+		_, st, req, _ := activationWorld(t, true, nil)
+		defer st.Close()
+		res, err := rulesetround.Open(st, req, store.Check{}, time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rc, err := st.RoundReceiptOf(rulesetround.ScopeActivationReceipt, oldID)
+		if err != nil || rc == nil || rc.Round == nil || rc.Round.Basis != rulesetround.BasisUpstream {
+			t.Fatalf("receipt %+v (%v): basis is not upstream-verified", rc, err)
+		}
+		rb, err := os.ReadFile(res.Report)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rep, err := review.DecodeReport(rb)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rep.Format != 1 || !reflect.DeepEqual(rep.UpstreamCheck, upstreamCheck) {
+			t.Errorf("report format %d, upstream check %+v", rep.Format, rep.UpstreamCheck)
+		}
+		// v0.27.x의 해석: 형식 판이 1이어야 하고, 모르는 필드는 무시한다.
+		var old struct {
+			Format int `json:"format"`
+			Items  []struct {
+				ID string `json:"id"`
+			} `json:"items"`
+		}
+		if err := json.Unmarshal(rb, &old); err != nil || old.Format != review.RulesetChangeReportFormat || len(old.Items) == 0 {
+			t.Errorf("an earlier reader cannot read the report: %v format %d items %d", err, old.Format, len(old.Items))
 		}
 	})
 }

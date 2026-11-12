@@ -6,6 +6,7 @@ package review_test
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decision"
@@ -141,5 +142,40 @@ func TestCarryKeepsTheScopeChange(t *testing.T) {
 	carried := review.Carry(next, again)
 	if carried.SessionID != "s-new" || carried.ScopeChange == nil || *carried.ScopeChange != *next.ScopeChange {
 		t.Errorf("rebuilding the session dropped the scope change record: %+v", carried.ScopeChange)
+	}
+}
+
+// IC-P50 — **보고서 형식 판 1은 모르는 필드를 무시하는 계약이다.** 형식 판 1의 보고서에 이 판이 모르는 필드(앞으로 더할 선택
+// 필드)가 있어도 DecodeReport가 읽고 아는 필드는 그대로다. upstream_check가 없는 보고서(v0.27.x 이하가 쓴 것)도 읽고 그
+// 필드는 nil이다. upstream_check가 있는 보고서는 다시 써도 그 필드가 남는다. 형식 판이 다르면 거절한다.
+func TestReportIgnoresUnknownFields(t *testing.T) {
+	base := `{"format":1,"_how_to_read":"n","from_ruleset":"a","to_ruleset":"b","from_session_id":"s1","to_session_id":"s2",` +
+		`"reason":"scope-activation","items":[{"id":"n1/openssl/libssl","change":"same"}]`
+	for name, c := range map[string]struct {
+		body     string
+		upstream bool
+	}{
+		"older (no upstream_check)": {base + `}`, false},
+		"this version":              {base + `,"upstream_check":{"checked_at":"2026-11-12T00:00:00Z","org":"acme","snapshots":[{"node":"n1","ruleset":"r","digest":"d"}]}}`, true},
+		"a later optional field":    {base + `,"upstream_check":{"checked_at":"2026-11-12T00:00:00Z","org":"acme","snapshots":[]},"future_field":{"x":1}}`, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, err := review.DecodeReport([]byte(c.body))
+			if err != nil || r.Format != 1 || r.Reason != "scope-activation" || len(r.Items) != 1 || r.Items[0].ID != "n1/openssl/libssl" {
+				t.Fatalf("report %+v: %v", r, err)
+			}
+			if (r.UpstreamCheck != nil) != c.upstream || (c.upstream && r.UpstreamCheck.Org != "acme") {
+				t.Errorf("upstream check %+v, want present %v", r.UpstreamCheck, c.upstream)
+			}
+			if c.upstream {
+				b, err := review.EncodeReport(r)
+				if err != nil || !strings.Contains(string(b), `"upstream_check"`) {
+					t.Errorf("re-encoded report lost upstream_check: %v", err)
+				}
+			}
+		})
+	}
+	if _, err := review.DecodeReport([]byte(`{"format":2,"items":[]}`)); err == nil {
+		t.Error("a report of another format was read")
 	}
 }

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
+
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/rulesetround"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
@@ -36,11 +38,11 @@ func savedSession(t *testing.T, s *server) review.Session {
 
 func hasForm(page, action string) bool { return strings.Contains(page, `action="`+action+`"`) }
 
-// IC-U154 — **정책 기록이 없는 옛 세션은 05가 잠기고, 운영자 확인을 받은 기준선 회차로만 넘어간다.** 화면에 기준선 상자와
-// 확인 칸 · 「확인만 기록한다」는 한계가 있고, 저장은 409 `scope-baseline`이며 파일은 그대로다. 확인 없이 보내면 400
-// `scope-confirm`이고 아무것도 쓰지 않는다. 확인과 함께 보내면 새 세션(새 ID, 지금 정책의 지문, 현재 결론은 빔)이 생기고
-// 옛 세션은 바이트 그대로 보관되며 scope-baseline 형식 2 영수증이 남는다. 같은 요청을 다시 보내면 거절되고 파일이 늘지
-// 않는다.
+// IC-U154 — **정책 기록이 없는 옛 세션은 05가 잠기고, pqcota 이력 대조를 거친 기준선 회차로만 넘어간다.** 화면에 기준선
+// 상자가 있고 운영자 확인 칸은 없다. 저장은 409 `scope-baseline`이며 파일은 그대로다. pqcota가 지금 정책으로 적재돼 있지
+// 않으면 409 `upstream-missing`이고 아무것도 쓰지 않는다(확인 칸을 보내도 같다). 적재돼 있으면 새 세션(새 ID, 지금 정책의
+// 지문, 현재 결론은 빔)이 생기고 옛 세션은 바이트 그대로 보관되며 근거가 upstream-verified인 scope-baseline 형식 2 처리
+// 기록이 남는다. 같은 요청을 다시 보내면 거절되고 파일이 늘지 않는다.
 func TestLegacySessionNeedsAConfirmedBaseline(t *testing.T) {
 	s := observedServer(t)
 	sf := savedSession(t, s)
@@ -55,9 +57,9 @@ func TestLegacySessionNeedsAConfirmedBaseline(t *testing.T) {
 	dir := filepath.Dir(s.path)
 
 	page := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
-	if !hasForm(page, ui.ReviewScopeBaselinePath) || !strings.Contains(page, "상류 적재에 사용한 정책임을 확인했습니다") ||
-		!strings.Contains(page, "직접 증명하지는 않습니다") || hasForm(page, ui.ReviewRulesetRoundPath) {
-		t.Fatalf("the review screen does not offer the confirmed baseline round")
+	if !hasForm(page, ui.ReviewScopeBaselinePath) || strings.Contains(page, `name="ingest-confirmed"`) ||
+		!strings.Contains(page, "pqcota 이력이 이 정책으로 적재돼 있는지 대조하고") || hasForm(page, ui.ReviewRulesetRoundPath) {
+		t.Fatalf("the review screen does not offer the reconciled baseline round")
 	}
 	if got := cards(t, page)["05"]; !strings.HasPrefix(got, "정책 기준선을 채택해야 합니다") {
 		t.Errorf("card 05 = %q", got)
@@ -67,13 +69,15 @@ func TestLegacySessionNeedsAConfirmedBaseline(t *testing.T) {
 		t.Fatalf("save on a legacy session = %d, file kept %v", w.Code, readFile(t, s.path) == legacy)
 	}
 	before := snapshotDir(t, dir)
-	w = postForm(t, s, ui.ReviewScopeBaselinePath, url.Values{})
-	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), ui.RefusedScopeConfirm) {
-		t.Fatalf("baseline without confirmation = %d", w.Code)
+	useUpstream(s, history.NewMemStore())
+	w = postForm(t, s, ui.ReviewScopeBaselinePath, url.Values{"ingest-confirmed": {"on"}})
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedUpstreamMissing) {
+		t.Fatalf("baseline without the pqcota ingest = %d", w.Code)
 	}
 	sameDir(t, before, snapshotDir(t, dir))
 
-	if w := postForm(t, s, ui.ReviewScopeBaselinePath, url.Values{ui.ScopeBaselineConfirmField: {"on"}}); w.Code != http.StatusSeeOther {
+	useUpstream(s, ingestedUnder(t, s, s.scopeAssets, nil))
+	if w := postForm(t, s, ui.ReviewScopeBaselinePath, url.Values{}); w.Code != http.StatusSeeOther {
 		t.Fatalf("baseline = %d\n%s", w.Code, w.Body.String())
 	}
 	next, err := review.Load(s.path)
@@ -94,11 +98,11 @@ func TestLegacySessionNeedsAConfirmedBaseline(t *testing.T) {
 		t.Fatalf("archive of the old session: %v", archives)
 	}
 	rc, err := s.st.RoundReceiptOf(rulesetround.ScopeBaselineReceipt, store.Identity{Kind: kindReview, Org: s.orgName(), SessionID: sf.SessionID})
-	if err != nil || rc == nil || rc.Format != 2 || rc.Round == nil || rc.Round.ToSessionID != next.SessionID {
+	if err != nil || rc == nil || rc.Format != 2 || rc.Round == nil || rc.Round.ToSessionID != next.SessionID || rc.Round.Basis != rulesetround.BasisUpstream {
 		t.Fatalf("scope-baseline receipt: %+v, %v", rc, err)
 	}
 	after := snapshotDir(t, dir)
-	if w := postForm(t, s, ui.ReviewScopeBaselinePath, url.Values{ui.ScopeBaselineConfirmField: {"on"}}); w.Code < 400 {
+	if w := postForm(t, s, ui.ReviewScopeBaselinePath, url.Values{}); w.Code < 400 {
 		t.Errorf("a second baseline round = %d, want a refusal", w.Code)
 	}
 	sameDir(t, after, snapshotDir(t, dir))

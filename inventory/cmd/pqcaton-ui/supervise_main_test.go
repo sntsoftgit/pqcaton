@@ -7,6 +7,10 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
+
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/upstream"
 )
 
 // TestMain: 화면은 자기 바이너리를 감독 모드로 띄운다. 시험에서 그 바이너리는 이 시험 바이너리라, 감독 모드로 불리면
@@ -18,6 +22,15 @@ func TestMain(m *testing.M) {
 	if len(os.Args) == 2 && testModes[os.Args[1]] != nil {
 		testModes[os.Args[1]]()
 		os.Exit(0)
+	}
+	// 화면은 pqcota 이력 없이 시작하지 않는다. 시험은 빈 메모리 이력으로 띄운다. 이력이 필요한 시험은 서버에 직접 건다
+	// (useUpstream), 시작 조건을 재는 시험은 이 둘을 바꾼다.
+	os.Setenv(upstream.DSNEnv, "memory://tests")
+	openUpstream = func(dsn, org string) (upstream.Store, string, error) {
+		if dsn == "" {
+			return nil, "", upstream.ErrNoDSN
+		}
+		return memStore{history.NewMemStore()}, org, nil
 	}
 	os.Exit(m.Run())
 }

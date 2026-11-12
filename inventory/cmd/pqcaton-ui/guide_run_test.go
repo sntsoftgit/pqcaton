@@ -77,7 +77,8 @@ func TestOperatorGuideCommandsRun(t *testing.T) {
 	}
 	bin := t.TempDir()
 	for _, b := range [][]string{
-		{"build", "-o", filepath.Join(bin, "pqcaton-ui"), "."},
+		// 빈 메모리 pqcota 이력으로 뜨게 하는 시험 전용 태그(upstream_guidetest.go). 화면은 pqcota 이력 없이 시작하지 않는다.
+		{"build", "-tags", "guidetest", "-o", filepath.Join(bin, "pqcaton-ui"), "."},
 		{"build", "-o", filepath.Join(bin, "guidetool"), "./testdata/guidetool"},
 	} {
 		if out, err := exec.Command("go", b...).CombinedOutput(); err != nil {
@@ -93,7 +94,7 @@ func TestOperatorGuideCommandsRun(t *testing.T) {
 
 func runGuide(t *testing.T, path, bin, user string) {
 	home := t.TempDir()
-	env := map[string]string{"HOME": home, "USER": user, "PATH": bin + ":" + os.Getenv("PATH")}
+	env := map[string]string{"HOME": home, "USER": user, "PATH": bin + ":" + os.Getenv("PATH"), "PQCOTA_DSN": "memory://guide"}
 	environ := func() []string {
 		out := []string{"LANG=C"}
 		for k, v := range env {

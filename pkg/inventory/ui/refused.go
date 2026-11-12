@@ -60,8 +60,19 @@ const (
 	RefusedScopeBaseline = "scope-baseline"
 	// RefusedScopeUnactivated — 활성화 기록 없이 자산 스코프 정책이 바뀌어 저장 · 확정하지 않았다(409).
 	RefusedScopeUnactivated = "scope-unactivated"
-	// RefusedScopeConfirm — 상류 적재에 쓴 정책이라는 확인 없이 기준선 회차를 요청했다(400).
-	RefusedScopeConfirm = "scope-confirm"
+	// RefusedUpstreamUnreachable — pqcota 이력에 닿지 못했거나 조회가 제한 시간(10초) 안에 끝나지 않아 정책 회차를 열지
+	// 않았다(503). 운영자 진술로 우회하지 않는다.
+	RefusedUpstreamUnreachable = "upstream-unreachable"
+	// RefusedUpstreamOrg — 연 pqcota 이력 · 판정 조직 · 판정 세션의 조직이 같지 않아 조회하지 않았다(409). 다른 조직의 이력으로
+	// 정책 회차를 열지 않는다.
+	RefusedUpstreamOrg = "upstream-org"
+	// RefusedUpstreamMissing — pqcota 이력에서 일부 노드의 최신 적재 결과가 없거나 이 정책으로 만든 결과와 달라 열지 않았다(409).
+	RefusedUpstreamMissing = "upstream-missing"
+	// RefusedUpstreamEmpty — 결과 폴더에 대조할 근거가 없어 열지 않았다(409).
+	RefusedUpstreamEmpty = "upstream-empty"
+	// RefusedUpstreamRevert — 이 정책으로 만든 결과가 pqcota 이력에 있지만 노드의 최신이 아니다. 이전 정책 복귀가 이렇게 보이며,
+	// pqcota 이력으로 대조할 수 없어 막는다(409).
+	RefusedUpstreamRevert = "upstream-revert"
 	// RefusedScopeSame — 02에서 확정한 정책이 이미 활성 정책과 같아 활성화할 것이 없다. 아무것도 쓰지 않았다(409).
 	RefusedScopeSame = "scope-same"
 	// RefusedScopeNotFinalized — 02에서 확정한 정책이 없거나, 02 확정 뒤 바뀌었거나, 읽을 수 없어 활성화하지 않았다(409).
@@ -87,25 +98,29 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
-	RefusedRulesetChanged:    {body: tRefusedRulesetChanged},
-	RefusedPlanRuleset:       {tSignRefusedHead, tRefusedPlanRuleset},
-	RefusedPlanScope:         {tSignRefusedHead, tRefusedPlanScope},
-	RefusedPlanText:          {tSignRefusedHead, tRefusedPlanText},
-	RefusedPlanFields:        {tSignRefusedHead, tRefusedPlanFields},
-	RefusedSessionText:       {body: tRefusedSessionText},
-	RefusedScopePolicy:       {body: tRefusedScopePolicy},
-	RefusedScopeBaseline:     {body: tRefusedScopeBaseline},
-	RefusedScopeUnactivated:  {body: tRefusedScopeUnactivated},
-	RefusedScopeConfirm:      {body: tRefusedScopeConfirm},
-	RefusedScopeSame:         {body: tRefusedScopeSame},
-	RefusedScopeNotFinalized: {body: tRefusedScopeNotFinalized},
-	ErrNotFound:              {tErrNotFoundHead, tErrNotFound},
-	ErrMethod:                {tErrMethodHead, tErrMethod},
-	ErrBadRequest:            {tErrBadRequestHead, tErrBadRequest},
-	ErrInputMissing:          {tErrInputMissingHead, tErrInputMissing},
-	ErrInputBroken:           {tErrInputBrokenHead, tErrInputBroken},
-	ErrForbidden:             {tErrForbiddenHead, tErrForbidden},
-	ErrInternal:              {tErrInternalHead, tErrInternal},
+	RefusedRulesetChanged:      {body: tRefusedRulesetChanged},
+	RefusedPlanRuleset:         {tSignRefusedHead, tRefusedPlanRuleset},
+	RefusedPlanScope:           {tSignRefusedHead, tRefusedPlanScope},
+	RefusedPlanText:            {tSignRefusedHead, tRefusedPlanText},
+	RefusedPlanFields:          {tSignRefusedHead, tRefusedPlanFields},
+	RefusedSessionText:         {body: tRefusedSessionText},
+	RefusedScopePolicy:         {body: tRefusedScopePolicy},
+	RefusedScopeBaseline:       {body: tRefusedScopeBaseline},
+	RefusedScopeUnactivated:    {body: tRefusedScopeUnactivated},
+	RefusedUpstreamUnreachable: {body: tRefusedUpstreamUnreachable},
+	RefusedUpstreamOrg:         {body: tRefusedUpstreamOrg},
+	RefusedUpstreamMissing:     {body: tRefusedUpstreamMissing},
+	RefusedUpstreamEmpty:       {body: tRefusedUpstreamEmpty},
+	RefusedUpstreamRevert:      {body: tRefusedUpstreamRevert},
+	RefusedScopeSame:           {body: tRefusedScopeSame},
+	RefusedScopeNotFinalized:   {body: tRefusedScopeNotFinalized},
+	ErrNotFound:                {tErrNotFoundHead, tErrNotFound},
+	ErrMethod:                  {tErrMethodHead, tErrMethod},
+	ErrBadRequest:              {tErrBadRequestHead, tErrBadRequest},
+	ErrInputMissing:            {tErrInputMissingHead, tErrInputMissing},
+	ErrInputBroken:             {tErrInputBrokenHead, tErrInputBroken},
+	ErrForbidden:               {tErrForbiddenHead, tErrForbidden},
+	ErrInternal:                {tErrInternalHead, tErrInternal},
 }
 
 // RefusedKinds — 알려진 종류 전부(시험이 문구 목록과 견준다).

@@ -31,10 +31,28 @@ type RulesetChangeReport struct {
 	ToSessionID   string `json:"to_session_id"`
 	Archive       string `json:"archive,omitempty"`
 	// Reason · FromPolicy · ToPolicy — 정책 회차의 보고서면 그 종류와 두 정책 지문(옛 세션에 지문이 없으면 FromPolicy는 빈다).
-	Reason     string       `json:"reason,omitempty"`
-	FromPolicy string       `json:"from_policy,omitempty"`
-	ToPolicy   string       `json:"to_policy,omitempty"`
-	Items      []ItemChange `json:"items"`
+	Reason     string `json:"reason,omitempty"`
+	FromPolicy string `json:"from_policy,omitempty"`
+	ToPolicy   string `json:"to_policy,omitempty"`
+	// UpstreamCheck — 정책 회차가 거친 pqcota 이력 대조(확인 시각 · 조직 · 노드별 지문). 비밀값은 없다. 형식 판을 올리지 않는
+	// 선택 필드다: 이전 판은 모르는 필드를 무시하고 읽는다. v0.28.0 이전의 보고서와 규칙 회차 보고서에는 없다.
+	UpstreamCheck *UpstreamCheck `json:"upstream_check,omitempty"`
+	Items         []ItemChange   `json:"items"`
+}
+
+// UpstreamCheck — pqcota 이력 대조의 기록. **확인 시점에** 노드마다 그 지문이 pqcota 이력의 최신 스냅샷이었다는 뜻이다. 지금도
+// 같다는 보장이나 적재의 증명이 아니다.
+type UpstreamCheck struct {
+	CheckedAt string             `json:"checked_at"`
+	Org       string             `json:"org"`
+	Snapshots []UpstreamSnapshot `json:"snapshots"`
+}
+
+// UpstreamSnapshot — 대조한 스냅샷 하나(노드 · 규칙 판 · v1 지문).
+type UpstreamSnapshot struct {
+	Node    string `json:"node"`
+	Ruleset string `json:"ruleset"`
+	Digest  string `json:"digest"`
 }
 
 // ItemChange — 항목 하나의 변화. Change는 only-old(새 규칙에서는 없다) · only-new(새 규칙에서 생겼다) · changed · same.
@@ -81,16 +99,19 @@ type ScopeChangeRef struct {
 	ToPolicy      string `json:"to_policy"`
 	Report        string `json:"report"`
 	Archive       string `json:"archive,omitempty"`
-	// Basis — 이 회차를 연 근거(ScopeBasis*). 영수증의 round.basis와 같은 값이다. 05가 이것을 보이므로, 운영자 진술로
-	// 연 회차는 「상류 이력으로 증명하지 않았다」가 화면에 남는다. 비어 있으면 운영자 진술로 읽는다.
+	// Basis — 이 회차를 연 근거(ScopeBasis*). 처리 기록의 round.basis와 같은 값이다. v0.28.0부터 새 회차는 언제나
+	// ScopeBasisUpstream이다. 비어 있거나 ScopeBasisOperator인 것은 그 이전 판이 운영자 진술로 연 과거 기록이고, 05가 그
+	// 한계를 그대로 보인다.
 	Basis string `json:"basis,omitempty"`
 }
 
 // 정책 회차를 연 근거(영수증의 round.basis · ScopeChangeRef.Basis).
 const (
-	// ScopeBasisOperator — 운영자 진술. 상류 적재를 증명하지 않는다. 화면의 체크와 명령의 -confirm-ingest가 이것이다.
+	// ScopeBasisOperator — 운영자 진술. v0.27.x까지의 화면 체크와 명령의 -confirm-ingest가 남긴 **과거 기록**이다. 읽기만 하고
+	// v0.28.0부터 새로 쓰지 않는다.
 	ScopeBasisOperator = "operator-statement"
-	// ScopeBasisUpstream — 새 정책의 노드별 지문을 상류 이력의 노드별 최신 스냅샷에서 모두 찾았다(명령의 -verify-upstream).
+	// ScopeBasisUpstream — pqcota 이력 대조를 거쳤다: 확인 시점에 새 정책의 노드별 지문이 pqcota 이력의 노드별 최신 스냅샷과
+	// 모두 같았다.
 	ScopeBasisUpstream = "upstream-verified"
 )
 
@@ -247,6 +268,11 @@ func EncodeReport(r RulesetChangeReport) ([]byte, error) {
 }
 
 // DecodeReport — 보고서를 읽는다. 형식 판이 다르면 거절한다.
+//
+// **호환 계약: 모르는 필드는 무시한다**(json.Unmarshal, DisallowUnknownFields를 쓰지 않는다). 형식 판 1 안에서는 선택 필드만
+// 더하고(omitempty), 그 필드가 없어도 보고서의 뜻이 그대로여야 한다. 이 규칙 덕분에 upstream_check(v0.28.0)를 더해도 형식 판을
+// 올리지 않고, v0.27.x 이하의 판독기(같은 함수)가 새 보고서를 읽는다. 필드를 지우거나 뜻을 바꾸거나 엄격하게 읽어야 할 필드를
+// 더할 때는 형식 판을 올린다. 시험 IC-P50이 이 계약을 잰다.
 func DecodeReport(b []byte) (RulesetChangeReport, error) {
 	var r RulesetChangeReport
 	if err := json.Unmarshal(b, &r); err != nil {

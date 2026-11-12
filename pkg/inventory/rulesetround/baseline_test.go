@@ -51,8 +51,13 @@ func rebuiltUnder(digest string) func() (review.Session, error) {
 }
 
 func baselineRequest(path, digest string) rulesetround.Request {
-	return rulesetround.Request{OldPath: path, OutPath: path, Org: "acme", NewID: newID, Rebuild: rebuiltUnder(digest), Baseline: digest}
+	return rulesetround.Request{OldPath: path, OutPath: path, Org: "acme", NewID: newID, Rebuild: rebuiltUnder(digest), Baseline: digest,
+		Upstream: upstreamCheck}
 }
+
+// upstreamCheck — 정책 회차가 거친 pqcota 이력 대조의 기록(시험용).
+var upstreamCheck = &review.UpstreamCheck{CheckedAt: "2026-11-12T00:00:00Z", Org: "default",
+	Snapshots: []review.UpstreamSnapshot{{Node: "n1", Ruleset: review.RulesetVersion, Digest: "d1"}}}
 
 var oldID = store.Identity{Kind: rulesetround.Kind, Org: "acme", SessionID: "00000000-0000-4000-8000-000000000001"}
 
@@ -74,7 +79,7 @@ func TestBaselineRoundAdoptsTheCurrentPolicy(t *testing.T) {
 	}
 	if next.SessionID != newID || next.ScopePolicyDigestV1 != policyDigest || next.ScopeChange == nil ||
 		next.ScopeChange.Reason != review.ScopeRoundBaseline || next.ScopeChange.FromPolicy != "" ||
-		next.ScopeChange.Basis != rulesetround.BasisOperator {
+		next.ScopeChange.Basis != rulesetround.BasisUpstream {
 		t.Fatalf("new session: id %s digest %s change %+v", next.SessionID, next.ScopePolicyDigestV1, next.ScopeChange)
 	}
 	for _, it := range review.All(next) {

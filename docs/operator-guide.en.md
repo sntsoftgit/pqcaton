@@ -54,7 +54,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
-the launcher starts the service and then opens the screen in a browser. The launcher appears as "pqcaton" in the desktop's
+the launcher starts the service and then opens the screen in a browser. Create `pqcota.env` from "pqcota connection"
+below before enabling the service. The launcher appears as "pqcaton" in the desktop's
 program list. The launcher opens it with `pqcaton-ui -open`, which waits (up to 15 seconds) until the server at the
 recorded address answers that it is the screen of the same workspace, so it never opens a stale address left by an
 abnormal exit or a screen that is not up yet. If nothing answers, it opens nothing.
@@ -80,6 +81,34 @@ browser. If the screen is already running, it only opens that screen. To stop it
 ```bash
 curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.27.1/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
+```
+
+**pqcota connection.** pqcaton runs only where pqcota is installed, connected and working. On start the screen connects
+to the pqcota history and must pass one read of it (schema and read permission) before it comes up. If there is no
+connection, or connecting and the read do not finish within 10 seconds, it stops before opening the port or writing the
+address file. It only looks things up, so an account with read permission is enough.
+
+- **The connection is `PQCOTA_DSN`.** When the environment variable is set it is used; when it is empty, the screen itself
+  reads `pqcota.env` in the same user configuration folder as the approval key (Linux `~/.config/pqcaton/pqcota.env`,
+  macOS `~/Library/Application Support/pqcaton/pqcota.env`). The service and the launcher use this file as it is.
+- **File rules.** It must be a regular file, not a link, owned by this user, with no permission for the group or others
+  (0600), with a single hard link, and outside the workspace. If any rule is broken the screen does not start and says why.
+- **The content is read only as data.** Apart from blank lines and `#` comments, only one line `PQCOTA_DSN=<connection>`
+  is accepted. Other variables, `export`, quotes, surrounding spaces and a second line are refused. It is not evaluated by
+  a shell, so characters such as `$(…)` in the value stay part of the value.
+- **The value is left nowhere.** Not in the workspace, processing records, logs, error messages or the screen, and not
+  passed to the observation processes the screen starts. The screen has no place to type it either.
+- **The pqcota organization is the organization of the judgments.** The screen opens only the pqcota history of the
+  organization of the judgments (`-org`, or the declaration's organization when not given). `-upstream-org` accepts only the
+  same value; another organization stops the start. If the review session belongs to another organization, 05 refuses with
+  `upstream-org` without looking anything up. So ingest pqcota under that organization too
+  (`PQCOTA_ORG=<organization> pqcota-ingest …`).
+
+Fill the file in an editor. Do not put the value on the command line, so the password stays out of the shell history.
+
+```bash
+mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
+install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
 ```
 
 **Getting ready to run observations.** Running an observation from the 03 Observation screen needs two more things on this
@@ -215,7 +244,7 @@ can.
 | `plan.provision.yml` · `plan.rollback.yml` | The apply and rollback playbooks | Screen (06 generation) |
 | `plan.signed.<time>.json` and the like | Earlier signatures and playbooks renamed by "Archive the earlier signature" | Screen (06 archive) |
 | `judgments.jsonl` | The judgment ledger. Only appended to | Screen (finalize) |
-| `.pqcaton/` | Save records, receipts, locks, and the address of the running screen (`screen.addr`) | Screen |
+| `.pqcaton/` | Save records, processing records, locks, and the address of the running screen (`screen.addr`) | Screen |
 | `.pqcaton.lock` | The lock file saying which state folder this folder is bound to. It goes together with `.pqcaton/` | Screen |
 
 **Organization.** Without `-org`, judgments are bound to the organization written in the declaration. With `-org`, only a
@@ -223,8 +252,8 @@ declaration for that organization can be created.
 
 ## 4. Starting and stopping
 
-To start it yourself, run it in a terminal. It opens the port and then a browser (`http://127.0.0.1:8765`). To not open a
-browser, give `-no-browser`.
+To start it yourself, run it in a terminal. The connection is read from `pqcota.env` in section 2, "pqcota connection",
+so the shell does not need it. It opens the port and then a browser (`http://127.0.0.1:8765`). To not open a browser, give `-no-browser`.
 
 <!-- run: background -->
 ```bash
@@ -307,37 +336,64 @@ required).
    `results/` as the results folder.
 
    ```bash
-   pqcota-ingest -scope-assets <workspace>/asset-scope.csv <workspace>/results
+   PQCOTA_ORG=<organization of the judgments> pqcota-ingest -scope-assets <workspace>/asset-scope.csv <workspace>/results
    ```
 
    After finalizing 02, "Next" under the finalize notice leads to "View current reconciliation in 04" and "View the
    activation steps in 05", and until it is activated the top of 04 also shows "The policy finalized in 02 is not active
    yet", so that reconciliation is read as made under the active policy. "The policy finalized in 02 can be activated" at
-   the top of 05 shows three steps: re-ingest upstream, confirm the re-ingest, activate the policy. Tick the confirmation and activate through
-   the confirmation page. The tick is only the operator's statement; pqcaton does not prove the upstream ingest itself. To
-   check the upstream history for real, stop the screen and activate from the command line. `pqcaton-decide activate-scope -verify-upstream` goes on
-   only when every node's digest under the new policy is found as that node's latest snapshot in the upstream history.
-   Every node in the results folder is checked, including a node left with no managed assets under the new policy: a
-   policy that drops all of a node's assets is a result of the policy change too.
+   the top of 05 shows three steps: re-ingest pqcota, reconcile the pqcota re-ingest, activate the policy. Re-ingest with
+   the command above, press "Review before activating" and activate through the confirmation page.
+
+   **Activation always goes through the pqcota history reconciliation.** There is no operator statement to use instead.
+   pqcaton goes only in this order, within one activation request:
+
+   1. It reads a snapshot of the policy to activate and of the workspace inputs (review session, declaration, results
+      folder, active policy).
+   2. It reconciles, for every node, that the latest ingest in the pqcota history matches the results built from the
+      inputs of step 1 under the new policy. Every node in the results folder is reconciled, even when the new policy
+      leaves it no managed assets, because a policy dropping all of a node's assets is also a result of the policy change.
+   3. If any is missing, differs or cannot be looked up, nothing is activated. The whole reconciliation has one 10-second
+      limit; going over it is a failed reconciliation.
+   4. When it succeeds, it takes the workspace's run lock right away.
+   5. It checks again that the input snapshot of step 1 is unchanged.
+   6. Only then does it write the active policy, the new round, the change report, the round marker and the activation
+      processing record in one transaction.
+
+   The lookup runs outside the workspace lock. That does not make pqcota optional; it keeps the lock from being held while
+   a network lookup is slow. The confirmation page also reconciles ahead and shows "At the time of checking, the pqcota
+   history matched" with the number of nodes, but activating starts again from step 1. **Changes to pqcota after the
+   reconciliation and before the activation finishes are not detected.** The check in step 5 looks only at the workspace
+   inputs. So the screen and the processing record only say the pqcota history matched at the time of checking; they do
+   not say it still matches or that the ingest is proven. Nothing stronger can be guaranteed until pqcota offers a stable
+   current pointer or an ingest record.
+
+   The activation processing record (`scope-activation` in `.pqcaton/`) keeps the basis `upstream-verified`, and the time
+   of checking, the pqcota organization and the per-node fingerprints reconciled go into `upstream_check` of the change
+   report. Neither holds a secret. The command activates with the same reconciliation (the screen does not need to be
+   stopped; it uses the same workspace, so it waits while the screen is saving something else).
 
    ```bash
-   PQCOTA_DSN=<upstream DB> pqcaton-decide activate-scope <workspace>/session.json -decl <workspace>/declaration.json \
+   PQCOTA_DSN=<pqcota DB> pqcaton-decide activate-scope <workspace>/session.json -decl <workspace>/declaration.json \
      -results <workspace>/results -scope-assets <workspace>/scope-assets.csv -candidate <workspace>/asset-scope.csv \
-     -scope-session <workspace>/scope-session.json -org <organization> -verify-upstream
+     -scope-session <workspace>/scope-session.json -org <organization>
    ```
 
-   Activation archives the previous policy and review session and opens a new round rebuilt under the new policy. Earlier
-   conclusions are carried only as previous values, and items the new policy no longer manages stay only in the change
-   report. Plans already finalized are not signed or generated in 06, so finalize again in the new round. **If
-   `scope-assets.csv` is edited by hand without an activation record,** 05 locks and saving and finalizing are blocked.
-   Then restore the previous policy file, or follow the steps above.
+   The flag in `pqcaton-decide activate-scope -verify-upstream` is accepted for compatibility and changes nothing.
+   `pqcaton-decide activate-scope -confirm-ingest` is no longer supported; given, it stops without writing anything.
 
-   **Going back to a previous policy cannot use `pqcaton-decide activate-scope -verify-upstream`.** Upstream pqcota
-   (up to v0.10.7) does not create a new snapshot when one with the same digest is already in its history, and the node's latest
-   snapshot does not change. So a re-ingest under the previous policy cannot be proven from the upstream history. In that
-   case, after the upstream ingest, activate with the tick in 05 or `pqcaton-decide activate-scope -confirm-ingest`. This is
-   an operator statement: the receipt records `basis` as `operator-statement`, and 05 shows "it was not proven against the
-   upstream history" under "The policy change that opened this round".
+   Activating archives the old policy and the old review session, and opens a new round rebuilt under the new policy.
+   Earlier conclusions are carried only as previous values, and items the new policy no longer manages stay only in the
+   change report. Plans already finalized are not signed or generated in 06, so finalize again in the new round.
+   **Changing `scope-assets.csv` by hand without an activation record** locks 05 and blocks saving and finalizing. Then
+   restore the previous policy file or follow the steps above.
+
+   **This version blocks an activation that goes back to an earlier policy.** When the history already holds a snapshot
+   with the same fingerprint, pqcota does not create a new snapshot on re-ingest and the node's latest snapshot does not
+   change (pqcota-inventory#1). So a re-ingest under an earlier policy cannot be reconciled with the pqcota history, and 05
+   refuses it with `upstream-revert`. Rounds that v0.27.x or earlier opened on an operator statement (`operator-statement`)
+   are still read as past records, and 05 shows "It was not reconciled with the pqcota history" under "The policy change
+   that opened this round".
 3. **03 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS, SSH or WinRM),
    and save. They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
    on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation"
@@ -401,7 +457,7 @@ required).
    round starts under a new session id: conclusions and plan fields carry over, and a new signature is needed. The earlier
    round's plan and ledger entries stay as they are.
    **06 signs and generates only plans finalized in this workspace.** Finalizing in 05 records, in the state folder's
-   receipt together with the plan, the digest of the policy the plan was made under, and 06 compares it with the active
+   processing record together with the plan, the digest of the policy the plan was made under, and 06 compares it with the active
    policy. A plan brought in from another workspace, or finalized before this version, can only be viewed and archived.
    Approve and generate a plan brought in from elsewhere with pqcota's `pqcota-approve` and `pqcota-provision`. To handle a
    plan finalized before this version in 06, open a new review round in 05 under the current policy and finalize again.
@@ -596,23 +652,24 @@ ruleset (`pqcota-enrich/v3`) are the same as v0.26.1, so the workspace opens as 
 
 ### v0.25 to v0.26
 
-v0.26 records the asset scope policy's digest in the review session and the finalize receipt, and uses the policy
+v0.26 records the asset scope policy's digest in the review session and the finalize processing record, and uses the policy
 finalized in 02 for reconciliation only through the formal steps.
 
 1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back the workspace up as in
    [section 7](#7-backup-and-restore). **There is a point of no return.** Finalizing 05, activating a policy or opening a
-   baseline round in this version writes format 2 receipts into the state folder, and just before that the state document
+   baseline round in this version writes format 2 processing records into the state folder, and just before that the state document
    (`.pqcaton/state.json`) is raised to format 2. A state folder this version creates starts at format 2. From then on
    v0.25.x or earlier does not open the workspace: the screen does not start, and commands that write the state folder
    stop with "state.json is damaged or from another version". It is not damage; the older version cannot read the newer
-   state folder. The older version does not stop until it reads a format 2 receipt, and until then it even offers to sign
+   state folder. The older version does not stop until it reads a format 2 processing record, and until then it even offers to sign
    a plan made before an activation, so this version stops it at start through the state document. To go back to the
    older version, restore the backup.
 2. Replace the binary with `go install` from [section 2](#2-installation) and start the screen. Upstream stays at v0.10.6.
-3. **A review session made before this version records no policy, so 05 locks.** At the top of 05, tick "I confirmed
-   the current scope-assets.csv is the policy the upstream ingest used" and open the baseline round. The old session is
-   archived, a new round rebuilt under the current policy opens, and earlier conclusions are carried only as previous
-   values. On the command line it is `pqcaton-decide baseline`.
+3. **A review session made before this version records no policy, so 05 locks.** Ingest pqcota with the current
+   `scope-assets.csv`, then open the baseline round at the top of 05. Like the activation, it reconciles the pqcota history
+   against the current policy first and opens only when it matches. The old session is archived, a new round rebuilt under
+   the current policy opens, and earlier conclusions are carried only as previous values. On the command line it is
+   `pqcaton-decide baseline` (`PQCOTA_DSN` is needed; `pqcaton-decide baseline -confirm-ingest` is no longer supported).
 4. Plans finalized before this version can only be viewed and archived in 06. Sign the plan finalized again in the
    baseline round.
 5. Operators who finalize from the command line give `pqcaton-decide close` the same `-scope-assets` the session was
@@ -673,11 +730,15 @@ screen.
 | `plan-scope` | The plan does not lead back to a finalize recorded in this workspace (it was brought in from elsewhere, the plan file changed after it was finalized, or it was finalized before this version and records no policy), or the asset-scope policy it was made under differs from the active one, so nothing was signed or generated. Existing files are unchanged | Open a new review round in 05 under the current policy and finalize again. Approve and generate a plan brought in from elsewhere with `pqcota-approve` and `pqcota-provision` |
 | `plan-fields` | The plan (or the signed plan) carries source evidence or an approval guide (upstream v0.11.0), so nothing was signed or generated. The plan is not damaged: pqcaton does not yet review that content on 06 or put it into playbooks. Existing files are unchanged | Check the content with `pqcota-approve --review`, then approve and generate with `pqcota-approve` and `pqcota-provision`. A signed plan that has it can be archived |
 | `plan-text` | The plan (or the signed plan) contains a NUL character in a string, so nothing was signed or generated. An approval of such a plan could also pass on a different plan, so pqcota refuses to sign or generate it. Existing files are unchanged | Open a new review round, correct the value and finalize again. If the signed plan has it, archive that first |
-| `session-text` | The plan this finalize would write contains a NUL character in a string, so nothing was finalized. The session, plan and receipt are unchanged | Correct the value and finalize again |
+| `session-text` | The plan this finalize would write contains a NUL character in a string, so nothing was finalized. The session, plan and processing record are unchanged | Correct the value and finalize again |
 | `scope-policy` | The asset-scope policy the review session was built under differs from the current one, or the session records no policy (made before this version), so nothing was finalized. The files are unchanged | Finalize under the policy the session was built with, or open a new session under the current policy. On the command line, give `pqcaton-decide close` the same `-scope-assets` the session was opened with |
-| `scope-baseline` | The review session records no asset-scope policy (made before this version), so nothing was saved or finalized | At the top of the review screen, confirm the current `scope-assets.csv` is the policy the upstream ingest used and open the baseline round |
+| `scope-baseline` | The review session records no asset-scope policy (made before this version), so nothing was saved or finalized | Ingest pqcota with the current `scope-assets.csv`, then open the baseline round at the top of the review screen. It goes through the pqcota history reconciliation |
 | `scope-unactivated` | `scope-assets.csv` changed without an activation record, so nothing was saved or finalized | Restore the previous policy file, or re-ingest upstream with the new policy and go through the policy activation |
-| `scope-confirm` | The baseline round was requested without confirming the upstream ingest used this policy | Tick the confirmation and try again |
+| `upstream-unreachable` | The pqcota history could not be reached, or the lookup did not finish within 10 seconds, so no policy was activated or adopted as the baseline (503). The files are unchanged | Check the pqcota connection and try again. There is no operator statement to use instead |
+| `upstream-org` | The connected pqcota history, the organization of the judgments and the review session's organization are not the same, so nothing was looked up. Nothing was written | Use the pqcota history of the organization of the judgments. Another organization's history cannot activate a policy or adopt a baseline |
+| `upstream-missing` | In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy. Nothing was written | Re-ingest pqcota with this policy using the command shown in 05, then try again |
+| `upstream-empty` | The results folder holds no observations to reconcile with the pqcota history. Nothing was written | Observe in 03, then try again |
+| `upstream-revert` | Results under this policy are in the pqcota history but are not the latest ingest of their nodes; reverting to an earlier policy looks like this. Nothing was written | This version blocks reverting to an earlier policy (until pqcota-inventory#1 is resolved) |
 | `scope-same` | The policy finalized in 02 is already the active policy (only notes or spacing may differ), so there is nothing to activate. Nothing was written | Nothing to do |
 | `scope-not-finalized` | There is no policy finalized in 02, `asset-scope.csv` changed after it was finalized, or it cannot be read, so nothing was activated | Finalize it in 02. A hand-edited file is not activated |
 | `ruleset-changed` | The session was opened under a different upstream ruleset, or records none, so nothing was saved or finalized, to keep the two from mixing | Press "Start a new round under the current rules" at the top of the review screen (the command is `pqcaton-decide new-round`). Earlier conclusions are carried only as reference values, so judge each item again |

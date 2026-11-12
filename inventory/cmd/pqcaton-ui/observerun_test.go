@@ -37,6 +37,7 @@ orphan() {
 [ "$1" = "-i" ] && [ "$2" = "targets.yml" ] && [ "$3" = "-e" ] && [ "$4" = "@vars.json" ] || { echo "bad args: $*"; exit 9; }
 if [ "$5" = "cleanup.yml" ]; then
   grep -q 'state: absent' cleanup.yml && echo "CLEANUP ran"
+  if [ -n "${PQCOTA_DSN:-}" ]; then echo "CLEANUP DSN_ENV=set"; else echo "CLEANUP DSN_ENV=none"; fi
   if [ "$FAKE_CLEANUP" = "orphan" ]; then orphan; fi
   exit 0
 fi
@@ -48,6 +49,7 @@ echo "INI_MODE=$(stat -c %a targets.yml 2>/dev/null || stat -f %Lp targets.yml)"
 grep 'ansible_ssh_pass' targets.yml
 grep -q 'name: pqcaton observation' observe.yml && echo "PLAYBOOK=embedded"
 echo "SSH_ARGS=$ANSIBLE_SSH_ARGS MARKED=${PQCATON_RUN:+yes}"
+if [ -n "${PQCOTA_DSN:-}" ]; then echo "OBSERVE DSN_ENV=set"; else echo "OBSERVE DSN_ENV=none"; fi
 if [ "$FAKE_MODE" = "escape" ]; then orphan; fi
 res() { printf '{"envelope":{"collectorId":"%s","targetNodeId":"%s"}}' "$1" "$2"; }
 for a in $(sed -n 's/^    \(n[0-9]*\):$/\1/p' targets.yml); do

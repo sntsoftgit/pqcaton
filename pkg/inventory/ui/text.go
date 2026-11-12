@@ -104,19 +104,32 @@ var (
 		KO: "이 판정 세션에는 자산 스코프 정책 기록이 없습니다(이 판보다 먼저 만든 세션). 저장하거나 확정하지 않았고 파일은 그대로입니다. 판정 화면 위쪽에서 지금 정책을 기준선으로 채택하는 새 회차를 여십시오.",
 		EN: "This review session records no asset-scope policy (it was made before this version). Nothing was saved or finalized and the files are unchanged. Open the new round that adopts the current policy as the baseline, at the top of the review screen."}
 	tRefusedScopeUnactivated = T{
-		KO: "자산 스코프 정책(scope-assets.csv)이 활성화 기록 없이 바뀌었습니다. 저장하거나 확정하지 않았고 파일은 그대로입니다. 이전 정책 파일을 복원하거나, 상류를 새 정책으로 다시 적재한 뒤 정식 정책 활성화를 거치십시오.",
-		EN: "The asset-scope policy (scope-assets.csv) changed without an activation record. Nothing was saved or finalized and the files are unchanged. Restore the previous policy file, or re-ingest upstream with the new policy and go through the policy activation."}
-	tRefusedScopeConfirm = T{
-		KO: "상류 적재에 이 정책을 썼다는 확인이 없어 기준선 회차를 열지 않았습니다. 확인 칸에 체크한 뒤 다시 하십시오.",
-		EN: "The baseline round was not opened because there is no confirmation that the upstream ingest used this policy. Tick the confirmation and try again."}
+		KO: "자산 스코프 정책(scope-assets.csv)이 활성화 기록 없이 바뀌었습니다. 저장하거나 확정하지 않았고 파일은 그대로입니다. 이전 정책 파일을 복원하거나, pqcota를 새 정책으로 다시 적재한 뒤 정식 정책 활성화를 거치십시오.",
+		EN: "The asset-scope policy (scope-assets.csv) changed without an activation record. Nothing was saved or finalized and the files are unchanged. Restore the previous policy file, or re-ingest pqcota with the new policy and go through the policy activation."}
+	tRefusedUpstreamUnreachable = T{
+		KO: "pqcota 이력에 닿지 못했거나 조회가 10초 안에 끝나지 않아 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. pqcota 연결을 확인한 뒤 다시 하십시오.",
+		EN: "The pqcota history could not be reached, or the lookup did not finish within 10 seconds, so no policy was activated or adopted as the baseline. The files are unchanged. Check the pqcota connection and try again."}
+	tRefusedUpstreamOrg = T{
+		KO: "연결한 pqcota 이력의 조직이 판정 조직이나 판정 세션의 조직과 달라, 조회하지 않고 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. 다른 조직의 이력으로는 진행할 수 없습니다.",
+		EN: "The organization of the connected pqcota history differs from the organization of the judgments or of the review session, so nothing was looked up and no policy was activated or adopted as the baseline. The files are unchanged. The history of another organization cannot be used."}
+	tRefusedUpstreamMissing = T{
+		KO: "pqcota 이력에서 일부 노드의 최신 적재 결과가 없거나 이 정책으로 만든 결과와 달라 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. 05에 보이는 명령으로 pqcota를 이 정책으로 다시 적재한 뒤 하십시오.",
+		EN: "In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy, so no policy was activated or adopted as the baseline. The files are unchanged. Re-ingest pqcota with this policy using the command shown in 05, then try again."}
+	tRefusedUpstreamEmpty = T{
+		KO: "결과 폴더에 pqcota 이력과 대조할 관측 결과가 없어 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다.",
+		EN: "The results folder holds no observations to reconcile with the pqcota history, so no policy was activated or adopted as the baseline. The files are unchanged."}
+	tRefusedUpstreamRevert = T{
+		KO: "이 정책으로 만든 결과가 pqcota 이력에 있지만 노드의 최신 적재 결과가 아닙니다. 이전 정책으로 되돌리면 이렇게 됩니다: pqcota는 같은 내용을 다시 적재해도 최신으로 올리지 않아 대조할 수 없습니다. 이 판은 이전 정책 복귀를 막습니다. 파일은 그대로입니다.",
+		EN: "Results under this policy are in the pqcota history but are not the latest ingest of their nodes. Reverting to an earlier policy looks like this: pqcota does not make a re-ingest of the same content the latest, so it cannot be reconciled. This version blocks reverting to an earlier policy. The files are unchanged."}
 	tRefusedScopeSame           = T{KO: "02에서 확정한 정책이 이미 활성 정책과 같습니다(note · 공백만 다를 수 있습니다). 활성화할 것이 없어 아무것도 쓰지 않았습니다.", EN: "The policy finalized in 02 is already the active policy (only notes or spacing may differ). There is nothing to activate, so nothing was written."}
 	tRefusedScopeNotFinalized   = T{KO: "02에서 확정한 정책이 없거나, 확정한 뒤 asset-scope.csv가 바뀌었거나, 읽을 수 없어 활성화하지 않았습니다. 02에서 확정하십시오.", EN: "There is no policy finalized in 02, asset-scope.csv changed after it was finalized, or it cannot be read, so nothing was activated. Finalize it in 02."}
 	tActivateHead               = T{KO: "02에서 확정한 정책을 활성화할 수 있습니다", EN: "The policy finalized in 02 can be activated"}
 	tActivateBody               = T{KO: "02에서 확정한 정책(asset-scope.csv)이 지금 대조에 쓰는 활성 정책(scope-assets.csv)과 다릅니다. 아래 순서대로 활성화합니다. 활성화하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다.", EN: "The policy finalized in 02 (asset-scope.csv) differs from the active policy used for reconciliation (scope-assets.csv). Activate it in the order below. Activation opens a new round rebuilt from the results; earlier conclusions are carried only as previous values."}
-	tActivateStep1              = T{KO: "상류 재적재", EN: "Re-ingest upstream"}
-	tActivateStep1Body          = T{KO: "02에서 확정한 정책으로 상류 적재를 다시 합니다.", EN: "Ingest upstream again with the policy finalized in 02."}
+	tActivateStep1              = T{KO: "pqcota 재적재", EN: "Re-ingest pqcota"}
+	tActivateStep1Body          = T{KO: "02에서 확정한 정책으로 pqcota를 다시 적재합니다. 연결 정보는 PQCOTA_DSN으로만 넘깁니다.", EN: "Ingest pqcota again with the policy finalized in 02. Pass the connection only as PQCOTA_DSN."}
 	tActivateStep1Hint          = T{KO: "작업 폴더에서 실행합니다. 경로는 작업 폴더 기준의 상대 경로입니다.", EN: "Run it in the workspace folder; the paths are relative to it."}
-	tActivateStep2              = T{KO: "재적재 확인", EN: "Confirm the re-ingest"}
+	tActivateStep2              = T{KO: "pqcota 재적재 결과 대조", EN: "Reconcile the pqcota re-ingest"}
+	tActivateStep2Body          = T{KO: "pqcaton이 pqcota 이력에서 노드마다 최신 적재 결과가 새 정책으로 만든 결과와 같은지 대조합니다. 하나라도 없거나 다르거나 조회할 수 없으면 활성화하지 않습니다.", EN: "pqcaton reconciles, for every node, that the latest ingest in the pqcota history matches the results under the new policy. If any is missing, differs or cannot be looked up, nothing is activated."}
 	tActivateStep3              = T{KO: "정책 활성화", EN: "Activate the policy"}
 	tActivateStep3Body          = T{KO: "확인 페이지에서 바뀌는 파일과 되돌리기 제한을 본 뒤 활성화합니다.", EN: "Review the files that change and the rollback limit on the confirmation page, then activate."}
 	tSurveyActivateHead         = T{KO: "02에서 확정한 정책이 아직 활성화되지 않았습니다", EN: "The policy finalized in 02 is not active yet"}
@@ -127,7 +140,6 @@ var (
 	tScopeNextBody              = T{KO: "이 정책은 아직 대조에 반영되지 않았습니다. 먼저 04에서 현재 활성 정책으로 계산한 대조 결과를 확인하십시오.", EN: "This policy has not yet been applied to reconciliation. First review the reconciliation produced with the currently active policy in 04."}
 	tScopeNextSurvey            = T{KO: "04에서 현재 대조 보기", EN: "View current reconciliation in 04"}
 	tScopeNextSteps             = T{KO: "05에서 활성화 절차 보기", EN: "View the activation steps in 05"}
-	tActivateConfirm            = T{KO: "상류 적재를 이 정책으로 다시 마쳤음을 확인했습니다.", EN: "I confirmed the upstream ingest was redone with this policy."}
 	tActivateNext               = T{KO: "활성화 전 확인으로", EN: "Review before activating"}
 	tActivateConfirmTitle       = T{KO: "정책 활성화 전 확인", EN: "Before activating the policy"}
 	tActivateConfirmBody        = T{KO: "아래 내용으로 자산 스코프 정책을 활성화합니다. 아직 아무것도 쓰지 않았습니다.", EN: "The asset-scope policy will be activated as below. Nothing has been written yet."}
@@ -136,14 +148,13 @@ var (
 	tActivateLineTo             = T{KO: "새 활성 정책: %s (%s)", EN: "New active policy: %s (%s)"}
 	tActivateLineFiles          = T{KO: "%s를 새 정책으로 바꾸고, 옛 정책은 %s로 보관합니다.", EN: "%s is replaced by the new policy; the old policy is archived as %s."}
 	tActivateLineRound          = T{KO: "판정 세션은 보관되고, 새 정책으로 다시 세운 새 회차가 열립니다. 지난 결론은 「지난 판정」으로만 옮겨지고 새 정책에서 빠진 항목은 변환 보고서에만 남습니다. 옛 정책으로 만든 계획은 06에서 서명 · 생성되지 않습니다.", EN: "The review session is archived and a new round rebuilt under the new policy opens. Earlier conclusions are carried only as previous values, and items the new policy no longer manages stay only in the change report. Plans made under the old policy are not signed or generated in 06."}
+	tActivateLineUpstream       = T{KO: "확인 시점에 pqcota 이력과 일치했습니다(노드 %d개, %s 기준). 활성화를 누르면 처음부터 다시 대조합니다.", EN: "At the time of checking, the pqcota history matched (%d nodes, as of %s). Activating reconciles again from the start."}
 	tActivateLineDowngrade      = T{KO: "이 작업을 하면 이 작업 폴더를 v0.25.x 이하로 다시 열 수 없습니다. 필요하면 먼저 작업 폴더를 백업하십시오(운영자 안내서 7절).", EN: "After this, the workspace cannot be opened with v0.25.x or earlier; back it up first if you may need to (operator guide section 7)."}
 	tScopeBaselineHead          = T{KO: "정책 기준선을 채택해야 합니다", EN: "Adopt a policy baseline"}
-	tScopeBaselineBody          = T{KO: "이 세션은 이 판보다 먼저 만들어져 어느 자산 스코프 정책으로 판정했는지 기록이 없습니다. 지금 scope-assets.csv를 기준선으로 채택하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다. 옛 세션 파일은 보관됩니다. 이 작업을 하면 이 작업 폴더를 v0.25.x 이하로 다시 열 수 없습니다. 필요하면 먼저 작업 폴더를 백업하십시오(운영자 안내서 7절).", EN: "This session was made before this version and records no asset-scope policy. Adopting the current scope-assets.csv as the baseline opens a new round rebuilt from the results; earlier conclusions are carried only as previous values. The old session file is archived. After this, the workspace cannot be opened with v0.25.x or earlier; back it up first if you may need to (operator guide section 7)."}
-	tScopeBaselineConfirm       = T{KO: "지금 scope-assets.csv가 상류 적재에 사용한 정책임을 확인했습니다.", EN: "I confirmed the current scope-assets.csv is the policy the upstream ingest used."}
-	tScopeConfirmLimit          = T{KO: "pqcaton은 이 확인만 기록하며 상류 적재를 직접 증명하지는 않습니다.", EN: "pqcaton only records this confirmation; it does not prove the upstream ingest itself."}
+	tScopeBaselineBody          = T{KO: "이 세션은 이 판보다 먼저 만들어져 어느 자산 스코프 정책으로 판정했는지 기록이 없습니다. 지금 scope-assets.csv를 기준선으로 채택하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다. 채택할 때 pqcota 이력이 이 정책으로 적재돼 있는지 대조하고, 일치하지 않으면 채택하지 않습니다. 옛 세션 파일은 보관됩니다. 이 작업을 하면 이 작업 폴더를 v0.25.x 이하로 다시 열 수 없습니다. 필요하면 먼저 작업 폴더를 백업하십시오(운영자 안내서 7절).", EN: "This session was made before this version and records no asset-scope policy. Adopting the current scope-assets.csv as the baseline opens a new round rebuilt from the results; earlier conclusions are carried only as previous values. Adopting reconciles the pqcota history against this policy first and stops if it does not match. The old session file is archived. After this, the workspace cannot be opened with v0.25.x or earlier; back it up first if you may need to (operator guide section 7)."}
 	tScopeBaselineDo            = T{KO: "지금 정책을 기준선으로 새 회차 시작", EN: "Start a new round with the current policy as baseline"}
 	tScopeUnactivatedHead       = T{KO: "자산 스코프 정책이 활성화 없이 바뀌었습니다", EN: "The asset-scope policy changed without activation"}
-	tScopeUnactivatedBody       = T{KO: "이 세션을 판정한 정책과 지금 scope-assets.csv가 다르고, 그 변경을 잇는 활성화 기록이 없습니다. 저장과 확정은 막혀 있습니다. 이전 정책 파일을 복원하거나, 상류를 새 정책으로 다시 적재한 뒤 02에서 확정한 정책을 정식으로 활성화하십시오.", EN: "The policy this session was judged under differs from the current scope-assets.csv, and no activation records that change. Saving and finalizing are blocked. Restore the previous policy file, or re-ingest upstream with the new policy and activate the policy finalized in 02."}
+	tScopeUnactivatedBody       = T{KO: "이 세션을 판정한 정책과 지금 scope-assets.csv가 다르고, 그 변경을 잇는 활성화 기록이 없습니다. 저장과 확정은 막혀 있습니다. 이전 정책 파일을 복원하거나, pqcota를 새 정책으로 다시 적재한 뒤 02에서 확정한 정책을 정식으로 활성화하십시오.", EN: "The policy this session was judged under differs from the current scope-assets.csv, and no activation records that change. Saving and finalizing are blocked. Restore the previous policy file, or re-ingest pqcota with the new policy and activate the policy finalized in 02."}
 	tStepReviewScopeBaseline    = T{KO: "정책 기준선을 채택해야 합니다", EN: "A policy baseline must be adopted"}
 	tStepReviewScopeUnactivated = T{KO: "정책이 활성화 없이 바뀌었습니다", EN: "The policy changed without activation"}
 	tPlanScopeNotHere           = T{KO: "이 계획(plan.json)은 이 작업 폴더에서 확정한 기록과 이어지지 않습니다. 다른 곳에서 옮겨 왔을 수 있습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다. 옮겨 온 계획은 pqcota-approve와 pqcota-provision으로 승인하고 생성하십시오.", EN: "This plan (plan.json) does not lead back to a finalize recorded in this workspace; it may have been brought in from elsewhere. It is not signed or generated here; it can still be viewed and archived. Approve and generate a plan brought in from elsewhere with pqcota-approve and pqcota-provision."}
@@ -373,8 +384,8 @@ var (
 	tReportFrom         = T{KO: "옛 규칙 판과 보고서:", EN: "Old ruleset and report:"}
 	tScopeRoundHead     = T{KO: "이 회차를 연 정책 변경", EN: "The policy change that opened this round"}
 	tScopeRoundPolicy   = T{KO: "자산 스코프 정책:", EN: "Asset-scope policy:"}
-	tScopeBasisUpstream = T{KO: "근거: 새 정책으로 적재한 스냅샷을 상류 이력의 노드별 최신 스냅샷에서 모두 확인했습니다(-verify-upstream).", EN: "Basis: the snapshots ingested under the new policy were found as the latest snapshot of every node in the upstream history (-verify-upstream)."}
-	tScopeBasisOperator = T{KO: "근거: 운영자 진술입니다. 상류 적재를 이 정책으로 마쳤다는 확인을 기록했을 뿐, 상류 이력으로 증명하지 않았습니다.", EN: "Basis: an operator statement. It records a confirmation that the upstream ingest used this policy; it was not proven against the upstream history."}
+	tScopeBasisUpstream = T{KO: "근거: pqcota 이력 대조. 확인 시점에 pqcota 이력과 일치했습니다(노드마다 최신 적재 결과가 이 정책으로 만든 결과와 같았습니다).", EN: "Basis: pqcota history reconciliation. At the time of checking, the pqcota history matched (every node's latest ingest equalled the results under this policy)."}
+	tScopeBasisOperator = T{KO: "근거: 운영자 진술(v0.27.x 이하에서 연 회차의 과거 기록). pqcota 이력과 대조하지 않았습니다.", EN: "Basis: an operator statement (a past record of a round opened by v0.27.x or earlier). It was not reconciled with the pqcota history."}
 	tReportInstalls     = T{KO: "설치 %d개", EN: "%d installations"}
 	tReportMissing      = T{KO: "보고서 파일을 읽지 못했습니다.", EN: "The report file could not be read."}
 	tChangeOnlyOld      = T{KO: "지금 규칙에서는 없음", EN: "not under the current rules"}

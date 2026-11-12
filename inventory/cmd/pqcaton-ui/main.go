@@ -61,6 +61,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/upstream"
 )
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
@@ -143,6 +144,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "❌", err)
 		return 1
 	}
+	// **pqcota 이력 없이는 시작하지 않는다.** PQCOTA_DSN이 없거나, 연결 · 필수 조회가 실패하면 포트를 열거나 주소 파일을
+	// 쓰기 전에 멈춘다. 떠 있는 화면을 여는 길(위)은 새로 시작하는 것이 아니라 여기를 지나지 않는다.
+	if err := s.connectUpstream(); err != nil {
+		fmt.Fprintln(stderr, "❌", err)
+		if s.st != nil {
+			s.st.Close()
+		}
+		return 1
+	}
+	defer s.upstream.Close()
 	if len(s.diag) > 0 {
 		ref := newRef()
 		for _, p := range s.diag {
@@ -448,7 +459,11 @@ type server struct {
 	// checkCollector: 수집기 하나를 판정한다(nil 이면 collectorver.CheckGo). 시험이 바꾼다.
 	collectorPin    string
 	allowUnverified bool
-	checkCollector  func(path, rel, want string) collectorver.File
+	// upstream: 시작할 때 연 pqcota 이력(조회용). 시작 뒤 연결이 끊기면 그 작업이 실패한다. upstreamOrg: -upstream-org(비면
+	// 판정 조직), upstreamOrgName: 연 이력이 묶인 조직.
+	upstream                     upstream.Store
+	upstreamOrg, upstreamOrgName string
+	checkCollector               func(path, rel, want string) collectorver.File
 	// stderr: 허용한 확인 불가 수집기처럼 화면 밖에도 남겨야 하는 것을 적는다. nil 이면 적지 않는다.
 	stderr io.Writer
 	// approvalKey: 승인 서명 키 파일(-approval-key, 없으면 기본 위치). 서명할 때마다 다시 읽고 점검한다. keySource · keyWhere:
@@ -746,9 +761,9 @@ func (s *server) scopeLockOf(sf review.Session) string {
 	return review.ScopeLock(sf, active)
 }
 
-// reviewScopeBaseline: 정책 기록이 없는 옛 세션에서 기준선 회차를 연다(POST). 운영자가 지금 scope-assets.csv가 상류 적재에
-// 쓴 정책이라고 확인해야 열고, 확인은 회차의 scope-baseline 영수증으로 남는다. 정책 파일이 없으면 규칙 0개 정책을 채택하고,
-// 형식 오류 · 읽기 실패는 열지 않는다. 같은 옛 세션에서 두 번 열 수 없다.
+// reviewScopeBaseline: 정책 기록이 없는 옛 세션에서 기준선 회차를 연다(POST). 활성화와 같은 순서로 pqcota 이력을 지금
+// scope-assets.csv로 대조하고(운영자 진술은 받지 않는다), 일치할 때만 열며, 대조는 scope-baseline 처리 기록과 전환 보고서에
+// 남는다. 정책 파일이 없으면 규칙 0개 정책을 채택하고, 형식 오류 · 읽기 실패는 열지 않는다. 같은 옛 세션에서 두 번 열 수 없다.
 func (s *server) reviewScopeBaseline(w http.ResponseWriter, r *http.Request) {
 	back := ui.ScreenReview
 	if !s.writable(w, r, back) {
@@ -758,8 +773,10 @@ func (s *server) reviewScopeBaseline(w http.ResponseWriter, r *http.Request) {
 		errorPage(w, r, http.StatusConflict, ui.ErrInputMissing, nil)
 		return
 	}
-	if r.PostForm.Get(ui.ScopeBaselineConfirmField) != "on" {
-		s.refuse(w, r, http.StatusBadRequest, ui.RefusedScopeConfirm, back, nil)
+	// (1) 입력 스냅샷: 화면이 본 rev. 지금 입력이 이미 다르면 대조하지 않고 멈춘다.
+	chk := s.check(r)
+	if !s.unchanged(chk) {
+		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
 		return
 	}
 	active, err := scope.PolicyFileDigest(s.scopeAssets)
@@ -784,7 +801,17 @@ func (s *server) reviewScopeBaseline(w http.ResponseWriter, r *http.Request) {
 			}
 			return b.Session, nil
 		}}
-	if _, err := rulesetround.Open(s.st, req, s.check(r), s.waitTime()); err != nil {
+	// (2) · (3) pqcota 이력 대조(지금 정책). 실패하면 아무것도 쓰지 않는다.
+	res, err := s.reconcileUpstream(s.scopeAssets)
+	if err != nil {
+		if !s.upstreamRefuse(w, r, back, err) {
+			s.fail(w, r, back, err, file(ui.PickLang(r), "policy", s.scopeAssets))
+		}
+		return
+	}
+	req.Upstream = recordOf(res)
+	// (4) ~ (6) 곧바로 잠그고, 잠금 안에서 1의 rev를 다시 잰 뒤 쓴다.
+	if _, err := rulesetround.Open(s.st, req, chk, s.waitTime()); err != nil {
 		if errors.Is(err, rulesetround.ErrNotBaseline) {
 			s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
 			return

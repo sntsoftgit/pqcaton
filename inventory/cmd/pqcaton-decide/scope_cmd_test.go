@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -86,9 +87,9 @@ func newScopeWorld(t *testing.T) scopeWorld {
 	return w
 }
 
-func (w scopeWorld) activate(verify, confirm bool) error {
+func (w scopeWorld) activate(confirm bool) error {
 	scopeSessionPath = w.scopeSess
-	return activateScope(w.sess, w.decl, w.results, w.active, w.candidate, "local", "", "local", verify, confirm)
+	return activateScope(w.sess, w.decl, w.results, w.active, w.candidate, "local", "", "local", confirm)
 }
 
 func roundReceipt(t *testing.T, w scopeWorld, kind, oldID string) *store.Receipt {
@@ -105,10 +106,14 @@ func roundReceipt(t *testing.T, w scopeWorld, kind, oldID string) *store.Receipt
 	return rc
 }
 
-// upstreamWith: 결과를 정책 policy로 적재한 메모리 상류 이력을 openUpstream에 건다.
-func upstreamWith(t *testing.T, results, policyPath string) {
+// memStore — 메모리 이력을 upstream.Store로. 시험의 openUpstream이 돌려준다.
+type memStore struct{ upstream.Lookup }
+
+func (memStore) Close() {}
+
+// ingested: 결과를 정책 policy로 적재한 메모리 이력.
+func ingested(t *testing.T, results, policyPath string) *history.MemStore {
 	t.Helper()
-	t.Setenv("PQCOTA_DSN", "memory://test")
 	policy, err := review.LoadAssetPolicy(policyPath)
 	if err != nil {
 		t.Fatal(err)
@@ -122,26 +127,72 @@ func upstreamWith(t *testing.T, results, policyPath string) {
 		Store: mem, AssetPolicy: policy}); err != nil {
 		t.Fatal(err)
 	}
+	return mem
+}
+
+// useUpstream: openUpstream이 l을 돌려주게 건다. PQCOTA_DSN도 채운다.
+func useUpstream(t *testing.T, l upstream.Lookup) {
+	t.Helper()
+	t.Setenv("PQCOTA_DSN", "memory://test")
 	prev := openUpstream
-	openUpstream = func(string, string) (upstream.Lookup, func(), error) { return mem, func() {}, nil }
+	openUpstream = func(dsn, org string) (upstream.Store, string, error) {
+		if dsn == "" {
+			return nil, "", upstream.ErrNoDSN
+		}
+		return memStore{l}, org, nil
+	}
 	t.Cleanup(func() { openUpstream = prev })
 }
 
-// IC-D33 — **activate-scope는 화면과 같은 활성화를 명령으로 한다.** 뒷받침은 -verify-upstream과 -confirm-ingest 가운데 꼭
-// 하나다(없거나 둘이면 거절). 진술로 활성화하면 정책이 바뀌고 새 세션이 새 지문을 들며 영수증의 basis가 operator-statement다.
-// 02 확정이 쓴 그대로가 아닌 후보는 거절하고 아무것도 쓰지 않는다. 두 정책이 같으면 아무것도 쓰지 않는다.
+// upstreamWith: 결과를 정책 policy로 적재한 메모리 pqcota 이력을 openUpstream에 건다.
+func upstreamWith(t *testing.T, results, policyPath string) {
+	t.Helper()
+	useUpstream(t, ingested(t, results, policyPath))
+}
+
+// reportOf — 회차의 전환 보고서.
+func reportOf(t *testing.T, w scopeWorld) review.RulesetChangeReport {
+	t.Helper()
+	sf, err := review.Load(w.sess)
+	if err != nil || sf.ScopeChange == nil {
+		t.Fatalf("no scope change: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(filepath.Dir(w.sess), sf.ScopeChange.Report))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := review.DecodeReport(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rep
+}
+
+// IC-D33 — **activate-scope는 pqcota 이력 대조를 언제나 한다.** -confirm-ingest를 주면 지원 종료 오류이고 아무것도 쓰지
+// 않는다(운영자 진술로 우회하지 못한다). PQCOTA_DSN이 없으면 거절하고 아무것도 쓰지 않는다. 02 확정이 쓴 그대로가 아닌 후보는
+// pqcota가 그 정책으로 적재돼 있어도 거절한다. 대조가 통과하면 정책이 바뀌고 새 세션이 새 지문을 들며 처리 기록의 basis가
+// upstream-verified, 보고서에 upstream_check가 실린다. 두 정책이 같으면 아무것도 쓰지 않는다.
 func TestActivateScopeCommand(t *testing.T) {
 	w := newScopeWorld(t)
 	old, _ := review.Load(w.sess)
-	for name, flags := range map[string][2]bool{"neither": {false, false}, "both": {true, true}} {
-		if err := w.activate(flags[0], flags[1]); err == nil {
-			t.Errorf("%s basis: accepted", name)
-		}
+	before := read(t, w.sess)
+	upstreamWith(t, w.results, w.candidate)
+	if err := w.activate(true); !errors.Is(err, errConfirmIngest) {
+		t.Errorf("-confirm-ingest: err = %v, want errConfirmIngest", err)
 	}
-	if err := os.WriteFile(w.candidate, []byte(cmdPolicyB+"exclude,*,*,/opt/*,hand edit\n"), 0o644); err != nil {
+	t.Setenv("PQCOTA_DSN", "")
+	if err := w.activate(false); !errors.Is(err, upstream.ErrNoDSN) {
+		t.Errorf("no PQCOTA_DSN: err = %v, want ErrNoDSN", err)
+	}
+	if read(t, w.active) != cmdPolicyA || read(t, w.sess) != before {
+		t.Fatal("a refused activation touched the policy or the session")
+	}
+	hand := cmdPolicyB + "exclude,*,*,/opt/*,hand edit\n"
+	if err := os.WriteFile(w.candidate, []byte(hand), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.activate(false, true); !errors.Is(err, rulesetround.ErrNoCandidate) {
+	upstreamWith(t, w.results, w.candidate)
+	if err := w.activate(false); !errors.Is(err, rulesetround.ErrNoCandidate) {
 		t.Errorf("hand-edited candidate: err = %v, want ErrNoCandidate", err)
 	}
 	if read(t, w.active) != cmdPolicyA {
@@ -150,7 +201,8 @@ func TestActivateScopeCommand(t *testing.T) {
 	if err := os.WriteFile(w.candidate, []byte(cmdPolicyB), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.activate(false, true); err != nil {
+	upstreamWith(t, w.results, w.candidate)
+	if err := w.activate(false); err != nil {
 		t.Fatal(err)
 	}
 	if read(t, w.active) != cmdPolicyB {
@@ -158,50 +210,59 @@ func TestActivateScopeCommand(t *testing.T) {
 	}
 	next, _ := review.Load(w.sess)
 	to, _ := invscope.PolicyFileDigest(w.candidate)
-	if next.SessionID == old.SessionID || next.ScopePolicyDigestV1 != to {
-		t.Errorf("new session: id %s digest %s", next.SessionID, next.ScopePolicyDigestV1)
-	}
-	if rc := roundReceipt(t, w, rulesetround.ScopeActivationReceipt, old.SessionID); rc == nil || rc.Round == nil || rc.Round.Basis != rulesetround.BasisOperator {
-		t.Errorf("receipt basis: %+v", rc)
-	}
-	before := read(t, w.sess)
-	if err := w.activate(false, true); err != nil || read(t, w.sess) != before {
-		t.Errorf("activating the same policy again: err %v, session changed %v", err, read(t, w.sess) != before)
-	}
-}
-
-// IC-D34 — **-verify-upstream은 새 정책의 스냅샷이 상류 이력에 모두 있어야 활성화한다.** 상류를 새 정책으로 적재했으면
-// 활성화하고 영수증의 basis가 upstream-verified다. 상류가 옛 정책으로만 적재돼 있으면 거절하고 아무것도 쓰지 않는다.
-// PQCOTA_DSN이 없으면 거절한다.
-func TestActivateScopeVerifiesUpstream(t *testing.T) {
-	w := newScopeWorld(t)
-	old, _ := review.Load(w.sess)
-	t.Setenv("PQCOTA_DSN", "")
-	if err := w.activate(true, false); err == nil {
-		t.Error("verify without PQCOTA_DSN: accepted")
-	}
-	upstreamWith(t, w.results, w.active)
-	if err := w.activate(true, false); !errors.Is(err, upstream.ErrMissing) {
-		t.Errorf("upstream ingested under the old policy: err = %v, want ErrMissing", err)
-	}
-	if read(t, w.active) != cmdPolicyA {
-		t.Fatal("a refused activation touched the active policy")
-	}
-	upstreamWith(t, w.results, w.candidate)
-	if err := w.activate(true, false); err != nil {
-		t.Fatal(err)
+	if next.SessionID == old.SessionID || next.ScopePolicyDigestV1 != to || next.ScopeChange.Basis != rulesetround.BasisUpstream {
+		t.Errorf("new session: id %s digest %s change %+v", next.SessionID, next.ScopePolicyDigestV1, next.ScopeChange)
 	}
 	if rc := roundReceipt(t, w, rulesetround.ScopeActivationReceipt, old.SessionID); rc == nil || rc.Round == nil || rc.Round.Basis != rulesetround.BasisUpstream {
 		t.Errorf("receipt basis: %+v", rc)
 	}
+	if rep := reportOf(t, w); rep.UpstreamCheck == nil || rep.UpstreamCheck.Org != "local" || len(rep.UpstreamCheck.Snapshots) == 0 {
+		t.Errorf("report upstream check: %+v", rep.UpstreamCheck)
+	}
+	again := read(t, w.sess)
+	if err := w.activate(false); err != nil || read(t, w.sess) != again {
+		t.Errorf("activating the same policy again: err %v, session changed %v", err, read(t, w.sess) != again)
+	}
 }
 
-// IC-D35 — **baseline은 정책 기록이 없는 옛 세션에서만, 뒷받침과 함께 기준선 회차를 연다.** 진술로 열면 새 세션이 지금 정책의
-// 지문을 들고 scope-baseline 영수증의 basis가 operator-statement다. 지문이 이미 있는 세션은 거절한다. -verify-upstream으로
-// 상류에 없으면 거절하고 아무것도 쓰지 않는다.
+// IC-D34 — **pqcota가 새 정책으로 적재돼 있지 않으면 활성화하지 않는다.** 옛 정책으로만 적재돼 있으면 ErrMissing이고 아무것도
+// 쓰지 않는다. pqcota에 닿지 못하면 ErrUnreachable이고 아무것도 쓰지 않는다.
+func TestActivateScopeNeedsTheIngest(t *testing.T) {
+	w := newScopeWorld(t)
+	before := read(t, w.sess)
+	upstreamWith(t, w.results, w.active)
+	if err := w.activate(false); !errors.Is(err, upstream.ErrMissing) {
+		t.Errorf("pqcota ingested under the old policy: err = %v, want ErrMissing", err)
+	}
+	useUpstream(t, downLookup{})
+	if err := w.activate(false); !errors.Is(err, upstream.ErrUnreachable) {
+		t.Errorf("pqcota down: err = %v, want ErrUnreachable", err)
+	}
+	if read(t, w.active) != cmdPolicyA || read(t, w.sess) != before {
+		t.Fatal("a refused activation touched the policy or the session")
+	}
+}
+
+// downLookup — 조회가 실패하는 pqcota 이력.
+type downLookup struct{}
+
+func (downLookup) ByContentHashV1(string, string, string) (*history.Snapshot, error) {
+	return nil, errors.New("connection refused")
+}
+func (downLookup) Latest(string) (*history.Snapshot, error) {
+	return nil, errors.New("connection refused")
+}
+
+// IC-D35 — **baseline도 같은 대조를 거친다.** -confirm-ingest는 지원 종료 오류다. 지문이 이미 있는 세션은 거절한다. pqcota가
+// 다른 정책으로 적재돼 있으면 거절하고 아무것도 쓰지 않는다. 지금 정책으로 적재돼 있으면 새 세션이 지금 정책의 지문을 들고
+// scope-baseline 처리 기록의 basis가 upstream-verified다.
 func TestBaselineCommand(t *testing.T) {
 	w := newScopeWorld(t)
-	if err := baselineRound(w.sess, w.decl, w.results, w.active, "local", "", "local", false, true); !errors.Is(err, rulesetround.ErrNotBaseline) {
+	if err := baselineRound(w.sess, w.decl, w.results, w.active, "local", "", "local", true); !errors.Is(err, errConfirmIngest) {
+		t.Errorf("-confirm-ingest: err = %v, want errConfirmIngest", err)
+	}
+	upstreamWith(t, w.results, w.active)
+	if err := baselineRound(w.sess, w.decl, w.results, w.active, "local", "", "local", false); !errors.Is(err, rulesetround.ErrNotBaseline) {
 		t.Errorf("a session with a digest: err = %v, want ErrNotBaseline", err)
 	}
 	sf, _ := review.Load(w.sess)
@@ -211,13 +272,14 @@ func TestBaselineCommand(t *testing.T) {
 	}
 	legacy := read(t, w.sess)
 	upstreamWith(t, w.results, w.candidate)
-	if err := baselineRound(w.sess, w.decl, w.results, w.active, "local", "", "local", true, false); !errors.Is(err, upstream.ErrMissing) {
-		t.Errorf("upstream under another policy: err = %v, want ErrMissing", err)
+	if err := baselineRound(w.sess, w.decl, w.results, w.active, "local", "", "local", false); !errors.Is(err, upstream.ErrMissing) {
+		t.Errorf("pqcota under another policy: err = %v, want ErrMissing", err)
 	}
 	if read(t, w.sess) != legacy {
 		t.Fatal("a refused baseline rewrote the session")
 	}
-	if err := baselineRound(w.sess, w.decl, w.results, w.active, "local", "", "local", false, true); err != nil {
+	upstreamWith(t, w.results, w.active)
+	if err := baselineRound(w.sess, w.decl, w.results, w.active, "local", "", "local", false); err != nil {
 		t.Fatal(err)
 	}
 	next, _ := review.Load(w.sess)
@@ -225,8 +287,38 @@ func TestBaselineCommand(t *testing.T) {
 	if next.ScopePolicyDigestV1 != want || next.SessionID == sf.SessionID {
 		t.Errorf("new session: id %s digest %s", next.SessionID, next.ScopePolicyDigestV1)
 	}
-	if rc := roundReceipt(t, w, rulesetround.ScopeBaselineReceipt, sf.SessionID); rc == nil || rc.Round == nil || rc.Round.Basis != rulesetround.BasisOperator {
+	if rc := roundReceipt(t, w, rulesetround.ScopeBaselineReceipt, sf.SessionID); rc == nil || rc.Round == nil || rc.Round.Basis != rulesetround.BasisUpstream {
 		t.Errorf("receipt basis: %+v", rc)
+	}
+}
+
+// changingLookup — 대조하는 동안 결과 폴더에 파일을 더한다(대조와 잠금 사이에 입력이 바뀌는 경우).
+type changingLookup struct {
+	upstream.Lookup
+	results string
+	once    sync.Once
+}
+
+func (c *changingLookup) Latest(node string) (*history.Snapshot, error) {
+	c.once.Do(func() { _ = os.WriteFile(filepath.Join(c.results, "late.json"), []byte("{}"), 0o644) })
+	return c.Lookup.Latest(node)
+}
+
+// IC-D37 — **입력 스냅샷은 대조보다 먼저 뜬다.** 대조가 통과해도 그 사이에 결과 폴더가 바뀌었으면 잠금 안에서 ErrStale로
+// 거절하고 아무것도 쓰지 않는다. 대조하지 않은 입력으로 upstream-verified를 쓰지 않는다.
+func TestActivateScopeSnapshotsBeforeReconciling(t *testing.T) {
+	w := newScopeWorld(t)
+	old, _ := review.Load(w.sess)
+	before := read(t, w.sess)
+	useUpstream(t, &changingLookup{Lookup: ingested(t, w.results, w.candidate), results: w.results})
+	if err := w.activate(false); !errors.Is(err, store.ErrStale) {
+		t.Errorf("results changed during the reconciliation: err = %v, want ErrStale", err)
+	}
+	if read(t, w.active) != cmdPolicyA || read(t, w.sess) != before {
+		t.Fatal("a refused activation touched the policy or the session")
+	}
+	if rc := roundReceipt(t, w, rulesetround.ScopeActivationReceipt, old.SessionID); rc != nil {
+		t.Error("a record was written for inputs that were not reconciled")
 	}
 }
 
@@ -239,19 +331,19 @@ func TestActivateScopeDryRunAndStatus(t *testing.T) {
 	defer func() { dryRun = false }()
 	snap := func() string { return read(t, w.active) + read(t, w.sess) + read(t, w.candidate) }
 	before := snap()
-	if err := w.activate(false, false); err != nil {
+	if err := w.activate(false); err != nil {
 		t.Fatalf("ready: %v", err)
 	}
 	if err := os.WriteFile(w.candidate, []byte(cmdPolicyB+"exclude,*,*,/opt/*,hand edit\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.activate(false, false); !errors.Is(err, rulesetround.ErrNoCandidate) {
+	if err := w.activate(false); !errors.Is(err, rulesetround.ErrNoCandidate) {
 		t.Errorf("hand-edited: err = %v", err)
 	}
 	if err := os.WriteFile(w.candidate, []byte(cmdPolicyA), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.activate(false, false); !errors.Is(err, rulesetround.ErrSamePolicy) {
+	if err := w.activate(false); !errors.Is(err, rulesetround.ErrSamePolicy) {
 		t.Errorf("same policy: err = %v", err)
 	}
 	if err := os.WriteFile(w.candidate, []byte(cmdPolicyB), 0o644); err != nil {
@@ -261,7 +353,7 @@ func TestActivateScopeDryRunAndStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	var sc *review.ScopeChanged
-	if err := w.activate(false, false); !errors.As(err, &sc) {
+	if err := w.activate(false); !errors.As(err, &sc) {
 		t.Errorf("session not under the active policy: err = %v", err)
 	}
 	if err := os.WriteFile(w.active, []byte(cmdPolicyA), 0o644); err != nil {
@@ -279,4 +371,50 @@ func TestActivateScopeDryRunAndStatus(t *testing.T) {
 	if err != nil || out != "active "+active+"\nsession "+old.ScopePolicyDigestV1+"\nsession_id "+old.SessionID+"\nlock none\n" {
 		t.Errorf("scope-status = %q, %v", out, err)
 	}
+}
+
+// IC-D38 — **pqcota 이력의 조직은 판정 조직이다.** -upstream-org에 -org와 다른 조직을 주면 pqcota 이력을 열지 않고 ErrOrg로
+// 멈춘다. 같은 값은 받는다. 판정 세션의 조직이 -org와 다르면 조회하지 않고 ErrOrg다. 어느 경우에도 정책 · 세션이 그대로다.
+func TestUpstreamOrganizationIsTheJudgmentsOrganization(t *testing.T) {
+	w := newScopeWorld(t)
+	opened := 0
+	mem := ingested(t, w.results, w.candidate)
+	t.Setenv("PQCOTA_DSN", "memory://test")
+	prev := openUpstream
+	t.Cleanup(func() { openUpstream = prev })
+	openUpstream = func(_, org string) (upstream.Store, string, error) { opened++; return memStore{mem}, org, nil }
+	scopeSessionPath = w.scopeSess
+	if err := activateScope(w.sess, w.decl, w.results, w.active, w.candidate, "local", "", "other-corp", false); !errors.Is(err, upstream.ErrOrg) || opened != 0 {
+		t.Errorf("another -upstream-org: err = %v, opened %d times; want ErrOrg without opening", err, opened)
+	}
+	sf, _ := review.Load(w.sess)
+	sf.Scope = "org://other-corp"
+	if err := review.Save(w.sess, sf); err != nil {
+		t.Fatal(err)
+	}
+	moved := read(t, w.sess)
+	counted := &countLookup{Lookup: mem}
+	openUpstream = func(_, org string) (upstream.Store, string, error) { opened++; return memStore{counted}, org, nil }
+	if err := activateScope(w.sess, w.decl, w.results, w.active, w.candidate, "local", "", "local", false); !errors.Is(err, upstream.ErrOrg) || counted.calls != 0 {
+		t.Errorf("a session of another organization: err = %v, looked up %d times; want ErrOrg without a lookup", err, counted.calls)
+	}
+	if read(t, w.active) != cmdPolicyA || read(t, w.sess) != moved {
+		t.Fatal("a refused activation touched the policy or the session")
+	}
+}
+
+// countLookup — 조회 횟수만 센다.
+type countLookup struct {
+	upstream.Lookup
+	calls int
+}
+
+func (c *countLookup) ByContentHashV1(node, ruleset, digest string) (*history.Snapshot, error) {
+	c.calls++
+	return c.Lookup.ByContentHashV1(node, ruleset, digest)
+}
+
+func (c *countLookup) Latest(node string) (*history.Snapshot, error) {
+	c.calls++
+	return c.Lookup.Latest(node)
 }

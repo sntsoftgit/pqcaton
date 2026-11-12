@@ -784,9 +784,12 @@ type ActivationOffer struct {
 	// Candidate · Results — 05의 「상류 재적재」 단계에 보일 명령의 두 경로. 작업 폴더(세션 파일이 있는 폴더) 기준의
 	// 상대 경로다. 비면 기본 이름(asset-scope.csv · results)을 보인다.
 	Candidate, Results string
+	// Org — 판정 조직. pqcota 재적재도 이 조직으로 한다(PQCOTA_ORG). 비면 명령에 싣지 않는다.
+	Org string
 }
 
-// IngestCommand — 05의 「상류 재적재」 단계에 보일 명령. 작업 폴더에서 실행하는 상대 경로다.
+// IngestCommand — 05의 「pqcota 재적재」 단계에 보일 명령. 작업 폴더에서 실행하는 상대 경로다. 연결 정보(PQCOTA_DSN)는
+// 싣지 않는다.
 func (o ActivationOffer) IngestCommand() string {
 	c, r := o.Candidate, o.Results
 	if c == "" {
@@ -795,5 +798,10 @@ func (o ActivationOffer) IngestCommand() string {
 	if r == "" {
 		r = "results"
 	}
-	return "pqcota-ingest -scope-assets " + c + " " + r
+	cmd := "pqcota-ingest -scope-assets " + c + " " + r
+	if o.Org != "" {
+		// pqcota 이력의 조직은 판정 조직이다. 적재도 그 조직으로 해야 05의 대조가 찾는다.
+		cmd = "PQCOTA_ORG=" + o.Org + " " + cmd
+	}
+	return cmd
 }
