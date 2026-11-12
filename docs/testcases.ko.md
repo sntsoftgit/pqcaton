@@ -1,3 +1,5 @@
+[English](testcases.md) · 한국어
+
 # 테스트케이스: 인벤토리 거버넌스
 
 [개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.ko.md) · [설계](developers.ko.md) · **검증 기준** · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
@@ -650,6 +652,9 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-DC7](../tools/checkdocs/main_test.go) ✅** | `docs/` 페이지의 `./` · 같은 페이지 앵커 · 같은 폴더 파일 · 바깥 URL · `docs/` 밖을 가리키는 상대 경로 · 없는 파일 · 없는 앵커 | **Pages 산출물 기준으로 잰다.** 앞의 넷은 받고, 뒤의 셋은 막는다 |
 | **[IC-DC8](../tools/checkdocs/main_test.go) ✅** | 이 리포 `main`의 절대 URL이 있는 경로 · 없는 경로 · 없는 앵커를 가리킴, 태그의 URL | 없는 경로와 없는 앵커를 막고, 태그 URL은 보지 않는다 |
 | **[IC-DC9](../tools/checkdocs/main_test.go) ✅** | summary.txt에 적은 영어판이 원문과 명령이 다름(요약임을 밝힘 · 밝히지 않음), 적지 않은 짝 | 요약임을 밝히면 받고, 밝히지 않으면 막는다. 적지 않은 짝은 그대로 견준다 |
+| **[IC-DC10](../tools/checkdocs/main_test.go) ✅** | ID로 짝지은 두 판의 행: 첫 칸 · 열 개수(인라인 코드 안의 세로 막대는 칸을 나누지 않음) · 행 안의 링크 대상이 같음 · 다름 | **두 판의 케이스 표는 행마다 같은 사실이다.** 같으면 통과하고, 첫 칸 · 열 개수 · 링크가 다르면 막는다 |
+| **[IC-DC11](../tools/checkdocs/main_test.go) ✅** | 한쪽에만 있는 케이스 · 한 판 안의 중복 ID · 차례가 다름 · 제목 수가 다름 | 모두 막는다. 케이스는 케이스 관문이 영어판에서 한 번만 세고, 이 관문은 두 판이 같은지만 본다 |
+| **[IC-DC12](../tools/checkdocs/main_test.go) ✅** | 케이스 관문이 영어판 링크를 다시 찍은 뒤 `-sync-cases` | 한국어판의 같은 ID 행 첫 칸만 영어판대로 바뀌고 나머지 칸은 그대로다 |
 
 ### V. 선언 형식과 자체 검사 (`pkg/inventory/decl`) ✅
 | TC | Given → When | Then |

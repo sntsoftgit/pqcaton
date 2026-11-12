@@ -203,3 +203,78 @@ func TestSummaryPairs(t *testing.T) {
 	expect(t, checkIn(m, m.files(), cfg), "docs/guide.md: listed in summary.txt but does not say near the top that it is a summary")
 	expect(t, run(m), "docs/guide.md ↔ docs/guide.ko.md: shell commands differ")
 }
+
+// tablePair — 케이스 표가 바르게 짝지은 두 판.
+func tablePair() memFS {
+	m := good()
+	m["docs/cases.md"] = "English · [KO](cases.ko.md)\n\n# Cases\n\n## A\n\n| TC | Given | Then |\n|---|---|---|\n" +
+		"| **[IC-A1](../a_test.go) ✅** | input `x|y` | see [guide](guide.md#2-install) |\n| [IC-A2](../a_test.go) ✅ | two | ok |\n"
+	m["docs/cases.ko.md"] = "[English](cases.md) · KO\n\n# 케이스\n\n## 가\n\n| TC | Given | Then |\n|---|---|---|\n" +
+		"| **[IC-A1](../a_test.go) ✅** | 입력 `x|y` | [안내](guide.ko.md#2-설치) 참고 |\n| [IC-A2](../a_test.go) ✅ | 둘 | 된다 |\n"
+	m["a_test.go"], m["b_test.go"], m["c_test.go"] = "package a\n", "package a\n", "package a\n"
+	return m
+}
+
+func runTables(m memFS) []string {
+	cfg := testCfg
+	cfg.tables = map[string]bool{"docs/cases.md": true}
+	return checkIn(m, m.files(), cfg)
+}
+
+// IC-DC10 — **두 판의 케이스 표는 행마다 같은 사실이다.** ID로 짝지은 행의 첫 칸(ID · 코드 링크 · 상태 표시)이 바이트까지 같고,
+// 열 개수(인라인 코드 안의 `|`는 칸을 나누지 않는다)와 행 안의 링크 대상(한국어 판 이름은 영어 판 이름으로, 앵커는 빼고)이 같아야
+// 한다. 바르게 짝지은 두 판은 통과하고, 첫 칸 · 열 개수 · 링크가 다르면 막는다.
+func TestCaseTablesAgreeRowByRow(t *testing.T) {
+	expect(t, runTables(tablePair()))
+	m := tablePair()
+	m["docs/cases.ko.md"] = strings.Replace(m["docs/cases.ko.md"], "| [IC-A2](../a_test.go) ✅ |", "| [IC-A2](../b_test.go) ✅ |", 1)
+	expect(t, runTables(m), "the first cell of IC-A2 differs")
+	m = tablePair()
+	m["docs/cases.ko.md"] = strings.Replace(m["docs/cases.ko.md"], "| 둘 | 된다 |", "| 둘 | 된다 | 더 |", 1)
+	expect(t, runTables(m), "IC-A2 has 3 cells vs 4")
+	m = tablePair()
+	m["docs/cases.ko.md"] = strings.Replace(m["docs/cases.ko.md"], "[안내](guide.ko.md#2-설치) 참고", "참고", 1)
+	expect(t, runTables(m), "the links in the row of IC-A1 differ")
+}
+
+// IC-DC11 — **한쪽에만 있는 케이스 · 중복 ID · 차례 차이 · 제목 수의 차이를 막는다.** 케이스는 영어판에서 케이스 관문이 한 번만
+// 세고, 이 관문은 두 판이 같은지만 본다.
+func TestCaseTablesMissingDuplicateOrder(t *testing.T) {
+	m := tablePair()
+	m["docs/cases.ko.md"] = strings.Replace(m["docs/cases.ko.md"], "| [IC-A2](../a_test.go) ✅ | 둘 | 된다 |\n", "", 1)
+	expect(t, runTables(m), "the case IC-A2 is missing from docs/cases.ko.md")
+	m = tablePair()
+	m["docs/cases.md"] += "| [IC-A2](../a_test.go) ✅ | two | ok |\n"
+	expect(t, runTables(m), "docs/cases.md: the case IC-A2 appears 2 times")
+	m = tablePair()
+	ko := m["docs/cases.ko.md"]
+	r1 := "| **[IC-A1](../a_test.go) ✅** | 입력 `x|y` | [안내](guide.ko.md#2-설치) 참고 |\n"
+	r2 := "| [IC-A2](../a_test.go) ✅ | 둘 | 된다 |\n"
+	m["docs/cases.ko.md"] = strings.Replace(ko, r1+r2, r2+r1, 1)
+	expect(t, runTables(m), "the case order differs at IC-A1 (English) vs IC-A2 (Korean)")
+	m = tablePair()
+	m["docs/cases.ko.md"] += "\n## 나\n"
+	expect(t, runTables(m), "1 level-2 headings vs 2")
+}
+
+// IC-DC12 — **`-sync-cases`는 영어판 케이스 행의 첫 칸만 한국어판에 옮긴다.** 케이스 관문이 영어판의 링크를 다시 찍은 뒤 돌리면
+// 한국어판의 같은 ID 행 첫 칸이 영어판과 같아지고, 나머지 칸은 그대로다.
+func TestSyncCasesCopiesOnlyTheFirstCell(t *testing.T) {
+	dir := t.TempDir()
+	en, ko := dir+"/cases.md", dir+"/cases.ko.md"
+	m := tablePair()
+	if err := os.WriteFile(en, []byte(strings.Replace(m["docs/cases.md"], "[IC-A2](../a_test.go)", "[IC-A2](../c_test.go)", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ko, []byte(m["docs/cases.ko.md"]), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	n, err := syncCases(en, ko)
+	if err != nil || n != 1 {
+		t.Fatalf("synced %d, %v", n, err)
+	}
+	b, _ := os.ReadFile(ko)
+	if !strings.Contains(string(b), "| [IC-A2](../c_test.go) ✅ | 둘 | 된다 |") || !strings.Contains(string(b), "입력 `x|y`") {
+		t.Errorf("after sync:\n%s", b)
+	}
+}

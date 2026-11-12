@@ -87,7 +87,9 @@ CI가 이것을 검사합니다(`make check-licenses`). 관문에 걸리면 대�
 
 **케이스 번호와 실제 테스트의 대응은 `make check-cases`가 봅니다.** 테스트 주석에 번호를
 적으면(`// IC-R1`) 관문이 그것을 문서의 표와 맞댑니다. 한쪽만 적으면 막힙니다. 번호에 붙는
-링크는 손으로 붙이지 말고 `go run ./tools/checkcases -write`로 만들어 같은 커밋에 넣습니다.
+링크는 손으로 붙이지 말고 `go run ./tools/checkcases -write`로 만들어 같은 커밋에 넣습니다. 케이스 표는 영어판
+(`docs/testcases.md`)이 기준이고 관문은 거기서 한 번만 셉니다. 한국어판(`docs/testcases.ko.md`)은 행마다 같은 사실이어야 하므로,
+링크를 다시 찍었으면 `go run ./tools/checkdocs -sync-cases`로 한국어판의 첫 칸을 맞춥니다.
 
 ### 화면에도 뜨고 명령도 찍는 문장
 

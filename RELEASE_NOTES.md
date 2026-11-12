@@ -1,6 +1,6 @@
 # 릴리스 노트: pqcaton
 
-[개요](README.ko.md) · **릴리스 노트** · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](README.ko.md) · **릴리스 노트** · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 버전별 **목표**와 **성과**를 기록합니다. 버전이 올라갈 때마다 갱신하고, 최신 버전을 맨 위에 둡니다.
 
@@ -861,7 +861,7 @@ Intel Mac(x86-64, macOS 26.6.2, Go 1.26.10, 로컬 APFS)에서 v0.23.0 코드로
 - **HTTP 종단 시험**(IC-U104 · U105): 실제 HTTP(쿠키 · 요청 보호 토큰 · 같은 출처)로만 빈 작업 폴더에서 확정까지 두 말로
   갑니다. 계획 파일은 계약 형식(FinalizedPlan, IN_REVIEW)이고 원장은 선언의 조직입니다.
 - 새 케이스: IC-U88~U111(옛 화면 케이스 열 개를 폐기하고 IC-U103을 더함), IC-UI49~UI53, IC-W45~W47. 폐기한 번호는
-  [docs/testcases.md](docs/testcases.md)의 「화면 한 벌」 절에 하나씩 적었고 다시 쓰지 않습니다.
+  [docs/testcases.ko.md](docs/testcases.ko.md)의 「화면 한 벌」 절에 하나씩 적었고 다시 쓰지 않습니다.
 
 ### 도달 선언: 설치형 · 단일 운영자 UI의 최소 상용 수준
 
@@ -2634,7 +2634,7 @@ pqcota에 있습니다. 이 버전은 그 위의 거버넌스만 얹습니다.
 
 - **`toContract`에 케이스가 없었습니다.** 계약 형식으로 옮기는 마지막 단계라 여기가
   틀리면 앞의 판정이 다 옳아도 엉뚱한 노드에 적용됩니다. `IC-C1`·`IC-C2`로 답니다
-  ([검증 기준](docs/testcases.md)). **pqcota에 넣어 플레이북이 나오는 것만 봤지, 겨눈 노드
+  ([검증 기준](docs/testcases.ko.md)). **pqcota에 넣어 플레이북이 나오는 것만 봤지, 겨눈 노드
   이름이 옳은지는 보지 않았습니다**. 형식이 맞는 것과 값이 맞는 것은 다릅니다.
 
 ---
@@ -2685,7 +2685,7 @@ pqcota에 있습니다. 이 버전은 그 위의 거버넌스만 얹습니다.
   Postgres도 없이 이 기계를 관측해 확정 계획까지 만듭니다.
 - **문서**: [여정](docs/journey.ko.md)(자기 서버에 설치해 사용하는 방법) ·
   [구조 그림](https://www.sntsoft.co.kr/pqcaton/) · [설계](docs/developers.ko.md) ·
-  [검증 기준](docs/testcases.md). 케이스 54개(대조 12 · 판정 24 · 러너 17 · 계약 소비 1).
+  [검증 기준](docs/testcases.ko.md). 케이스 54개(대조 12 · 판정 24 · 러너 17 · 계약 소비 1).
 
 ### 고친 것
 

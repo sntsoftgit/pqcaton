@@ -2,7 +2,7 @@
 
 # pqcaton
 
-**개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+**개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** 관측은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가
 하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.** 이 판은 pqcota **v0.11.0**과 함께
@@ -20,7 +20,7 @@
 |---|---|
 | 한 바퀴 돌려 본다 | 아래 [사전 준비](#사전-준비) → [써보기](#써보기) |
 | 절차를 처음부터 끝까지 따라간다 | [여정](docs/journey.ko.md) |
-| 왜 이렇게 만들었는지 본다 | [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.md) |
+| 왜 이렇게 만들었는지 본다 | [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) |
 | 소스에서 빌드하거나 환경 변수를 찾아본다 | [빌드](docs/build.ko.md) · [환경 변수](docs/environment-variables.ko.md) |
 | 호스팅에서 무엇이 밖으로 나가는지 본다 | [`saas/runner`](saas/runner/README.md) |
 | 고친 것을 보낸다 | [CONTRIBUTING](CONTRIBUTING.ko.md) · [CLA](CLA.ko.md)([English](CLA.md)) |

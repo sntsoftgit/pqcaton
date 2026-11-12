@@ -23,6 +23,12 @@
 //     가리키고(밖을 가리키면 Pages 산출물에서 끊긴다), `#앵커`는 그 페이지의 `id`이며, 이 리포의 `blob|tree/main/…` 절대 URL은 있는
 //     경로(md면 앵커까지)를 가리킨다. md 안의 같은 절대 URL도 잰다.
 //
+//  6. **케이스 표.** tables.txt에 적은 짝(영어판 경로)은 케이스 행을 ID로 짝지어 견준다: 첫 칸(ID · 코드 링크 · 상태 표시)이 바이트까지
+//     같고, 열 개수와 행 안의 링크 대상(한국어 판 이름은 영어 판 이름으로 보고 앵커는 뺀다)이 같으며, 케이스의 차례가 같아야 한다.
+//     한쪽에만 있는 케이스와 한 판 안의 중복 ID는 막는다. 제목의 수준별 개수도 같아야 한다. 케이스는 케이스 관문(checkcases)이
+//     영어판에서 한 번만 세고, 여기서는 두 판이 같은지만 본다. `-sync-cases`는 케이스 관문이 영어판의 링크를 다시 찍은 뒤 한국어판의
+//     첫 칸을 영어판대로 맞춘다.
+//
 // 영어판이 한국어 원문의 **요약**인 짝은 summary.txt에 적는다. 그 짝은 내용(판 번호 · 케이스 ID · 셸 명령)을 견주지 않는 대신, 영어판
 // 앞쪽(제목 뒤 열 줄 안)에 요약임을 밝히는 말(summary)이 있어야 한다.
 //
@@ -45,7 +51,8 @@ import (
 )
 
 func main() {
-	dir := flag.String("dir", "tools/checkdocs", "folder holding langs.tsv and single.txt")
+	dir := flag.String("dir", "tools/checkdocs", "folder holding langs.tsv, single.txt, summary.txt and tables.txt")
+	sync := flag.Bool("sync-cases", false, "copy the first cell of every case row from the English edition to the Korean one (after checkcases -write), then check")
 	flag.Parse()
 	files, err := tracked()
 	if err != nil {
@@ -56,6 +63,16 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "checkdocs:", err)
 		os.Exit(2)
+	}
+	if *sync {
+		for en := range cfg.tables {
+			n, err := syncCases(en, koOf(en))
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "checkdocs:", err)
+				os.Exit(2)
+			}
+			fmt.Printf("synced %d case rows of %s from %s\n", n, koOf(en), en)
+		}
 	}
 	problems := checkIn(dirFS{"."}, files, cfg)
 	if len(problems) > 0 {
@@ -93,10 +110,12 @@ type config struct {
 	alias map[string]bool
 	// summary — 영어판이 요약인 짝(summary.txt, 영어판 경로).
 	summary map[string]bool
+	// tables — 케이스 표를 행 단위로 견주는 짝(tables.txt, 영어판 경로).
+	tables map[string]bool
 }
 
 func loadConfig(dir string) (config, error) {
-	c := config{single: map[string]bool{}, koSingle: map[string]bool{}, alias: map[string]bool{}, summary: map[string]bool{}}
+	c := config{single: map[string]bool{}, koSingle: map[string]bool{}, alias: map[string]bool{}, summary: map[string]bool{}, tables: map[string]bool{}}
 	b, err := os.ReadFile(filepath.Join(dir, "langs.tsv"))
 	if err != nil {
 		return c, err
@@ -131,14 +150,19 @@ func loadConfig(dir string) (config, error) {
 		c.single[f[0]] = true
 		c.koSingle[f[0]] = f[1] == "ko"
 	}
-	if sum, err := os.ReadFile(filepath.Join(dir, "summary.txt")); err == nil {
-		for _, line := range strings.Split(string(sum), "\n") {
+	for name, into := range map[string]map[string]bool{"summary.txt": c.summary, "tables.txt": c.tables} {
+		b, err := os.ReadFile(filepath.Join(dir, name))
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return c, err
+		}
+		for _, line := range strings.Split(string(b), "\n") {
 			if f := strings.Fields(line); len(f) > 0 && !strings.HasPrefix(f[0], "#") {
-				c.summary[f[0]] = true
+				into[f[0]] = true
 			}
 		}
-	} else if !os.IsNotExist(err) {
-		return c, err
 	}
 	return c, nil
 }
@@ -385,6 +409,13 @@ func checkIn(fsys readFS, files []string, cfg config) []string {
 			}
 		}
 	}
+	for en := range cfg.tables {
+		if docs[en] == nil || docs[koOf(en)] == nil {
+			problems = append(problems, fmt.Sprintf("%s: listed in tables.txt but the pair %s · %s is not there", en, en, koOf(en)))
+			continue
+		}
+		problems = append(problems, compareTables(en, docs[en].lines, koOf(en), docs[koOf(en)].lines)...)
+	}
 	problems = append(problems, checkPages(fsys, files, have, dirs)...)
 	problems = append(problems, checkRepoURLs(fsys, files, have, dirs, docs)...)
 	sort.Strings(problems)
@@ -528,4 +559,180 @@ func at(s []string, i int) string {
 		return s[i]
 	}
 	return "(none)"
+}
+
+// caseRow — 케이스 표의 한 행.
+type caseRow struct {
+	id, first string
+	cells     int
+	links     string
+	line      int
+}
+
+// caseCell — 케이스 행의 첫 칸에서 ID를 읽는다(`**[IC-R1](…) ✅**` · `[IC-R1](…) ✅` · `IC-R1 ⏳`).
+var caseCell = regexp.MustCompile(`^\s*(?:\*\*)?\[?((?:IC|RUN|CP)-[A-Z]*\d+)\b`)
+
+// splitRow — 표의 한 줄을 칸으로 나눈다(인라인 코드 안의 `|`는 나누지 않는다).
+func splitRow(line string) []string {
+	t := strings.TrimSpace(line)
+	if !strings.HasPrefix(t, "|") {
+		return nil
+	}
+	t = strings.TrimSuffix(strings.TrimPrefix(t, "|"), "|")
+	var cells []string
+	var b strings.Builder
+	code := false
+	for i := 0; i < len(t); i++ {
+		switch {
+		case t[i] == '`':
+			code = !code
+			b.WriteByte(t[i])
+		case t[i] == '\\' && i+1 < len(t) && t[i+1] == '|':
+			b.WriteString("\\|")
+			i++
+		case t[i] == '|' && !code:
+			cells = append(cells, strings.TrimSpace(b.String()))
+			b.Reset()
+		default:
+			b.WriteByte(t[i])
+		}
+	}
+	return append(cells, strings.TrimSpace(b.String()))
+}
+
+// rowLinks — 행 안의 링크 대상. 한국어 판 이름은 영어 판 이름으로, 앵커는 뺀다. 정렬해 잇는다.
+func rowLinks(line string) string {
+	var out []string
+	for _, m := range linkRe.FindAllStringSubmatch(line, -1) {
+		t, _, _ := strings.Cut(m[2], "#")
+		out = append(out, strings.Replace(t, ".ko.md", ".md", 1))
+	}
+	sort.Strings(out)
+	return strings.Join(out, " ")
+}
+
+func caseRows(lines []string) ([]caseRow, map[string]int) {
+	var rows []caseRow
+	count := map[string]int{}
+	for i, l := range lines {
+		cells := splitRow(l)
+		if len(cells) == 0 {
+			continue
+		}
+		m := caseCell.FindStringSubmatch(cells[0])
+		if m == nil {
+			continue
+		}
+		rows = append(rows, caseRow{id: m[1], first: cells[0], cells: len(cells), links: rowLinks(l), line: i + 1})
+		count[m[1]]++
+	}
+	return rows, count
+}
+
+func headingLevels(lines []string) map[int]int {
+	out := map[int]int{}
+	inFence := false
+	for _, l := range lines {
+		if fenceRe.MatchString(l) {
+			inFence = !inFence
+			continue
+		}
+		if m := headingRe.FindStringSubmatch(l); m != nil && !inFence {
+			out[len(m[1])]++
+		}
+	}
+	return out
+}
+
+// compareTables — 두 판의 케이스 표를 행 단위로 견준다.
+func compareTables(en string, enLines []string, ko string, koLines []string) []string {
+	var out []string
+	add := func(format string, a ...any) { out = append(out, fmt.Sprintf(format, a...)) }
+	er, ec := caseRows(enLines)
+	kr, kc := caseRows(koLines)
+	for id, n := range ec {
+		if n > 1 {
+			add("%s: the case %s appears %d times", en, id, n)
+		}
+		if kc[id] == 0 {
+			add("%s: the case %s is missing from %s", en, id, ko)
+		}
+	}
+	for id, n := range kc {
+		if n > 1 {
+			add("%s: the case %s appears %d times", ko, id, n)
+		}
+		if ec[id] == 0 {
+			add("%s: the case %s is missing from %s", ko, id, en)
+		}
+	}
+	koByID := map[string]caseRow{}
+	for _, r := range kr {
+		koByID[r.id] = r
+	}
+	for _, r := range er {
+		k, ok := koByID[r.id]
+		if !ok {
+			continue
+		}
+		switch {
+		case r.first != k.first:
+			add("%s:%d ↔ %s:%d: the first cell of %s differs (%q vs %q)", en, r.line, ko, k.line, r.id, r.first, k.first)
+		case r.cells != k.cells:
+			add("%s:%d ↔ %s:%d: %s has %d cells vs %d", en, r.line, ko, k.line, r.id, r.cells, k.cells)
+		case r.links != k.links:
+			add("%s:%d ↔ %s:%d: the links in the row of %s differ (%s vs %s)", en, r.line, ko, k.line, r.id, r.links, k.links)
+		}
+	}
+	if len(out) == 0 {
+		for i := range er {
+			if i < len(kr) && er[i].id != kr[i].id {
+				add("%s ↔ %s: the case order differs at %s (English) vs %s (Korean)", en, ko, er[i].id, kr[i].id)
+				break
+			}
+		}
+	}
+	eh, kh := headingLevels(enLines), headingLevels(koLines)
+	for lv := 1; lv <= 6; lv++ {
+		if eh[lv] != kh[lv] {
+			add("%s ↔ %s: %d level-%d headings vs %d", en, ko, eh[lv], lv, kh[lv])
+		}
+	}
+	return out
+}
+
+// syncCases — 영어판 케이스 행의 첫 칸을 한국어판의 같은 ID 행에 옮겨 쓴다. 나머지 칸은 그대로다.
+func syncCases(en, ko string) (int, error) {
+	eb, err := os.ReadFile(en)
+	if err != nil {
+		return 0, err
+	}
+	kb, err := os.ReadFile(ko)
+	if err != nil {
+		return 0, err
+	}
+	first := map[string]string{}
+	for _, l := range strings.Split(string(eb), "\n") {
+		if cells := splitRow(l); len(cells) > 0 {
+			if m := caseCell.FindStringSubmatch(cells[0]); m != nil {
+				first[m[1]] = cells[0]
+			}
+		}
+	}
+	lines := strings.Split(string(kb), "\n")
+	n := 0
+	for i, l := range lines {
+		cells := splitRow(l)
+		if len(cells) == 0 {
+			continue
+		}
+		m := caseCell.FindStringSubmatch(cells[0])
+		if m == nil || first[m[1]] == "" || first[m[1]] == cells[0] {
+			continue
+		}
+		j := strings.Index(l, cells[0])
+		lines[i] = l[:j] + first[m[1]] + l[j+len(cells[0]):]
+		n++
+	}
+	return n, os.WriteFile(ko, []byte(strings.Join(lines, "\n")), 0o644)
 }

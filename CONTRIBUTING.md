@@ -82,7 +82,9 @@ English documents to English editions. If the version numbers, case IDs or shell
 
 **`make check-cases` checks that case numbers match real tests.** Write the number in a test comment (`// IC-R1`) and the gate matches it
 against the table in the document. Writing it on only one side is blocked. Do not attach the links on numbers by hand; make them with
-`go run ./tools/checkcases -write` and put them in the same commit.
+`go run ./tools/checkcases -write` and put them in the same commit. The case table is the English edition (`docs/testcases.md`), and
+the gate counts cases there only once. The Korean edition (`docs/testcases.ko.md`) must state the same facts row by row, so after
+re-stamping links run `go run ./tools/checkdocs -sync-cases` to align its first cells.
 
 ### Sentences that show on the screen and are printed by commands
 
