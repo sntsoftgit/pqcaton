@@ -2,7 +2,7 @@ English · [한국어](README.ko.md)
 
 # pqcaton
 
-**Overview** · [Release notes](RELEASE_NOTES.md) · [Journey](docs/journey.md) · [Design](docs/design.md) · [Acceptance criteria](docs/testcases.md) · [Demo](demo/README.md) · [Structure diagram](https://www.sntsoft.co.kr/pqcaton/)
+**Overview** · [Release notes](RELEASE_NOTES.md) · [Journey](docs/journey.md) · [Design](docs/developers.md) · [Acceptance criteria](docs/testcases.md) · [Demo](demo/README.md) · [Structure diagram](https://www.sntsoft.co.kr/pqcaton/)
 
 **The place to decide what to change in a PQC migration.** [pqcota](https://github.com/randyinthedev-hash/pqcota) observes, and this
 repository **reconciles those observations with the declaration, puts them in a review queue, and finalizes them.** This version is
@@ -19,7 +19,8 @@ and does not send is in a table in that document.
 |---|---|
 | Run it once around | [Prerequisites](#prerequisites) → [Try it](#try-it) below |
 | Follow the procedure from start to end | [Journey](docs/journey.md) |
-| See why it is built this way | [Design](docs/design.md) · [Acceptance criteria](docs/testcases.md) |
+| See why it is built this way | [Design](docs/developers.md) · [Acceptance criteria](docs/testcases.md) |
+| Build from source, or look up an environment variable | [Build](docs/build.md) · [Environment variables](docs/environment-variables.md) |
 | See what leaves when hosted | [`saas/runner`](saas/runner/README.md) |
 | Send a fix | [CONTRIBUTING](CONTRIBUTING.md) · [CLA](CLA.md) ([한국어](CLA.ko.md)) |
 | Report a vulnerability | [SECURITY](SECURITY.md) |
@@ -28,7 +29,7 @@ and does not send is in a table in that document.
 conductor holds. **The conductor is the operator, and pqcaton is the tool they use. People decide, not the tool.**
 
 > **Source-available, not open source.** It is [BUSL-1.1](LICENSE). Free up to 5 managed nodes, a contract beyond that. **Each
-> release converts to Apache-2.0 four years later.** → [License guide](LICENSING.md)
+> release converts to Apache-2.0 four years later.** → [License guide](docs/licensing.md)
 
 ---
 
@@ -75,7 +76,7 @@ organization does not know about. That is where security should look first.
 **UNOBSERVED is not decided by the machine.** Whether something declared but not observed *exists but was not seen* or *is already gone*
 only people know. pqcota's completeness map tells "unobservable in principle" from "really absent", and people decide on top of it.
 
-The **structure diagram** is at [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/) ([source](site/index.html)).
+The **structure diagram** is at [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/) ([source](docs/index.html)).
 
 ## Prerequisites
 
@@ -313,7 +314,7 @@ is in the [release notes](RELEASE_NOTES.md) (v0.1.0 to v0.5.0: 2030-08-11).
 - Production is free up to 5 managed nodes
 - Beyond that, a contract: **kty@sntsoft.co.kr**
 
-Details are in [LICENSING.md](LICENSING.md). Before contributing, please read [CONTRIBUTING.md](CONTRIBUTING.md) (the [CLA](CLA.md) is
+Details are in [licensing.md](docs/licensing.md). Before contributing, please read [CONTRIBUTING.md](CONTRIBUTING.md) (the [CLA](CLA.md) is
 required). Report security vulnerabilities through the routes in [SECURITY.md](SECURITY.md), not in issues.
 
 > **Languages of the documents**: documents are in English by default with Korean pairs (`*.ko.md`), and the first lines of the two

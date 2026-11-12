@@ -32,7 +32,7 @@ path = [
     "tools/checkmodzip/go.sum",
     "tools/releasecheck/go.mod",
     "tools/releasecheck/go.sum",
-    "site/**",
+    "docs/*.html",
     "pkg/inventory/ui/static/app.css",
 ]
 precedence = "closest"

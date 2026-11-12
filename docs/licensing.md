@@ -1,10 +1,10 @@
-English · [한국어](LICENSING.ko.md)
+English · [한국어](licensing.ko.md)
 
 # License: pqcaton
 
 **The source is open, and production use at scale takes a contract.**
 
-It is the [Business Source License 1.1](LICENSE). You can read, change and run the source, but it is not an open-source license and it
+It is the [Business Source License 1.1](../LICENSE). You can read, change and run the source, but it is not an open-source license and it
 is not on the OSI list. **"Source-available"** is the accurate term.
 
 ## What you can use without a contract
@@ -34,7 +34,7 @@ Contact: **kty@sntsoft.co.kr**
 
 **Each version has its own clock.** Whichever version you received, four years after the day it was published it becomes Apache-2.0.
 That happens automatically and the company cannot stop it; the license terms themselves say so. **The conversion date of each
-version is written in the [release notes](RELEASE_NOTES.md).**
+version is written in the [release notes](../RELEASE_NOTES.md).**
 
 | Version | Published | Converts to Apache-2.0 |
 |---|---|---|
@@ -74,12 +74,12 @@ pqcaton uses the public modules of [pqcota](https://github.com/randyinthedev-has
 **reconciles, reviews and finalizes** on top of it. The two have different owners, and the dependency goes one way: pqcaton uses pqcota,
 never the reverse.
 
-Apache-2.0 allows commercial downstream use, so this structure has no constraint. The attribution notice is in [NOTICE](NOTICE).
+Apache-2.0 allows commercial downstream use, so this structure has no constraint. The attribution notice is in [NOTICE](../NOTICE).
 **pqcota is complete open source on its own and can be used without pqcaton.**
 
 ## Contributions and the license
 
 Converting to open source on the Change Date requires **the right to release all of the code that way**. So outside contributions go
-through the [CLA](CONTRIBUTING.md#contributor-license-agreement-cla).
+through the [CLA](../CONTRIBUTING.md#contributor-license-agreement-cla).
 
-> **This is not legal advice.** This document is a guide; where it differs, the [LICENSE](LICENSE) and the actual contract prevail.
+> **This is not legal advice.** This document is a guide; where it differs, the [LICENSE](../LICENSE) and the actual contract prevail.

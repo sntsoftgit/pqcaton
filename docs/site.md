@@ -1,8 +1,9 @@
-English · [한국어](README.ko.md)
+English · [한국어](site.ko.md)
 
-# site: the public site
+# The public site
 
-Everything under `site/` goes to GitHub Pages as it is ([workflow](../.github/workflows/pages.yml)). There is no build step: **static
+Everything under `docs/` goes to GitHub Pages as it is ([workflow](../.github/workflows/pages.yml)). As in pqcota, the site's first
+page (`index.html`) and the documents sit in one place (it used to be in `site/`). There is no build step: **static
 files go up as they are.** There is one reason for having no static site generator: there is only one page now, and bringing a tool in
 first means maintaining that tool first.
 
@@ -23,7 +24,9 @@ first means maintaining that tool first.
   does not use em dashes in English instead.
 - **Draw both light and dark.** Colors come only from the tokens in `:root`. A color defined only inside a media query leaves text
   invisible in one of the themes.
-- **Links to repository documents are absolute URLs.** The site is served from `site/`, so `../docs/…` does not reach them.
+- **Links from the pages to repository documents are absolute GitHub URLs.** Pages does not render `.md` and serves the source as it is,
+  so a relative link to `developers.md` in the same place opens hard-to-read source. Relative links and `#anchors` between pages, and the
+  repository paths that absolute URLs point to, are checked by `make check-docs`.
 
 ## When widening it into a home page
 
@@ -40,9 +43,8 @@ The organization is on the Team plan, so **it deploys from a private repository 
 > **Even if the repository is private, the deployed site is public.** Anyone who knows the URL sees it. Pages with access control are
 > available only on Enterprise Cloud.
 
-So `site/` holds **only what may be public**. What is there now is only the architecture description, and repository documents
-(`docs/`) are not copied here. That is also why links from the site are absolute URLs (links to a private repository open only for
-people with access).
+So `docs/` holds **only what may be public**. The repository is public, so the documents in `docs/` going out with the site reveal
+nothing new, but a secret or an internal record placed in this folder would be published as it is.
 
 `ui-next.html` is also a static mockup that may be public. It is a draft of the v0.22.0 screen design drawn from the `demo-corp` screen of
 2026-08-26, and it does not access the declaration, CSV files or the judgment ledger, nor finalize anything. See the current screen by

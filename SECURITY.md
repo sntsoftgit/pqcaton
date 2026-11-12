@@ -16,7 +16,7 @@ handles is which node uses what, which is the organization's attack surface itse
 **Fixes go into `main` and ship with the next release.** Older versions get no separate patches. This is a one-person project, and
 keeping several lines alive means none of them gets fixed in time. **To receive a security fix, upgrade to the latest release.**
 
-Each release converts to Apache-2.0 four years later (→ [LICENSING](LICENSING.md)), but that **opens the license; it does not mean
+Each release converts to Apache-2.0 four years later (→ [LICENSING](docs/licensing.md)), but that **opens the license; it does not mean
 that version keeps being fixed.**
 
 ## Reporting a vulnerability

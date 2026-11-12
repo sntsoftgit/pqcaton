@@ -3,7 +3,7 @@
 
 // Command checklang — **공개 사이트의 한국어와 영어가 짝을 이루는지 잰다.**
 //
-// site/의 두 장은 문구를 두 벌 적어 두고 CSS로 한쪽을 숨긴다. 규칙은 두 줄뿐이다.
+// docs/의 두 장(사이트)은 문구를 두 벌 적어 두고 CSS로 한쪽을 숨긴다. 규칙은 두 줄뿐이다.
 //
 //	html[data-lang="ko"] [lang="en"] { display: none; }
 //	html[data-lang="en"] [lang="ko"] { display: none; }
@@ -87,16 +87,16 @@ func main() {
 	fmt.Printf("✓ lang check passed (%d pages, every phrase paired)\n", files)
 }
 
-// check — site/의 .html을 모두 본다. **목록이 아니라 디렉터리로 잡는다** — 새로
+// check — docs/의 .html을 모두 본다. **목록이 아니라 디렉터리로 잡는다** — 새로
 // 넣는 장이 목록에 안 적혀 슬그머니 빠지는 편이, 여기 없는 파일이 끼어드는 것보다
 // 위험하다.
 func check(root string) ([]finding, int, error) {
-	paths, err := filepath.Glob(filepath.Join(root, "site", "*.html"))
+	paths, err := filepath.Glob(filepath.Join(root, "docs", "*.html"))
 	if err != nil {
 		return nil, 0, err
 	}
 	if len(paths) == 0 {
-		return nil, 0, fmt.Errorf("no pages under %s", filepath.Join(root, "site"))
+		return nil, 0, fmt.Errorf("no pages under %s", filepath.Join(root, "docs"))
 	}
 	sort.Strings(paths)
 

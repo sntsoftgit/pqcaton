@@ -2,7 +2,7 @@
 
 # 데모: pqcota 위에 얹는 거버넌스
 
-[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](../docs/journey.md) · [설계](../docs/design.md) · [검증 기준](../docs/testcases.md) · **데모** · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](../docs/journey.ko.md) · [설계](../docs/developers.ko.md) · [검증 기준](../docs/testcases.md) · **데모** · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 📊 **실행 전 예상 결과**는 [`expected-output/`](expected-output/)에 있습니다. 확장 리포트와 거버넌스 토폴로지 샘플, 그리고 차이점 설명이 들어 있습니다.
 

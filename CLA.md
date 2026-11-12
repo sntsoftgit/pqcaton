@@ -31,7 +31,7 @@ sublicense and distribute the Contribution, and **may create derivative works.**
 
 **The right to sublicense is the point of this agreement.** It is what lets the Company
 distribute pqcaton under BUSL-1.1 and convert it to Apache-2.0 on the Change Date, four
-years after each release (see [LICENSING](LICENSING.md), Korean).
+years after each release (see [LICENSING](docs/licensing.md), Korean).
 
 ## 3. Patent license
 

@@ -8,13 +8,23 @@
 //
 //  1. **링크.** 리포가 추적하는 모든 md의 상대 링크가 있는 파일을 가리키고, `#앵커`는 그 문서의 실제 제목이다(GitHub의 앵커
 //     규칙: 소문자, 글자 · 숫자 · `-` · `_`만 남기고 공백 하나를 `-` 하나로, 같은 제목은 `-1` · `-2`).
+//
 //  2. **짝.** 영어 문서 `x.md`와 한국어 문서 `x.ko.md`는 짝으로 있어야 한다. 짝이 없어도 되는 문서는 single.txt에 그 문서의
 //     말(en · ko)과 까닭을 함께 적는다. 짝의 첫 줄은 서로를 가리키는 언어 전환 줄이다(langs.tsv의 이름으로 `English · [한국어](x.ko.md)` /
 //     `[English](x.md) · 한국어`).
+//
 //  3. **짝의 내용.** 두 판이 말하는 사실이 같아야 한다: 판 번호(`v1.2.3`)의 집합, 케이스 ID(`IC-…` · `RUN-…` · `CP-…`)의 집합,
 //     셸 코드 블록의 명령 줄(주석 줄을 빼고 `<…>` 자리 표시를 하나로 본다)이 차례까지 같아야 한다.
+//
 //  4. **언어 일관.** 한국어 문서는 짝이 있는 문서를 한국어 판으로, 영어 문서는 영어 판으로 가리킨다. 다른 말의 판을 일부러
 //     가리키는 링크(「영문본은 [CLA.md](CLA.md)」)는 링크 글자가 언어 이름이거나 그 파일 이름일 때 받는다. 언어 전환 줄은 빼고 본다.
+//
+//  5. **사이트.** Pages는 `docs/`를 그대로 올린다. `docs/`의 .html 페이지에서 `href` · `src`의 상대 경로는 `docs/` 안의 있는 파일을
+//     가리키고(밖을 가리키면 Pages 산출물에서 끊긴다), `#앵커`는 그 페이지의 `id`이며, 이 리포의 `blob|tree/main/…` 절대 URL은 있는
+//     경로(md면 앵커까지)를 가리킨다. md 안의 같은 절대 URL도 잰다.
+//
+// 영어판이 한국어 원문의 **요약**인 짝은 summary.txt에 적는다. 그 짝은 내용(판 번호 · 케이스 ID · 셸 명령)을 견주지 않는 대신, 영어판
+// 앞쪽(제목 뒤 열 줄 안)에 요약임을 밝히는 말(summary)이 있어야 한다.
 //
 // 문자열의 한국어는 코드에 두지 않는다(check-text). 언어 이름은 langs.tsv에서 읽는다.
 package main
@@ -81,10 +91,12 @@ type config struct {
 	koSingle map[string]bool
 	// alias — 언어 이름 말고도 다른 말의 판을 일부러 가리킨다고 보는 링크 글자(langs.tsv의 alias).
 	alias map[string]bool
+	// summary — 영어판이 요약인 짝(summary.txt, 영어판 경로).
+	summary map[string]bool
 }
 
 func loadConfig(dir string) (config, error) {
-	c := config{single: map[string]bool{}, koSingle: map[string]bool{}, alias: map[string]bool{}}
+	c := config{single: map[string]bool{}, koSingle: map[string]bool{}, alias: map[string]bool{}, summary: map[string]bool{}}
 	b, err := os.ReadFile(filepath.Join(dir, "langs.tsv"))
 	if err != nil {
 		return c, err
@@ -118,6 +130,15 @@ func loadConfig(dir string) (config, error) {
 		}
 		c.single[f[0]] = true
 		c.koSingle[f[0]] = f[1] == "ko"
+	}
+	if sum, err := os.ReadFile(filepath.Join(dir, "summary.txt")); err == nil {
+		for _, line := range strings.Split(string(sum), "\n") {
+			if f := strings.Fields(line); len(f) > 0 && !strings.HasPrefix(f[0], "#") {
+				c.summary[f[0]] = true
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return c, err
 	}
 	return c, nil
 }
@@ -346,8 +367,12 @@ func checkIn(fsys readFS, files []string, cfg config) []string {
 				}
 			}
 		}
-		// 3. 짝의 내용(영어 쪽에서 한 번만)
-		if hasPair && !isKoFile {
+		// 3. 짝의 내용(영어 쪽에서 한 번만). 요약판은 견주지 않고, 요약임을 밝혔는지만 본다.
+		if hasPair && !isKoFile && cfg.summary[f] {
+			if !saysSummary(d.lines) {
+				add("%s: listed in summary.txt but does not say near the top that it is a summary", f)
+			}
+		} else if hasPair && !isKoFile {
 			ko := docs[pair]
 			if a, b := diffSet(d.versions, ko.versions); a != "" || b != "" {
 				add("%s ↔ %s: versions differ (only in English: %s; only in Korean: %s)", f, pair, a, b)
@@ -360,8 +385,116 @@ func checkIn(fsys readFS, files []string, cfg config) []string {
 			}
 		}
 	}
+	problems = append(problems, checkPages(fsys, files, have, dirs)...)
+	problems = append(problems, checkRepoURLs(fsys, files, have, dirs, docs)...)
 	sort.Strings(problems)
 	return problems
+}
+
+// saysSummary — 제목 뒤 열 줄 안에 「summary」가 있나.
+func saysSummary(lines []string) bool {
+	seen := 0
+	for _, l := range lines {
+		if strings.HasPrefix(l, "# ") {
+			seen = 1
+			continue
+		}
+		if seen > 0 {
+			if strings.Contains(strings.ToLower(l), "summary") {
+				return true
+			}
+			if seen++; seen > 10 {
+				return false
+			}
+		}
+	}
+	return false
+}
+
+// repoURL — 이 리포의 main을 가리키는 절대 URL.
+var repoURL = regexp.MustCompile(`https://github\.com/sntsoftgit/pqcaton/(?:blob|tree)/main/([^\s)"'#<>]+)(?:#([^\s)"'<>]*))?`)
+
+// checkRepoURLs — md · html 안의 이 리포 main 절대 URL이 있는 경로(md면 앵커까지)를 가리키나.
+func checkRepoURLs(fsys readFS, files []string, have, dirs map[string]bool, docs map[string]*doc) []string {
+	var out []string
+	for _, f := range files {
+		if !isMD(f) && !isPage(f) {
+			continue
+		}
+		b, err := fsys.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		for i, line := range strings.Split(string(b), "\n") {
+			for _, m := range repoURL.FindAllStringSubmatch(line, -1) {
+				p := strings.TrimSuffix(m[1], "/")
+				if !have[p] && !dirs[p] {
+					out = append(out, fmt.Sprintf("%s:%d: %s points to %s, which is not in the repository", f, i+1, m[0], p))
+					continue
+				}
+				if m[2] != "" && isMD(p) {
+					if td, ok := docs[p]; ok && !td.anchors[m[2]] {
+						out = append(out, fmt.Sprintf("%s:%d: the anchor #%s is not a heading of %s", f, i+1, m[2], p))
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
+func isPage(f string) bool { return strings.HasPrefix(f, "docs/") && strings.HasSuffix(f, ".html") }
+
+var (
+	attrRe = regexp.MustCompile(`\b(?:href|src)="([^"]*)"`)
+	idRe   = regexp.MustCompile(`\b(?:id|name)="([^"]*)"`)
+)
+
+// checkPages — Pages 산출물(docs/)의 페이지. 상대 경로는 docs/ 안의 있는 파일, #앵커는 그 페이지의 id다.
+func checkPages(fsys readFS, files []string, have, dirs map[string]bool) []string {
+	var out []string
+	for _, f := range files {
+		if !isPage(f) {
+			continue
+		}
+		b, err := fsys.ReadFile(f)
+		if err != nil {
+			out = append(out, fmt.Sprintf("%s: cannot be read: %v", f, err))
+			continue
+		}
+		ids := map[string]bool{}
+		for _, m := range idRe.FindAllStringSubmatch(string(b), -1) {
+			ids[m[1]] = true
+		}
+		for i, line := range strings.Split(string(b), "\n") {
+			for _, m := range attrRe.FindAllStringSubmatch(line, -1) {
+				v := m[1]
+				switch {
+				case v == "" || strings.Contains(v, "://") || strings.HasPrefix(v, "//") || strings.HasPrefix(v, "mailto:") ||
+					strings.HasPrefix(v, "data:") || strings.HasPrefix(v, "javascript:"):
+					continue
+				case strings.HasPrefix(v, "#"):
+					if len(v) > 1 && !ids[v[1:]] {
+						out = append(out, fmt.Sprintf("%s:%d: the anchor %s is not an id on this page", f, i+1, v))
+					}
+					continue
+				}
+				file, _, _ := strings.Cut(v, "#")
+				file, _, _ = strings.Cut(file, "?")
+				resolved := path.Clean(path.Join(path.Dir(f), file))
+				if file == "" || file == "./" || file == "." {
+					resolved = path.Dir(f)
+				}
+				switch {
+				case resolved != "docs" && !strings.HasPrefix(resolved, "docs/"):
+					out = append(out, fmt.Sprintf("%s:%d: %q leaves docs/, so it breaks on the Pages site", f, i+1, v))
+				case !have[resolved] && !dirs[resolved] && !have[path.Join(resolved, "index.html")]:
+					out = append(out, fmt.Sprintf("%s:%d: %q points to nothing (%s)", f, i+1, v, resolved))
+				}
+			}
+		}
+	}
+	return out
 }
 
 func diffSet(a, b map[string]bool) (onlyA, onlyB string) {

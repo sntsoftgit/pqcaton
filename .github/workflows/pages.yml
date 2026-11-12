@@ -1,19 +1,19 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
-# site/를 GitHub Pages로 올린다.
+# docs/를 GitHub Pages로 올린다(pqcota와 같이 첫 화면 index.html과 문서가 한 자리에 있다).
 #
 # **Settings → Pages → Source를 "GitHub Actions"로 두어야 돕니다.** 그 설정은 리포
 # 소유자만 바꿀 수 있어 여기서 할 수 없습니다.
 #
 # 조직이 Team 플랜이라 private 리포에서도 배포됩니다. 다만 **배포된 사이트는 공개**입니다 —
-# 접근 제어가 붙은 Pages는 Enterprise Cloud에서만 됩니다. `site/` 아래에는 공개돼도 되는
+# 접근 제어가 붙은 Pages는 Enterprise Cloud에서만 됩니다. `docs/` 아래에는 공개돼도 되는
 # 것만 둡니다.
 name: pages
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths: ['docs/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -37,6 +37,6 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: docs
       - id: deployment
         uses: actions/deploy-pages@v4

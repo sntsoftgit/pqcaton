@@ -2,7 +2,7 @@ English · [한국어](README.ko.md)
 
 # Demo: governance on top of pqcota
 
-[Overview](../README.md) · [Release notes](../RELEASE_NOTES.md) · [Journey](../docs/journey.md) · [Design](../docs/design.md) · [Acceptance criteria](../docs/testcases.md) · **Demo** · [Structure diagram](https://www.sntsoft.co.kr/pqcaton/)
+[Overview](../README.md) · [Release notes](../RELEASE_NOTES.md) · [Journey](../docs/journey.md) · [Design](../docs/developers.md) · [Acceptance criteria](../docs/testcases.md) · **Demo** · [Structure diagram](https://www.sntsoft.co.kr/pqcaton/)
 
 📊 **The expected results before you run it** are in [`expected-output/`](expected-output/): a sample of the extension report and the
 governance topology, with an explanation of what may differ.

@@ -1,6 +1,8 @@
+[English](developers.md) · 한국어
+
 # 설계: 인벤토리 거버넌스
 
-[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.md) · **설계** · [검증 기준](testcases.md) · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.ko.md) · **설계** · [검증 기준](testcases.md) · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 pqcota가 **관측**하고, 이 리포가 **그 관측을 판정으로 잇습니다.**
 
@@ -11,7 +13,7 @@ pqcota는 관측한 사실만 알려 줍니다. 무엇이 위험한지, 무엇�
 > **§ 표기**: 별도 언급이 없으면 pqcota
 > [규정서(v0.9.1)](https://github.com/randyinthedev-hash/pqcota/blob/v0.9.1/docs/regulation.md)의 절 번호입니다.
 
-> **명령을 어떤 차례로 돌리는지, 무엇을 넣고 무엇이 나오는지는 [여정](journey.md)에
+> **명령을 어떤 차례로 돌리는지, 무엇을 넣고 무엇이 나오는지는 [여정](journey.ko.md)에
 > 있습니다.** 이 문서는 **왜 그렇게 만들었는지**만 답합니다.
 
 ---
@@ -23,7 +25,7 @@ pqcota는 관측한 사실만 알려 줍니다. 무엇이 위험한지, 무엇�
 리뷰 세션과 스코프 세션은 **입력 파일에서 파생됩니다**. 입력 파일이 있으면 명령도 화면도
 그것을 만들 수 있습니다. 입력 파일이 이미 있는데도 명령을 한 번 돌려야 화면이 열리는 것은,
 화면을 두는 이유와 어긋납니다(v0.12.0). **어느 탭이 무엇에서 나오는지는
-[여정](journey.md)의 표에 있습니다.**
+[여정](journey.ko.md)의 표에 있습니다.**
 
 **세션 파일은 사람이 적은 것을 담습니다.** 판정·승인·서명이 그것입니다. 입력 파일이 바뀌면
 세션은 다시 만들어지고, 적어 둔 판정은 동일성(규칙은 `RuleID`, 항목은 `ID`)을 식별자로 삼아

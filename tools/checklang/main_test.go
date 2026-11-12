@@ -10,10 +10,10 @@ import (
 	"testing"
 )
 
-// page — site/ 아래에 장 하나를 놓는다. 관문이 디렉터리로 잡으므로 자리도 그대로 맞춘다.
+// page — docs/ 아래에 장 하나를 놓는다. 관문이 디렉터리로 잡으므로 자리도 그대로 맞춘다.
 func page(t *testing.T, root, name, body string) {
 	t.Helper()
-	dir := filepath.Join(root, "site")
+	dir := filepath.Join(root, "docs")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestLineDroppedWhenCountsDisagree(t *testing.T) {
 	}
 }
 
-// IC-B9 — **site/에 장이 하나도 없으면 통과가 아니라 오류다.**
+// IC-B9 — **docs/에 장이 하나도 없으면 통과가 아니라 오류다.**
 //
 // 관문이 「볼 것이 없어서 통과」라고 말하면, 경로가 어긋난 날 아무것도 재지 않으면서
 // 통과 표시만 낸다. 막을 것을 못 막는 관문은 없는 것만 못하다.

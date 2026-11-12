@@ -11,5 +11,5 @@ pkg/inventory/ui/text_more.go
 pkg/inventory/ui/text_msg.go
 pkg/inventory/ui/text_notice.go
 
-site/index.html
-site/ui-next.html
+docs/index.html
+docs/ui-next.html

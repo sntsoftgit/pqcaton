@@ -3,7 +3,7 @@ English · [한국어](CONTRIBUTING.ko.md)
 # Contributing: pqcaton
 
 Issues and PRs are welcome. This repository is under a **source-available commercial license** (BUSL-1.1)
-(→ [LICENSING](LICENSING.md)), so code contributions take one extra step. Please read this first.
+(→ [LICENSING](docs/licensing.md)), so code contributions take one extra step. Please read this first.
 
 ## Contributor License Agreement (CLA)
 

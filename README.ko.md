@@ -2,7 +2,7 @@
 
 # pqcaton
 
-**개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.md) · [설계](docs/design.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+**개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** 관측은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가
 하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.** 이 판은 pqcota **v0.11.0**과 함께
@@ -19,8 +19,9 @@
 | 무엇을 하려는가 | 어디부터 |
 |---|---|
 | 한 바퀴 돌려 본다 | 아래 [사전 준비](#사전-준비) → [써보기](#써보기) |
-| 절차를 처음부터 끝까지 따라간다 | [여정](docs/journey.md) |
-| 왜 이렇게 만들었는지 본다 | [설계](docs/design.md) · [검증 기준](docs/testcases.md) |
+| 절차를 처음부터 끝까지 따라간다 | [여정](docs/journey.ko.md) |
+| 왜 이렇게 만들었는지 본다 | [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.md) |
+| 소스에서 빌드하거나 환경 변수를 찾아본다 | [빌드](docs/build.ko.md) · [환경 변수](docs/environment-variables.ko.md) |
 | 호스팅에서 무엇이 밖으로 나가는지 본다 | [`saas/runner`](saas/runner/README.md) |
 | 고친 것을 보낸다 | [CONTRIBUTING](CONTRIBUTING.ko.md) · [CLA](CLA.ko.md)([English](CLA.md)) |
 | 취약점을 알린다 | [SECURITY](SECURITY.ko.md) |
@@ -30,7 +31,7 @@
 판단은 도구가 아니라 사람이 합니다.**
 
 > **소스 공개(source-available)이지 오픈소스가 아닙니다.** [BUSL-1.1](LICENSE)입니다. 관리 노드 5대까지
-> 무료이고, 그 이상은 계약입니다. **각 릴리스가 4년 뒤 Apache-2.0으로 전환됩니다.** → [라이선스 안내](LICENSING.ko.md)
+> 무료이고, 그 이상은 계약입니다. **각 릴리스가 4년 뒤 Apache-2.0으로 전환됩니다.** → [라이선스 안내](docs/licensing.ko.md)
 
 ---
 
@@ -78,7 +79,7 @@ pqcota                          pqcaton
 본 것*인지 *이미 없어진 것*인지는 사람만 압니다. pqcota의 완전성 맵이 「원리상 관측 불가」인지
 「실제 없음」인지를 구분해 주고, 그 위에서 사람이 정합니다.
 
-**구조 그림**은 [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/)에 있습니다([소스](site/index.html)).
+**구조 그림**은 [www.sntsoft.co.kr/pqcaton](https://www.sntsoft.co.kr/pqcaton/)에 있습니다([소스](docs/index.html)).
 
 ## 사전 준비
 
@@ -274,7 +275,7 @@ PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
 
 **이 판이 내는 계획은 조치마다 근거(`evidenceSources`)를 담으므로, 그 필드를 모르는 v0.8.0 이하의 `pqcota-approve`·`pqcota-provision`은 계획을 읽지 못하고 거절합니다.** 상태가 `IN_REVIEW`로 나가는 것은 v0.8.0부터 받고, 그 아래에서는 서명만 붙고 `IN_REVIEW`인 채로 남아 생성기가 「확정 아님」으로 거절합니다. 그 밖에 승인 검증이 기본으로 닫힌 것과 종료 상태 3은 v0.7.0부터, 컨트롤러 CLI가 릴리스에 붙는 것은 v0.7.2부터, 강화 규칙 판이 상수로 서는 것은 v0.7.3부터(외부 CBOM 수신 종단까지는 v0.7.4)입니다.
 
-여러 노드를 훑는 방법과 거버넌스 토폴로지는 [여정](docs/journey.md)에 있습니다.
+여러 노드를 훑는 방법과 거버넌스 토폴로지는 [여정](docs/journey.ko.md)에 있습니다.
 
 데모는 pqcota의 디스커버리 데모 위에 얹습니다. [demo/README.ko.md](demo/README.ko.md)를 보십시오.
 
@@ -289,7 +290,7 @@ Copyright 2026 (주)에스앤티소프트 (SNT Soft Co., Ltd.). 저작권자는 
 - 프로덕션은 관리 노드 5대까지 무료
 - 그 이상은 계약: **kty@sntsoft.co.kr**
 
-자세한 것은 [LICENSING.ko.md](LICENSING.ko.md)에 있습니다. 기여하실 때는
+자세한 것은 [licensing.ko.md](docs/licensing.ko.md)에 있습니다. 기여하실 때는
 [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)를 먼저 읽어 주십시오([CLA](CLA.ko.md)가 필요합니다).
 보안 취약점은 이슈가 아니라 [SECURITY.ko.md](SECURITY.ko.md)의 경로로 알려 주십시오.
 

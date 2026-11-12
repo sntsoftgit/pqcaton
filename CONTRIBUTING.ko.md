@@ -3,7 +3,7 @@
 # 기여하기: pqcaton
 
 이슈·PR 환영합니다. 다만 이 리포는 **소스 공개형 상용 라이선스**(BUSL-1.1)라
-(→ [LICENSING](LICENSING.ko.md)) 코드 기여에 한 가지 절차가 더 붙습니다. 먼저 읽어 주십시오.
+(→ [LICENSING](docs/licensing.ko.md)) 코드 기여에 한 가지 절차가 더 붙습니다. 먼저 읽어 주십시오.
 
 ## 기여자 라이선스 동의(CLA)
 

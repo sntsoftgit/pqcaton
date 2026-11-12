@@ -685,7 +685,7 @@ func TestStaticIsMounted(t *testing.T) {
 }
 
 // IC-U25 — **비교용 정적 원본은 바이너리에서 뺐다**(v0.22.0). 새 화면이 기본 주소가 됐으므로
-// 견줄 대상이 화면 자체다. 공개 사이트의 원본(site/ui-next.html)은 그대로 둔다.
+// 견줄 대상이 화면 자체다. 공개 사이트의 원본(docs/ui-next.html)은 그대로 둔다.
 func TestUINextIsGone(t *testing.T) {
 	s, _ := newServer(t)
 	if w := get(t, s, "/ui-next.html"); w.Code != http.StatusNotFound {

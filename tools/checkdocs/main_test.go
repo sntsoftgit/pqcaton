@@ -157,3 +157,49 @@ func TestSlugFollowsGitHub(t *testing.T) {
 		}
 	}
 }
+
+// IC-DC7 — **사이트(docs/의 페이지)의 링크를 Pages 산출물 기준으로 잰다.** 상대 경로가 docs/ 밖을 가리키면 Pages에서 끊기므로 막고,
+// 없는 파일 · 그 페이지에 없는 `#앵커`도 막는다. 같은 폴더의 파일, `./`, 바깥 URL은 받는다.
+func TestPagesLinksResolveInTheArtifact(t *testing.T) {
+	m := good()
+	m["docs/index.html"] = `<a href="./">home</a> <a href="#top">top</a> <h1 id="top">x</h1> <a href="guide.md">g</a>
+<a href="https://example.com/">ext</a> <a href="../README.md">up</a> <img src="logo.svg"> <a href="#gone">g</a>`
+	expect(t, run(m), `docs/index.html:2: "../README.md" leaves docs/`, `docs/index.html:2: "logo.svg" points to nothing`,
+		"docs/index.html:2: the anchor #gone is not an id on this page")
+	for _, p := range run(m) {
+		if strings.Contains(p, `"./"`) || strings.Contains(p, "#top") || strings.Contains(p, "guide.md") || strings.Contains(p, "example.com") {
+			t.Errorf("a good link was flagged: %s", p)
+		}
+	}
+}
+
+// IC-DC8 — **이 리포 main의 절대 URL도 있는 자리를 가리켜야 한다.** md와 페이지 안의 `github.com/sntsoftgit/pqcaton/blob|tree/main/…`가
+// 없는 경로나 없는 제목의 앵커를 가리키면 막는다. 다른 리포나 태그의 URL은 보지 않는다.
+func TestRepositoryURLsResolve(t *testing.T) {
+	m := good()
+	m["NOTES.md"] += "\n[a](https://github.com/sntsoftgit/pqcaton/blob/main/docs/guide.md#2-install)" +
+		"\n[b](https://github.com/sntsoftgit/pqcaton/blob/main/docs/design.md)" +
+		"\n[c](https://github.com/sntsoftgit/pqcaton/tree/main/docs)" +
+		"\n[d](https://github.com/sntsoftgit/pqcaton/blob/main/docs/guide.md#nope)" +
+		"\n[e](https://github.com/sntsoftgit/pqcaton/blob/v0.1.0/gone.md)\n"
+	got := run(m)
+	expect(t, got, "points to docs/design.md, which is not in the repository", "the anchor #nope is not a heading of docs/guide.md")
+	for _, p := range got {
+		if strings.Contains(p, "#2-install") || strings.Contains(p, "tree/main/docs") || strings.Contains(p, "v0.1.0") {
+			t.Errorf("a good or out-of-scope URL was flagged: %s", p)
+		}
+	}
+}
+
+// IC-DC9 — **요약판은 내용을 견주지 않는 대신 요약임을 밝혀야 한다.** summary.txt에 적은 영어판은 판 번호 · 케이스 ID · 셸 명령이
+// 원문과 달라도 되지만, 제목 뒤 열 줄 안에 「summary」가 없으면 막는다. 적지 않은 짝은 그대로 견준다.
+func TestSummaryPairs(t *testing.T) {
+	m := good()
+	m["docs/guide.md"] = "English · [KO](guide.ko.md)\n\n# Guide\n\n> This page is a summary of the Korean original.\n\n## 2. Install\n"
+	cfg := testCfg
+	cfg.summary = map[string]bool{"docs/guide.md": true}
+	expect(t, checkIn(m, m.files(), cfg))
+	m["docs/guide.md"] = "English · [KO](guide.ko.md)\n\n# Guide\n\n## 2. Install\n"
+	expect(t, checkIn(m, m.files(), cfg), "docs/guide.md: listed in summary.txt but does not say near the top that it is a summary")
+	expect(t, run(m), "docs/guide.md ↔ docs/guide.ko.md: shell commands differ")
+}

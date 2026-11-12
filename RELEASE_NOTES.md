@@ -1,6 +1,6 @@
 # 릴리스 노트: pqcaton
 
-[개요](README.ko.md) · **릴리스 노트** · [여정](docs/journey.md) · [설계](docs/design.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](README.ko.md) · **릴리스 노트** · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 버전별 **목표**와 **성과**를 기록합니다. 버전이 올라갈 때마다 갱신하고, 최신 버전을 맨 위에 둡니다.
 
@@ -26,7 +26,7 @@
 읽히지 않기 때문입니다.
 
 **각 버전의 Apache-2.0 전환일을 함께 적습니다.** 라이선스가 릴리스일로부터 4년으로 정해져
-있어([LICENSING.ko.md](LICENSING.ko.md)), 버전마다 열리는 날이 다릅니다. 어느 버전을 쓰든 언제
+있어([licensing.ko.md](docs/licensing.ko.md)), 버전마다 열리는 날이 다릅니다. 어느 버전을 쓰든 언제
 열리는지 여기서 확인하십시오. 이 줄은 **이미 발행된 절에도 나중에 더했습니다.** 위 규칙의
 예외이고, 그렇게 한 이유는 하나입니다. 라이선스가 이 문서를 전환일의 근거로 가리키는데
 옛 절에만 없으면 그 버전을 쓰는 사람이 답을 못 찾습니다. **경위가 아니라 라이선스 사실을
@@ -2683,8 +2683,8 @@ pqcota에 있습니다. 이 버전은 그 위의 거버넌스만 얹습니다.
 - **명령 셋**: `pqcaton-reconcile`(로컬 대조) · `pqcaton-report`(여러 노드 + 토폴로지) ·
   `pqcaton-decide`(판정·확정·델타). **체크아웃만으로 처음부터 끝까지 해볼 수 있습니다**. pqcota 데모도
   Postgres도 없이 이 기계를 관측해 확정 계획까지 만듭니다.
-- **문서**: [여정](docs/journey.md)(자기 서버에 설치해 사용하는 방법) ·
-  [구조 그림](https://www.sntsoft.co.kr/pqcaton/) · [설계](docs/design.md) ·
+- **문서**: [여정](docs/journey.ko.md)(자기 서버에 설치해 사용하는 방법) ·
+  [구조 그림](https://www.sntsoft.co.kr/pqcaton/) · [설계](docs/developers.ko.md) ·
   [검증 기준](docs/testcases.md). 케이스 54개(대조 12 · 판정 24 · 러너 17 · 계약 소비 1).
 
 ### 고친 것

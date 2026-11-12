@@ -1,11 +1,11 @@
 # 테스트케이스: 인벤토리 거버넌스
 
-[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.md) · [설계](design.md) · **검증 기준** · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.ko.md) · [설계](developers.ko.md) · **검증 기준** · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 케이스 번호가 곧 테스트 파일 링크입니다. **그 대응은 `make check-cases`가 잽니다**
-(§M). 설계는 [design.md](design.md)에 있습니다.
+(§M). 설계는 [developers.ko.md](developers.ko.md)에 있습니다.
 
-**문서 성격**: [설계](design.md) §1(인벤토리 엔진)을 **검증할 수 있는 인수 기준**으로 풀어 적습니다.
+**문서 성격**: [설계](developers.ko.md) §1(인벤토리 엔진)을 **검증할 수 있는 인수 기준**으로 풀어 적습니다.
 구현은 이 테스트를 통과하는 것을 목표로 합니다. 대상은 `pkg/inventory/*`와
 `inventory/cmd/*`입니다.
 **검증 대상**: 3-상태 대조·신뢰도·리뷰 큐·리뷰-확정 상태기계·판정 영속화·확정 계획·핸드오프 관문·엣지 대조.
@@ -320,7 +320,7 @@
 | **[IC-U21](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | 계층 CSV만 주고 **세션 파일 없음** | 화면이 세션을 연다. 입력 파일을 이미 가지고도 명령을 한 번 돌려야 열리는 것은 화면을 두는 이유와 어긋난다 |
 | **[IC-U22](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | 화면에서 고친 규칙 | **계층 CSV에 그대로 쓰이고 pqcota가 읽는다.** 새 exclude가 판정 대상으로 올라온다. 빈 줄은 규칙이 되지 않는다 |
 | **[IC-U23](../inventory/cmd/pqcaton-ui/main_test.go) ✅** | 선언과 관측 결과만 주고 **세션 파일 없음** | 리뷰 큐가 열린다 |
-| [IC-U25](../inventory/cmd/pqcaton-ui/main_test.go) ✅ | `/ui-next.html` | **404다**(v0.22.0). 새 화면이 기본 주소가 됐으므로 견줄 정적 원본을 바이너리에 싣지 않는다. 공개 사이트의 원본(`site/ui-next.html`)은 그대로 둔다 |
+| [IC-U25](../inventory/cmd/pqcaton-ui/main_test.go) ✅ | `/ui-next.html` | **404다**(v0.22.0). 새 화면이 기본 주소가 됐으므로 견줄 정적 원본을 바이너리에 싣지 않는다. 공개 사이트의 원본(`docs/ui-next.html`)은 그대로 둔다 |
 
 #### 선언 화면의 다음 판 (`/decl-next`)
 
@@ -570,7 +570,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 
 ### B. 두 말의 짝 (`tools/checklang`) ✅
 
-공개 사이트 두 장(`site/*.html`)은 문구를 두 벌 적어 두고 CSS 두 줄로 한쪽을 숨긴다. 이
+공개 사이트 두 장(`docs/*.html`)은 문구를 두 벌 적어 두고 CSS 두 줄로 한쪽을 숨긴다. 이
 방식은 **한쪽 말로 볼 때는 멀쩡해 보이는 고장**을 만든다. `<span lang="ko">`를 닫지 않은
 자리가 아홉 곳 있었는데, 닫는 태그가 없으니 파서가 뒤따르는 `<span lang="en">`을 그 안으로
 넣었고, 영어로 열면 바깥 한국어가 숨겨질 때 안쪽 영어까지 함께 사라져 표 머리글 여섯과 표
@@ -588,7 +588,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-B6](../tools/checklang/main_test.go) ✅** | 중첩된 자리 | **바깥만 짚는다.** 안쪽까지 세면 아홉 자리가 열여덟 줄로 나와 무엇을 고쳐야 하는지 흐려진다. 바깥의 닫는 태그를 넣으면 둘 다 풀린다 |
 | **[IC-B7](../tools/checklang/main_test.go) ✅** | 「정의」처럼 짧고 흔한 낱말이 앞쪽에도 있는 원본 | 앞쪽이 아니라 **실제 자리의 줄**을 짚는다. 품은 글자를 원본에서 되찾는 첫 판은 437을 357로, 438을 242로 짚었다. 그래서 토크나이저로 태그가 나온 줄을 센다 |
 | [IC-B8](../tools/checklang/main_test.go) ✅ | 원본의 태그 순서와 트리 순서가 어긋남 | 줄을 통째로 버리고 파일 이름만 낸다. **어긋난 줄은 없는 줄보다 나쁘다** |
-| [IC-B9](../tools/checklang/main_test.go) ✅ | `site/`에 장이 하나도 없음 | 통과가 아니라 오류다. 경로가 어긋난 날 아무것도 재지 않으면서 통과 표시만 내면, 막을 것을 못 막는 관문이 된다 |
+| [IC-B9](../tools/checklang/main_test.go) ✅ | `docs/`에 장이 하나도 없음 | 통과가 아니라 오류다. 경로가 어긋난 날 아무것도 재지 않으면서 통과 표시만 내면, 막을 것을 못 막는 관문이 된다 |
 
 > **글자를 세는 검사로는 안 됩니다.** 닫는 태그가 빠져도 글자는 그대로 남아 있어서, 문자열을
 > 세는 방식은 아홉 자리를 모두 통과시킵니다. 고장이 브라우저가 그 HTML을 **어떻게 읽는가**에서
@@ -647,6 +647,9 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-DC4](../tools/checkdocs/main_test.go) ✅** | 두 판의 판 번호 · 케이스 ID · 셸 명령이 다름 | **막는다.** 한쪽만 고친 판 번호나 명령이 남지 않는다 |
 | **[IC-DC5](../tools/checkdocs/main_test.go) ✅** | 한국어 문서가 영어 판을, 영어 문서가 한국어 판을 가리킴 | 막는다. 언어 전환 줄과 짝이 없는 문서로의 링크는 그대로 두고, 글자가 언어 이름이거나 파일 이름인 링크(일부러 다른 말의 판을 가리킴)는 받는다. single.txt에 ko로 적은 문서는 한국어 문서로 본다 |
 | [IC-DC6](../tools/checkdocs/main_test.go) ✅ | 영어 · 한국어 · 엠대시 · 괄호 · 강조 · 같은 제목 | 앵커를 GitHub의 규칙으로 센다(`a--b`, `-1` · `-2`) |
+| **[IC-DC7](../tools/checkdocs/main_test.go) ✅** | `docs/` 페이지의 `./` · 같은 페이지 앵커 · 같은 폴더 파일 · 바깥 URL · `docs/` 밖을 가리키는 상대 경로 · 없는 파일 · 없는 앵커 | **Pages 산출물 기준으로 잰다.** 앞의 넷은 받고, 뒤의 셋은 막는다 |
+| **[IC-DC8](../tools/checkdocs/main_test.go) ✅** | 이 리포 `main`의 절대 URL이 있는 경로 · 없는 경로 · 없는 앵커를 가리킴, 태그의 URL | 없는 경로와 없는 앵커를 막고, 태그 URL은 보지 않는다 |
+| **[IC-DC9](../tools/checkdocs/main_test.go) ✅** | summary.txt에 적은 영어판이 원문과 명령이 다름(요약임을 밝힘 · 밝히지 않음), 적지 않은 짝 | 요약임을 밝히면 받고, 밝히지 않으면 막는다. 적지 않은 짝은 그대로 견준다 |
 
 ### V. 선언 형식과 자체 검사 (`pkg/inventory/decl`) ✅
 | TC | Given → When | Then |
