@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
-.PHONY: all e2e-demo check-licenses check-text check-prose prose-baseline check-lang check-cases check-fmt check-modzip check-releasecheck build test generate verify-generated check-reuse release-check release-check-fast release-verify
+.PHONY: all e2e-demo check-licenses check-text check-prose prose-baseline check-lang check-docs check-cases check-fmt check-modzip check-releasecheck build test generate verify-generated check-reuse release-check release-check-fast release-verify
 
-all: check-licenses check-text check-prose check-lang check-cases check-fmt check-modzip check-releasecheck build test
+all: check-licenses check-text check-prose check-lang check-docs check-cases check-fmt check-modzip check-releasecheck build test
 
 # 라이선스 관문: 듀얼 라이선스를 실제로 지키는 장치.
 # 카피레프트가 하나라도 링크되면 상업 라이선스로 낼 수 없다(→ CONTRIBUTING.md).
@@ -58,6 +58,11 @@ check-lang:
 #
 # **어느 문서가 어느 접두어를 맡는지는 tools/checkcases/docs.tsv에 있다.** 엔진은 리포마다
 # 같고 다른 것은 그 표뿐이다.
+# 문서 관문: 영어 기본 문서(x.md)와 한국어 짝(x.ko.md), 그 첫 줄의 언어 전환 줄, 리포 안 상대 링크와 앵커, 두 판의 판 번호 ·
+# 케이스 ID · 셸 명령이 같은지 잰다(tools/checkdocs). 짝이 없어도 되는 문서는 tools/checkdocs/single.txt에 까닭과 함께 적는다.
+check-docs:
+	@go run ./tools/checkdocs
+
 check-cases:
 	@go run ./tools/checkcases
 

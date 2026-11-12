@@ -18,7 +18,9 @@ import (
 )
 
 // publicDocs — 설치 명령을 공개하는 문서. 사용자가 그대로 붙여 넣는 자리라, 여기 적힌 명령은 발행 전에 실제로 설치해 본다.
-var publicDocs = []string{"README.md", "docs/operator-guide.md", "docs/operator-guide.en.md"}
+// **경로와 언어를 여기 고정한다**: 영어 기본 문서(`x.md`)와 한국어 짝(`x.ko.md`)을 모두 읽는다. 문서를 옮기면 이 목록과
+// release-verify.sh의 목록을 함께 고친다(checkdocs가 짝을 재고, 두 판의 명령이 다르면 막는다).
+var publicDocs = []string{"README.md", "README.ko.md", "docs/operator-guide.md", "docs/operator-guide.ko.md"}
 
 var installLine = regexp.MustCompile("go install (github\\.com/[^\\s`@]+)@(v[^\\s`)]+)")
 

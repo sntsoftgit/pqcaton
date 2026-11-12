@@ -111,8 +111,9 @@ func docsRepo(t *testing.T, readme string) string {
 	files := map[string]string{
 		"go.mod":                    "module github.com/o/app\n\ngo 1.21\n\nrequire github.com/u/common v0.10.7\n",
 		"README.md":                 readme,
+		"README.ko.md":              readme,
 		"docs/operator-guide.md":    "```\ngo install github.com/o/app/cmd/ui@v1.2.3\n```\n",
-		"docs/operator-guide.en.md": "```\ngo install github.com/u/common/cmd/keygen@v0.10.7\n```\nold: go install …/keygen@v0.10.4\n",
+		"docs/operator-guide.ko.md": "```\ngo install github.com/u/common/cmd/keygen@v0.10.7\n```\nold: go install …/keygen@v0.10.4\n",
 	}
 	for rel, body := range files {
 		p := filepath.Join(dir, filepath.FromSlash(rel))

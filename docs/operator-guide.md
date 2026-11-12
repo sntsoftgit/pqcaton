@@ -1,10 +1,12 @@
+English · [한국어](operator-guide.ko.md)
+
 # pqcaton operator guide
 
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
 This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.28.0.
-The Korean edition is [operator-guide.md](operator-guide.md). The two editions have the same contents, commands and error
+The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
 **Scope.** The procedure inside pqcaton (declaration, scope, observation, reconciliation, judgment, finalize, approval,

@@ -1,10 +1,12 @@
+[English](README.md) · 한국어
+
 # pqcaton
 
-**개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.md) · [설계](docs/design.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+**개요** · [릴리스 노트](RELEASE_NOTES.md) · [여정](docs/journey.md) · [설계](docs/design.md) · [검증 기준](docs/testcases.md) · [데모](demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** 관측은 [pqcota](https://github.com/randyinthedev-hash/pqcota)가
 하고, 이 리포는 그 관측을 **선언과 대조하고, 리뷰 큐에 올리고, 확정합니다.** 이 판은 pqcota **v0.11.0**과 함께
-씁니다. pqcaton 판마다 함께 쓰는 pqcota 판은 [판별 표](docs/compatibility.md)에 있습니다.
+씁니다. pqcaton 판마다 함께 쓰는 pqcota 판은 [판별 표](docs/compatibility.ko.md)에 있습니다.
 
 **사용 방법은 두 가지입니다.** 이 문서가 설명하는 것은 **직접 설치**입니다. 관측 결과를 자기
 인프라에 두고 대조·판정·확정까지 같은 자리에서 끝내므로 밖으로 나가는 것이 없습니다.
@@ -20,15 +22,15 @@
 | 절차를 처음부터 끝까지 따라간다 | [여정](docs/journey.md) |
 | 왜 이렇게 만들었는지 본다 | [설계](docs/design.md) · [검증 기준](docs/testcases.md) |
 | 호스팅에서 무엇이 밖으로 나가는지 본다 | [`saas/runner`](saas/runner/README.md) |
-| 고친 것을 보낸다 | [CONTRIBUTING](CONTRIBUTING.md) · [CLA](CLA.md)([English](CLA.en.md)) |
-| 취약점을 알린다 | [SECURITY](SECURITY.md) |
+| 고친 것을 보낸다 | [CONTRIBUTING](CONTRIBUTING.ko.md) · [CLA](CLA.ko.md)([English](CLA.md)) |
+| 취약점을 알린다 | [SECURITY](SECURITY.ko.md) |
 
 **이름**: *pqcaton*(발음 **P-caton**) = **PQC** + **baton**(지휘봉). pqcota가 교향악의 *단원*이라면
 이것은 지휘자가 쥐는 막대입니다. **지휘자는 운영자이고, pqcaton은 그가 사용하는 도구입니다.
 판단은 도구가 아니라 사람이 합니다.**
 
 > **소스 공개(source-available)이지 오픈소스가 아닙니다.** [BUSL-1.1](LICENSE)입니다. 관리 노드 5대까지
-> 무료이고, 그 이상은 계약입니다. **각 릴리스가 4년 뒤 Apache-2.0으로 전환됩니다.** → [라이선스 안내](LICENSING.md)
+> 무료이고, 그 이상은 계약입니다. **각 릴리스가 4년 뒤 Apache-2.0으로 전환됩니다.** → [라이선스 안내](LICENSING.ko.md)
 
 ---
 
@@ -82,11 +84,11 @@ pqcota                          pqcaton
 
 | | 필요한가 | 왜 |
 |---|---|---|
-| **pqcota** | 관측 · 승인 · 생성에 | 이 판은 pqcota **v0.11.0**과 함께 씁니다(상류 리포를 모두 같은 태그로). 판이 다르면 계획의 근거가 상류 이력에서 찾히지 않습니다. pqcaton 판마다의 조합은 [판별 표](docs/compatibility.md)에 있습니다 |
+| **pqcota** | 관측 · 승인 · 생성에 | 이 판은 pqcota **v0.11.0**과 함께 씁니다(상류 리포를 모두 같은 태그로). 판이 다르면 계획의 근거가 상류 이력에서 찾히지 않습니다. pqcaton 판마다의 조합은 [판별 표](docs/compatibility.ko.md)에 있습니다 |
 | **Go** | **필수** | 빌드에 씁니다. 필요한 버전은 [`go.mod`](go.mod)에 적혀 있습니다(지금은 1.26.11). 다른 런타임은 필요 없습니다 |
 | **Graphviz**(`dot`) | **선택** | 거버넌스 토폴로지를 그림으로 볼 때만. 없으면 화면과 명령이 **DOT 원문**을 보여 주고, 나중에 아무 데서나 그릴 수 있습니다 |
 | Postgres | 선택 | 판정 원장을 DB에 둘 때만. 기본은 파일(JSONL)이라 없어도 전체 과정이 됩니다 |
-| Docker · pqcota 리포 | 데모에만 | [demo/README.md](demo/README.md) 참조 |
+| Docker · pqcota 리포 | 데모에만 | [demo/README.ko.md](demo/README.ko.md) 참조 |
 
 `dot` 설치는 [graphviz.org/download](https://graphviz.org/download/)에 있습니다:
 `apt install graphviz` · `brew install graphviz` · `winget install graphviz`.
@@ -102,7 +104,7 @@ ctl 노드는 **OS를 가리지 않습니다.** 관측 자체는 pqcota의 colle
 ## 써보기
 
 ```bash
-make            # 라이선스 · 문구 · 문체 · 케이스 · 서식 관문 → 빌드 → 테스트
+make            # 라이선스 · 문구 · 문체 · 문서 · 케이스 · 서식 관문 → 빌드 → 테스트
 ```
 
 **이 리포만으로 처음부터 끝까지 해볼 수 있습니다.** 관측할 대상은 이 기계입니다.
@@ -138,8 +140,8 @@ bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
 **JSON을 손으로 채우기 번거로우면 화면에서 채웁니다.** 같은 파일, 같은 관문입니다.
 
 **필요한 파일만 주면 화면이 세션까지 만듭니다.** 명령을 먼저 돌리지 않아도 됩니다. **화면은 pqcota 이력 없이 시작하지
-않습니다.** 띄우는 셸에 `PQCOTA_DSN`(pqcota 이력의 연결 정보, 읽기 권한이면 됩니다)이 있어야 하고, 연결과 한 번의 조회가
-10초 안에 통과해야 뜹니다. 연결 정보는 환경 변수로만 받고 어디에도 남기지 않습니다. 05의 정책 활성화와 기준선 채택은
+않습니다.** 띄우는 셸의 `PQCOTA_DSN`이나 사용자 설정 폴더의 `pqcota.env`(pqcota 이력의 연결 정보, 읽기 권한이면 됩니다)가 있어야 하고, 연결과 한 번의 조회가
+10초 안에 통과해야 뜹니다. 연결 정보는 어디에도 남기지 않습니다(운영자 안내서 2절 「pqcota 연결」). 05의 정책 활성화와 기준선 채택은
 언제나 pqcota 이력 대조를 거칩니다.
 
 ```bash
@@ -158,8 +160,8 @@ bin/pqcaton-ui session.json \
 v0.23.0에서 없어졌고, 옛 주소(`/classic/…` · `-next`)는 지금 화면으로 넘어갑니다.
 
 **터미널 없이 쓰려면 인자 없이 띄웁니다**(`pqcaton-ui`). 홈의 `pqcaton` 작업 폴더를 쓰고 브라우저를 엽니다. 선언과
-계층도 화면에서 만듭니다. 설치 · 서비스 등록 · 백업 · 복구 · 오류 표는 [운영자 안내서](docs/operator-guide.md)
-([영어판](docs/operator-guide.en.md))에 있습니다.
+계층도 화면에서 만듭니다. 설치 · 서비스 등록 · 백업 · 복구 · 오류 표는 [운영자 안내서](docs/operator-guide.ko.md)
+([English](docs/operator-guide.md))에 있습니다.
 
 **화면은 이 기계 안에서만 열립니다.** 화면에는 로그인이 없어서 `-addr`가 루프백이 아니면
 시작하지 않습니다. 다른 기계에서 보려면 SSH로 포트를 넘겨 그 기계의 브라우저로 엽니다.
@@ -185,7 +187,7 @@ bin/pqcaton-scope  open corp.csv prod.csv -base asset-scope.csv -org acme > scop
 
 > **명령의 출력과 로그는 영어 하나입니다.** 붙여 넣어 검색하고 이슈에 올리는 것이라,
 > 말이 서로 다르면 같은 문제가 두 문장으로 남습니다. 자세한 규칙은
-> [CONTRIBUTING.md](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
+> [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md#어느-말로-쓰나)에 있습니다.
 
 `-decl`·`-layers`·`-results`는 **주는 것만 탭이 열립니다.** 선언 파일만 주면 「선언」과
 「판정」 둘만 보입니다. 없는 것을 눌러 보게 하지 않습니다.
@@ -223,7 +225,7 @@ bin/pqcaton-scope review asset-scope.csv results/ -judgments judgments.jsonl -or
 ```
 
 > **명령의 출력은 영어입니다.** 화면에 쓸 말은 한국어와 English 중에서 고릅니다.
-> 자세한 것은 [CONTRIBUTING.md 「어느 말로 쓰나」](CONTRIBUTING.md#어느-말로-쓰나)에 있습니다.
+> 자세한 것은 [CONTRIBUTING.md 「어느 말로 쓰나」](CONTRIBUTING.ko.md#어느-말로-쓰나)에 있습니다.
 
 나온 `plan.json`은 **계약 형식 그대로**입니다. 우리 형식이 따로 없어 pqcota가 그대로 읽습니다.
 
@@ -244,7 +246,7 @@ PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
 
 계획이 실행 필드를 다 채우지 못하면 pqcota는 산출물을 내되 **성공으로 끝내지 않습니다**(종료 상태 3). 무엇이 비었는지는 그 경고가 이름으로 알려 줍니다. 다만 그 상태까지 가지 않습니다. 위임 수준과 조치 종류, 목표 알고리즘, L3의 활성화 훅은 **우리 화면에서 고르고, 비면 확정이 막힙니다.** 빈 값을 상류로 넘기고 거기서 걸리게 두는 것보다, 승인 서명이 붙기 전에 이쪽에서 막는 편이 맞기 때문입니다.
 
-**맞는 조합.** pqcaton의 판마다 함께 쓰는 pqcota 판은 [판별 표](docs/compatibility.md)에 있습니다. 이 리포는 pqcota **v0.11.0**(`pqcota-common`·`pqcota-inventory`·`pqcota-discovery`·`pqcota-provisioning` 넷을 같은 태그로)으로 만들고, `go.mod`도 그 판을 고정합니다. 종단(데모) 검증은 v0.11.0으로 했습니다(다섯 리포를 같은 태그로 나란히 받아 돌렸습니다). 위 명령도 v0.11.0 기준입니다. **상류의 판이 맞아야 합니다.** 이 리포는 관측 결과를 자기 안에 든 v0.11.0의 규칙 묶음(`pqcota-enrich/v3`, v0.10.6 · v0.10.7과 같습니다)으로 정규화하고, 계획의 근거에 그 스냅샷 지문을 싣습니다. 그래서 상류의 `pqcota-ingest`와 `pqcota-provision`도 같은 규칙 묶음이어야 근거가 이력에서 찾힙니다.
+**맞는 조합.** pqcaton의 판마다 함께 쓰는 pqcota 판은 [판별 표](docs/compatibility.ko.md)에 있습니다. 이 리포는 pqcota **v0.11.0**(`pqcota-common`·`pqcota-inventory`·`pqcota-discovery`·`pqcota-provisioning` 넷을 같은 태그로)으로 만들고, `go.mod`도 그 판을 고정합니다. 종단(데모) 검증은 v0.11.0으로 했습니다(다섯 리포를 같은 태그로 나란히 받아 돌렸습니다). 위 명령도 v0.11.0 기준입니다. **상류의 판이 맞아야 합니다.** 이 리포는 관측 결과를 자기 안에 든 v0.11.0의 규칙 묶음(`pqcota-enrich/v3`, v0.10.6 · v0.10.7과 같습니다)으로 정규화하고, 계획의 근거에 그 스냅샷 지문을 싣습니다. 그래서 상류의 `pqcota-ingest`와 `pqcota-provision`도 같은 규칙 묶음이어야 근거가 이력에서 찾힙니다.
 
 | pqcota | 상태 | 근거 |
 |---|---|---|
@@ -260,7 +262,7 @@ PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
   JCA 준비도가 `unknown`이 됩니다. 03 · 04 화면이 그런 노드를 「v0.10.6 JCA 수집 결과임을 확인할 수
   없습니다」로 알립니다(판을 단정하지는 않습니다).
 - **상류 이력 · 승인 · 생성까지 잇기**: `pqcota-ingest` · `pqcota-approve` · `pqcota-provision` · `pqcota-records`를 v0.11.0으로 둡니다.
-- **데모**: 검증한 조합인 다섯 리포 v0.11.0으로 고정합니다([데모 안내](demo/README.md)).
+- **데모**: 검증한 조합인 다섯 리포 v0.11.0으로 고정합니다([데모 안내](demo/README.ko.md)).
 - **운영 권고**: 상류 프로그램을 함께 운영한다면 다섯 리포를 v0.11.0의 같은 태그로 맞추고, 노드의 수집기와 `collector.jar`도
   함께 바꿉니다. 기록을 읽는 `pqcota-records`는 v0.11.0이 새 기록을 쓰기 전에 올립니다. 노드의 `pqcota-jvmscan`은 v0.10.7
   이상이어야 합니다. 그 전 판은 JVM이 둘 이상인 노드에서 결과를 여러 줄로 써서,
@@ -274,7 +276,7 @@ PQCOTA_APPROVAL_KEYS="reviewer-1=$PQCOTA_VERIFY_KEY" \
 
 여러 노드를 훑는 방법과 거버넌스 토폴로지는 [여정](docs/journey.md)에 있습니다.
 
-데모는 pqcota의 디스커버리 데모 위에 얹습니다. [demo/README.md](demo/README.md)를 보십시오.
+데모는 pqcota의 디스커버리 데모 위에 얹습니다. [demo/README.ko.md](demo/README.ko.md)를 보십시오.
 
 ## 라이선스
 
@@ -287,13 +289,12 @@ Copyright 2026 (주)에스앤티소프트 (SNT Soft Co., Ltd.). 저작권자는 
 - 프로덕션은 관리 노드 5대까지 무료
 - 그 이상은 계약: **kty@sntsoft.co.kr**
 
-자세한 것은 [LICENSING.md](LICENSING.md)에 있습니다. 기여하실 때는
-[CONTRIBUTING.md](CONTRIBUTING.md)를 먼저 읽어 주십시오([CLA](CLA.md)가 필요합니다).
-보안 취약점은 이슈가 아니라 [SECURITY.md](SECURITY.md)의 경로로 알려 주십시오.
+자세한 것은 [LICENSING.ko.md](LICENSING.ko.md)에 있습니다. 기여하실 때는
+[CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)를 먼저 읽어 주십시오([CLA](CLA.ko.md)가 필요합니다).
+보안 취약점은 이슈가 아니라 [SECURITY.ko.md](SECURITY.ko.md)의 경로로 알려 주십시오.
 
-> **English**: the contributor agreement is available in English at
-> [CLA.en.md](CLA.en.md). The rest of the documentation is in Korean; the code, its output
-> and the file formats are in English.
+> **문서의 말**: 문서는 영어가 기본이고 한국어는 짝 파일(`*.ko.md`)입니다. 두 판의 첫 줄이 서로를 가리킵니다. 코드 · 명령의
+> 출력 · 파일 형식은 영어입니다. CLA는 한국어 원문([CLA.ko.md](CLA.ko.md))이 우선합니다.
 
 기반 프로젝트 pqcota는 Apache-2.0이고, 귀속 고지는 [NOTICE](NOTICE)에 있습니다.
 

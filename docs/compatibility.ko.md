@@ -1,9 +1,11 @@
+[English](compatibility.md) · 한국어
+
 # pqcaton과 함께 쓰는 pqcota 판
 
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-[개요](../README.md) · [릴리스 노트](../RELEASE_NOTES.md) · [운영자 안내서](operator-guide.md)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [운영자 안내서](operator-guide.ko.md)
 
 pqcaton의 판마다 함께 쓰는 상류 [pqcota](https://github.com/randyinthedev-hash/pqcota)의 판입니다. **상류의 최신판을 쓰면 되는 것이
 아닙니다.** pqcaton은 관측 결과를 자기 안에 든 상류 라이브러리의 규칙 묶음으로 정규화하고, 계획의 근거에 그 스냅샷 지문을

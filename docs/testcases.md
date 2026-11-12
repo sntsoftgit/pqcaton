@@ -1,6 +1,6 @@
 # 테스트케이스: 인벤토리 거버넌스
 
-[개요](../README.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.md) · [설계](design.md) · **검증 기준** · [데모](../demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](journey.md) · [설계](design.md) · **검증 기준** · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 케이스 번호가 곧 테스트 파일 링크입니다. **그 대응은 `make check-cases`가 잽니다**
 (§M). 설계는 [design.md](design.md)에 있습니다.
@@ -463,7 +463,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 
 #### 운영자 안내서 (v0.23.0)
 
-[운영자 안내서](operator-guide.md)와 [영어판](operator-guide.en.md)의 명령은 시험이 실제로 돌린다.
+[운영자 안내서](operator-guide.ko.md)와 [operator-guide.md](operator-guide.md)의 명령은 시험이 실제로 돌린다.
 
 | TC | Given → When | Then |
 |---|---|---|
@@ -632,6 +632,21 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 > 그리고 ⏳·🔜 인데 테스트가 있는 것(표시가 낡았다는 뜻이다).
 > 여기에 더해 설정 자체가 틀린 것(IC-M11·M12)과 어느 쪽으로도 분류하지 않은 접두어의
 > 행(IC-M10)도 막는다.
+
+### DC. 문서의 짝과 링크 (`tools/checkdocs`) ✅
+
+문서는 영어가 기본(`x.md`)이고 한국어는 짝(`x.ko.md`)이다(pqcota와 같은 형상). 두 판이 따로 고쳐지면 한쪽만 낡고, 문서를
+옮기면 링크가 아무 표시 없이 끊긴다. 그래서 짝 · 링크 · 두 판의 사실을 기계가 잰다(`make check-docs`). 짝이 없어도 되는 문서는
+[`tools/checkdocs/single.txt`](../tools/checkdocs/single.txt)에 까닭과 함께 적는다.
+
+| TC | Given → When | Then |
+|---|---|---|
+| **[IC-DC1](../tools/checkdocs/main_test.go) ✅** | 짝의 첫 줄이 서로를 가리키고 링크 · 앵커 · 판 번호 · 케이스 ID · 셸 명령이 맞는 리포 | 통과한다. 주석 줄 · 줄 끝 주석은 빼고 `<…>` 자리 표시는 하나로 본다. single.txt의 문서는 짝이 없어도 된다 |
+| **[IC-DC2](../tools/checkdocs/main_test.go) ✅** | 없는 파일로의 링크 · 없는 제목의 앵커 · 코드 안의 링크 꼴 · 바깥 URL | 앞의 둘을 줄 번호와 함께 막고, 뒤의 둘은 보지 않는다 |
+| **[IC-DC3](../tools/checkdocs/main_test.go) ✅** | 한국어 판만 있음 · 영어 문서에 짝도 single.txt 항목도 없음 · 언어 전환 줄이 틀림 | 셋 다 막는다 |
+| **[IC-DC4](../tools/checkdocs/main_test.go) ✅** | 두 판의 판 번호 · 케이스 ID · 셸 명령이 다름 | **막는다.** 한쪽만 고친 판 번호나 명령이 남지 않는다 |
+| **[IC-DC5](../tools/checkdocs/main_test.go) ✅** | 한국어 문서가 영어 판을, 영어 문서가 한국어 판을 가리킴 | 막는다. 언어 전환 줄과 짝이 없는 문서로의 링크는 그대로 두고, 글자가 언어 이름이거나 파일 이름인 링크(일부러 다른 말의 판을 가리킴)는 받는다. single.txt에 ko로 적은 문서는 한국어 문서로 본다 |
+| [IC-DC6](../tools/checkdocs/main_test.go) ✅ | 영어 · 한국어 · 엠대시 · 괄호 · 강조 · 같은 제목 | 앵커를 GitHub의 규칙으로 센다(`a--b`, `-1` · `-2`) |
 
 ### V. 선언 형식과 자체 검사 (`pkg/inventory/decl`) ✅
 | TC | Given → When | Then |

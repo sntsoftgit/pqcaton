@@ -32,7 +32,7 @@ func TestOperatorGuideFlagsExist(t *testing.T) {
 	if !known["workspace"] || !known["no-browser"] {
 		t.Fatalf("could not read the flag list:\n%s", usage.String())
 	}
-	for _, guide := range []string{"operator-guide.md", "operator-guide.en.md"} {
+	for _, guide := range []string{"operator-guide.md", "operator-guide.ko.md"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "..", "docs", guide))
 		if err != nil {
 			t.Fatal(err)
@@ -92,7 +92,7 @@ func TestOperatorGuideInstallsTheLatestRelease(t *testing.T) {
 		t.Fatal("no release section in RELEASE_NOTES.md")
 	}
 	latest := string(m[1])
-	for _, guide := range []string{"operator-guide.md", "operator-guide.en.md"} {
+	for _, guide := range []string{"operator-guide.md", "operator-guide.ko.md"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "..", "docs", guide))
 		if err != nil {
 			t.Fatal(err)
@@ -123,7 +123,7 @@ var (
 	goModUp   = regexp.MustCompile(`(?m)^\s*github\.com/randyinthedev-hash/(pqcota[a-z-]*) (v\d+\.\d+\.\d+)`)
 )
 
-// IC-U144 — **판별 표(docs/compatibility.md)의 맨 위 줄은 지금 판이다.** 그 줄의 pqcaton 판(범위면 끝 판)은 릴리스 노트 맨 위
+// IC-U144 — **판별 표(docs/compatibility.ko.md, 영어 판과의 판 번호 일치는 checkdocs가 잰다)의 맨 위 줄은 지금 판이다.** 그 줄의 pqcaton 판(범위면 끝 판)은 릴리스 노트 맨 위
 // 절의 판과 같다. `go.mod`의 pqcota 계열 모듈은 모두 같은 판이고, 표의 고정한 pqcota 판은 그 판과 같다. 새 판을 내며 표를
 // 두면 사용자가 옛 조합을 따르고, 모듈 하나만 다른 판이면 상류가 검증하지 않은 조합이 된다.
 func TestCompatibilityTableIsCurrent(t *testing.T) {
@@ -137,7 +137,7 @@ func TestCompatibilityTableIsCurrent(t *testing.T) {
 	}
 	note := latestNote.FindSubmatch(read("RELEASE_NOTES.md"))
 	mods := goModUp.FindAllSubmatch(read("go.mod"), -1)
-	top := compatTop.FindSubmatch(read(filepath.Join("docs", "compatibility.md")))
+	top := compatTop.FindSubmatch(read(filepath.Join("docs", "compatibility.ko.md")))
 	if note == nil || len(mods) == 0 || top == nil {
 		t.Fatalf("could not read the latest note (%v), go.mod (%d pqcota modules) or the table's top row (%v)", note != nil, len(mods), top != nil)
 	}
@@ -159,7 +159,7 @@ func TestCompatibilityTableIsCurrent(t *testing.T) {
 	}
 	// 판을 정하는 자리들도 같은 판을 적는다.
 	// README는 맨 위 소개 · 사전 준비 · 맞는 조합 세 곳에서 판을 밝힌다.
-	readme := readmeUp.FindAllSubmatch(read("README.md"), -1)
+	readme := readmeUp.FindAllSubmatch(read("README.ko.md"), -1)
 	if len(readme) < 3 {
 		t.Errorf("README names the pqcota version in %d places, want the intro, the prerequisites and the matching-versions note", len(readme))
 	}
@@ -168,7 +168,7 @@ func TestCompatibilityTableIsCurrent(t *testing.T) {
 			t.Errorf("README names pqcota %s, but go.mod requires %s", m[1], pinned)
 		}
 	}
-	demo := demoUp.FindAllSubmatch(read(filepath.Join("demo", "README.md")), -1)
+	demo := demoUp.FindAllSubmatch(read(filepath.Join("demo", "README.ko.md")), -1)
 	if len(demo) < 2 {
 		t.Errorf("the demo guide does not name the pqcota version and the clone tag")
 	}

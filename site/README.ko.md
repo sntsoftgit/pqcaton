@@ -1,3 +1,5 @@
+[English](README.md) · 한국어
+
 # site: 공개 사이트
 
 `site/` 아래가 그대로 GitHub Pages로 올라갑니다([워크플로](../.github/workflows/pages.yml)).

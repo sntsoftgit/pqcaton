@@ -1,6 +1,6 @@
 # 여정
 
-[개요](../README.md) · [릴리스 노트](../RELEASE_NOTES.md) · **여정** · [설계](design.md) · [검증 기준](testcases.md) · [데모](../demo/README.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · **여정** · [설계](design.md) · [검증 기준](testcases.md) · [데모](../demo/README.ko.md) · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 이 문서는 관측부터 확정까지를 **처음부터 끝까지** 따라갑니다. **명령을 어떤 차례로 돌리고
 무엇을 넣는지도 여기 있습니다.** 왜 그렇게 만들었는지는 [설계](design.md)에 있습니다.
@@ -113,7 +113,7 @@ flowchart TB
 > 위 그림은 **명령 사용 절차**입니다. 화면(`pqcaton-ui`)은 같은 다섯 단계를 같은 파일과
 > 같은 관문으로 지납니다. 입력 파일만 주면 세션까지 화면이 만듭니다. 왜 그렇게 했는지는
 > [설계 「세션은 입력 파일에서 나옵니다」](design.md)에 있습니다. **명령의 출력은 영어이고,
-> 화면에 쓸 말은 한국어와 English 중에서 고릅니다**([CONTRIBUTING 「어느 말로 쓰나」](../CONTRIBUTING.md#어느-말로-쓰나)).
+> 화면에 쓸 말은 한국어와 English 중에서 고릅니다**([CONTRIBUTING 「어느 말로 쓰나」](../CONTRIBUTING.ko.md#어느-말로-쓰나)).
 
 **화면은 사용자가 준 파일만 엽니다.** 세션 파일이 없어도 됩니다. 아래 항목을 주면 화면이 세션까지
 만듭니다. 왜 그렇게 했는지는 [설계 §0](design.md)에 있습니다.
@@ -137,7 +137,7 @@ flowchart TB
 내보내는 자리가 없습니다.
 
 **프로덕션 5노드까지 기간 제한 없이 무료입니다.** [BUSL-1.1](../LICENSE)의 Additional Use
-Grant이고, 평가·개발·테스트는 규모 제한도 없습니다([라이선스 안내](../LICENSING.md)).
+Grant이고, 평가·개발·테스트는 규모 제한도 없습니다([라이선스 안내](../LICENSING.ko.md)).
 
 ### 보안팀이 먼저 묻는 것
 
@@ -376,7 +376,7 @@ stateDiagram-v2
 | 자산 스코프 거버넌스(리뷰 · 감사 · 정책 상속) | [`pkg/inventory/scope`](../pkg/inventory/scope) · `pqcaton-scope` | **끝** |
 | 사람이 쓰는 화면 | [`pkg/inventory/ui`](../pkg/inventory/ui) · `pqcaton-ui` | **끝**. 선언 · 암호 자산 스코프 · 대조 · 판정 · 인벤토리 조회 |
 
-**엔진도 화면도 모두 동작합니다.** [데모](../demo/README.md)가 pqcota의 디스커버리 데모 위에 그대로 얹혀
+**엔진도 화면도 모두 동작합니다.** [데모](../demo/README.ko.md)가 pqcota의 디스커버리 데모 위에 그대로 얹혀
 3-상태 대조와 거버넌스 토폴로지를 보여 줍니다.
 
 ---

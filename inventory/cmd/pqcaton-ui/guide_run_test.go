@@ -85,7 +85,7 @@ func TestOperatorGuideCommandsRun(t *testing.T) {
 			t.Fatalf("go %v: %v\n%s", b, err, out)
 		}
 	}
-	for _, guide := range []string{"operator-guide.md", "operator-guide.en.md"} {
+	for _, guide := range []string{"operator-guide.md", "operator-guide.ko.md"} {
 		t.Run(guide, func(t *testing.T) {
 			runGuide(t, filepath.Join("..", "..", "..", "docs", guide), bin, user)
 		})

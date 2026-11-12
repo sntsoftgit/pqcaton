@@ -1,3 +1,5 @@
+[English](CLA.md) · 한국어
+
 # 기여자 라이선스 동의 (CLA)
 
 **pqcaton 개인 기여자 라이선스 동의서 v1.0**
@@ -6,7 +8,7 @@
 동의다. **저작권을 넘기라는 것이 아니다.** 회사가 그 코드를 프로젝트의 라이선스로,
 Change Date 이후에는 Apache-2.0으로 낼 수 있도록 허락하는 것이고, 저작권은 당신에게 남는다.
 
-왜 필요한지는 [CONTRIBUTING](CONTRIBUTING.md#기여자-라이선스-동의cla)에 있다.
+왜 필요한지는 [CONTRIBUTING](CONTRIBUTING.ko.md#기여자-라이선스-동의cla)에 있다.
 
 ---
 
@@ -23,7 +25,7 @@ Change Date 이후에는 Apache-2.0으로 낼 수 있도록 허락하는 것이�
 저작물을 만들 수 있다.**
 
 **재라이선스 권리가 이 동의의 핵심이다.** 회사는 이 권리로 pqcaton을 BUSL-1.1로 배포하고,
-Change Date(릴리스일로부터 4년)에 Apache-2.0으로 전환한다(→ [LICENSING](LICENSING.md)).
+Change Date(릴리스일로부터 4년)에 Apache-2.0으로 전환한다(→ [LICENSING](LICENSING.ko.md)).
 
 ## 3. 특허 라이선스
 
@@ -81,5 +83,5 @@ I have read the CLA Document and I hereby sign the CLA
 > v2.0을 이 프로젝트에 맞춰 옮긴 것이며, 실제 분쟁에서의 해석은 준거법과 법원의 판단을
 > 따른다. 회사는 이 문안을 변호사 검토를 거쳐 갱신할 수 있고, 갱신 시 버전 번호가 오른다.
 >
-> **English version**: [CLA.en.md](CLA.en.md). 두 문안이 다르면 **한국어 원문을 따른다.**
+> **English version**: [CLA.md](CLA.md). 두 문안이 다르면 **한국어 원문을 따른다.**
 > 영문본은 같은 동의를 옮긴 것이지 별개의 동의가 아니다.

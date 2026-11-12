@@ -87,7 +87,8 @@ st_install() {
 	local mod
 	mod="$(cat "$WORK/module")"
 	mkdir -p "$WORK/docs/docs" "$WORK/empty" "$WORK/gmc" "$WORK/bin"
-	for f in go.mod README.md docs/operator-guide.md docs/operator-guide.en.md; do
+	# 목록은 docs.go의 publicDocs와 같다(영어 기본 문서와 한국어 짝).
+	for f in go.mod README.md README.ko.md docs/operator-guide.md docs/operator-guide.ko.md; do
 		git -C "$REPO" show "$COMMIT:$f" > "$WORK/docs/$f"
 	done
 	"$WORK/rc" commands -repo "$WORK/docs" -version "$VERSION" | tee "$WORK/commands"

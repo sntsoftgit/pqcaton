@@ -1,10 +1,12 @@
+[English](operator-guide.md) · 한국어
+
 # pqcaton 운영자 안내서
 
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
 이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.28.0 기준입니다.
-영어판은 [operator-guide.en.md](operator-guide.en.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
+영어판은 [operator-guide.md](operator-guide.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
 합니다. 관측은 운영자가 설치한 Ansible과 수집기로 실행합니다. 만든 플레이북을 운영 기계에 적용하는 일은 화면이 하지 않고
@@ -108,7 +110,7 @@ install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
   노드에서는 root 권한(`become`)으로 실행하므로 그 계정에 sudo 권한이 있어야 합니다. 처음 접속하는 노드는 미리 `ssh`로
   한 번 접속해 호스트 키를 받아 둡니다. Windows 노드를 관측하려면 `ansible.windows` 컬렉션도 필요합니다.
 - **수집기.** 작업 폴더의 `collectors` 폴더(또는 `-collectors <폴더>`)에 상류 릴리스의 수집기를 아래 모양으로 둡니다. 판은
-  pqcota v0.11.0으로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다.
+  pqcota v0.11.0으로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.ko.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다.
   이 화면은 읽은 수집 결과를 v0.11.0 규칙 묶음(`pqcota-enrich/v3`, v0.10.7과 같음)으로 정규화합니다. v0.10.7 전의 `pqcota-jvmscan`은 JVM이 둘 이상인 노드에서 결과를
   여러 줄로 써서, 그 노드가 든 적재 요청 전체가 거절됩니다. 그 전 판의 `pqcota-jvmscan` · `collector.jar`는 provider별 PQC 서비스 목록을 싣지 않아
   JCA 준비도가 `unknown`이 되고, 03 · 04 화면이 그 노드를 「v0.10.6 JCA 수집 결과임을 확인할 수 없습니다」로 알립니다
@@ -633,7 +635,7 @@ v0.25는 상류 pqcota v0.10.6의 규칙 묶음(`pqcota-enrich/v3`)으로 정규
 
 1. 화면을 끄고 `-recover-status`가 `no unfinished transactions`를 찍는지 확인한 뒤, 작업 폴더를 [7절](#7-백업과-복원)대로
    백업합니다.
-2. **상류를 함께 올립니다.** 상류 다섯 리포를 v0.10.6으로 올리고(pqcaton 판마다 함께 쓰는 판은 [판별 표](compatibility.md)), 노드의 수집기와 `collector.jar`도 v0.10.6으로 바꿉니다.
+2. **상류를 함께 올립니다.** 상류 다섯 리포를 v0.10.6으로 올리고(pqcaton 판마다 함께 쓰는 판은 [판별 표](compatibility.ko.md)), 노드의 수집기와 `collector.jar`도 v0.10.6으로 바꿉니다.
    상류 DB는 올리기 전에 백업합니다(상류 v0.10.6의 안내). v0.10.5 이하의 상류 이력과 섞으면 계획의 근거를 찾지 못합니다.
    상류를 아직 올리지 않는다면 pqcaton도 v0.24.1에 둡니다.
 3. [2절](#2-설치)의 `go install`로 바이너리를 바꾸고 화면을 띄웁니다.

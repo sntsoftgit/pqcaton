@@ -1,3 +1,5 @@
+English · [한국어](CLA.ko.md)
+
 # Contributor License Agreement (CLA)
 
 **pqcaton Individual Contributor License Agreement v1.0**
@@ -7,9 +9,9 @@ SNT Soft Co., Ltd. (the "Company"). **It does not ask you to assign your copyrig
 grants the Company permission to ship your code under the project's license, and under
 Apache-2.0 after the Change Date. The copyright stays with you.
 
-Why this is needed is explained in [CONTRIBUTING](CONTRIBUTING.md) (Korean).
+Why this is needed is explained in [CONTRIBUTING](CONTRIBUTING.md).
 
-> **This English text is a translation.** The Korean [CLA.md](CLA.md) is the original, and
+> **This English text is a translation.** The Korean [CLA.ko.md](CLA.ko.md) is the original, and
 > where the two differ the Korean text governs. Both describe the same agreement.
 
 ---
@@ -94,5 +96,5 @@ agreement** is used instead of this individual one. Please write to **kty@sntsof
 > for the governing law and the courts. The Company may revise this text after review by
 > counsel; the version number goes up when it does.
 >
-> **Korean original**: [CLA.md](CLA.md). Where this translation and the Korean text differ,
+> **Korean original**: [CLA.ko.md](CLA.ko.md). Where this translation and the Korean text differ,
 > the Korean text governs.

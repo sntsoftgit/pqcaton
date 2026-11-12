@@ -75,7 +75,7 @@ func readGuide(t *testing.T, name string) guideDoc {
 // 같고, 오류 표의 코드는 화면이 내는 오류 코드 전부와 같다. 화면 문구가 「운영자 안내서의 「…」 절」로 가리키는 이름은
 // 그 판에 실제로 있는 절이다.
 func TestOperatorGuidesAgree(t *testing.T) {
-	ko, en := readGuide(t, "operator-guide.md"), readGuide(t, "operator-guide.en.md")
+	ko, en := readGuide(t, "operator-guide.ko.md"), readGuide(t, "operator-guide.md")
 	if len(ko.headings) == 0 || len(ko.headings) != len(en.headings) {
 		t.Fatalf("sections: ko %d, en %d", len(ko.headings), len(en.headings))
 	}

@@ -1,6 +1,8 @@
+[English](README.md) · 한국어
+
 # 데모: pqcota 위에 얹는 거버넌스
 
-[개요](../README.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](../docs/journey.md) · [설계](../docs/design.md) · [검증 기준](../docs/testcases.md) · **데모** · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
+[개요](../README.ko.md) · [릴리스 노트](../RELEASE_NOTES.md) · [여정](../docs/journey.md) · [설계](../docs/design.md) · [검증 기준](../docs/testcases.md) · **데모** · [구조 그림](https://www.sntsoft.co.kr/pqcaton/)
 
 📊 **실행 전 예상 결과**는 [`expected-output/`](expected-output/)에 있습니다. 확장 리포트와 거버넌스 토폴로지 샘플, 그리고 차이점 설명이 들어 있습니다.
 
@@ -57,7 +59,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 
 `ui.sh`는 **실제 배치와 같은 자리에** 화면을 띄웁니다. 03 관측은 화면이 떠 있는 기계에서 Ansible을 부르므로, 화면은
 노드에 닿는 기계에서 돌아야 합니다. 데모에서 그 기계는 `pqcota-ctl`입니다. 운영자는 자기 기계에서 SSH 터널로 화면을
-봅니다([운영자 안내서 5절](../docs/operator-guide.md#5-다른-기계에서-보기)). 데모의 `pqcota-ctl`에는 SSH 서버가 없어서,
+봅니다([운영자 안내서 5절](../docs/operator-guide.ko.md#5-다른-기계에서-보기)). 데모의 `pqcota-ctl`에는 SSH 서버가 없어서,
 그 터널을 `docker exec` 중계가 대신합니다.
 
 **포트를 공개하지 않습니다.** 화면에는 로그인이 없어서 루프백 주소에서만 연결을 받습니다. 중계는 이 기계의
@@ -81,7 +83,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 
 데모의 수집기는 pqcota 리포에서 옆 폴더 replace로 빌드됩니다. 그래서 03 화면은 그 수집기들을 「확인 불가」로 보이고,
 기본으로는 관측을 시작하지 않습니다. `ui.sh`는 이것을 알고 화면을 `-allow-unverified-collectors`로 띄웁니다. 03 화면에
-파일마다 판정 줄과 허용 상태가 보이고, 허용한 사실이 `/work/ui.log`에 남습니다([운영자 안내서 2절](../docs/operator-guide.md#2-설치)의 「수집기의 판」).
+파일마다 판정 줄과 허용 상태가 보이고, 허용한 사실이 `/work/ui.log`에 남습니다([운영자 안내서 2절](../docs/operator-guide.ko.md#2-설치)의 「수집기의 판」).
 
 작업 폴더는 처음 한 번만 채웁니다. 그 뒤로는 화면에서 한 일이 그대로 남고, `ui.sh stop`도 폴더는 지우지 않습니다.
 `down.sh`로 환경을 내리면 컨테이너와 함께 없어집니다. `Ctrl+C`는 중계만 닫으므로, 화면은 `ui.sh`를 다시 실행하면
@@ -166,7 +168,7 @@ dind 안의 데몬은 `docker exec`로 띄운 프로세스에 umask 0000을 물�
 - **pqcota는 v0.11.0으로 받습니다.** 상류 데모는 다섯 리포를 나란히 받아 한 이미지로 묶으므로, 다섯 리포를
   모두 같은 태그로 이 리포 옆에 받습니다. 다른 판을 받으면 상류가 다른 규칙 묶음으로 이력을 쌓아, 이 리포가
   만든 계획의 근거를 상류 이력에서 찾지 못할 수 있습니다. pqcaton 판마다 함께 쓰는 판은
-  [판별 표](../docs/compatibility.md)에 있습니다.
+  [판별 표](../docs/compatibility.ko.md)에 있습니다.
 
   ```bash
   for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.11.0 https://github.com/randyinthedev-hash/$r; done
@@ -176,7 +178,7 @@ dind 안의 데몬은 `docker exec`로 띄운 프로세스에 umask 0000을 물�
   `go build`가 계약을 스스로 받아옵니다. 형제 체크아웃도 `replace`도 필요 없습니다.
 - **Graphviz(`dot`)는 이 기계에 없어도 됩니다.** 토폴로지 SVG는 `pqcota-ctl` 컨테이너 안에서
   그립니다. 없으면 DOT 원문만 회수하고 나머지는 그대로 됩니다
-  ([사전 준비](../README.md)).
+  ([사전 준비](../README.ko.md)).
 
 ## 바꿔 보기
 
