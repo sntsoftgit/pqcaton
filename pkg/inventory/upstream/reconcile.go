@@ -37,10 +37,11 @@ var Timeout = 10 * time.Second
 // 있어 싣지 않고 분류만 싣는다.
 var ErrUnreachable = errors.New("pqcota history: unreachable")
 
-// ErrRevert — 빠진 스냅샷이 모두 pqcota 이력에 **있지만 최신이 아니다.** 이전 정책으로 되돌리는 경우가 이렇다: pqcota는 같은
-// 내용의 스냅샷을 다시 적재해도 새로 만들지 않아 최신이 움직이지 않는다(pqcota-inventory#1). 그 뒤 다른 정책으로 다시 적재한
-// 경우도 같다. 어느 쪽이든 대조가 통과하지 않으므로 활성화하지 않는다. ErrMissing을 함께 감싼다.
-var ErrRevert = errors.New("the snapshots exist but are not the latest for their node (reverting to an earlier policy cannot be reconciled yet)")
+// ErrRevert — 빠진 스냅샷이 모두 pqcota 이력에 **있지만 최신이 아니다.** 과거에 같은 결과를 적재한 적은 있지만 지금 노드의
+// 최신은 다른 정책의 결과라는 뜻이다. 이전 정책으로 되돌리면서 아직 그 정책으로 다시 적재하지 않은 경우가 이렇다. 대조가
+// 통과하지 않으므로 활성화하지 않는다. 그 정책으로 다시 적재하면 마지막에 적재한 상태가 노드의 최신이 되어 통과한다
+// (pqcota v0.13.1부터, IC-S26). ErrMissing을 함께 감싼다.
+var ErrRevert = errors.New("the snapshots exist but are not the latest for their node (re-ingest the results under this policy)")
 
 // ErrOrg — pqcota 이력의 조직이 판정 조직이나 판정 세션의 조직과 다르다. 조회하기 전에 멈춘다. 다른 조직의 이력으로 정책
 // 회차를 열 수 없다.

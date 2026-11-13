@@ -119,8 +119,8 @@ var (
 		KO: "결과 폴더에 pqcota 이력과 대조할 관측 결과가 없어 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다.",
 		EN: "The results folder holds no observations to reconcile with the pqcota history, so no policy was activated or adopted as the baseline. The files are unchanged."}
 	tRefusedUpstreamRevert = T{
-		KO: "이 정책으로 만든 결과가 pqcota 이력에 있지만 노드의 최신 적재 결과가 아닙니다. 이전 정책으로 되돌리면 이렇게 됩니다: pqcota는 같은 내용을 다시 적재해도 최신으로 올리지 않아 대조할 수 없습니다. 이 판은 이전 정책 복귀를 막습니다. 파일은 그대로입니다.",
-		EN: "Results under this policy are in the pqcota history but are not the latest ingest of their nodes. Reverting to an earlier policy looks like this: pqcota does not make a re-ingest of the same content the latest, so it cannot be reconciled. This version blocks reverting to an earlier policy. The files are unchanged."}
+		KO: "pqcota의 최신 적재 결과가 이 정책과 다릅니다. 이 정책으로 결과를 다시 적재한 뒤 활성화하십시오. 파일은 그대로입니다.",
+		EN: "The latest ingest in the pqcota history differs from this policy. Re-ingest the results under this policy, then activate it. The files are unchanged."}
 	tRefusedScopeSame           = T{KO: "02에서 확정한 정책이 이미 활성 정책과 같습니다(note · 공백만 다를 수 있습니다). 활성화할 것이 없어 아무것도 쓰지 않았습니다.", EN: "The policy finalized in 02 is already the active policy (only notes or spacing may differ). There is nothing to activate, so nothing was written."}
 	tRefusedScopeNotFinalized   = T{KO: "02에서 확정한 정책이 없거나, 확정한 뒤 asset-scope.csv가 바뀌었거나, 읽을 수 없어 활성화하지 않았습니다. 02에서 확정하십시오.", EN: "There is no policy finalized in 02, asset-scope.csv changed after it was finalized, or it cannot be read, so nothing was activated. Finalize it in 02."}
 	tActivateHead               = T{KO: "02에서 확정한 정책을 활성화할 수 있습니다", EN: "The policy finalized in 02 can be activated"}

@@ -259,8 +259,10 @@ func TestActivationWritesTheReconciliation(t *testing.T) {
 	})
 }
 
-// IC-U199 — **이전 정책 복귀는 막는다.** A로 적재한 뒤 B로 다시 적재한 pqcota 이력에서 A를 활성화하려 하면, A의 결과가 이력에
-// 있어도 노드의 최신이 아니므로 409 `upstream-revert`이고 아무것도 쓰지 않는다. 운영자 진술로 풀 길이 없다.
+// IC-U199 — **이전 정책 복귀는 그 정책으로 다시 적재하기 전에는 막는다.** A로 적재한 뒤 B로 다시 적재한 pqcota 이력에서 A를
+// 활성화하려 하면, A의 결과가 이력에 있어도 노드의 최신이 아니므로 409 `upstream-revert`이고 아무것도 쓰지 않는다. 화면은
+// 다시 적재한 뒤 활성화하라고 안내한다. 운영자 진술로 풀 길은 없다. A로 다시 적재한 뒤의 통과는 pkg/inventory/upstream의
+// Postgres 대조 시험이 잰다.
 func TestRevertingToAnEarlierPolicyIsBlocked(t *testing.T) {
 	s, _ := keyReady(t)
 	observed(t, s.results, "web", "libssl.so.3", "/usr/sbin/nginx")
@@ -276,7 +278,7 @@ func TestRevertingToAnEarlierPolicyIsBlocked(t *testing.T) {
 	before := snapshotDir(t, dir)
 	w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{"reingested": {"on"}})
 	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedUpstreamRevert) ||
-		!strings.Contains(w.Body.String(), "이전 정책 복귀를 막습니다") {
+		!strings.Contains(w.Body.String(), "이 정책으로 결과를 다시 적재한 뒤 활성화하십시오") {
 		t.Fatalf("reverting = %d, want 409 %s", w.Code, ui.RefusedUpstreamRevert)
 	}
 	sameDir(t, before, snapshotDir(t, dir))

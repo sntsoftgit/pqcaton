@@ -89,6 +89,16 @@ carry their version and content hash (v0.14.0).
   load and a prune take a per-node lock together.
 - **The v0.14.0 release collectors are "verified" on 03.** Replace the three collectors on the nodes and `collector.jar` with the
   v0.14.0 release assets.
+- **An activation that goes back to an earlier policy can be done after re-ingesting the results under that policy.** Before
+  that it is still 409 (`upstream-revert`), and the screen says "Re-ingest the results under this policy, then activate it". The
+  reconciliation rule (compare with the node's latest) is unchanged. It became possible because from upstream v0.13.1 the state
+  loaded last is the node's latest.
+
+### What was built
+
+- New case IC-S26: on a real pqcota Postgres history loaded A → B → A, the latest of each node is A, B and then the first A;
+  loading A again does not create a new snapshot body; then A's reconciliation passes and B is `ErrRevert`; another
+  organization's history does not find it.
 
 ---
 

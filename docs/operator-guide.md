@@ -393,10 +393,10 @@ required).
    **Changing `scope-assets.csv` by hand without an activation record** locks 05 and blocks saving and finalizing. Then
    restore the previous policy file or follow the steps above.
 
-   **This version blocks an activation that goes back to an earlier policy.** When the history already holds a snapshot
-   with the same fingerprint, pqcota does not create a new snapshot on re-ingest and the node's latest snapshot does not
-   change (pqcota-inventory#1). So a re-ingest under an earlier policy cannot be reconciled with the pqcota history, and 05
-   refuses it with `upstream-revert`. Rounds that v0.27.x or earlier opened on an operator statement (`operator-statement`)
+   **An activation that goes back to an earlier policy is done after re-ingesting the results under that policy.** Even when
+   the results of the earlier policy are in the pqcota history, the reconciliation does not pass while the node's latest
+   ingest is another policy's, and 05 refuses it with `upstream-revert`. Re-ingesting the results under that policy makes the
+   state loaded last the node's latest, and the activation can be done (pqcota v0.13.1 or later). Rounds that v0.27.x or earlier opened on an operator statement (`operator-statement`)
    are still read as past records, and 05 shows "It was not reconciled with the pqcota history" under "The policy change
    that opened this round".
 3. **03 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS, SSH or WinRM),
@@ -619,6 +619,8 @@ history does not need to be loaded again either.
 2. Replace the three collectors on the nodes and `collector.jar` with the v0.14.0 release assets, as in [section
    2](#2-installation). 03 refuses v0.13.0 collectors as "does not match".
 3. Stop the screen and replace the binary with the `go install` of [section 2](#2-installation).
+4. **An activation that goes back to an earlier policy can be done after re-ingesting the results under that policy.** Before
+   that re-ingest it is still refused with `upstream-revert`.
 
 ### v0.29.0 to v0.29.1
 
@@ -822,7 +824,7 @@ screen.
 | `upstream-org` | The connected pqcota history, the organization of the judgments and the review session's organization are not the same, so nothing was looked up. Nothing was written | Use the pqcota history of the organization of the judgments. Another organization's history cannot activate a policy or adopt a baseline |
 | `upstream-missing` | In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy. Nothing was written | Re-ingest pqcota with this policy using the command shown in 05, then try again |
 | `upstream-empty` | The results folder holds no observations to reconcile with the pqcota history. Nothing was written | Observe in 03, then try again |
-| `upstream-revert` | Results under this policy are in the pqcota history but are not the latest ingest of their nodes; reverting to an earlier policy looks like this. Nothing was written | This version blocks reverting to an earlier policy (until pqcota-inventory#1 is resolved) |
+| `upstream-revert` | The latest ingest in the pqcota history differs from this policy; results under this policy are in the history but are not the latest of their nodes. Nothing was written | Re-ingest the results under this policy, then activate it |
 | `scope-same` | The policy finalized in 02 is already the active policy (only notes or spacing may differ), so there is nothing to activate. Nothing was written | Nothing to do |
 | `scope-not-finalized` | There is no policy finalized in 02, `asset-scope.csv` changed after it was finalized, or it cannot be read, so nothing was activated | Finalize it in 02. A hand-edited file is not activated |
 | `ruleset-changed` | The session was opened under a different upstream ruleset, or records none, so nothing was saved or finalized, to keep the two from mixing | Press "Start a new round under the current rules" at the top of the review screen (the command is `pqcaton-decide new-round`). Earlier conclusions are carried only as reference values, so judge each item again |

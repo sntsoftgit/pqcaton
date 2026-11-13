@@ -70,8 +70,8 @@ const (
 	RefusedUpstreamMissing = "upstream-missing"
 	// RefusedUpstreamEmpty — 결과 폴더에 대조할 근거가 없어 열지 않았다(409).
 	RefusedUpstreamEmpty = "upstream-empty"
-	// RefusedUpstreamRevert — 이 정책으로 만든 결과가 pqcota 이력에 있지만 노드의 최신이 아니다. 이전 정책 복귀가 이렇게 보이며,
-	// pqcota 이력으로 대조할 수 없어 막는다(409).
+	// RefusedUpstreamRevert — 이 정책으로 만든 결과가 pqcota 이력에 있지만 노드의 최신이 아니다(이전 정책 복귀가 이렇게 보인다).
+	// 이 정책으로 결과를 다시 적재하면 최신이 되어 풀린다(409).
 	RefusedUpstreamRevert = "upstream-revert"
 	// RefusedScopeSame — 02에서 확정한 정책이 이미 활성 정책과 같아 활성화할 것이 없다. 아무것도 쓰지 않았다(409).
 	RefusedScopeSame = "scope-same"
