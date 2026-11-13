@@ -5,7 +5,10 @@ English · [한국어](operator-guide.ko.md)
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.29.1.
+> **`main` is under development for v0.30.0.** It takes in upstream pqcota v0.14.0 (the ruleset stays `pqcota-enrich/v4`). For
+> operation use the [v0.29.1 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.29.1) with pqcota v0.13.0.
+
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.30.0.
 The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -52,7 +55,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 **The binary.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.29.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.30.0
 ```
 
 **Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
@@ -64,8 +67,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.29.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.29.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.30.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.30.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -81,7 +84,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.29.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.30.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -120,9 +123,9 @@ machine. The screen checks both before it starts and, when something is missing,
   and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
   with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
 - **Collectors.** Put the collectors of the upstream release in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this. Keep them on pqcota v0.13.0 (the pqcota version for each pqcaton version is in the
+  <folder>`), shaped like this. Keep them on pqcota v0.14.0 (the pqcota version for each pqcaton version is in the
   [version table](compatibility.md)), and the `collector.jar` put on the nodes on the same version.
-  This screen normalizes the collection results it reads with the v0.13.0 ruleset (`pqcota-enrich/v4`). From v0.12.0
+  This screen normalizes the collection results it reads with the v0.14.0 ruleset (`pqcota-enrich/v4`). From v0.12.0
   `pqcota-jvmscan` reports the JVMs that run the same application as one deployment, and from v0.13.0 `pqcota-nodescan` and
   `pqcota-netcap` give a user service the app key `user@<uid>.service/<unit>` and give each edge to the application that
   opened the connection. A
@@ -147,7 +150,7 @@ and `windows-amd64` folders.
 
 ```bash
 mkdir -p ~/pqcaton/collectors && cd ~/pqcaton/collectors
-for f in pqcota-linux-amd64.tar.gz collector.jar SHA256SUMS; do curl -fsSLO "https://github.com/randyinthedev-hash/pqcota/releases/download/v0.13.0/$f"; done
+for f in pqcota-linux-amd64.tar.gz collector.jar SHA256SUMS; do curl -fsSLO "https://github.com/randyinthedev-hash/pqcota/releases/download/v0.14.0/$f"; done
 sha256sum -c --ignore-missing SHA256SUMS
 tar -xzf pqcota-linux-amd64.tar.gz && mv pqcota-linux-amd64 linux-amd64
 ```
@@ -156,14 +159,11 @@ tar -xzf pqcota-linux-amd64.tar.gz && mv pqcota-linux-amd64 linux-amd64
 reads only the Go build information. "Verified" is only a build whose collector itself is at the pinned version (tag, commit, no modification) and whose
 dependencies carry no replace either.
 
-**Every upstream collector today, the release assets included, is "cannot be verified".** The release assets, like a
-build of your own next to the sibling folders, take their dependencies as replaces of those folders. A pqcota-common of
-another version next to it does not show in the build information, so the screen does not count such a build as verified.
-A release asset shows as "declared version: v0.13.0 · actual source: local replace (devel) · cannot be verified", and a
-build of your own from a tag checkout as "collector source v0.13.0 verified · replaced dependency sources cannot be
-verified". Once the archives match `SHA256SUMS`, or you have checked that the two repositories next to it are at the same
-tag, start with the option below. Upstream has been asked to carry version information
-([pqcota-discovery#1](https://github.com/randyinthedev-hash/pqcota-discovery/issues/1)).
+**The release assets of upstream v0.14.0 are "verified".** From v0.14.0 the upstream release builds the sibling modules from
+the same tag's modules instead of the folders next to it, so the build information keeps the collector itself and its
+dependencies at v0.14.0 with no replace. A build of your own next to the sibling folders (as the upstream demo does) is still
+"cannot be verified": a collector built itself through a replace shows "actual source: local replace (devel)", and one built
+from a tag checkout shows "collector source v0.14.0 verified · replaced dependency sources cannot be verified".
 
 - **Does not match.** When another version shows, or the collectors mix versions, the observation does not start, and no
   option lets it through. Replace them with collectors rebuilt at that version.
@@ -171,8 +171,9 @@ tag, start with the option below. Upstream has been asked to carry version infor
   replace from another repository as the upstream demo does, built with `go build -buildvcs=false`, built from a modified tree, or
   files with no build information. To use them knowingly, start the screen with `-allow-unverified-collectors`. The
   allowance and the list of files show on the 03 screen and on standard error, and are not kept in the workspace.
-- **`collector.jar`.** Upstream does not put a version in it, so the screen only warns that its version was not checked
-  and the observation still starts. When it carries a version that differs, the observation does not start.
+- **`collector.jar`.** The v0.14.0 JAR carries its version in its manifest (`Implementation-Version`), and the screen checks
+  it. When it differs, the observation does not start. A JAR that carries no version only gets a warning that its version
+  was not checked, and the observation still starts.
 
 **Getting the approval key ready.** Signing new approvals on the 06 screen needs an approval key. By default the screen
 looks for `pqcaton/approval.key` in the user configuration folder (`~/.config/pqcaton/` on Linux,
@@ -181,7 +182,7 @@ and it is used without any flag. The screen neither creates this file nor change
 every signature. The last line puts the public key alone in `approval.pub`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.13.0
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.14.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
@@ -604,6 +605,20 @@ cut). Send the diagnostics file and the files you kept. The diagnostics file hol
 contents.
 
 ## 9. Upgrading
+
+### v0.29.1 to v0.30.0
+
+(In progress) v0.30.0 takes in upstream pqcota v0.14.0. The ruleset stays `pqcota-enrich/v4` and the state format and the
+session and plan formats are the same as v0.29.1, so the workspace opens as it is **without a ruleset change round**. The pqcota
+history does not need to be loaded again either.
+
+1. Upgrade the upstream tools (`pqcota-ingest`, `pqcota-cbom-ingest`, `pqcota-prune`, `pqcota-approve` and `pqcota-provision`)
+   to v0.14.0 together. **The tools that load into and prune the same pqcota history must be at the same version.** From
+   upstream v0.13.1 a load and a prune take a per-node lock together, so an older loader or prune tool left behind can still
+   overlap with the new ones.
+2. Replace the three collectors on the nodes and `collector.jar` with the v0.14.0 release assets, as in [section
+   2](#2-installation). 03 refuses v0.13.0 collectors as "does not match".
+3. Stop the screen and replace the binary with the `go install` of [section 2](#2-installation).
 
 ### v0.29.0 to v0.29.1
 

@@ -74,6 +74,24 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
+## v0.30.0: Takes in upstream pqcota v0.14.0 (in progress)
+
+**Goal**: use upstream pqcota v0.14.0. The ruleset (`pqcota-enrich/v4`), the contract and the database tables are the same as
+v0.13.0, so the pqcota history and the sessions and plans of v0.29.x are used as they are. This version holds only what the two
+upstream changes make possible: a node's latest snapshot is now the state loaded last (v0.13.1), and the released collectors now
+carry their version and content hash (v0.14.0).
+
+### What changes for the receiving side
+
+- **pqcota: v0.14.0** ([version table](docs/compatibility.md)). Keep the five upstream repositories together at v0.14.0. No ruleset
+  change round is needed.
+- **Upgrade the upstream tools that load into and prune the same pqcota history together, to the same version.** From v0.13.1 a
+  load and a prune take a per-node lock together.
+- **The v0.14.0 release collectors are "verified" on 03.** Replace the three collectors on the nodes and `collector.jar` with the
+  v0.14.0 release assets.
+
+---
+
 ## v0.29.1: Fixes two defects in the reap and the finish after an observation (2026-11-13)
 
 **Apache-2.0 conversion: 2030-11-13** (four years from the release date)
