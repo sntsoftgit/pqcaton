@@ -607,7 +607,7 @@ contents.
 
 ### v0.29.0 to v0.29.1
 
-v0.29.1 is a patch that fixes a defect of the reap after an observation (there since v0.27.0). The state format, the session and plan
+v0.29.1 is a patch that fixes a defect of the reap after an observation (there since v0.27.0) and one that accepted a new observation on top of one still finishing (there since v0.24.0). The state format, the session and plan
 formats, the ruleset and the pqcota used with it are the same as v0.29.0, so the workspace opens as it is. Stop the screen and replace
 the binary with the `go install` of [section 2](#2-installation). If 03's "Processes left behind" shows something left from before this
 version, check it as the screen says and then end it.

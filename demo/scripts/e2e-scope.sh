@@ -542,15 +542,19 @@ before = set(os.listdir(runs)) if os.path.isdir(runs) else set()
 req = urllib.request.Request(base + "/observe/run?lang=en", data=urllib.parse.urlencode(fields).encode(),
     headers={"Origin": base, "Content-Type": "application/x-www-form-urlencoded"})
 op.open(req).read()
-# 끝남은 화면이 다시 시작 양식을 내놓을 때다(실행 중에는 내놓지 않는다). 그때 기록을 읽는다. 기록만 보면 회수가 끝나기
-# 전의 상태(뒤에 「회수 필요」로 바뀔 수 있다)를 읽을 수 있다.
+# 끝남은 두 가지가 다 될 때다: 실행 기록(manifest)이 더는 running이 아니고, 화면이 다시 시작 양식을 내놓는다. 화면은 실행이
+# 끝나자마자(정리 · 회수 전) 시작 양식을 내놓지만, 기록은 정리와 회수가 끝난 뒤 마지막으로 한 번 쓰이고 그 전까지 running이다.
+# 그래서 기록이 running이 아닐 때 읽은 상태가 최종이다(회수가 끝내지 못했으면 그때 「회수 필요」로 적힌다).
 deadline = time.time() + 600
 while time.time() < deadline:
     time.sleep(2)
     new = sorted(set(os.listdir(runs)) - before) if os.path.isdir(runs) else []
-    if not new or 'action="/observe/run"' not in op.open(base + "/observe?lang=en").read().decode():
+    if not new:
         continue
-    st = json.load(open(os.path.join(runs, new[-1], "manifest.json"))).get("state")
+    mf = os.path.join(runs, new[-1], "manifest.json")
+    st = json.load(open(mf)).get("state") if os.path.exists(mf) else "running"
+    if st == "running" or 'action="/observe/run"' not in op.open(base + "/observe?lang=en").read().decode():
+        continue
     if st != want:
         sys.exit("observation %s ended %s, want %s" % (new[-1], st, want))
     print("   03: observation %s ended %s" % (new[-1], st))

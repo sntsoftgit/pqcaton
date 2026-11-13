@@ -78,7 +78,7 @@ type RunCurrent struct {
 
 // CanStart — 시작 단추를 낼 수 있는가. 막는 점검이 남았거나 이미 돌고 있으면 낼 수 없다.
 func (r ObserveRun) CanStart() bool {
-	if !r.Writable || (r.Status != nil && r.Status.State == RunRunning) {
+	if !r.Writable || (r.Status != nil && (r.Status.State == RunRunning || r.Status.State == RunFinishing)) {
 		return false
 	}
 	for _, c := range r.Checks {
@@ -191,6 +191,9 @@ const (
 	RunIncomplete RunState = "incomplete"
 	// RunInterrupted — 화면이 실행 도중에 끝났다. 감독이나 다음 시작이 남은 것을 정리했다.
 	RunInterrupted RunState = "interrupted"
+	// RunFinishing — 프로세스는 끝났고 노드 정리 · 프로세스 회수 · 마지막 기록을 하는 중이다. 화면에만 보이고 기록에는 쓰지
+	// 않는다. 이 동안은 새 관측을 받지 않는다.
+	RunFinishing RunState = "finishing"
 	// RunStuck — 이 실행의 프로세스를 끝내지 못했다. 아무것도 지우거나 옮기지 않았고, 새 관측을 시작하지 않는다.
 	RunStuck RunState = "stuck"
 )
@@ -268,6 +271,8 @@ func (s RunStatus) Text(l Lang) string {
 		return tRunIncomplete.F(l, len(s.Missing), s.Received)
 	case RunInterrupted:
 		return tRunInterrupted.In(l)
+	case RunFinishing:
+		return tRunFinishing.In(l)
 	case RunStuck:
 		return tRunStuck.F(l, s.StuckWhy, s.StagingPaths())
 	}

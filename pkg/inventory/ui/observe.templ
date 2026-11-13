@@ -84,11 +84,11 @@ templ runChecks(l Lang, r ObserveRun) {
 	</ul>
 }
 
-// runStatus — 실행 상태와 로그. **돌고 있는 동안에만 몇 초마다 다시 받는다** — 끝난 조각에는 받을 까닭이 없다.
+// runStatus — 실행 상태와 로그. **돌거나 마무리하는 동안에만 몇 초마다 다시 받는다** — 끝난 조각에는 받을 까닭이 없다.
 templ runStatus(l Lang, csrf string, st *RunStatus) {
 	if st == nil {
 		<div id="run-status"></div>
-	} else if st.State == RunRunning {
+	} else if st.State == RunRunning || st.State == RunFinishing {
 		<div id="run-status" class="run-status" hx-get={ RunPath + "?" + LangParam + "=" + string(l) } hx-trigger="every 2s" hx-swap="outerHTML" role="status" aria-live="polite">
 			@runStatusBody(l, csrf, st)
 		</div>

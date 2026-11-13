@@ -74,9 +74,9 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
-## v0.29.1: Fixes the reap after an observation missing a process that had just started (2026-11-12)
+## v0.29.1: Fixes two defects in the reap and the finish after an observation (2026-11-13)
 
-**Apache-2.0 conversion: 2030-11-12** (four years from the release date)
+**Apache-2.0 conversion: 2030-11-13** (four years from the release date)
 
 **Goal**: fix a defect in the cleanup after an observation. No feature is added. The state format, the session and plan formats, the
 ruleset (`pqcota-enrich/v4`) and the pqcota used with it are the same as v0.29.0, so the workspace opens as it is.
@@ -88,6 +88,16 @@ ruleset (`pqcota-enrich/v4`) and the pqcota used with it are the same as v0.29.0
   cleanup as finished only when two searches in a row, a wait apart, are both empty. A process that appears late is ended and checked
   again, and one that is still there or keeps appearing after a fixed number of rounds is not counted as a success: the run closes as
   "Reclaim needed". The end of an observation can take about 0.3 seconds longer.
+- **An observation ends only when its cleanup, reap and last record are done.** Meanwhile 03 shows "The observation has ended and the
+  node cleanup and process reclaim are finishing" and hides the start form, and a new observation request is 409 (`run-busy`). When it
+  is done, the result and the start form come back together. An unwritten last record does not count as finished: the run shows
+  "Reclaim needed" with a class of reason (such as no space left on the disk), and a new observation is 409 (`run-not-ready`).
+  Restarting the screen lets the start-up recovery finish it, and a recovery that cannot write either is blocked the same way.
+- **The raw text of a failed record write (paths and such) is not shown on the screen, in the status or in the run log; only its class
+  is.** This holds for the last record and also for the record written at the start, the record written just before the results swap
+  and the record the supervisor writes about itself. When the supervisor cannot add the processes left behind to its record, that is no
+  longer dropped either: it goes to the run log with its class. The error wording of work other than record writes (starting the node
+  cleanup, removing the secret files, reading the results) is not changed in this version.
 
 ### What was fixed
 
@@ -95,9 +105,22 @@ ruleset (`pqcota-enrich/v4`) and the pqcota used with it are the same as v0.29.0
   cleanup command sent a child off in its own session and ended at once, the child's environment could read empty in the middle of
   `exec`, so its run marker did not show. The reap ended on that one search as "nothing left", and the process could stay on the
   controller. It came to light when IC-U135 failed now and then on GitHub CI (the v0.29.0 release commit too).
+- **A new observation could be accepted on top of one that was still finishing. The defect had been there since v0.24.0.** When the
+  observation process ended, the screen at once changed the state to "done" or "failed" and offered the start form again, while the
+  node cleanup, the reap, the swap of the results and the last record came after that. A new observation sent in that gap was accepted,
+  so two runs could overlap, and the run record still said "running" meanwhile. It came to light while building this version's demo end
+  to end check.
 
 ### What was built
 
+- New case IC-U203: holding the reap open makes the finishing gap; meanwhile there is no start form, a new observation is 409 and the
+  record says running, and only after the record is written with its final state do the start form and new observations come back.
+- New case IC-U204: an injected failure of the last record write (the raw error carries a path and a secret); the run ends but shows
+  "Reclaim needed" with only a safe reason, there is no start form, a new observation is 409 and the record on disk stays running; a
+  restart whose recovery cannot write is blocked the same way, and a restart after the disk is writable again finishes the run.
+- New case IC-U205: an injected failure in each of the record written at the start, the record written just before the swap and the
+  supervisor's record (the raw error carries a path and a fake secret); the screen, the status and the run log carry no raw text but
+  the class, the run ends failed with the current results unchanged, and the next observation is accepted.
 - New case IC-U202: injected search results measure, deterministically, empty → late → ended, nothing there, a process that appears
   again every time it is ended, and a search error.
 - The demo end to end (IC-U152) runs two real observations from 03 (one failing with a node stopped, one succeeding with it back).
@@ -109,8 +132,12 @@ ruleset (`pqcota-enrich/v4`) and the pqcota used with it are the same as v0.29.0
 
 ### What was checked
 
-- IC-U202 failed in all four cases against the reap code of v0.29.0 and passed in all four with this version. IC-U135 passed 100 times
+- IC-U202 failed in all four cases against the reap code of v0.29.0 and passed in all four with this version. IC-U203 failed against
+  the old check (by the "running" state only) and passed with this version, also 20 times under race. IC-U135 passed 100 times
   in a row on Linux and 20 times under race.
+- The full vet (`go vet ./...`) passed on Linux, and a cross vet for macOS and Windows confirmed that the tests compile for them too.
+  Before, the tests did not compile for Windows (one observation process test called a Unix-only helper). That test moved to a
+  Unix-only file; the product code is unchanged.
 - The check results are reported with the summary of the release gate (`make release-check`) when asking to publish.
 
 ---

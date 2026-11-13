@@ -343,11 +343,12 @@ func supervise(dir, ansible string) int {
 		return 3
 	}
 	start, err := procStart(os.Getpid())
-	if err == nil {
-		err = writeDurable(filepath.Join(dir, supervisorFile), supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start})
-	}
 	if err != nil {
-		say("pqcaton: the supervisor could not record itself, so nothing was started: %v", err)
+		say("pqcaton: the supervisor could not read its own start time, so nothing was started")
+		return 3
+	}
+	if why := recordSupervisor(dir, supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start}); why != "" {
+		say("pqcaton: the supervisor could not record itself (%s), so nothing was started", why)
 		return 3
 	}
 
@@ -401,7 +402,17 @@ func supervise(dir, ansible string) int {
 	// Ansible이 끝나도 표지를 가진 자식(세션을 떼어 나간 것 포함)이 남을 수 있다. 다 끝낸다.
 	stuck, err := reapRun(mine, stopGrace)
 	if why := reaped(stuck, err); why != "" {
-		_ = writeDurable(filepath.Join(dir, supervisorFile), supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start, Stuck: pidsOf(stuck), StuckWhy: why})
+		if w := recordSupervisor(dir, supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start, Stuck: pidsOf(stuck), StuckWhy: why}); w != "" {
+			// 이 기록은 덧붙이는 정보다. 「회수 필요」의 판단은 이 기록에 기대지 않는다: 화면(finishRun)과 다음 시작의
+			// 복구(recoverRuns)가 실행 표지로 프로세스를 다시 찾는다. 화면이 사라졌으면 실행 로그 파일에 직접 남긴다.
+			line := "pqcaton: the supervisor could not add the processes left behind to its record (" + w +
+				"); the screen and its next start look for them again"
+			if orphaned {
+				appendRunLog(dir)(line)
+			} else {
+				say("%s", line)
+			}
+		}
 		say("pqcaton: %s", why)
 		if orphaned {
 			markStuck(dir, m, stuck, why)
@@ -435,13 +446,35 @@ func finishOrphaned(dir string, m runManifest) {
 		_ = os.Rename(filepath.Join(dir, "next"), filepath.Join(dir, "partial"))
 	}
 	m.State, m.Ended = ui.RunInterrupted, time.Now()
-	_ = writeManifest(dir, m)
+	writeUnattended(dir, m)
+}
+
+// writeSupervisorRecord: 감독이 자기 기록(supervisor.json)을 쓰는 함수. 시험이 쓰기 실패를 넣는다.
+var writeSupervisorRecord = func(dir string, rec supervisorRecord) error {
+	return writeDurable(filepath.Join(dir, supervisorFile), rec)
+}
+
+// recordSupervisor: 감독의 기록을 쓴다. 쓰지 못하면 오류의 분류(writeFailure)를 돌려주고, 비면 썼다. **오류의 원문(경로
+// 등)은 돌려주지 않는다.** 감독의 출력은 화면이 실행 로그로 그대로 보인다.
+func recordSupervisor(dir string, rec supervisorRecord) string {
+	if err := writeSupervisorRecord(dir, rec); err != nil {
+		return writeFailure(err)
+	}
+	return ""
+}
+
+// writeUnattended: 화면 없이(감독) 기록을 쓴다. 쓰지 못하면 막을 화면이 없으므로 안전한 분류만 실행 로그에 남긴다. 디스크의
+// 기록은 「실행 중」으로 남아 다음 시작의 복구(recoverRuns)가 마무리한다.
+func writeUnattended(dir string, m runManifest) {
+	if err := writeFinalManifest(dir, m); err != nil {
+		appendRunLog(dir)("pqcaton: the run record could not be written (" + writeFailure(err) + "); the next start of the screen recovers it")
+	}
 }
 
 // markStuck: 「회수 필요」로 적는다. 인벤토리 · 받던 것 · 노드 정리는 그대로 둔다(남은 프로세스가 아직 쓸 수 있다).
 func markStuck(dir string, m runManifest, stuck []markedProc, why string) {
 	m.State, m.Stuck, m.StuckProcs, m.StuckWhy = ui.RunStuck, pidsOf(stuck), stuckProcs(stuck), why
-	_ = writeManifest(dir, m)
+	writeUnattended(dir, m)
 	appendRunLog(dir)("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 }
 

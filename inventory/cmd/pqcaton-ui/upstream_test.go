@@ -304,7 +304,8 @@ func (c *countingOpen) open(dsn, org string) (upstream.Store, string, error) {
 // 0620) · 하드 링크가 둘 · 다른 변수 · 따옴표 · 두 번 적기 · 빈 값 · PQCOTA_DSN 줄 없음은 모두 거절하고 화면이 시작하지
 // 않는다. 셸 문법(`$(…)` · 백틱)은 평가하지 않고 값 그대로이며, 값 안의 `=`는 첫 `=`에서만 나눠 그대로 남는다. 사용자 설정
 // 폴더가 링크로 작업 폴더 안을 가리키면 실제 경로로 보아 거절한다. 어느 오류에도 값이 없다. 화면이 띄우는 실제 자식
-// 프로세스(감독 · Ansible의 관측과 정리)의 환경에는 PQCOTA_DSN이 없고, 화면 표준오류 · 관측 로그에도 값이 없다.
+// 프로세스(감독 · Ansible의 관측과 정리)의 환경에는 PQCOTA_DSN이 없고, 화면 표준오류 · 관측 로그에도 값이 없다(관측 프로세스는
+// 유닉스에서만 띄우므로 그 부분은 upstream_unix_test.go에 있다).
 func TestPqcotaEnvFileIsReadSafely(t *testing.T) {
 	const secret = "postgres://ro:s3cretpw@db.internal/pqcota"
 	s, _ := newServer(t)
@@ -432,22 +433,6 @@ func TestPqcotaEnvFileIsReadSafely(t *testing.T) {
 			t.Fatal(err)
 		}
 		refused(t, "directory")
-	})
-	t.Run("observation processes do not get the value", func(t *testing.T) {
-		// 화면 · 감독 · Ansible로 이어지는 실제 자식 프로세스의 환경을 본다. 화면의 환경에 PQCOTA_DSN이 있어도 가짜
-		// ansible-playbook(관측과 정리 모두)은 그것을 받지 못해야 한다.
-		t.Setenv(upstream.DSNEnv, secret)
-		for mode, want := range map[string]string{"ok": "OBSERVE DSN_ENV=none", "fail": "CLEANUP DSN_ENV=none"} {
-			s := runReady(t, mode)
-			if w := postForm(t, s, ui.RunPath, url.Values{"window": {"7"}}); w.Code != http.StatusSeeOther {
-				t.Fatalf("%s: start = %d", mode, w.Code)
-			}
-			st := waitRun(t, s)
-			if !strings.Contains(st.Log, want) || strings.Contains(st.Log, "DSN_ENV=set") || strings.Contains(st.Log, "s3cretpw") {
-				t.Errorf("%s: a child process got PQCOTA_DSN, or the log does not say:\n%s", mode, st.Log)
-			}
-		}
-		t.Setenv(upstream.DSNEnv, "")
 	})
 	t.Run("the screen starts from the file and its children do not get the value", func(t *testing.T) {
 		oldServe, oldOpen, oldUp, oldStop := serveHTTP, openBrowser, openUpstream, stopSignal

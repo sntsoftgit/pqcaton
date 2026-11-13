@@ -43,6 +43,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"unicode"
 
@@ -86,6 +87,9 @@ var ansibleCommand = "ansible-playbook"
 type runner struct {
 	mu  sync.Mutex
 	job *runJob
+	// unrecorded: 시작 때 복구가 기록을 쓰지 못한 실행(ID → 안전한 분류). 있으면 새 관측을 받지 않는다. 디스크의 기록은 옛
+	// 상태로 남아 다음 시작이 다시 복구한다.
+	unrecorded map[string]string
 }
 
 type runJob struct {
@@ -102,6 +106,9 @@ type runJob struct {
 	detached bool
 	// done: 프로세스가 끝나고 결과 처리와 정리까지 마치면 닫힌다.
 	done chan struct{}
+	// unrecorded: 마지막 기록을 쓰지 못한 까닭. 있으면 done이 닫혀도 「회수 필요」로 보이고 새 관측을 받지 않는다. 디스크의
+	// 기록은 「실행 중」으로 남아 있으므로, 화면을 다시 시작하면 시작 때의 복구가 그 자리를 마무리한다.
+	unrecorded string
 }
 
 // runManifest: 실행 하나의 기록. 작업 자리에 남고, 지금 세대면 results/에도 같은 것이 있다.
@@ -147,16 +154,45 @@ func (r *runner) status() *ui.RunStatus {
 		return nil
 	}
 	m := j.m
+	// 프로세스는 끝났지만 정리 · 회수 · 마지막 기록이 아직이면 「마무리 중」이다. 그동안은 시작 양식을 보이지 않는다.
+	if m.State != ui.RunRunning && !j.closed() {
+		m.State = ui.RunFinishing
+	}
+	if why, ok := r.unrecorded[m.ID]; ok && j.unrecorded == "" {
+		m.State = ui.RunStuck
+		if m.StuckWhy == "" {
+			m.StuckWhy = "the recovered run record could not be written (" + why + "); restart the screen to recover it"
+		}
+	}
+	if j.unrecorded != "" {
+		m.State = ui.RunStuck
+		if m.StuckWhy == "" {
+			m.StuckWhy = "the final run record could not be written (" + j.unrecorded + "); restart the screen to recover it"
+		}
+	}
 	return &ui.RunStatus{ID: m.ID, State: m.State, Started: m.Started, Ended: m.Ended, Received: m.Received,
 		Exit: m.Exit, Window: m.Window, Dropped: j.dropped, Missing: m.Missing, NodeCleanup: m.NodeCleanup, Stuck: m.Stuck,
 		StuckWhy: m.StuckWhy, StuckProcs: procRecords(m.StuckProcs),
 		Log: strings.Join(j.log, "\n")}
 }
 
+// running: 관측이 돌거나 마무리 중이다. 실행은 done이 닫힐 때 끝난다.
 func (r *runner) running() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.job != nil && r.job.m.State == ui.RunRunning
+	return r.job != nil && !r.job.closed()
+}
+
+// closed: 이 실행이 다 끝났는가. done은 프로세스 종료 → 노드 정리 · 프로세스 회수 → 마지막 기록 다음에야 닫힌다(모든 길에서).
+// 그래서 「돌고 있는가」는 기록의 상태가 아니라 이것으로 가린다. 상태는 프로세스가 끝나자마자 done · failed로 바뀌지만,
+// 그 뒤의 정리와 회수가 끝나기 전에 새 관측을 받으면 두 실행이 겹친다.
+func (j *runJob) closed() bool {
+	select {
+	case <-j.done:
+		return true
+	default:
+		return false
+	}
 }
 
 // appendLocked: 로그 한 줄. 비밀번호를 가리고 화면과 파일에 함께 남긴다.
@@ -326,13 +362,32 @@ func (s *server) stuckRuns() ([]string, []ui.ProcInfo) {
 	if s.results == "" {
 		return nil, nil
 	}
-	ents, err := os.ReadDir(s.runsDir())
-	if err != nil {
-		return nil, nil
-	}
 	var out []string
 	var procs []ui.ProcInfo
+	// 지금 화면의 실행이 「회수 필요」인데 디스크에는 그렇게 적지 못했으면(마지막 기록 실패) 그것도 센다. 폴더를 못 읽어도 센다.
+	seen := map[string]bool{}
+	if st := s.run.status(); st != nil && st.State == ui.RunStuck {
+		out = append(out, fmt.Sprintf("%s: %v %s", st.ID, st.Stuck, st.StuckWhy))
+		procs = append(procs, stuckInfo(st.StuckProcs, st.Stuck)...)
+		seen[st.ID] = true
+	}
+	s.run.mu.Lock()
+	for id, why := range s.run.unrecorded {
+		if !seen[id] {
+			out = append(out, fmt.Sprintf("%s: the recovered run record could not be written (%s)", id, why))
+			seen[id] = true
+		}
+	}
+	s.run.mu.Unlock()
+	sort.Strings(out)
+	ents, err := os.ReadDir(s.runsDir())
+	if err != nil {
+		return out, procs
+	}
 	for _, e := range ents {
+		if seen[e.Name()] {
+			continue
+		}
 		if m := readManifest(filepath.Join(s.runsDir(), e.Name()), e.Name()); e.IsDir() && m.State == ui.RunStuck {
 			out = append(out, fmt.Sprintf("%s: %v %s", m.ID, m.Stuck, m.StuckWhy))
 			procs = append(procs, stuckInfo(procRecords(m.StuckProcs), m.Stuck)...)
@@ -355,8 +410,11 @@ func hasAll(dir string, names ...string) bool {
 
 // ── 실행 ────────────────────────────────────────────────────────────────────
 
-// errRunBusy: 이미 관측이 돌고 있다.
+// errRunBusy: 이미 관측이 돌고 있거나 마무리 중이다.
 var errRunBusy = errors.New("an observation is already running")
+
+// errRunStuck: 지난 실행이 「회수 필요」다(프로세스가 남았거나 마지막 기록을 쓰지 못했다). 화면을 다시 시작해야 한다.
+var errRunStuck = errors.New("the last observation needs reclaiming")
 
 // runsDir: 실행 자리들. results/ 옆(작업 폴더 모드면 작업 폴더의 observations/)이다.
 //
@@ -371,9 +429,13 @@ func (s *server) runsDir() string { return filepath.Join(filepath.Dir(s.results)
 func (s *server) startRun(window int) error {
 	r := &s.run
 	r.mu.Lock()
-	if r.job != nil && r.job.m.State == ui.RunRunning {
+	if r.job != nil && !r.job.closed() {
 		r.mu.Unlock()
 		return errRunBusy
+	}
+	if len(r.unrecorded) > 0 || (r.job != nil && (r.job.unrecorded != "" || r.job.m.State == ui.RunStuck)) {
+		r.mu.Unlock()
+		return errRunStuck
 	}
 	id, err := runID()
 	if err != nil {
@@ -420,8 +482,8 @@ func (s *server) startRun(window int) error {
 		"jar_present": isFile(filepath.Join(s.collectors, "collector.jar")), "netcap_window": window, "run_id": id,
 	})
 	// 기록을 먼저 쓴다. 인벤토리를 쓴 뒤 서버가 죽어도 다음 시작이 이 자리를 「돌던 것」으로 알아본다.
-	if err := writeManifest(j.dir, j.m); err != nil {
-		return fail(err)
+	if err := writeStartManifest(j.dir, j.m); err != nil {
+		return fail(errors.New("the run record could not be written (" + writeFailure(err) + ")"))
 	}
 	for _, f := range []struct {
 		name string
@@ -512,7 +574,7 @@ func (s *server) finishRun(j *runJob) {
 			j.logFile = nil
 		}
 		r.mu.Unlock()
-		_ = writeManifest(j.dir, m)
+		s.writeFinal(j, m)
 		close(j.done)
 		return
 	}
@@ -539,7 +601,7 @@ func (s *server) finishRun(j *runJob) {
 				j.logFile = nil
 			}
 			r.mu.Unlock()
-			_ = writeManifest(j.dir, m)
+			s.writeFinal(j, m)
 			close(j.done)
 			return
 		}
@@ -593,14 +655,14 @@ func (s *server) promote(j *runJob, files []string) (bool, []string) {
 		j.m.Swapping = true
 		pre := j.m
 		r.mu.Unlock()
-		err = writeManifest(j.dir, pre)
+		err = writeSwapManifest(j.dir, pre)
 	}
 	if err == nil {
 		err = swapDirs(next, s.results)
 	}
 	if err != nil {
 		_ = os.Rename(next, filepath.Join(j.dir, "partial"))
-		return false, []string{"pqcaton: the results could not become current, so the earlier results stay: " + err.Error()}
+		return false, []string{"pqcaton: the results could not become current (" + writeFailure(err) + "), so the earlier results stay"}
 	}
 	notes := []string{fmt.Sprintf("pqcaton: %d result files are now the current results", len(files))}
 	r.mu.Lock()
@@ -702,11 +764,73 @@ func (s *server) closeRun(j *runJob) {
 		j.logFile = nil
 	}
 	r.mu.Unlock()
-	if isDir(j.dir) {
-		_ = writeManifest(j.dir, m)
-	}
+	s.writeFinal(j, m)
 	close(j.done)
 }
+
+// writeFinalManifest: 마지막 기록을 쓰는 함수. 시험이 쓰기 실패를 넣는다.
+var writeFinalManifest = writeManifest
+
+// writeStartManifest · writeSwapManifest: 시작할 때와 결과를 바꾸기 직전에 기록을 쓰는 함수. 시험이 쓰기 실패를 넣는다.
+// 둘 다 쓰지 못하면 오류의 분류(writeFailure)만 실행 로그에 남기고 그 실행은 「실패」로 끝난다. 그 뒤의 마지막 기록은
+// writeFinal의 규칙을 따른다.
+var writeStartManifest, writeSwapManifest = writeManifest, writeManifest
+
+// writeFinal: 실행의 마지막 기록을 쓴다. **쓰지 못하면 끝난 것으로 치지 않는다.** done은 닫히지만(화면이 기다리다 멈추지
+// 않게) 그 실행은 「회수 필요」로 보이고, 새 관측은 받지 않는다(stuckRuns · startRun). 디스크에는 「실행 중」 기록이 남아,
+// 화면을 다시 시작하면 시작 때의 복구가 마무리한다. 실행 자리가 없어진 것도 쓰지 못한 것이다.
+func (s *server) writeFinal(j *runJob, m runManifest) {
+	err := errRunFolderGone
+	if isDir(j.dir) {
+		err = writeFinalManifest(j.dir, m)
+	}
+	if err == nil {
+		return
+	}
+	why := writeFailure(err)
+	r := &s.run
+	r.mu.Lock()
+	j.unrecorded = why
+	if r.job == j {
+		r.appendLocked("pqcaton: the final run record could not be written (" + why + "); no new observation starts until the screen is restarted, which recovers it")
+	}
+	r.mu.Unlock()
+}
+
+// recordRecovered: 시작 때 복구가 바꾼 기록을 쓴다(writeFinal과 같은 규칙). 쓰지 못하면 그 실행을 「회수 필요」로 세어 새 관측을
+// 받지 않고, 디스크의 옛 기록은 그대로 두어 다음 시작이 다시 복구한다.
+func (s *server) recordRecovered(dir string, m runManifest, logf func(string)) bool {
+	if err := writeFinalManifest(dir, m); err != nil {
+		why := writeFailure(err)
+		s.run.mu.Lock()
+		if s.run.unrecorded == nil {
+			s.run.unrecorded = map[string]string{}
+		}
+		s.run.unrecorded[m.ID] = why
+		s.run.mu.Unlock()
+		logf("pqcaton: the recovered run record could not be written (" + why + "); no new observation starts until the screen is restarted")
+		return false
+	}
+	return true
+}
+
+// writeFailure: 기록 쓰기 오류를 화면과 로그에 보일 안전한 분류로. 오류의 원문(경로 등)은 보이지 않는다.
+func writeFailure(err error) string {
+	switch {
+	case errors.Is(err, syscall.ENOSPC), errors.Is(err, syscall.EDQUOT):
+		return "no space left on the disk"
+	case errors.Is(err, fs.ErrPermission):
+		return "permission denied"
+	case errors.Is(err, syscall.EROFS):
+		return "read-only file system"
+	case errors.Is(err, fs.ErrNotExist), errors.Is(err, errRunFolderGone):
+		return "the run folder is gone"
+	}
+	return "the write failed"
+}
+
+// errRunFolderGone: 마지막 기록을 쓸 실행 자리가 없어졌다.
+var errRunFolderGone = errors.New("the run folder is gone")
 
 // collectorOf: 결과 파일의 종류(이름 끝)와 그 파일을 낸 수집기.
 var collectorOf = map[string]string{
@@ -889,8 +1013,9 @@ func (s *server) recoverRuns() {
 		case m.State == ui.RunDone && m.PreviousPending:
 			if err := finishSwap(dir); err == nil {
 				m.PreviousPending = false
-				_ = writeManifest(dir, m)
-				logf("pqcaton: the earlier results are now kept in previous/")
+				if s.recordRecovered(dir, m, logf) {
+					logf("pqcaton: the earlier results are now kept in previous/")
+				}
 			}
 		case m.State == ui.RunRunning || m.State == ui.RunStuck || invErr == nil:
 			waitSupervisor(dir, logf)
@@ -908,7 +1033,7 @@ func (s *server) recoverRuns() {
 			stuck, err := reapMarked(mark, stopGrace)
 			if why := reaped(stuck, err); why != "" {
 				m.State, m.Stuck, m.StuckProcs, m.StuckWhy = ui.RunStuck, pidsOf(stuck), stuckProcs(stuck), why
-				_ = writeManifest(dir, m)
+				s.recordRecovered(dir, m, logf)
 				logf("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 				break
 			}
@@ -931,7 +1056,7 @@ func (s *server) recoverRuns() {
 					cleaned, why := runCleanup(dir, m.ID, logf)
 					if why != "" {
 						m.State, m.StuckWhy = ui.RunStuck, why
-						_ = writeManifest(dir, m)
+						s.recordRecovered(dir, m, logf)
 						logf("pqcaton: " + why + "; nothing was cleaned up. Stop them, then restart the screen")
 						break
 					}
@@ -946,7 +1071,7 @@ func (s *server) recoverRuns() {
 				logf("pqcaton: interrupted when the screen stopped; the inventory was removed")
 			}
 			removeRunSecrets(dir)
-			_ = writeManifest(dir, m)
+			s.recordRecovered(dir, m, logf)
 		}
 		if last == nil || m.Started.After(last.m.Started) {
 			j := &runJob{m: m, dir: dir, done: make(chan struct{})}

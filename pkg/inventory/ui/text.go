@@ -1120,6 +1120,9 @@ var (
 	tRunIncomplete = T{
 		KO: "결과가 오지 않았거나 맞지 않는 자리 %d곳이 있어 지금 결과로 쓰지 않았습니다. 받은 파일 %d개는 진단용으로 따로 두었습니다",
 		EN: "Some results did not arrive or do not check out (places: %d), so this run was not used as the current results; what arrived is kept aside for diagnosis (files: %d)"}
+	tRunFinishing = T{
+		KO: "관측은 끝났고, 노드 정리와 프로세스 회수를 마무리하고 있습니다. 끝나면 결과가 보이고 새 관측을 시작할 수 있습니다.",
+		EN: "The observation has ended and the node cleanup and process reclaim are finishing. The result shows, and a new observation can start, when this is done."}
 	tRunInterrupted = T{
 		KO: "지난 관측은 화면이 도중에 끝나 중단됐습니다. 남은 실행을 끝냈고, 접근 비밀이 담긴 인벤토리를 지웠고, 지금 결과는 그대로입니다",
 		EN: "The last observation was interrupted when the screen stopped. What was still running was stopped, the inventory with the access secrets was removed, and the current results are unchanged"}

@@ -127,6 +127,10 @@ func (s *server) runStart(w http.ResponseWriter, r *http.Request) {
 			s.refuse(w, r, http.StatusConflict, ui.RefusedRunBusy, back, nil)
 			return
 		}
+		if errors.Is(err, errRunStuck) {
+			s.refuse(w, r, http.StatusConflict, ui.RefusedRunNotReady, back, nil)
+			return
+		}
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, err)
 		return
 	}

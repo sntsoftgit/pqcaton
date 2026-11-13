@@ -599,7 +599,7 @@ func runChecks(l Lang, r ObserveRun) templ.Component {
 	})
 }
 
-// runStatus — 실행 상태와 로그. **돌고 있는 동안에만 몇 초마다 다시 받는다** — 끝난 조각에는 받을 까닭이 없다.
+// runStatus — 실행 상태와 로그. **돌거나 마무리하는 동안에만 몇 초마다 다시 받는다** — 끝난 조각에는 받을 까닭이 없다.
 func runStatus(l Lang, csrf string, st *RunStatus) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -626,7 +626,7 @@ func runStatus(l Lang, csrf string, st *RunStatus) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		} else if st.State == RunRunning {
+		} else if st.State == RunRunning || st.State == RunFinishing {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<div id=\"run-status\" class=\"run-status\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

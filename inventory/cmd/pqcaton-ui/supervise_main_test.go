@@ -17,6 +17,7 @@ import (
 // 시험 대신 감독을 돈다.
 func TestMain(m *testing.M) {
 	if len(os.Args) == 4 && os.Args[1] == superviseFlag {
+		beforeSupervise()
 		os.Exit(supervise(os.Args[2], os.Args[3]))
 	}
 	if len(os.Args) == 2 && testModes[os.Args[1]] != nil {
@@ -34,6 +35,9 @@ func TestMain(m *testing.M) {
 	}
 	os.Exit(m.Run())
 }
+
+// beforeSupervise: 감독으로 다시 뜬 시험 바이너리가 감독을 돌기 전에 부른다. 플랫폼별 시험 파일이 채운다(IC-U205).
+var beforeSupervise = func() {}
 
 // testModes: 시험이 이 시험 바이너리를 다른 모양의 프로세스로 띄울 때 쓰는 모드(플랫폼별 시험 파일이 더 채운다).
 // -test-sleep은 오래 도는 프로세스다. /bin/sleep과 달리 플랫폼 바이너리가 아니라 macOS에서도 환경(표지)이 읽힌다.
