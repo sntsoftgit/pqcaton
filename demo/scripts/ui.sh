@@ -14,7 +14,15 @@
 # 127.0.0.1:8765에 잇는다. 컨테이너 밖에서 연결을 받는 자리는 하나도 생기지 않는다.
 #
 # 전제: pqcota/demo/scripts/{up,demo}.sh와 ./demo/scripts/extend.sh가 끝난 상태(선언은 extend.sh 2/8이 만든다).
-#       이 기계에 docker · python3, 그리고 Go. Go가 없으면 linux용 pqcaton-ui를 PQCATON_BIN_DIR로 준다.
+#       이 기계에 docker · python3, 그리고 Go. Go가 없으면 linux용 pqcaton-ui와 이 기계용 collectors를 PQCATON_BIN_DIR로 준다.
+#
+# **수집기는 상류 공식 릴리스 자산만 쓴다.** 먼저 준비 도구로 받아 확인해 둔다(태그는 go.mod가 고정한 판이고, 체크섬 ·
+# release manifest · 출처 증명을 모두 확인한다. gh 로그인이 필요하다). 대상은 pqcota-ctl 컨테이너의 OS · 아키텍처로 명시한다
+# (보통 linux-amd64, Apple Silicon의 Docker는 linux-arm64):
+#   go run ./tools/collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-<판>
+# 이 스크립트는 아무것도 내려받지 않는다. 화면을 띄울 때마다 그 폴더를 다시 확인하고(파일마다 해시 · 판 · 커밋 · 출처 증명),
+# 통과해야 작업 폴더의 collectors로 바꿔 넣는다. 확인하지 못하면 아무것도 바꾸지 않고 멈춘다. 다른 길(상류 소스 빌드 ·
+# -allow-unverified-collectors)은 없다. 폴더는 PQCATON_COLLECTORS로 바꿀 수 있다.
 #
 # 쓰는 법:
 #   ./demo/scripts/ui.sh         화면을 띄우고(이미 떠 있으면 그대로 쓴다) 중계를 연다. Ctrl+C는 중계만 닫는다.
@@ -39,6 +47,9 @@ DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
 ORG=demo-corp
 LOG=/work/ui.log
 PORT="${PQCATON_UI_PORT:-8765}"
+# 수집기: go.mod가 고정한 상류 판의 공식 릴리스 자산을 준비 도구(tools/collectors fetch)로 받아 둔 폴더.
+PIN="$(awk '$1=="github.com/randyinthedev-hash/pqcota-discovery"{print $2}' "$REPO_DIR/go.mod")"
+COLLECTORS="${PQCATON_COLLECTORS:-$HOME/.cache/pqcaton-demo/collectors-$PIN}"
 
 docker inspect "$CTL" >/dev/null 2>&1 || { echo "❌ no $CTL — run pqcota/demo/scripts/{up,demo}.sh first"; exit 1; }
 
@@ -89,6 +100,70 @@ install_bin() {
   fi
 }
 
+# container_target: 화면과 Ansible이 도는 컨테이너의 OS · 아키텍처(준비 도구의 대상 이름, 예: linux-arm64).
+container_target() {
+  local os arch
+  os="$(docker exec "$CTL" uname -s | tr '[:upper:]' '[:lower:]')"
+  case "$(docker exec "$CTL" uname -m)" in
+    x86_64|amd64)  arch=amd64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) arch="$(docker exec "$CTL" uname -m)" ;;
+  esac
+  echo "$os-$arch"
+}
+
+# verify_collectors: 준비한 수집기 폴더를 쓰기 직전에 다시 확인한다(「준비 완료」 표시를 믿지 않는다). 받지 않는다.
+# 먼저 준비 폴더의 대상(provenance/TARGET)이 컨테이너의 OS · 아키텍처와 같은지 본다. 다르면 「exec format error」가 나기
+# 전에 거절한다(Apple Silicon의 Docker는 linux/arm64다).
+verify_collectors() {
+  [ -n "$PIN" ] || { echo "❌ cannot read the pinned upstream version from go.mod"; return 1; }
+  TARGET="$(container_target)"
+  if [ ! -d "$COLLECTORS" ]; then
+    echo "❌ no prepared collectors at $COLLECTORS"
+    echo "   fetch the official $PIN release for $CTL ($TARGET) first:"
+    echo "   (cd $REPO_DIR && go run ./tools/collectors fetch -arch $TARGET -out $COLLECTORS)"
+    return 1
+  fi
+  local prepared
+  prepared="$(cat "$COLLECTORS/provenance/TARGET" 2>/dev/null || true)"
+  echo "   collectors: prepared for ${prepared:-?} · $CTL is ${TARGET/-//}"
+  if [ "$prepared" != "${TARGET/-//}" ]; then
+    echo "❌ the prepared collectors are for ${prepared:-an unknown target}, but $CTL is ${TARGET/-//}; fetch them with -arch $TARGET"
+    return 1
+  fi
+  if [ -n "${PQCATON_BIN_DIR:-}" ] && [ -x "$PQCATON_BIN_DIR/collectors" ]; then
+    "$PQCATON_BIN_DIR/collectors" verify -arch "$TARGET" -dir "$COLLECTORS" -tag "$PIN"
+  else
+    ( cd "$REPO_DIR" && go run ./tools/collectors verify -arch "$TARGET" -dir "$COLLECTORS" -tag "$PIN" )
+  fi
+}
+
+# sync_collectors: 확인한 수집기로 작업 폴더의 collectors를 바꿔 넣는다(화면이 돌지 않을 때만 부른다). 반쯤 바뀌지 않게 한다.
+# 파일 연산은 컨테이너 안의 pqcaton-collectors install(tools/collectors/install.go)이 화면과 같은 작업 폴더 실행 잠금을 쥐고 한다:
+# 작업 폴더 밖 source를 잠금 안에서 다시 확인하고, 지난 실행이 끊긴 자리를 정리하고, 작업 폴더 안의 고유 복사본으로 복사해 해시
+# 목록과 다시 견준 뒤, 기존 것을 보관 자리로 옮기고 rename으로 들인다. 화면이 떠 있거나 다른 설치가 돌고 있으면 잠금을 얻지 못해
+# 아무것도 바꾸지 않는다. 어디서 실패해도 기존 collectors는 바이트까지 그대로이거나 되돌려진다(IC-CF8 ~ IC-CF14).
+# prepared_sums: 확인한 준비 폴더의 collectors 해시 목록(sha256sum 꼴).
+prepared_sums() { ( cd "$COLLECTORS/collectors" && find . -type f | LC_ALL=C sort | while read -r f; do sha256sum "$f"; done ); }
+
+sync_collectors() {
+  # 확인한 수집기를 컨테이너의 작업 폴더 **밖** 임시 자리에 둔다. 작업 폴더 안의 복사 · 검증 · 설치는 도구가 실행 잠금 아래에서
+  # 한 번에 한다. 이 호출이 만든 임시 자리는 성공하든 실패하든 지운다(다른 실행의 것은 건드리지 않는다).
+  local src
+  src="$(docker exec "$CTL" mktemp -d /tmp/pqcaton-collectors-XXXXXXXXXX)" || { echo "❌ could not make a temporary place in $CTL"; return 1; }
+  local rc=0
+  if ! docker cp -q "$COLLECTORS/collectors" "$CTL:$src/"; then
+    echo "❌ could not copy the collectors into $CTL; the workspace's collectors are unchanged"
+    rc=1
+  else
+    prepared_sums | docker exec -i "$CTL" bash -c "umask 077 && cat > $src/collectors.sha256"
+    docker exec "$CTL" pqcaton-collectors install -ws "$WS" -from "$src/collectors" || rc=1
+  fi
+  docker exec "$CTL" rm -rf -- "$src"
+  [ "$rc" -eq 0 ] || return 1
+  echo "   collectors: the verified $PIN release assets for ${TARGET/-//}"
+}
+
 # 컨테이너 안에서 화면이 답하는가. curl은 Host를 127.0.0.1:8765로 보내 화면의 Host 검사를 지난다.
 answers() { docker exec "$CTL" curl -fsS -o /dev/null http://127.0.0.1:8765/ 2>/dev/null; }
 
@@ -111,17 +186,29 @@ if [ "$MODE" = "apply-scope" ]; then
   exit 0
 fi
 
+# 수집기 확인이 먼저다(화면이 이미 떠 있어도). 통과하지 못하면 화면도 작업 폴더도 건드리지 않는다.
+echo "▶ 0/3 verify the prepared collectors (${COLLECTORS})…"
+verify_collectors || { echo "❌ the prepared collectors did not verify; nothing was started or changed"; exit 1; }
+
 if answers; then
-  echo "▶ pqcaton-ui is already running in $CTL — reusing it (./demo/scripts/ui.sh stop to restart)"
+  # 화면이 떠 있는 동안에는 collectors를 바꾸지 않는다. 지금 것이 확인한 준비 폴더와 같으면 그대로 쓰고, 다르면 거절한다.
+  if [ "$(prepared_sums)" = "$(docker exec "$CTL" bash -c "cd $WS/collectors 2>/dev/null && find . -type f | LC_ALL=C sort | while read -r f; do sha256sum \"\$f\"; done")" ]; then
+    echo "▶ pqcaton-ui is already running in $CTL with these collectors — reusing it (./demo/scripts/ui.sh stop to restart)"
+  else
+    echo "❌ pqcaton-ui is running in $CTL with other collectors; stop the screen first (./demo/scripts/ui.sh stop). Nothing was changed"
+    exit 1
+  fi
 else
-  echo "▶ 1/3 build pqcaton-ui for ${CTL}…"
+
+  echo "▶ 1/3 build pqcaton-ui and pqcaton-collectors for ${CTL}…"
   install_bin pqcaton-ui ./inventory/cmd/pqcaton-ui
+  install_bin pqcaton-collectors ./tools/collectors
 
   echo "▶ 2/3 workspace ${WS}…"
   # **처음 한 번만 채운다.** 데모가 이미 가진 것을 실제 운영자가 화면에 넣는 자리에 둔다. 선언(01) ·
   # 자산 스코프 정책(상류 적재와 같은 파일이어야 스냅샷 지문이 상류 이력과 맞는다) · 접근 정보(03) ·
-  # 수집기(03, pqcota-discovery가 빌드한 모양 그대로) · 지금까지의 관측 결과(04). 03에서 다시 관측하면
-  # 결과는 화면이 바꿔 넣는다.
+  # 지금까지의 관측 결과(04). 03에서 다시 관측하면 결과는 화면이 바꿔 넣는다. 수집기(03)는 띄울 때마다 위에서 확인한
+  # 공식 릴리스 자산으로 바꿔 넣는다(상류 데모가 소스로 빌드한 것은 쓰지 않는다).
   docker exec "$CTL" bash -c "
     set -e
     if [ -d $WS ]; then echo '   kept (already there)'; else
@@ -129,11 +216,11 @@ else
       cp /work/declaration.json /work/scope-assets.csv $WS/
       install -m 600 /work/hosts.csv $WS/hosts.csv
       cp -r /work/results $WS/results
-      cp -r /work/dist $WS/collectors
-      echo '   created: declaration · asset-scope policy · hosts · collectors · results'
+      echo '   created: declaration · asset-scope policy · hosts · results'
     fi
     if [ ! -f $KEY ]; then umask 077; pqcota-keygen > $KEY; echo '   approval key for 06: $KEY'; fi
   "
+  sync_collectors
   # **노드의 호스트 키를 미리 받아 둔다.** 운영자 안내서 2절의 준비(처음 접속하는 노드는 ssh로 한 번
   # 접속해 호스트 키를 받아 둔다)를 데모에서 대신한다. 화면은 운영 환경처럼 호스트 키를 검사하므로, 이것이
   # 없으면 03 관측이 「Host key verification failed」로 멈춘다(상류 데모의 Ansible 설정은 검사를 끈다).
@@ -148,10 +235,9 @@ else
   '
 
   echo "▶ 3/3 start pqcaton-ui in $CTL (127.0.0.1:8765 inside the container)…"
-  # 상류 데모는 수집기를 pqcota 리포에서 옆 폴더 replace 로 빌드한다. replace 한 소스는 판을 확인할 수 없어 화면에서는 「확인 불가」이고,
-  # 기본으로는 관측을 시작하지 않는다. 데모는 그것을 알고 -allow-unverified-collectors 로 띄운다(03 화면과 이 로그에 남는다).
+  # 수집기는 확인한 공식 자산이므로 03에서 「확인됨」이고, -allow-unverified-collectors 없이 띄운다.
   # 화면은 pqcota 이력 없이 시작하지 않는다. 연결 정보는 환경 변수로만 넘긴다(명령줄 인자가 아니다).
-  docker exec -d -e PQCOTA_DSN="$DSN" "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org $ORG -approval-key $KEY -allow-unverified-collectors >>$LOG 2>&1"
+  docker exec -d -e PQCOTA_DSN="$DSN" "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org $ORG -approval-key $KEY >>$LOG 2>&1"
   for _ in $(seq 1 40); do answers && break; sleep 0.5; done
   answers || { echo "❌ pqcaton-ui did not answer — last lines of $CTL:$LOG:"; docker exec "$CTL" tail -20 "$LOG"; exit 1; }
 fi

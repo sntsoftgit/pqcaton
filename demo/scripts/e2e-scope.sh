@@ -167,6 +167,7 @@ cleanup() {
   # 실행 전에 없던 데모 이름의 자원이 아직 있으면 소유를 확인하지 못한 것이다. 지우지 않고 알린다.
   left="$(existing)"
   rm -f "$BEFORE"
+  if [ -n "${COLL_ROOT:-}" ]; then rm -rf -- "$COLL_ROOT"; fi
   if [ -n "$left" ]; then
     echo "❌ e2e: these demo resources were not removed (their owner could not be confirmed; remove them by hand if they are yours):"
     echo "$left" | sed 's/^/   /'
@@ -193,12 +194,50 @@ unchanged() {
   echo "   unchanged ($3): files $(sha256sum <<<"$1" | cut -c1-16) · upstream snapshots $2"
 }
 
+step "0) the official collectors: fetch the pinned release assets and verify them (tools/collectors, gh attestation)"
+# 화면이 고정한 판: go.mod 가 정한 상류 판이어야 한다. 데모의 수집기는 이 판의 공식 릴리스 자산뿐이다(다른 길이 없다).
+PIN="$(awk '$1=="github.com/randyinthedev-hash/pqcota-discovery"{print $2}' "$REPO_DIR/go.mod")"
+[ -n "$PIN" ] || fail "cannot read the pinned upstream version from go.mod"
+COLL_ROOT="$(mktemp -d)"
+export PQCATON_COLLECTORS="$COLL_ROOT/collectors-$PIN"
+# 대상은 데모 컨테이너가 도는 데몬의 OS · 아키텍처다(데모는 아직 없다). ui.sh가 컨테이너와 다시 견준다.
+case "$(docker info --format '{{.Architecture}}')" in
+  x86_64|amd64)  E2E_TARGET=linux-amd64 ;;
+  aarch64|arm64) E2E_TARGET=linux-arm64 ;;
+  *) fail "the demo's Docker architecture $(docker info --format '{{.Architecture}}') is not supported" ;;
+esac
+echo "   target: $E2E_TARGET (the inner Docker daemon)"
+if ! ( cd "$REPO_DIR" && go run ./tools/collectors fetch -arch "$E2E_TARGET" -out "$PQCATON_COLLECTORS" -tag "$PIN" ) 2>&1 | sed 's/^/   /'; then
+  fail "the official $PIN collectors could not be fetched and verified"
+fi
+
 step "1) pqcota demo (up · demo) and the pqcaton extension"
 (cd "$PQCOTA_DIR" && ./demo/scripts/up.sh) >/dev/null
 (cd "$PQCOTA_DIR" && ./demo/scripts/demo.sh) >/dev/null
 "$DEMO_DIR/scripts/extend.sh" >/dev/null
+# 준비한 뒤 바뀐 폴더: 실행 파일 한 바이트를 바꾼 사본으로는 ui.sh 가 화면을 띄우지 않고 작업 폴더도 만들지 않는다.
+TAMPERED="$COLL_ROOT/tampered"
+cp -a "$PQCATON_COLLECTORS" "$TAMPERED"
+python3 -c 'import sys; p=sys.argv[1]; b=bytearray(open(p,"rb").read()); b[len(b)//2]^=1; open(p,"wb").write(b)' \
+  "$TAMPERED/collectors/linux-amd64/pqcota-nodescan"
+if PQCATON_COLLECTORS="$TAMPERED" "$UI" start >"$COLL_ROOT/tampered.log" 2>&1; then fail "ui.sh started the screen with a tampered collectors folder"; fi
+grep -q "does not match the release manifest" "$COLL_ROOT/tampered.log" || { cat "$COLL_ROOT/tampered.log"; fail "ui.sh did not say why the tampered folder was refused"; }
+if docker exec "$CTL" pgrep -x pqcaton-ui >/dev/null; then fail "the screen is running after the tampered folder was refused"; fi
+if docker exec "$CTL" test -e "$WS"; then fail "the workspace was created although the tampered folder was refused"; fi
+echo "   ui.sh refused a prepared folder with one byte of pqcota-nodescan changed; nothing was started or created"
 "$UI" start
 "$UI" stop
+# 끊긴 설치의 복구(실제 경로): 새 collectors를 들인 뒤 보관본을 지우기 전에 끊긴 자리를 만든다. 다음 ui.sh start가 지금
+# 것을 해시 목록으로 다시 확인해 그대로 두고 보관본만 지워야 한다(파일 연산마다 끊는 시험은 IC-CF8 · IC-CF9).
+installed() { docker exec "$CTL" bash -c "cd $WS/collectors && find . -type f | LC_ALL=C sort | xargs sha256sum"; }
+INSTALLED="$(installed)"
+docker exec "$CTL" bash -c "cp -a $WS/collectors $WS/.collectors.old && cp $WS/.collectors.sha256 $WS/.collectors.old.sha256"
+"$UI" start >"$COLL_ROOT/recover.log" 2>&1 || { cat "$COLL_ROOT/recover.log"; fail "ui.sh did not start after an interrupted install"; }
+grep -q "kept the current collectors" "$COLL_ROOT/recover.log" || { cat "$COLL_ROOT/recover.log"; fail "ui.sh did not keep the current collectors after an interrupted install"; }
+if docker exec "$CTL" bash -c "ls -d $WS/.collectors.old* $WS/.collectors.incoming* 2>/dev/null" | grep -q .; then fail "the earlier copy is left after recovering"; fi
+[ "$(installed)" = "$INSTALLED" ] || fail "the collectors changed while recovering an interrupted install"
+"$UI" stop
+echo "   interrupted install (renamed, the earlier copy not yet removed): ui.sh kept the current collectors and removed the earlier copy"
 
 step "2) 05 under the old policy: judge and finalize from the command line"
 edit_json "$WS/session.json" <<'PY'
@@ -357,35 +396,71 @@ screen_activate ok || fail "the screen did not activate after the re-ingest"
 activated "$WS" "screen"
 
 step "6) the screen: 06 refuses the plan made under the old policy; 05 shows earlier conclusions only as references"
-"$UI" start
-# 데모의 수집기는 replace 빌드라 판을 확인할 수 없다. 03이 그것을 파일마다 보이고, -allow-unverified-collectors 로 허용한
-# 상태가 화면과 로그에 남는지 본다. collector.jar 는 상류 v0.14.0부터 판을 실으므로 판이 맞는지만 본다(4단계에서 공식 자산으로 바뀐다).
+START_OUT="$("$UI" start)"
+echo "$START_OUT"
+grep -q "adopted the new verified collectors in place of the earlier ones" <<<"$START_OUT" || fail "ui.sh did not say which collectors it adopted"
+# 데모의 수집기는 0)에서 확인한 공식 릴리스 자산이다. 03은 Go 수집기와 collector.jar를 모두 「확인됨」으로 보이고, 허용
+# 상태(*-allowed)도 확인 불가 경고도 없으며, override 없이 시작 양식을 내놓아야 한다. 화면의 명령줄과 로그에도 override가 없다.
 OBSERVE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/observe?lang=en')"
-grep -q 'data-check="collector-allowed"' <<<"$OBSERVE" || fail "03 does not show that unverified collectors are allowed"
-LINES="$(grep -oE 'data-collector-state="[a-z]+"[^>]*><code>[^<]*</code>[^<]*' <<<"$OBSERVE" | sed -E 's/^data-collector-state="([a-z]+)"[^>]*><code>([^<]*)<\/code>/\1 \2/' | grep -v '^[a-z]* collector.jar')"
+LINES="$(grep -oE 'data-collector-state="[a-z]+"[^>]*><code>[^<]*</code>[^<]*' <<<"$OBSERVE" | sed -E 's/^data-collector-state="([a-z]+)"[^>]*><code>([^<]*)<\/code>/\1 \2/')"
 echo "$LINES" | sed 's/^/   03 collector: /'
-grep -q '^unverified ' <<<"$LINES" || fail "03 does not list the unverified collectors"
-if grep -qE '^(verified|mismatch) ' <<<"$LINES"; then fail "a demo collector is not 'cannot be verified' (the demo builds them with local replaces)"; fi
-if grep -q "the version this screen pins is unknown" <<<"$LINES"; then fail "03 does not know the upstream version this screen pins"; fi
-if docker exec "$CTL" test -f "$WS/collectors/collector.jar"; then
-  # 상류 소스로 만든 JAR 은 판이 devel 이라 확인 불가다. 허용(-allow-unverified-collectors)으로 시작은 되지만 확인됨으로 보이면 안 된다.
-  JARLINE="$(grep -oE 'data-collector-state="[a-z]+"[^>]*><code>collector.jar</code>[^<]*' <<<"$OBSERVE" | head -1 | sed -E 's/^data-collector-state="([a-z]+)"[^>]*><code>([^<]*)<\/code>/\1 \2/')"
-  echo "   03 collector: $JARLINE"
-  grep -q 'data-check="jar-allowed"' <<<"$OBSERVE" || fail "03 does not show the demo's collector.jar (built from upstream source) as allowed"
-  grep -q '^unverified collector.jar' <<<"$JARLINE" || fail "the demo's collector.jar is not shown as cannot be verified"
-  if grep -qE 'data-check="jar-(mismatch|unverified)"' <<<"$OBSERVE"; then fail "03 refuses collector.jar although the allowance is given"; fi
-  JAR_NOTE="collector.jar cannot be verified, allowed by -allow-unverified-collectors"
-else
-  JAR_NOTE="no collector.jar in this demo"
-fi
-grep -q 'action="/observe/run"' <<<"$OBSERVE" || fail "03 does not offer to start although the allowance is given"
-docker exec "$CTL" grep -q -- "-allow-unverified-collectors lets these collectors run" /work/ui.log || fail "the allowance is not in the screen log"
-# 화면이 고정한 판: go.mod 가 정한 상류 판이어야 한다. 이 판은 화면이 요구하는 판일 뿐, 수집기의 실제 판을 뜻하지 않는다.
-PIN="$(awk '$1=="github.com/randyinthedev-hash/pqcota-common"{print $2}' "$REPO_DIR/go.mod")"
-[ -n "$PIN" ] || fail "cannot read the pinned upstream version from go.mod"
-grep -o 'data-check="collector-allowed".\{0,300\}' <<<"$OBSERVE" | grep -q "<code>$PIN</code>" || fail "03 does not show the pinned version $PIN"
-docker exec "$CTL" grep -q -- "(pinned $PIN)" /work/ui.log || fail "the screen log does not name the pinned version $PIN"
-echo "   03: pinned $PIN; every collector cannot be verified, allowed by -allow-unverified-collectors; $JAR_NOTE"
+for f in linux-amd64/pqcota-nodescan linux-amd64/pqcota-netcap linux-amd64/pqcota-jvmscan collector.jar; do
+  grep -q "^verified $f " <<<"$LINES" || fail "03 does not show $f as verified"
+done
+if grep -qvE '^verified ' <<<"$LINES"; then fail "a collector row on 03 is not verified"; fi
+grep -q 'data-check="collector-version"' <<<"$OBSERVE" || fail "03 does not show the collector version check as passed"
+if grep -qE 'data-check="[a-z-]*-(allowed|unverified|mismatch)"' <<<"$OBSERVE"; then fail "03 shows an allowance, an unverified or a mismatch check"; fi
+grep -q 'action="/observe/run"' <<<"$OBSERVE" || fail "03 does not offer to start with the official collectors"
+CMDLINE="$(docker exec "$CTL" sh -c 'for p in $(pgrep -x pqcaton-ui); do tr "\0" " " < /proc/$p/cmdline; echo; done')"
+[ -n "$CMDLINE" ] || fail "cannot read the command line of pqcaton-ui"
+if grep -q -- "-allow-unverified-collectors" <<<"$CMDLINE"; then fail "pqcaton-ui runs with -allow-unverified-collectors"; fi
+if docker exec "$CTL" grep -q -- "-allow-unverified-collectors" /work/ui.log; then fail "the screen log mentions -allow-unverified-collectors"; fi
+grep -o 'data-check="collector-version".\{0,300\}' <<<"$OBSERVE" | grep -q "<code>$PIN</code>" || fail "03 does not show the pinned version $PIN"
+# 작업 폴더의 collectors: 정상 경로에는 임시 · 보관 · 격리 자리가 남지 않고, 지금 것과 그 해시 목록이 같으며, 모두 일반
+# 파일이고 수집기는 실행 권한을 지닌다.
+WSCHECK="$(docker exec "$CTL" bash -c "cd $WS
+  ls -d .collectors.incoming* .collectors.old* .collectors.rejected-* 2>/dev/null | sed 's/^/leftover /'
+  cd collectors
+  if [ \"\$(find . -type f | LC_ALL=C sort)\" = \"\$(awk '{print \$2}' ../.collectors.sha256)\" ] && sha256sum -c --quiet ../.collectors.sha256 >/dev/null; then
+    echo 'hash list: match'; else echo 'hash list: MISMATCH'; fi
+  find . ! -type f ! -type d | sed 's/^/not-regular /'
+  find ./linux-* -type f ! -perm -u+x | sed 's/^/not-executable /'")"
+docker exec "$CTL" bash -c "ls -d /tmp/pqcaton-collectors-* 2>/dev/null | sed 's/^/leftover source /'" >>"$COLL_ROOT/srcleft" || true
+WSCHECK="$WSCHECK$(printf '\n'; cat "$COLL_ROOT/srcleft")"
+echo "$WSCHECK" | sed 's/^/   workspace collectors: /'
+if grep -qE '^(leftover|not-regular|not-executable)|MISMATCH' <<<"$WSCHECK"; then fail "the workspace's collectors are not clean"; fi
+# 컨테이너에 넣은 도구(pqcaton-collectors · pqcaton-ui)도 컨테이너의 OS · 아키텍처로 빌드됐다(호스트가 아니다).
+for b in pqcaton-collectors pqcaton-ui; do
+  docker cp -q "$CTL:/usr/local/bin/$b" "$COLL_ROOT/$b.bin"
+  BUILT="$(go version -m "$COLL_ROOT/$b.bin" | awk '$2 ~ /^GOOS=/{sub("GOOS=","",$2); os=$2} $2 ~ /^GOARCH=/{sub("GOARCH=","",$2); arch=$2} END{print os"/"arch}')"
+  echo "   $b in $CTL: built for $BUILT"
+  [ "$BUILT" = "$(docker exec "$CTL" uname -s | tr '[:upper:]' '[:lower:]')/$(docker exec "$CTL" uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')" ] || fail "$b is built for $BUILT, not the container's OS and architecture"
+done
+# 화면이 떠 있는 동안: 같은 수집기면 ui.sh가 그대로 재사용하고, 다르면 거절한다. 도구를 직접 불러도 작업 폴더 실행 잠금 때문에
+# 거절된다. 어느 쪽이든 작업 폴더는 바이트까지 그대로다. 화면을 멈춘 뒤에만 바꿔 넣는다(위의 6) 시작이 그 경로다).
+wsbytes() { docker exec "$CTL" bash -c "cd $WS && find collectors .collectors.sha256 -type f | LC_ALL=C sort | xargs sha256sum"; }
+BYTES="$(wsbytes)"
+REUSE_OUT="$("$UI" start)" || fail "ui.sh did not reuse the running screen with the same collectors"
+grep -q "already running in $CTL with these collectors" <<<"$REUSE_OUT" || fail "ui.sh did not say it reused the running screen"
+docker exec "$CTL" bash -c "cp -p $WS/collectors/collector.jar /tmp/pqcaton-e2e-jar && printf x >> $WS/collectors/collector.jar"
+if "$UI" start >"$COLL_ROOT/running-other.log" 2>&1; then fail "ui.sh went on while the screen runs with other collectors"; fi
+grep -q "stop the screen first" "$COLL_ROOT/running-other.log" || { cat "$COLL_ROOT/running-other.log"; fail "ui.sh did not ask to stop the screen first"; }
+docker exec "$CTL" bash -c "cp -p /tmp/pqcaton-e2e-jar $WS/collectors/collector.jar && rm -f /tmp/pqcaton-e2e-jar"
+DIRECT="$(docker exec "$CTL" mktemp -d /tmp/pqcaton-e2e-direct-XXXXXXXX)"
+docker cp -q "$PQCATON_COLLECTORS/collectors" "$CTL:$DIRECT/"
+( cd "$PQCATON_COLLECTORS/collectors" && find . -type f | LC_ALL=C sort | while read -r f; do sha256sum "$f"; done ) | docker exec -i "$CTL" bash -c "cat > $DIRECT/collectors.sha256"
+if docker exec "$CTL" pqcaton-collectors install -ws "$WS" -from "$DIRECT/collectors" >"$COLL_ROOT/direct.log" 2>&1; then fail "the install tool changed collectors while the screen runs"; fi
+grep -q "stop the screen first" "$COLL_ROOT/direct.log" || { cat "$COLL_ROOT/direct.log"; fail "the install tool did not refuse while the screen runs"; }
+docker exec "$CTL" rm -rf -- "$DIRECT"
+[ "$(wsbytes)" = "$BYTES" ] || fail "the workspace's collectors changed while the screen was running"
+echo "   running screen: reused with the same collectors; refused other collectors (ui.sh) and a direct install (the run lock); collectors byte for byte unchanged"
+PREPARED="$(cat "$PQCATON_COLLECTORS/provenance/TARGET")"
+CONTAINER="$(docker exec "$CTL" uname -s | tr '[:upper:]' '[:lower:]')/$(docker exec "$CTL" uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')"
+[ "$PREPARED" = "$CONTAINER" ] || fail "the prepared collectors are for $PREPARED but $CTL is $CONTAINER"
+OVERRIDES="$( { grep -o -- '-allow-unverified-collectors' <<<"$CMDLINE"; docker exec "$CTL" grep -o -- '-allow-unverified-collectors' /work/ui.log; } | grep -c . || true)"
+[ "$OVERRIDES" = 0 ] || fail "$OVERRIDES mentions of -allow-unverified-collectors"
+ROWS="$(grep -c . <<<"$LINES")"; VERIFIED="$(grep -c '^verified ' <<<"$LINES")"
+echo "   03: prepared assets $PREPARED · container $CONTAINER · same; overrides 0; $VERIFIED of $ROWS collector rows verified (pinned $PIN)"
 APPROVE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/approve?lang=en')"
 grep -q "was made under an asset-scope policy other than the active one" <<<"$APPROVE" || fail "06 does not say the plan is under another policy"
 if grep -q 'action="/approve/sign/confirm"' <<<"$APPROVE"; then fail "06 offers to sign the old plan"; fi

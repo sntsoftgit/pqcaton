@@ -47,7 +47,8 @@ func TestScopeActivationEndToEnd(t *testing.T) {
 			}
 		}
 	}
-	for _, prog := range []string{"docker", "go", "python3", "bash"} {
+	// gh: 공식 수집기를 받을 때 출처 증명을 확인한다(로그인이 필요하다. 도구가 시작할 때 다시 본다).
+	for _, prog := range []string{"docker", "go", "python3", "bash", "gh"} {
 		if _, err := exec.LookPath(prog); err != nil {
 			missing = append(missing, prog)
 		}

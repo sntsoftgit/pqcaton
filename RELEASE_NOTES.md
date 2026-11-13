@@ -114,6 +114,24 @@ carry their version and content hash (v0.14.0).
   under the same version does not match), the JAR's commit and modified flag, the generated pins equal to `go.mod` and
   `go.sum`, and 03's JAR row with a dirty JAR refused or allowed. IC-CV10 became "a tag checkout build has no h1 and cannot be
   verified".
+- An official collector preparation tool (`tools/collectors`): it downloads the upstream release assets of the version go.mod pins,
+  checks the attestations (pinned to the repository, the signing workflow and the tag), `SHA256SUMS`, a safe unpacking, each file's
+  hash, version and commit against the release manifest, the attestations of the unpacked programs and that only the expected files
+  are there, then moves the folder into place at once (`fetch`). An existing target is never overwritten. It checks again right
+  before use (`verify`). The demo (`ui.sh`) uses only the official assets prepared with it and starts the screen without
+  `-allow-unverified-collectors`; the way that used collectors built from upstream source is gone. The target (linux-amd64 or
+  linux-arm64) is always given and written into the prepared folder, and the OS and architecture in the programs' build
+  information must match it. `ui.sh` refuses a prepared folder whose target differs from the `pqcota-ctl` container before checking
+  it. Putting it into the workspace is done by the same tool inside the container (`recover`, `install`): the copy in a temporary
+  place on the same file system is checked against the hash list again and brought in with `rename`, the existing one is restored
+  on failure, and what an interrupted run left is tidied by its state. It holds the same workspace run lock as the screen while putting them in, so nothing changes while the screen runs (the same
+  collectors reuse the screen; others are refused, asking to stop the screen first) and two installs never overlap. New cases
+  IC-CF1 to IC-CF14. `ui.sh` only puts the verified collectors in a temporary place outside the workspace in the container; the
+  copy into the workspace, the check and the install are done by the tool in one go under the lock (that place is checked by its
+  real path and device/inode before and inside the lock).
+- The demo end to end (IC-U152): it fetches the official assets and checks that `ui.sh` refuses a prepared folder with one byte
+  changed, that 03 shows every collector and the JAR as "verified" with no allowance or unverified warning, and that the screen's
+  command line and log carry no override.
 - A generator that makes the expected h1 from `go.mod` and `go.sum` (`tools/genpin`) and its generated code
   (`pkg/inventory/collectorver/pin_gen.go`). `make generate` makes it and `make verify-generated` refuses a stale one.
 - A PostgreSQL 16 service and `make test-pg` in GitHub CI: the Postgres contract tests (IC-S26 included) run without skipping. A

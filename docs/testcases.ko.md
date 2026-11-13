@@ -766,6 +766,29 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-CV13](../pkg/inventory/collectorver/module_test.go) ✅** | 생성 코드 `pin_gen.go`의 고정 값과 리포의 `go.mod` · `go.sum` | **같아야 한다**. go.mod를 올리고 `go run ./tools/genpin`을 돌리지 않으면 막힌다(`make verify-generated`도 잰다). 수집기 모듈의 고정 값이 반드시 있다 |
 | **[IC-CV14](../tools/genpin/main_test.go) ✅** | 생성기(`tools/genpin`)에 준 `go.mod` · `go.sum`: 정상 · 모듈 zip의 h1 없이 `/go.mod` 줄만 · 같은 모듈 · 판에 h1 둘 · go.mod가 모듈을 요구하지 않음 | 모듈 zip의 h1만 고르고 생성물에 **판과 h1을 함께** 적는다(`/go.mod` 줄의 해시를 고르지 않는다). h1이 없거나, 둘로 모순되거나, 요구하지 않으면 **생성하지 않는다** |
 
+### CF. 공식 릴리스 수집기 자산 (`tools/collectors`) ✅
+
+데모와 종단 검증이 쓰는 유일한 수집기 경로다. 받은 파일은 실행하지 않는다. 시험은 가짜 릴리스(묶음 · JAR · manifest ·
+SHA256SUMS)와, 증명 묶음이 파일의 다이제스트에 묶인 것을 흉내 내는 가짜 출처 증명으로 돈다. 실제 자산과 `gh attestation`은
+데모 종단 검증(IC-U152)이 쓴다.
+
+| TC | Given → When | Then |
+|---|---|---|
+| **[IC-CF1](../tools/collectors/main_test.go) ✅** | 온전한 릴리스를 받음 | **여덟 단계를 순서대로 거쳐**(받기 · 자산의 출처 증명 · SHA256SUMS · 안전한 풀기 · manifest 대조 · 꺼낸 실행 파일의 출처 증명 · 예상한 파일만 · 원자적 이동) 대상에 정해진 파일만 둔다. 다시 확인해도 통과하고 임시 폴더가 남지 않는다 |
+| **[IC-CF2](../tools/collectors/main_test.go) ✅** | go.mod가 고정한 판이 아닌 태그 | **받기 전에 거절한다**. 아무것도 내려받지 않고 아무것도 만들지 않는다 |
+| **[IC-CF3](../tools/collectors/main_test.go) ✅** | 묶음 안 파일 빠짐 · 실행 파일 한 바이트 다름 · 다른 태그의 자산 · 경로 탈출(`..`) · 절대 경로 · 심볼릭 링크 · 하드 링크 · manifest에 없는 파일 · 같은 경로 두 번 · 대소문자 충돌 · 예상 밖 폴더 · SHA256SUMS에 자산 빠짐 · 자산 · 실행 파일의 출처 증명 실패 · JAR 커밋이 manifest와 다름 · 상류 h1이 고정 값과 다름 | **모두 막고**, 대상 폴더와 부분 파일 · 임시 폴더를 남기지 않는다 |
+| **[IC-CF4](../tools/collectors/main_test.go) ✅** | 대상이 이미 있음(같은 내용 / 바뀐 내용) | **덮어쓰지 않는다**. 같은 내용으로 확인되면 그대로 쓰고, 바뀌었으면 실패하며 그 폴더를 고치지 않는다 |
+| **[IC-CF5](../tools/collectors/main_test.go) ✅** | 준비한 뒤 실행 파일 한 바이트가 바뀜 · 파일이 더해짐 · 빠짐 · 다른 태그로 준비됨 · manifest가 SHA256SUMS와 어긋남 · 증명 묶음이 바뀜 | **쓰기 직전의 다시 확인(verify)이 막는다**. 보관한 증명 묶음으로 출처 증명도 다시 확인한다 |
+| **[IC-CF6](../tools/collectors/main_test.go) ✅** | http 주소 · 다른 호스트 · http로 가는 리디렉션 | **HTTPS와 정해진 호스트만** 받는다 |
+| **[IC-CF7](../tools/collectors/main_test.go) ✅** | 대상 linux-arm64로 받음 · 그 폴더를 linux-amd64로 다시 확인 · 지원하지 않는 대상(darwin-arm64) · Go 빌드 정보의 GOOS · GOARCH가 대상과 다른 프로그램 | 대상은 **늘 명시하고** `provenance/TARGET`에 적는다(`collectors/linux-arm64`). 다른 대상으로 다시 확인하면 **파일 목록보다 먼저** 막는다. 지원하지 않는 대상은 받기 전에 거절한다. 빌드 정보의 OS · 아키텍처가 다르면 실행하기 전에 막는다 |
+| **[IC-CF8](../tools/collectors/install_test.go) ✅** | 작업 폴더에 들이기: 정상 · 복사본이 해시 목록과 다름 · 들이는 rename 실패 · install의 파일 연산마다 끊김 · 새 rename 뒤 보관본을 지우기 전에 끊김 | **반쯤 바뀌지 않는다**. 복사본이 다르면 버리고 기존 것은 바이트까지 그대로, rename이 실패하면 기존 것을 되돌린다. 어느 연산에서 끊겨도 recover 뒤 collectors는 기존 것이나 새 것 가운데 하나와 정확히 같고, 확정(rename) 뒤에 끊겼으면 새 것이다. 새 rename 뒤 끊긴 경우는 새 것을 그대로 두고 보관본만 지운다 |
+| **[IC-CF9](../tools/collectors/install_test.go) ✅** | recover: 복사본만 있음 · 보관본만 있음 · 둘 다 있고 지금 것이 해시 목록과 다름 · 어느 쪽도 해시 목록과 같지 않음 | 복사본은 버리고, 보관본만 있으면 되돌리고, 지금 것이 다르면 **격리하고**(지우지 않는다) 보관본을 되돌린다. 어느 쪽도 확인할 수 없으면 **아무것도 지우거나 덮어쓰지 않고** 실패한다 |
+| **[IC-CF10](../tools/collectors/install_test.go) ✅** | install -from <작업 폴더 밖 source>: 지난 실행이 남긴 복사본 · 새 rename 뒤 끊긴 보관본이 함께 있음 / 해시 목록과 다른 source | **한 번에 끝난다**: 잠금 안에서 옛 중단 상태를 정리하고, source를 작업 폴더 안의 고유 복사본으로 복사해 다시 검증한 뒤 들인다. 작업 폴더 안의 복사본은 잠금을 쥔 실행만 만들므로 잠금을 얻었을 때 남은 것은 중단 흔적이라 버린다. source는 그대로 두고, 무엇을 버리고 · 두고 · 채택했는지 로그에 남는다. 해시 목록과 다른 source는 아무것도 바꾸지 않는다 |
+| **[IC-CF11](../tools/collectors/install_test.go) ✅** | 두 install이 함께 시작함(한쪽이 잠금을 쥔 채 머무는 동안 다른 쪽 시작) | **하나만 반영된다**. 작업 폴더 실행 잠금은 기다리지 않아, 다른 쪽은 아무것도 바꾸지 않고 실패한다. 끝난 collectors는 이긴 쪽의 복사본과 정확히 같다 |
+| **[IC-CF12](../tools/collectors/install_test.go) ✅** | 화면이 작업 폴더 실행 잠금을 쥐고 있음(`store.AcquireRun`) | install도 recover도 **「화면을 먼저 멈추라」고 거절하고** 작업 폴더는 바이트까지 그대로다. 화면이 내려간 뒤에는 들인다 |
+| **[IC-CF13](../tools/collectors/install_test.go) ✅** | source: 작업 폴더 안(복사본 자리 · 보관본 · collectors 자신 포함) · 심볼릭 링크 · 폴더가 아님 · 해시 목록이 없음 · 해시 목록이 심볼릭 링크 · 작업 폴더로 가는 경로가 심볼릭 링크 | **실제 경로로 따져 모두 막고**(잠금을 잡기 전에) 작업 폴더에 아무 흔적도 남기지 않는다. source는 작업 폴더 밖의 진짜 폴더이고 옆에 일반 파일인 해시 목록이 있어야 한다 |
+| **[IC-CF14](../tools/collectors/install_test.go) ✅** | install이 source를 작업 폴더 안으로 복사하는 도중의 recover · 1차 검사와 잠금 사이에 source가 다른 폴더로 바뀜 · 같은 inode의 파일과 해시 목록이 함께 제자리에서 고쳐짐 · 복사 도중 source 파일이 바뀜 | recover는 **잠금을 얻지 못해 거절되고** 복사 중인 복사본도 source도 건드리지 않으며, 그 install은 끝까지 들인다. 최종 기준은 **잠금 전에 읽은 내용 스냅샷**(파일 목록 · 종류 · 모드 · 크기 · SHA-256, 해시 목록의 바이트)이다. 바뀐 폴더와 제자리 변경은 잠금 안의 재검사가, 복사 중 변경은 복사본과 스냅샷의 대조가 막고, 어느 경우든 기존 collectors는 그대로이며 복사본은 남지 않는다 |
+
 ### R2. 여러 노드 대조 (`pkg/inventory/report`) ✅
 | TC | Given → When | Then |
 |---|---|---|

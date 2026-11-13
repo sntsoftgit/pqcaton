@@ -50,6 +50,9 @@ Observation grades (pqcota)      →   + reconciliation against the declaration 
 ./scripts/extend.sh          # output: demo/topology-governance.svg
 
 # 3) (optional) see the same demo on the screen. The screen runs inside pqcota-ctl and opens in this machine's browser
+#    first fetch and verify the official collectors of the version go.mod pins (needs gh logged in). ui.sh downloads nothing.
+#    -arch is the target of the pqcota-ctl container (usually linux-amd64; Docker on Apple Silicon is linux-arm64). ui.sh refuses a mismatch
+(cd .. && go run ./tools/collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-v0.14.0)
 ./scripts/ui.sh              # → http://127.0.0.1:8765 · to stop: ./scripts/ui.sh stop
 
 # 4) clean up (the core demo owns the environment)
@@ -74,7 +77,7 @@ would put it.
 |---|---|
 | The declaration `extend.sh` made | 01 Declaration |
 | The asset-scope policy given to the upstream ingest (`scope-assets.csv`) | 04 · 05. It must be the same policy, or the snapshot fingerprints do not match the upstream history |
-| Node access information (`hosts.csv`) and the collectors upstream built | 03 Observation runs |
+| Node access information (`hosts.csv`) and the official upstream collectors fetched and verified by the preparation tool | 03 Observation runs |
 | The observation results so far | 04 Reconciliation. Observing again in 03 replaces them with the new results |
 | The approval signing key (outside the workspace, `/work/ui-approval.key`) | 06 Approval and generation |
 
@@ -83,15 +86,22 @@ one given to the upstream ingest. When you create and finalize layers in 02, the
 `scope-assets.csv` the demo already uses is not replaced automatically. Restarting the screen, 04 and 05 still use `scope-assets.csv`.
 To use the finalized policy for reconciliation, follow "Activating a new policy" below.
 
-The demo's collectors are built in the pqcota repository with sibling-folder replaces. So 03 shows them as "cannot be verified" and by
-default does not start an observation. `ui.sh` knows this and starts the screen with `-allow-unverified-collectors`. 03 shows a verdict
-line and the allowance per file, and the allowance is recorded in `/work/ui.log` ("Collector versions" in
-[operator guide section 2](../docs/operator-guide.md#2-installation)).
+**The demo's collectors are the official upstream release assets only.** The preparation tool (`go run ./tools/collectors fetch`)
+downloads the assets of the version go.mod pins and checks the attestations (pinned to the repository, the signing workflow and the
+tag), `SHA256SUMS`, a safe unpacking, each file's hash, version and commit against the release manifest, the attestations of the
+unpacked programs and that only the expected files are there, then moves the folder into place at once. An existing target is never
+overwritten. `ui.sh` downloads nothing; every time it starts the screen it checks that folder again and only then puts it in as the
+workspace's `collectors`. If the check fails, nothing is changed and it stops. A prepared folder whose target (OS and architecture)
+differs from the `pqcota-ctl` container is refused before the check. Putting it in copies it to a temporary place inside the
+workspace, checks the hashes again and brings it in with `rename`; on failure the existing `collectors` is restored. 03 shows every collector and `collector.jar` as
+"verified", and the screen starts without `-allow-unverified-collectors` ("Collector versions" in
+[operator guide section 2](../docs/operator-guide.md#2-installation)). There is no way to run the demo with collectors built from
+upstream source. `PQCATON_COLLECTORS` changes the folder.
 
 The workspace is filled only once. After that, what you do on the screen stays, and `ui.sh stop` does not delete the folder. Bringing the
 environment down with `down.sh` removes it with the container. `Ctrl+C` closes only the relay, so running `ui.sh` again continues the
 same screen. If you already started another `pqcaton-ui` on 8765 on this machine, give another port such as `PQCATON_UI_PORT=8766`. The
-build needs Go, as `extend.sh` does, and the relay needs python3. Without Go, give a Linux `pqcaton-ui` with `PQCATON_BIN_DIR`.
+build needs Go, as `extend.sh` does, and the relay needs python3. Without Go, give a Linux `pqcaton-ui` and `pqcaton-collectors` (from `./tools/collectors`) for the container, and a `collectors` built for this machine, with `PQCATON_BIN_DIR`.
 
 `extend.sh` creates no new container. It injects this repository's `pqcaton-report` into the running `pqcota-ctl`, reconciles the
 **declaration (declaration.json)** against the `/work/results` core already collected to make the three-state inventory and the
