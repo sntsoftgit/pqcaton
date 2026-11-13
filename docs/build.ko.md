@@ -40,6 +40,7 @@ make verify-generated
 | 명령 | 무엇을 재나 |
 |---|---|
 | `make check-reuse` | 모든 파일에 라이선스와 저작권 표기가 있는지(REUSE, Docker에서 돕니다) |
+| `make test-pg` | Postgres 계약 시험(IC-S26 · IC-D5 등 `PQCOTA_TEST_DSN`을 읽는 시험). `make test`와 달리 건너뛰지 않습니다: `PQCOTA_TEST_DSN`이 없거나, 시험 하나라도 건너뛰었거나, IC-S26이 돌지 않았거나, 출력에 DSN이 나오면 실패합니다. CI가 PostgreSQL 16 서비스로 돌리므로, 발행 관문이 요구하는 GitHub `ci`의 일부입니다 |
 | `make e2e-demo` | pqcota 데모를 처음부터 띄워 정책 활성화 · 판정 · 승인 · 생성을 끝까지 돌립니다(`PQCOTA_DIR` 필요, [데모](../demo/README.ko.md) 참조) |
 | `make release-check VERSION=vX.Y.Z` | 릴리스 태그를 달기 전의 모든 것(후보 커밋의 필수 GitHub 워크플로 ci · site가 모두 성공했는지 포함). 요약 · 모듈의 `h1:` 해시 · 릴리스 본문(`release-body.md`: 영어 절에 태그 고정 링크, 맨 위에 한국어 노트의 같은 판 링크)으로 끝납니다 |
 | `make release-verify VERSION=vX.Y.Z COMMIT=… H1=…` | 발행 뒤: 태그 · 모듈 프록시 · 체크섬 DB와 거기서 받은 설치, 그리고 릴리스 본문이 영어 절과 같고 한국어 링크가 열리는지 |

@@ -99,6 +99,9 @@ carry their version and content hash (v0.14.0).
 - New case IC-S26: on a real pqcota Postgres history loaded A → B → A, the latest of each node is A, B and then the first A;
   loading A again does not create a new snapshot body; then A's reconciliation passes and B is `ErrRevert`; another
   organization's history does not find it.
+- A PostgreSQL 16 service and `make test-pg` in GitHub CI: the Postgres contract tests (IC-S26 included) run without skipping. A
+  missing DSN, a skipped test or IC-S26 not running fails it. The release gate requires `ci` to succeed on the candidate commit, so
+  these tests are part of the release gate too.
 
 ---
 

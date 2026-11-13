@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
-.PHONY: all e2e-demo check-licenses check-text check-prose prose-baseline check-lang check-docs check-cases check-fmt check-modzip check-releasecheck build test generate verify-generated check-reuse release-check release-check-fast release-verify
+.PHONY: all e2e-demo test-pg check-licenses check-text check-prose prose-baseline check-lang check-docs check-cases check-fmt check-modzip check-releasecheck build test generate verify-generated check-reuse release-check release-check-fast release-verify
 
 all: check-licenses check-text check-prose check-lang check-docs check-cases check-fmt check-modzip check-releasecheck build test
 
@@ -99,6 +99,20 @@ build:
 
 test:
 	go test ./... -count=1
+
+# Postgres 계약 시험(IC-S26 · IC-D5 등). PQCOTA_TEST_DSN 을 읽는 시험이 든 패키지를 모두 돌린다. 일반 `make test` 는 DSN 이
+# 없으면 그 시험을 건너뛰지만, 이 대상은 **건너뛰지 않는다**: DSN 이 없으면 실패하고, 시험 하나라도 건너뛰면 실패하며, IC-S26
+# 이 통과하지 않았으면 실패한다. 출력에 DSN 원문이 나오면 실패한다(DSN 은 이 대상이 찍지 않는다). CI 가 Postgres 서비스를 두고 돌린다.
+PG_PKGS = $(sort $(dir $(shell grep -rl --include='*_test.go' PQCOTA_TEST_DSN pkg inventory tools)))
+test-pg:
+	@[ -n "$$PQCOTA_TEST_DSN" ] || { echo "✗ test-pg: PQCOTA_TEST_DSN is not set; this target does not skip the Postgres tests"; exit 1; }
+	@out="$$(go test -count=1 -v $(addprefix ./,$(PG_PKGS)) 2>&1)"; rc=$$?; \
+	printf '%s\n' "$$out" | grep -E '^(--- (FAIL|SKIP)|FAIL|ok)'; \
+	if [ $$rc -ne 0 ]; then echo "✗ test-pg: the Postgres tests failed"; printf '%s\n' "$$out" | grep -E -A5 -- '--- FAIL' | head -60; exit 1; fi; \
+	if printf '%s\n' "$$out" | grep -q -- '--- SKIP'; then echo "✗ test-pg: a test was skipped; with a DSN nothing may skip"; exit 1; fi; \
+	printf '%s\n' "$$out" | grep -q -- '--- PASS: TestLatestIsTheLastLoadedStateOnPostgres' || { echo "✗ test-pg: IC-S26 did not run"; exit 1; }; \
+	if printf '%s\n' "$$out" | grep -qF -- "$$PQCOTA_TEST_DSN"; then echo "✗ test-pg: the DSN appeared in the test output"; exit 1; fi; \
+	echo "✓ Postgres tests passed (no skips, IC-S26 included): $(PG_PKGS)"
 
 # 데모 종단 검증(IC-U152). 상류 pqcota 데모를 처음부터 띄우므로 일반 make에는 넣지 않는다. 필요한 환경(PQCOTA_DIR과
 # 상류 다섯 리포 · docker · go · python3)이 없으면 건너뛰지 않고 실패한다. 릴리스 전에 전용 환경에서 반드시 통과시킨다.
