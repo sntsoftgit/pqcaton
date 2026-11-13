@@ -89,6 +89,17 @@ carry their version and content hash (v0.14.0).
   load and a prune take a per-node lock together.
 - **The v0.14.0 release collectors are "verified" on 03.** Replace the three collectors on the nodes and `collector.jar` with the
   v0.14.0 release assets.
+- **A collector is "verified" only when its content hash (h1) matches too, not just its version.** The main module h1 in the
+  collector's build information must equal the value pinned in this version's `go.sum`. The same version with another h1
+  "does not match", and `-allow-unverified-collectors` does not let it through. A collector built yourself from a tag checkout
+  has no h1 and "cannot be verified".
+- **The `collector.jar` check is stricter.** It is verified only when the release version, a well-formed commit and no
+  modification all hold, and 03's collector.jar row shows its version and the first 12 characters of its commit (the full
+  commit in the row's description). A JAR with no version, one built locally (`devel`, a `git describe` form), one from a
+  modified tree (`X-Pqcota-Dirty: true`) and one without a commit "cannot be verified" and **do not start without
+  `-allow-unverified-collectors`**. Up to v0.29.x a JAR with no version only got a warning. The usual fix is the upstream
+  v0.14.0 release `collector.jar`. Another release version still "does not match", and without a JAR nothing changes.
+  Manifest values are cut at 64 characters on the screen.
 - **An activation that goes back to an earlier policy can be done after re-ingesting the results under that policy.** Before
   that it is still 409 (`upstream-revert`), and the screen says "Re-ingest the results under this policy, then activate it". The
   reconciliation rule (compare with the node's latest) is unchanged. It became possible because from upstream v0.13.1 the state
@@ -99,6 +110,12 @@ carry their version and content hash (v0.14.0).
 - New case IC-S26: on a real pqcota Postgres history loaded A → B → A, the latest of each node is A, B and then the first A;
   loading A again does not create a new snapshot body; then A's reconciliation passes and B is `ErrRevert`; another
   organization's history does not find it.
+- New cases IC-CV11, IC-CV12, IC-CV13 and IC-U206: the h1 comparison of a release-shaped build (a module whose content changed
+  under the same version does not match), the JAR's commit and modified flag, the generated pins equal to `go.mod` and
+  `go.sum`, and 03's JAR row with a dirty JAR refused or allowed. IC-CV10 became "a tag checkout build has no h1 and cannot be
+  verified".
+- A generator that makes the expected h1 from `go.mod` and `go.sum` (`tools/genpin`) and its generated code
+  (`pkg/inventory/collectorver/pin_gen.go`). `make generate` makes it and `make verify-generated` refuses a stale one.
 - A PostgreSQL 16 service and `make test-pg` in GitHub CI: the Postgres contract tests (IC-S26 included) run without skipping. A
   missing DSN, a skipped test or IC-S26 not running fails it. The release gate requires `ci` to succeed on the candidate commit, so
   these tests are part of the release gate too.

@@ -128,6 +128,7 @@ TEMPL := github.com/a-h/templ/cmd/templ@v0.3.1020
 
 generate:
 	go run $(TEMPL) generate
+	go run ./tools/genpin
 
 # 고쳐 놓고 안 돌린 날을 잡는다. 그대로 두면 **화면은 예전 것이 뜨는데 소스는 새것**이라,
 # 무엇을 보고 있는지가 어긋난다. all에 넣지 않은 것은 이것만 망을 타기 때문이다.
@@ -135,6 +136,7 @@ verify-generated:
 	@go run $(TEMPL) generate
 	@git diff --exit-code -- '*_templ.go' \
 		|| { echo "✗ .templ 을 고치고 make generate 를 안 돌렸다. 생성물을 함께 커밋할 것"; exit 1; }
+	@go run ./tools/genpin -check
 
 # 저작권 표기 관문: 모든 파일에 저작권과 라이선스가 적혀 있는지 REUSE 명세로 잰다.
 #

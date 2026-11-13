@@ -463,7 +463,7 @@ type server struct {
 	// 판정 조직), upstreamOrgName: 연 이력이 묶인 조직.
 	upstream                     upstream.Store
 	upstreamOrg, upstreamOrgName string
-	checkCollector               func(path, rel, want string) collectorver.File
+	checkCollector               func(path, rel, want, wantSum string) collectorver.File
 	// stderr: 허용한 확인 불가 수집기처럼 화면 밖에도 남겨야 하는 것을 적는다. nil 이면 적지 않는다.
 	stderr io.Writer
 	// approvalKey: 승인 서명 키 파일(-approval-key, 없으면 기본 위치). 서명할 때마다 다시 읽고 점검한다. keySource · keyWhere:

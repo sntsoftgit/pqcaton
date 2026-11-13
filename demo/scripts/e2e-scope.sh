@@ -359,17 +359,22 @@ activated "$WS" "screen"
 step "6) the screen: 06 refuses the plan made under the old policy; 05 shows earlier conclusions only as references"
 "$UI" start
 # 데모의 수집기는 replace 빌드라 판을 확인할 수 없다. 03이 그것을 파일마다 보이고, -allow-unverified-collectors 로 허용한
-# 상태가 화면과 로그에 남는지 본다. collector.jar 는 판을 싣지 않아 경고만 보인다.
+# 상태가 화면과 로그에 남는지 본다. collector.jar 는 상류 v0.14.0부터 판을 실으므로 판이 맞는지만 본다(4단계에서 공식 자산으로 바뀐다).
 OBSERVE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/observe?lang=en')"
 grep -q 'data-check="collector-allowed"' <<<"$OBSERVE" || fail "03 does not show that unverified collectors are allowed"
-LINES="$(grep -oE 'data-collector-state="[a-z]+"><code>[^<]*</code>[^<]*' <<<"$OBSERVE" | sed -E 's/^data-collector-state="([a-z]+)"><code>([^<]*)<\/code>/\1 \2/')"
+LINES="$(grep -oE 'data-collector-state="[a-z]+"[^>]*><code>[^<]*</code>[^<]*' <<<"$OBSERVE" | sed -E 's/^data-collector-state="([a-z]+)"[^>]*><code>([^<]*)<\/code>/\1 \2/' | grep -v '^[a-z]* collector.jar')"
 echo "$LINES" | sed 's/^/   03 collector: /'
 grep -q '^unverified ' <<<"$LINES" || fail "03 does not list the unverified collectors"
 if grep -qE '^(verified|mismatch) ' <<<"$LINES"; then fail "a demo collector is not 'cannot be verified' (the demo builds them with local replaces)"; fi
 if grep -q "the version this screen pins is unknown" <<<"$LINES"; then fail "03 does not know the upstream version this screen pins"; fi
 if docker exec "$CTL" test -f "$WS/collectors/collector.jar"; then
-  grep -q 'data-check="jar-version"' <<<"$OBSERVE" || fail "03 does not warn that collector.jar carries no version"
-  JAR_NOTE="collector.jar has no version (warning only)"
+  # 상류 소스로 만든 JAR 은 판이 devel 이라 확인 불가다. 허용(-allow-unverified-collectors)으로 시작은 되지만 확인됨으로 보이면 안 된다.
+  JARLINE="$(grep -oE 'data-collector-state="[a-z]+"[^>]*><code>collector.jar</code>[^<]*' <<<"$OBSERVE" | head -1 | sed -E 's/^data-collector-state="([a-z]+)"[^>]*><code>([^<]*)<\/code>/\1 \2/')"
+  echo "   03 collector: $JARLINE"
+  grep -q 'data-check="jar-allowed"' <<<"$OBSERVE" || fail "03 does not show the demo's collector.jar (built from upstream source) as allowed"
+  grep -q '^unverified collector.jar' <<<"$JARLINE" || fail "the demo's collector.jar is not shown as cannot be verified"
+  if grep -qE 'data-check="jar-(mismatch|unverified)"' <<<"$OBSERVE"; then fail "03 refuses collector.jar although the allowance is given"; fi
+  JAR_NOTE="collector.jar cannot be verified, allowed by -allow-unverified-collectors"
 else
   JAR_NOTE="no collector.jar in this demo"
 fi

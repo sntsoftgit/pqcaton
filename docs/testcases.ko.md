@@ -524,10 +524,10 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U162](../inventory/cmd/pqcaton-ui/nul_test.go) ✅** | 옛 판에서 확정된 NUL 계획으로 06 화면 · 서명 확인 · 서명(확인 양식을 갖춰 잠금 안까지) · 생성 | **네 자리 모두 `plan-text`다.** 화면은 서명 · 생성 양식이 없고 새 판정 회차로 고치라는 까닭을 두 말로 보인다. 나머지는 409이고 작업 폴더는 바이트 그대로다 |
 | **[IC-U163](../inventory/cmd/pqcaton-ui/nul_test.go) ✅** | 지금 계획은 깨끗하고 서명한 계획에 NUL | 화면이 서명한 계획의 문제로 까닭을 보이고 생성 양식이 없으며 보관은 할 수 있다. 생성은 409 `plan-text`이고 파일은 그대로다 |
 | **[IC-U164](../inventory/cmd/pqcaton-ui/nul_test.go) ✅** | 되돌림 메모에 NUL을 넣고 05 확정 요청 | **확인 페이지부터 409 `session-text`이고 확정하지 않는다.** 세션 · 계획 · 영수증은 바이트 그대로이고, 거절문은 확정 전이라 그 자리에서 고치라고 안내한다 |
-| **[IC-U165](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 수집기가 모두 고정 판으로 확인됨(의존에도 replace 없음) | **통과하고 파일마다 판과 출처를 보인다**(「선언된 판 · 실제 소스: 태그 커밋 · 확인됨」) |
+| **[IC-U165](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 수집기가 모두 고정 판으로 확인됨(의존에도 replace 없음, 주 모듈 h1이 고정한 값과 같음) | **통과하고 파일마다 판과 출처를 보인다**(「선언된 판 · 실제 소스: 태그 커밋 · 확인됨」) |
 | **[IC-U166](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 옛 판 수집기, 또는 수집기끼리 판이 섞임 | **시작하지 않고(409 `run-not-ready`), `-allow-unverified-collectors`로도 넘기지 못한다**. 옛 `pqcota-jvmscan`이 적재 요청을 통째로 막던 사고가 여기 걸린다 |
 | **[IC-U167](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 판을 확인할 수 없는 수집기(상류 데모처럼 replace로 빌드, 태그 체크아웃이어도 의존이 replace) | **기본으로 시작하지 않는다**. 「실제 소스: 로컬 replace(devel) · 확인 불가」나 「수집기 소스 v0.10.7 확인 · replace 의존 소스 확인 불가」로 보인다. `-allow-unverified-collectors`로 띄운 화면만 허용하고, 허용한 사실과 파일 목록을 화면과 표준 오류에 남긴다. 작업 폴더에는 남기지 않는다 |
-| **[IC-U168](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | `collector.jar`에 판 정보가 없음 / 다른 판 | 판이 없으면 **경고만 하고 시작은 된다**(override를 요구하지 않는다). 판이 있는데 다르면 막는다 |
+| **[IC-U168](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | `collector.jar`에 판 정보가 없음 / 다른 판(고친 트리에서 만든 것은 IC-U206) | 판이 없으면 **확인 불가라 시작을 막고**, `-allow-unverified-collectors`로 허용하면 경고로 바뀌어 시작한다(v0.29.x까지는 경고만 했다). 판이 있는데 다르면 막는다. JAR이 없으면 이 점검은 없다 |
 | [IC-U169](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅ | `-allow-unverified-collectors`를 주거나 주지 않고 시작 | 기본은 꺼져 있고, 주면 서버에 그대로 닿는다 |
 | **[IC-U170](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 화면이 `pqcota-discovery`를 링크하지 않음 | **그래도 고정 판을 안다**. discovery가 있으면 그 판, 없으면 `pqcota-common`의 판을 쓴다. discovery만 찾던 때는 데모에서 모든 수집기가 「고정한 판을 알 수 없음」이 됐다 |
 | **[IC-U171](../inventory/cmd/pqcaton-ui/keys_test.go) ✅** | 기본 위치에 다른 키가 있는데 `-approval-key`를 줌(`-no-default-approval-key`를 함께 줘도) | **명시한 키로 서명한다**. 명시 경로가 언제나 우선하고, 후자는 기본 검색만 끈다 |
@@ -565,6 +565,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U203](../inventory/cmd/pqcaton-ui/reap_test.go) ✅** | 관측 프로세스가 끝난 뒤 회수 단계를 붙잡음(마무리 중인 틈) · 그 뒤 풂 | **관측은 정리 · 회수 · 마지막 기록이 끝나야 끝난다.** 마무리 중에는 03이 「마무리 중」을 보이고 시작 양식을 내놓지 않으며 계속 다시 받고, 새 관측은 409 `run-busy`이며, 기록은 아직 「실행 중」이다. 풀면 기록이 최종 상태로 쓰인 뒤에야 시작 양식과 새 관측이 돌아온다 |
 | **[IC-U204](../inventory/cmd/pqcaton-ui/reap_test.go) ✅** | 마지막 실행 기록 쓰기 실패(넣음, 오류 원문에 경로와 비밀값이 듦) · 복구도 쓰지 못하는 재시작 · 디스크가 쓸 수 있게 된 뒤의 재시작 | **기록을 쓰지 못하면 끝난 것으로 치지 않는다.** 실행은 끝나지만(기다리다 멈추지 않는다) 안전한 까닭(디스크 공간 없음)만 보이며 「회수 필요」이고, 경로와 비밀값은 화면 · 상태 · 로그 어디에도 없다. 시작 양식이 없고 새 관측은 409 `run-not-ready`이며, 디스크의 기록은 「실행 중」으로 남는다. 복구도 쓰지 못하는 재시작은 같은 방식으로 막고, 디스크가 쓸 수 있게 된 뒤 다시 시작하면 그 실행을 마무리하고 시작 양식과 새 관측이 돌아온다 |
 | **[IC-U205](../inventory/cmd/pqcaton-ui/reap_test.go) ✅** | 시작 때의 기록 · 결과 교체 직전의 기록 · 감독의 기록 쓰기 실패(넣음, 오류 원문에 경로와 가짜 비밀값이 듦). 표 형식 시험 하나로 세 경로를 잰다 | **기록 쓰기 실패의 원문은 어디에도 나오지 않는다.** 화면 · 상태 · 실행 로그에 경로와 비밀값이 없고 안전한 분류(디스크 공간 없음)는 있다. 그 실행은 「실패」로 끝나 디스크의 기록도 「실패」이고 지금 결과는 그대로다. 남은 것이 없으므로 시작 양식이 보이고, 실패를 걷어 낸 뒤의 다음 관측은 받아들여져 끝까지 간다 |
+| **[IC-U206](../inventory/cmd/pqcaton-ui/collectors_test.go) ✅** | 상류 v0.14.0 `collector.jar`: 확인됨 / `X-Pqcota-Dirty: true` / 그것을 `-allow-unverified-collectors`로 허용 / 다른 판에 dirty | 확인된 JAR은 collector.jar 줄에 **판과 커밋 앞 12자**를 보이고 전체 커밋은 접근 가능한 설명(`title`)에 둔다. dirty JAR은 **시작을 막고**(확인 불가), 허용하면 경고로 바뀌어 시작한다. 표준 오류의 허용 목록에는 파일과 까닭만 있고 커밋은 되풀이하지 않는다. 판이 다르면 맞지 않음. 정식 판이 아닌 판의 JAR도 시작을 막는다. manifest의 임의 문자열은 이스케이프되고, 500자 판은 그대로 실리지 않는다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 
@@ -756,10 +757,14 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-CV4](../pkg/inventory/collectorver/collectorver_test.go) ✅** | 상류 데모처럼 다른 모듈에서 replace로 끌어와 빌드 | 선언된 판이 맞아도 **확인 불가**(로컬 replace), 선언된 판은 보인다. 로컬 replace가 옛 소스여도 통과시키지 않는다 |
 | [IC-CV5](../pkg/inventory/collectorver/collectorver_test.go) ✅ | Windows 교차 빌드(PE) | 같은 빌드 정보로 읽는다(의존이 replace라 리눅스와 같이 확인 불가). Windows 수집기도 같은 기준으로 본다 |
 | [IC-CV6](../pkg/inventory/collectorver/collectorver_test.go) ✅ | 빌드 정보 없는 파일 · 다른 모듈 · 고정 판을 모르는 화면 | **확인 불가**. 읽을 수 없는 것을 통과로 세지 않는다 |
-| **[IC-CV7](../pkg/inventory/collectorver/collectorver_test.go) ✅** | `collector.jar`: 지금 상류처럼 판 없음 · `Implementation-Version` · `pom.properties` · 다른 판 · 깨진 파일 | 판 없음은 확인 불가(판 없음), 같은 판은 확인됨, 다른 판은 맞지 않음, 깨진 파일은 확인 불가. JAR은 실행하지 않고 판을 읽는다 |
+| **[IC-CV7](../pkg/inventory/collectorver/collectorver_test.go) ✅** | `collector.jar`: 지금 상류처럼 판 없음 · `Implementation-Version` · `pom.properties` · 다른 판 · 깨진 파일 | 판 없음은 확인 불가(판 없음), 같은 판이라도 커밋 · 수정 여부가 없으면 확인 불가(커밋 정보 없음), 다른 판은 맞지 않음, 깨진 파일은 확인 불가. JAR은 실행하지 않고 판을 읽는다 |
 | [IC-CV8](../pkg/inventory/collectorver/collectorver_test.go) ✅ | 수집기끼리 다른 정식 판 | 섞였다고 알린다. 하나하나가 맞아 보여도 섞인 묶음은 막는다 |
 | **[IC-CV9](../pkg/inventory/collectorver/collectorver_test.go) ✅** | 옆 `pqcota-common`을 v0.10.6으로 바꿔 빌드 | **결코 확인됨이 되지 않는다**(확인 불가, replace 의존). 빌드 정보에 실제 소스 판이 드러나지 않는다는 실물의 한계를 시험으로 고정한다 |
-| **[IC-CV10](../pkg/inventory/collectorver/collectorver_test.go) ✅** | replace 없이 의존을 그 판으로 받아 태그에서 빌드 | **확인됨**. 상류가 그런 릴리스 빌드를 내면 override 없이 통과한다 |
+| **[IC-CV10](../pkg/inventory/collectorver/collectorver_test.go) ✅** | replace 없이 의존을 그 판으로 받아 태그 체크아웃에서 빌드 | **확인 불가(h1 없음)**. 의존에 replace가 없고 커밋은 읽히지만, VCS 빌드는 빌드 정보에 주 모듈의 h1이 없어 고정한 h1과 견줄 수 없다 |
+| **[IC-CV11](../pkg/inventory/collectorver/module_test.go) ✅** | 상류 v0.14.0 릴리스 모양의 빌드(수집기 모듈을 의존 모듈로 받아 빌드: 주 모듈에 판과 h1, replace · VCS 없음) · 고정 h1이 다름 · 고정 h1 모름 · 같은 판 이름에 내용만 바꾼 모듈 | **h1이 고정한 값과 같을 때만 확인됨**. 고정 h1이 다르거나 내용만 바꾼 모듈로 빌드했으면 **맞지 않음(판은 같지만 내용 해시가 다름)**이라 override로 풀리지 않는다. 고정 h1을 모르면 확인 불가 |
+| **[IC-CV12](../pkg/inventory/collectorver/collectorver_test.go) ✅** | 상류 v0.14.0 `collector.jar`: 판 · 커밋 · `X-Pqcota-Dirty: false` / `true` / 다른 판에 `true` · 직접 빌드한 판(`devel` · `git describe` 꼴 · `-dirty`) · 임의 문자열 · 500자 판 · 커밋 꼴이 아닌 값 | 커밋을 읽고 확인됨. `X-Pqcota-Dirty: true`는 Go의 dirty 빌드처럼 **확인 불가(dirty)**, 정식 판이 다르면 그보다 먼저 맞지 않음. 직접 빌드한 판은 다른 판이 아니라 **확인 불가**(devel · 태그 뒤 커밋 · dirty)이고 본 판으로 세지 않는다. 수정 여부가 `false` · `true`가 아니거나(`unknown`) 커밋이 꼴이 틀리면 확인 불가(커밋 정보 없음). 화면에 옮기는 판은 64자에서 자르고, 커밋은 40 · 64자 16진수만 받는다 |
+| **[IC-CV13](../pkg/inventory/collectorver/module_test.go) ✅** | 생성 코드 `pin_gen.go`의 고정 값과 리포의 `go.mod` · `go.sum` | **같아야 한다**. go.mod를 올리고 `go run ./tools/genpin`을 돌리지 않으면 막힌다(`make verify-generated`도 잰다). 수집기 모듈의 고정 값이 반드시 있다 |
+| **[IC-CV14](../tools/genpin/main_test.go) ✅** | 생성기(`tools/genpin`)에 준 `go.mod` · `go.sum`: 정상 · 모듈 zip의 h1 없이 `/go.mod` 줄만 · 같은 모듈 · 판에 h1 둘 · go.mod가 모듈을 요구하지 않음 | 모듈 zip의 h1만 고르고 생성물에 **판과 h1을 함께** 적는다(`/go.mod` 줄의 해시를 고르지 않는다). h1이 없거나, 둘로 모순되거나, 요구하지 않으면 **생성하지 않는다** |
 
 ### R2. 여러 노드 대조 (`pkg/inventory/report`) ✅
 | TC | Given → When | Then |

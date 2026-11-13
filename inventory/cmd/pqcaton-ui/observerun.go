@@ -348,10 +348,8 @@ func (s *server) preflight() []ui.RunCheck {
 	jar := filepath.Join(s.collectors, "collector.jar")
 	if !isFile(jar) {
 		add(ui.RunJar, false, false, jar)
-	} else if c := s.jarCheck(jar); c != nil {
-		out = append(out, *c)
 	} else {
-		add(ui.RunJar, true, false, jar)
+		out = append(out, *s.jarCheck(jar))
 	}
 	return out
 }

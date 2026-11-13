@@ -29,8 +29,8 @@ import (
 const pin = "v0.10.7"
 
 // judged: 수집기마다 같은 판정을 돌려주는 판정 함수.
-func judged(state collectorver.State, reason collectorver.Reason, declared string) func(string, string, string) collectorver.File {
-	return func(_, rel, _ string) collectorver.File {
+func judged(state collectorver.State, reason collectorver.Reason, declared string) func(string, string, string, string) collectorver.File {
+	return func(_, rel, _, _ string) collectorver.File {
 		f := collectorver.File{Path: rel, State: state, Reason: reason, Declared: declared}
 		if declared != "" {
 			f.Seen = []string{declared}
@@ -42,7 +42,7 @@ func judged(state collectorver.State, reason collectorver.Reason, declared strin
 	}
 }
 
-func versionReady(t *testing.T, check func(string, string, string) collectorver.File, allow bool) (*server, *bytes.Buffer) {
+func versionReady(t *testing.T, check func(string, string, string, string) collectorver.File, allow bool) (*server, *bytes.Buffer) {
 	t.Helper()
 	s := runReady(t, "ok")
 	s.collectorPin, s.checkCollector, s.allowUnverified = pin, check, allow
@@ -79,9 +79,9 @@ func TestCollectorVersionsVerified(t *testing.T) {
 // IC-U166 — **판이 맞지 않으면 시작하지 않고, -allow-unverified-collectors 로도 넘기지 못한다.** 옛 수집기가 적재를
 // 통째로 막던 사고가 여기 걸린다. 수집기끼리 판이 섞인 것도 같다.
 func TestCollectorVersionMismatchCannotBeAllowed(t *testing.T) {
-	for name, check := range map[string]func(string, string, string) collectorver.File{
+	for name, check := range map[string]func(string, string, string, string) collectorver.File{
 		"old version": judged(collectorver.Mismatch, collectorver.ReasonOldVersion, "v0.10.6"),
-		"mixed": func(p, rel, w string) collectorver.File {
+		"mixed": func(p, rel, w, _ string) collectorver.File {
 			v := pin
 			if strings.HasSuffix(rel, "jvmscan") {
 				v = "v0.10.6"
@@ -160,14 +160,21 @@ func writeJar(t *testing.T, path, manifest string) {
 	}
 }
 
-// IC-U168 — **collector.jar 는 판이 없으면 경고만 하고, 판이 있는데 다르면 막는다.** 지금 상류의 JAR 은 판을 싣지 않아
-// 경고로 보이고 시작은 된다. override 도 요구하지 않는다.
+// IC-U168 — **collector.jar 는 판 정보가 없으면 막고(override 필요), 판이 있는데 다르면 막는다(넘길 수 없다).** v0.30.0 전에는
+// 판 정보가 없으면 경고만 했다. 상류 v0.14.0 부터 공식 JAR 에 판과 커밋이 실리므로 그 예외를 걷었다. -allow-unverified-collectors 로
+// 허용하면 경고로 바뀌어 시작한다. JAR 이 없으면 이 점검은 없다(선택 항목).
 func TestCollectorJarVersion(t *testing.T) {
 	s, _ := versionReady(t, judged(collectorver.Verified, collectorver.ReasonOK, pin), false)
 	writeJar(t, filepath.Join(s.collectors, "collector.jar"), "Manifest-Version: 1.0\nAgent-Class: pqcota.jvm.IntrospectAgent\n")
 	page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
-	if !strings.Contains(page, `data-check="jar-version"`) || !strings.Contains(page, "시작은 막지 않습니다") || !strings.Contains(page, `action="`+ui.RunPath+`"`) {
-		t.Errorf("a jar without a version should warn and still allow the start:\n%s", page)
+	if !strings.Contains(page, `data-check="jar-unverified"`) || !strings.Contains(page, "판 정보 없음") || strings.Contains(page, `action="`+ui.RunPath+`"`) {
+		t.Errorf("a jar without a version should block the start as cannot be verified:\n%s", page)
+	}
+	startRefused(t, s)
+	allowed, _ := versionReady(t, judged(collectorver.Verified, collectorver.ReasonOK, pin), true)
+	writeJar(t, filepath.Join(allowed.collectors, "collector.jar"), "Manifest-Version: 1.0\nAgent-Class: pqcota.jvm.IntrospectAgent\n")
+	if page := get(t, allowed, ui.ScreenObserve+"?lang=ko").Body.String(); !strings.Contains(page, `data-check="jar-allowed"`) || !strings.Contains(page, `action="`+ui.RunPath+`"`) {
+		t.Errorf("an allowed jar without a version should warn and allow the start:\n%s", page)
 	}
 
 	writeJar(t, filepath.Join(s.collectors, "collector.jar"), "Manifest-Version: 1.0\nImplementation-Version: 0.10.6\n")
@@ -176,6 +183,66 @@ func TestCollectorJarVersion(t *testing.T) {
 		t.Errorf("a jar of another version should be refused:\n%s", page)
 	}
 	startRefused(t, s)
+}
+
+// IC-U206 — **collector.jar 의 커밋과 수정 여부(상류 v0.14.0).** 확인된 JAR 은 collector.jar 줄에 판과 커밋 앞 12자를 보이고,
+// 전체 커밋은 접근 가능한 설명(title)에 둔다. 고친 트리에서 만든 JAR(X-Pqcota-Dirty: true)은 수집기의 확인 불가처럼 시작을
+// 막고, -allow-unverified-collectors 로 허용하면 경고로 바뀌어 시작한다. 그때 표준 오류의 허용 목록에는 파일과 까닭만 있고 커밋은
+// 되풀이하지 않는다. 판이 다르면 dirty 여부와 상관없이 맞지 않음이다.
+func TestCollectorJarCommitAndDirty(t *testing.T) {
+	const commit = "c4d8f366fdeda2de7c6bab0b2822c91ede7d448d"
+	release := "Manifest-Version: 1.0\nImplementation-Version: " + pin + "\nX-Pqcota-Commit: " + commit + "\nX-Pqcota-Dirty: false\n"
+	s, _ := versionReady(t, judged(collectorver.Verified, collectorver.ReasonOK, pin), false)
+	jarPath := filepath.Join(s.collectors, "collector.jar")
+	writeJar(t, jarPath, release)
+	page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	for _, want := range []string{"태그 커밋 c4d8f366fded · 확인됨", `title="커밋 ` + commit + `"`, `action="` + ui.RunPath + `"`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("a verified jar: the observe screen lacks %q", want)
+		}
+	}
+
+	writeJar(t, jarPath, strings.Replace(release, "X-Pqcota-Dirty: false", "X-Pqcota-Dirty: true", 1))
+	page = get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	if !strings.Contains(page, `data-check="jar-unverified"`) || !strings.Contains(page, "고친 트리(dirty)") {
+		t.Errorf("a dirty jar should be refused as cannot be verified:\n%s", page)
+	}
+	startRefused(t, s)
+
+	allowed, stderr := versionReady(t, judged(collectorver.Verified, collectorver.ReasonOK, pin), true)
+	writeJar(t, filepath.Join(allowed.collectors, "collector.jar"), strings.Replace(release, "X-Pqcota-Dirty: false", "X-Pqcota-Dirty: true", 1))
+	page = get(t, allowed, ui.ScreenObserve+"?lang=ko").Body.String()
+	if !strings.Contains(page, `data-check="jar-allowed"`) || !strings.Contains(page, `action="`+ui.RunPath+`"`) {
+		t.Errorf("an allowed dirty jar should warn and allow the start:\n%s", page)
+	}
+	if w := postForm(t, allowed, ui.RunPath, url.Values{}); w.Code != http.StatusSeeOther {
+		t.Fatalf("start with the allowance = %d", w.Code)
+	}
+	waitRun(t, allowed)
+	if !strings.Contains(stderr.String(), "collector.jar (dirty)") || strings.Contains(stderr.String(), commit) {
+		t.Errorf("the allowance log should name the jar and its reason without repeating the commit:\n%s", stderr.String())
+	}
+
+	writeJar(t, jarPath, strings.Replace(strings.Replace(release, "X-Pqcota-Dirty: false", "X-Pqcota-Dirty: true", 1), pin, "v0.10.6", 1))
+	if page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String(); !strings.Contains(page, `data-check="jar-mismatch"`) {
+		t.Errorf("a dirty jar of another version should be refused as does not match:\n%s", page)
+	}
+
+	// manifest 의 임의 문자열: 표시할 때 이스케이프되고, 지나치게 긴 값은 잘려 실린다. 커밋 꼴이 아니면 커밋을 보이지 않는다.
+	hostile := "<script>alert(1)</script>"
+	writeJar(t, jarPath, "Manifest-Version: 1.0\nImplementation-Version: "+hostile+"\nX-Pqcota-Commit: <b>x</b>\n")
+	if page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String(); !strings.Contains(page, `data-check="jar-unverified"`) {
+		t.Errorf("a jar with a non-release version should block the start as cannot be verified")
+	}
+	page = get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	if strings.Contains(page, hostile) || strings.Contains(page, "<b>x</b>") || !strings.Contains(page, "&lt;script&gt;") {
+		t.Errorf("manifest values must be escaped on the screen")
+	}
+	long := "v" + strings.Repeat("9", 500)
+	writeJar(t, jarPath, "Manifest-Version: 1.0\nImplementation-Version: "+long+"\n")
+	if page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String(); strings.Contains(page, long) || !strings.Contains(page, strings.Repeat("9", 63)+"…") {
+		t.Errorf("a 500-character version must not reach the screen as it is")
+	}
 }
 
 // IC-U169 — **-allow-unverified-collectors 는 기본으로 꺼져 있고, 주면 서버에 그대로 닿는다.**

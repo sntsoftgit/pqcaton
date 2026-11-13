@@ -67,11 +67,12 @@ func (s *server) collectorFiles(dirs []string) []collectorver.File {
 	if check == nil {
 		check = collectorver.CheckGo
 	}
+	sum := collectorver.SumFor(s.collectorPin)
 	var out []collectorver.File
 	for _, d := range dirs {
 		for _, n := range collectorBins[d] {
 			rel := d + "/" + n
-			out = append(out, check(filepath.Join(s.collectors, d, n), rel, s.collectorPin))
+			out = append(out, check(filepath.Join(s.collectors, d, n), rel, s.collectorPin, sum))
 		}
 	}
 	return out
@@ -81,7 +82,7 @@ func toUI(fs []collectorver.File) []ui.CollectorFile {
 	out := make([]ui.CollectorFile, 0, len(fs))
 	for _, f := range fs {
 		out = append(out, ui.CollectorFile{Path: f.Path, State: string(f.State), Reason: string(f.Reason),
-			Declared: f.Declared, Revision: f.Revision, DepsReplaced: f.DepsReplaced})
+			Declared: f.Declared, Revision: f.Revision, Sum: f.Sum, DepsReplaced: f.DepsReplaced})
 	}
 	return out
 }
@@ -119,17 +120,22 @@ func (s *server) versionChecks(files []collectorver.File) []ui.RunCheck {
 	return []ui.RunCheck{{Item: ui.RunCollectorVersion, OK: true, Blocking: true, Detail: pin, Files: rows}}
 }
 
-// jarCheck: collector.jar 가 있을 때의 판 점검. 판 정보가 없으면 경고만, 다른 판이면 막는다. 확인되면 따로 적지 않는다.
+// jarCheck: collector.jar 가 있을 때의 판 점검(없으면 부르지 않는다). 정식 판이 다르면 막고 넘길 수 없다. 확인할 수 없는
+// 것(판 정보 없음 · devel · 태그 뒤 커밋 · dirty · 커밋 정보 없음)은 수집기의 확인 불가처럼 막고, -allow-unverified-collectors 로
+// 허용하면 경고다. 확인되면 collector.jar 줄에 판과 커밋을 함께 보인다.
 func (s *server) jarCheck(path string) *ui.RunCheck {
 	f := collectorver.CheckJar(path, "collector.jar", s.collectorPin)
 	rows := toUI([]collectorver.File{f})
 	switch {
 	case f.State == collectorver.Mismatch:
 		return &ui.RunCheck{Item: ui.RunJarMismatch, OK: false, Blocking: true, Detail: s.collectorPin, Files: rows}
+	case f.State == collectorver.Unverified && s.allowUnverified:
+		return &ui.RunCheck{Item: ui.RunJarAllowed, OK: false, Blocking: false, Detail: path, Files: rows}
 	case f.State == collectorver.Unverified:
-		return &ui.RunCheck{Item: ui.RunJarVersion, OK: false, Blocking: false, Detail: path, Files: rows}
+		return &ui.RunCheck{Item: ui.RunJarUnverified, OK: false, Blocking: true, Detail: path, Files: rows}
 	}
-	return nil
+	// 확인됨: 03의 collector.jar 줄에 판과 커밋(짧게, 전체는 title)을 보인다.
+	return &ui.RunCheck{Item: ui.RunJar, OK: true, Blocking: false, Detail: path, Files: rows}
 }
 
 // logAllowed: 확인 불가를 허용한 수집기 목록을 표준 오류에 적는다. 작업 폴더에는 쓰지 않는다.
@@ -138,7 +144,7 @@ func logAllowed(w io.Writer, when string, checks []ui.RunCheck) {
 		return
 	}
 	for _, c := range checks {
-		if c.Item != ui.RunCollectorAllowed {
+		if c.Item != ui.RunCollectorAllowed && c.Item != ui.RunJarAllowed {
 			continue
 		}
 		var names []string

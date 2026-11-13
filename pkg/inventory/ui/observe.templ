@@ -75,7 +75,7 @@ templ runChecks(l Lang, r ObserveRun) {
 				if len(c.Files) > 0 {
 					<ul class="collector-files">
 						for _, f := range c.Files {
-							<li data-collector-state={ f.State }><code>{ f.Path }</code>{ " " }{ f.Line(l) }</li>
+							<li data-collector-state={ f.State } if f.Title(l) != "" { title={ f.Title(l) } }><code>{ f.Path }</code>{ " " }{ f.Line(l) }</li>
 						}
 					</ul>
 				}

@@ -1151,8 +1151,9 @@ var runItemText = map[RunItem]T{
 	RunCollectorMismatch:   {KO: "수집기 판이 맞지 않음", EN: "Collector versions do not match"},
 	RunCollectorUnverified: {KO: "수집기 판을 확인할 수 없음", EN: "Collector versions cannot be verified"},
 	RunCollectorAllowed:    {KO: "판을 확인하지 못한 수집기를 허용함", EN: "Unverified collectors allowed"},
-	RunJarVersion:          {KO: "collector.jar 판", EN: "collector.jar version"},
 	RunJarMismatch:         {KO: "collector.jar 판이 맞지 않음", EN: "collector.jar version does not match"},
+	RunJarUnverified:       {KO: "collector.jar를 확인할 수 없음", EN: "collector.jar cannot be verified"},
+	RunJarAllowed:          {KO: "확인하지 못한 collector.jar를 허용함", EN: "Unverified collector.jar allowed"},
 }
 
 var runItemMissing = map[RunItem]T{
@@ -1176,20 +1177,23 @@ var runItemMissing = map[RunItem]T{
 		KO: "없어도 시작하지만, 실행 중인 JVM의 provider 체인은 관측하지 않습니다",
 		EN: "The observation starts without it, but the provider chains of running JVMs are not observed"},
 	RunCollectorMismatch: {
-		KO: "옆에 적힌 판으로 빌드한 수집기로 바꾸십시오. 판이 맞지 않는 수집기는 -allow-unverified-collectors로도 쓸 수 없습니다",
-		EN: "Replace them with collectors built at the version shown. Collectors of another version cannot be used even with -allow-unverified-collectors"},
+		KO: "옆에 적힌 판의 상류 릴리스 자산으로 바꾸십시오. 판이 다르거나, 판은 같아도 내용 해시(h1)가 다른 수집기는 -allow-unverified-collectors로도 쓸 수 없습니다",
+		EN: "Replace them with the upstream release assets of the version shown. Collectors of another version, or of the same version with another content hash (h1), cannot be used even with -allow-unverified-collectors"},
 	RunCollectorUnverified: {
-		KO: "상류 태그 체크아웃에서 다시 빌드한 수집기를 두십시오. 판을 확인하지 못한 채로 쓰려면 화면을 -allow-unverified-collectors로 시작하십시오",
-		EN: "Put collectors rebuilt from an upstream tag checkout. To use them without a verified version, start the screen with -allow-unverified-collectors"},
+		KO: "옆에 적힌 판의 상류 릴리스 자산을 두십시오. 판을 확인하지 못한 채로 쓰려면 화면을 -allow-unverified-collectors로 시작하십시오",
+		EN: "Put the upstream release assets of the version shown. To use them without a verified version, start the screen with -allow-unverified-collectors"},
 	RunCollectorAllowed: {
 		KO: "-allow-unverified-collectors로 시작해, 판을 확인하지 못한 수집기로 관측합니다. 이 허용은 화면을 끄면 사라지고 작업 폴더에 남지 않습니다",
 		EN: "Started with -allow-unverified-collectors: the observation uses collectors whose version is not verified. The allowance ends with the screen and is not kept in the workspace"},
-	RunJarVersion: {
-		KO: "collector.jar에 판 정보가 없어 판을 확인하지 못했습니다. 시작은 막지 않습니다",
-		EN: "collector.jar carries no version information, so its version was not checked. The observation still starts"},
 	RunJarMismatch: {
 		KO: "collector.jar의 판이 옆에 적힌 판과 다릅니다. 같은 판으로 빌드한 것으로 바꾸십시오",
 		EN: "The version of collector.jar differs from the version shown. Replace it with one built at that version"},
+	RunJarUnverified: {
+		KO: "collector.jar의 판 · 커밋 · 수정 여부를 확인할 수 없습니다(판 정보 없음 · 직접 빌드 · 고친 트리 · 커밋 정보 없음). 옆에 적힌 판의 상류 릴리스 collector.jar로 바꾸십시오. 그대로 쓰려면 화면을 -allow-unverified-collectors로 시작하십시오",
+		EN: "The version, commit or modified flag of collector.jar cannot be verified (no version, a local build, a modified tree or no commit). Replace it with the upstream release collector.jar of the version shown. To use it as it is, start the screen with -allow-unverified-collectors"},
+	RunJarAllowed: {
+		KO: "-allow-unverified-collectors로 시작해, 확인하지 못한 collector.jar로 관측합니다. 이 허용은 화면을 끄면 사라지고 작업 폴더에 남지 않습니다",
+		EN: "Started with -allow-unverified-collectors: the observation uses a collector.jar that is not verified. The allowance ends with the screen and is not kept in the workspace"},
 }
 
 // 「회수 필요」 프로세스 정보(03).
@@ -1228,6 +1232,8 @@ var (
 	tCVSource       = T{KO: "실제 소스: %s", EN: "actual source: %s"}
 	tCVNone         = T{KO: "없음", EN: "none"}
 	tCVTagCommit    = T{KO: "태그 커밋 %s", EN: "tag commit %s"}
+	tCVModuleSum    = T{KO: "%s 모듈 · 내용 해시(h1) 일치", EN: "%s module · content hash (h1) matches"}
+	tCVFullCommit   = T{KO: "커밋 %s", EN: "commit %s"}
 	tCVDepsReplaced = T{KO: "수집기 소스 %s 확인 · replace 의존 소스 확인 불가", EN: "collector source %s verified · replaced dependency sources cannot be verified"}
 )
 
@@ -1249,6 +1255,9 @@ var collectorReasonText = map[string]T{
 	"unreadable":     {KO: "읽을 수 없음", EN: "unreadable"},
 	"no-pin":         {KO: "이 화면이 고정한 판을 알 수 없음", EN: "the version this screen pins is unknown"},
 	"deps-replaced":  {KO: "replace 의존 소스 확인 불가", EN: "replaced dependency sources cannot be verified"},
+	"other-content":  {KO: "판은 같지만 내용 해시(h1)가 다름", EN: "same version, another content hash (h1)"},
+	"no-sum":         {KO: "모듈 내용 해시(h1) 없음(직접 빌드)", EN: "no module content hash (h1) (built locally)"},
+	"no-commit":      {KO: "커밋 · 수정 여부 정보 없음", EN: "no commit or modified flag"},
 }
 
 // ── 06 승인 · 생성 ──────────────────────────────────────────────────────────

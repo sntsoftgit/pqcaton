@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -109,9 +110,12 @@ const (
 	RunCollectorUnverified RunItem = "collector-unverified"
 	// RunCollectorAllowed — 확인할 수 없는 수집기를 -allow-unverified-collectors 로 허용했다(경고로 보인다).
 	RunCollectorAllowed RunItem = "collector-allowed"
-	// RunJarVersion — collector.jar 에 판 정보가 없다(경고만). RunJarMismatch — 판이 있는데 다르다(막는다).
-	RunJarVersion  RunItem = "jar-version"
+	// RunJarMismatch — collector.jar 의 정식 판이 다르다(막는다, 넘길 수 없다).
 	RunJarMismatch RunItem = "jar-mismatch"
+	// RunJarUnverified — collector.jar 를 확인할 수 없다(판 정보 없음 · devel · 태그 뒤 커밋 · dirty · 커밋 정보 없음). 수집기의
+	// 확인 불가처럼 막고, -allow-unverified-collectors 로 허용하면 RunJarAllowed(경고)다. v0.30.0 전에는 판 정보가 없으면 경고만 했다.
+	RunJarUnverified RunItem = "jar-unverified"
+	RunJarAllowed    RunItem = "jar-allowed"
 )
 
 // CollectorFile — 수집기 파일 하나의 판 판정(collectorver.File 을 화면에 옮긴 것).
@@ -121,7 +125,19 @@ type CollectorFile struct {
 	Reason       string // collectorver.Reason
 	Declared     string
 	Revision     string
+	Sum          string // 빌드 정보의 주 모듈 h1(확인됨이면 고정한 값과 같다)
 	DepsReplaced bool
+}
+
+// commitHex — 커밋으로 보이는 값: git 의 SHA-1(40자) · SHA-256(64자) 16진수. 이 꼴일 때만 줄여 보이고 전체를 title 에 둔다.
+var commitHex = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
+
+// Title — 접근 가능한 설명(title)에 둘 전체 커밋. 화면 줄에는 앞 12자만 보인다. 커밋 꼴이 아니면 빈 값이다.
+func (f CollectorFile) Title(l Lang) string {
+	if commitHex.MatchString(f.Revision) {
+		return fmt.Sprintf(tCVFullCommit.In(l), f.Revision)
+	}
+	return ""
 }
 
 // RunCheck — 점검 하나. Blocking이 아닌 것은 빠져도 시작하지만 그 관측이 빠진다는 것을 알린다.
@@ -164,12 +180,10 @@ func (f CollectorFile) Line(l Lang) string {
 	}
 	var source string
 	switch {
-	case f.Reason == "" && f.Revision != "":
-		rev := f.Revision
-		if len(rev) > 12 {
-			rev = rev[:12]
-		}
-		source = fmt.Sprintf(tCVTagCommit.In(l), rev)
+	case f.Reason == "" && commitHex.MatchString(f.Revision):
+		source = fmt.Sprintf(tCVTagCommit.In(l), f.Revision[:12])
+	case f.Reason == "" && f.Sum != "":
+		source = fmt.Sprintf(tCVModuleSum.In(l), declared)
 	case f.Reason == "":
 		source = declared
 	default:

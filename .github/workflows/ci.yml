@@ -53,7 +53,8 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: pqcaton_ci
-          POSTGRES_PASSWORD: pqcaton-ci-only
+          # 비밀이 아니다: 이 공개 파일에 적힌 고정 시험값이고, 러너가 끝나면 사라지는 시험 DB에만 쓴다.
+          POSTGRES_PASSWORD: not-secret-ci-only
           POSTGRES_DB: pqcaton_ci
         ports:
           - 127.0.0.1:5432:5432
@@ -74,4 +75,4 @@ jobs:
       - name: Postgres 계약 시험
         run: make test-pg
         env:
-          PQCOTA_TEST_DSN: postgres://pqcaton_ci:pqcaton-ci-only@127.0.0.1:5432/pqcaton_ci?sslmode=disable
+          PQCOTA_TEST_DSN: postgres://pqcaton_ci:not-secret-ci-only@127.0.0.1:5432/pqcaton_ci?sslmode=disable

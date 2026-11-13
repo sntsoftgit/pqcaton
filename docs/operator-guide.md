@@ -156,24 +156,39 @@ tar -xzf pqcota-linux-amd64.tar.gz && mv pqcota-linux-amd64 linux-amd64
 ```
 
 **Collector versions.** Before an observation starts, 03 checks the version of each collector. It does not run them; it
-reads only the Go build information. "Verified" is only a build whose collector itself is at the pinned version (tag, commit, no modification) and whose
+reads only the Go build information. "Verified" is only a build whose collector itself is at the pinned version, whose main
+module content hash (h1) in the build information equals the value this version pins (the repository's `go.sum`), and whose
 dependencies carry no replace either.
 
 **The release assets of upstream v0.14.0 are "verified".** From v0.14.0 the upstream release builds the sibling modules from
 the same tag's modules instead of the folders next to it, so the build information keeps the collector itself and its
 dependencies at v0.14.0 with no replace. A build of your own next to the sibling folders (as the upstream demo does) is still
 "cannot be verified": a collector built itself through a replace shows "actual source: local replace (devel)", and one built
-from a tag checkout shows "collector source v0.14.0 verified · replaced dependency sources cannot be verified".
+from a tag checkout shows "collector source v0.14.0 verified · replaced dependency sources cannot be verified". A build of your
+own carries no h1 for its main module, so even without a replace it cannot be verified: "no module content hash (h1) (built
+locally)".
 
-- **Does not match.** When another version shows, or the collectors mix versions, the observation does not start, and no
-  option lets it through. Replace them with collectors rebuilt at that version.
+- **Does not match.** When another version shows, the collectors mix versions, or **the version is the same but the content
+  hash (h1) differs from the pinned one** (other content under the same version), the observation does not start, and no
+  option lets it through. Replace them with the upstream release assets of that version.
 - **Cannot be verified.** Collectors whose version cannot be trusted do not start by default either: built with a
   replace from another repository as the upstream demo does, built with `go build -buildvcs=false`, built from a modified tree, or
   files with no build information. To use them knowingly, start the screen with `-allow-unverified-collectors`. The
   allowance and the list of files show on the 03 screen and on standard error, and are not kept in the workspace.
-- **`collector.jar`.** The v0.14.0 JAR carries its version in its manifest (`Implementation-Version`), and the screen checks
-  it. When it differs, the observation does not start. A JAR that carries no version only gets a warning that its version
-  was not checked, and the observation still starts.
+- **`collector.jar`.** It is optional (without it there is no such check). When it is there, **from v0.30.0 it is checked as
+  strictly as the collectors.** The official v0.14.0 JAR carries its version (`Implementation-Version`), commit
+  (`X-Pqcota-Commit`) and whether it was modified (`X-Pqcota-Dirty`) in its manifest.
+  - **Verified**: the release version is the pinned one, the commit is 40 or 64 hexadecimal characters and the modified flag
+    is `false`. 03's collector.jar row shows its version and the first 12 characters of its commit, with the full commit in the
+    row's description (the `title` shown on hover).
+  - **Does not match**: the release version differs. No option lets it through.
+  - **Cannot be verified**: no version, the version of a local upstream build (`devel`, a `git describe` form), a modified
+    tree (`X-Pqcota-Dirty: true`), or a missing or malformed commit or modified flag. It does not start by default and turns
+    into a warning with `-allow-unverified-collectors`. The version of a JAR that cannot be verified is not counted when
+    checking whether the collectors mix versions.
+
+  **Up to v0.29.x a JAR with no version only got a warning.** Keeping a JAR you built yourself now needs the override. The
+  usual fix is to replace it with the upstream release `collector.jar`. Manifest values are cut at 64 characters on the screen.
 
 **Getting the approval key ready.** Signing new approvals on the 06 screen needs an approval key. By default the screen
 looks for `pqcaton/approval.key` in the user configuration folder (`~/.config/pqcaton/` on Linux,
@@ -619,7 +634,9 @@ history does not need to be loaded again either.
 2. Replace the three collectors on the nodes and `collector.jar` with the v0.14.0 release assets, as in [section
    2](#2-installation). 03 refuses v0.13.0 collectors as "does not match".
 3. Stop the screen and replace the binary with the `go install` of [section 2](#2-installation).
-4. **An activation that goes back to an earlier policy can be done after re-ingesting the results under that policy.** Before
+4. **The `collector.jar` check is stricter.** A JAR with no version, or one you built yourself, is now "cannot be verified" and
+   does not start without `-allow-unverified-collectors`. The usual fix is the upstream v0.14.0 release `collector.jar`.
+5. **An activation that goes back to an earlier policy can be done after re-ingesting the results under that policy.** Before
    that re-ingest it is still refused with `upstream-revert`.
 
 ### v0.29.0 to v0.29.1
