@@ -114,7 +114,12 @@ carry their version and content hash (v0.14.0).
   under the same version does not match), the JAR's commit and modified flag, the generated pins equal to `go.mod` and
   `go.sum`, and 03's JAR row with a dirty JAR refused or allowed. IC-CV10 became "a tag checkout build has no h1 and cannot be
   verified".
-- An official collector preparation tool (`tools/collectors`): it downloads the upstream release assets of the version go.mod pins,
+- An `upstream-assets` step in the release gate (`make release-check`): with the same preparation tool as the demo it fetches the
+  official upstream assets of the pinned version and checks the checksums, the release manifest and the attestations, writing the
+  upstream tag and the target OS and architecture to the summary. A failure stops the gate. `gh` logged in is now a prerequisite.
+- "Checking the collectors you download" in section 2 of the operator guide: the preparation and re-check commands, the `gh` and
+  network conditions, the target architecture, and what the release check and the version check on 03 each look at.
+- An official collector preparation tool (`inventory/cmd/pqcaton-collectors`, `go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.30.0`): it downloads the upstream release assets of the version go.mod pins,
   checks the attestations (pinned to the repository, the signing workflow and the tag), `SHA256SUMS`, a safe unpacking, each file's
   hash, version and commit against the release manifest, the attestations of the unpacked programs and that only the expected files
   are there, then moves the folder into place at once (`fetch`). An existing target is never overwritten. It checks again right

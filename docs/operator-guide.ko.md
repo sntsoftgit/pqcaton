@@ -129,16 +129,33 @@ collectors/
 └── collector.jar    없으면 실행 중인 JVM의 provider 체인은 관측하지 않습니다
 ```
 
-상류는 v0.11.0부터 수집기를 릴리스 자산으로 냅니다. 받은 압축 파일을 함께 게시된 `SHA256SUMS`로 확인한 뒤 풉니다(macOS에서는
-`sha256sum` 대신 `shasum -a 256`). arm64 노드는 `pqcota-linux-arm64.tar.gz`, Windows 노드는 `pqcota-windows-amd64.zip`을 같은
-방식으로 받아 `linux-arm64` · `windows-amd64` 폴더에 둡니다.
+**받은 수집기를 확인하기.** 상류 수집기는 릴리스 자산으로 받고, 받기와 확인은 준비 도구 `pqcaton-collectors`로 합니다. 이 도구는
+go.mod가 고정한 상류 판(이 판은 v0.14.0)의 자산만 받고, 받은 파일을 실행하지 않습니다.
 
 ```bash
-mkdir -p ~/pqcaton/collectors && cd ~/pqcaton/collectors
-for f in pqcota-linux-amd64.tar.gz collector.jar SHA256SUMS; do curl -fsSLO "https://github.com/randyinthedev-hash/pqcota/releases/download/v0.14.0/$f"; done
-sha256sum -c --ignore-missing SHA256SUMS
-tar -xzf pqcota-linux-amd64.tar.gz && mv pqcota-linux-amd64 linux-amd64
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.30.0
+pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.14.0
+pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
 ```
+
+- **조건.** `gh`(GitHub CLI 2.49 이상)가 있고 로그인되어 있어야 합니다(`gh auth login`). 출처 증명을 확인하고 신뢰 루트를 받느라
+  GitHub(`github.com`, 자산 내려받기 호스트)에 닿아야 합니다. `verify`도 신뢰 루트를 새로 받으므로 망이 필요합니다. 망이 없는
+  기계에서 쓰려면 망이 있는 기계에서 준비 · 확인한 폴더를 옮깁니다.
+- **대상(`-arch`).** 수집기를 돌릴 노드의 아키텍처를 늘 명시합니다(`linux-amd64` 또는 `linux-arm64`). 준비 폴더의
+  `provenance/TARGET`에 적히고, `verify`가 다시 견줍니다. 실행 파일의 Go 빌드 정보에 적힌 OS · 아키텍처도 대상과 같아야 합니다.
+  두 아키텍처의 노드가 함께 있으면 대상마다 따로 받습니다. Windows 수집기(`pqcota-windows-amd64.zip`)는 아직 이 도구로 받지
+  않으므로, 함께 게시된 `SHA256SUMS`로 확인한 뒤 `windows-amd64` 폴더에 둡니다.
+- **`fetch`가 하는 일.** 대상 옆의 새 임시 폴더에 자산을 받고, 자산의 출처 증명(상류 저장소 · 릴리스 워크플로 · 그 태그에 고정)을
+  확인하고, `SHA256SUMS`와 견주고, 압축을 안전하게 풀고(링크 · 장치 파일 · 경로 탈출 거절), release manifest와 파일마다 해시 ·
+  판 · 커밋 · 내용 해시(h1)를 견주고, 꺼낸 실행 파일의 출처 증명을 확인한 뒤, 정해진 파일만 있을 때 한 번에 옮깁니다. 하나라도
+  실패하면 대상 폴더를 만들지 않습니다. 대상이 이미 있으면 덮어쓰지 않습니다.
+- **쓰는 법.** 화면을 띄우기 전에 `verify`로 다시 확인하고, 화면에는 `-collectors ~/pqcaton/collectors-v0.14.0/collectors`로
+  줍니다.
+
+**두 확인이 보는 것.** 배포물 검증(`pqcaton-collectors`)은 **이 파일이 상류의 그 공식 릴리스가 낸 그 파일인가**를 봅니다: 누가 어느
+태그에서 만들었는지(출처 증명)와 받은 바이트가 게시된 해시와 같은지입니다. 03 화면의 판 확인은 관측 직전에 **이 파일이 이 판이
+요구하는 판의 그 빌드인가**를 봅니다: Go 빌드 정보의 판과 내용 해시(h1), JAR의 판 · 커밋 · 수정 여부입니다. 화면은 망을 쓰지 않고
+출처를 보지 않으므로, 배포물 검증을 대신하지 못합니다. 둘을 함께 씁니다.
 
 **수집기의 판.** 03은 관측을 시작하기 전에 수집기마다 판을 봅니다. 수집기를 실행하지 않고, Go 빌드 정보만 읽습니다.
 「확인됨」은 수집기 자신이 고정 판이고, 빌드 정보에 실린 주 모듈의 내용 해시(h1)가 이 판이 고정한 값(리포의 `go.sum`)과

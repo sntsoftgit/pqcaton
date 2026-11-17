@@ -194,7 +194,7 @@ unchanged() {
   echo "   unchanged ($3): files $(sha256sum <<<"$1" | cut -c1-16) · upstream snapshots $2"
 }
 
-step "0) the official collectors: fetch the pinned release assets and verify them (tools/collectors, gh attestation)"
+step "0) the official collectors: fetch the pinned release assets and verify them (inventory/cmd/pqcaton-collectors, gh attestation)"
 # 화면이 고정한 판: go.mod 가 정한 상류 판이어야 한다. 데모의 수집기는 이 판의 공식 릴리스 자산뿐이다(다른 길이 없다).
 PIN="$(awk '$1=="github.com/randyinthedev-hash/pqcota-discovery"{print $2}' "$REPO_DIR/go.mod")"
 [ -n "$PIN" ] || fail "cannot read the pinned upstream version from go.mod"
@@ -207,7 +207,7 @@ case "$(docker info --format '{{.Architecture}}')" in
   *) fail "the demo's Docker architecture $(docker info --format '{{.Architecture}}') is not supported" ;;
 esac
 echo "   target: $E2E_TARGET (the inner Docker daemon)"
-if ! ( cd "$REPO_DIR" && go run ./tools/collectors fetch -arch "$E2E_TARGET" -out "$PQCATON_COLLECTORS" -tag "$PIN" ) 2>&1 | sed 's/^/   /'; then
+if ! ( cd "$REPO_DIR" && go run ./inventory/cmd/pqcaton-collectors fetch -arch "$E2E_TARGET" -out "$PQCATON_COLLECTORS" -tag "$PIN" ) 2>&1 | sed 's/^/   /'; then
   fail "the official $PIN collectors could not be fetched and verified"
 fi
 

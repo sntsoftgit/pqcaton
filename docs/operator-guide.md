@@ -143,17 +143,38 @@ collectors/
 └── collector.jar    without it, the provider chains of running JVMs are not observed
 ```
 
-From v0.11.0 upstream publishes the collectors as release assets. Check the archives you download against the
-`SHA256SUMS` published with them before unpacking (on macOS use `shasum -a 256` instead of `sha256sum`). For arm64 nodes
-take `pqcota-linux-arm64.tar.gz`, and for Windows nodes `pqcota-windows-amd64.zip`, the same way, into the `linux-arm64`
-and `windows-amd64` folders.
+**Checking the collectors you download.** The upstream collectors come as release assets, and fetching and checking them is done
+with the preparation tool `pqcaton-collectors`. It fetches only the assets of the upstream version go.mod pins (v0.14.0 for this
+version) and never runs what it downloads.
 
 ```bash
-mkdir -p ~/pqcaton/collectors && cd ~/pqcaton/collectors
-for f in pqcota-linux-amd64.tar.gz collector.jar SHA256SUMS; do curl -fsSLO "https://github.com/randyinthedev-hash/pqcota/releases/download/v0.14.0/$f"; done
-sha256sum -c --ignore-missing SHA256SUMS
-tar -xzf pqcota-linux-amd64.tar.gz && mv pqcota-linux-amd64 linux-amd64
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.30.0
+pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.14.0
+pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
 ```
+
+- **Conditions.** `gh` (GitHub CLI 2.49 or later) must be there and logged in (`gh auth login`). Checking the attestations and
+  fetching the trust root need access to GitHub (`github.com` and the asset download hosts). `verify` fetches the trust root again,
+  so it needs the network too. To use the collectors on a machine without network access, move a folder prepared and checked on a
+  machine that has it.
+- **Target (`-arch`).** Always give the architecture of the nodes that run the collectors (`linux-amd64` or `linux-arm64`). It is
+  written to `provenance/TARGET` in the prepared folder and `verify` compares it again. The OS and architecture in the programs' Go
+  build information must match it too. With nodes of both architectures, fetch once per target. The Windows collectors
+  (`pqcota-windows-amd64.zip`) are not fetched by this tool yet; check them against the `SHA256SUMS` published with them and put
+  them in the `windows-amd64` folder.
+- **What `fetch` does.** It downloads the assets into a new temporary folder next to the target, checks their attestations (pinned to
+  the upstream repository, its release workflow and that tag), compares them with `SHA256SUMS`, unpacks them safely (links, devices
+  and path escapes are refused), compares each file's hash, version, commit and content hash (h1) with the release manifest, checks
+  the attestations of the unpacked programs, and moves the folder into place at once only when exactly the expected files are
+  there. If anything fails, the target is not created. An existing target is never overwritten.
+- **Using it.** Check it again with `verify` before starting the screen, and give it to the screen with
+  `-collectors ~/pqcaton/collectors-v0.14.0/collectors`.
+
+**What the two checks look at.** The release check (`pqcaton-collectors`) asks **is this file the very file that upstream's official
+release published**: who built it from which tag (the attestation) and whether the bytes equal the published hashes. The version
+check on the 03 screen asks, right before an observation, **is this file the build of the version this release requires**: the
+version and content hash (h1) in the Go build information, and the JAR's version, commit and modified flag. The screen uses no
+network and does not look at origin, so it does not replace the release check. Use both.
 
 **Collector versions.** Before an observation starts, 03 checks the version of each collector. It does not run them; it
 reads only the Go build information. "Verified" is only a build whose collector itself is at the pinned version, whose main

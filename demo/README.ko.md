@@ -51,7 +51,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 # 3) (골라서) 같은 데모를 화면으로 본다. 화면은 pqcota-ctl 안에서 돌고, 이 기계의 브라우저로 연다
 #    먼저 go.mod가 고정한 판의 공식 수집기를 받아 확인해 둔다(gh 로그인 필요). ui.sh는 내려받지 않는다.
 #    -arch는 pqcota-ctl 컨테이너의 대상이다(보통 linux-amd64, Apple Silicon의 Docker는 linux-arm64). ui.sh가 다르면 거절한다
-(cd .. && go run ./tools/collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-v0.14.0)
+(cd .. && go run ./inventory/cmd/pqcaton-collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-v0.14.0)
 ./scripts/ui.sh              # → http://127.0.0.1:8765 · 끝낼 때: ./scripts/ui.sh stop
 
 # 4) 정리 (core 데모가 환경 소유)
@@ -84,7 +84,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 `asset-scope.csv`로 나가며, 데모가 이미 쓰는 `scope-assets.csv`를 자동으로 바꾸지는 않습니다. 화면을 다시 띄워도
 04 · 05는 `scope-assets.csv`를 그대로 씁니다. 확정한 정책을 대조에 쓰려면 아래 「새 정책 활성화」를 따릅니다.
 
-**데모의 수집기는 상류 공식 릴리스 자산뿐입니다.** 준비 도구(`go run ./tools/collectors fetch`)가 go.mod가 고정한 판의 자산을
+**데모의 수집기는 상류 공식 릴리스 자산뿐입니다.** 준비 도구(`go run ./inventory/cmd/pqcaton-collectors fetch`)가 go.mod가 고정한 판의 자산을
 받아, 출처 증명(저장소 · 서명 워크플로 · 태그 고정) · `SHA256SUMS` · 안전한 압축 풀기 · release manifest의 파일마다 해시 · 판 ·
 커밋 · 꺼낸 실행 파일의 출처 증명 · 예상한 파일만을 확인한 뒤 한 번에 옮깁니다. 대상이 이미 있으면 덮어쓰지 않습니다. `ui.sh`는
 아무것도 내려받지 않고, 화면을 띄울 때마다 그 폴더를 다시 확인한 뒤에만 작업 폴더의 `collectors`로 바꿔 넣습니다. 확인하지
@@ -98,7 +98,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 `down.sh`로 환경을 내리면 컨테이너와 함께 없어집니다. `Ctrl+C`는 중계만 닫으므로, 화면은 `ui.sh`를 다시 실행하면
 그대로 이어서 볼 수 있습니다. 이 기계에서 다른 `pqcaton-ui`를 이미 8765로 띄웠다면 `PQCATON_UI_PORT=8766`처럼 다른
 포트를 줍니다. 빌드에는 `extend.sh`와 같이 Go가 필요하고, 중계에는 python3가 필요합니다. Go가 없으면 linux용
-`pqcaton-ui` · `pqcaton-collectors`(`./tools/collectors`)와, 이 기계용으로 빌드한 `collectors`를 `PQCATON_BIN_DIR`로 줍니다.
+`pqcaton-ui` · `pqcaton-collectors`를 `PQCATON_BIN_DIR`로 주고, 이 기계용 `pqcaton-collectors`를 `PATH`에 둡니다.
 
 `extend.sh`는 새 컨테이너를 만들지 않습니다. 실행 중인 `pqcota-ctl`에 이 리포의 `pqcaton-report`를 주입하고,
 core가 이미 수집한 `/work/results`에 **선언(declaration.json)**을 대조해 3-상태 인벤토리 + 거버넌스

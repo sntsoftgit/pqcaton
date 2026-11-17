@@ -20,8 +20,8 @@
 //
 // usage:
 //
-//	go run ./tools/collectors fetch  -arch linux-amd64|linux-arm64 -out <폴더> [-tag vX.Y.Z]
-//	go run ./tools/collectors verify -arch linux-amd64|linux-arm64 -dir <폴더> [-tag vX.Y.Z]
+//	go run ./inventory/cmd/pqcaton-collectors fetch  -arch linux-amd64|linux-arm64 -out <폴더> [-tag vX.Y.Z]
+//	go run ./inventory/cmd/pqcaton-collectors verify -arch linux-amd64|linux-arm64 -dir <폴더> [-tag vX.Y.Z]
 //	collectors recover -ws <작업 폴더>   /  collectors install -ws <작업 폴더> -from <작업 폴더 밖 source>   (화면이 도는 기계 안에서, install.go)
 //
 // 대상(-arch)은 따로 고르지 않고 늘 명시한다. 준비 폴더의 provenance/TARGET 에 적히고, verify 와 ui.sh 가 다시 견준다.
@@ -836,15 +836,37 @@ func (t *tool) verify(dir, tag string) error {
 	return nil
 }
 
+// usage — 도움말. -h 는 아무것도 만들지 않고 이것만 낸다(발행 관문의 help-output 이 잰다).
+const usage = `usage: pqcaton-collectors <command> [flags]
+
+Fetch and check the official upstream pqcota release collectors (nothing downloaded is run).
+
+  pqcaton-collectors fetch   -arch linux-amd64|linux-arm64 -out <folder> [-tag vX.Y.Z]
+      download the release assets of the upstream version go.mod pins and check their attestations,
+      SHA256SUMS, the release manifest (each file's hash, version and commit) and the unpacked programs;
+      the folder is created only when everything passes, and an existing folder is never overwritten
+  pqcaton-collectors verify  -arch linux-amd64|linux-arm64 -dir <folder> [-tag vX.Y.Z]
+      check a prepared folder again right before using it
+  pqcaton-collectors install -ws <workspace> -from <folder outside the workspace>
+  pqcaton-collectors recover -ws <workspace>
+      put verified collectors into a screen workspace under its run lock, or tidy an interrupted install
+
+fetch and verify need gh (GitHub CLI 2.49 or later, logged in) and network access to GitHub.`
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: collectors fetch -arch <linux-amd64|linux-arm64> -out <dir> [-tag vX.Y.Z] | verify -arch <...> -dir <dir> [-tag vX.Y.Z]")
+		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(2)
+	}
+	switch os.Args[1] {
+	case "-h", "-help", "--help", "help":
+		fmt.Println(usage)
+		return
 	}
 	t := newTool()
 	rootDir, err := os.MkdirTemp("", "pqcaton-trust-")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "✗ collectors:", err)
+		fmt.Fprintln(os.Stderr, "✗ pqcaton-collectors:", err)
 		os.Exit(1)
 	}
 	defer os.RemoveAll(rootDir)
@@ -860,7 +882,7 @@ func main() {
 	if os.Args[1] == "recover" || os.Args[1] == "install" {
 		os.RemoveAll(rootDir) // 출처 증명을 쓰지 않는다
 		if *ws == "" {
-			fmt.Fprintln(os.Stderr, "✗ collectors: "+os.Args[1]+" needs -ws")
+			fmt.Fprintln(os.Stderr, "✗ pqcaton-collectors: "+os.Args[1]+" needs -ws")
 			os.Exit(1)
 		}
 		did, err := runWS(os.Args[1], *ws, *from, osOps{})
@@ -868,7 +890,7 @@ func main() {
 			t.logf("   %s", d)
 		}
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "✗ collectors:", err)
+			fmt.Fprintln(os.Stderr, "✗ pqcaton-collectors:", err)
 			os.Exit(1)
 		}
 		return
@@ -895,7 +917,7 @@ func main() {
 	}
 	if err != nil {
 		os.RemoveAll(rootDir)
-		fmt.Fprintln(os.Stderr, "✗ collectors:", err)
+		fmt.Fprintln(os.Stderr, "✗ pqcaton-collectors:", err)
 		os.Exit(1)
 	}
 }

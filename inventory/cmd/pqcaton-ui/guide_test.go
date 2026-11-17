@@ -5,6 +5,9 @@ package main
 
 import (
 	"bytes"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,8 +21,40 @@ var (
 	flagToken  = regexp.MustCompile(`(?:^|\s)-([a-z][a-z-]*)`)
 )
 
-// IC-U107 — **운영자 안내서가 적은 플래그는 실제로 있다.** 두 판의 명령 블록에서 `pqcaton-ui`에 준 플래그와, 본문의
-// 인라인 코드로 적은 플래그가 모두 `-h`가 찍는 목록에 있다. 플래그 이름을 바꾸고 안내서를 두면 여기서 막힌다.
+// collectorFlags — 준비 도구 pqcaton-collectors 가 정의한 플래그 이름. 다른 main 패키지라 불러 쓸 수 없어 원본의
+// `fs.String("이름", …)` 호출을 파서로 읽는다.
+func collectorFlags(t *testing.T) map[string]bool {
+	f, err := parser.ParseFile(token.NewFileSet(), filepath.Join("..", "pqcaton-collectors", "main.go"), nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	known := map[string]bool{}
+	ast.Inspect(f, func(n ast.Node) bool {
+		c, ok := n.(*ast.CallExpr)
+		if !ok || len(c.Args) == 0 {
+			return true
+		}
+		sel, ok := c.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		if id, ok := sel.X.(*ast.Ident); !ok || id.Name != "fs" {
+			return true
+		}
+		if lit, ok := c.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+			known[strings.Trim(lit.Value, "\"")] = true
+		}
+		return true
+	})
+	if !known["arch"] || !known["out"] {
+		t.Fatalf("could not read the pqcaton-collectors flags: %v", known)
+	}
+	return known
+}
+
+// IC-U107 — **운영자 안내서가 적은 플래그는 실제로 있다.** 두 판의 명령 블록에서 `pqcaton-ui`에 준 플래그는 `-h`가
+// 찍는 목록에, `pqcaton-collectors`에 준 플래그는 그 도구가 정의한 목록에 있다. 본문의 인라인 코드로 적은 플래그는
+// 둘 가운데 한쪽에 있다. 플래그 이름을 바꾸고 안내서를 두면 여기서 막힌다.
 func TestOperatorGuideFlagsExist(t *testing.T) {
 	var usage bytes.Buffer
 	if _, err := parseStart([]string{"-h"}, &usage); err == nil {
@@ -32,12 +67,21 @@ func TestOperatorGuideFlagsExist(t *testing.T) {
 	if !known["workspace"] || !known["no-browser"] {
 		t.Fatalf("could not read the flag list:\n%s", usage.String())
 	}
+	coll := collectorFlags(t)
+	either := map[string]bool{}
+	for k := range known {
+		either[k] = true
+	}
+	for k := range coll {
+		either[k] = true
+	}
+	type use struct{ cmd, tool string }
 	for _, guide := range []string{"operator-guide.md", "operator-guide.ko.md"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "..", "docs", guide))
 		if err != nil {
 			t.Fatal(err)
 		}
-		var cmds []string
+		var cmds []use
 		inBlock := false
 		for _, l := range strings.Split(string(b), "\n") {
 			switch {
@@ -47,27 +91,44 @@ func TestOperatorGuideFlagsExist(t *testing.T) {
 				inBlock = false
 			case inBlock:
 				for _, seg := range regexp.MustCompile(`&&|\|\||;|\|`).Split(l, -1) {
-					if seg = strings.TrimSpace(seg); strings.HasPrefix(seg, "pqcaton-ui") {
-						cmds = append(cmds, seg)
+					switch seg = strings.TrimSpace(seg); {
+					case strings.HasPrefix(seg, "pqcaton-ui"):
+						cmds = append(cmds, use{seg, "pqcaton-ui"})
+					case strings.HasPrefix(seg, "pqcaton-collectors"):
+						cmds = append(cmds, use{seg, "pqcaton-collectors"})
 					}
 				}
 			default:
 				for _, m := range inlineCode.FindAllStringSubmatch(l, -1) {
-					if c := m[1]; strings.HasPrefix(c, "pqcaton-ui") || (strings.HasPrefix(c, "-") && c != "-next") {
-						cmds = append(cmds, c)
+					switch c := m[1]; {
+					case strings.HasPrefix(c, "pqcaton-ui"):
+						cmds = append(cmds, use{c, "pqcaton-ui"})
+					case strings.HasPrefix(c, "pqcaton-collectors"):
+						cmds = append(cmds, use{c, "pqcaton-collectors"})
+					case strings.HasPrefix(c, "-") && c != "-next":
+						cmds = append(cmds, use{c, "either"})
 					}
 				}
 			}
 		}
-		if len(cmds) == 0 {
-			t.Fatalf("%s: no pqcaton-ui commands found", guide)
-		}
+		seen := map[string]bool{}
 		for _, c := range cmds {
-			for _, m := range flagToken.FindAllStringSubmatch(c, -1) {
-				if !known[m[1]] {
-					t.Errorf("%s: %q uses -%s, which pqcaton-ui does not have", guide, c, m[1])
+			seen[c.tool] = true
+			set, name := known, "pqcaton-ui"
+			switch c.tool {
+			case "pqcaton-collectors":
+				set, name = coll, c.tool
+			case "either":
+				set, name = either, "neither pqcaton-ui nor pqcaton-collectors"
+			}
+			for _, m := range flagToken.FindAllStringSubmatch(c.cmd, -1) {
+				if !set[m[1]] {
+					t.Errorf("%s: %q uses -%s, which %s does not have", guide, c.cmd, m[1], name)
 				}
 			}
+		}
+		if !seen["pqcaton-ui"] || !seen["pqcaton-collectors"] {
+			t.Fatalf("%s: commands of both tools expected, found %v", guide, seen)
 		}
 	}
 }

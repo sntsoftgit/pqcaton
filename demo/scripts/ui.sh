@@ -14,12 +14,13 @@
 # 127.0.0.1:8765에 잇는다. 컨테이너 밖에서 연결을 받는 자리는 하나도 생기지 않는다.
 #
 # 전제: pqcota/demo/scripts/{up,demo}.sh와 ./demo/scripts/extend.sh가 끝난 상태(선언은 extend.sh 2/8이 만든다).
-#       이 기계에 docker · python3, 그리고 Go. Go가 없으면 linux용 pqcaton-ui와 이 기계용 collectors를 PQCATON_BIN_DIR로 준다.
+#       이 기계에 docker · python3, 그리고 Go. Go가 없으면 컨테이너용(linux) pqcaton-ui · pqcaton-collectors를 PQCATON_BIN_DIR로
+#       주고, 이 기계용 pqcaton-collectors(go install …/inventory/cmd/pqcaton-collectors@<판>)를 PATH에 둔다.
 #
 # **수집기는 상류 공식 릴리스 자산만 쓴다.** 먼저 준비 도구로 받아 확인해 둔다(태그는 go.mod가 고정한 판이고, 체크섬 ·
 # release manifest · 출처 증명을 모두 확인한다. gh 로그인이 필요하다). 대상은 pqcota-ctl 컨테이너의 OS · 아키텍처로 명시한다
 # (보통 linux-amd64, Apple Silicon의 Docker는 linux-arm64):
-#   go run ./tools/collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-<판>
+#   go run ./inventory/cmd/pqcaton-collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-<판>
 # 이 스크립트는 아무것도 내려받지 않는다. 화면을 띄울 때마다 그 폴더를 다시 확인하고(파일마다 해시 · 판 · 커밋 · 출처 증명),
 # 통과해야 작업 폴더의 collectors로 바꿔 넣는다. 확인하지 못하면 아무것도 바꾸지 않고 멈춘다. 다른 길(상류 소스 빌드 ·
 # -allow-unverified-collectors)은 없다. 폴더는 PQCATON_COLLECTORS로 바꿀 수 있다.
@@ -48,7 +49,7 @@ DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
 ORG=demo-corp
 LOG=/work/ui.log
 PORT="${PQCATON_UI_PORT:-8765}"
-# 수집기: go.mod가 고정한 상류 판의 공식 릴리스 자산을 준비 도구(tools/collectors fetch)로 받아 둔 폴더.
+# 수집기: go.mod가 고정한 상류 판의 공식 릴리스 자산을 준비 도구(inventory/cmd/pqcaton-collectors fetch)로 받아 둔 폴더.
 PIN="$(awk '$1=="github.com/randyinthedev-hash/pqcota-discovery"{print $2}' "$REPO_DIR/go.mod")"
 COLLECTORS="${PQCATON_COLLECTORS:-$HOME/.cache/pqcaton-demo/collectors-$PIN}"
 
@@ -122,7 +123,7 @@ verify_collectors() {
   if [ ! -d "$COLLECTORS" ]; then
     echo "❌ no prepared collectors at $COLLECTORS"
     echo "   fetch the official $PIN release for $CTL ($TARGET) first:"
-    echo "   (cd $REPO_DIR && go run ./tools/collectors fetch -arch $TARGET -out $COLLECTORS)"
+    echo "   (cd $REPO_DIR && go run ./inventory/cmd/pqcaton-collectors fetch -arch $TARGET -out $COLLECTORS)"
     return 1
   fi
   local prepared
@@ -132,15 +133,18 @@ verify_collectors() {
     echo "❌ the prepared collectors are for ${prepared:-an unknown target}, but $CTL is ${TARGET/-//}; fetch them with -arch $TARGET"
     return 1
   fi
-  if [ -n "${PQCATON_BIN_DIR:-}" ] && [ -x "$PQCATON_BIN_DIR/collectors" ]; then
-    "$PQCATON_BIN_DIR/collectors" verify -arch "$TARGET" -dir "$COLLECTORS" -tag "$PIN"
+  if command -v go >/dev/null; then
+    ( cd "$REPO_DIR" && go run ./inventory/cmd/pqcaton-collectors verify -arch "$TARGET" -dir "$COLLECTORS" -tag "$PIN" )
+  elif command -v pqcaton-collectors >/dev/null; then
+    pqcaton-collectors verify -arch "$TARGET" -dir "$COLLECTORS" -tag "$PIN"
   else
-    ( cd "$REPO_DIR" && go run ./tools/collectors verify -arch "$TARGET" -dir "$COLLECTORS" -tag "$PIN" )
+    echo "❌ neither Go nor pqcaton-collectors is on this machine; install it: go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@<version>"
+    return 1
   fi
 }
 
 # sync_collectors: 확인한 수집기로 작업 폴더의 collectors를 바꿔 넣는다(화면이 돌지 않을 때만 부른다). 반쯤 바뀌지 않게 한다.
-# 파일 연산은 컨테이너 안의 pqcaton-collectors install(tools/collectors/install.go)이 화면과 같은 작업 폴더 실행 잠금을 쥐고 한다:
+# 파일 연산은 컨테이너 안의 pqcaton-collectors install(inventory/cmd/pqcaton-collectors/install.go)이 화면과 같은 작업 폴더 실행 잠금을 쥐고 한다:
 # 작업 폴더 밖 source를 잠금 안에서 다시 확인하고, 지난 실행이 끊긴 자리를 정리하고, 작업 폴더 안의 고유 복사본으로 복사해 해시
 # 목록과 다시 견준 뒤, 기존 것을 보관 자리로 옮기고 rename으로 들인다. 화면이 떠 있거나 다른 설치가 돌고 있으면 잠금을 얻지 못해
 # 아무것도 바꾸지 않는다. 어디서 실패해도 기존 collectors는 바이트까지 그대로이거나 되돌려진다(IC-CF8 ~ IC-CF14).
@@ -203,7 +207,7 @@ else
 
   echo "▶ 1/3 build pqcaton-ui and pqcaton-collectors for ${CTL}…"
   install_bin pqcaton-ui ./inventory/cmd/pqcaton-ui
-  install_bin pqcaton-collectors ./tools/collectors
+  install_bin pqcaton-collectors ./inventory/cmd/pqcaton-collectors
 
   echo "▶ 2/3 workspace ${WS}…"
   # **처음 한 번만 채운다.** 데모가 이미 가진 것을 실제 운영자가 화면에 넣는 자리에 둔다. 선언(01) ·

@@ -104,9 +104,11 @@ st_checks() {
 # Docker 는 두 모드 모두 쓴다(REUSE 와 뒷정리 비교). 종단 검증의 조건은 demo/e2e/e2e_test.go 가 보는 것과 같고 full 에서만 본다.
 st_preflight() {
 	local bad=0 p
-	for p in git go make bash docker; do
+	for p in git go make bash docker gh; do
 		command -v "$p" >/dev/null || { echo "missing: $p"; bad=1; }
 	done
+	# gh: 상류 공식 자산의 출처 증명(upstream-assets)을 확인한다. 로그인 정보는 찍지 않는다.
+	gh auth status >/dev/null 2>&1 || { echo "gh is not logged in (gh auth login): the upstream-assets step checks attestations with it"; bad=1; }
 	docker info >/dev/null 2>&1 || { echo "docker is not usable (docker info failed)"; bad=1; }
 	if [ "$MODE" != full ]; then
 		[ "$bad" -eq 0 ] && echo "✓ docker usable; end-to-end prerequisites not checked (release-check-fast)"
@@ -277,6 +279,25 @@ st_help() {
 
 st_e2e() { make -C "$REPO" e2e-demo; }
 
+# upstream-assets: 데모 · 종단 검증과 같은 준비 도구(inventory/cmd/pqcaton-collectors)로 go.mod가 고정한 상류 판의 공식 릴리스 자산을 받아
+# 체크섬 · release manifest · 출처 증명을 확인하고(fetch), 받은 폴더를 다시 확인한다(verify). 대상은 이 기계의 Docker(데모
+# 컨테이너가 도는 곳)의 아키텍처다. 하나라도 실패하면 관문이 멈춘다. 받은 것은 이 실행의 임시 폴더에 두고 끝나면 지운다.
+st_assets() {
+	local up arch target out
+	up="$(cd "$REPO" && go list -m -f '{{.Version}}' github.com/randyinthedev-hash/pqcota-discovery)"
+	arch="$(docker info --format '{{.Architecture}}' 2>/dev/null)"
+	case "$arch" in
+		x86_64|amd64) target=linux-amd64 ;;
+		aarch64|arm64) target=linux-arm64 ;;
+		*) echo "the Docker architecture '$arch' is not a supported target"; return 1 ;;
+	esac
+	out="$WORK/collectors-$up"
+	( cd "$REPO" && go run ./inventory/cmd/pqcaton-collectors fetch -arch "$target" -out "$out" -tag "$up" ) || return 1
+	( cd "$REPO" && go run ./inventory/cmd/pqcaton-collectors verify -arch "$target" -dir "$out" -tag "$up" ) || return 1
+	printf '%s\t%s\n' "$up" "${target/-//}" > "$WORK/assets"
+	echo "✓ upstream $up release assets for ${target/-//}: checksums, release manifest and attestations verified"
+}
+
 st_leftovers() {
 	local bad=0
 	[ "$(git -C "$REPO" rev-parse HEAD)" = "$(cat "$START/head")" ] || { echo "HEAD moved"; bad=1; }
@@ -320,6 +341,9 @@ while IFS=$'\t' read -r kind pkg _; do note "command ($kind): go install $pkg"; 
 step install-own st_install_own
 step install-external st_install_external
 step help-output st_help
+step upstream-assets st_assets
+IFS=$'\t' read -r ASSET_TAG ASSET_TARGET < "$WORK/assets" 2>/dev/null || true
+note "upstream assets: ${ASSET_TAG:-?} for ${ASSET_TARGET:-?} (checksums, release manifest, attestations: verified)"
 if [ "$MODE" = full ]; then
 	step e2e-demo st_e2e
 else

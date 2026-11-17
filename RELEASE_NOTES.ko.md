@@ -113,7 +113,12 @@ Use Grant), 기능을 빼서 무료판을 약하게 만들지 않습니다. 5노
 - 새 케이스 IC-CV11 · IC-CV12 · IC-CV13 · IC-U206: 릴리스 모양 빌드의 h1 대조(같은 판 이름에 내용만 바꾼 모듈은 맞지 않음),
   JAR의 커밋과 수정 여부, 생성 코드의 고정 값이 `go.mod` · `go.sum`과 같음, 03의 JAR 줄과 dirty JAR의 차단 · 허용. IC-CV10은
   「태그 체크아웃 빌드는 h1이 없어 확인 불가」로 바뀌었습니다.
-- 공식 수집기 준비 도구(`tools/collectors`): go.mod가 고정한 판의 상류 릴리스 자산을 받아 출처 증명(저장소 · 서명 워크플로 ·
+- 발행 관문(`make release-check`)에 `upstream-assets` 단계: 데모와 같은 준비 도구로 고정한 판의 상류 공식 자산을 받아 체크섬 ·
+  release manifest · 출처 증명을 확인하고, 상류 태그와 대상 OS · 아키텍처를 요약에 남깁니다. 실패하면 관문이 멈춥니다. 사전 조건에
+  `gh` 로그인이 더해졌습니다.
+- 운영자 안내서 2절에 「받은 수집기를 확인하기」: 준비와 재확인 명령, `gh` · 망 조건, 대상 아키텍처, 배포물 검증과 03의 판 확인이
+  각각 무엇을 보는지.
+- 공식 수집기 준비 도구(`inventory/cmd/pqcaton-collectors`, `go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.30.0`): go.mod가 고정한 판의 상류 릴리스 자산을 받아 출처 증명(저장소 · 서명 워크플로 ·
   태그 고정) · `SHA256SUMS` · 안전한 압축 풀기 · release manifest의 파일마다 해시 · 판 · 커밋 · 꺼낸 실행 파일의 출처 증명 ·
   예상한 파일만을 확인한 뒤 한 번에 옮깁니다(`fetch`). 대상이 이미 있으면 덮어쓰지 않습니다. 쓰기 직전에 다시 확인합니다
   (`verify`). 데모(`ui.sh`)는 이 도구로 받아 둔 공식 자산만 쓰고, 화면을 `-allow-unverified-collectors` 없이 띄웁니다. 상류 소스로
