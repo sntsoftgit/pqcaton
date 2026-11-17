@@ -145,6 +145,11 @@ checking, the pqcota history matched." Pressing activate reconciles again from t
 cannot be looked up, nothing is written. The same fingerprint in a past run is not enough to pass. `ui.sh` starts the demo screen with the
 demo DB's `PQCOTA_DSN`. The screen does not start without the pqcota history.
 
+**The loads go to two organizations.** The upstream demo's `demo.sh` loads into the default organization, and that load is what the
+generation step of `extend.sh` (`pqcota-provision`) uses. The screen and the commands reconcile only with the pqcota history of the
+judgment organization (`demo-corp`), so `extend.sh` also loads the same results under the same policy into the judgment organization.
+`ui.sh apply-scope` re-ingests into the judgment organization too when the policy changes.
+
 After activation, 05 opens a new round rebuilt under the new policy, and earlier conclusions show only as "previous policy conclusions."
 Plans finalized before the activation are not signed or generated in 06.
 

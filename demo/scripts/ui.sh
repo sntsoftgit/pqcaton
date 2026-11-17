@@ -42,7 +42,8 @@ WS=/work/ui
 # 06의 승인 서명 키. 작업 폴더 밖에 0600으로 둔다(운영자 안내서 2절과 같은 자리 규칙).
 KEY=/work/ui-approval.key
 # pqcota 이력(데모 DB). 화면은 이것 없이 시작하지 않는다. pqcota 이력의 조직은 판정 조직(demo-corp)과 같아야 하므로, 재적재도
-# 그 조직으로 한다(PQCOTA_ORG). pqcota 데모의 demo.sh가 기본 조직에 적재한 이력은 이 화면이 보지 않는다.
+# 그 조직으로 한다(PQCOTA_ORG). 적재는 두 조직에 간다: 상류 데모의 demo.sh는 기본 조직에 적재하고(extend.sh의 생성 단계가 쓴다),
+# 이 화면은 그것을 보지 않는다. 화면이 대조하는 판정 조직의 처음 적재는 extend.sh가 같은 결과 · 같은 정책으로 해 둔다.
 DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
 ORG=demo-corp
 LOG=/work/ui.log

@@ -152,6 +152,15 @@ docker exec -e PQCATON_SCOPE_ASSETS=$SCOPE pqcota-ctl bash -lc 'pqcaton-report /
   | tee "$TMP/report.txt"
 # 끝까지 돈 출력만 기대 파일로 옮긴다. tee로 바로 쓰면 명령이 실패해도 기대 파일이 먼저 비워진다.
 cp "$TMP/report.txt" "$SAMPLE_DIR/report.txt"
+# **판정 조직(demo-corp)의 pqcota 이력에도 같은 결과 · 같은 정책으로 적재한다.** 상류 데모(demo.sh)의 적재는 기본 조직에
+# 들어가고, 아래 7/8의 생성(pqcota-provision)이 그것을 쓰므로 그대로 둔다. pqcaton의 화면과 명령은 판정 조직의 pqcota
+# 이력만 대조하므로(v0.28.0), 운영자 안내의 계약(「pqcota 적재도 판정 조직으로 한다」)대로 처음 정책을 판정 조직에도 적재해
+# 둔다. 그래야 데모의 판정 조직 이력이 처음부터 지금 정책의 상태를 담는다(정책을 바꿀 때는 ui.sh apply-scope가 같은 조직에 다시 적재한다).
+JUDGE_ORG=demo-corp
+DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
+docker exec -e PQCOTA_DSN="$DSN" -e PQCOTA_ORG="$JUDGE_ORG" pqcota-ctl bash -lc "pqcota-ingest -scope-assets $SCOPE /work/results" >/dev/null \
+  || { echo "❌ could not load the results into the pqcota history of $JUDGE_ORG"; exit 1; }
+echo "   loaded the same results under the same policy into the pqcota history of the judgment organization ($JUDGE_ORG)"
 
 echo "▶ 4/8 judgment → judged plan, IN_REVIEW (pqcaton-decide)…"
 # **대조에서 멈추지 않는다.** 여기까지만 돌리면 「관측을 판정으로 잇는다」가 데모에서

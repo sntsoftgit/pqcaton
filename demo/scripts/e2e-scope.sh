@@ -214,7 +214,11 @@ fi
 step "1) pqcota demo (up · demo) and the pqcaton extension"
 (cd "$PQCOTA_DIR" && ./demo/scripts/up.sh) >/dev/null
 (cd "$PQCOTA_DIR" && ./demo/scripts/demo.sh) >/dev/null
-"$DEMO_DIR/scripts/extend.sh" >/dev/null
+# extend.sh의 출력은 남겨 둔다. 그 7/8의 생성(pqcota-provision, 기본 조직의 이력)이 근거를 실제 스냅샷으로 풀었는지 직접 본다.
+"$DEMO_DIR/scripts/extend.sh" >"$COLL_ROOT/extend.log" 2>&1 || { tail -20 "$COLL_ROOT/extend.log"; fail "extend.sh failed"; }
+grep -q "every spot filled — the evidence resolved to real snapshots" "$COLL_ROOT/extend.log" || { tail -20 "$COLL_ROOT/extend.log"; fail "extend.sh: pqcota-provision did not resolve the evidence"; }
+grep -q "into the pqcota history of the judgment organization ($ORG)" "$COLL_ROOT/extend.log" || fail "extend.sh did not load the first policy into $ORG"
+echo "   extend.sh: pqcota-provision resolved the plan's evidence in the default organization's history; the first policy is loaded into $ORG"
 # 준비한 뒤 바뀐 폴더: 실행 파일 한 바이트를 바꾼 사본으로는 ui.sh 가 화면을 띄우지 않고 작업 폴더도 만들지 않는다.
 TAMPERED="$COLL_ROOT/tampered"
 cp -a "$PQCATON_COLLECTORS" "$TAMPERED"
@@ -356,7 +360,7 @@ PY
 ACT="activate-scope $WS/session.json -decl $WS/declaration.json -results $WS/results -scope-assets $WS/scope-assets.csv \
   -candidate $WS/asset-scope.csv -scope-session $WS/scope-session.json -org $ORG"
 
-step "4a) the screen before the pqcota re-ingest: pay-app has no managed assets now and its latest snapshot is the old one, so refused"
+step "4a) the screen before the pqcota re-ingest: the judgment organization holds no snapshot under policy B, so the activation is refused"
 "$UI" start
 B="$(snap)"; C="$(count)"
 screen_activate upstream-missing || fail "the screen did not refuse an activation without the re-ingest"
@@ -377,9 +381,23 @@ unchanged "$B" "$C" "hand-edited candidate"
 docker exec "$CTL" bash -c "cp /tmp/e2e-candidate.bak $WS/asset-scope.csv && rm /tmp/e2e-candidate.bak"
 
 step "5) apply-scope: re-ingest pqcota only (no activation)"
+# pqcota 이력(판정 조직)의 노드마다 최신 참조: 가장 최근 관측 기록이 가리키는 스냅샷. 재적재 전이 정책 A, 뒤가 B다.
+latest_refs() {
+  docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select node_id||' '||snapshot_id from (select node_id, snapshot_id,
+    row_number() over (partition by node_id order by seq desc) r from pqcota_observations where org='$ORG') x where r=1 order by node_id"
+}
+org_snapshots() { docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count(*) from pqcota_snapshots where org='$ORG'" | tr -d '[:space:]'; }
+# 판정 조직의 처음 적재(정책 A)는 extend.sh가 해 두었다. 그 최신 참조가 A1이다.
+REFS_A="$(latest_refs)"
+A_DIGEST="$OLD_DIGEST"
+[ -n "$REFS_A" ] || fail "no latest snapshots of $ORG under policy A (extend.sh loads them)"
 B="$(snap)"
 "$UI" apply-scope
 [ "$(snap)" = "$B" ] || fail "apply-scope changed the workspace (it only re-ingests pqcota)"
+REFS_B="$(latest_refs)"
+[ "$REFS_B" != "$REFS_A" ] || fail "the re-ingest under policy B did not move the latest snapshots"
+echo "   latest snapshots of $ORG under policy A (A1) and after re-ingesting policy B (B):"
+paste -d' ' <(sed 's/^/     A1 /' <<<"$REFS_A") <(sed 's/^[^ ]* /| B /' <<<"$REFS_B")
 
 step "5a) the command path, on a copy of the workspace: reconcile and activate"
 CMDWS=/work/ui-command
@@ -557,6 +575,76 @@ echo "   signed plan: $SIGNED_STATUS · actions $N_ACTIONS · playbooks written"
 # 직전에 상태 문서를 형식 2로 올린다. 그것이 실제로 옛 바이너리를 막는지, 이 저장소의 v0.25.0 태그로 빌드한 바이너리를
 # 성공한 작업 폴더의 복사본에 돌려 본다: 화면은 시작하지 않고(듣는 포트가 없으니 05 · 06의 어떤 양식도 없다), 상태를 쓰는
 # 명령도 멈추며, 파일 · 영수증 · 트랜잭션 기록 · 준비 파일이 하나도 바뀌거나 늘지 않는다.
+step "6c) A → B → A: back to policy A — refused before the re-ingest, activated after it with no new snapshot bodies, and B is then refused"
+# 판정 조직 하나(demo-corp)로만 적재 · 대조한다. 이 단계에서 다른 조직의 관측 기록이 생기면 실패다. 이 검사는 이 DB가 데모
+# 전용(dind 안의 pqcota-demo-pg)이라 이 실행 말고는 아무도 적재하지 않는다는 전제에서만 뜻이 있다.
+# 변하지 않아야 하는 것은 판정 조직의 스냅샷 본체 수다. 재적재마다 관측 기록은 늘어난다(재지 않는다).
+T0="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc 'select now()' | tr -d '\n')"
+B_DIGEST="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv" | awk '$1=="active"{print $2}')"
+[ "$B_DIGEST" != "$A_DIGEST" ] || fail "policy B is not the active policy before going back"
+# finalize_policy <정책 파일>: 02에서 그 정책을 확정한다(기준은 지금 활성 정책). 확정 후보는 asset-scope.csv다.
+finalize_policy() {
+  docker exec "$CTL" bash -c "cp $1 $WS/layers/demo.csv && pqcaton-scope open $WS/layers/demo.csv -base $WS/scope-assets.csv -org $ORG > $WS/scope-session.json"
+  edit_json "$WS/scope-session.json" <<'PY'
+import json, sys
+p = sys.argv[1]; s = json.load(open(p))
+s["layer_decisions"] = {c["layer"]: "e2e: approved" for c in s.get("changes", [])}
+s["reviewer"], s["signature"] = "e2e", "e2e-signature"
+json.dump(s, open(p, "w"), ensure_ascii=False, indent=2)
+PY
+  docker exec "$CTL" pqcaton-scope close "$WS/scope-session.json" -o "$WS/asset-scope.csv" -org "$ORG" -state-dir "$WS/.pqcaton" >/dev/null
+}
+# 정책 A의 원문은 데모가 처음 넣은 /work/scope-assets.csv다. 정책 B는 그것에 JCA 제외를 더한 것이다(3단계).
+docker exec "$CTL" bash -c "cp /work/scope-assets.csv /work/policy-a.csv && { cat /work/scope-assets.csv; echo 'exclude,jca,*,*,e2e: JCA is managed elsewhere'; } > /work/policy-b.csv"
+finalize_policy /work/policy-a.csv
+OLD_ID="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv" | awk '$1=="session_id"{print $2}')"
+OLD_DIGEST="$B_DIGEST"
+C_BEFORE="$(org_snapshots)"
+
+"$UI" start
+B6="$(snap)"; C6="$(count)"
+screen_activate upstream-revert || fail "the screen did not refuse going back to policy A before the re-ingest"
+unchanged "$B6" "$C6" "screen, back to A before the re-ingest"
+"$UI" stop
+
+"$UI" apply-scope | sed 's/^/ /'
+[ "$(org_snapshots)" = "$C_BEFORE" ] || fail "re-ingesting policy A made new snapshot bodies ($C_BEFORE → $(org_snapshots))"
+REFS_A2="$(latest_refs)"
+echo "   latest snapshots of $ORG: A1 (first A) · B · A2 (after re-ingesting A):"
+paste -d' ' <(sed 's/^/     A1 /' <<<"$REFS_A") <(sed 's/^[^ ]* /| B /' <<<"$REFS_B") <(sed 's/^[^ ]* /| A2 /' <<<"$REFS_A2")
+# 노드마다: 모든 노드에서 A1 = A2. 정책 B가 바꾸는 것은 JCA 제외뿐이라 JCA 자산이 있는 pay-app만 B ≠ A1이고,
+# pay-db · web-gw는 B에서도 A1과 같은 스냅샷이다.
+ref() { awk -v n="$2" '$1==n{print $2}' <<<"$1"; }
+for n in pay-app pay-db web-gw; do
+  a1="$(ref "$REFS_A" "$n")"; b="$(ref "$REFS_B" "$n")"; a2="$(ref "$REFS_A2" "$n")"
+  [ -n "$a1" ] && [ "$a1" = "$a2" ] || fail "$n: A2 $a2 is not A1 $a1"
+  if [ "$n" = pay-app ]; then
+    [ "$b" != "$a1" ] || fail "pay-app: B is the same snapshot as A1 although policy B drops its JCA assets"
+  else
+    [ "$b" = "$a1" ] || fail "$n: B $b is not A1 $a1 although policy B does not change it"
+  fi
+done
+[ "$(grep -c . <<<"$REFS_A")" = 3 ] || fail "want three nodes in $ORG, got: $REFS_A"
+echo "   every node A1 = A2; pay-app B ≠ A1; pay-db and web-gw B = A1. Snapshot bodies in $ORG: $C_BEFORE before and after re-ingesting A (observation records grow, bodies do not)"
+
+"$UI" start
+screen_activate ok || fail "the screen did not activate policy A after the re-ingest"
+"$UI" stop
+activated "$WS" "screen (back to policy A)"
+[ "$ACTIVE" = "$A_DIGEST" ] || fail "the active policy after going back is $ACTIVE, not policy A $A_DIGEST"
+
+# 이제 B는 과거 결과다: 이력에 있지만 노드의 최신이 아니다.
+finalize_policy /work/policy-b.csv
+"$UI" start
+B6="$(snap)"; C6="$(count)"
+screen_activate upstream-revert || fail "the screen did not refuse policy B after going back to A"
+unchanged "$B6" "$C6" "screen, policy B after going back to A"
+"$UI" stop
+OTHER_ORGS="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count(*) from pqcota_observations where observed_at >= '$T0' and org <> '$ORG'" | tr -d '[:space:]')"
+OWN="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count(*) from pqcota_observations where observed_at >= '$T0' and org = '$ORG'" | tr -d '[:space:]')"
+[ "$OTHER_ORGS" = 0 ] && [ "$OWN" -gt 0 ] || fail "the loads in this step were not all in $ORG (others $OTHER_ORGS, $ORG $OWN)"
+echo "   A → B → A in $ORG only ($OWN observation records, none in another organization of this demo-only DB): A $A_DIGEST active again; B refused as a past result"
+
 step "7) the old version (v0.25.0, built from its tag) on a copy of this workspace: does not start, changes nothing"
 git -C "$REPO_DIR" rev-parse -q --verify 'refs/tags/v0.25.0^{commit}' >/dev/null || fail "the tag v0.25.0 is not in $REPO_DIR (git fetch --tags)"
 OLDB="$(mktemp -d)"
@@ -673,4 +761,4 @@ echo "   after the successful observation: no process with the run marker"
 "$UI" stop >/dev/null
 
 echo
-echo "✅ e2e: policy activation passed (old $OLD_DIGEST → new $ACTIVE)"
+echo "✅ e2e: policy activation passed (A $A_DIGEST → B $B_DIGEST → A again)"

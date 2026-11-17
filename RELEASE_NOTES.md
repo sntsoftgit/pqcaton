@@ -129,6 +129,13 @@ carry their version and content hash (v0.14.0).
   IC-CF1 to IC-CF14. `ui.sh` only puts the verified collectors in a temporary place outside the workspace in the container; the
   copy into the workspace, the check and the install are done by the tool in one go under the lock (that place is checked by its
   real path and device/inode before and inside the lock).
+- The demo's `extend.sh` also loads the first policy into the pqcota history of the judgment organization (`demo-corp`). The
+  upstream demo's `demo.sh` loads into the default organization, and the generation step still uses that load. The demo follows the
+  operator guide's contract ("load pqcota under the judgment organization too") from the start.
+- A → B → A in the demo end to end (IC-U152): after moving to policy B, going back to A before the re-ingest is 409
+  (`upstream-revert`) and changes nothing. Re-ingesting A adds no snapshot bodies and puts each node's latest back on the first A,
+  and activating A passes; B is then refused as a past result. All of it runs in the one judgment organization, on real Postgres
+  with real collection results.
 - The demo end to end (IC-U152): it fetches the official assets and checks that `ui.sh` refuses a prepared folder with one byte
   changed, that 03 shows every collector and the JAR as "verified" with no allowance or unverified warning, and that the screen's
   command line and log carry no override.
