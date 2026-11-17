@@ -5,9 +5,6 @@ English · [한국어](operator-guide.ko.md)
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main` is under development for v0.30.0.** It takes in upstream pqcota v0.14.0 (the ruleset stays `pqcota-enrich/v4`). For
-> operation use the [v0.29.1 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.29.1) with pqcota v0.13.0.
-
 This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.30.0.
 The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
@@ -644,20 +641,27 @@ contents.
 
 ### v0.29.1 to v0.30.0
 
-(In progress) v0.30.0 takes in upstream pqcota v0.14.0. The ruleset stays `pqcota-enrich/v4` and the state format and the
-session and plan formats are the same as v0.29.1, so the workspace opens as it is **without a ruleset change round**. The pqcota
-history does not need to be loaded again either.
+v0.30.0 takes in upstream pqcota v0.14.0. The ruleset stays `pqcota-enrich/v4` and the state format and the session and plan
+formats are the same as v0.29.1, so the workspace opens as it is **without a ruleset change round**. The pqcota history does not
+need to be loaded again either.
 
-1. Upgrade the upstream tools (`pqcota-ingest`, `pqcota-cbom-ingest`, `pqcota-prune`, `pqcota-approve` and `pqcota-provision`)
+1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back up the workspace as in [section
+   7](#7-backup-and-restore).
+2. Upgrade the upstream tools (`pqcota-ingest`, `pqcota-cbom-ingest`, `pqcota-prune`, `pqcota-approve` and `pqcota-provision`)
    to v0.14.0 together. **The tools that load into and prune the same pqcota history must be at the same version.** From
    upstream v0.13.1 a load and a prune take a per-node lock together, so an older loader or prune tool left behind can still
    overlap with the new ones.
-2. Replace the three collectors on the nodes and `collector.jar` with the v0.14.0 release assets, as in [section
-   2](#2-installation). 03 refuses v0.13.0 collectors as "does not match".
-3. Stop the screen and replace the binary with the `go install` of [section 2](#2-installation).
-4. **The `collector.jar` check is stricter.** A JAR with no version, or one you built yourself, is now "cannot be verified" and
-   does not start without `-allow-unverified-collectors`. The usual fix is the upstream v0.14.0 release `collector.jar`.
-5. **An activation that goes back to an earlier policy can be done after re-ingesting the results under that policy.** Before
+3. Install `pqcaton-ui` and the preparation tool `pqcaton-collectors` at v0.30.0 with the `go install` of [section
+   2](#2-installation).
+4. Fetch the v0.14.0 release assets with `pqcaton-collectors fetch` as in "Checking the collectors you download" (section 2), and
+   replace the three collectors on the nodes and `collector.jar` with them. 03 refuses v0.13.0 collectors as "does not match".
+5. **With the official assets in place, start without `-allow-unverified-collectors`.** Up to v0.29.x even the release assets were
+   "cannot be verified" and needed this option, but the v0.14.0 release assets are "verified" on 03. After starting the screen,
+   check on 03 that the collectors and `collector.jar` are all "verified", then observe again.
+6. **The `collector.jar` check is stricter.** A JAR with no version, one you built yourself, or one from a modified tree is now
+   "cannot be verified" and does not start without `-allow-unverified-collectors`. The usual fix is the upstream v0.14.0 release
+   `collector.jar`.
+7. **An activation that goes back to an earlier policy can be done after re-ingesting the results under that policy.** Before
    that re-ingest it is still refused with `upstream-revert`.
 
 ### v0.29.0 to v0.29.1

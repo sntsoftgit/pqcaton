@@ -5,9 +5,6 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main`은 v0.30.0 개발 중입니다.** 상류 pqcota v0.14.0을 반영하고 있습니다(규칙 묶음은 `pqcota-enrich/v4` 그대로). 운영에는
-> [v0.29.1 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.29.1)와 pqcota v0.13.0을 쓰십시오.
-
 이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.30.0 기준입니다.
 영어판은 [operator-guide.md](operator-guide.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
@@ -583,18 +580,24 @@ pkill -INT -u "$USER" -x pqcaton-ui
 
 ### v0.29.1에서 v0.30.0으로
 
-(작성 중) v0.30.0은 상류 pqcota v0.14.0을 반영합니다. 규칙 묶음이 `pqcota-enrich/v4` 그대로이고 상태 형식 · 세션 · 계획 형식도
+v0.30.0은 상류 pqcota v0.14.0을 반영합니다. 규칙 묶음이 `pqcota-enrich/v4` 그대로이고 상태 형식 · 세션 · 계획 형식도
 v0.29.1과 같아, **규칙 전환 회차를 거치지 않고** 작업 폴더를 그대로 엽니다. pqcota 이력도 다시 적재하지 않아도 됩니다.
 
-1. 상류 도구(`pqcota-ingest` · `pqcota-cbom-ingest` · `pqcota-prune` · `pqcota-approve` · `pqcota-provision`)를 v0.14.0으로 함께 올립니다.
+1. 화면을 끄고 `-recover-status`가 `no unfinished transactions`를 찍는지 확인한 뒤, 작업 폴더를 [7절](#7-백업과-복원)대로
+   백업합니다.
+2. 상류 도구(`pqcota-ingest` · `pqcota-cbom-ingest` · `pqcota-prune` · `pqcota-approve` · `pqcota-provision`)를 v0.14.0으로 함께 올립니다.
    **같은 pqcota 이력에 적재하고 정리하는 도구는 같은 판이어야 합니다.** 상류 v0.13.1부터 적재와 정리가 노드 잠금을 함께
    잡으므로, 옛 적재 도구나 정리 도구가 남아 있으면 새 도구와 겹칠 수 있습니다.
-2. 노드의 수집기 셋과 `collector.jar`를 [2절](#2-설치)대로 v0.14.0 릴리스 자산으로 바꿉니다. 03이 v0.13.0 수집기를 「맞지 않음」으로
-   막습니다.
-3. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다.
-4. **`collector.jar` 검사가 엄격해졌습니다.** 판 정보가 없거나 직접 빌드한 JAR은 이제 「확인 불가」라 `-allow-unverified-collectors`
-   없이는 시작하지 않습니다. 상류 v0.14.0 릴리스의 `collector.jar`로 바꾸는 것이 기본 해결책입니다.
-5. **이전 정책으로 되돌리는 활성화는 그 정책으로 결과를 다시 적재한 뒤에 할 수 있습니다.** 다시 적재하기 전에는 지금처럼
+3. [2절](#2-설치)의 `go install`로 `pqcaton-ui`와 준비 도구 `pqcaton-collectors`를 v0.30.0으로 설치합니다.
+4. 「받은 수집기를 확인하기」(2절)대로 `pqcaton-collectors fetch`로 v0.14.0 릴리스 자산을 받고, 노드의 수집기 셋과 `collector.jar`를
+   그것으로 바꿉니다. 03은 v0.13.0 수집기를 「맞지 않음」으로 막습니다.
+5. **공식 자산으로 바꿨다면 `-allow-unverified-collectors`를 빼고 시작합니다.** v0.29.x까지는 릴리스 자산도 「확인 불가」라 이
+   옵션이 필요했지만, v0.14.0 릴리스 자산은 03에서 「확인됨」입니다. 화면을 띄운 뒤 03에서 수집기와 `collector.jar`가 모두
+   「확인됨」인지 보고 다시 관측합니다.
+6. **`collector.jar` 검사가 엄격해졌습니다.** 판 정보가 없는 JAR이나 직접 빌드한 JAR, 고친 트리의 JAR은 이제 「확인 불가」라
+   `-allow-unverified-collectors` 없이는 시작하지 않습니다. 상류 v0.14.0 릴리스의 `collector.jar`로 바꾸는 것이 기본
+   해결책입니다.
+7. **이전 정책으로 되돌리는 활성화는 그 정책으로 결과를 다시 적재한 뒤에 할 수 있습니다.** 다시 적재하기 전에는 지금처럼
    `upstream-revert`로 거절합니다.
 
 ### v0.29.0에서 v0.29.1로

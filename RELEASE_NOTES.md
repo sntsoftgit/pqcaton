@@ -74,7 +74,9 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
-## v0.30.0: Takes in upstream pqcota v0.14.0 (in progress)
+## v0.30.0: Takes in upstream pqcota v0.14.0 (2026-11-17)
+
+**Apache-2.0 conversion: 2030-11-17** (four years from the release date)
 
 **Goal**: use upstream pqcota v0.14.0. The ruleset (`pqcota-enrich/v4`), the contract and the database tables are the same as
 v0.13.0, so the pqcota history and the sessions and plans of v0.29.x are used as they are. This version holds only what the two
@@ -149,6 +151,19 @@ carry their version and content hash (v0.14.0).
 - A PostgreSQL 16 service and `make test-pg` in GitHub CI: the Postgres contract tests (IC-S26 included) run without skipping. A
   missing DSN, a skipped test or IC-S26 not running fails it. The release gate requires `ci` to succeed on the candidate commit, so
   these tests are part of the release gate too.
+
+### What was checked
+
+- IC-S26 failed on a copy with only `go.mod` and `go.sum` taken back to those of v0.29.1 (upstream v0.13.0) and passed with this
+  version. After A → B → A the latest of the two nodes stayed at B, so the check of A was `ErrRevert`. It also passed, without
+  skipping, in the PostgreSQL job of the GitHub CI.
+- The demo end-to-end check (IC-U152) ran with the five upstream repositories at v0.14.0. It fetched the official assets
+  (linux/amd64) and checked them again, 03 showed the collectors and `collector.jar` all as "verified", and the screen's command
+  line and log had no override. A → B → A in the one judgment organization passed too.
+- The demo expected output (`plan.json` and `report.txt` in `demo/expected-output`) was rewritten by the v0.14.0 default demo and
+  was byte for byte the same as that of v0.29.1. That agrees with the ruleset and the contract being the same as v0.13.0.
+- The full vet (`go vet ./...`) passed on Linux, and a cross vet for macOS and Windows confirmed that the tests compile for them too.
+- The check results are reported with the summary of the release gate (`make release-check`) when asking to publish.
 
 ---
 
