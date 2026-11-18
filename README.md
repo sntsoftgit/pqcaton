@@ -59,31 +59,53 @@ own. A longer architecture page is [docs/index.html](docs/index.html).
 
 <a id="써보기"></a>
 
-You need **Go** (the version in [`go.mod`](go.mod)) and, for observation, approval and generation, pqcota **v0.14.0** with its five
-repositories at the same tag. Graphviz (`dot`) is optional; without it the topology comes out as DOT source.
+### Try it on the demo
 
-**Around once on this machine (Linux).** The shortcut scans this machine itself (`/proc`); on macOS and Windows, reconcile the
-`results/` pqcota gathered instead.
+The demo brings up three nodes imitating a payment service in Docker (upstream pqcota's demo) and runs pqcaton on top of it. On the
+screen you go once through declaration → observation → reconciliation → judgment → approval → playbook generation, in a browser on this
+machine. The demo was checked end to end on **Linux x86-64**; macOS was not checked.
+
+You need Git, **Go** (the version in [`go.mod`](go.mod)), **Docker**, python3 and **`gh`** (GitHub CLI 2.49 or later, logged in with
+`gh auth login`; it checks the attestations of the official collectors). Put this repository and the five repositories of upstream pqcota
+**v0.14.0** side by side in one folder:
 
 ```bash
-make
+mkdir pqcaton-demo && cd pqcaton-demo
+git clone --branch v0.30.0 https://github.com/sntsoftgit/pqcaton
+for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.14.0 https://github.com/randyinthedev-hash/$r; done
+cd pqcaton/demo
+```
+
+Then follow [Running it](demo/README.md#running-it) in the demo guide from that folder (`pqcaton/demo`): start the upstream demo, extend
+it, fetch the official collectors, open the screen at `http://127.0.0.1:8765`, and bring it down. What to do on each screen is in
+[Going through the screens](demo/README.md#going-through-the-screens).
+
+### Build this repository
+
+```bash
+git clone --branch v0.30.0 https://github.com/sntsoftgit/pqcaton
+cd pqcaton
 go build -o bin/ ./inventory/cmd/...
-printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-chain\n' > decl.csv
-bin/pqcaton-decide open decl.csv local > session.json
-bin/pqcaton-decide close session.json -o plan.json -judgments judgments.jsonl -org acme
-bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
+./bin/pqcaton-ui -h
 ```
 
-Between `open` and `close`, a person fills in the conclusions, the reviewer and the signature in `session.json` (or on the screen).
-`close` refuses and lists what is left until every mandatory item is judged.
+The commands are built into `bin/`, so run them as `./bin/...` (or copy them to a folder on your `PATH`).
 
-**On the screen.** Start `pqcaton-ui` with no arguments: it uses the `pqcaton` workspace in your home folder and opens a browser. **It
-does not start without the pqcota history**: `PQCOTA_DSN` in the shell, or `pqcota.env` in the user configuration folder. Installation,
-the service, backup, recovery and the error table are in the [operator guide](docs/operator-guide.md).
+| Command | What it does |
+|---|---|
+| `pqcaton-ui` | The screen (01 Declaration to 06 Approval and generation) |
+| `pqcaton-decide` | The same judgment steps as commands (`open`, `close`, `delta`) |
+| `pqcaton-report` | The reconciliation report and the governance topology from collected results |
+| `pqcaton-scope` | The asset-scope policy (layers, finalize, activate) as commands |
+| `pqcaton-collectors` | Fetching and checking the official upstream collectors |
 
-```bash
-pqcaton-ui
-```
+`make` builds and tests after running the repository's gates; it is for changing the code ([Build](docs/build.md)). Running the
+commands once without the screen is in [Running it once with commands](docs/journey.md#running-it-once-with-commands).
+
+**In your own environment.** The screen reads and checks the pqcota history, so it needs **a running pqcota v0.14.0 and its connection
+information** (`PQCOTA_DSN` or `pqcota.env`). Without them it does not start. With them ready, follow the
+[operator guide](docs/operator-guide.md): installation with `go install`, the connection, the official collectors and node access
+(section 2), the workspace (section 3) and starting the screen (section 4).
 
 ## Where to go next
 

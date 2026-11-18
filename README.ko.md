@@ -57,31 +57,52 @@ flowchart LR
 
 <a id="써보기"></a>
 
-**Go**([`go.mod`](go.mod)에 적힌 판)가 필요하고, 관측 · 승인 · 생성에는 다섯 리포를 같은 태그로 둔 pqcota **v0.14.0**이 필요합니다.
-Graphviz(`dot`)는 선택이며, 없으면 토폴로지를 DOT 원문으로 냅니다.
+### 데모로 써 보기
 
-**이 기계로 한 바퀴(리눅스).** 이 지름길은 이 기계 자신을 스캔합니다(`/proc`). macOS · Windows에서는 pqcota가 모은 `results/`로
-대조합니다.
+데모는 결제 서비스를 흉내 낸 노드 세 대를 Docker로 띄우고(상류 pqcota의 데모), 그 위에서 pqcaton을 돌립니다. 이 기계의
+브라우저로 화면을 열어 선언 → 관측 → 대조 → 판정 → 승인 → 플레이북 생성을 한 바퀴 돕니다. 데모의 종단 검증은
+**Linux x86-64**에서 했고, macOS는 검증하지 않았습니다.
+
+Git, **Go**([`go.mod`](go.mod)에 적힌 판), **Docker**, python3, **`gh`**(GitHub CLI 2.49 이상, `gh auth login`으로 로그인)가
+필요합니다. `gh`는 공식 수집기의 출처 증명을 확인할 때 씁니다. 이 리포와 상류 pqcota **v0.14.0**의 리포 다섯 개를 한 폴더 아래에
+나란히 받습니다.
 
 ```bash
-make
+mkdir pqcaton-demo && cd pqcaton-demo
+git clone --branch v0.30.0 https://github.com/sntsoftgit/pqcaton
+for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.14.0 https://github.com/randyinthedev-hash/$r; done
+cd pqcaton/demo
+```
+
+이어서 그 폴더(`pqcaton/demo`)에서 데모 안내의 [실행](demo/README.ko.md#실행) 절을 따릅니다. 상류 데모를 띄우고, 확장하고,
+공식 수집기를 받고, `http://127.0.0.1:8765`에서 화면을 연 뒤 내리는 데까지입니다. 화면마다 무엇을 하는지는
+[화면을 차례로 지나기](demo/README.ko.md#화면을-차례로-지나기)에 있습니다.
+
+### 이 리포 빌드하기
+
+```bash
+git clone --branch v0.30.0 https://github.com/sntsoftgit/pqcaton
+cd pqcaton
 go build -o bin/ ./inventory/cmd/...
-printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-chain\n' > decl.csv
-bin/pqcaton-decide open decl.csv local > session.json
-bin/pqcaton-decide close session.json -o plan.json -judgments judgments.jsonl -org acme
-bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
+./bin/pqcaton-ui -h
 ```
 
-`open`과 `close` 사이에 사람이 `session.json`(또는 화면)에서 결론 · 검토자 · 서명을 채웁니다. 필수 항목이 모두 판정되기 전에는
-`close`가 거절하고 무엇이 남았는지 알려 줍니다.
+명령은 `bin/`에 만들어지므로 `./bin/...`로 실행합니다(또는 `PATH`에 있는 폴더로 옮깁니다).
 
-**화면으로.** 인자 없이 `pqcaton-ui`를 띄우면 홈의 `pqcaton` 작업 폴더를 쓰고 브라우저를 엽니다. **pqcota 이력 없이는 시작하지
-않습니다**: 셸의 `PQCOTA_DSN`이나 사용자 설정 폴더의 `pqcota.env`가 있어야 합니다. 설치 · 서비스 · 백업 · 복구 · 오류 표는
-[운영자 안내서](docs/operator-guide.ko.md)에 있습니다.
+| 명령 | 하는 일 |
+|---|---|
+| `pqcaton-ui` | 화면(01 선언부터 06 승인 · 생성까지) |
+| `pqcaton-decide` | 같은 판정 단계를 명령으로(`open` · `close` · `delta`) |
+| `pqcaton-report` | 모은 결과로 대조 보고서와 거버넌스 토폴로지를 만듭니다 |
+| `pqcaton-scope` | 자산 스코프 정책(계층 · 확정 · 활성화)을 명령으로 |
+| `pqcaton-collectors` | 상류 공식 수집기를 받고 확인합니다 |
 
-```bash
-pqcaton-ui
-```
+`make`는 리포의 관문을 먼저 돌린 뒤 빌드하고 시험합니다. 코드를 고칠 때 씁니다([빌드](docs/build.ko.md)). 화면 없이 명령으로
+한 바퀴 도는 방법은 [명령으로 한 바퀴](docs/journey.ko.md#명령으로-한-바퀴)에 있습니다.
+
+**자기 환경에서.** 화면은 pqcota 이력을 읽고 대조하므로 **동작 중인 pqcota v0.14.0과 그 연결 정보**(`PQCOTA_DSN`이나
+`pqcota.env`)가 있어야 하고, 없으면 시작하지 않습니다. 준비됐다면 [운영자 안내서](docs/operator-guide.ko.md)를 따릅니다.
+`go install` 설치, 연결, 공식 수집기와 노드 접속(2절), 작업 폴더(3절), 화면 시작(4절) 순서입니다.
 
 ## 다음에 읽을 것
 

@@ -366,6 +366,39 @@ stateDiagram-v2
 
 ---
 
+## 명령으로 한 바퀴
+
+화면도 pqcota도 없이, 지름길은 **이 기계 자신**(`/proc`, 리눅스)을 스캔해 `pqcaton-decide`로 열기 → 판정 → 확정 → 변화 보기를
+한 바퀴 돕니다. 단계를 보기 위한 것이고, 실제 관측은 pqcota의 `results/`로 합니다(`pqcaton-decide open -results`).
+`go build -o bin/ ./inventory/cmd/...` 뒤에 리포 폴더에서 실행합니다.
+
+```bash
+umask 022
+printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-chain\n' > decl.csv
+./bin/pqcaton-decide open decl.csv local > session.json
+```
+
+`umask 022`가 필요한 까닭은 `close`가 다른 사용자가 쓸 수 있는 세션 파일을 거절하기 때문입니다(Ubuntu의 기본 umask 002로는
+0664가 됩니다). `open`과 `close` 사이에 사람이 `session.json`을 채웁니다. `policy_decisions` 아래에 정책마다 결론을 하나씩 적고,
+`reviewer`와 `signature`를 적습니다. 필수 항목이 모두 판정되기 전에는 `close`가 거절하고 무엇이 남았는지 알려 줍니다. 체험할
+때는 이렇게 채울 수 있습니다.
+
+```bash
+python3 - <<'PY'
+import json
+s = json.load(open("session.json"))
+s["reviewer"] = s["signature"] = "me"
+for p in s["policy_decisions"]:
+    s["policy_decisions"][p] = "trial run: keep as is"
+json.dump(s, open("session.json", "w"), indent=2)
+PY
+./bin/pqcaton-decide close session.json -o plan.json -judgments judgments.jsonl -org acme
+./bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
+```
+
+`close`는 판정을 `judgments.jsonl`에 덧붙이고 `plan.json`(`IN_REVIEW`)을 씁니다. `delta`는 그 뒤로 바뀐 것만 보입니다. 계획의
+승인과 생성에는 pqcota(`pqcota-approve` · `pqcota-provision`)가 필요하고, 데모가 그것까지 돕니다.
+
 ## 지금 어디까지 됐나
 
 | 무엇 | 어디에 | 상태 |

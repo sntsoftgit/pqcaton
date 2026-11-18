@@ -30,6 +30,38 @@ pqcota's observation and pqcota's generation.
 | 6. Generate, apply, roll back | Back to pqcota with one `FinalizedPlan` | **Nothing is applied before finalizing**, and applying is the one step that must not run twice |
 | 7. Continuing | Re-observation with delta review, expiring old judgments, re-reviewing exclusions | An exclusion is not a permanent exemption; the judgment history stays append-only |
 
+## Running it once with commands
+
+Without the screen and without pqcota, the shortcut scans **this machine itself** (`/proc`, Linux) and goes through open → judge →
+finalize → delta with `pqcaton-decide`. It is for seeing the steps; real observation goes through pqcota's `results/`
+(`pqcaton-decide open -results`). Run it in the repository after `go build -o bin/ ./inventory/cmd/...`.
+
+```bash
+umask 022
+printf 'node,runtime,component\nlocal,openssl,libssl\nlocal,jca,jca-provider-chain\n' > decl.csv
+./bin/pqcaton-decide open decl.csv local > session.json
+```
+
+`umask 022` is needed because `close` refuses a session file other users can write (Ubuntu's default umask 002 makes it 0664).
+Between `open` and `close` a person fills in `session.json`: one conclusion per policy under `policy_decisions`, and `reviewer` and
+`signature`. Until every mandatory item is judged, `close` refuses and lists what is left. For a trial run you can fill them like this:
+
+```bash
+python3 - <<'PY'
+import json
+s = json.load(open("session.json"))
+s["reviewer"] = s["signature"] = "me"
+for p in s["policy_decisions"]:
+    s["policy_decisions"][p] = "trial run: keep as is"
+json.dump(s, open("session.json", "w"), indent=2)
+PY
+./bin/pqcaton-decide close session.json -o plan.json -judgments judgments.jsonl -org acme
+./bin/pqcaton-decide delta judgments.jsonl decl.csv local -org acme
+```
+
+`close` appends the judgments to `judgments.jsonl` and writes `plan.json` (`IN_REVIEW`). `delta` shows only what changed since then.
+Approving and generating a plan need pqcota (`pqcota-approve`, `pqcota-provision`), which the demo goes through.
+
 ## Where it stands
 
 The engine and the screen both work: reconciliation, the review–finalize state machine and persisted judgments, asset-scope governance,

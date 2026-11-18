@@ -476,7 +476,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 |---|---|---|
 | **[IC-U107](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 두 판의 명령 블록과 인라인 코드에 적힌 플래그 | `pqcaton-ui`에 준 것은 `-h`가 찍는 목록에, `pqcaton-collectors`에 준 것은 그 도구가 정의한 플래그에 있고, 인라인으로만 적은 플래그는 둘 가운데 한쪽에 있다 |
 | **[IC-U108](../inventory/cmd/pqcaton-ui/guide_run_test.go) ✅** | 두 판에서 실행 표시가 붙은 명령을 빈 홈 폴더에서 차례대로 돌림 | 띄우기 · 떠 있는 화면 다시 열기 · 끝내기 · 루프백이 아닌 주소 거부 · 끈 상태의 백업과 복원 · 저장 도중 멈추고 밖에서 바뀐 파일의 복구가 안내서에 적힌 명령으로 끝난다. 멈춘 상태는 시험 도구(`testdata/guidetool`)가 저장소의 실패 주입으로 만든다 |
-| **[IC-U112](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 두 판의 기준판 문장 · `go install`의 판 · `raw.githubusercontent.com` 다운로드 주소의 판 | 모두 릴리스 노트 맨 위 절의 판과 같다. 새 판을 내며 안내서를 그대로 두면 낡은 판을 설치하게 되는 것을 막는다 |
+| **[IC-U112](../inventory/cmd/pqcaton-ui/guide_test.go) ✅** | 두 판의 기준판 문장 · `go install`의 판 · `raw.githubusercontent.com` 다운로드 주소의 판 · 두 판 README의 빠른 시작이 받는 판(`git clone --branch`) | 모두 릴리스 노트 맨 위 절의 판과 같다. 새 판을 내며 안내서를 그대로 두면 낡은 판을 설치하게 되는 것을 막는다 |
 | **[IC-U113](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | 03 관측 화면에서 비밀번호가 있는 줄의 노드 ID를 고치고, 다른 줄을 고치고, 새 WinRM 줄을 더해 저장 | 화면은 비밀번호를 「있음」으로만 보이고 값은 싣지 않는다. 비밀번호는 고친 노드 ID를 따라가고 새 줄에는 없다. 저장한 `hosts.csv`는 상류 `ParseHosts`가 그대로 읽고 소유자 전용(0600)이다 |
 | **[IC-U114](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | WinRM을 Linux 노드에 고르고 같은 노드 ID를 두 번 적어 저장, 두 말 | 422이고 파일은 한 바이트도 바뀌지 않는다. 화면에는 적은 값이 남고 어느 노드의 무엇이 틀렸는지 적힌다. 리다이렉트하면 적던 것이 날아간다 |
 | **[IC-U115](../inventory/cmd/pqcaton-ui/observe_test.go) ✅** | 명시 모드와 `hosts.csv`가 없는 작업 폴더에서 `/observe` | 명시 모드는 404이고 03 카드가 닫혀 있다. 작업 폴더 모드는 열리고 03 카드가 「아직 접근 정보가 없습니다」다 |

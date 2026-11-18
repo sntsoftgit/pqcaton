@@ -41,6 +41,10 @@ Observation grades (pqcota)      →   + reconciliation against the declaration 
 
 ## Running it
 
+**Where to run it.** Put this repository and the five upstream pqcota repositories side by side in one folder, and run the
+commands below from `pqcaton/demo` ([Quick start](../README.md#try-it-on-the-demo) shows how to get them). You need Docker, Go,
+python3 and `gh` logged in ([Requirements](#requirements)). The demo was checked end to end on Linux x86-64; macOS was not checked.
+
 ```bash
 # 1) start the OSS discovery demo first (environment + collection)
 ../../pqcota/demo/scripts/up.sh
@@ -58,6 +62,15 @@ Observation grades (pqcota)      →   + reconciliation against the declaration 
 # 4) clean up (the core demo owns the environment)
 ../../pqcota/demo/scripts/down.sh
 ```
+
+- **The first run takes a while**: `up.sh` builds the node images. When `extend.sh` ends with "Done", the demo is ready.
+- **The fetch in 3) is needed once.** It never overwrites an existing folder, so a second fetch into the same folder is refused; the
+  prepared folder is used again as it is.
+- **The browser**: open `http://127.0.0.1:8765` on the machine where you ran `ui.sh`. To watch from another machine, forward that
+  port over SSH (`ssh -L 8765:127.0.0.1:8765 <that machine>`). What to do on each screen is in
+  [Going through the screens](#going-through-the-screens).
+- **Ending**: `Ctrl+C` closes only the relay (the screen keeps running, and `ui.sh` opens it again). `./scripts/ui.sh stop` stops the
+  screen and keeps its workspace. `down.sh` removes the containers, and the workspace with them.
 
 ### Seeing it on the screen
 
@@ -127,6 +140,19 @@ made**: approval → generation → record → the real snapshot id. **It is for
 assets it only empties the declaration, a state that really occurs in an organization that has not written its declaration yet. The
 default run keeps the realistic declaration and shows that no action is made for assets the policy excluded from management.
 
+### Going through the screens
+
+The order below starts from the screen `ui.sh` opens for the first time. The top bar shows the state of each screen.
+
+| Screen | Starting state | What to check or enter | When to move on |
+|---|---|---|---|
+| 01 Declaration | 3 managed nodes, "There is no observed name left to link" | Nothing to enter. Each node shows its linked observed name | Right away |
+| 02 Asset scope | "There is no layer yet" | Skip it on the first round. 04 and 05 use the policy given to the upstream ingest | Right away. Changing the policy is in [Activating a new policy](#activating-a-new-policy) |
+| 03 Observation | The access table holds the 3 nodes, and every collector and `collector.jar` row is ✓ "verified" | Press **Start the observation**. It takes about a minute (the network window is 60 seconds) | "The observation finished, and what it received is now the current results"; then **See them in 04 Reconciliation** |
+| 04 Reconciliation | 2 items to judge, 1 asset to observe again | Read the counts (CONFIRMED · UNDECLARED · UNOBSERVED) and which rows they come from. An edge with no traffic during the observation window shows as UNOBSERVED | **Open the review queue** |
+| 05 Review | 1 policy (`openssl/libssl`) without a conclusion | Write a **Conclusion for this policy**. For 06 to have something to generate, tick **In plan** on one machine-answered row (for example `pay-db/openssl/libssl`) and choose a **Remediation kind**, a **Target algorithm** and a **Delegation level**. Fill in **Approver** and **Signature**, press **Finalize and emit the plan**, check the page that follows and press **Finalize** | "This review session is finalized"; go to 06 |
+| 06 Approval and generation | The finalized plan with its actions, the approval key ✓ | Fill in **Approver**, tick "I have reviewed the actions above and approve them", press **Sign the approval** and then **Sign this** on the check page. Then press **Generate the playbooks** | `plan.provision.yml` and `plan.rollback.yml` are listed. Applying them to the nodes is the operator's job with Ansible |
+
 ### Activating a new policy
 
 To use the policy finalized in 02 for reconciliation, re-ingest pqcota with that policy and activate it in 05. The demo re-ingests with one
@@ -190,6 +216,9 @@ the container is removed, so it can be used as it is for a test that an older ve
   for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.14.0 https://github.com/randyinthedev-hash/$r; done
   ```
 - The pqcota discovery demo running (step 1 above).
+- **Docker** on this machine: the upstream demo runs the nodes, the control container and the database in Docker.
+- **`gh`** (GitHub CLI 2.49 or later, logged in with `gh auth login`) and network access to GitHub, for fetching the official
+  collectors (step 3 above).
 - The build machine needs only **Go** and **python3**. From pqcota v0.5.0 the module paths equal the repository addresses, so
   `go build` fetches the contracts itself. No sibling checkout or `replace` is needed.
 - **Graphviz (`dot`) is not needed on this machine.** The topology SVG is drawn inside the `pqcota-ctl` container. Without it only the
