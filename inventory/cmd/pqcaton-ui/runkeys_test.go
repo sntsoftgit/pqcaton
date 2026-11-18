@@ -80,6 +80,18 @@ func TestNoKeyUnlessEveryNodePassesTheCheck(t *testing.T) {
 		if got := names(t, s.results); !contains(got, oldResult) {
 			t.Errorf("%s: the current results changed: %v", c.mode, got)
 		}
+		// 관측이 노드에서 시작되지 않았으므로 노드 정리는 「불필요」다(실패로 보이지 않는다). 정리 플레이북을 부르지 않는다.
+		if st.NodeCleanup != cleanupNotNeeded || strings.Contains(st.Log, "CLEANUP ran") || isFile(filepath.Join(runDir(t, s), runObserveStarted)) {
+			t.Errorf("%s: node cleanup %q (want %q, and no cleanup playbook)\n%s", c.mode, st.NodeCleanup, cleanupNotNeeded, st.Log)
+		}
+		if frag := get(t, s, ui.RunPath+"?lang=ko").Body.String(); !strings.Contains(frag, "노드에서 정리할 것이 없습니다") || strings.Contains(frag, "msg bad") {
+			t.Errorf("%s: the fragment does not say there was nothing to clean up:\n%s", c.mode, frag)
+		}
+	}
+	// 이번 판이 아닌 기록(수집기 키 칸이 없다)은 표지가 없어도 시작 여부를 알 수 없으므로 시작한 것으로 본다.
+	dir := t.TempDir()
+	if !remoteStarted(dir, runManifest{ID: "old"}) || remoteStarted(dir, runManifest{ID: "new", CollectorKeys: map[string]string{idOpenSSL: "/k"}}) {
+		t.Error("remoteStarted: an old record must count as started, a new one without the mark as not started")
 	}
 }
 

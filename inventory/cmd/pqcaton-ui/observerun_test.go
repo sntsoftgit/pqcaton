@@ -235,7 +235,7 @@ func TestObservationRunsAndHandsOverResults(t *testing.T) {
 	if got := names(t, filepath.Join(dir, "previous")); strings.Join(got, ",") != oldResult {
 		t.Errorf("previous/ = %v, want the earlier result", got)
 	}
-	if got := names(t, dir); strings.Join(got, ",") != strings.Join([]string{runCheckDir, runCollectorLogs, runLog, runManifestFile, "previous", supervisorFile}, ",") {
+	if got := names(t, dir); strings.Join(got, ",") != strings.Join([]string{runCheckDir, runCollectorLogs, runLog, runManifestFile, runObserveStarted, "previous", supervisorFile}, ",") {
 		t.Errorf("the run directory keeps %v (the inventory must be gone)", got)
 	}
 	if cur := s.currentRun(); cur == nil || cur.ID != st.ID || len(cur.Nodes) != 2 || cur.Nodes[1].Node != "db" {

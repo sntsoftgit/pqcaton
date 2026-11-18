@@ -139,7 +139,8 @@ type runManifest struct {
 	// StuckProcs — Stuck 과 같은 프로세스를 찾을 때의 시작 시각과 함께 남긴 것. 화면은 이것으로 그 PID가 아직 같은 프로세스인지
 	// 가린다. 이 칸이 없는 옛 기록은 같은 프로세스인지 확인할 수 없는 것으로 보인다.
 	StuckProcs []stuckProc `json:"stuck_procs,omitempty"`
-	// NodeCleanup: 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
+	// NodeCleanup: 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed · not-needed). not-needed는 관측이 노드에서 시작되지
+	// 않은 것이 확인된 경우다(remoteStarted). 비면 정리할 일이 없었다.
 	NodeCleanup string `json:"node_cleanup,omitempty"`
 	// Swapping: results/와 맞바꾸기 직전에 적는다. 이 표시로 끊겼으면 다음 시작이 results/의 기록으로 교환 여부를 가린다.
 	Swapping bool `json:"swapping,omitempty"`
@@ -747,6 +748,10 @@ func finishSwap(dir string) error {
 // 찾아 끝낸다. 끝내지 못하거나 확인하지 못하면 둘째 값에 그 까닭을 돌려준다(부르는 쪽은 인벤토리를 지우지 않는다).
 // 실행 중인 관측의 끝(finishRun)과, 비정상 종료 뒤의 다음 시작(recoverRuns)이 함께 쓴다.
 func runCleanup(dir, id string, logf func(string)) (string, string) {
+	if !remoteStarted(dir, readManifest(dir, id)) {
+		logf("pqcaton: the observation did not start on the nodes (only the node check ran, which leaves nothing there), so there is nothing to clean up on them")
+		return cleanupNotNeeded, ""
+	}
 	if !isFile(filepath.Join(dir, runInventory)) {
 		logf("pqcaton: no inventory left to reach the nodes, so their staging folders were not removed")
 		return "failed", ""
@@ -796,6 +801,9 @@ func runCleanup(dir, id string, logf func(string)) (string, string) {
 	}
 	return "done", ""
 }
+
+// cleanupNotNeeded: 관측이 노드에서 시작되지 않아 노드 정리를 하지 않았다(실패가 아니다).
+const cleanupNotNeeded = "not-needed"
 
 // stagingPaths: 노드에 남을 수 있는 스테이징 폴더. 화면과 안내서가 같은 말을 쓴다.
 func stagingPaths(id string) string {
@@ -1191,6 +1199,9 @@ func (s *server) recoverRuns() {
 					m.NodeCleanup = cleaned
 				} else if m.NodeCleanup == "" {
 					m.NodeCleanup = "failed"
+					if !remoteStarted(dir, m) {
+						m.NodeCleanup = cleanupNotNeeded
+					}
 				}
 				if isDir(filepath.Join(dir, "next")) {
 					_ = os.Rename(filepath.Join(dir, "next"), filepath.Join(dir, "partial"))

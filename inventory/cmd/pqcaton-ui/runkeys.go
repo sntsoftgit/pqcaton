@@ -37,10 +37,13 @@ import (
 )
 
 const (
-	runKeysVars   = "run-keys.json"
-	runKeyPrefix  = "pqcaton-keys-"
-	runCheckDir   = "check"
-	exitNotSigned = 6 // 감독: 노드 점검이나 키 준비가 막아 관측을 시작하지 않았다
+	// runObserveStarted: 감독이 관측 플레이북을 띄우기 직전에 확정해 쓰는 표지. 없으면 관측은 노드에 닿지 않았다(노드 점검만 돌았고,
+	// 점검은 노드에 아무것도 만들지 않는다). 정리는 이것으로 「불필요」를 가린다(remoteStarted).
+	runObserveStarted = "observe-started"
+	runKeysVars       = "run-keys.json"
+	runKeyPrefix      = "pqcaton-keys-"
+	runCheckDir       = "check"
+	exitNotSigned     = 6 // 감독: 노드 점검이나 키 준비가 막아 관측을 시작하지 않았다
 )
 
 // runKeysRecord: 실행 자리의 run-keys.json. 플레이북의 추가 변수이자 회수의 기록이다. 경로만 담는다.
@@ -208,4 +211,11 @@ func signatureProblem(keys map[string][]string, r *discoveryv1.CollectionResult)
 		return "signed with the key listed for " + strings.Join(others, ", ") + ", not " + id, ""
 	}
 	return "the signature does not match the keys listed for " + id + " (the result was changed after signing, or it was signed with a key that is not listed)", ""
+}
+
+// remoteStarted: 이 실행의 관측이 노드에서 시작됐을 수 있는가. 표지가 있으면 그렇다(쓴 뒤 띄우기 전에 끊겼어도 시작한 것으로
+// 본다). 표지가 없어도 이번 판이 아닌 기록(수집기 키 칸이 없다)이면 시작 여부를 알 수 없으므로 시작한 것으로 본다. 그래서
+// 「불필요」는 이번 판의 실행이 관측 플레이북을 띄우기 전에 끝난 것이 확인될 때만이다.
+func remoteStarted(dir string, m runManifest) bool {
+	return isFile(filepath.Join(dir, runObserveStarted)) || len(m.CollectorKeys) == 0
 }

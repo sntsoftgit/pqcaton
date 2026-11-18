@@ -426,6 +426,9 @@ func supervise(dir, ansible string) int {
 			if keyDir, err := makeRunKeys(dir, m); err != nil {
 				say("pqcaton: %v; the observation did not start", err)
 				code = exitNotSigned
+			} else if err := writeDurable(filepath.Join(dir, runObserveStarted), map[string]string{"run": m.ID}); err != nil {
+				say("pqcaton: the run record could not be written (%s); the observation did not start", writeFailure(err))
+				code = exitNotSigned
 			} else {
 				say("pqcaton: temporary signing keys for this run are in %s (outside the workspace, only this user can open it); they are removed when the run ends", keyDir)
 				code = runBook("observe.yml", "-e", "@"+runKeysVars)

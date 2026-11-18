@@ -231,7 +231,8 @@ type RunStatus struct {
 	Window   int
 	// Missing — 결과가 오지 않았거나 맞지 않는 자리(와 그 까닭).
 	Missing []string
-	// NodeCleanup — 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed). 비면 정리할 일이 없었다.
+	// NodeCleanup — 끝까지 돌지 못한 실행 뒤 노드 정리의 결과(done · failed · not-needed). not-needed는 관측이 노드에서 시작되지
+	// 않은 것이 확인된 경우다. 비면 정리할 일이 없었다.
 	NodeCleanup string
 	// Stuck · StuckWhy — 끝내지 못했거나 확인하지 못한 이 실행의 프로세스와 그 까닭.
 	Stuck    []int

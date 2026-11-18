@@ -1132,9 +1132,12 @@ var (
 	tRunStuck = T{
 		KO: "이 관측의 프로세스를 끝내지 못했거나 확인하지 못했습니다(%s). 인벤토리와 받던 결과를 지우거나 옮기지 않았고, 새 관측을 시작하지 않습니다. 그 프로세스를 끝낸 뒤 화면을 다시 띄우십시오. 노드의 스테이징 폴더: %s",
 		EN: "Processes of this observation did not end or could not be inspected (%s). The inventory and what was arriving were neither removed nor moved, and no new observation starts. Stop those processes, then restart the screen. The staging folder on the nodes: %s"}
-	tRunStagingCleaned = T{KO: "노드의 스테이징 폴더를 지웠습니다", EN: "The staging folders on the nodes were removed"}
-	tRunMissing        = T{KO: "결과가 오지 않았거나 맞지 않는 자리", EN: "Results that did not arrive or do not check out"}
-	tRunCurrent        = T{
+	tRunStagingCleaned   = T{KO: "노드의 스테이징 폴더를 지웠습니다", EN: "The staging folders on the nodes were removed"}
+	tRunStagingNotNeeded = T{
+		KO: "관측이 노드에서 시작되지 않아 노드에서 정리할 것이 없습니다. 노드에서는 점검만 돌았고, 점검은 노드에 아무것도 만들지 않습니다",
+		EN: "The observation did not start on the nodes, so there is nothing to clean up on them. Only the node check ran there, and it leaves nothing"}
+	tRunMissing = T{KO: "결과가 오지 않았거나 맞지 않는 자리", EN: "Results that did not arrive or do not check out"}
+	tRunCurrent = T{
 		KO: "지금 결과는 %s에 끝난 관측입니다(노드 %d곳, 파일 %d개)",
 		EN: "The current results come from the observation that finished at %s (%d nodes, %d files)"}
 )

@@ -115,6 +115,8 @@ templ runStatusBody(l Lang, csrf string, st *RunStatus) {
 			<p class="msg bad">{ tRunStagingLeft.F(l, st.StagingPaths()) }</p>
 		case "done":
 			<p class="hint">{ tRunStagingCleaned.In(l) }</p>
+		case "not-needed":
+			<p class="hint">{ tRunStagingNotNeeded.In(l) }</p>
 	}
 	if len(st.Missing) > 0 {
 		<p><strong>{ tRunMissing.In(l) }</strong></p>
