@@ -183,10 +183,10 @@ Plans finalized before the activation are not signed or generated in 06.
 
 `make e2e-demo` starts this demo from scratch, runs the policy activation to the end along both the screen and the command paths, and
 measures the failure paths too (IC-U152). Take the five upstream repositories side by side at v0.14.0 and give the upstream `pqcota`
-checkout with `PQCOTA_DIR`.
+checkout with `PQCOTA_DIR`. Replace each `<…>` with the real path before running it.
 
 ```bash
-PQCOTA_DIR=<upstream pqcota checkout> make e2e-demo
+PQCOTA_DIR='<upstream pqcota checkout path>' make e2e-demo
 ```
 
 The upstream demo uses fixed names for containers and networks (`pqcota-ctl` and others). So this check starts a separate dind

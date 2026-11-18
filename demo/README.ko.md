@@ -179,10 +179,10 @@ Go가 없는 호스트에서는 `PQCATON_BIN_DIR=<dir>`로 미리 빌드한 `pqc
 ### 종단 검증
 
 `make e2e-demo`가 이 데모를 처음부터 띄워 정책 활성화를 화면과 명령 두 길로 끝까지 돌리고 실패 경로까지 잽니다(IC-U152). 상류 다섯 리포를
-v0.14.0으로 나란히 받아 두고 `PQCOTA_DIR`로 상류 `pqcota` 체크아웃을 줍니다.
+v0.14.0으로 나란히 받아 두고 `PQCOTA_DIR`로 상류 `pqcota` 체크아웃을 줍니다. `<…>`를 실제 경로로 바꾼 뒤 실행하십시오.
 
 ```bash
-PQCOTA_DIR=<상류 pqcota 체크아웃> make e2e-demo
+PQCOTA_DIR='<상류 pqcota 체크아웃 경로>' make e2e-demo
 ```
 
 상류 데모는 컨테이너 · 네트워크에 고정 이름(`pqcota-ctl` 등)을 씁니다. 그래서 이 검증은 실행마다 `pqcaton-e2e-…`라는
