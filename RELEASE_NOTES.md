@@ -74,6 +74,20 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
+## v0.31.0: Takes in upstream pqcota v0.16.0 (in progress)
+
+**Goal**: use upstream pqcota v0.16.0 (which includes v0.15.0). The ruleset (`pqcota-enrich/v4`), the contract and the database tables
+and columns are the same as v0.14.0, so the pqcota history and the sessions and plans of v0.30.0 are used as they are. This version
+follows two upstream changes: collector results are signed with keys bound to the collector ID (v0.15.0), and the database schema is
+created by a dedicated command while the query commands only read (v0.16.0).
+
+### What changes for the receiving side
+
+- **pqcota: v0.16.0** ([version table](docs/compatibility.md)). Keep the five upstream repositories together at v0.16.0. No ruleset
+  change round is needed.
+
+---
+
 ## v0.30.0: Takes in upstream pqcota v0.14.0 (2026-11-18)
 
 **Apache-2.0 conversion: 2030-11-18** (four years from the release date)

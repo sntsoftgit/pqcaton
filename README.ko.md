@@ -4,9 +4,12 @@
 
 **개요** · [릴리스 노트](RELEASE_NOTES.ko.md) · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](#한-그림으로)
 
+> **`main`은 v0.31.0 개발 중입니다.** 상류 pqcota v0.16.0을 반영하고 있습니다(규칙 묶음은 `pqcota-enrich/v4` 그대로). 운영에는
+> [v0.30.0 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.30.0)와 pqcota v0.14.0을 쓰십시오.
+
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** [pqcota](https://github.com/randyinthedev-hash/pqcota)가 시스템이 쓰는 암호를
 관측하면, pqcaton은 **그 관측을 조직이 선언한 것과 대조하고, 결정이 필요한 것을 리뷰 큐에 올리고, 사람이 내린 판정을 확정해**
-pqcota가 승인하고 실행할 수 있는 계획으로 만듭니다. 이 판은 pqcota **v0.14.0**과 함께 씁니다([판별 표](docs/compatibility.ko.md)).
+pqcota가 승인하고 실행할 수 있는 계획으로 만듭니다. 이 판은 pqcota **v0.16.0**과 함께 씁니다([판별 표](docs/compatibility.ko.md)).
 
 > **소스 공개(source-available)이지 오픈소스가 아닙니다.** [BUSL-1.1](LICENSE)입니다. 관리 노드 5대까지 무료이고 그 이상은
 > 계약이며, **각 릴리스가 4년 뒤 Apache-2.0으로 전환됩니다**([라이선스 안내](docs/licensing.ko.md)).
@@ -64,13 +67,13 @@ flowchart LR
 **Linux x86-64**에서 했고, macOS는 검증하지 않았습니다.
 
 Git, **Go**([`go.mod`](go.mod)에 적힌 판), **Docker**, python3, **`gh`**(GitHub CLI 2.49 이상, `gh auth login`으로 로그인)가
-필요합니다. `gh`는 공식 수집기의 출처 증명을 확인할 때 씁니다. 이 리포와 상류 pqcota **v0.14.0**의 리포 다섯 개를 한 폴더 아래에
+필요합니다. `gh`는 공식 수집기의 출처 증명을 확인할 때 씁니다. 이 리포와 상류 pqcota **v0.16.0**의 리포 다섯 개를 한 폴더 아래에
 나란히 받습니다.
 
 ```bash
 mkdir pqcaton-demo && cd pqcaton-demo
-git clone --branch v0.30.0 https://github.com/sntsoftgit/pqcaton
-for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.14.0 https://github.com/randyinthedev-hash/$r; done
+git clone --branch v0.31.0 https://github.com/sntsoftgit/pqcaton
+for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.16.0 https://github.com/randyinthedev-hash/$r; done
 cd pqcaton/demo
 ```
 
@@ -81,7 +84,7 @@ cd pqcaton/demo
 ### 이 리포 빌드하기
 
 ```bash
-git clone --branch v0.30.0 https://github.com/sntsoftgit/pqcaton
+git clone --branch v0.31.0 https://github.com/sntsoftgit/pqcaton
 cd pqcaton
 go build -o bin/ ./inventory/cmd/...
 ./bin/pqcaton-ui -h
@@ -101,7 +104,7 @@ go build -o bin/ ./inventory/cmd/...
 한 바퀴 도는 방법은 [명령으로 한 바퀴](docs/journey.ko.md#명령으로-한-바퀴)에 있습니다.
 
 **자기 환경에서.** 위 빌드만으로는 화면이 뜨지 않습니다. 화면은 pqcota 이력(PostgreSQL)을 읽고 대조하므로, 스키마가 있는
-pqcota v0.14.0 이력과 그 이력을 읽는 계정의 연결 정보(`PQCOTA_DSN`이나 `pqcota.env`)가 있어야 시작합니다. 처음이면 운영자
+pqcota v0.16.0 이력과 그 이력을 읽는 계정의 연결 정보(`PQCOTA_DSN`이나 `pqcota.env`)가 있어야 시작합니다. 처음이면 운영자
 안내서의 [pqcota 준비](docs/operator-guide.ko.md#pqcota-준비)부터 합니다. PostgreSQL과 계정, 상류 중앙 명령 받기와 확인,
 스키마 만들기, 읽기 권한 순서이고, 일마다 무엇이 필요한지도 거기에 있습니다. 그다음 같은 2절의 연결 · 공식 수집기 · 노드 접속,
 작업 폴더(3절), 화면 시작(4절) 순서로 갑니다.
@@ -121,7 +124,7 @@ pqcota v0.14.0 이력과 그 이력을 읽는 계정의 연결 정보(`PQCOTA_DS
 
 ## 맞는 조합
 
-이 리포는 pqcota **v0.14.0**(`pqcota-common` · `pqcota-inventory` · `pqcota-discovery` · `pqcota-provisioning` 넷을 같은 태그로,
+이 리포는 pqcota **v0.16.0**(`pqcota-common` · `pqcota-inventory` · `pqcota-discovery` · `pqcota-provisioning` 넷을 같은 태그로,
 `go.mod`가 고정)으로 만들고 그 판으로 종단 검증했습니다. pqcaton은 자기 안에 든 규칙 묶음(`pqcota-enrich/v4`)으로
 관측을 정규화하고 그 스냅샷 지문을 계획의 근거로 싣습니다. 그래서 상류의 `pqcota-ingest`와 `pqcota-provision`도 같은 규칙 묶음이어야
 합니다. 규칙 묶음이 v3인 pqcota v0.10.6 ~ v0.11.0에는 pqcaton [v0.28.0](https://github.com/sntsoftgit/pqcaton/tree/v0.28.0)을, v0.10.5

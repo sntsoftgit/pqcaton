@@ -4,10 +4,13 @@ English · [한국어](README.ko.md)
 
 **Overview** · [Release notes](RELEASE_NOTES.md) · [Journey](docs/journey.md) · [Design](docs/developers.md) · [Acceptance criteria](docs/testcases.md) · [Demo](demo/README.md) · [Structure diagram](#how-it-fits-together)
 
+> **`main` is under development for v0.31.0.** It takes in upstream pqcota v0.16.0 (the ruleset stays `pqcota-enrich/v4`). For
+> operation use the [v0.30.0 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.30.0) with pqcota v0.14.0.
+
 **The place to decide what to change in a PQC migration.** [pqcota](https://github.com/randyinthedev-hash/pqcota) observes which
 cryptography your systems use; pqcaton **reconciles those observations with what your organization declared, puts what needs a decision
 in a review queue, and finalizes the decisions people make** into a plan pqcota can approve and carry out. This version is used with
-pqcota **v0.14.0** ([version table](docs/compatibility.md)).
+pqcota **v0.16.0** ([version table](docs/compatibility.md)).
 
 > **Source-available, not open source.** It is [BUSL-1.1](LICENSE): free up to 5 managed nodes, a contract beyond that, and **each
 > release converts to Apache-2.0 four years later** ([license guide](docs/licensing.md)).
@@ -67,12 +70,12 @@ machine. The demo was checked end to end on **Linux x86-64**; macOS was not chec
 
 You need Git, **Go** (the version in [`go.mod`](go.mod)), **Docker**, python3 and **`gh`** (GitHub CLI 2.49 or later, logged in with
 `gh auth login`; it checks the attestations of the official collectors). Put this repository and the five repositories of upstream pqcota
-**v0.14.0** side by side in one folder:
+**v0.16.0** side by side in one folder:
 
 ```bash
 mkdir pqcaton-demo && cd pqcaton-demo
-git clone --branch v0.30.0 https://github.com/sntsoftgit/pqcaton
-for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.14.0 https://github.com/randyinthedev-hash/$r; done
+git clone --branch v0.31.0 https://github.com/sntsoftgit/pqcaton
+for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.16.0 https://github.com/randyinthedev-hash/$r; done
 cd pqcaton/demo
 ```
 
@@ -83,7 +86,7 @@ it, fetch the official collectors, open the screen at `http://127.0.0.1:8765`, a
 ### Build this repository
 
 ```bash
-git clone --branch v0.30.0 https://github.com/sntsoftgit/pqcaton
+git clone --branch v0.31.0 https://github.com/sntsoftgit/pqcaton
 cd pqcaton
 go build -o bin/ ./inventory/cmd/...
 ./bin/pqcaton-ui -h
@@ -103,7 +106,7 @@ The commands are built into `bin/`, so run them as `./bin/...` (or copy them to 
 commands once without the screen is in [Running it once with commands](docs/journey.md#running-it-once-with-commands).
 
 **In your own environment.** The build above does not start the screen by itself. The screen reads and checks the pqcota history
-(PostgreSQL), so it starts only with a pqcota v0.14.0 history that has its schema and the connection information of an account that
+(PostgreSQL), so it starts only with a pqcota v0.16.0 history that has its schema and the connection information of an account that
 reads it (`PQCOTA_DSN` or `pqcota.env`). The first time, start from [Preparing pqcota](docs/operator-guide.md#preparing-pqcota) in the
 operator guide: PostgreSQL and the accounts, fetching and checking the upstream central commands, creating the schema and read access,
 with what each task needs. Then go on with the connection, the official collectors and node access in the same section 2, the
@@ -124,7 +127,7 @@ workspace (section 3) and starting the screen (section 4).
 
 ## Matching versions
 
-This repository is built with pqcota **v0.14.0** (`pqcota-common`, `pqcota-inventory`, `pqcota-discovery` and `pqcota-provisioning` at the
+This repository is built with pqcota **v0.16.0** (`pqcota-common`, `pqcota-inventory`, `pqcota-discovery` and `pqcota-provisioning` at the
 same tag, pinned in `go.mod`) and was checked end to end with it. pqcaton normalizes observations with
 the ruleset built into it (`pqcota-enrich/v4`) and carries those snapshot fingerprints as the evidence of plans, so upstream's
 `pqcota-ingest` and `pqcota-provision` must use the same ruleset. For pqcota v0.10.6 to v0.11.0, whose ruleset is v3, use pqcaton
