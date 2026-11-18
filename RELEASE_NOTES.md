@@ -74,9 +74,9 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
-## v0.30.0: Takes in upstream pqcota v0.14.0 (2026-11-17)
+## v0.30.0: Takes in upstream pqcota v0.14.0 (2026-11-18)
 
-**Apache-2.0 conversion: 2030-11-17** (four years from the release date)
+**Apache-2.0 conversion: 2030-11-18** (four years from the release date)
 
 **Goal**: use upstream pqcota v0.14.0. The ruleset (`pqcota-enrich/v4`), the contract and the database tables are the same as
 v0.13.0, so the pqcota history and the sessions and plans of v0.29.x are used as they are. This version holds only what the two
