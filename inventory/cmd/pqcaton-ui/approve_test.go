@@ -546,3 +546,83 @@ func TestOldRulesetPlansAreViewedNotSignedOrGenerated(t *testing.T) {
 		t.Errorf("archiving the old signed plan = %d", w.Code)
 	}
 }
+
+// IC-U207 — **06은 계획 파일 둘의 상태를 이름으로 나눠 보이고, 생성은 승인된 계획으로 한다.** 서명 전에는 원본 계획
+// (plan.json) 줄 하나만 있고(IN_REVIEW) 승인된 계획 줄과 생성 대상 줄이 없다. 서명 직후(서명이 돌려보낸 주소)에는 안내가
+// 「승인된 계획(plan.signed.json)이 FINALIZED」라고 말하고, 원본 계획 줄은 IN_REVIEW 그대로, 승인된 계획 줄은 FINALIZED, 생성
+// 대상은 승인된 계획이다. 새로고침(안내 없는 주소)도 같다. 영어 화면도 같은 구분을 보인다. 생성한 플레이북은 승인된 계획으로
+// 상류 생성기가 내는 것과 같고, 원본 계획이 그대로 있어도 승인된 계획을 치우면 생성 대상 줄이 없고 생성은 409다. 그 뒤 05에서 계획이 달라지면 서명한 계획을 승인된 계획이라
+// 부르지 않고 생성 대상 줄도 없다.
+func TestApproveScreenNamesBothPlanFiles(t *testing.T) {
+	s, _ := keyReady(t)
+	const (
+		original   = "원본 계획(plan.json): IN_REVIEW"
+		approved   = "승인된 계획(plan.signed.json): FINALIZED"
+		signedOnly = "서명한 계획(plan.signed.json): FINALIZED"
+		source     = "생성 대상: 승인된 계획(plan.signed.json)"
+		notice     = "승인된 계획(plan.signed.json)이 FINALIZED이고, 원본 계획(plan.json)은 그대로 둡니다"
+	)
+	check := func(when, page string, want, not []string) {
+		t.Helper()
+		for _, w := range want {
+			if !strings.Contains(page, w) {
+				t.Errorf("%s: the 06 screen does not show %q", when, w)
+			}
+		}
+		for _, n := range not {
+			if strings.Contains(page, n) {
+				t.Errorf("%s: the 06 screen shows %q", when, n)
+			}
+		}
+	}
+	check("before signing", get(t, s, ui.ScreenApprove+"?lang=ko").Body.String(),
+		[]string{original}, []string{approved, signedOnly, source, notice})
+
+	w := signVia(t, s, "보안팀장")
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("sign = %d\n%s", w.Code, w.Body.String())
+	}
+	loc := w.Header().Get("Location")
+	if !strings.Contains(loc, "msg="+ui.NoticeSigned) {
+		t.Fatalf("sign redirected to %q, want the signed notice", loc)
+	}
+	// 브라우저는 언어를 쿠키로 이어 가지만 시험 요청에는 쿠키가 없어 주소에 붙인다.
+	check("right after signing", get(t, s, loc+"&lang=ko").Body.String(), []string{notice, original, approved, source}, []string{signedOnly})
+	check("after a reload", get(t, s, ui.ScreenApprove+"?lang=ko").Body.String(), []string{original, approved, source}, []string{notice, signedOnly})
+	check("in English", get(t, s, ui.ScreenApprove+"?lang=en").Body.String(),
+		[]string{"Original plan (plan.json): IN_REVIEW", "Approved plan (plan.signed.json): FINALIZED", "Generated from: the approved plan (plan.signed.json)"}, nil)
+
+	if w := postForm(t, s, ui.GeneratePath, withRev(url.Values{"level": {"l2"}}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusSeeOther {
+		t.Fatalf("generate = %d\n%s", w.Code, w.Body.String())
+	}
+	signed, err := loadPlanFile(s.signedPath())
+	if err != nil || signed == nil || signed.GetStatus() != provisioningv1.PlanStatus_PLAN_STATUS_FINALIZED {
+		t.Fatalf("plan.signed.json: %v %v", signed.GetStatus(), err)
+	}
+	plan, err := loadPlanFile(s.planOut)
+	if err != nil || plan.GetStatus() != provisioningv1.PlanStatus_PLAN_STATUS_IN_REVIEW {
+		t.Fatalf("plan.json after signing: %v %v", plan.GetStatus(), err)
+	}
+	l2 := provisioningv1.DeployAutomationLevel_DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL
+	if readFile(t, s.provisionPath()) != provisioning.GenerateProvisioningPlaybook(signed, l2) {
+		t.Error("the apply playbook is not what the upstream generator makes from the approved plan")
+	}
+	check("after generating", get(t, s, ui.ScreenApprove+"?lang=ko").Body.String(), []string{original, approved, source}, []string{signedOnly})
+	// 상류 생성기는 계획의 상태와 서명을 읽지 않아 두 계획에서 같은 플레이북이 나온다. 그래서 생성이 승인된 계획을 쓴다는
+	// 것을 동작으로 잰다: 원본 계획이 그대로 있어도 승인된 계획을 치우면 생성 대상이 없고 생성은 409다.
+	aside := s.signedPath() + ".aside"
+	if err := os.Rename(s.signedPath(), aside); err != nil {
+		t.Fatal(err)
+	}
+	check("without the approved plan", get(t, s, ui.ScreenApprove+"?lang=ko").Body.String(), []string{original}, []string{approved, signedOnly, source})
+	if w := postForm(t, s, ui.GeneratePath, withRev(url.Values{"level": {"l2"}}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusConflict ||
+		!strings.Contains(w.Body.String(), ui.RefusedGenNotReady) {
+		t.Errorf("generate without the approved plan = %d, want 409 %s", w.Code, ui.RefusedGenNotReady)
+	}
+	if err := os.Rename(aside, s.signedPath()); err != nil {
+		t.Fatal(err)
+	}
+
+	bindPlan(t, s, strings.Replace(planJSON, "ML-KEM (FIPS 203)", "ML-KEM-768", 1))
+	check("after the plan changed", get(t, s, ui.ScreenApprove+"?lang=ko").Body.String(), []string{original, signedOnly}, []string{approved, source})
+}

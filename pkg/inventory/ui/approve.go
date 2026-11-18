@@ -29,6 +29,9 @@ type ApproveView struct {
 	Verify KeyCheck
 	// Signed — 서명한 계획(plan.signed.json)의 상태.
 	Signed SignedState
+	// SignedStatus — 서명한 계획 파일에 적힌 상태(PLAN_STATUS_…). 파일이 없거나 읽지 못하면 빈 값이다. Plan.Status는 원본
+	// 계획(plan.json)의 상태라 서명해도 바뀌지 않는다. 화면은 두 파일을 이름으로 나눠 보인다.
+	SignedStatus string
 	// Playbooks — 만든 플레이북의 상태.
 	Playbooks PlaybookState
 	// Writable — 이 서버가 저장하는가.
@@ -192,6 +195,9 @@ func (v ApproveView) CanGenerate() bool {
 	return v.Writable && v.Signed.State == SignValid && v.RulesetProblem == "" && v.ScopeProblem == "" && !v.TextProblem &&
 		!v.FieldsProblem
 }
+
+// Approved — 서명한 계획이 지금 계획과 같고 이 키로 확인된다. 그때만 「승인된 계획」이라 부르고 생성 대상으로 보인다.
+func (v ApproveView) Approved() bool { return v.SignedStatus != "" && v.Signed.State == SignValid }
 
 // PublicKey — 서명된 계획을 확인하는 공개 키. 개인 키가 쓸 만하면 그 공개 키, 아니면 확인용 공개 키다. 둘 다 없으면 빈 값이다.
 func (v ApproveView) PublicKey() string {

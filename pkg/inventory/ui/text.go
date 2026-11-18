@@ -1267,14 +1267,20 @@ var (
 		KO: "확정한 계획에 승인 서명을 하고 플레이북을 만듭니다",
 		EN: "Sign the approval of the finalized plan and generate the playbooks"}
 	tApproveLede = T{
-		KO: "서명하면 계획이 FINALIZED가 됩니다. 플레이북은 적용과 되돌리기를 함께 만들고, 운영 기계에 적용하는 일은 운영자가 Ansible로 합니다.",
-		EN: "Signing makes the plan FINALIZED. The apply and rollback playbooks are generated together; " +
+		KO: "서명하면 승인된 계획(plan.signed.json)이 FINALIZED로 따로 생기고, 원본 계획(plan.json)은 그대로입니다. 플레이북은 승인된 계획으로 적용과 되돌리기를 함께 만들고, 운영 기계에 적용하는 일은 운영자가 Ansible로 합니다.",
+		EN: "Signing writes the approved plan (plan.signed.json) as FINALIZED beside the original plan (plan.json), which stays as it is. " +
+			"The apply and rollback playbooks are generated together from the approved plan; " +
 			"applying them to the machines is the operator's own Ansible run."}
 	tApproveNoPlan     = T{KO: "아직 확정한 계획이 없습니다", EN: "There is no finalized plan yet"}
 	tApproveNoPlanBody = T{
 		KO: "05 판정에서 확정하면 plan.json이 생기고 여기서 승인할 수 있습니다.",
 		EN: "Finalizing in 05 Judgment writes plan.json, which can then be approved here."}
-	tPlanHead    = T{KO: "승인할 계획", EN: "The plan to approve"}
+	tPlanHead       = T{KO: "승인할 계획", EN: "The plan to approve"}
+	tPlanOriginal   = T{KO: "원본 계획(plan.json): %s", EN: "Original plan (plan.json): %s"}
+	tPlanApproved   = T{KO: "승인된 계획(plan.signed.json): %s", EN: "Approved plan (plan.signed.json): %s"}
+	tPlanSignedOnly = T{
+		KO: "서명한 계획(plan.signed.json): %s. 지금 계획과 맞지 않거나 이 키로 확인되지 않아 승인된 계획으로 보지 않습니다",
+		EN: "Signed plan (plan.signed.json): %s. It does not match the current plan or does not check out with this key, so it is not treated as the approved plan"}
 	tColProvider = T{KO: "provider", EN: "Provider"}
 
 	tSignHead    = T{KO: "승인 서명", EN: "Approval signature"}
@@ -1302,8 +1308,9 @@ var (
 			"The signed plan is kept separately in plan.signed.json and plan.json stays as it is, so that what was signed can be traced.<br>" +
 			"The approver's name goes inside the signature, and it is checked only with that name's key. A colon (:) cannot be used."}
 
-	tGenHead  = T{KO: "플레이북 생성", EN: "Playbook generation"}
-	tGenStale = T{
+	tGenHead   = T{KO: "플레이북 생성", EN: "Playbook generation"}
+	tGenSource = T{KO: "생성 대상: 승인된 계획(plan.signed.json)", EN: "Generated from: the approved plan (plan.signed.json)"}
+	tGenStale  = T{
 		KO: "만든 플레이북이 지금 서명한 계획보다 오래됐습니다. 다시 만드십시오.",
 		EN: "The playbooks are older than the signed plan. Generate them again."}
 	tGenMade = T{
@@ -1368,7 +1375,7 @@ var (
 		KO: "06 화면은 승인 키 하나로 서명하고 확인합니다. 서명마다 승인자 이름이 들어가지만, 확인은 이 화면에 준 키 하나로 합니다(단일 키 · 단일 승인자).",
 		EN: "The 06 screen signs and checks with a single approval key. Each signature carries the approver's name, but checking uses the one key given to this screen (single key, single approver)."}
 
-	tSignedNotice    = T{KO: "승인 서명을 했습니다. 계획이 FINALIZED가 됐습니다", EN: "The approval was signed: the plan is FINALIZED"}
+	tSignedNotice    = T{KO: "승인 서명을 했습니다. 승인된 계획(plan.signed.json)이 FINALIZED이고, 원본 계획(plan.json)은 그대로 둡니다", EN: "The approval was signed: the approved plan (plan.signed.json) is FINALIZED, and the original plan (plan.json) stays as it is"}
 	tGeneratedNotice = T{KO: "플레이북을 만들었습니다. 빈 곳 %d곳", EN: "The playbooks were generated: %d gaps"}
 
 	tSignRefusedHead = T{KO: "서명하지 않았습니다", EN: "Not signed"}

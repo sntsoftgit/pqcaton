@@ -268,6 +268,7 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	if signed == nil {
 		return v, nil
 	}
+	v.SignedStatus = signed.GetStatus().String()
 	if t := signed.GetFinalizedAt(); t != nil {
 		v.Signed.At = t.AsTime().Local()
 	}

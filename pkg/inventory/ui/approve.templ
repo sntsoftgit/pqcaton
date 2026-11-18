@@ -20,6 +20,7 @@ templ approvePage(v ApproveView) {
 				</div>
 			} else {
 				@planTable(v.Page.Lang, *v.Plan)
+				@planFiles(v)
 				@approveSign(v)
 				@approveGenerate(v)
 			}
@@ -29,7 +30,7 @@ templ approvePage(v ApproveView) {
 
 templ planTable(l Lang, p PlanSummary) {
 	<h3>{ tPlanHead.In(l) }</h3>
-	<p class="lede"><code>{ p.ID }</code> · { strings.TrimPrefix(p.Status, "PLAN_STATUS_") }</p>
+	<p class="lede"><code>{ p.ID }</code></p>
 	<div class="table-wrap">
 		<table role="table">
 			<thead role="rowgroup">
@@ -54,6 +55,21 @@ templ planTable(l Lang, p PlanSummary) {
 			</tbody>
 		</table>
 	</div>
+}
+
+// planFiles — 계획 파일 둘의 상태. 원본(plan.json)은 05가 쓴 그대로 IN_REVIEW이고 서명해도 바뀌지 않는다. 서명은
+// plan.signed.json을 따로 만든다. 그 서명이 지금 계획과 같고 이 키로 확인될 때만 「승인된 계획」이라 부른다.
+templ planFiles(v ApproveView) {
+	<ul class="plan-files">
+		<li data-plan-file="plan">{ tPlanOriginal.F(v.Page.Lang, strings.TrimPrefix(v.Plan.Status, "PLAN_STATUS_")) }</li>
+		if v.SignedStatus != "" {
+			if v.Approved() {
+				<li data-plan-file="approved">{ tPlanApproved.F(v.Page.Lang, strings.TrimPrefix(v.SignedStatus, "PLAN_STATUS_")) }</li>
+			} else {
+				<li data-plan-file="signed">{ tPlanSignedOnly.F(v.Page.Lang, strings.TrimPrefix(v.SignedStatus, "PLAN_STATUS_")) }</li>
+			}
+		}
+	</ul>
 }
 
 // approveSign — 키 점검 · 서명 상태 · 서명 양식.
@@ -136,6 +152,9 @@ templ approveSign(v ApproveView) {
 // approveGenerate — 플레이북 생성. 적용과 되돌리기를 함께 만든다.
 templ approveGenerate(v ApproveView) {
 	<h3 id="approve-generate">{ tGenHead.In(v.Page.Lang) }</h3>
+	if v.Approved() {
+		<p class="lede" data-gen-source="approved">{ tGenSource.In(v.Page.Lang) }</p>
+	}
 	if v.Playbooks.Made {
 		if v.Playbooks.Stale {
 			<p class="msg bad">{ tGenStale.In(v.Page.Lang) }</p>
