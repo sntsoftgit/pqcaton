@@ -579,6 +579,7 @@ v0.23.0에서 옛 화면을 없애며 폐기한 케이스다. 번호는 다시 �
 | **[IC-U215](../inventory/cmd/pqcaton-ui/runkeys_test.go) ✅** | 감독도 화면도 지울 수 없는 키 폴더 | **남은 임시 키는 「회수 필요」로 보이고 복구 전까지 새 관측을 막는다.** 기록은 상태(끝남)를 그대로 두고 `KeysLeft`에 까닭을 적는다. 03이 막고 시작을 받지 않는다. 지울 수 있게 되면 재시작 복구가 지우고 까닭을 비우며 상태는 건드리지 않는다 |
 | **[IC-U216](../inventory/cmd/pqcaton-ui/runkeys_test.go) ✅** | 관측 중에 멈춘 실행 · 키 기록과 키가 남은 실행 자리 · pqcaton이 만들지 않은 폴더를 가리키는 기록 | **멈춘 실행과 복구도 임시 키를 지운다.** 멈춘 뒤 키가 없고, 복구가 키와 기록을 지우며 상태는 그대로다. 다른 폴더를 가리키는 기록은 건드리지 않고 알린다 |
 | **[IC-U217](../inventory/cmd/pqcaton-ui/runkeys_test.go) ✅** | 내장 플레이북 · 실행 설정 · 환경 · 추가 변수 | **03은 검증한 실행 조건만 쓴다.** 내장 모듈만, 연결은 ansible.builtin.ssh, 권한 상승은 ansible.builtin.sudo로 고정하고, 키는 no_log 작업의 `stdin`에 내장 file 조회로만 넣으며, 결과는 stdout · stderr · rc로만 쓰고, debug · to_json · Windows 작업이 없다. 설정은 모든 플러그인 · 컬렉션 경로를 비우고 pipelining을 켜며 원격 파일 · 출력 수준 · 인자 표시 · `become_allow_same_user`를 고정하고, 빈 callbacks_enabled를 적지 않는다. 환경은 `ANSIBLE_*` · `PQCOTA_*`를 물려주지 않는다 |
+| **[IC-U218](../inventory/cmd/pqcaton-ui/runkeys_test.go) ✅** | 정리 플레이북의 멈춤 스크립트를, 이 실행의 스테이징 자리에서 띄운 프로세스와 다른 실행의 자리에서 띄운 프로세스에 돌림 | **멈추거나 실패한 관측의 정리는 노드에 남은 이 실행의 수집기를 끝낸다.** pipelining과 sudo로 띄운 원격 수집기는 컨트롤러가 Ansible과 ssh를 끝내도 신호를 받지 않아, 실험실에서 root로 남았다. 정리는 스테이징 자리를 지우기 전에 명령줄이 이 실행의 자리로 시작하는 프로세스를 끝내고, 남으면 실패한다. 다른 실행의 프로세스는 남는다 |
 
 ### K. 문체의 경계 (`tools/checkprose`): 엔진은 상류에
 

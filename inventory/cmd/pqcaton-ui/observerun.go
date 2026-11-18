@@ -799,7 +799,7 @@ func runCleanup(dir, id string, logf func(string)) (string, string) {
 
 // stagingPaths: 노드에 남을 수 있는 스테이징 폴더. 화면과 안내서가 같은 말을 쓴다.
 func stagingPaths(id string) string {
-	return "/tmp/pqcaton-observe-" + id + " (Windows: C:\\Windows\\Temp\\pqcaton-observe-" + id + ")"
+	return "/tmp/pqcaton-observe-" + id
 }
 
 // closeRun: 비밀이 실린 파일을 지우고 기록을 남긴 뒤 done을 닫는다. 실패해도 done은 닫는다.

@@ -1,18 +1,45 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
 #
-# 관측을 멈추거나 실패한 뒤 노드에 남은 스테이징 폴더를 지운다. 본 플레이북의 `always` 정리는 ansible-playbook이
-# 끝내라는 신호를 받으면 돌지 않는다. 화면이 인벤토리를 지우기 전에 시간 제한을 두고 한 번 부른다. 서명 키는 노드에 파일로
-# 두지 않으므로(표준 입력으로만 간다) 여기서 지울 키는 없다.
+# 관측을 멈추거나 실패한 뒤 노드를 정리한다. 본 플레이북의 `always` 정리는 ansible-playbook이 끝내라는 신호를 받으면 돌지
+# 않는다. 화면이 인벤토리를 지우기 전에 시간 제한을 두고 한 번 부른다.
+#
+# **먼저 이 실행의 수집기를 끝낸다.** 컨트롤러가 Ansible과 ssh를 끝내도, pipelining과 sudo로 띄운 원격 명령은 tty가 없어 신호를
+# 받지 않고 제 관측 구간이 끝날 때까지 돈다(실험실에서 확인: 멈춘 뒤에도 pqcota-netcap이 root로 남았다). 그동안 그 프로세스의
+# 환경에는 서명 키가 있다. 이 실행의 수집기는 명령줄이 스테이징 자리(/tmp/pqcaton-observe-<실행 ID>/)로 시작하므로 그것으로
+# 찾는다. 끝내라고 알리고, 기다리고, 남으면 강제로 끝내고, 그래도 남으면 이 작업이 실패한다(정리 실패로 보인다). ps가 없는 노드도
+# 있어 /proc를 읽는다. 서명 키는 노드에 파일로 두지 않으므로(표준 입력으로만 간다) 지울 키 파일은 없다.
 - name: pqcaton observation cleanup
   hosts: targets
   gather_facts: false
   connection: ansible.builtin.ssh
+  become: true
+  become_method: ansible.builtin.sudo
+  become_user: root
   vars:
     stage: "/tmp/pqcaton-observe-{{ run_id }}"
+    stop_script: |
+      left() {
+        n=0
+        for p in /proc/[0-9]*; do
+          c=$(tr '\000' ' ' < "$p/cmdline" 2>/dev/null) || continue
+          case "$c" in
+            "$1"/*) n=$((n + 1)); [ -n "$2" ] && kill "-$2" "${p#/proc/}" 2>/dev/null ;;
+          esac
+        done
+        echo "$n"
+      }
+      [ "$(left "$1" TERM)" = 0 ] && exit 0
+      for i in 1 2 3 4 5 6 7 8 9 10; do sleep 0.5; [ "$(left "$1")" = 0 ] && exit 0; done
+      left "$1" KILL >/dev/null
+      sleep 1
+      n=$(left "$1")
+      [ "$n" = 0 ] || { echo "$n collector processes of this run did not end"; exit 1; }
   tasks:
+    - name: Stop the collectors of this run that are still running
+      ansible.builtin.command:
+        argv: ["/bin/sh", "-c", "{{ stop_script }}", "pqcaton-cleanup", "{{ stage }}"]
+      changed_when: false
+
     - name: Remove the staging directory
       ansible.builtin.file: { path: "{{ stage }}", state: absent }
-      become: true
-      become_method: ansible.builtin.sudo
-      become_user: root

@@ -8,9 +8,11 @@ package main
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -265,7 +267,7 @@ func TestPlaybooksAndConfigUseOnlyVerifiedConditions(t *testing.T) {
 	known := map[string]bool{"name": true, "block": true, "always": true, "register": true, "when": true, "loop": true, "delegate_to": true,
 		"become": true, "become_method": true, "become_user": true, "changed_when": true, "failed_when": true, "no_log": true, "environment": true,
 		"vars": true, "tasks": true, "hosts": true, "gather_facts": true, "connection": true, "argv": true, "stdin": true, "src": true, "dest": true,
-		"mode": true, "stage": true, "arch": true, "iface": true, "sign_wrapper": true, "content": true}
+		"mode": true, "stage": true, "arch": true, "iface": true, "sign_wrapper": true, "content": true, "stop_script": true}
 	for name, b := range books {
 		for _, m := range module.FindAllStringSubmatch(b, -1) {
 			if !known[m[1]] && !strings.HasPrefix(m[1], "ansible.builtin.") {
@@ -338,5 +340,58 @@ func TestPlaybooksAndConfigUseOnlyVerifiedConditions(t *testing.T) {
 	v := runVars()
 	if v["ansible_become_method"] != "ansible.builtin.sudo" || v["ansible_pipelining"] != true || v["ansible_connection"] != nil {
 		t.Errorf("run vars = %v (become fixed, pipelining on, no connection in extra vars)", v)
+	}
+}
+
+// IC-U218 — **멈추거나 실패한 관측의 정리는 노드에 남은 이 실행의 수집기를 끝낸다.** 컨트롤러가 Ansible과 ssh를 끝내도 pipelining과
+// sudo로 띄운 원격 수집기는 제 관측 구간까지 돈다(실험실에서 멈춘 뒤 pqcota-netcap이 root로 남았다). 정리 플레이북은 스테이징 자리를
+// 지우기 전에, 명령줄이 이 실행의 스테이징 자리로 시작하는 프로세스를 끝낸다. 그 스크립트를 그대로 돌려 잰다: 이 실행의 자리에서 뜬
+// 프로세스는 끝나고, 다른 자리(다른 실행)의 프로세스는 남는다.
+func TestCleanupStopsTheCollectorsOfTheRun(t *testing.T) {
+	book := string(cleanupPlaybook)
+	if strings.Index(book, "Stop the collectors of this run") < 0 || strings.Index(book, "Stop the collectors of this run") > strings.Index(book, "Remove the staging directory") {
+		t.Fatal("the cleanup does not stop the collectors before removing the staging directory")
+	}
+	a := strings.Index(book, "stop_script: |\n")
+	b := strings.Index(book, "\n  tasks:")
+	var script []string
+	for _, l := range strings.Split(book[a+len("stop_script: |\n"):b], "\n") {
+		script = append(script, strings.TrimPrefix(l, "      "))
+	}
+	sleepBin, err := exec.LookPath("sleep")
+	if err != nil {
+		t.Skip("no sleep binary")
+	}
+	start := func(stage string) *exec.Cmd {
+		t.Helper()
+		if err := os.MkdirAll(stage, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		b, _ := os.ReadFile(sleepBin)
+		bin := filepath.Join(stage, "pqcota-netcap")
+		os.WriteFile(bin, b, 0o755)
+		c := exec.Command(bin, "60")
+		if err := c.Start(); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = c.Process.Kill(); _, _ = c.Process.Wait() })
+		return c
+	}
+	root := t.TempDir()
+	ours := start(filepath.Join(root, "pqcaton-observe-run1"))
+	other := start(filepath.Join(root, "pqcaton-observe-run2"))
+	out, err := exec.Command("/bin/sh", "-c", strings.Join(script, "\n"), "pqcaton-cleanup", filepath.Join(root, "pqcaton-observe-run1")).CombinedOutput()
+	if err != nil {
+		t.Fatalf("the stop script failed: %v\n%s", err, out)
+	}
+	done := make(chan error, 1)
+	go func() { done <- ours.Wait() }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Error("the collector of this run is still running")
+	}
+	if err := other.Process.Signal(syscall.Signal(0)); err != nil {
+		t.Errorf("a process of another run was stopped: %v", err)
 	}
 }
