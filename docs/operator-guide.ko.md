@@ -79,6 +79,79 @@ curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntso
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
+<a id="pqcota-준비"></a>
+
+**pqcota 준비.** 화면은 pqcota 이력(PostgreSQL)을 읽고 대조하므로, 처음 설치할 때는 화면보다 pqcota 쪽을 먼저 준비합니다.
+일마다 필요한 것이 다릅니다. **화면을 띄우는 데에는 상류 명령이 필요 없습니다.** 화면이 직접 실행하는 것은 관측의
+`ansible-playbook`뿐이고, 승인 서명과 플레이북 생성은 화면 안에서 합니다.
+
+| 일 | 필요한 것 |
+|---|---|
+| 화면 시작 | `pqcaton-ui`, 스키마가 있는 pqcota 이력, 그 이력을 읽는 계정의 연결 정보(아래 「pqcota 연결」) |
+| 03 관측 | Ansible과 노드 접속 정보, 공식 수집기(아래 「관측 실행 준비」) |
+| 관측 결과를 이력에 적재 | `pqcota-ingest`, 쓰기 권한이 있는 적재용 계정. 04 · 05의 대조와 05의 정책 활성화가 이 적재를 봅니다(6절) |
+| 06 승인 서명 · 생성 | 승인 키(아래 「승인 키 준비」의 `pqcota-keygen`). 화면 밖에서 서명 · 생성할 때만 `pqcota-approve` · `pqcota-provision` |
+| 노드에 적용 · 되돌리기 | `pqcota-hosts`(Ansible 인벤토리 만들기)와 `ansible-playbook`(06의 안내) |
+| 오래된 이력 정리 | `pqcota-prune`(골라서) |
+
+1. **PostgreSQL과 계정.** PostgreSQL 16을 준비하고 계정을 둘 만듭니다. 적재용 계정은 데이터베이스의 소유자로 두어 처음
+   스키마를 만들 수 있게 하고, 화면용 계정은 읽기만 합니다. 관리자 계정으로 `psql`에 들어가 실행합니다. 비밀번호는
+   `\password`가 묻는 자리에만 입력하므로 명령줄과 셸 기록에 남지 않습니다.
+
+   ```sql
+   CREATE ROLE pqcota_ingest LOGIN;
+   \password pqcota_ingest
+   CREATE ROLE pqcaton_ui LOGIN;
+   \password pqcaton_ui
+   CREATE DATABASE pqcota OWNER pqcota_ingest;
+   REVOKE ALL ON DATABASE pqcota FROM PUBLIC;
+   ```
+
+   비밀번호는 연결 정보에 넣지 않고 `~/.pgpass`(0600)에 둡니다. 한 줄에 `호스트:포트:데이터베이스:계정:비밀번호`이고, 편집기로
+   채웁니다. 다른 자리에 두려면 `PGPASSFILE`로 알립니다. 그러면 연결 정보는 `postgres://pqcaton_ui@<호스트>:5432/pqcota`처럼
+   비밀 없이 적을 수 있습니다.
+
+   ```bash
+   install -m 600 /dev/null ~/.pgpass
+   ```
+
+2. **상류 중앙 명령.** 상류 릴리스의 `pqcota-ctl` 묶음에 적재 · 조회 · 승인 · 생성 명령이 들어 있습니다. 체크섬과 출처 증명(상류
+   리포 · 릴리스 워크플로 · 태그에 고정)을 확인한 뒤 풀어서 `PATH`에 있는 폴더에 둡니다. `gh`(2.49 이상, 로그인)가 필요합니다.
+   arm64 기계면 `linux-amd64`를 `linux-arm64`로 바꿉니다.
+
+   ```bash
+   mkdir -p ~/pqcaton/pqcota-ctl-v0.14.0 && cd ~/pqcaton/pqcota-ctl-v0.14.0
+   gh release download v0.14.0 -R randyinthedev-hash/pqcota -p 'pqcota-ctl-linux-amd64.tar.gz' -p SHA256SUMS
+   sha256sum -c --ignore-missing SHA256SUMS
+   gh attestation verify pqcota-ctl-linux-amd64.tar.gz --repo randyinthedev-hash/pqcota \
+     --signer-workflow randyinthedev-hash/pqcota/.github/workflows/release.yml --source-ref refs/tags/v0.14.0 --deny-self-hosted-runners
+   tar -xzf pqcota-ctl-linux-amd64.tar.gz
+   install -m 755 pqcota-ctl-linux-amd64/pqcota-* ~/.local/bin/
+   ```
+
+   소스로 빌드하려면 상류의 [빌드 안내(v0.14.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.14.0/docs/build.ko.md)를
+   따릅니다. 상류 명령 대부분은 `go install …@v0.14.0`으로 설치되지 않습니다(그 안내의 「소스 받기」).
+
+3. **이력 스키마 만들기.** 화면은 이력을 조회용으로만 열고 표를 만들지 않으므로, 스키마가 없으면 「the pqcota history schema is
+   missing」으로 시작하지 않습니다. 상류 명령은 저장소를 열 때 스키마가 없으면 만듭니다(`PQCOTA_AUTO_DDL=0`이면 만들지 않음).
+   적재용 계정으로 조회 명령을 한 번 실행하면 빈 스키마가 생기고 종료 상태 0으로 끝납니다. 조직은 판정 조직으로 줍니다.
+   빈 결과 폴더로 `pqcota-ingest`를 실행하는 것은 초기화가 아닙니다. 결과가 없다고 종료 상태 1로 끝나고 아무것도 만들지
+   않습니다. 실제 적재는 03에서 관측한 뒤 6절대로 합니다.
+
+   ```bash
+   PQCOTA_DSN='postgres://pqcota_ingest@<호스트>:5432/pqcota' PQCOTA_ORG=<판정 조직> pqcota-inventory
+   ```
+
+4. **화면용 계정의 읽기 권한.** 스키마를 만든 뒤 관리자 계정으로 `pqcota` 데이터베이스에서 실행합니다. 마지막 줄은 상류가
+   뒤에 만드는 표에도 같은 읽기 권한을 줍니다. 권한이 빠지면 화면은 「server error SQLSTATE 42501」로 시작하지 않습니다.
+
+   ```sql
+   GRANT CONNECT ON DATABASE pqcota TO pqcaton_ui;
+   GRANT USAGE ON SCHEMA public TO pqcaton_ui;
+   GRANT SELECT ON ALL TABLES IN SCHEMA public TO pqcaton_ui;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_ingest IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
+   ```
+
 **pqcota 연결.** pqcaton은 pqcota가 설치 · 연결되어 동작하는 환경에서만 실행합니다. 화면은 시작할 때 pqcota 이력에
 연결하고, 이력을 한 번 읽어(스키마와 읽기 권한) 통과해야 뜹니다. 연결 정보가 없거나 연결 · 조회가 10초 안에 끝나지 않으면
 포트를 열거나 주소 파일을 쓰기 전에 끝납니다. 조회만 하므로 읽기 권한만 있는 계정이면 됩니다.

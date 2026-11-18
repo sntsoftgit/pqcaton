@@ -85,6 +85,82 @@ curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntso
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
+<a id="preparing-pqcota"></a>
+
+**Preparing pqcota.** The screen reads and checks the pqcota history (PostgreSQL), so on a first installation prepare the pqcota side
+before the screen. Each task needs something different. **Starting the screen needs no upstream command.** The only thing the screen
+runs itself is `ansible-playbook` for observation; it signs approvals and generates playbooks inside the screen.
+
+| Task | What it needs |
+|---|---|
+| Starting the screen | `pqcaton-ui`, a pqcota history with its schema, and the connection information of an account that reads it ("pqcota connection" below) |
+| 03 Observation | Ansible and node access, the official collectors ("Getting ready to run observations" below) |
+| Loading observation results into the history | `pqcota-ingest` and a loading account that can write. Reconciliation in 04 and 05 and policy activation in 05 look at this load (section 6) |
+| 06 approval signature and generation | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
+| Applying to the nodes and rolling back | `pqcota-hosts` (to make the Ansible inventory) and `ansible-playbook` (as 06 explains) |
+| Trimming old history | `pqcota-prune` (optional) |
+
+1. **PostgreSQL and accounts.** Prepare PostgreSQL 16 and create two accounts. The loading account owns the database so that it can
+   create the schema the first time; the screen account only reads. Run this in `psql` as an administrator. The passwords are typed
+   only where `\password` asks for them, so they stay out of command lines and shell history.
+
+   ```sql
+   CREATE ROLE pqcota_ingest LOGIN;
+   \password pqcota_ingest
+   CREATE ROLE pqcaton_ui LOGIN;
+   \password pqcaton_ui
+   CREATE DATABASE pqcota OWNER pqcota_ingest;
+   REVOKE ALL ON DATABASE pqcota FROM PUBLIC;
+   ```
+
+   Keep the passwords out of the connection information, in `~/.pgpass` (0600): one line per account,
+   `host:port:database:user:password`, filled in with an editor. To keep it elsewhere, point `PGPASSFILE` at it. The connection
+   information can then be written without a secret, as in `postgres://pqcaton_ui@<host>:5432/pqcota`.
+
+   ```bash
+   install -m 600 /dev/null ~/.pgpass
+   ```
+
+2. **Upstream central commands.** The `pqcota-ctl` bundle of the upstream release holds the loading, query, approval and generation
+   commands. Check its checksum and its attestation (pinned to the upstream repository, its release workflow and the tag), then
+   unpack it into a folder on your `PATH`. It needs `gh` (2.49 or later, logged in). On an arm64 machine use `linux-arm64` instead of
+   `linux-amd64`.
+
+   ```bash
+   mkdir -p ~/pqcaton/pqcota-ctl-v0.14.0 && cd ~/pqcaton/pqcota-ctl-v0.14.0
+   gh release download v0.14.0 -R randyinthedev-hash/pqcota -p 'pqcota-ctl-linux-amd64.tar.gz' -p SHA256SUMS
+   sha256sum -c --ignore-missing SHA256SUMS
+   gh attestation verify pqcota-ctl-linux-amd64.tar.gz --repo randyinthedev-hash/pqcota \
+     --signer-workflow randyinthedev-hash/pqcota/.github/workflows/release.yml --source-ref refs/tags/v0.14.0 --deny-self-hosted-runners
+   tar -xzf pqcota-ctl-linux-amd64.tar.gz
+   install -m 755 pqcota-ctl-linux-amd64/pqcota-* ~/.local/bin/
+   ```
+
+   To build from source, follow the upstream [build guide (v0.14.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.14.0/docs/build.md).
+   Most upstream commands cannot be installed with `go install …@v0.14.0` ("Get the source" in that guide).
+
+3. **Creating the history schema.** The screen opens the history for reading only and creates no tables, so without the schema it
+   does not start ("the pqcota history schema is missing"). The upstream commands create the schema when they open the store and it
+   is not there (not with `PQCOTA_AUTO_DDL=0`). Running the query command once with the loading account creates an empty schema and
+   ends with exit status 0. Give the judgment organization. Running `pqcota-ingest` on an empty results folder is not an
+   initialization: it ends with exit status 1 because there are no results, and creates nothing. The real load comes after observing
+   in 03, as section 6 describes.
+
+   ```bash
+   PQCOTA_DSN='postgres://pqcota_ingest@<host>:5432/pqcota' PQCOTA_ORG=<judgment organization> pqcota-inventory
+   ```
+
+4. **Read access for the screen account.** After the schema exists, run this as an administrator in the `pqcota` database. The last
+   line gives the same read access to the tables upstream creates later. Without it the screen does not start ("server error
+   SQLSTATE 42501").
+
+   ```sql
+   GRANT CONNECT ON DATABASE pqcota TO pqcaton_ui;
+   GRANT USAGE ON SCHEMA public TO pqcaton_ui;
+   GRANT SELECT ON ALL TABLES IN SCHEMA public TO pqcaton_ui;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_ingest IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
+   ```
+
 **pqcota connection.** pqcaton runs only where pqcota is installed, connected and working. On start the screen connects
 to the pqcota history and must pass one read of it (schema and read permission) before it comes up. If there is no
 connection, or connecting and the read do not finish within 10 seconds, it stops before opening the port or writing the
