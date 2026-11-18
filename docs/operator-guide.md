@@ -180,7 +180,7 @@ address file. It only looks things up, so an account with read permission is eno
   organization of the judgments (`-org`, or the declaration's organization when not given). `-upstream-org` accepts only the
   same value; another organization stops the start. If the review session belongs to another organization, 05 refuses with
   `upstream-org` without looking anything up. So ingest pqcota under that organization too
-  (`PQCOTA_ORG=<organization> pqcota-ingest …`).
+  (`PQCOTA_ORG='<organization>' pqcota-ingest …`).
 
 Fill the file in an editor. Do not put the value on the command line, so the password stays out of the shell history.
 
@@ -767,7 +767,7 @@ the same as v0.28.0. There is no need to pass through upstream v0.12.0; upgrade 
 4. Replace the binary with the `go install` of [section 2](#2-installation), start the screen and observe again on 03. **Re-ingest the
    pqcota history with v4 too.** The ruleset is part of the snapshot fingerprint, so with a history that v0.11.0 ingested under v3
    the activation and baseline reconciliation on 05 do not pass. Re-ingest with
-   `PQCOTA_ORG=<judgment org> pqcota-ingest -scope-assets <workspace>/scope-assets.csv <workspace>/results`.
+   `PQCOTA_ORG='<judgment org>' pqcota-ingest -scope-assets '<workspace>/scope-assets.csv' '<workspace>/results'`.
 5. When 05 shows "This session was opened under a different upstream ruleset", press "Start a new round under the current rules"
    (`pqcaton-decide new-round` on the command line). **Earlier conclusions move over only as reference values.** The evidence of Java
    assets changes to new per-deployment findings, so they show as "changed" in the report, and "removed" and "added" can include the
@@ -799,7 +799,7 @@ goes through the pqcota history reconciliation. The state format, the session an
    or a launcher needs the file. Without it the screen does not start.
 2. **Ingest pqcota under the organization of the judgments.** The pqcota history's organization must be the organization
    of the judgments. If you ingested under another organization (such as the default one), ingest again with
-   `PQCOTA_ORG=<organization of the judgments> pqcota-ingest -scope-assets <workspace>/scope-assets.csv <workspace>/results`.
+   `PQCOTA_ORG='<organization of the judgments>' pqcota-ingest -scope-assets '<workspace>/scope-assets.csv' '<workspace>/results'`.
    Commands that gave `-upstream-org` a value other than the organization of the judgments now stop.
 3. Stop the screen and replace the binary with `go install` from [section 2](#2-installation).
 4. **Fix scripts that used `pqcaton-decide activate-scope -confirm-ingest`.** This version stops without writing anything when given that flag. Activate

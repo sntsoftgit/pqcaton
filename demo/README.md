@@ -67,7 +67,7 @@ python3 and `gh` logged in ([Requirements](#requirements)). The demo was checked
 - **The fetch in 3) is needed once.** It never overwrites an existing folder, so a second fetch into the same folder is refused; the
   prepared folder is used again as it is.
 - **The browser**: open `http://127.0.0.1:8765` on the machine where you ran `ui.sh`. To watch from another machine, forward that
-  port over SSH (`ssh -L 8765:127.0.0.1:8765 <that machine>`). What to do on each screen is in
+  port over SSH (`ssh -L 8765:127.0.0.1:8765 '<that machine>'`). What to do on each screen is in
   [Going through the screens](#going-through-the-screens).
 - **Ending**: `Ctrl+C` closes only the relay (the screen keeps running, and `ui.sh` opens it again). `./scripts/ui.sh stop` stops the
   screen and keeps its workspace. `down.sh` removes the containers, and the workspace with them.

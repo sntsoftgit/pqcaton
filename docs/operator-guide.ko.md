@@ -167,7 +167,7 @@ chmod +x ~/Desktop/pqcaton-ui.command
   넘기지 않습니다. 화면에서 입력받는 자리도 없습니다.
 - **pqcota 조직은 판정 조직입니다.** 화면은 판정 조직(`-org`, 주지 않으면 선언의 조직)의 pqcota 이력만 엽니다.
   `-upstream-org`는 같은 값만 받고, 다른 조직을 주면 시작하지 않습니다. 판정 세션의 조직이 다르면 05가 조회하지 않고
-  `upstream-org`로 거절합니다. 그러므로 pqcota 적재도 그 조직으로 합니다(`PQCOTA_ORG=<조직> pqcota-ingest …`).
+  `upstream-org`로 거절합니다. 그러므로 pqcota 적재도 그 조직으로 합니다(`PQCOTA_ORG='<조직>' pqcota-ingest …`).
 
 파일은 편집기로 채웁니다. 비밀번호가 셸 기록에 남지 않도록 명령줄에 값을 쓰지 않습니다.
 
@@ -697,7 +697,7 @@ v0.13.0으로 바로 올립니다.
    자산으로 바꿉니다. 릴리스 자산도 「확인 불가」라 `-allow-unverified-collectors`는 그대로 필요합니다.
 4. [2절](#2-설치)의 `go install`로 바이너리를 바꾸고 화면을 띄운 뒤 03에서 다시 관측합니다. **pqcota 이력도 v4로 다시 적재합니다.**
    규칙 판이 스냅샷 지문에 들어가므로, v0.11.0이 v3로 적재한 이력으로는 05의 활성화 · 기준선 대조가 통과하지 않습니다.
-   `PQCOTA_ORG=<판정 조직> pqcota-ingest -scope-assets <작업 폴더>/scope-assets.csv <작업 폴더>/results`로 다시 적재합니다.
+   `PQCOTA_ORG='<판정 조직>' pqcota-ingest -scope-assets '<작업 폴더>/scope-assets.csv' '<작업 폴더>/results'`로 다시 적재합니다.
 5. 05가 「이 세션은 지금과 다른 상류 규칙 판으로 열렸습니다」를 보이면 「지금 규칙으로 새 회차 시작」을 누릅니다(명령으로는
    `pqcaton-decide new-round`). **지난 결론은 참고값으로만 옮겨집니다.** Java 자산은 근거가 배포본 단위의 새 finding으로 바뀌어
    보고서에 「바뀜」으로 보이고, 「사라짐」 · 「생김」에는 식별 규칙이 바뀐 영향이 섞일 수 있습니다. 항목마다 다시 판정하거나
@@ -725,7 +725,7 @@ v0.28.0부터 화면은 pqcota 이력 없이 시작하지 않고, 정책 활성�
 1. **연결 정보를 먼저 둡니다.** [2절](#2-설치) 「pqcota 연결」대로 `pqcota.env`(0600, `PQCOTA_DSN=<연결 정보>` 한 줄)를 만들거나,
    화면을 띄우는 셸에 `PQCOTA_DSN`을 둡니다. 서비스 · 실행기로 띄운다면 파일이 있어야 합니다. 없으면 화면이 시작하지 않습니다.
 2. **pqcota 적재를 판정 조직으로 합니다.** pqcota 이력의 조직은 판정 조직이어야 합니다. 지금까지 다른 조직(기본 조직 등)에
-   적재했다면 `PQCOTA_ORG=<판정 조직> pqcota-ingest -scope-assets <작업 폴더>/scope-assets.csv <작업 폴더>/results`로 다시 적재합니다.
+   적재했다면 `PQCOTA_ORG='<판정 조직>' pqcota-ingest -scope-assets '<작업 폴더>/scope-assets.csv' '<작업 폴더>/results'`로 다시 적재합니다.
    `-upstream-org`에 판정 조직과 다른 값을 주던 명령은 이제 멈춥니다.
 3. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다.
 4. **`pqcaton-decide activate-scope -confirm-ingest`를 쓰던 스크립트를 고칩니다.** 이 판은 그 플래그를 받으면 아무것도 쓰지 않고 멈춥니다. 활성화는 화면 05에서
