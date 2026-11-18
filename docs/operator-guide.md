@@ -144,10 +144,10 @@ runs itself is `ansible-playbook` for observation; it signs approvals and genera
    is not there (not with `PQCOTA_AUTO_DDL=0`). Running the query command once with the loading account creates an empty schema and
    ends with exit status 0. Give the judgment organization. Running `pqcota-ingest` on an empty results folder is not an
    initialization: it ends with exit status 1 because there are no results, and creates nothing. The real load comes after observing
-   in 03, as section 6 describes.
+   in 03, as section 6 describes. Replace each `<…>` with the real value before running it.
 
    ```bash
-   PQCOTA_DSN='postgres://pqcota_ingest@<host>:5432/pqcota' PQCOTA_ORG=<judgment organization> pqcota-inventory
+   PQCOTA_DSN='postgres://pqcota_ingest@<host>:5432/pqcota' PQCOTA_ORG='<judgment organization>' pqcota-inventory
    ```
 
 4. **Read access for the screen account.** After the schema exists, run this as an administrator in the `pqcota` database. The last
@@ -447,10 +447,11 @@ required).
    **The policy finalized in 02 is not used for reconciliation right away.** Reconciliation (04, 05) uses the active
    policy `scope-assets.csv`. If it differs from the policy the upstream ingest used, pqcota cannot find the evidence of
    the plans made in 05. To use the finalized policy, first redo the upstream ingest with it, giving the workspace's
-   `results/` as the results folder.
+   `results/` as the results folder. Give the loading account's connection in `PQCOTA_DSN`; its password is read from the
+   `~/.pgpass` of "Preparing pqcota". Replace each `<…>` with the real value before running it.
 
    ```bash
-   PQCOTA_ORG=<organization of the judgments> pqcota-ingest -scope-assets <workspace>/asset-scope.csv <workspace>/results
+   PQCOTA_DSN='postgres://pqcota_ingest@<host>:5432/pqcota' PQCOTA_ORG='<organization of the judgments>' pqcota-ingest -scope-assets '<workspace>/asset-scope.csv' '<workspace>/results'
    ```
 
    After finalizing 02, "Next" under the finalize notice leads to "View current reconciliation in 04" and "View the
@@ -485,12 +486,13 @@ required).
    The activation processing record (`scope-activation` in `.pqcaton/`) keeps the basis `upstream-verified`, and the time
    of checking, the pqcota organization and the per-node fingerprints reconciled go into `upstream_check` of the change
    report. Neither holds a secret. The command activates with the same reconciliation (the screen does not need to be
-   stopped; it uses the same workspace, so it waits while the screen is saving something else).
+   stopped; it uses the same workspace, so it waits while the screen is saving something else). It only reads the history,
+   so give the screen account's connection; its password is read from `~/.pgpass`. Replace each `<…>` with the real value before running it.
 
    ```bash
-   PQCOTA_DSN=<pqcota DB> pqcaton-decide activate-scope <workspace>/session.json -decl <workspace>/declaration.json \
-     -results <workspace>/results -scope-assets <workspace>/scope-assets.csv -candidate <workspace>/asset-scope.csv \
-     -scope-session <workspace>/scope-session.json -org <organization>
+   PQCOTA_DSN='postgres://pqcaton_ui@<host>:5432/pqcota' pqcaton-decide activate-scope '<workspace>/session.json' \
+     -decl '<workspace>/declaration.json' -results '<workspace>/results' -scope-assets '<workspace>/scope-assets.csv' \
+     -candidate '<workspace>/asset-scope.csv' -scope-session '<workspace>/scope-session.json' -org '<organization>'
    ```
 
    The flag in `pqcaton-decide activate-scope -verify-upstream` is accepted for compatibility and changes nothing.
@@ -539,10 +541,10 @@ required).
    - **No permission, or lookup failed**: its belonging cannot be checked, so do not stop it. After a failed lookup, check
      again in a moment.
    - **Cannot tell whether it is the same process**: a record from an earlier version that kept no start time. Only then
-     look yourself in a terminal.
+     look yourself in a terminal. Replace each `<…>` with the real value before running it.
 
    ```bash
-   ps -p <PID> -o pid=,ppid=,pgid=,user=,lstart=,command=
+   ps -p '<PID>' -o pid=,ppid=,pgid=,user=,lstart=,command=
    ```
 
    Only when a process is confirmed to have been started by this observation, stop it normally and start the screen
@@ -658,7 +660,7 @@ pqcaton-ui -recover-status -diagnostics ~/pqcaton-diagnostics.json
    `mismatch` needs fixing.**
 
 2. **Keep the `mismatch` file as it is now.** From the output, put the path on the `mismatch` line in `TARGET`, and the path
-   after `prepared copy at` below it in `PREPARED` (the lines below are an example).
+   after `prepared copy at` below it in `PREPARED` (the lines below are an example). Replace each `<…>` with the real value before running it.
 
 ```bash
 TARGET="$HOME/pqcaton/session.json"
@@ -773,10 +775,10 @@ the same as v0.28.0. There is no need to pass through upstream v0.12.0; upgrade 
    evidence automatically.
 6. **If an asset scope rule has a user service `user@<uid>.service` in its `app_key`, fix it.** The v0.13.0 collectors give a user
    service the app key `user@<uid>.service/<unit>`, so the old value no longer matches. Find such rules as below, fix them on 02,
-   finalize, and activate on 05.
+   finalize, and activate on 05. Replace each `<…>` with the real value before running it.
 
    ```bash
-   grep -n 'user@[0-9]*\.service' <workspace>/asset-scope.csv <workspace>/scope-assets.csv
+   grep -n 'user@[0-9]*\.service' '<workspace>/asset-scope.csv' '<workspace>/scope-assets.csv'
    ```
 
 7. **Do not compare an edge's observation count (`observed_count`) across the upgrade.** From v0.13.0 it counts the distinct

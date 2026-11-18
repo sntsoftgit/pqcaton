@@ -136,10 +136,10 @@ chmod +x ~/Desktop/pqcaton-ui.command
    missing」으로 시작하지 않습니다. 상류 명령은 저장소를 열 때 스키마가 없으면 만듭니다(`PQCOTA_AUTO_DDL=0`이면 만들지 않음).
    적재용 계정으로 조회 명령을 한 번 실행하면 빈 스키마가 생기고 종료 상태 0으로 끝납니다. 조직은 판정 조직으로 줍니다.
    빈 결과 폴더로 `pqcota-ingest`를 실행하는 것은 초기화가 아닙니다. 결과가 없다고 종료 상태 1로 끝나고 아무것도 만들지
-   않습니다. 실제 적재는 03에서 관측한 뒤 6절대로 합니다.
+   않습니다. 실제 적재는 03에서 관측한 뒤 6절대로 합니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
    ```bash
-   PQCOTA_DSN='postgres://pqcota_ingest@<호스트>:5432/pqcota' PQCOTA_ORG=<판정 조직> pqcota-inventory
+   PQCOTA_DSN='postgres://pqcota_ingest@<호스트>:5432/pqcota' PQCOTA_ORG='<판정 조직>' pqcota-inventory
    ```
 
 4. **화면용 계정의 읽기 권한.** 스키마를 만든 뒤 관리자 계정으로 `pqcota` 데이터베이스에서 실행합니다. 마지막 줄은 상류가
@@ -407,10 +407,11 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 
    **02에서 확정한 정책은 바로 대조에 쓰이지 않습니다.** 대조(04 · 05)는 활성 정책 `scope-assets.csv`를 씁니다. 대조
    정책이 상류 적재에 쓴 정책과 다르면 05에서 만든 계획의 근거를 pqcota가 찾지 못하기 때문입니다. 확정한 정책을 쓰려면
-   먼저 그 정책으로 상류 적재를 다시 합니다. 결과 폴더는 작업 폴더의 `results/`를 줍니다.
+   먼저 그 정책으로 상류 적재를 다시 합니다. 결과 폴더는 작업 폴더의 `results/`를 줍니다. 연결 정보는 적재용 계정의 것을
+   `PQCOTA_DSN`으로 주고, 비밀번호는 「pqcota 준비」의 `~/.pgpass`에서 읽습니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
    ```bash
-   PQCOTA_ORG=<판정 조직> pqcota-ingest -scope-assets <작업 폴더>/asset-scope.csv <작업 폴더>/results
+   PQCOTA_DSN='postgres://pqcota_ingest@<호스트>:5432/pqcota' PQCOTA_ORG='<판정 조직>' pqcota-ingest -scope-assets '<작업 폴더>/asset-scope.csv' '<작업 폴더>/results'
    ```
 
    02를 확정하면 확정 알림 아래 「다음 단계」가 「04에서 현재 대조 보기」와 「05에서 활성화 절차 보기」로 잇고, 활성화하기
@@ -440,12 +441,13 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 
    활성화 처리 기록(`.pqcaton/`의 `scope-activation`)은 근거가 `upstream-verified`로 남고, 확인 시각 · pqcota 조직 · 대조한
    노드별 지문은 변환 보고서의 `upstream_check`에 남습니다. 둘 다 비밀값이 없습니다. 명령으로도 같은 대조로 활성화할 수
-   있습니다(화면을 끄지 않아도 되지만, 같은 작업 폴더를 쓰므로 화면이 다른 저장을 하는 동안에는 기다립니다).
+   있습니다(화면을 끄지 않아도 되지만, 같은 작업 폴더를 쓰므로 화면이 다른 저장을 하는 동안에는 기다립니다). 이력은 읽기만
+   하므로 화면용 계정의 연결 정보를 주고, 비밀번호는 `~/.pgpass`에서 읽습니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
    ```bash
-   PQCOTA_DSN=<pqcota DB> pqcaton-decide activate-scope <작업 폴더>/session.json -decl <작업 폴더>/declaration.json \
-     -results <작업 폴더>/results -scope-assets <작업 폴더>/scope-assets.csv -candidate <작업 폴더>/asset-scope.csv \
-     -scope-session <작업 폴더>/scope-session.json -org <조직>
+   PQCOTA_DSN='postgres://pqcaton_ui@<호스트>:5432/pqcota' pqcaton-decide activate-scope '<작업 폴더>/session.json' \
+     -decl '<작업 폴더>/declaration.json' -results '<작업 폴더>/results' -scope-assets '<작업 폴더>/scope-assets.csv' \
+     -candidate '<작업 폴더>/asset-scope.csv' -scope-session '<작업 폴더>/scope-session.json' -org '<조직>'
    ```
 
    `pqcaton-decide activate-scope -verify-upstream`의 플래그는 호환을 위해 받지만 아무것도 바꾸지 않습니다.
@@ -485,9 +487,10 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
    - **다른 프로세스로 바뀜**: 같은 PID를 다른 프로세스가 씁니다. 끝내지 않습니다.
    - **조회 권한 없음 · 조회 실패**: 소속을 확인할 수 없으니 끝내지 않습니다. 조회 실패는 잠시 뒤 다시 확인합니다.
    - **같은 프로세스인지 확인할 수 없음**: 시작 시각을 남기지 않은 이전 판의 기록입니다. 이때만 터미널에서 직접 봅니다.
+     `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
    ```bash
-   ps -p <PID> -o pid=,ppid=,pgid=,user=,lstart=,command=
+   ps -p '<PID>' -o pid=,ppid=,pgid=,user=,lstart=,command=
    ```
 
    이 관측이 띄운 프로세스임이 확인될 때만 정상 종료한 뒤 화면을 다시 시작합니다. 관계없는 프로세스이거나 소속을 확인할
@@ -596,7 +599,7 @@ pqcaton-ui -recover-status -diagnostics ~/pqcaton-diagnostics.json
    다시 띄우면 나머지를 씀, `mismatch`는 pqcaton 밖에서 바뀜입니다. **고쳐야 하는 것은 `mismatch`뿐입니다.**
 
 2. **`mismatch`인 파일을 지금 상태 그대로 보존합니다.** 출력에서 `mismatch` 줄의 경로를 `TARGET`에, 그 아래
-   `prepared copy at` 뒤의 경로를 `PREPARED`에 넣습니다(아래는 예시입니다).
+   `prepared copy at` 뒤의 경로를 `PREPARED`에 넣습니다(아래는 예시입니다). `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
 ```bash
 TARGET="$HOME/pqcaton/session.json"
@@ -701,10 +704,10 @@ v0.13.0으로 바로 올립니다.
    「다시 채택」을 누릅니다. 옛 결론을 새 근거에 자동으로 잇는 규칙은 없습니다.
 6. **자산 스코프 규칙의 `app_key`에 사용자 서비스 `user@<uid>.service`를 적었다면 고칩니다.** v0.13.0 수집기는 사용자 서비스의
    앱 키를 `user@<uid>.service/<유닛>`으로 내므로 옛 값은 더는 맞지 않습니다. 아래처럼 찾은 뒤 02에서 규칙을 고쳐 확정하고 05에서
-   활성화합니다.
+   활성화합니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
    ```bash
-   grep -n 'user@[0-9]*\.service' <작업 폴더>/asset-scope.csv <작업 폴더>/scope-assets.csv
+   grep -n 'user@[0-9]*\.service' '<작업 폴더>/asset-scope.csv' '<작업 폴더>/scope-assets.csv'
    ```
 
 7. **엣지의 관측 횟수(`observed_count`)는 판 올림 전후로 견주지 않습니다.** v0.13.0부터 핸드셰이크 메시지 수가 아니라 관측
