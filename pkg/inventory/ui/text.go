@@ -1422,6 +1422,9 @@ var keyText = map[KeyState]T{
 	KeyUnwritable: {
 		KO: "다른 사용자도 고칠 수 있습니다. chmod go-w로 소유자만 고치게 하십시오",
 		EN: "other users can change it: make it writable by its owner only with chmod go-w"},
+	KeyCollector: {
+		KO: "수집기 서명용 키입니다(PQCOTA_VERIFY_KEY 줄에 수집기 ID가 붙어 있습니다). 승인 키는 pqcota-keygen을 플래그 없이 실행해 만드십시오",
+		EN: "it is a collector signing key (its PQCOTA_VERIFY_KEY line names a collector ID): make the approval key with pqcota-keygen and no flags"},
 }
 
 // 06 의 승인 키 문구(서명용 개인 키와 확인용 공개 키).

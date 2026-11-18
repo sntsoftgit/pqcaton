@@ -100,6 +100,9 @@ const (
 	KeyConflict KeyState = "conflict"
 	// KeyUnwritable — 확인용 공개 키를 다른 사용자가 고칠 수 있다.
 	KeyUnwritable KeyState = "writable"
+	// KeyCollector — 수집기 서명용 키다(`pqcota-keygen -collector <ID>`의 출력: 검증 줄이 `<수집기 ID>:<공개 키>`). 승인 키와
+	// 용도가 달라 받지 않는다. 같은 키를 두 용도에 쓰면 수집기 결과에 서명할 수 있는 쪽이 계획도 승인할 수 있게 된다.
+	KeyCollector KeyState = "collector"
 )
 
 // KeySource — 키를 어디서 정했나.

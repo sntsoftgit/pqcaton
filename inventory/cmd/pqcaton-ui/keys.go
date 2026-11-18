@@ -139,6 +139,10 @@ func (s *server) readVerify() ui.KeyCheck {
 		k.State = ui.KeyHasPrivate
 		return k
 	}
+	if collectorKeyIn(b) {
+		k.State = ui.KeyCollector
+		return k
+	}
 	pub := publicKeyIn(b)
 	raw, err := base64.StdEncoding.DecodeString(pub)
 	if err != nil || len(raw) != ed25519.PublicKeySize {
@@ -147,6 +151,12 @@ func (s *server) readVerify() ui.KeyCheck {
 	}
 	k.State, k.Public, k.Fingerprint = ui.KeyOK, pub, keyFingerprint(pub)
 	return k
+}
+
+// collectorKeyIn: 수집기 서명용 키 파일인가. `pqcota-keygen -collector <ID>`는 검증 줄을 `<ID>:<공개 키>`로 낸다(pqcota v0.15.0).
+// 공개 키(base64)에는 콜론이 없으므로, 검증 줄이나 공개 키 자리(주석을 뺀 첫 줄)에 콜론이 있으면 수집기 ID가 붙은 것이다.
+func collectorKeyIn(b []byte) bool {
+	return strings.Contains(publicKeyIn(b), ":")
 }
 
 // publicKeyIn: PQCOTA_VERIFY_KEY 줄이면 그 값, 아니면 주석과 빈 줄을 뺀 첫 줄.

@@ -140,6 +140,10 @@ func (s *server) readKey() (ui.KeyCheck, string) {
 		k.State = ui.KeyUnreadable
 		return k, ""
 	}
+	if collectorKeyIn(b) {
+		k.State = ui.KeyCollector
+		return k, ""
+	}
 	priv := privateKeyIn(b)
 	raw, err := base64.StdEncoding.DecodeString(priv)
 	if err != nil || len(raw) != ed25519.PrivateKeySize {

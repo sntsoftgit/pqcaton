@@ -461,3 +461,70 @@ func TestRealUserConfigDirWithSpaces(t *testing.T) {
 		t.Errorf("-no-default-approval-key still reads the real default location: %+v %+v", k, v)
 	}
 }
+
+// keygenV016: pqcota v0.16.0의 pqcota-keygen이 내는 그대로의 출력(cmd/pqcota-keygen/main.go). collector가 비면 플래그 없는 출력이다.
+func keygenV016(t *testing.T, collector string) (text, pub string) {
+	t.Helper()
+	pub, priv, err := sign.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	text = "# sign on the node scanner: export PQCOTA_SIGN_KEY=<priv>\nPQCOTA_SIGN_KEY=" + priv + "\n\n" +
+		"# verify at central ingest, bound to the collector ID (comma-separated for several): export PQCOTA_VERIFY_KEY=<collector-id>:<pub>\n"
+	if collector != "" {
+		return text + "PQCOTA_VERIFY_KEY=" + collector + ":" + pub + "\n", pub
+	}
+	return text + "# (a bare <pub> list is the legacy form — it does not tell which collector a key belongs to)\n" +
+		"PQCOTA_VERIFY_KEY=" + pub + "\n", pub
+}
+
+// IC-U208 — **06은 수집기 서명용 키를 승인 키로 받지 않는다(pqcota v0.15.0).** `pqcota-keygen -collector <ID>`의 출력은 승인 키로도,
+// 확인용 공개 키로도 「collector」이고 서명할 수 없다. 공개 키 자리에 `<ID>:<키>` 한 줄만 둔 확인용 공개 키 파일도 같다. 명시한
+// 키면 화면이 시작하지 않는다. 플래그 없는 v0.16.0 출력(주석 한 줄이 늘었다)은 지금처럼 승인 키와 확인용 공개 키로 쓸 수 있다.
+func TestApprovalRefusesCollectorKeys(t *testing.T) {
+	dir := configDir(t)
+	s, _ := keyReady(t)
+	keyFile := filepath.Join(dir, "pqcaton", "approval.key")
+	pubFile := filepath.Join(dir, "pqcaton", "approval.pub")
+	write := func(p, text string, mode os.FileMode) {
+		t.Helper()
+		os.Remove(p)
+		if err := os.WriteFile(p, []byte(text), mode); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	collector, cpub := keygenV016(t, "openssl-collector")
+	write(keyFile, collector, 0o600)
+	placeKeys(s, keyFile, "", false)
+	if k, priv := s.readKey(); k.State != ui.KeyCollector || priv != "" {
+		t.Errorf("collector key as the approval key: state %s (private key returned: %v), want %s and no key", k.State, priv != "", ui.KeyCollector)
+	}
+	var stderr bytes.Buffer
+	if err := s.checkKeysAtStart(&stderr); err == nil || !strings.Contains(err.Error(), string(ui.KeyCollector)) {
+		t.Errorf("an explicit collector key at start: %v, want the screen not to start (%s)", err, ui.KeyCollector)
+	}
+	for _, text := range []string{"# verify\nPQCOTA_VERIFY_KEY=openssl-collector:" + cpub + "\n", "openssl-collector:" + cpub + "\n"} {
+		write(pubFile, text, 0o644)
+		placeKeys(s, "", pubFile, false)
+		if got := s.readVerify().State; got != ui.KeyCollector {
+			t.Errorf("verification key %q: state %s, want %s", strings.SplitN(text, ":", 2)[0], got, ui.KeyCollector)
+		}
+	}
+	for _, l := range []ui.Lang{ui.KO, ui.EN} {
+		if msg := (ui.KeyCheck{State: ui.KeyCollector}).Text(l); !strings.Contains(msg, "pqcota-keygen") {
+			t.Errorf("%s: the reason does not say how to make an approval key: %q", l, msg)
+		}
+	}
+
+	plain, ppub := keygenV016(t, "")
+	write(keyFile, plain, 0o600)
+	write(pubFile, "PQCOTA_VERIFY_KEY="+ppub+"\n", 0o644)
+	placeKeys(s, keyFile, pubFile, false)
+	if k, priv := s.readKey(); k.State != ui.KeyOK || priv == "" || k.Public != ppub {
+		t.Errorf("plain v0.16.0 keygen output as the approval key: state %s, want %s with its public key", k.State, ui.KeyOK)
+	}
+	if v := s.readVerify(); v.State != ui.KeyOK || v.Public != ppub {
+		t.Errorf("plain v0.16.0 verification line: state %s, want %s", v.State, ui.KeyOK)
+	}
+}

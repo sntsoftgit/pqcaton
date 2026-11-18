@@ -111,8 +111,9 @@ test-pg:
 	if [ $$rc -ne 0 ]; then echo "✗ test-pg: the Postgres tests failed"; printf '%s\n' "$$out" | grep -E -A5 -- '--- FAIL' | head -60; exit 1; fi; \
 	if printf '%s\n' "$$out" | grep -q -- '--- SKIP'; then echo "✗ test-pg: a test was skipped; with a DSN nothing may skip"; exit 1; fi; \
 	printf '%s\n' "$$out" | grep -q -- '--- PASS: TestLatestIsTheLastLoadedStateOnPostgres' || { echo "✗ test-pg: IC-S26 did not run"; exit 1; }; \
+	printf '%s\n' "$$out" | grep -q -- '--- PASS: TestStartupCheckOnPostgresRoles' || { echo "✗ test-pg: IC-S28 did not run"; exit 1; }; \
 	if printf '%s\n' "$$out" | grep -qF -- "$$PQCOTA_TEST_DSN"; then echo "✗ test-pg: the DSN appeared in the test output"; exit 1; fi; \
-	echo "✓ Postgres tests passed (no skips, IC-S26 included): $(PG_PKGS)"
+	echo "✓ Postgres tests passed (no skips, IC-S26 and IC-S28 included): $(PG_PKGS)"
 
 # 데모 종단 검증(IC-U152). 상류 pqcota 데모를 처음부터 띄우므로 일반 make에는 넣지 않는다. 필요한 환경(PQCOTA_DIR과
 # 상류 다섯 리포 · docker · go · python3)이 없으면 건너뛰지 않고 실패한다. 릴리스 전에 전용 환경에서 반드시 통과시킨다.

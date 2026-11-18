@@ -21,6 +21,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
+	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/pgschema"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/decl"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/report"
@@ -162,7 +163,16 @@ func Within(d time.Duration, f func() error) error {
 	}
 }
 
-// Classify — 조회 오류를 연결 정보가 없는 한 줄로. 원래 문구(pgconn은 호스트 · 사용자를 싣는다)는 쓰지 않는다.
+// 시작 점검이 보이는 두 분류. 상류 v0.16.0부터 조회용으로 열 때 그 저장소의 표 · 열 · SELECT 권한을 모두 확인하고, 없는 것
+// (pgschema.ErrMissing)과 권한이 없는 것(pgschema.ErrPermission)을 가른다. 권한 문제는 초기화로 고쳐지지 않으므로 초기화를
+// 권하지 않는다.
+const (
+	ClassSchemaMissing = "the pqcota history schema is missing or incomplete; run `pqcota-inventory -init-schema` as the role that owns the schema"
+	ClassNoPrivilege   = "this account lacks privileges to read the pqcota history (SELECT on its tables, USAGE on their schema); initializing the schema does not change them"
+)
+
+// Classify — 조회 오류를 연결 정보가 없는 한 줄로. 원래 문구(pgconn은 호스트 · 사용자를 싣는다)는 쓰지 않는다. 상류
+// pgschema.Problem의 문구에는 표 · 스키마 이름만 실리지만, 여기서는 그것도 싣지 않고 분류만 싣는다.
 func Classify(err error) string {
 	var pg *pgconn.PgError
 	switch {
@@ -170,8 +180,12 @@ func Classify(err error) string {
 		return ""
 	case errors.Is(err, context.DeadlineExceeded):
 		return "timed out"
+	case errors.Is(err, pgschema.ErrPermission):
+		return ClassNoPrivilege
 	case errors.Is(err, history.ErrSchemaMissing):
-		return "the pqcota history schema is missing"
+		return ClassSchemaMissing
+	case errors.As(err, &pg) && pg.Code == "42501": // insufficient_privilege: 열고 난 뒤의 조회에서 권한이 빠진 경우
+		return ClassNoPrivilege + " (SQLSTATE 42501)"
 	case errors.As(err, &pg):
 		return "server error SQLSTATE " + pg.Code
 	}
