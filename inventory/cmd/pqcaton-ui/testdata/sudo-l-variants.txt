@@ -1,0 +1,118 @@
+# SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+# SPDX-License-Identifier: BUSL-1.1
+# 실험실(ubuntu 24.04, sudo 1.9.15p5)에서 모은 `LC_ALL=C sudo -n -l` 출력. 줄 머리 === 는 변형 이름 · 종료 코드 · 실제로 sudo 를 돌렸을 때의 입출력 기록 여부다.
+# 출처: pqcaton-aai reports/2026-11-18-key-delivery-lab/sudo-variants.out (sudo-variants.sh)
+=== 00-plain rc=0  | actual: sudo_rc=0 iolog_sessions=0 stdin_logged=0 output_logged=0
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 01-log_input rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=1 output_logged=2
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_input
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 02-log_output rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=0 output_logged=3
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_output
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 03-input-then-neg-user rc=0  | actual: sudo_rc=0 iolog_sessions=0 stdin_logged=0 output_logged=0
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_input, !log_input
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 04-neg-then-input-user rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=1 output_logged=2
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, !log_input, log_input
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 05-cmd-sh-input rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=1 output_logged=2
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log
+
+    Runas and Command-specific defaults for ops:
+        Defaults!/bin/sh log_input
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 06-cmd-other-input rc=0  | actual: sudo_rc=0 iolog_sessions=0 stdin_logged=0 output_logged=0
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log
+
+    Runas and Command-specific defaults for ops:
+        Defaults!/usr/bin/vim log_input
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 07-runas-root-output rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=0 output_logged=3
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log
+
+    Runas and Command-specific defaults for ops:
+        Defaults>root log_output
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 08-user-output rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=0 output_logged=3
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_output
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 09-host-input rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=1 output_logged=2
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_input
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 10-tag-log_input rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=1 output_logged=2
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+        (ALL) NOPASSWD: LOG_INPUT: ALL
+=== 11-default-input-tag-nolog rc=0  | actual: sudo_rc=0 iolog_sessions=0 stdin_logged=0 output_logged=0
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_input
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+        (ALL) NOPASSWD: NOLOG_INPUT: ALL
+=== 12-log_stdin rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=1 output_logged=2
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_stdin
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 13-log_ttyout rc=0  | actual: sudo_rc=0 iolog_sessions=1 stdin_logged=0 output_logged=2
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_ttyout
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 14-requiretty rc=1  | actual: sudo_rc=1 iolog_sessions=0 stdin_logged=0 output_logged=0
+    sudo: sorry, you must have a tty to run sudo
+=== 15-password rc=1  | actual: sudo_rc=1 iolog_sessions=0 stdin_logged=0 output_logged=0
+    sudo: a password is required
+=== 16-cmd-neg-sh rc=0  | actual: sudo_rc=0 iolog_sessions=0 stdin_logged=0 output_logged=0
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_input
+
+    Runas and Command-specific defaults for ops:
+        Defaults!/bin/sh !log_input
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL
+=== 17-log_servers rc=0  | actual: sudo_rc=0 iolog_sessions=0 stdin_logged=0 output_logged=0
+    Matching Defaults entries for ops on node1:
+        env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty, logfile=/var/log/sudo.log, log_servers=127.0.0.1\:30344
+
+    User ops may run the following commands on node1:
+        (ALL) NOPASSWD: ALL

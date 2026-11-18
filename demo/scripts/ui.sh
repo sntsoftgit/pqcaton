@@ -42,6 +42,9 @@ CTL=pqcota-ctl
 WS=/work/ui
 # 06의 승인 서명 키. 작업 폴더 밖에 0600으로 둔다(운영자 안내서 2절과 같은 자리 규칙).
 KEY=/work/ui-approval.key
+# 03의 수집기 서명 키(수집기 ID마다 pqcota-keygen -collector <ID>)와 신뢰할 공개 키(verify.pub). 작업 폴더 밖, 폴더 0700 · 키 0600.
+# 승인 키와 자리를 나눈다(운영자 안내서 2절과 같은 규칙). 재적재도 이 verify.pub의 값을 PQCOTA_VERIFY_KEY로 쓴다.
+CKEYS=/work/ui-collector-keys
 # pqcota 이력(데모 DB). 화면은 이것 없이 시작하지 않는다. pqcota 이력의 조직은 판정 조직(demo-corp)과 같아야 하므로, 재적재도
 # 그 조직으로 한다(PQCOTA_ORG). 적재는 두 조직에 간다: 상류 데모의 demo.sh는 기본 조직에 적재하고(extend.sh의 생성 단계가 쓴다),
 # 이 화면은 그것을 보지 않는다. 화면이 대조하는 판정 조직의 처음 적재는 extend.sh가 같은 결과 · 같은 정책으로 해 둔다.
@@ -184,9 +187,18 @@ if [ "$MODE" = "apply-scope" ]; then
     command -v pqcota-ingest >/dev/null || { echo '❌ pqcota-ingest not found in $CTL'; exit 1; }
   "
   docker exec pqcota-demo-pg pg_isready -q || { echo "❌ the pqcota DB (pqcota-demo-pg) is not ready"; exit 1; }
-  # 2) pqcota 적재. 화면이 실제로 쓰는 결과 폴더와 02에서 확정한 정책으로 한다.
+  # 2) pqcota 적재. 화면이 실제로 쓰는 결과 폴더와 02에서 확정한 정책으로 한다. 결과가 03 관측의 것이면(results/의
+  # 실행 표지) 수집기 서명이 있으므로, 03이 신뢰하는 것과 같은 공개 키(verify.pub)로 먼저 확인(-verify-keys, 저장하지 않음)하고
+  # 같은 값을 결합 형식의 PQCOTA_VERIFY_KEY로 주어 적재한다. 상류 데모가 만든 처음 결과는 서명이 없어 이 확인 없이 적재한다.
   echo "▶ 2/2 re-ingest pqcota with the finalized policy ($WS/asset-scope.csv, $WS/results)…"
-  docker exec -e PQCOTA_DSN="$DSN" -e PQCOTA_ORG="$ORG" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
+  if docker exec "$CTL" test -f "$WS/results/.pqcaton-run"; then
+    VK="$(docker exec "$CTL" sed -n 's/^PQCOTA_VERIFY_KEY=//p' "$CKEYS/verify.pub")"
+    docker exec -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -verify-keys "$WS/results" | sed 's/^/   /'
+    docker exec -e PQCOTA_DSN="$DSN" -e PQCOTA_ORG="$ORG" -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
+  else
+    echo "   (results from the upstream demo carry no collector signature; ingesting them without -verify-keys)"
+    docker exec -e PQCOTA_DSN="$DSN" -e PQCOTA_ORG="$ORG" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
+  fi
   echo "✅ re-ingested. Activate it in 05 (the screen reconciles the pqcota history first): ./demo/scripts/ui.sh"
   exit 0
 fi
@@ -224,6 +236,14 @@ else
       echo '   created: declaration · asset-scope policy · hosts · results'
     fi
     if [ ! -f $KEY ]; then umask 077; pqcota-keygen > $KEY; echo '   approval key for 06: $KEY'; fi
+    if [ ! -d $CKEYS ]; then
+      mkdir -m 700 $CKEYS
+      for id in openssl-collector network-collector jvm-collector; do (umask 077; pqcota-keygen -collector \$id > $CKEYS/\$id.key); done
+      for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' $CKEYS/\$id.key; done \
+        | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > $CKEYS/verify.pub
+      chmod 644 $CKEYS/verify.pub
+      echo '   collector signing keys for 03: $CKEYS (trusted public keys: $CKEYS/verify.pub)'
+    fi
   "
   sync_collectors
   # **노드의 호스트 키를 미리 받아 둔다.** 운영자 안내서 2절의 준비(처음 접속하는 노드는 ssh로 한 번
@@ -242,7 +262,7 @@ else
   echo "▶ 3/3 start pqcaton-ui in $CTL (127.0.0.1:8765 inside the container)…"
   # 수집기는 확인한 공식 자산이므로 03에서 「확인됨」이고, -allow-unverified-collectors 없이 띄운다.
   # 화면은 pqcota 이력 없이 시작하지 않는다. 연결 정보는 환경 변수로만 넘긴다(명령줄 인자가 아니다).
-  docker exec -d -e PQCOTA_DSN="$DSN" "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org $ORG -approval-key $KEY >>$LOG 2>&1"
+  docker exec -d -e PQCOTA_DSN="$DSN" "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org $ORG -approval-key $KEY -collector-keys $CKEYS >>$LOG 2>&1"
   for _ in $(seq 1 40); do answers && break; sleep 0.5; done
   answers || { echo "❌ pqcaton-ui did not answer — last lines of $CTL:$LOG:"; docker exec "$CTL" tail -20 "$LOG"; exit 1; }
 fi

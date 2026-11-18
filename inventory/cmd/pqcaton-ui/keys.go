@@ -82,6 +82,11 @@ func resolveKey(explicit string, noDefault bool, name string, userConfigDir func
 
 // fileProblem: 키 파일 자체의 점검(링크 · 종류 · 작업 폴더 밖 · 소유자 · 하드 링크). 없으면 KeyMissing 이다.
 func (s *server) fileProblem(p string) (fs.FileInfo, ui.KeyState) {
+	return fileProblemIn(s.keyHome(), p)
+}
+
+// fileProblemIn: fileProblem과 같되 작업 폴더(home)를 받는다. 감독은 화면 서버 없이 수집기 서명 키를 다시 점검한다.
+func fileProblemIn(home, p string) (fs.FileInfo, ui.KeyState) {
 	fi, err := os.Lstat(p)
 	switch {
 	case err != nil && os.IsNotExist(err):
@@ -93,7 +98,7 @@ func (s *server) fileProblem(p string) (fs.FileInfo, ui.KeyState) {
 	case !fi.Mode().IsRegular():
 		return nil, ui.KeyUnreadable
 	}
-	if home := s.keyHome(); home != "" && inside(home, p) {
+	if home != "" && inside(home, p) {
 		return nil, ui.KeyInside
 	}
 	if !ownedByMe(fi) {

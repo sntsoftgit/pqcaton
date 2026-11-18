@@ -114,6 +114,7 @@ WS=/work/ui
 ORG=demo-corp
 DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
 UI="$DEMO_DIR/scripts/ui.sh"
+CKEYS=/work/ui-collector-keys # ui.sh 가 만드는 03 수집기 서명 키 자리
 
 fail() { echo "❌ e2e: $*"; exit 1; }
 step() { echo; echo "■ $*"; }
@@ -755,9 +756,58 @@ READY=""
 for _ in $(seq 1 60); do nodes_ready && { READY=yes; break; }; sleep 1; done
 [ -n "$READY" ] || fail "the nodes did not come back (sshd answering with the known host key) within 60 seconds"
 echo "   pay-db is back: every node answers SSH with its known host key"
+# 성공 관측 동안 컨트롤러와 노드마다 모든 프로세스의 명령줄을 모은다(서명 키가 명령줄에 실리지 않는지 본다). ps가 없는 노드도
+# 있어 /proc를 읽는다.
+NODES="$(docker exec "$CTL" sh -c "tail -n +2 $WS/hosts.csv | cut -d, -f1")"
+cmdlines='while [ ! -e /tmp/pqcaton-e2e-stop ]; do for p in /proc/[0-9]*/cmdline; do tr "\000" " " < "$p" 2>/dev/null; echo; done >> /tmp/pqcaton-e2e-cmdlines; sleep 0.05; done'
+for n in $CTL $NODES; do docker exec "$n" rm -f /tmp/pqcaton-e2e-cmdlines /tmp/pqcaton-e2e-stop; docker exec -d "$n" sh -c "$cmdlines"; done
 observe_run done || fail "the observation with every node up did not end as done"
+for n in $CTL $NODES; do docker exec "$n" touch /tmp/pqcaton-e2e-stop; done; sleep 1
 LEFT="$(marked)"; [ -z "$LEFT" ] || fail "processes of the successful observation were left: $LEFT"
 echo "   after the successful observation: no process with the run marker"
+
+# 03의 실제 경로(v0.31.0): 노드 점검 → 작업 폴더 밖 임시 키 → 노드 표준 입력 → 서명 검증 → 결과 교체 → 임시 키 회수.
+RUN="$(docker exec "$CTL" sh -c "ls -t $WS/observations | head -1")"
+RLOG="$(docker exec "$CTL" cat "$WS/observations/$RUN/log.txt")"
+grep -q "sudo check passed\|passed: the node is reached as root" <<<"$RLOG" || fail "03 did not check the nodes before making keys"
+KDIR="$(sed -n 's/.*temporary signing keys for this run are in \([^ ]*\) (outside the workspace.*/\1/p' <<<"$RLOG")"
+[ -n "$KDIR" ] || fail "03 did not say where the temporary signing keys were"
+case "$KDIR" in "$WS"/*) fail "the temporary signing keys were inside the workspace: $KDIR" ;; esac
+docker exec "$CTL" test ! -e "$KDIR" || fail "the temporary signing keys are still in $KDIR after the run"
+docker exec "$CTL" test ! -e "$WS/observations/$RUN/run-keys.json" || fail "the key record is still in the run directory"
+SIGNED="$(grep -c "signature checked (key " <<<"$RLOG")"
+FILES="$(docker exec "$CTL" sh -c "ls $WS/results | grep -c '\.json'")"
+[ "$SIGNED" -ge 1 ] && [ "$SIGNED" = "$FILES" ] || fail "signatures checked for $SIGNED files, $FILES results are current"
+echo "   03: every node checked, keys made in $KDIR (outside the workspace) and removed, $SIGNED results signature-checked and current"
+# 키 값이 어디에도 없어야 한다: 모은 명령줄(컨트롤러 · 노드), 노드의 임시 폴더 · Ansible 자리, 작업 폴더 전체, 화면 로그.
+PRIVS="$(docker exec "$CTL" sh -c "sed -n 's/^PQCOTA_SIGN_KEY=//p' $CKEYS/*.key")"
+[ "$(wc -l <<<"$PRIVS")" -ge 3 ] || fail "cannot read the demo collector keys"
+docker exec -i "$CTL" sh -c "cat > /tmp/pqcaton-e2e-privs" <<<"$PRIVS"
+docker exec "$CTL" sh -c "grep -rlFf /tmp/pqcaton-e2e-privs /tmp/pqcaton-e2e-cmdlines $WS /work/ui.log 2>/dev/null" && fail "a collector signing key was found on the controller (command lines, workspace or screen log)"
+for n in $NODES; do
+  docker exec -i "$n" sh -c "cat > /tmp/pqcaton-e2e-privs" <<<"$PRIVS"
+  docker exec "$n" sh -c 'grep -rlFf /tmp/pqcaton-e2e-privs /tmp /root/.ansible 2>/dev/null | grep -v "^/tmp/pqcaton-e2e-privs$"' && fail "a collector signing key was found on node $n (command lines, /tmp or ~/.ansible)"
+  docker exec "$n" sh -c 'ls -d /tmp/pqcaton-observe-* 2>/dev/null' && fail "a staging folder was left on node $n"
+  docker exec "$n" rm -f /tmp/pqcaton-e2e-privs /tmp/pqcaton-e2e-cmdlines /tmp/pqcaton-e2e-stop
+done
+docker exec "$CTL" rm -f /tmp/pqcaton-e2e-privs /tmp/pqcaton-e2e-cmdlines /tmp/pqcaton-e2e-stop
+echo "   no collector signing key in the command lines collected during the run (controller, $(wc -w <<<"$NODES") nodes), node /tmp or ~/.ansible, the workspace or the screen log"
+# 상류 적재도 같은 판정: 03 결과는 결합 형식으로 통과하고, 서명 뒤 바꾼 사본은 거절한다(저장하지 않는 -verify-keys).
+VK="$(docker exec "$CTL" sed -n 's/^PQCOTA_VERIFY_KEY=//p' "$CKEYS/verify.pub")"
+docker exec -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -verify-keys "$WS/results" >/dev/null || fail "pqcota-ingest -verify-keys refused the results 03 made"
+docker exec "$CTL" sh -c "rm -rf /tmp/pqcaton-e2e-tamper && cp -r $WS/results /tmp/pqcaton-e2e-tamper"
+docker exec -i "$CTL" python3 - <<'PY' || fail "could not make the changed copy"
+import glob, json
+p = sorted(glob.glob("/tmp/pqcaton-e2e-tamper/*-net.json"))[0]
+d = json.load(open(p))
+e = d["envelope"]
+k = "collectorVersion" if "collectorVersion" in e else "collector_version"
+e[k] = str(e.get(k, "")) + "-changed"
+json.dump(d, open(p, "w"))
+PY
+if docker exec -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -verify-keys /tmp/pqcaton-e2e-tamper >/dev/null 2>&1; then fail "pqcota-ingest -verify-keys passed a result changed after signing"; fi
+docker exec "$CTL" rm -rf /tmp/pqcaton-e2e-tamper
+echo "   pqcota-ingest -verify-keys (bound to collector IDs) passes the results 03 made and refuses a copy changed after signing"
 "$UI" stop >/dev/null
 
 echo

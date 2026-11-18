@@ -103,6 +103,11 @@ const (
 	// KeyCollector — 수집기 서명용 키다(`pqcota-keygen -collector <ID>`의 출력: 검증 줄이 `<수집기 ID>:<공개 키>`). 승인 키와
 	// 용도가 달라 받지 않는다. 같은 키를 두 용도에 쓰면 수집기 결과에 서명할 수 있는 쪽이 계획도 승인할 수 있게 된다.
 	KeyCollector KeyState = "collector"
+	// 03 수집기 서명 키(collector-keys)의 상태. KeyNotCollector — 수집기 ID가 없는 키(플래그 없이 만든 승인 키 꼴).
+	// KeyOtherCollector — 파일 이름과 다른 수집기 ID의 키. KeyLegacyList — 신뢰할 공개 키가 ID에 묶이지 않은 옛 목록 꼴.
+	KeyNotCollector   KeyState = "not-collector"
+	KeyOtherCollector KeyState = "other-collector"
+	KeyLegacyList     KeyState = "legacy-list"
 )
 
 // KeySource — 키를 어디서 정했나.

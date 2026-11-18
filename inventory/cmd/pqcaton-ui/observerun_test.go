@@ -24,9 +24,15 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// fakeAnsible: ansible-playbook 대신 부를 스크립트. 화면이 넘긴 인자 그대로 받아 vars.json에서 결과 자리를 읽고,
-// 인벤토리의 별칭(n1, n2…)마다 모드(FAKE_MODE)대로 결과를 쓰고 끝난다. 받은 인벤토리의 권한을 로그로 남기고,
-// 비밀번호가 든 줄을 **일부러 그대로 찍는다**(화면이 가리는지 본다).
+// fakeAnsible: ansible-playbook 대신 부를 스크립트. 화면(감독)이 넘긴 인자 그대로 받아 vars.json에서 자리를 읽는다.
+//
+//   - check.yml: 별칭(n1, n2…)마다 `sudo -n -l` 결과를 점검 자리에 쓴다. FAKE_MODE가 sudolog면 n2가 입출력 기록을 켠 정책,
+//     noanswer면 n2의 답이 없다.
+//   - observe.yml: run-keys.json에서 임시 키 파일의 경로를 읽어, 별칭마다 모드대로 **서명된** 결과를 쓴다(서명은 시험 바이너리의
+//     -test-sign). unsigned · wrongkey(다른 ID의 키) · tamper(서명 뒤 변조)는 서명 검증을 지나지 못하는 결과를 쓴다.
+//
+// 받은 인자와 환경 전체, 임시 키 폴더 · 파일의 권한을 FAKE_OUT에 가리지 않은 채 남긴다(키가 환경 · 명령줄에 없는지 시험이 본다).
+// 비밀번호가 든 인벤토리 줄은 **일부러 그대로 찍는다**(화면이 가리는지 본다).
 const fakeAnsible = `#!/bin/sh
 # orphan: 세션을 떼어 나간(가능하면) 자식을 남긴다. 시험 바이너리를 쓴다 — /bin/sleep은 macOS에서 환경이 안 보이는
 # 플랫폼 바이너리라 표지로 증명되지 않는다(그 경우는 IC-U138이 따로 잰다).
@@ -35,35 +41,62 @@ orphan() {
   else "$FAKE_HELPER" -test-sleep >/dev/null 2>&1 & fi
 }
 [ "$1" = "-i" ] && [ "$2" = "targets.yml" ] && [ "$3" = "-e" ] && [ "$4" = "@vars.json" ] || { echo "bad args: $*"; exit 9; }
-if [ "$5" = "cleanup.yml" ]; then
+book=$5; keys=""
+if [ "$5" = "-e" ]; then keys=${6#@}; book=$7; fi
+{ echo "BOOK=$book ARGS=$*"; env; echo "---"; } >> "$FAKE_OUT/env.txt"
+aliases=$(sed -n 's/^    \(n[0-9]*\):$/\1/p' targets.yml)
+if [ "$book" = "cleanup.yml" ]; then
   grep -q 'state: absent' cleanup.yml && echo "CLEANUP ran"
   if [ -n "${PQCOTA_DSN:-}" ]; then echo "CLEANUP DSN_ENV=set"; else echo "CLEANUP DSN_ENV=none"; fi
   if [ "$FAKE_CLEANUP" = "orphan" ]; then orphan; fi
   exit 0
 fi
-[ "$5" = "observe.yml" ] || { echo "bad playbook: $5"; exit 9; }
+if [ "$book" = "check.yml" ]; then
+  cd=$(sed -n 's/.*"check_dir":"\([^"]*\)".*/\1/p' vars.json)
+  echo "CHECK ran CONFIG=$(basename "$ANSIBLE_CONFIG")"
+  [ "$FAKE_MODE" = "hang-check" ] && { echo "HANGING"; sleep 300 & wait; }
+  for a in $aliases; do
+    if [ "$FAKE_MODE" = "noanswer" ] && [ "$a" = "n2" ]; then continue; fi
+    if [ "${FAKE_ROOT:-}" = "$a" ]; then printf 'uid=0\n\n\n\n' > "$cd/$a.txt"; continue; fi
+    extra=""; [ "$FAKE_MODE" = "sudolog" ] && [ "$a" = "n2" ] && extra=", log_input"
+    printf 'uid=1000\n0\nMatching Defaults entries for ops on node:\n    env_reset%s\n\nUser ops may run the following commands on node:\n    (ALL) NOPASSWD: ALL\n\n' "$extra" > "$cd/$a.txt"
+  done
+  exit 0
+fi
+[ "$book" = "observe.yml" ] || { echo "bad playbook: $book"; exit 9; }
+[ -n "$keys" ] && [ -f "$keys" ] || { echo "no key record"; exit 9; }
 rd=$(sed -n 's/.*"results_dir":"\([^"]*\)".*/\1/p' vars.json)
 win=$(sed -n 's/.*"netcap_window":\([0-9]*\).*/\1/p' vars.json)
+kdir=$(sed -n 's/.*"pqcaton_key_dir": *"\([^"]*\)".*/\1/p' "$keys")
+ko=$(sed -n 's/.*"openssl-collector": *"\([^"]*\)".*/\1/p' "$keys")
+kn=$(sed -n 's/.*"network-collector": *"\([^"]*\)".*/\1/p' "$keys")
+mode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+{ echo "KEYDIR=$kdir"; echo "DIRMODE=$(mode "$kdir")"; echo "OPENSSL_MODE=$(mode "$ko")"; echo "NETWORK_MODE=$(mode "$kn")"; } > "$FAKE_OUT/keys.txt"
 echo "PLAY [pqcaton observation] window=$win"
-echo "INI_MODE=$(stat -c %a targets.yml 2>/dev/null || stat -f %Lp targets.yml)"
+echo "INI_MODE=$(mode targets.yml)"
 grep 'ansible_ssh_pass' targets.yml
 grep -q 'name: pqcaton observation' observe.yml && echo "PLAYBOOK=embedded"
-echo "SSH_ARGS=$ANSIBLE_SSH_ARGS MARKED=${PQCATON_RUN:+yes}"
+echo "SSH_ARGS=$(sed -n 's/^ssh_args = //p' "$ANSIBLE_CONFIG") MARKED=${PQCATON_RUN:+yes}"
 if [ -n "${PQCOTA_DSN:-}" ]; then echo "OBSERVE DSN_ENV=set"; else echo "OBSERVE DSN_ENV=none"; fi
 if [ "$FAKE_MODE" = "escape" ]; then orphan; fi
 res() { printf '{"envelope":{"collectorId":"%s","targetNodeId":"%s"}}' "$1" "$2"; }
-for a in $(sed -n 's/^    \(n[0-9]*\):$/\1/p' targets.yml); do
+sign() { "$FAKE_HELPER" -test-sign "$@"; }
+for a in $aliases; do
   node=$(sed -n "/^    $a:\$/{n;s/.*pqcaton_node: !unsafe '\(.*\)'\$/\1/p;}" targets.yml)
-  res openssl-collector "$node" > "$rd/$a-openssl.json"
+  sign "$ko" openssl-collector "$node" > "$rd/$a-openssl.json"
   case "$FAKE_MODE" in
   fail) echo "fatal: [$a]: UNREACHABLE!"; exit 2 ;;
   hang) echo "HANGING"; sleep 300 & wait ;;
   badjson) echo 'ERROR: collector crashed' > "$rd/$a-openssl.json" ;;
-  wrongnode) res openssl-collector other-node > "$rd/$a-openssl.json" ;;
-  wrongcollector) res network-collector "$node" > "$rd/$a-openssl.json" ;;
+  wrongnode) sign "$ko" openssl-collector other-node > "$rd/$a-openssl.json" ;;
+  wrongcollector) sign "$kn" network-collector "$node" > "$rd/$a-openssl.json" ;;
+  unsigned) [ "$a" = "n2" ] && res openssl-collector "$node" > "$rd/$a-openssl.json" ;;
+  wrongkey) [ "$a" = "n2" ] && sign "$kn" openssl-collector "$node" > "$rd/$a-openssl.json" ;;
+  tamper) [ "$a" = "n2" ] && sign "$ko" openssl-collector "$node" tamper > "$rd/$a-openssl.json" ;;
   esac
   [ "$FAKE_MODE" = "incomplete" ] && [ "$a" = "n2" ] && continue
-  res network-collector "$node" > "$rd/$a-net.json"
+  sign "$kn" network-collector "$node" > "$rd/$a-net.json"
+  echo "collector note for $a" > "$(sed -n 's/.*"logs_dir":"\([^"]*\)".*/\1/p' vars.json)/$a-openssl.txt"
 done
 : > "$rd/n1-jca.jsonl"
 echo "PLAY RECAP"
@@ -105,9 +138,17 @@ func runReady(t *testing.T, mode string) *server {
 	// 가짜 수집기는 Go 바이너리가 아니라 판이 「확인 불가」다. 이 시험들은 실행 자체를 재므로 그것을 허용한다.
 	// 판 점검은 collectors_test.go 가 잰다.
 	s.allowUnverified = true
+	// 수집기 서명 키(작업 폴더 밖)와 신뢰할 공개 키, 임시 키 자리, 가짜가 남기는 것을 받을 자리.
+	s.collectorKeys, s.collectorVerify = collectorKeyDir(t, idOpenSSL, idNetwork, idJVM)
+	base := t.TempDir()
+	oldBase := runKeyBase
+	runKeyBase = func() string { return base }
+	t.Setenv("PQCATON_TEST_KEY_BASE", base)
+	t.Setenv("FAKE_OUT", t.TempDir())
 	t.Cleanup(func() {
 		s.shutdownRun()
 		ansibleCommand = old
+		runKeyBase = oldBase
 	})
 	return s
 }
@@ -194,7 +235,7 @@ func TestObservationRunsAndHandsOverResults(t *testing.T) {
 	if got := names(t, filepath.Join(dir, "previous")); strings.Join(got, ",") != oldResult {
 		t.Errorf("previous/ = %v, want the earlier result", got)
 	}
-	if got := names(t, dir); strings.Join(got, ",") != strings.Join([]string{runLog, runManifestFile, "previous", supervisorFile}, ",") {
+	if got := names(t, dir); strings.Join(got, ",") != strings.Join([]string{runCheckDir, runCollectorLogs, runLog, runManifestFile, "previous", supervisorFile}, ",") {
 		t.Errorf("the run directory keeps %v (the inventory must be gone)", got)
 	}
 	if cur := s.currentRun(); cur == nil || cur.ID != st.ID || len(cur.Nodes) != 2 || cur.Nodes[1].Node != "db" {

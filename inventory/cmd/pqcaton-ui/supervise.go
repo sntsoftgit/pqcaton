@@ -363,44 +363,81 @@ func supervise(dir, ansible string) int {
 
 	marker := runMarker(m.ID)
 	mine := runMark{Marker: marker, Suspect: []int{syscall.Getpgrp()}}
-	cmd := exec.Command(ansible, "-i", runInventory, "-e", "@vars.json", "observe.yml")
-	cmd.Dir = dir
-	cmd.Env = append(childEnv(), marker, "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		say("pqcaton: %v", err)
+	if err := writeRunConfig(dir); err != nil {
+		say("pqcaton: the Ansible configuration for this run could not be written (%s), so nothing was started", writeFailure(err))
 		return 3
 	}
-	cmd.Stderr = cmd.Stdout
-	if err := cmd.Start(); err != nil {
-		say("pqcaton: %v", err)
-		return 3
-	}
-	copied := make(chan struct{})
-	go func() {
-		defer close(copied)
-		sc := bufio.NewScanner(out)
-		sc.Buffer(make([]byte, 64*1024), 1024*1024)
-		for sc.Scan() {
-			fmt.Fprintln(os.Stdout, sc.Text()) // 화면이 사라졌으면 쓰지 못한다. 그래도 계속 읽어 Ansible이 막히지 않게 한다
+	// runBook: 플레이북 하나를 이 실행의 조건(ansibleEnv · 이 설정)으로 돌린다. 끝내라는 신호나 화면이 사라진 것을 받으면
+	// 이 실행의 프로세스를 끝내고 기다린다.
+	stopped, orphaned := false, false
+	runBook := func(book string, extra ...string) int {
+		args := append([]string{"-i", runInventory, "-e", "@vars.json"}, extra...)
+		cmd := exec.Command(ansible, append(args, book)...)
+		cmd.Dir = dir
+		cmd.Env = ansibleEnv(dir, marker)
+		out, err := cmd.StdoutPipe()
+		if err != nil {
+			say("pqcaton: %v", err)
+			return 3
 		}
-	}()
-	done := make(chan error, 1)
-	go func() { <-copied; done <- cmd.Wait() }()
-
-	orphaned := false
-	select {
-	case <-done:
-	case <-term:
-		_, _ = killMarked(mine, stopGrace)
-		<-done
-	case <-parentGone:
-		orphaned = true
-		_, _ = killMarked(mine, stopGrace)
-		<-done
+		cmd.Stderr = cmd.Stdout
+		if err := cmd.Start(); err != nil {
+			say("pqcaton: %v", err)
+			return 3
+		}
+		copied := make(chan struct{})
+		go func() {
+			defer close(copied)
+			sc := bufio.NewScanner(out)
+			sc.Buffer(make([]byte, 64*1024), 1024*1024)
+			for sc.Scan() {
+				fmt.Fprintln(os.Stdout, sc.Text()) // 화면이 사라졌으면 쓰지 못한다. 그래도 계속 읽어 Ansible이 막히지 않게 한다
+			}
+		}()
+		done := make(chan error, 1)
+		go func() { <-copied; done <- cmd.Wait() }()
+		select {
+		case <-done:
+		case <-term:
+			stopped = true
+			_, _ = killMarked(mine, stopGrace)
+			<-done
+		case <-parentGone:
+			orphaned = true
+			_, _ = killMarked(mine, stopGrace)
+			<-done
+		}
+		code := cmd.ProcessState.ExitCode()
+		if code < 0 {
+			code = 125
+		}
+		return code
 	}
-	// Ansible이 끝나도 표지를 가진 자식(세션을 떼어 나간 것 포함)이 남을 수 있다. 다 끝낸다.
+
+	// 1. 키 없이 노드마다 sudo 정책을 모으고 판정한다. 2. 모두 통과하면 임시 키를 만든다. 3. 관측. 4. 키를 지운다.
+	code := runBook(runCheckBook)
+	if !stopped && !orphaned {
+		passed := judgeChecks(dir, m.Nodes, say) && code == 0
+		switch {
+		case !passed:
+			say("pqcaton: no signing key was made and the observation did not start, because not every node passed the check")
+			code = exitNotSigned
+		default:
+			if keyDir, err := makeRunKeys(dir, m); err != nil {
+				say("pqcaton: %v; the observation did not start", err)
+				code = exitNotSigned
+			} else {
+				say("pqcaton: temporary signing keys for this run are in %s (outside the workspace, only this user can open it); they are removed when the run ends", keyDir)
+				code = runBook("observe.yml", "-e", "@"+runKeysVars)
+			}
+		}
+	}
+	// Ansible이 끝나도 표지를 가진 자식(세션을 떼어 나간 것 포함)이 남을 수 있다. 다 끝낸다. 그다음 임시 키를 지운다.
 	stuck, err := reapRun(mine, stopGrace)
+	keysLeft := removeRunKeys(dir)
+	if keysLeft != "" {
+		say("pqcaton: %s", keysLeft)
+	}
 	if why := reaped(stuck, err); why != "" {
 		if w := recordSupervisor(dir, supervisorRecord{PID: os.Getpid(), PGID: syscall.Getpgrp(), Start: start, Stuck: pidsOf(stuck), StuckWhy: why}); w != "" {
 			// 이 기록은 덧붙이는 정보다. 「회수 필요」의 판단은 이 기록에 기대지 않는다: 화면(finishRun)과 다음 시작의
@@ -415,16 +452,14 @@ func supervise(dir, ansible string) int {
 		}
 		say("pqcaton: %s", why)
 		if orphaned {
+			m.KeysLeft = keysLeft
 			markStuck(dir, m, stuck, why)
 			return 4
 		}
 	} else if orphaned {
+		m.KeysLeft = keysLeft
 		finishOrphaned(dir, m)
 		return 4
-	}
-	code := cmd.ProcessState.ExitCode()
-	if code < 0 {
-		code = 125
 	}
 	return code
 }
@@ -441,6 +476,10 @@ func finishOrphaned(dir string, m runManifest) {
 		return
 	}
 	m.NodeCleanup = cleaned
+	if why := removeRunKeys(dir); why != "" {
+		m.KeysLeft = why
+		logf("pqcaton: " + why)
+	}
 	removeRunSecrets(dir)
 	if isDir(filepath.Join(dir, "next")) {
 		_ = os.Rename(filepath.Join(dir, "next"), filepath.Join(dir, "partial"))
@@ -488,11 +527,16 @@ func appendRunLog(dir string) func(string) {
 	}
 }
 
+// runSecretFiles: 실행이 끝나면 실행 자리에서 지우는 파일. 인벤토리(접근 비밀)와 실행용 파일 · 설정이다. 임시 서명 키의 기록
+// (run-keys.json)은 여기 없다: 그 폴더를 지운 뒤에만 지운다(removeRunKeys).
+var runSecretFiles = []string{runInventory, "vars.json", "observe.yml", "cleanup.yml", runCheckBook, runConfigName}
+
 // removeRunSecrets: 실행 자리에서 비밀이 실린 인벤토리와 실행용 파일을 지운다.
 func removeRunSecrets(dir string) {
-	for _, name := range []string{runInventory, "vars.json", "observe.yml", "cleanup.yml"} {
+	for _, name := range runSecretFiles {
 		_ = os.Remove(filepath.Join(dir, name))
 	}
+	_ = os.RemoveAll(filepath.Join(dir, runPluginsNone))
 }
 
 // readSupervisor: 감독의 기록. 없으면 nil이다(감독이 기록하기 전이면 Ansible도 뜬 적이 없다).

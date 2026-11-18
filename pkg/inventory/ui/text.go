@@ -1154,6 +1154,9 @@ var runItemText = map[RunItem]T{
 	RunJarMismatch:         {KO: "collector.jar 판이 맞지 않음", EN: "collector.jar version does not match"},
 	RunJarUnverified:       {KO: "collector.jar를 확인할 수 없음", EN: "collector.jar cannot be verified"},
 	RunJarAllowed:          {KO: "확인하지 못한 collector.jar를 허용함", EN: "Unverified collector.jar allowed"},
+	RunWindowsUnsupported:  {KO: "Windows 노드(이번 판의 03은 지원하지 않음)", EN: "Windows nodes (not supported by 03 in this version)"},
+	RunCollectorKeys:       {KO: "수집기 서명 키", EN: "Collector signing keys"},
+	RunCollectorVerify:     {KO: "신뢰할 수집기 공개 키", EN: "Trusted collector public keys"},
 }
 
 var runItemMissing = map[RunItem]T{
@@ -1191,6 +1194,15 @@ var runItemMissing = map[RunItem]T{
 	RunJarUnverified: {
 		KO: "collector.jar의 판 · 커밋 · 수정 여부를 확인할 수 없습니다(판 정보 없음 · 직접 빌드 · 고친 트리 · 커밋 정보 없음). 옆에 적힌 판의 상류 릴리스 collector.jar로 바꾸십시오. 그대로 쓰려면 화면을 -allow-unverified-collectors로 시작하십시오",
 		EN: "The version, commit or modified flag of collector.jar cannot be verified (no version, a local build, a modified tree or no commit). Replace it with the upstream release collector.jar of the version shown. To use it as it is, start the screen with -allow-unverified-collectors"},
+	RunWindowsUnsupported: {
+		KO: "이번 판의 03은 Windows 노드에 서명 키를 넘기지 않아, 관측해도 그 결과가 서명 검증을 지나지 못합니다. 위 표에서 옆에 적힌 노드를 빼십시오. 그 노드는 pqcota-cngscan · pqcota-jvmscan을 서명 키와 함께 직접 돌려 관측합니다",
+		EN: "In this version 03 does not pass signing keys to Windows nodes, so their results would not pass the signature check. Remove the nodes shown from the table above, and observe them by running pqcota-cngscan and pqcota-jvmscan yourself with their signing keys"},
+	RunCollectorKeys: {
+		KO: "관측은 수집기 ID마다 서명 키가 있어야 시작합니다. 옆에 적힌 폴더(작업 폴더 밖, chmod 700)에 ID마다 pqcota-keygen -collector <ID>의 출력을 <ID>.key로, 소유자만 읽게(umask 077) 저장하십시오. 옆에 빠진 ID와 그 까닭이 있습니다",
+		EN: "An observation starts only with a signing key for each collector ID. In the folder shown (outside the workspace, chmod 700), save the output of pqcota-keygen -collector <ID> as <ID>.key for each ID, readable only by its owner (umask 077). The IDs missing and why are shown"},
+	RunCollectorVerify: {
+		KO: "신뢰할 공개 키 파일에 적재(pqcota-ingest)에 주는 것과 같은 PQCOTA_VERIFY_KEY 한 줄을 두십시오. <ID>:<공개 키>를 쉼표로 이은 결합 형식이고, 서명 키마다 그 공개 키가 자기 ID 아래 있어야 합니다. 한 공개 키를 두 ID에 두거나 승인 키를 서명 키로 쓰면 시작하지 않습니다",
+		EN: "Put in the trusted public key file the same PQCOTA_VERIFY_KEY line you give the ingest (pqcota-ingest): <ID>:<public key> entries, comma-separated, with each signing key's public key under its own ID. One public key under two IDs, or the approval key used as a signing key, keeps the observation from starting"},
 	RunJarAllowed: {
 		KO: "-allow-unverified-collectors로 시작해, 확인하지 못한 collector.jar로 관측합니다. 이 허용은 화면을 끄면 사라지고 작업 폴더에 남지 않습니다",
 		EN: "Started with -allow-unverified-collectors: the observation uses a collector.jar that is not verified. The allowance ends with the screen and is not kept in the workspace"},
@@ -1422,6 +1434,15 @@ var keyText = map[KeyState]T{
 	KeyUnwritable: {
 		KO: "다른 사용자도 고칠 수 있습니다. chmod go-w로 소유자만 고치게 하십시오",
 		EN: "other users can change it: make it writable by its owner only with chmod go-w"},
+	KeyNotCollector: {
+		KO: "수집기 ID가 없는 키입니다. pqcota-keygen -collector <ID>로 만드십시오",
+		EN: "the key names no collector ID: make it with pqcota-keygen -collector <ID>"},
+	KeyOtherCollector: {
+		KO: "파일 이름과 다른 수집기 ID의 키입니다",
+		EN: "the key is for another collector ID than its file name"},
+	KeyLegacyList: {
+		KO: "수집기 ID에 묶이지 않은 옛 목록 꼴입니다. <ID>:<공개 키>를 쉼표로 이어 적으십시오",
+		EN: "it is the old list that binds no key to a collector ID: write <ID>:<public key> entries, comma-separated"},
 	KeyCollector: {
 		KO: "수집기 서명용 키입니다(PQCOTA_VERIFY_KEY 줄에 수집기 ID가 붙어 있습니다). 승인 키는 pqcota-keygen을 플래그 없이 실행해 만드십시오",
 		EN: "it is a collector signing key (its PQCOTA_VERIFY_KEY line names a collector ID): make the approval key with pqcota-keygen and no flags"},

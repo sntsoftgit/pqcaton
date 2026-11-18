@@ -77,6 +77,8 @@ type startConfig struct {
 	hosts                string // 접근 정보. 작업 폴더 모드에서만 있다
 	collectors           string // 수집기 폴더. 작업 폴더 모드에서 주지 않으면 그 안의 collectors
 	approvalKey          string // 승인 서명 키 파일(작업 폴더 밖)
+	collectorKeys        string // -collector-keys
+	collectorVerify      string // -collector-verify-keys
 	allowUnverified      bool   // -allow-unverified-collectors
 	verifyKey            string // 확인용 공개 키 파일(-approval-verify-key)
 	noDefaultKey         bool   // -no-default-approval-key
@@ -108,6 +110,8 @@ func parseStart(args []string, stderr io.Writer) (startConfig, error) {
 	fs.BoolVar(&c.recoverStatus, "recover-status", false, "print what unfinished transactions left behind (files, expected and current hashes, prepared copies) and exit. Changes nothing")
 	fs.StringVar(&c.diagnostics, "diagnostics", "", "with -recover-status: also write the report as JSON to this new file (0600)")
 	fs.StringVar(&c.collectors, "collectors", "", "collector folder for running observations from the screen: linux-amd64/, linux-arm64/, windows-amd64/ and collector.jar as pqcota-discovery builds them (default in a workspace: its collectors folder)")
+	fs.StringVar(&c.collectorKeys, "collector-keys", "", "folder of the collector signing keys for observations from the screen: <collector-id>.key holding the output of pqcota-keygen -collector <collector-id>, outside the workspace, the folder chmod 700 and each file readable only by its owner (default: pqcaton/collector-keys in the user configuration folder)")
+	fs.StringVar(&c.collectorVerify, "collector-verify-keys", "", "trusted collector public keys: a file holding the PQCOTA_VERIFY_KEY=<collector-id>:<key>,... line you give pqcota-ingest, writable only by its owner. Results of an observation pass only if signed with a key listed for their collector ID (default: verify.pub in the collector key folder)")
 	fs.BoolVar(&c.allowUnverified, "allow-unverified-collectors", false, "start observations even when a collector's version cannot be verified (local replace, devel or dirty builds, no build information). Collectors of another version are still refused. The allowance is shown on the screen and here, and is not kept in the workspace")
 	fs.StringVar(&c.verifyKey, "approval-verify-key", "", "verification key for the 06 screen: a file holding only the PQCOTA_VERIFY_KEY line of pqcota-keygen, outside the workspace and writable only by its owner. Plans already signed are checked and generated with it even without the private key (default: approval.pub next to the default approval key)")
 	fs.BoolVar(&c.noDefaultKey, "no-default-approval-key", false, "do not look for approval.key and approval.pub in the user configuration folder (pqcaton/ under it). An -approval-key or -approval-verify-key given is still used")
@@ -230,6 +234,7 @@ func (c startConfig) server() *server {
 	s := c.serverBase()
 	s.approvalKey, s.keySource, s.keyWhere = key.path, key.source, key.where
 	s.verifyKey, s.verifySource, s.verifyWhere = verify.path, verify.source, verify.where
+	s.collectorKeys, s.collectorVerify = collectorKeyPlaces(c.collectorKeys, c.collectorVerify, userConfigDir)
 	return s
 }
 

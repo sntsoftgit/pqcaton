@@ -61,6 +61,15 @@ var observePlaybook []byte
 //go:embed observe-cleanup.yml
 var cleanupPlaybook []byte
 
+// checkPlaybook: 키를 만들기 전에 노드마다 sudo 정책을 모은다(runkeys.go judgeChecks).
+//
+//go:embed observe-check.yml
+var checkPlaybook []byte
+
+// runCollectorLogs: 수집기의 표준 오류를 노드 · 수집기마다 받아 두는 자리(실행 자리 안). 서명 작업은 no_log라 Ansible 출력에
+// 실패 까닭이 나오지 않으므로, 화면이 이것을 로그에 옮긴다.
+const runCollectorLogs = "collector-logs"
+
 const (
 	// maxLogLines: 화면에 남기는 로그 줄 수. 넘으면 앞에서 버린다(파일에는 다 남는다).
 	maxLogLines = 4000
@@ -136,6 +145,13 @@ type runManifest struct {
 	Swapping bool `json:"swapping,omitempty"`
 	// PreviousPending: 교환은 됐지만 이전 결과를 previous/로 옮기지 못했다. 다음 시작이 마친다.
 	PreviousPending bool `json:"previous_pending,omitempty"`
+	// CollectorKeys: 이 실행이 서명 키를 넘길 수집기 ID → 운영자의 서명 키 파일(경로만). KeyHome: 키가 들어가면 안 되는 작업 폴더.
+	// 감독이 점검 통과 뒤 이것으로 임시 키를 만든다(runkeys.go).
+	CollectorKeys map[string]string `json:"collector_keys,omitempty"`
+	KeyHome       string            `json:"key_home,omitempty"`
+	// KeysLeft: 임시 서명 키를 지우지 못한 까닭. 있으면 실행 상태와 따로 「회수 필요」로 보이고 새 관측을 받지 않는다. 다음 시작의
+	// 복구가 다시 지운다. 실행 상태(끝남 · 실패 …)는 그대로 둔다.
+	KeysLeft string `json:"keys_left,omitempty"`
 }
 
 // runSlot: 인벤토리의 별칭과 그것이 가리키는 노드.
@@ -162,6 +178,12 @@ func (r *runner) status() *ui.RunStatus {
 		m.State = ui.RunStuck
 		if m.StuckWhy == "" {
 			m.StuckWhy = "the recovered run record could not be written (" + why + "); restart the screen to recover it"
+		}
+	}
+	if m.KeysLeft != "" {
+		m.State = ui.RunStuck
+		if m.StuckWhy == "" {
+			m.StuckWhy = m.KeysLeft
 		}
 	}
 	if j.unrecorded != "" {
@@ -256,8 +278,8 @@ func hostValuesOK(hosts []inventory.Host) error {
 // 제어 문자는 hostValuesOK가 먼저 막는다.
 func yamlUnsafe(s string) string { return "!unsafe '" + strings.ReplaceAll(s, "'", "''") + "'" }
 
-// renderTargets: 실행용 인벤토리(YAML). 호스트 이름은 별칭이고 값은 모두 !unsafe다. 상류 RenderAnsibleInventory와
-// 같은 연결 규칙(WinRM은 비밀번호, SSH로 붙는 Windows는 PowerShell)을 따른다.
+// renderTargets: 실행용 인벤토리(YAML). 호스트 이름은 별칭이고 값은 모두 !unsafe다. 연결은 모든 노드가 내장 ssh다
+// (ansiblerun.go: host var로 고정해야 delegate_to: localhost가 깨지지 않는다). Windows 노드는 부르는 쪽이 먼저 막는다.
 func renderTargets(hosts []inventory.Host) ([]runSlot, []byte, error) {
 	if err := hostValuesOK(hosts); err != nil {
 		return nil, nil, err
@@ -279,18 +301,22 @@ func renderTargets(hosts []inventory.Host) ([]runSlot, []byte, error) {
 		put("ansible_host", h.IP)
 		fmt.Fprintf(&b, "      ansible_port: %d\n", h.Port)
 		put("ansible_user", h.SSHUser)
-		if h.Conn == inventory.ConnWinRM {
-			b.WriteString("      ansible_connection: winrm\n")
-			put("ansible_password", h.SSHPass)
-		} else {
-			put("ansible_ssh_private_key_file", h.SSHKey)
-			put("ansible_ssh_pass", h.SSHPass)
-			if h.OS == inventory.OSWindows {
-				b.WriteString("      ansible_shell_type: powershell\n")
-			}
-		}
+		b.WriteString("      ansible_connection: ansible.builtin.ssh\n")
+		put("ansible_ssh_private_key_file", h.SSHKey)
+		put("ansible_ssh_pass", h.SSHPass)
 	}
 	return slots, b.Bytes(), nil
+}
+
+// windowsNodes: 접근 정보의 Windows 노드(노드 ID). 이번 판의 03은 Windows 노드에 서명 키를 넘기지 않으므로 실행 전에 막는다.
+func windowsNodes(hosts []inventory.Host) []string {
+	var out []string
+	for _, h := range hosts {
+		if h.OS == inventory.OSWindows || h.Conn == inventory.ConnWinRM {
+			out = append(out, h.NodeID)
+		}
+	}
+	return out
 }
 
 // ── 시작 전 점검 ────────────────────────────────────────────────────────────
@@ -314,16 +340,18 @@ func (s *server) preflight() []ui.RunCheck {
 	if stuck, procs := s.stuckRuns(); len(stuck) > 0 {
 		out = append(out, ui.RunCheck{Item: ui.RunStuckItem, OK: false, Blocking: true, Detail: strings.Join(stuck, " · "), Procs: procs})
 	}
+	if win := windowsNodes(hosts); len(win) > 0 {
+		add(ui.RunWindowsUnsupported, false, true, strings.Join(win, " · "))
+	}
 	add(ui.RunCollectors, s.collectors != "" && isDir(s.collectors), true, s.collectors)
 	if s.collectors == "" || !isDir(s.collectors) {
 		return out
 	}
-	var linux, windows bool
+	out = append(out, s.collectorKeyChecks(neededCollectorIDs(isFile(filepath.Join(s.collectors, "collector.jar"))))...)
+	var linux bool
 	var dirs []string // 판을 볼 아키텍처 폴더: 수집기가 다 갖춰진 것만
 	for _, h := range hosts {
-		if h.OS == inventory.OSWindows {
-			windows = true
-		} else {
+		if h.OS != inventory.OSWindows && h.Conn != inventory.ConnWinRM {
 			linux = true
 		}
 	}
@@ -336,13 +364,6 @@ func (s *server) preflight() []ui.RunCheck {
 		}
 		add(ui.RunLinuxBins, len(arches) > 0, true, strings.Join(arches, " · "))
 		dirs = append(dirs, arches...)
-	}
-	if windows {
-		ok := hasAll(filepath.Join(s.collectors, "windows-amd64"), "pqcota-cngscan.exe", "pqcota-jvmscan.exe")
-		add(ui.RunWindowsBins, ok, true, filepath.Join(s.collectors, "windows-amd64"))
-		if ok {
-			dirs = append(dirs, "windows-amd64")
-		}
 	}
 	out = append(out, s.versionChecks(s.collectorFiles(dirs))...)
 	jar := filepath.Join(s.collectors, "collector.jar")
@@ -389,6 +410,8 @@ func (s *server) stuckRuns() ([]string, []ui.ProcInfo) {
 		if m := readManifest(filepath.Join(s.runsDir(), e.Name()), e.Name()); e.IsDir() && m.State == ui.RunStuck {
 			out = append(out, fmt.Sprintf("%s: %v %s", m.ID, m.Stuck, m.StuckWhy))
 			procs = append(procs, stuckInfo(procRecords(m.StuckProcs), m.Stuck)...)
+		} else if e.IsDir() && m.KeysLeft != "" {
+			out = append(out, fmt.Sprintf("%s: %s", m.ID, m.KeysLeft))
 		}
 	}
 	return out, procs
@@ -431,7 +454,7 @@ func (s *server) startRun(window int) error {
 		r.mu.Unlock()
 		return errRunBusy
 	}
-	if len(r.unrecorded) > 0 || (r.job != nil && (r.job.unrecorded != "" || r.job.m.State == ui.RunStuck)) {
+	if len(r.unrecorded) > 0 || (r.job != nil && (r.job.unrecorded != "" || r.job.m.State == ui.RunStuck || r.job.m.KeysLeft != "")) {
 		r.mu.Unlock()
 		return errRunStuck
 	}
@@ -469,16 +492,36 @@ func (s *server) startRun(window int) error {
 		return fail(err)
 	}
 	j.m.Nodes = slots
-	if err := os.MkdirAll(filepath.Join(j.dir, "next"), 0o700); err != nil {
-		return fail(err)
+	for _, d := range []string{"next", runCheckDir, runCollectorLogs} {
+		if err := os.MkdirAll(filepath.Join(j.dir, d), 0o700); err != nil {
+			return fail(err)
+		}
 	}
 	if j.logFile, err = os.OpenFile(filepath.Join(j.dir, runLog), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600); err != nil {
 		return fail(err)
 	}
-	vars, _ := json.Marshal(map[string]any{
-		"results_dir": filepath.Join(j.dir, "next"), "bin_root": s.collectors,
-		"jar_present": isFile(filepath.Join(s.collectors, "collector.jar")), "netcap_window": window, "run_id": id,
-	})
+	if win := windowsNodes(hosts); len(win) > 0 {
+		return fail(fmt.Errorf("Windows nodes are not observed from the screen in this version (%s); nothing was started", strings.Join(win, ", ")))
+	}
+	jar := isFile(filepath.Join(s.collectors, "collector.jar"))
+	keySources, privs, err := s.runKeySources(neededCollectorIDs(jar))
+	if err != nil {
+		return fail(fmt.Errorf("%w; nothing was started", err))
+	}
+	if v := readCollectorVerify(s.keyHome(), s.collectorVerify); v.State != ui.KeyOK {
+		return fail(fmt.Errorf("the trusted collector public keys cannot be used (%s); nothing was started", v.State))
+	}
+	j.m.CollectorKeys, j.m.KeyHome = keySources, s.keyHome()
+	j.secrets = append(j.secrets, privs...) // 로그 가림(키는 로그에 나오지 않아야 한다. 나오면 가린다)
+	sort.Slice(j.secrets, func(a, b int) bool { return len(j.secrets[a]) > len(j.secrets[b]) })
+	rv := runVars()
+	for k, v := range map[string]any{
+		"results_dir": filepath.Join(j.dir, "next"), "bin_root": s.collectors, "check_dir": filepath.Join(j.dir, runCheckDir),
+		"logs_dir": filepath.Join(j.dir, runCollectorLogs), "jar_present": jar, "netcap_window": window, "run_id": id,
+	} {
+		rv[k] = v
+	}
+	vars, _ := json.Marshal(rv)
 	// 기록을 먼저 쓴다. 인벤토리를 쓴 뒤 서버가 죽어도 다음 시작이 이 자리를 「돌던 것」으로 알아본다.
 	if err := writeStartManifest(j.dir, j.m); err != nil {
 		return fail(errors.New("the run record could not be written (" + writeFailure(err) + ")"))
@@ -486,7 +529,7 @@ func (s *server) startRun(window int) error {
 	for _, f := range []struct {
 		name string
 		body []byte
-	}{{runInventory, targets}, {"observe.yml", observePlaybook}, {"cleanup.yml", cleanupPlaybook}, {"vars.json", vars}} {
+	}{{runInventory, targets}, {"observe.yml", observePlaybook}, {"cleanup.yml", cleanupPlaybook}, {runCheckBook, checkPlaybook}, {"vars.json", vars}} {
 		if err := os.WriteFile(filepath.Join(j.dir, f.name), f.body, 0o600); err != nil {
 			return fail(err)
 		}
@@ -577,8 +620,14 @@ func (s *server) finishRun(j *runJob) {
 		return
 	}
 	next := filepath.Join(j.dir, "next")
-	files, missing := expectedResults(next, j.m.Nodes)
+	// 서명은 운영자가 신뢰하도록 둔 공개 키(verify.pub)로만 검증한다. 지금 다시 읽는다.
+	trusted := readCollectorVerify(s.keyHome(), s.collectorVerify)
+	files, missing, signed := expectedResults(next, j.m.Nodes, trusted)
+	s.collectorLogs(j)
 	r.mu.Lock()
+	for _, line := range signed {
+		r.appendLocked(line)
+	}
 	j.m.Files, j.m.Missing = files, missing
 	if j.m.State == ui.RunDone && len(missing) > 0 {
 		j.m.State = ui.RunIncomplete
@@ -708,10 +757,16 @@ func runCleanup(dir, id string, logf func(string)) (string, string) {
 			return "failed", ""
 		}
 	}
+	if !isFile(filepath.Join(dir, runConfigName)) {
+		if err := writeRunConfig(dir); err != nil {
+			logf("pqcaton: node cleanup did not start: " + writeFailure(err))
+			return "failed", ""
+		}
+	}
 	logf("pqcaton: removing the staging folders from the nodes")
 	cmd := exec.Command(ansibleCommand, "-i", runInventory, "-e", "@vars.json", "cleanup.yml")
 	cmd.Dir = dir
-	cmd.Env = append(childEnv(), runMarker(id), "ANSIBLE_NOCOLOR=1", "ANSIBLE_RETRY_FILES_ENABLED=0", "ANSIBLE_SSH_ARGS="+sshArgs)
+	cmd.Env = ansibleEnv(dir, runMarker(id))
 	ownGroup(cmd)
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
@@ -750,11 +805,19 @@ func stagingPaths(id string) string {
 // closeRun: 비밀이 실린 파일을 지우고 기록을 남긴 뒤 done을 닫는다. 실패해도 done은 닫는다.
 func (s *server) closeRun(j *runJob) {
 	r := &s.run
-	for _, name := range []string{runInventory, "vars.json", "observe.yml", "cleanup.yml"} {
+	// 감독이 이미 지웠어야 한다. 감독이 죽었거나 지우지 못했으면 여기서 다시 지우고, 그래도 못 지우면 「회수 필요」로 남긴다.
+	if why := removeRunKeys(j.dir); why != "" {
+		r.mu.Lock()
+		j.m.KeysLeft = why
+		r.appendLocked("pqcaton: " + why + "; no new observation starts until it is removed (restarting the screen tries again)")
+		r.mu.Unlock()
+	}
+	for _, name := range runSecretFiles {
 		if err := os.Remove(filepath.Join(j.dir, name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			r.logf("pqcaton: could not remove %s: %v", name, err)
 		}
 	}
+	_ = os.RemoveAll(filepath.Join(j.dir, runPluginsNone))
 	r.mu.Lock()
 	m := j.m
 	if j.logFile != nil {
@@ -840,7 +903,14 @@ var collectorOf = map[string]string{
 // CNG. JCA는 JVM이 있는 노드에서만 나온다)가 다 왔는지 보고, **받은 파일을 모두 상류 디코더로 읽어** 깨진 것이 없는지,
 // 봉투의 노드가 그 별칭의 노드인지, 수집기가 파일 종류와 맞는지 본다. 하나라도 어긋나면 그 까닭을 missing에 적는다
 // (세대는 partial로 간다). 빈 파일은 지우고 받은 것으로 치지 않는다.
-func expectedResults(dir string, slots []runSlot) (files, missing []string) {
+//
+// **서명도 본다.** 결과마다 신뢰할 공개 키(trusted)로 상류 sign.VerifyBound를 돌린다(적재 `pqcota-ingest`와 같은 판정). 하나라도
+// 서명 검증을 지나지 못하면 그 까닭(signatureProblem)을 missing에 적어 세대 전체를 지금 결과로 쓰지 않는다. 통과한 결과는
+// 맞은 키의 지문을 signed에 적는다(화면 로그).
+func expectedResults(dir string, slots []runSlot, trusted collectorVerify) (files, missing, signed []string) {
+	if trusted.State != ui.KeyOK {
+		missing = append(missing, "the trusted collector public keys cannot be used ("+string(trusted.State)+"), so no signature could be checked")
+	}
 	byAlias := map[string]runSlot{}
 	for _, sl := range slots {
 		byAlias[sl.Alias] = sl
@@ -900,6 +970,22 @@ func expectedResults(dir string, slots []runSlot) (files, missing []string) {
 				break
 			}
 		}
+		if bad == "" && trusted.State == ui.KeyOK {
+			var fps []string
+			for _, r := range res {
+				why, fp := signatureProblem(trusted.Keys, r)
+				if why != "" {
+					bad = why
+					break
+				}
+				if !contains(fps, fp) {
+					fps = append(fps, fp)
+				}
+			}
+			if bad == "" {
+				signed = append(signed, fmt.Sprintf("pqcaton: %s: signature checked (key %s)", label, strings.Join(fps, ", ")))
+			}
+		}
 		if bad != "" {
 			missing = append(missing, label+": "+bad)
 			continue
@@ -919,7 +1005,36 @@ func expectedResults(dir string, slots []runSlot) (files, missing []string) {
 		}
 	}
 	sort.Strings(missing)
-	return files, missing
+	return files, missing, signed
+}
+
+// collectorLogs: 수집기가 표준 오류로 남긴 것을 실행 로그에 옮긴다(노드 · 수집기마다). 서명 작업은 no_log라 Ansible 출력에는
+// 실패 까닭이 나오지 않는다. 상류 수집기는 오류에 키를 싣지 않고, 실리더라도 로그 가림이 지운다.
+func (s *server) collectorLogs(j *runJob) {
+	dir := filepath.Join(j.dir, runCollectorLogs)
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	byAlias := map[string]string{}
+	for _, sl := range j.m.Nodes {
+		byAlias[sl.Alias] = sl.Node
+	}
+	for _, e := range ents {
+		b, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		text := strings.TrimSpace(string(b))
+		if err != nil || text == "" {
+			continue
+		}
+		alias, kind, _ := strings.Cut(strings.TrimSuffix(e.Name(), ".txt"), "-")
+		node := byAlias[alias]
+		if node == "" {
+			node = alias
+		}
+		for _, line := range strings.Split(text, "\n") {
+			s.run.logf("pqcaton: %s (%s) collector: %s", node, kind, line)
+		}
+	}
 }
 
 func writeManifest(dir string, m runManifest) error {
@@ -1005,6 +1120,21 @@ func (s *server) recoverRuns() {
 		logf := func(line string) {
 			fmt.Fprintf(os.Stderr, "observation %s: %s\n", m.ID, line)
 			appendRunLog(dir)(line)
+		}
+		// 임시 서명 키가 남았으면 먼저 지운다. 실행 상태와 따로 다룬다: 지우지 못하면 KeysLeft로 남겨 새 관측을 막는다.
+		// 감독이 아직 살아 있으면 그가 지울 차례이므로 기다린 뒤에 한다.
+		if isFile(filepath.Join(dir, runKeysVars)) || m.KeysLeft != "" {
+			waitSupervisor(dir, logf)
+			why := removeRunKeys(dir)
+			if why != m.KeysLeft {
+				m.KeysLeft = why
+				if s.recordRecovered(dir, m, logf) && why == "" {
+					logf("pqcaton: removed the temporary signing keys the interrupted run left")
+				}
+			}
+			if why != "" {
+				logf("pqcaton: " + why + "; no new observation starts until it is removed")
+			}
 		}
 		_, invErr := os.Stat(filepath.Join(dir, runInventory))
 		switch {

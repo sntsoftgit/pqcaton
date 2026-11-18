@@ -116,6 +116,12 @@ const (
 	// 확인 불가처럼 막고, -allow-unverified-collectors 로 허용하면 RunJarAllowed(경고)다. v0.30.0 전에는 판 정보가 없으면 경고만 했다.
 	RunJarUnverified RunItem = "jar-unverified"
 	RunJarAllowed    RunItem = "jar-allowed"
+	// RunWindowsUnsupported — 관측할 노드에 Windows가 있다. 이번 판의 03은 Windows 노드에 서명 키를 넘기지 않아 결과가 반영되지
+	// 않으므로, Linux 관측을 다 돌린 뒤 거절되는 대신 실행 전에 막는다.
+	RunWindowsUnsupported RunItem = "windows-unsupported"
+	// RunCollectorKeys · RunCollectorVerify — 수집기 ID별 서명 키와 신뢰할 공개 키(collectorkeys.go). 없으면 시작하지 않는다.
+	RunCollectorKeys   RunItem = "collector-keys"
+	RunCollectorVerify RunItem = "collector-verify"
 )
 
 // CollectorFile — 수집기 파일 하나의 판 판정(collectorver.File 을 화면에 옮긴 것).

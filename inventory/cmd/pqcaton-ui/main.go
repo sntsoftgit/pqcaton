@@ -454,7 +454,9 @@ type server struct {
 	hosts string
 	// collectors: 수집기 폴더(-collectors, 작업 폴더 모드의 기본은 그 안의 collectors). run: 관측 실행 하나.
 	collectors string
-	run        runner
+	// collectorKeys · collectorVerify: 수집기 서명 키 폴더와 신뢰할 공개 키 파일(collectorkeys.go). 둘 다 작업 폴더 밖이다.
+	collectorKeys, collectorVerify string
+	run                            runner
 	// collectorPin: 수집기가 맞춰야 하는 상류 판(collectorPin()). allowUnverified: -allow-unverified-collectors.
 	// checkCollector: 수집기 하나를 판정한다(nil 이면 collectorver.CheckGo). 시험이 바꾼다.
 	collectorPin    string
