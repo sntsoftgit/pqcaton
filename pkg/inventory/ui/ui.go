@@ -788,6 +788,16 @@ type ActivationOffer struct {
 	Org string
 }
 
+// VerifyCommand — 05의 「pqcota 재적재」 단계에서 적재 전에 보일 확인 명령. 03이 받은 결과의 수집기 서명을 상류 적재와 같은
+// 판정으로 확인하고 저장하지 않는다(pqcota v0.15.0). PQCOTA_VERIFY_KEY는 싣지 않는다(03이 신뢰하는 verify.pub과 같은 값을 준다).
+func (o ActivationOffer) VerifyCommand() string {
+	r := o.Results
+	if r == "" {
+		r = "results"
+	}
+	return "pqcota-ingest -verify-keys " + r
+}
+
 // IngestCommand — 05의 「pqcota 재적재」 단계에 보일 명령. 작업 폴더에서 실행하는 상대 경로다. 연결 정보(PQCOTA_DSN)는
 // 싣지 않는다.
 func (o ActivationOffer) IngestCommand() string {

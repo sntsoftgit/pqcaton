@@ -60,6 +60,10 @@ func TestActivationStepsAndLinks(t *testing.T) {
 		if !strings.Contains(items[0], "pqcota-ingest -scope-assets asset-scope.csv results") || !strings.Contains(items[0], w.hint) {
 			t.Errorf("%s: the first step has no command relative to the workspace folder", lang)
 		}
+		// 적재 전에 수집기 서명을 확인하는 명령이 먼저 온다(pqcota v0.15.0, 저장하지 않는 -verify-keys).
+		if v, i := strings.Index(items[0], "pqcota-ingest -verify-keys results"), strings.Index(items[0], "pqcota-ingest -scope-assets"); v < 0 || v > i || !strings.Contains(items[0], "PQCOTA_VERIFY_KEY") {
+			t.Errorf("%s: the first step does not check the signatures with -verify-keys before ingesting", lang)
+		}
 		if strings.Contains(list, `type="checkbox"`) || !strings.Contains(items[2], "<button") {
 			t.Errorf("%s: the steps take an operator statement, or the button is not in its step", lang)
 		}

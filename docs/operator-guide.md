@@ -22,6 +22,14 @@ authentication). That user can reach the nodes to observe over SSH and run the c
 and, when signing at 06, **reads the approval private key.** The user's account and the workspace are therefore the
 boundary of these powers. The 06 screen signs and checks with one key (single key, single approver).
 
+**Trust around the collector signing keys.** 03 reads the signing key of each collector ID ("Preparing the collector signing keys" in
+section 2) and passes it to the nodes at every observation. The key goes only on the standard input of the collector on the node and is
+left in no file, command line or Ansible configuration, but **while the observation runs it is in the environment of the collector process
+on the node, where that node's root can read it.** On the controller, the account that runs the screen and root can read the key files
+and the temporary keys. The node check looks only at sudo's I/O logging. **What audit tools outside sudo (auditd, tlog, pam_tty_audit and
+the like), other sudo policy plugins, or programs replaced by the node's root record is the responsibility of the environment.** If the key
+of an ID leaks, results of every node can be forged under that ID, so change the key then.
+
 **The commands are run for real.** Every command in this guide marked `<!-- run -->` is run in order, in an empty home
 folder, by a test (`guide_run_test.go`) that checks the result.
 
@@ -97,23 +105,36 @@ runs itself is `ansible-playbook` for observation; it signs approvals and genera
 | Task | What it needs |
 |---|---|
 | Starting the screen | `pqcaton-ui`, a pqcota history with its schema, and the connection information of an account that reads it ("pqcota connection" below) |
-| 03 Observation | Ansible and node access, the official collectors ("Getting ready to run observations" below) |
-| Loading observation results into the history | `pqcota-ingest` and a loading account that can write. Reconciliation in 04 and 05 and policy activation in 05 look at this load (section 6) |
+| 03 Observation | Ansible and node access, the official collectors, the collector signing keys and the trusted public keys ("Getting ready to run observations" and "Preparing the collector signing keys" below) |
+| Loading observation results into the history | `pqcota-ingest` and a loading account. The results of 03 are checked (`pqcota-ingest -verify-keys`) and then loaded under the judgment organization (section 6). Reconciliation in 04 and 05 and policy activation in 05 look at this load |
 | 06 approval signature and generation | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
 | Applying to the nodes and rolling back | `pqcota-hosts` (to make the Ansible inventory) and `ansible-playbook` (as 06 explains) |
 | Trimming old history | `pqcota-prune` (optional) |
 
-1. **PostgreSQL and accounts.** Prepare PostgreSQL 16 and create two accounts. The loading account owns the database so that it can
-   create the schema the first time; the screen account only reads. Run this in `psql` as an administrator. The passwords are typed
-   only where `\password` asks for them, so they stay out of command lines and shell history.
+These are the steps **for a new installation**. With a pqcota history already in use, follow "Moving an existing history to three roles"
+in [section 9, "v0.30.0 to v0.31.0"](#v0300-to-v0310).
+
+1. **PostgreSQL and three roles.** Prepare PostgreSQL 16 and create three roles, to keep the privileges apart (the names are examples).
+
+   | Role | What it does |
+   |---|---|
+   | `pqcota_schema` | Creates the schema and owns the tables. Only `pqcota-inventory -init-schema` runs as this role |
+   | `pqcota_ingest` | Loads (`pqcota-ingest` and the other writing commands). It has only read and write privileges on the tables and runs with `PQCOTA_AUTO_DDL=0` |
+   | `pqcaton_ui` | The screen reads the history. Read privileges only |
+
+   Run this in `psql` as an administrator. The passwords are typed only where `\password` asks for them, so they stay out of command
+   lines and shell history.
 
    ```sql
+   CREATE ROLE pqcota_schema LOGIN;
+   \password pqcota_schema
    CREATE ROLE pqcota_ingest LOGIN;
    \password pqcota_ingest
    CREATE ROLE pqcaton_ui LOGIN;
    \password pqcaton_ui
-   CREATE DATABASE pqcota OWNER pqcota_ingest;
+   CREATE DATABASE pqcota OWNER pqcota_schema;
    REVOKE ALL ON DATABASE pqcota FROM PUBLIC;
+   GRANT CONNECT ON DATABASE pqcota TO pqcota_ingest, pqcaton_ui;
    ```
 
    Keep the passwords out of the connection information, in `~/.pgpass` (0600): one line per account,
@@ -124,45 +145,58 @@ runs itself is `ansible-playbook` for observation; it signs approvals and genera
    install -m 600 /dev/null ~/.pgpass
    ```
 
-2. **Upstream central commands.** The `pqcota-ctl` bundle of the upstream release holds the loading, query, approval and generation
-   commands. Check its checksum and its attestation (pinned to the upstream repository, its release workflow and the tag), then
+2. **Upstream central commands.** The `pqcota-ctl` bundle of the upstream release holds the loading, query, approval, generation and
+   key commands. Check its checksum and its attestation (pinned to the upstream repository, its release workflow and the tag), then
    unpack it into a folder on your `PATH`. It needs `gh` (2.49 or later, logged in). On an arm64 machine use `linux-arm64` instead of
    `linux-amd64`.
 
    ```bash
-   mkdir -p ~/pqcaton/pqcota-ctl-v0.14.0 && cd ~/pqcaton/pqcota-ctl-v0.14.0
-   gh release download v0.14.0 -R randyinthedev-hash/pqcota -p 'pqcota-ctl-linux-amd64.tar.gz' -p SHA256SUMS
+   mkdir -p ~/pqcaton/pqcota-ctl-v0.16.0 && cd ~/pqcaton/pqcota-ctl-v0.16.0
+   gh release download v0.16.0 -R randyinthedev-hash/pqcota -p 'pqcota-ctl-linux-amd64.tar.gz' -p SHA256SUMS
    sha256sum -c --ignore-missing SHA256SUMS
    gh attestation verify pqcota-ctl-linux-amd64.tar.gz --repo randyinthedev-hash/pqcota \
-     --signer-workflow randyinthedev-hash/pqcota/.github/workflows/release.yml --source-ref refs/tags/v0.14.0 --deny-self-hosted-runners
+     --signer-workflow randyinthedev-hash/pqcota/.github/workflows/release.yml --source-ref refs/tags/v0.16.0 --deny-self-hosted-runners
    tar -xzf pqcota-ctl-linux-amd64.tar.gz
    install -m 755 pqcota-ctl-linux-amd64/pqcota-* ~/.local/bin/
    ```
 
-   To build from source, follow the upstream [build guide (v0.14.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.14.0/docs/build.md).
-   Most upstream commands cannot be installed with `go install …@v0.14.0` ("Get the source" in that guide).
+   To build from source, follow the upstream [build guide (v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.md).
+   Most upstream commands cannot be installed with `go install …@v0.16.0` ("Get the source" in that guide).
 
-3. **Creating the history schema.** The screen opens the history for reading only and creates no tables, so without the schema it
-   does not start ("the pqcota history schema is missing"). The upstream commands create the schema when they open the store and it
-   is not there (not with `PQCOTA_AUTO_DDL=0`). Running the query command once with the loading account creates an empty schema and
-   ends with exit status 0. Give the judgment organization. Running `pqcota-ingest` on an empty results folder is not an
-   initialization: it ends with exit status 1 because there are no results, and creates nothing. The real load comes after observing
-   in 03, as section 6 describes. Replace each `<…>` with the real value before running it.
+3. **Creating the history schema.** Create the schema by running `pqcota-inventory -init-schema` once as `pqcota_schema`. It runs in one
+   transaction and ends with a line such as `schema ready: 11 created, 0 already present`. Running it again leaves the existing tables and
+   data as they are and, after an upgrade, adds only what the new version needs, so **run it once after every upstream upgrade.** If you
+   keep generation records outside the screen with `pqcota-provision`, also run `pqcota-records -init-schema` as the same role. From
+   upstream v0.16.0 the query commands create no tables, and the screen also opens the history for reading only. Without the schema the
+   screen does not start ("the pqcota history schema is missing or incomplete; run `pqcota-inventory -init-schema` as the role that owns
+   the schema"). Replace each `<…>` with the real value before running it.
 
    ```bash
-   PQCOTA_DSN='postgres://pqcota_ingest@<host>:5432/pqcota' PQCOTA_ORG='<judgment organization>' pqcota-inventory
+   PQCOTA_DSN='postgres://pqcota_schema@<host>:5432/pqcota' pqcota-inventory -init-schema
    ```
 
-4. **Read access for the screen account.** After the schema exists, run this as an administrator in the `pqcota` database. The last
-   line gives the same read access to the tables upstream creates later. Without it the screen does not start ("server error
-   SQLSTATE 42501").
+4. **Privileges of the loading and screen accounts.** After the schema exists, run this as an administrator in the `pqcota` database.
+   The first lines cover the tables that exist now; the last three (`ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema`) cover the tables
+   `pqcota_schema` creates from now on. The latter alone grants nothing on tables that already exist, so run both.
 
    ```sql
-   GRANT CONNECT ON DATABASE pqcota TO pqcaton_ui;
-   GRANT USAGE ON SCHEMA public TO pqcaton_ui;
+   GRANT USAGE ON SCHEMA public TO pqcota_ingest, pqcaton_ui;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pqcota_ingest;
+   GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO pqcota_ingest;
    GRANT SELECT ON ALL TABLES IN SCHEMA public TO pqcaton_ui;
-   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_ingest IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pqcota_ingest;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT USAGE ON SEQUENCES TO pqcota_ingest;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
    ```
+
+   - **Run the loading account with `PQCOTA_AUTO_DDL=0`.** Without it the writing commands run the schema statements every time they
+     open the store, and only the owner of the tables may do that. A loading account that does not own them fails with "permission
+     denied for schema public".
+   - **The screen account needs only `SELECT` on every history table and `USAGE` on the schema.** On start the screen checks every table
+     and column of the history store. Without the privileges it does not start ("this account lacks privileges to read the pqcota
+     history (SELECT on its tables, USAGE on their schema); initializing the schema does not change them"). Initializing does not fix
+     it; grant the privileges.
+   - The full table of roles and privileges is upstream's [setting up the database (v0.16.0)](https://github.com/randyinthedev-hash/pqcota-inventory/blob/v0.16.0/cmd/README.md#setting-up-the-database).
 
 **pqcota connection.** pqcaton runs only where pqcota is installed, connected and working. On start the screen connects
 to the pqcota history and must pass one read of it (schema and read permission) before it comes up. If there is no
@@ -192,19 +226,30 @@ mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
 install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
 ```
 
-**Getting ready to run observations.** Running an observation from the 03 Observation screen needs two more things on this
-machine. The screen checks both before it starts and, when something is missing, says what to do.
+**Getting ready to run observations.** Running an observation from the 03 Observation screen needs Ansible and the collectors on this
+machine and an account on the nodes. The screen checks these and the signing keys ("Preparing the collector signing keys" below) before
+it starts and, when something is missing, says what to do.
 
-- **Ansible.** `ansible-playbook` is looked up on the `PATH`. Nodes are reached over SSH (Windows nodes over SSH or WinRM),
-  and on Linux nodes the collectors run as root (`become`), so that account needs sudo rights. Connect to a new node once
-  with `ssh` beforehand to accept its host key. Observing Windows nodes also needs the `ansible.windows` collection.
+- **Ansible.** `ansible-playbook` is looked up on the `PATH`. It was checked with ansible-core 2.16.3 and 2.21.6. 03 **does not read the
+  operator's Ansible configuration** ("The Ansible configuration 03 uses" below).
+- **Nodes and the account.** In this version 03 observes **Linux nodes only**. The nodes are reached over SSH and the collectors run as
+  root. The account is one of two:
+  - **Reached as root.** Ansible skips privilege escalation when the account and the become user are the same, so sudo is not used.
+  - **Reached as an ordinary account that becomes root with sudo.** That account must use sudo **without a password** (`NOPASSWD`), and
+    sudo must not record the input and output of commands ("Node check" below).
+
+  Connect to a new node once with `ssh` beforehand to accept its host key. The screen checks host keys.
+- **Windows nodes are not observed.** In this version 03 does not pass signing keys to Windows nodes, so their results would not pass the
+  signature check. With a Windows node in the access file, 03 shows it and does not start. Take Windows nodes out of the access file and
+  observe them by running `pqcota-cngscan` and `pqcota-jvmscan` yourself with their signing keys.
 - **Collectors.** Put the collectors of the upstream release in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this. Keep them on pqcota v0.14.0 (the pqcota version for each pqcaton version is in the
+  <folder>`), shaped like this. Keep them on pqcota v0.16.0 (the pqcota version for each pqcaton version is in the
   [version table](compatibility.md)), and the `collector.jar` put on the nodes on the same version.
-  This screen normalizes the collection results it reads with the v0.14.0 ruleset (`pqcota-enrich/v4`). From v0.12.0
+  This screen normalizes the collection results it reads with the v0.16.0 ruleset (`pqcota-enrich/v4`). From v0.12.0
   `pqcota-jvmscan` reports the JVMs that run the same application as one deployment, and from v0.13.0 `pqcota-nodescan` and
   `pqcota-netcap` give a user service the app key `user@<uid>.service/<unit>` and give each edge to the application that
-  opened the connection. A
+  opened the connection. From v0.15.0 every collector signs its results with `PQCOTA_SIGN_KEY`, and one given a key it cannot sign with
+  stops without emitting a result. A
   `pqcota-jvmscan` earlier than v0.10.7 writes its results over several lines on a node with two or more JVMs, and the
   whole ingest request that holds that node is refused. An earlier `pqcota-jvmscan` or
   `collector.jar` does not carry the per-provider list of PQC services, so the JCA readiness becomes `unknown`, and the 03
@@ -215,18 +260,86 @@ machine. The screen checks both before it starts and, when something is missing,
 collectors/
 ├── linux-amd64/     pqcota-nodescan · pqcota-netcap · pqcota-jvmscan
 ├── linux-arm64/     when there are arm64 nodes
-├── windows-amd64/   pqcota-cngscan.exe · pqcota-jvmscan.exe (when there are Windows nodes)
 └── collector.jar    without it, the provider chains of running JVMs are not observed
 ```
 
+<a id="preparing-the-collector-signing-keys"></a>
+
+**Preparing the collector signing keys.** 03 has the collectors sign their results and uses as current only results whose signature
+checks out. The upstream ingest (`pqcota-ingest`) checks them with the same keys. So an observation **starts only with a signing key for
+each collector ID.**
+
+- **Collector IDs and keys.** The ID written in a result is fixed per command: `pqcota-nodescan` writes `openssl-collector`,
+  `pqcota-netcap` `network-collector`, and `pqcota-jvmscan` `jvm-collector`. Without `collector.jar` the `jvm-collector` key is not needed.
+  There is one key per ID, and **every node running a collector of that ID shares its key.** Upstream does not bind keys to nodes yet, so
+  whoever holds the key of an ID can sign results of any node under that ID. What tells the nodes apart is the registration list and the
+  machine fingerprint check.
+- **Where.** The signing keys are `pqcaton/collector-keys/<ID>.key` in the user configuration folder, and the trusted public keys are
+  `verify.pub` in the same folder. Keep the folder outside the workspace, open only to its owner (0700), and each key file readable only by
+  its owner (0600). This is a different place and purpose from the approval key (06). To keep them elsewhere, give
+  `-collector-keys <folder>` and `-collector-verify-keys <file>`.
+- **Trusted public keys (`verify.pub`).** One line `PQCOTA_VERIFY_KEY=<ID>:<public key>,…`, **the same value you give the ingest as
+  `PQCOTA_VERIFY_KEY`.** 03 checks results only with this value (it never derives it from the private keys). A file others can change, a
+  file holding a private key, and the old list that binds no key to an ID are refused.
+- **What 03 blocks.** A missing ID, a key of another ID than its file name, a key with no collector ID (an approval-style key made
+  without the flag), permissions too wide, a signing key not in `verify.pub`, one public key under two IDs, and the approval key used as a
+  signing key. The "Collector signing keys" and "Trusted collector public keys" lines on 03 show the missing IDs and why.
+
+`pqcota-keygen` is in the `pqcota-ctl` bundle of "Preparing pqcota". The last two lines gather the public keys of the three into one
+line of `verify.pub` and keep others from changing it (on distributions whose default umask is 002 it would be group-writable, and 03
+refuses that).
+
+```bash
+mkdir -p ~/.config/pqcaton && mkdir -m 700 ~/.config/pqcaton/collector-keys
+for id in openssl-collector network-collector jvm-collector; do (umask 077 && pqcota-keygen -collector "$id" > ~/.config/pqcaton/collector-keys/"$id".key); done
+for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub
+chmod 644 ~/.config/pqcaton/collector-keys/verify.pub
+```
+
+On macOS the place is `~/Library/Application Support/pqcaton/collector-keys`; replace `~/.config/pqcaton` in the commands above with it.
+Collectors you run yourself outside 03 must sign with the key of the same ID too, or the ingest refuses their results. To change a key,
+first add the new public key to `verify.pub` and to the ingest's value (an ID can hold two), then replace the signing key file, check
+with an observation and `pqcota-ingest -verify-keys`, and only then drop the old public key.
+
+<a id="the-ansible-configuration-03-uses"></a>
+
+**The Ansible configuration 03 uses.** 03 passes the signing keys on the standard input of the nodes. Anything else in that path could
+leak them (in the lab, a callback plugin in the operator's folder received the keys, and so did a replaced sudo executable), so only the
+verified conditions are used.
+
+- Each run reads only one configuration file made by the product. **The operator's `ansible.cfg` (`./ansible.cfg`, `~/.ansible.cfg`,
+  `/etc/ansible/ansible.cfg`) and `ANSIBLE_*` environment variables are not used by 03 observations.** Plugins and collections in the
+  operator's folders are not loaded either.
+- The connection is the built-in ssh, privilege escalation the built-in sudo (`sudo -H -S -n`, root), pipelining is on, and no remote
+  temporary file is kept.
+- The ssh client configuration (`ProxyJump`, `IdentityFile`, `Port` and so on in `~/.ssh/config`) and `~/.ssh/known_hosts` are read by ssh
+  and still apply, and so does the ssh agent (`SSH_AUTH_SOCK`).
+- How to move the values you kept in `ansible.cfg` is in [section 9, "v0.30.0 to v0.31.0"](#v0300-to-v0310).
+
+<a id="node-check"></a>
+
+**Node check.** When an observation starts, 03 first checks every node **without any key**. For each node it reads the account's uid and,
+when it is not root, `LC_ALL=C sudo -n -l`. Keys are made and the observation starts only when every node passes. If one node does not
+pass, no node is observed, the run fails, and the node cleanup ends as "not needed" (the observation never reached the nodes and the check
+leaves nothing there). The run log keeps the node, the reason, the policy lines and the command to check it on the node.
+
+| Verdict | When |
+|---|---|
+| Pass | Reached as root, or **no I/O logging setting was found** in the output form of `sudo -n -l` this check supports. What this check cannot see is in "Trust" below |
+| Refused | I/O logging is on (`log_input`, `log_output`, `log_stdin`, `log_stdout`, `log_stderr`, `log_ttyin`, `log_ttyout`), a rule's `LOG_INPUT:` or `LOG_OUTPUT:`, or `requiretty`. The key would be kept in those records |
+| Cannot be confirmed | sudo asks for a password (not `NOPASSWD`), `sudo -n -l` fails, the output is in another form, logging is both turned on and off (`!log_input`, `NOLOG_INPUT:`), there are command- or runas-specific settings, or there are rules other than one running every command as root. Which setting really applies to `/bin/sh` cannot be told from the list, so the run stops |
+
+To clear "cannot be confirmed", keep the node's sudoers simple: give the account only the rule `<account> ALL=(ALL) NOPASSWD: ALL` and
+turn I/O logging off for it. On the node, run `LC_ALL=C sudo -n -l` as that account and compare it with the policy lines shown in the 03 log.
+
 **Checking the collectors you download.** The upstream collectors come as release assets, and fetching and checking them is done
-with the preparation tool `pqcaton-collectors`. It fetches only the assets of the upstream version go.mod pins (v0.14.0 for this
+with the preparation tool `pqcaton-collectors`. It fetches only the assets of the upstream version go.mod pins (v0.16.0 for this
 version) and never runs what it downloads.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.31.0
-pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.14.0
-pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
+pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.16.0
+pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
 ```
 
 - **Conditions.** `gh` (GitHub CLI 2.49 or later) must be there and logged in (`gh auth login`). Checking the attestations and
@@ -235,16 +348,14 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
   machine that has it.
 - **Target (`-arch`).** Always give the architecture of the nodes that run the collectors (`linux-amd64` or `linux-arm64`). It is
   written to `provenance/TARGET` in the prepared folder and `verify` compares it again. The OS and architecture in the programs' Go
-  build information must match it too. With nodes of both architectures, fetch once per target. The Windows collectors
-  (`pqcota-windows-amd64.zip`) are not fetched by this tool yet; check them against the `SHA256SUMS` published with them and put
-  them in the `windows-amd64` folder.
+  build information must match it too. With nodes of both architectures, fetch once per target.
 - **What `fetch` does.** It downloads the assets into a new temporary folder next to the target, checks their attestations (pinned to
   the upstream repository, its release workflow and that tag), compares them with `SHA256SUMS`, unpacks them safely (links, devices
   and path escapes are refused), compares each file's hash, version, commit and content hash (h1) with the release manifest, checks
   the attestations of the unpacked programs, and moves the folder into place at once only when exactly the expected files are
   there. If anything fails, the target is not created. An existing target is never overwritten.
 - **Using it.** Check it again with `verify` before starting the screen, and give it to the screen with
-  `-collectors ~/pqcaton/collectors-v0.14.0/collectors`.
+  `-collectors ~/pqcaton/collectors-v0.16.0/collectors`.
 
 **What the two checks look at.** The release check (`pqcaton-collectors`) asks **is this file the very file that upstream's official
 release published**: who built it from which tag (the attestation) and whether the bytes equal the published hashes. The version
@@ -257,11 +368,11 @@ reads only the Go build information. "Verified" is only a build whose collector 
 module content hash (h1) in the build information equals the value this version pins (the repository's `go.sum`), and whose
 dependencies carry no replace either.
 
-**The release assets of upstream v0.14.0 are "verified".** From v0.14.0 the upstream release builds the sibling modules from
+**The release assets of upstream v0.16.0 are "verified".** From v0.14.0 the upstream release builds the sibling modules from
 the same tag's modules instead of the folders next to it, so the build information keeps the collector itself and its
-dependencies at v0.14.0 with no replace. A build of your own next to the sibling folders (as the upstream demo does) is still
+dependencies at that version with no replace. A build of your own next to the sibling folders (as the upstream demo does) is still
 "cannot be verified": a collector built itself through a replace shows "actual source: local replace (devel)", and one built
-from a tag checkout shows "collector source v0.14.0 verified · replaced dependency sources cannot be verified". A build of your
+from a tag checkout shows "collector source v0.16.0 verified · replaced dependency sources cannot be verified". A build of your
 own carries no h1 for its main module, so even without a replace it cannot be verified: "no module content hash (h1) (built
 locally)".
 
@@ -273,7 +384,7 @@ locally)".
   files with no build information. To use them knowingly, start the screen with `-allow-unverified-collectors`. The
   allowance and the list of files show on the 03 screen and on standard error, and are not kept in the workspace.
 - **`collector.jar`.** It is optional (without it there is no such check). When it is there, **from v0.30.0 it is checked as
-  strictly as the collectors.** The official v0.14.0 JAR carries its version (`Implementation-Version`), commit
+  strictly as the collectors.** From v0.14.0 the official JAR carries its version (`Implementation-Version`), commit
   (`X-Pqcota-Commit`) and whether it was modified (`X-Pqcota-Dirty`) in its manifest.
   - **Verified**: the release version is the pinned one, the commit is 40 or 64 hexadecimal characters and the modified flag
     is `false`. 03's collector.jar row shows its version and the first 12 characters of its commit, with the full commit in the
@@ -289,15 +400,18 @@ locally)".
 
 **Getting the approval key ready.** Signing new approvals on the 06 screen needs an approval key. By default the screen
 looks for `pqcaton/approval.key` in the user configuration folder (`~/.config/pqcaton/` on Linux,
-`~/Library/Application Support/pqcaton/` on macOS). Save the output of `pqcota-keygen` there, readable only by its owner,
-and it is used without any flag. The screen neither creates this file nor changes its permissions, and reads it again at
-every signature. The last line puts the public key alone in `approval.pub`.
+`~/Library/Application Support/pqcaton/` on macOS). Save the output of `pqcota-keygen` (made **without flags**) there, readable only
+by its owner, and it is used without any flag. A collector signing key made with `pqcota-keygen -collector` is not taken as the approval
+key (state "collector"). `pqcota-keygen` is in the `pqcota-ctl` bundle too. The screen neither creates this file nor changes its permissions, and reads it again at
+every signature. The last two lines put the public key alone in `approval.pub` and keep others from changing it (06 refuses a
+public key file the group can change).
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.14.0
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.16.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
+chmod 644 ~/.config/pqcaton/approval.pub
 ```
 
 On macOS only the location differs.
@@ -306,6 +420,7 @@ On macOS only the location differs.
 mkdir -p "$HOME/Library/Application Support/pqcaton"
 (umask 077 && pqcota-keygen > "$HOME/Library/Application Support/pqcaton/approval.key")
 grep '^PQCOTA_VERIFY_KEY=' "$HOME/Library/Application Support/pqcaton/approval.key" > "$HOME/Library/Application Support/pqcaton/approval.pub"
+chmod 644 "$HOME/Library/Application Support/pqcaton/approval.pub"
 ```
 
 - **The verification key (`approval.pub`).** With it, plans already signed are checked and their playbooks generated even
@@ -450,12 +565,27 @@ required).
    **The policy finalized in 02 is not used for reconciliation right away.** Reconciliation (04, 05) uses the active
    policy `scope-assets.csv`. If it differs from the policy the upstream ingest used, pqcota cannot find the evidence of
    the plans made in 05. To use the finalized policy, first redo the upstream ingest with it, giving the workspace's
-   `results/` as the results folder. Give the loading account's connection in `PQCOTA_DSN`; its password is read from the
-   `~/.pgpass` of "Preparing pqcota". Replace each `<…>` with the real value before running it.
+   `results/` as the results folder. There are three steps.
+
+   1. **03 checks the signatures.** The results 03 received carry collector signatures, and 03 puts in `results/` only results whose
+      signature checked out (step 3).
+   2. **Check again with `pqcota-ingest -verify-keys`.** It decides as the ingest does and stores nothing. It prints, for each result, the collector
+      ID, whether it is signed, the fingerprint of the key that matched and the verdict, and exits 1 if any result would be refused. Do
+      not ingest then.
+   3. **Ingest under the judgment organization.** It ingests with the same `PQCOTA_VERIFY_KEY`, so a result whose signature does not
+      match is refused before anything is stored.
+
+   `PQCOTA_VERIFY_KEY` is the value of `verify.pub`, which 03 trusts (public keys, not a secret). Give the loading account's connection
+   in `PQCOTA_DSN`; its password is read from the `~/.pgpass` of "Preparing pqcota". Run the loading account with
+   `PQCOTA_AUTO_DDL=0`. Replace each `<…>` with the real value before running it.
 
    ```bash
-   PQCOTA_DSN='postgres://pqcota_ingest@<host>:5432/pqcota' PQCOTA_ORG='<organization of the judgments>' pqcota-ingest -scope-assets '<workspace>/asset-scope.csv' '<workspace>/results'
+   export PQCOTA_VERIFY_KEY="$(sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/verify.pub)"
+   pqcota-ingest -verify-keys '<workspace>/results'
+   PQCOTA_DSN='postgres://pqcota_ingest@<host>:5432/pqcota' PQCOTA_ORG='<organization of the judgments>' PQCOTA_AUTO_DDL=0 pqcota-ingest -scope-assets '<workspace>/asset-scope.csv' '<workspace>/results'
    ```
+
+   The "Re-ingest pqcota" step on 05 shows the same two commands (with paths relative to the workspace).
 
    After finalizing 02, "Next" under the finalize notice leads to "View current reconciliation in 04" and "View the
    activation steps in 05", and until it is activated the top of 04 also shows "The policy finalized in 02 is not active
@@ -513,15 +643,38 @@ required).
    state loaded last the node's latest, and the activation can be done (pqcota v0.13.1 or later). Rounds that v0.27.x or earlier opened on an operator statement (`operator-statement`)
    are still read as past records, and 05 shows "It was not reconciled with the pqcota history" under "The policy change
    that opened this round".
-3. **03 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS, SSH or WinRM),
-   and save. They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
-   on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation"
-   copies the collectors to each node in the table, runs them, takes the results into `results/`, and removes them from
-   the node. While it runs, the log is shown and "Stop" stops it. **The current results change, all at once, only when
-   every node's results arrived and the run succeeded.** If the run failed, was stopped, or a node's results are missing,
-   the current results stay and what arrived is kept for diagnosis in `observations/<run>/partial/`. The results received
-   are read with the upstream decoder, and if any file is broken, belongs to another node or comes from another collector,
-   they do not become current. After a run that did not finish, a cleanup removes the staging folders from the nodes.
+3. **03 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS), and save. With a
+   Windows node the observation does not start ("Getting ready to run observations" in section 2). They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
+   on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation" runs in
+   this order. While it runs, the log is shown and "Stop" stops it.
+
+   1. **Node check.** Every node is checked without any key ("Node check" in section 2). If one does not pass, it ends here, no node
+      is observed, and the node cleanup is "not needed".
+   2. **Temporary signing keys.** The signing keys (`collector-keys/`) are checked again, and temporary keys for this run only are made
+      **outside the workspace**: under `XDG_RUNTIME_DIR` (when only this user can open it) or else under the system temporary folder, as
+      `pqcaton-keys-<run ID>`, the folder 0700 and the key files 0600 from the start. The run log says where. The place is written first
+      to `run-keys.json` in the run directory, so it can be found even after a crash. The key values are put in no environment or command
+      line of Ansible or ssh; they go only on the standard input of the collectors on the nodes.
+   3. **Observation.** The collectors are copied to each node in the table, run, their results taken, and then removed from the node.
+      What the collectors write on standard error is moved into the run log.
+   4. **Signature check.** Each result received is checked against `verify.pub` (as the ingest decides). A pass leaves "signature
+      checked (key <fingerprint>)" in the run log. With no signature (not signed), a key of another ID (said only when that key verifies
+      it), or no match with the registered keys (changed after signing, or a key not listed), the reason shows under "Results that did
+      not arrive or do not check out".
+   5. **Replacing the results.** **The current results change, all at once, only when every node's results arrived, read with the
+      upstream decoder, belong to the right node and collector, and their signatures checked out.** Otherwise the current results stay
+      and what arrived is kept for diagnosis in `observations/<run>/partial/`.
+   6. **Reclaiming.** The temporary keys are removed. After a run that did not finish (failed, stopped), a node cleanup runs once more.
+      It first ends the collectors still running from this run's staging directory (a remote collector started through sudo keeps
+      running to the end of its window even when the controller ends ssh), then removes the staging folder.
+
+   **Temporary keys that cannot be removed mean "recovery needed".** It is kept apart from the run's result (done, failed and so on); 03
+   shows the place and the reason and starts no new observation. Fix the cause (the folder's permissions, say) and start the screen
+   again: the recovery at start removes them again and clears "recovery needed". If they cannot be removed, remove the folder
+   (`pqcaton-keys-<run ID>`) yourself and start the screen again. **If the screen and the supervisor both end abnormally (a power loss,
+   say), the temporary keys can stay in place until the next start.** The folder is open only to its owner, and the next start's recovery
+   finds them through the run record and removes them. During an observation the key is in the environment of the collector process on
+   the node, where that node's root can read it.
    Stopping the screen stops a running observation too, and the screen ends only after the cleanup. The observation runs
    under a supervisor process the screen starts (`pqcaton-ui` itself), so if the screen is killed, the supervisor stops
    Ansible, cleans the nodes and removes the inventory. If the supervisor ended too (a power loss, say), the next start
@@ -553,9 +706,10 @@ required).
    Only when a process is confirmed to have been started by this observation, stop it normally and start the screen
    again. If it is unrelated, or its ownership cannot be confirmed, do not stop it: wait until it ends on its own, then
    start the screen again. The restarted screen carries on with the remaining cleanup. Observations started
-   by the screen do not share SSH connections (`ControlMaster=no`). If the nodes could not be reached, the 03 screen names
-   the staging folder that may be left, with the run ID: `/tmp/pqcaton-observe-<run ID>` (on Windows `C:\Windows\Temp\pqcaton-observe-<run ID>`). The network observation waits for handshakes on the
-   node's default-route interface for the window you set (60 seconds by default).
+   by the screen do not share SSH connections (`ControlMaster=no`). If the cleanup could not reach the nodes, the 03 screen names
+   the staging folder that may be left, with the run ID: `/tmp/pqcaton-observe-<run ID>`. On that node, also check that no process
+   whose command line starts with that place is left. The network observation waits for handshakes on the node's default-route
+   interface for the window you set (60 seconds by default).
 4. **04 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
    screen. With no results, the screen points at that folder.
 5. **05 Judgment.** Write a conclusion for each policy; for the items going into the plan, pick the action kind, target and
@@ -719,6 +873,105 @@ cut). Send the diagnostics file and the files you kept. The diagnostics file hol
 contents.
 
 ## 9. Upgrading
+
+### v0.30.0 to v0.31.0
+
+v0.31.0 takes in upstream pqcota v0.16.0 (which includes v0.15.0). The ruleset (`pqcota-enrich/v4`), the contract and the history's tables
+and columns are the same as v0.14.0, and the state format and the session and plan formats are the same as v0.30.0, so the workspace opens
+as it is **without a ruleset change round**. Three things change: **a 03 observation does not start without the collector signing keys,
+does not use the operator's `ansible.cfg`, and does not observe Windows nodes.** The pqcota history gets its schema from a dedicated
+command, and the query commands no longer create tables.
+
+1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back up the workspace as in
+   [section 7](#7-backup-and-restore).
+2. **Upgrade the upstream tools together to v0.16.0** (the `pqcota-ctl` bundle of "Preparing pqcota" in section 2). The tools that load
+   into, prune or record in the same history must be at the same version.
+3. **Prepare the pqcota history.** Follow "Moving an existing history to three roles" below. Even if you keep the two roles you have,
+   run `pqcota-inventory -init-schema` once as the role that owns the tables. From v0.16.0 the query commands create no tables, so they stop
+   when the tables this version adds (metadata, source evidence) are missing.
+4. Install `pqcaton-ui` and the preparation tool `pqcaton-collectors` at v0.31.0 with the `go install` of [section 2](#2-installation), and
+   fetch the v0.16.0 release assets as in "Checking the collectors you download" to replace the collector folder. 03 refuses the v0.14.0
+   collectors as "does not match".
+5. **Prepare the collector signing keys** ("Preparing the collector signing keys" in section 2). **03 in v0.31.0 does not start an
+   observation without them.**
+6. **Get the nodes ready.** Take the Windows nodes out of the access file. For nodes reached as an ordinary account, give that account
+   `NOPASSWD` sudo and turn I/O logging off ("Node check" in section 2).
+7. **Move the values of `ansible.cfg`** (the table below). 03 reads neither the operator's `ansible.cfg` nor `ANSIBLE_*` environment
+   variables.
+8. Start the screen, check that every item of the 03 checklist is ✓, and observe. In the run log, look for each node passing the check
+   and "signature checked" for each result.
+9. **Switch the ingest to the form bound to collector IDs.** Upstream's order is central tools → collectors → check → the new value.
+   Steps 2 and 4 are the first two; check the results from step 8 with `pqcota-ingest -verify-keys`, then set the ingest's
+   `PQCOTA_VERIFY_KEY` to the value of `verify.pub` (the re-ingest commands in [section 6](#6-a-days-procedure)). **Switch only after the
+   collectors you run yourself outside 03 sign with the same keys.** Switching first refuses every result of a collector that does not
+   sign. Upstream still accepts the old list (keys without IDs), with a warning.
+
+<a id="moving-an-existing-history-to-three-roles"></a>
+
+**Moving an existing history to three roles.** A history made by the v0.30.0 guide has the database and tables owned by the loading
+account (`pqcota_ingest`). Only the owner of a table may change it, so `pqcota-inventory -init-schema` run by a new schema role fails with "must be owner of
+table pqcota_snapshots … (rolled back, nothing was changed)" and changes nothing. So move the ownership of the tables to the schema role.
+Run these as an administrator.
+
+1. See who owns what (in the `pqcota` database).
+
+   ```sql
+   SELECT tablename, tableowner FROM pg_tables WHERE tablename LIKE 'pqcota\_%';
+   ```
+
+2. Create the schema role and give it the connection and schema privileges (the first three lines in the `postgres` database, the last
+   in the `pqcota` database).
+
+   ```sql
+   CREATE ROLE pqcota_schema LOGIN;
+   \password pqcota_schema
+   GRANT CONNECT ON DATABASE pqcota TO pqcota_schema;
+   GRANT USAGE, CREATE ON SCHEMA public TO pqcota_schema;
+   ```
+
+3. In the `pqcota` database, move the ownership of the pqcota tables and grant the privileges of step 4 of "Preparing pqcota" in
+   section 2. The first line runs `ALTER TABLE … OWNER TO pqcota_schema` for each table through psql's `\gexec`; a table's sequences and
+   indexes move with it. `REASSIGN OWNED BY pqcota_ingest` moves everything that role owns, so use it only on a database used by pqcota
+   alone.
+
+   ```sql
+   SELECT format('ALTER TABLE %I OWNER TO pqcota_schema', tablename) FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'pqcota\_%' \gexec
+   GRANT USAGE ON SCHEMA public TO pqcota_ingest, pqcaton_ui;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pqcota_ingest;
+   GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO pqcota_ingest;
+   GRANT SELECT ON ALL TABLES IN SCHEMA public TO pqcaton_ui;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pqcota_ingest;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT USAGE ON SEQUENCES TO pqcota_ingest;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
+   ```
+
+4. Run `pqcota-inventory -init-schema` as `pqcota_schema`. It leaves the existing tables as they are, creates only the tables this version adds, and ends
+   with "schema ready: N created, M already present". From then on run the loading account with `PQCOTA_AUTO_DDL=0`: it no longer owns the
+   tables, so ingesting without it fails with "permission denied for schema public". Replace each `<…>` with the real value before
+   running it.
+
+   ```bash
+   PQCOTA_DSN='postgres://pqcota_schema@<host>:5432/pqcota' pqcota-inventory -init-schema
+   ```
+
+**Values to move from `ansible.cfg`.** 03 reads only one configuration made by the product for each run. Move the values you kept in
+`ansible.cfg` as below, or they are not used in this version. When you apply the playbooks of 06 outside 03, your own `ansible.cfg`
+applies as before.
+
+| Value in `ansible.cfg` | In 03 |
+|---|---|
+| `remote_user` | Write it per node as the account (`ssh_user`) of the access file (`hosts.csv`) |
+| `private_key_file` | Write it as the SSH key path (`ssh_key`) of the access file, or keep it as `IdentityFile` in `~/.ssh/config`. The ssh agent is used too |
+| `remote_port` | Write it as the port of the access file |
+| `ssh_args`, jump hosts (`ProxyJump`, `ProxyCommand`) | Move them to `~/.ssh/config`; ssh reads it as it is. 03 turns connection sharing (`ControlMaster`, `ControlPersist`) off. The port always comes from the access file, and the user follows `~/.ssh/config` only for nodes whose account is left empty in the access file |
+| `host_key_checking = False` | Not supported. 03 checks host keys, so accept each node's key into `~/.ssh/known_hosts` |
+| Privilege escalation (`become_method`, `become_user`, `become_exe`, `become_flags`, `become_ask_pass`) | Cannot be changed. 03 becomes root with the built-in sudo and never asks for a password. Reach the node as root or give sudo `NOPASSWD` |
+| `pipelining`, `keep_remote_files`, `verbosity` | 03 fixes them (pipelining on, no remote files kept, default output) |
+| `log_path`, `callbacks_enabled`, `stdout_callback` | Not supported. The run log is kept in `observations/<run>/log.txt` and on the 03 screen |
+| Plugin, collection and role paths, `library` | Not used. 03 uses built-in modules only |
+| `interpreter_python` | Not supported. The node's Python is found automatically (the node needs Python 3) |
+| `forks`, `timeout`, `gathering` | Not supported. Ansible's defaults are used |
+| `inventory`, vault settings | Not used. 03 builds the inventory from the access file for each run, and the access secrets are in `hosts.csv` |
 
 ### v0.29.1 to v0.30.0
 
@@ -961,7 +1214,7 @@ screen.
 | `damaged` | A save record or lock file is damaged | Stop the screen, get the diagnostics file and ask for support |
 | `diagnostic` | An input file could not be read, so the screen opened for diagnostics only | Fix the file the screen shows and start it again |
 | `exists` | The file to create is already there, so it was not overwritten | Reload the screen |
-| `run-not-ready` | Something needed before an observation (access, Ansible, collectors) is missing | Provide the items marked ✗ in the checklist on the 03 screen |
+| `run-not-ready` | Something needed before an observation (access, Ansible, collectors, collector signing keys, trusted public keys) is missing, there is a Windows node, or an earlier observation needs recovery | Provide the items marked ✗ in the checklist on the 03 screen |
 | `run-busy` | An observation is already running | Start again after it finishes or is stopped |
 | `sign-not-ready` | The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed | See the approval key check on the 06 screen and fill in the form |
 | `plan-not-approvable` | The plan is not in review (IN_REVIEW), has no actions, or is already signed with this key | Finalize again at 05, or use the signed plan as it is |

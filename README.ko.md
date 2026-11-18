@@ -105,8 +105,9 @@ go build -o bin/ ./inventory/cmd/...
 
 **자기 환경에서.** 위 빌드만으로는 화면이 뜨지 않습니다. 화면은 pqcota 이력(PostgreSQL)을 읽고 대조하므로, 스키마가 있는
 pqcota v0.16.0 이력과 그 이력을 읽는 계정의 연결 정보(`PQCOTA_DSN`이나 `pqcota.env`)가 있어야 시작합니다. 처음이면 운영자
-안내서의 [pqcota 준비](docs/operator-guide.ko.md#pqcota-준비)부터 합니다. PostgreSQL과 계정, 상류 중앙 명령 받기와 확인,
-스키마 만들기, 읽기 권한 순서이고, 일마다 무엇이 필요한지도 거기에 있습니다. 그다음 같은 2절의 연결 · 공식 수집기 · 노드 접속,
+안내서의 [pqcota 준비](docs/operator-guide.ko.md#pqcota-준비)부터 합니다. PostgreSQL과 세 역할, 상류 중앙 명령 받기와 확인,
+`-init-schema`로 스키마 만들기, 권한 순서이고, 일마다 무엇이 필요한지도 거기에 있습니다. 그다음 같은 2절의 연결 · 공식 수집기 ·
+수집기 서명 키 · 노드 접속,
 작업 폴더(3절), 화면 시작(4절) 순서로 갑니다.
 
 ## 다음에 읽을 것

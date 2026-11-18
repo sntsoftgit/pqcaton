@@ -183,6 +183,7 @@ templ scopeActivateBox(p Page, o ActivationOffer) {
 					<li>
 						<strong>{ tActivateStep1.In(p.Lang) }</strong>
 						<span>{ tActivateStep1Body.In(p.Lang) }</span>
+						<code>{ o.VerifyCommand() }</code>
 						<code>{ o.IngestCommand() }</code>
 						<span class="hint">{ tActivateStep1Hint.In(p.Lang) }</span>
 					</li>

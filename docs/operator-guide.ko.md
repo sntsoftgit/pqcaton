@@ -20,6 +20,13 @@
 읽습니다.** 그래서 그 사용자의 계정과 작업 폴더가 곧 이 권한들의 경계입니다. 06은 키 하나로 서명하고 확인합니다(단일
 키 · 단일 승인자).
 
+**수집기 서명 키의 신뢰 전제.** 03은 수집기 ID별 서명 키(2절 「수집기 서명 키 준비」)를 읽어 관측마다 노드에 넘깁니다. 키는 노드
+수집기의 표준 입력으로만 가고 파일 · 명령줄 · Ansible 설정에 남기지 않지만, **관측하는 동안에는 노드 수집기 프로세스의 환경에 있어
+그 노드의 root가 읽을 수 있습니다.** 컨트롤러에서는 화면을 띄운 계정과 root가 키 파일과 임시 키를 읽을 수 있습니다. 노드 점검은
+sudo의 입출력 기록만 봅니다. **sudo 밖의 감사 도구(auditd · tlog · pam_tty_audit 같은 것), sudo의 다른 정책 플러그인, 노드 root가 바꾼
+실행 파일이 무엇을 기록하는지는 운영 환경이 책임질 몫입니다.** 한 ID의 키가 새면 그 ID로 모든 노드의 결과를 위조할 수 있으므로 그때는
+키를 바꿉니다.
+
 **명령은 실제로 돌려 봅니다.** 이 안내서에서 `<!-- run -->` 표시가 붙은 명령은 시험(`guide_run_test.go`)이 빈 홈 폴더에서
 차례대로 실행해 결과를 확인합니다.
 
@@ -91,23 +98,35 @@ chmod +x ~/Desktop/pqcaton-ui.command
 | 일 | 필요한 것 |
 |---|---|
 | 화면 시작 | `pqcaton-ui`, 스키마가 있는 pqcota 이력, 그 이력을 읽는 계정의 연결 정보(아래 「pqcota 연결」) |
-| 03 관측 | Ansible과 노드 접속 정보, 공식 수집기(아래 「관측 실행 준비」) |
-| 관측 결과를 이력에 적재 | `pqcota-ingest`, 쓰기 권한이 있는 적재용 계정. 04 · 05의 대조와 05의 정책 활성화가 이 적재를 봅니다(6절) |
+| 03 관측 | Ansible과 노드 접속 정보, 공식 수집기, 수집기 서명 키와 신뢰할 공개 키(아래 「관측 실행 준비」 · 「수집기 서명 키 준비」) |
+| 관측 결과를 이력에 적재 | `pqcota-ingest`, 적재용 계정. 03의 결과는 서명을 확인(`pqcota-ingest -verify-keys`)한 뒤 판정 조직에 적재합니다(6절). 04 · 05의 대조와 05의 정책 활성화가 이 적재를 봅니다 |
 | 06 승인 서명 · 생성 | 승인 키(아래 「승인 키 준비」의 `pqcota-keygen`). 화면 밖에서 서명 · 생성할 때만 `pqcota-approve` · `pqcota-provision` |
 | 노드에 적용 · 되돌리기 | `pqcota-hosts`(Ansible 인벤토리 만들기)와 `ansible-playbook`(06의 안내) |
 | 오래된 이력 정리 | `pqcota-prune`(골라서) |
 
-1. **PostgreSQL과 계정.** PostgreSQL 16을 준비하고 계정을 둘 만듭니다. 적재용 계정은 데이터베이스의 소유자로 두어 처음
-   스키마를 만들 수 있게 하고, 화면용 계정은 읽기만 합니다. 관리자 계정으로 `psql`에 들어가 실행합니다. 비밀번호는
-   `\password`가 묻는 자리에만 입력하므로 명령줄과 셸 기록에 남지 않습니다.
+아래는 **새로 설치할 때**의 순서입니다. 이미 쓰던 pqcota 이력이 있으면 [9절 「v0.30.0에서 v0.31.0으로」](#v0300에서-v0310으로)의
+「기존 이력을 세 역할로 옮기기」를 따릅니다.
+
+1. **PostgreSQL과 세 역할.** PostgreSQL 16을 준비하고 역할을 셋 만듭니다. 권한을 나누기 위해서입니다(이름은 예입니다).
+
+   | 역할 | 하는 일 |
+   |---|---|
+   | `pqcota_schema` | 스키마를 만들고 표를 소유합니다. `pqcota-inventory -init-schema`만 이 역할로 돌립니다 |
+   | `pqcota_ingest` | 적재합니다(`pqcota-ingest` 등 쓰는 명령). 표의 읽기 · 쓰기 권한만 있고 `PQCOTA_AUTO_DDL=0`으로 돌립니다 |
+   | `pqcaton_ui` | 화면이 이력을 읽습니다. 읽기 권한만 있습니다 |
+
+   관리자 계정으로 `psql`에 들어가 실행합니다. 비밀번호는 `\password`가 묻는 자리에만 입력하므로 명령줄과 셸 기록에 남지 않습니다.
 
    ```sql
+   CREATE ROLE pqcota_schema LOGIN;
+   \password pqcota_schema
    CREATE ROLE pqcota_ingest LOGIN;
    \password pqcota_ingest
    CREATE ROLE pqcaton_ui LOGIN;
    \password pqcaton_ui
-   CREATE DATABASE pqcota OWNER pqcota_ingest;
+   CREATE DATABASE pqcota OWNER pqcota_schema;
    REVOKE ALL ON DATABASE pqcota FROM PUBLIC;
+   GRANT CONNECT ON DATABASE pqcota TO pqcota_ingest, pqcaton_ui;
    ```
 
    비밀번호는 연결 정보에 넣지 않고 `~/.pgpass`(0600)에 둡니다. 한 줄에 `호스트:포트:데이터베이스:계정:비밀번호`이고, 편집기로
@@ -118,42 +137,54 @@ chmod +x ~/Desktop/pqcaton-ui.command
    install -m 600 /dev/null ~/.pgpass
    ```
 
-2. **상류 중앙 명령.** 상류 릴리스의 `pqcota-ctl` 묶음에 적재 · 조회 · 승인 · 생성 명령이 들어 있습니다. 체크섬과 출처 증명(상류
-   리포 · 릴리스 워크플로 · 태그에 고정)을 확인한 뒤 풀어서 `PATH`에 있는 폴더에 둡니다. `gh`(2.49 이상, 로그인)가 필요합니다.
-   arm64 기계면 `linux-amd64`를 `linux-arm64`로 바꿉니다.
+2. **상류 중앙 명령.** 상류 릴리스의 `pqcota-ctl` 묶음에 적재 · 조회 · 승인 · 생성 · 키 만들기 명령이 들어 있습니다. 체크섬과 출처
+   증명(상류 리포 · 릴리스 워크플로 · 태그에 고정)을 확인한 뒤 풀어서 `PATH`에 있는 폴더에 둡니다. `gh`(2.49 이상, 로그인)가
+   필요합니다. arm64 기계면 `linux-amd64`를 `linux-arm64`로 바꿉니다.
 
    ```bash
-   mkdir -p ~/pqcaton/pqcota-ctl-v0.14.0 && cd ~/pqcaton/pqcota-ctl-v0.14.0
-   gh release download v0.14.0 -R randyinthedev-hash/pqcota -p 'pqcota-ctl-linux-amd64.tar.gz' -p SHA256SUMS
+   mkdir -p ~/pqcaton/pqcota-ctl-v0.16.0 && cd ~/pqcaton/pqcota-ctl-v0.16.0
+   gh release download v0.16.0 -R randyinthedev-hash/pqcota -p 'pqcota-ctl-linux-amd64.tar.gz' -p SHA256SUMS
    sha256sum -c --ignore-missing SHA256SUMS
    gh attestation verify pqcota-ctl-linux-amd64.tar.gz --repo randyinthedev-hash/pqcota \
-     --signer-workflow randyinthedev-hash/pqcota/.github/workflows/release.yml --source-ref refs/tags/v0.14.0 --deny-self-hosted-runners
+     --signer-workflow randyinthedev-hash/pqcota/.github/workflows/release.yml --source-ref refs/tags/v0.16.0 --deny-self-hosted-runners
    tar -xzf pqcota-ctl-linux-amd64.tar.gz
    install -m 755 pqcota-ctl-linux-amd64/pqcota-* ~/.local/bin/
    ```
 
-   소스로 빌드하려면 상류의 [빌드 안내(v0.14.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.14.0/docs/build.ko.md)를
-   따릅니다. 상류 명령 대부분은 `go install …@v0.14.0`으로 설치되지 않습니다(그 안내의 「소스 받기」).
+   소스로 빌드하려면 상류의 [빌드 안내(v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.ko.md)를
+   따릅니다. 상류 명령 대부분은 `go install …@v0.16.0`으로 설치되지 않습니다(그 안내의 「소스 받기」).
 
-3. **이력 스키마 만들기.** 화면은 이력을 조회용으로만 열고 표를 만들지 않으므로, 스키마가 없으면 「the pqcota history schema is
-   missing」으로 시작하지 않습니다. 상류 명령은 저장소를 열 때 스키마가 없으면 만듭니다(`PQCOTA_AUTO_DDL=0`이면 만들지 않음).
-   적재용 계정으로 조회 명령을 한 번 실행하면 빈 스키마가 생기고 종료 상태 0으로 끝납니다. 조직은 판정 조직으로 줍니다.
-   빈 결과 폴더로 `pqcota-ingest`를 실행하는 것은 초기화가 아닙니다. 결과가 없다고 종료 상태 1로 끝나고 아무것도 만들지
-   않습니다. 실제 적재는 03에서 관측한 뒤 6절대로 합니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
+3. **이력 스키마 만들기.** 스키마는 `pqcota_schema`로 `pqcota-inventory -init-schema`를 한 번 돌려 만듭니다. 한 트랜잭션이고, 끝나면
+   `schema ready: 11 created, 0 already present`처럼 알립니다. 다시 돌려도 있는 표와 데이터는 그대로 두고, 판을 올린 뒤에는 새 판이
+   더한 것만 만듭니다. 그러므로 **상류 판을 올릴 때마다 한 번씩 돌립니다.** `pqcota-provision`으로 화면 밖에서 생성 기록을 남긴다면
+   `pqcota-records -init-schema`도 같은 역할로 돌립니다. 상류 v0.16.0부터 조회 명령은 표를 만들지 않고, 화면도 이력을 조회용으로만
+   엽니다. 스키마가 없으면 화면은 「the pqcota history schema is missing or incomplete; run `pqcota-inventory -init-schema` as the role
+   that owns the schema」로 시작하지 않습니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
    ```bash
-   PQCOTA_DSN='postgres://pqcota_ingest@<호스트>:5432/pqcota' PQCOTA_ORG='<판정 조직>' pqcota-inventory
+   PQCOTA_DSN='postgres://pqcota_schema@<호스트>:5432/pqcota' pqcota-inventory -init-schema
    ```
 
-4. **화면용 계정의 읽기 권한.** 스키마를 만든 뒤 관리자 계정으로 `pqcota` 데이터베이스에서 실행합니다. 마지막 줄은 상류가
-   뒤에 만드는 표에도 같은 읽기 권한을 줍니다. 권한이 빠지면 화면은 「server error SQLSTATE 42501」로 시작하지 않습니다.
+4. **적재 · 화면 계정의 권한.** 스키마를 만든 뒤 관리자 계정으로 `pqcota` 데이터베이스에서 실행합니다. 앞의 세 줄은 지금 있는 표에,
+   뒤의 세 줄(`ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema`)은 `pqcota_schema`가 앞으로 만드는 표에 권한을 줍니다. 뒤의 것만으로는
+   이미 있는 표에 아무 권한도 생기지 않으므로 둘 다 실행합니다.
 
    ```sql
-   GRANT CONNECT ON DATABASE pqcota TO pqcaton_ui;
-   GRANT USAGE ON SCHEMA public TO pqcaton_ui;
+   GRANT USAGE ON SCHEMA public TO pqcota_ingest, pqcaton_ui;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pqcota_ingest;
+   GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO pqcota_ingest;
    GRANT SELECT ON ALL TABLES IN SCHEMA public TO pqcaton_ui;
-   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_ingest IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pqcota_ingest;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT USAGE ON SEQUENCES TO pqcota_ingest;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
    ```
+
+   - **적재 계정은 `PQCOTA_AUTO_DDL=0`으로 돌립니다.** 이 값이 없으면 쓰는 명령이 저장소를 열 때마다 스키마 문장을 돌리는데, 그것은
+     표의 소유자만 할 수 있습니다. 표를 소유하지 않은 적재 계정은 「permission denied for schema public」으로 실패합니다.
+   - **화면 계정은 이력 표 전부의 `SELECT`와 스키마의 `USAGE`만 있으면 됩니다.** 화면은 시작할 때 이력 저장소의 모든 표와 열을
+     확인합니다. 권한이 빠지면 「this account lacks privileges to read the pqcota history (SELECT on its tables, USAGE on their
+     schema); initializing the schema does not change them」로 시작하지 않습니다. 초기화로는 고쳐지지 않으므로 권한을 줍니다.
+   - 역할과 권한의 자세한 표는 상류의 [setting up the database(v0.16.0)](https://github.com/randyinthedev-hash/pqcota-inventory/blob/v0.16.0/cmd/README.md#setting-up-the-database)에 있습니다.
 
 **pqcota 연결.** pqcaton은 pqcota가 설치 · 연결되어 동작하는 환경에서만 실행합니다. 화면은 시작할 때 pqcota 이력에
 연결하고, 이력을 한 번 읽어(스키마와 읽기 권한) 통과해야 뜹니다. 연결 정보가 없거나 연결 · 조회가 10초 안에 끝나지 않으면
@@ -179,36 +210,107 @@ mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
 install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
 ```
 
-**관측 실행 준비.** 03 관측 화면에서 관측을 실행하려면 이 기계에 두 가지가 더 있어야 합니다. 화면은 시작하기 전에 둘을
-점검하고, 빠진 것이 있으면 무엇을 하면 되는지 보입니다.
+**관측 실행 준비.** 03 관측 화면에서 관측을 실행하려면 이 기계에 Ansible과 수집기가, 노드에는 접속 계정이 있어야 합니다. 화면은
+시작하기 전에 이것들과 서명 키(아래 「수집기 서명 키 준비」)를 점검하고, 빠진 것이 있으면 무엇을 하면 되는지 보입니다.
 
-- **Ansible.** `ansible-playbook`을 `PATH`에서 찾습니다. 노드에는 SSH(Windows 노드는 SSH나 WinRM)로 접속하고, Linux
-  노드에서는 root 권한(`become`)으로 실행하므로 그 계정에 sudo 권한이 있어야 합니다. 처음 접속하는 노드는 미리 `ssh`로
-  한 번 접속해 호스트 키를 받아 둡니다. Windows 노드를 관측하려면 `ansible.windows` 컬렉션도 필요합니다.
+- **Ansible.** `ansible-playbook`을 `PATH`에서 찾습니다. ansible-core 2.16.3과 2.21.6으로 검증했습니다. 03은 **운영자의 Ansible
+  설정을 읽지 않습니다**(아래 「03이 쓰는 Ansible 설정」).
+- **노드와 접속 계정.** 이번 판의 03은 **Linux 노드만** 관측합니다. 노드에는 SSH로 접속하고, 수집기는 root로 실행합니다. 접속
+  계정은 둘 중 하나입니다.
+  - **root로 접속.** Ansible은 접속 계정과 권한 상승 대상이 같으면 권한 상승을 건너뛰므로 sudo를 쓰지 않습니다.
+  - **일반 계정으로 접속해 sudo로 root.** 그 계정은 sudo를 **비밀번호 없이**(`NOPASSWD`) 쓸 수 있어야 하고, sudo가 명령의
+    입출력을 기록하지 않아야 합니다(아래 「노드 점검」).
+
+  처음 접속하는 노드는 미리 `ssh`로 한 번 접속해 호스트 키를 받아 둡니다. 화면은 호스트 키를 검사합니다.
+- **Windows 노드는 관측하지 않습니다.** 이번 판의 03은 Windows 노드에 서명 키를 넘기지 않으므로, 관측해도 그 결과가 서명 검증을
+  지나지 못합니다. 그래서 접근 정보에 Windows 노드가 있으면 03은 그 노드를 보이며 관측을 시작하지 않습니다. Windows 노드는
+  접근 정보에서 빼고, 그 노드는 `pqcota-cngscan` · `pqcota-jvmscan`을 서명 키와 함께 직접 돌려 관측합니다.
 - **수집기.** 작업 폴더의 `collectors` 폴더(또는 `-collectors <폴더>`)에 상류 릴리스의 수집기를 아래 모양으로 둡니다. 판은
-  pqcota v0.14.0으로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.ko.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다.
-  이 화면은 읽은 수집 결과를 v0.14.0 규칙 묶음(`pqcota-enrich/v4`)으로 정규화합니다. v0.12.0부터 `pqcota-jvmscan`은 같은
+  pqcota v0.16.0으로 두고(pqcaton 판마다의 조합은 [판별 표](compatibility.ko.md)), 노드에 올리는 `collector.jar`도 같은 판으로 둡니다.
+  이 화면은 읽은 수집 결과를 v0.16.0 규칙 묶음(`pqcota-enrich/v4`)으로 정규화합니다. v0.12.0부터 `pqcota-jvmscan`은 같은
   애플리케이션을 돌리는 JVM을 배포본 하나로 묶어 내고, v0.13.0부터 `pqcota-nodescan` · `pqcota-netcap`은 사용자 서비스의 앱 키를
-  `user@<uid>.service/<유닛>`으로, 엣지를 연결마다 그 연결을 연 애플리케이션으로 잡습니다. v0.10.7 전의 `pqcota-jvmscan`은 JVM이 둘 이상인 노드에서 결과를
-  여러 줄로 써서, 그 노드가 든 적재 요청 전체가 거절됩니다. 그 전 판의 `pqcota-jvmscan` · `collector.jar`는 provider별 PQC 서비스 목록을 싣지 않아
-  JCA 준비도가 `unknown`이 되고, 03 · 04 화면이 그 노드를 「v0.10.6 JCA 수집 결과임을 확인할 수 없습니다」로 알립니다
-  (README의 「맞는 조합」).
+  `user@<uid>.service/<유닛>`으로, 엣지를 연결마다 그 연결을 연 애플리케이션으로 잡습니다. v0.15.0부터 모든 수집기가
+  `PQCOTA_SIGN_KEY`로 결과에 서명하고, 키를 받았는데 서명하지 못하면 결과를 내지 않고 멈춥니다. v0.10.7 전의 `pqcota-jvmscan`은
+  JVM이 둘 이상인 노드에서 결과를 여러 줄로 써서, 그 노드가 든 적재 요청 전체가 거절됩니다. 그 전 판의 `pqcota-jvmscan` ·
+  `collector.jar`는 provider별 PQC 서비스 목록을 싣지 않아 JCA 준비도가 `unknown`이 되고, 03 · 04 화면이 그 노드를 「v0.10.6 JCA
+  수집 결과임을 확인할 수 없습니다」로 알립니다(README의 「맞는 조합」).
 
 ```text
 collectors/
 ├── linux-amd64/     pqcota-nodescan · pqcota-netcap · pqcota-jvmscan
 ├── linux-arm64/     arm64 노드가 있을 때
-├── windows-amd64/   pqcota-cngscan.exe · pqcota-jvmscan.exe (Windows 노드가 있을 때)
 └── collector.jar    없으면 실행 중인 JVM의 provider 체인은 관측하지 않습니다
 ```
 
+<a id="수집기-서명-키-준비"></a>
+
+**수집기 서명 키 준비.** 03은 수집기 결과에 서명하게 하고, 서명이 확인된 결과만 지금 결과로 씁니다. 상류 적재
+(`pqcota-ingest`)도 같은 키로 확인합니다. 그래서 관측은 **수집기 ID마다 서명 키가 있어야 시작합니다.**
+
+- **수집기 ID와 키.** 결과에 적히는 ID는 명령마다 정해져 있습니다. `pqcota-nodescan`은 `openssl-collector`, `pqcota-netcap`은
+  `network-collector`, `pqcota-jvmscan`은 `jvm-collector`입니다. `collector.jar`가 없으면 `jvm-collector` 키는 없어도 됩니다.
+  키는 ID마다 하나이고, **같은 ID의 수집기는 모든 노드가 그 키를 함께 씁니다.** 상류는 아직 키를 노드에 묶지 않으므로, 한 ID의 키를
+  가진 쪽은 그 ID로 어느 노드의 결과든 서명할 수 있습니다. 노드를 가리는 것은 등록 목록과 머신 지문 검사입니다.
+- **자리.** 서명 키는 사용자 설정 폴더의 `pqcaton/collector-keys/<ID>.key`이고, 신뢰할 공개 키는 같은 폴더의 `verify.pub`입니다.
+  폴더는 작업 폴더 밖에 두고 소유자만 들어가게(0700) 하며, 키 파일은 소유자만 읽게(0600) 합니다. 승인 키(06)와 자리 · 용도가
+  다릅니다. 다른 자리에 두려면 `-collector-keys <폴더>`와 `-collector-verify-keys <파일>`로 줍니다.
+- **신뢰할 공개 키(`verify.pub`).** `PQCOTA_VERIFY_KEY=<ID>:<공개 키>,…` 한 줄이고, **적재에 주는 `PQCOTA_VERIFY_KEY`와 같은
+  값입니다.** 03은 결과를 이 값으로만 검증합니다(개인 키에서 뽑아 쓰지 않습니다). 다른 사용자가 고칠 수 있거나 개인 키가 든 파일,
+  ID에 묶이지 않은 옛 목록 꼴은 받지 않습니다.
+- **03이 막는 것.** 빠진 ID, 파일 이름과 다른 ID의 키, 수집기 ID가 없는 키(플래그 없이 만든 승인 키 꼴), 넓은 권한, `verify.pub`에
+  없는 서명 키, 한 공개 키를 두 ID에 둔 것, 승인 키를 서명 키로 쓴 것. 03의 「수집기 서명 키」 · 「신뢰할 수집기 공개 키」 줄이
+  빠진 ID와 까닭을 보입니다.
+
+`pqcota-keygen`은 「pqcota 준비」의 `pqcota-ctl` 묶음에 있습니다. 마지막 두 줄은 세 키의 공개 키를 `verify.pub` 한 줄로 모으고, 다른 사용자가
+고칠 수 없게 합니다(기본 umask가 002인 배포판에서는 그룹이 고칠 수 있게 만들어져 03이 받지 않습니다).
+
+```bash
+mkdir -p ~/.config/pqcaton && mkdir -m 700 ~/.config/pqcaton/collector-keys
+for id in openssl-collector network-collector jvm-collector; do (umask 077 && pqcota-keygen -collector "$id" > ~/.config/pqcaton/collector-keys/"$id".key); done
+for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub
+chmod 644 ~/.config/pqcaton/collector-keys/verify.pub
+```
+
+macOS에서는 자리가 `~/Library/Application Support/pqcaton/collector-keys`입니다. 위 명령의 `~/.config/pqcaton`을 그 자리로 바꿉니다.
+03 밖에서 운영자가 직접 돌리는 수집기도 같은 ID의 키로 서명해야 적재에서 거절되지 않습니다. 키를 바꿀 때는 새 공개 키를
+`verify.pub`과 적재 쪽 값에 먼저 더하고(한 ID 아래 둘을 둘 수 있습니다), 서명 키 파일을 바꾸고, 관측과 `pqcota-ingest -verify-keys`로 확인한
+뒤 옛 공개 키를 뺍니다.
+
+<a id="03이-쓰는-ansible-설정"></a>
+
+**03이 쓰는 Ansible 설정.** 03은 서명 키를 노드 표준 입력으로 넘깁니다. 그 길에 다른 설정이 끼면 키가 샐 수 있어서(운영자 폴더의
+콜백 플러그인이 키를 받거나, 다른 sudo 실행 파일이 키를 받는 것을 실험으로 확인했습니다), 검증한 조건만 씁니다.
+
+- 실행마다 제품이 만든 설정 파일 하나만 읽습니다. **운영자의 `ansible.cfg`(`./ansible.cfg` · `~/.ansible.cfg` ·
+  `/etc/ansible/ansible.cfg`)와 `ANSIBLE_*` 환경 변수는 03 관측에 쓰이지 않습니다.** 운영자 폴더의 플러그인 · 컬렉션도 읽지 않습니다.
+- 연결은 내장 ssh, 권한 상승은 내장 sudo(`sudo -H -S -n`, root), pipelining은 켜고, 원격 임시 파일은 남기지 않습니다.
+- ssh 클라이언트 설정(`~/.ssh/config`의 `ProxyJump` · `IdentityFile` · `Port` 등)과 `~/.ssh/known_hosts`는 ssh가 읽으므로 그대로
+  씁니다. ssh-agent(`SSH_AUTH_SOCK`)도 그대로 씁니다.
+- 기존 `ansible.cfg`에 두던 값을 옮기는 방법은 [9절 「v0.30.0에서 v0.31.0으로」](#v0300에서-v0310으로)에 있습니다.
+
+<a id="노드-점검"></a>
+
+**노드 점검.** 관측을 시작하면 03은 먼저 **키 없이** 모든 노드를 점검합니다. 노드마다 접속 계정의 uid와, root가 아니면
+`LC_ALL=C sudo -n -l`을 읽습니다. 모든 노드가 통과해야 키를 만들고 관측을 시작합니다. 한 노드라도 통과하지 못하면 아무 노드도
+관측하지 않고, 그 실행은 「실패」이며, 노드 정리는 「불필요」로 끝납니다(관측이 노드에 닿지 않았고 점검은 노드에 아무것도 만들지
+않습니다). 실행 로그에 노드 · 까닭 · 그 정책 줄 · 노드에서 확인할 명령이 남습니다.
+
+| 판정 | 언제 |
+|---|---|
+| 통과 | root로 접속함, 또는 `sudo -n -l`의 지원하는 출력 꼴에서 입출력 기록 설정을 **찾지 못함**. 이 점검이 보지 못하는 기록은 아래 「신뢰 전제」 |
+| 거절 | 입출력 기록이 켜짐(`log_input` · `log_output` · `log_stdin` · `log_stdout` · `log_stderr` · `log_ttyin` · `log_ttyout`), 규칙의 `LOG_INPUT:` · `LOG_OUTPUT:`, `requiretty`. 키가 그 기록에 남기 때문입니다 |
+| 확인 불가 | sudo가 비밀번호를 물음(`NOPASSWD`가 아님), `sudo -n -l`이 실패함, 출력 꼴이 다름, 켜는 설정과 끄는 설정(`!log_input` · `NOLOG_INPUT:`)이 섞임, 명령별 · runas별 설정이 있음, root로 모든 명령을 실행하는 규칙 말고 다른 규칙이 있음. 실제로 어느 설정이 `/bin/sh`에 적용되는지 이 목록만으로 가릴 수 없어 멈춥니다 |
+
+확인 불가는 노드의 sudoers를 단순하게 바꾸면 풀립니다. 그 접속 계정에 `<계정> ALL=(ALL) NOPASSWD: ALL` 규칙만 두고, 입출력 기록을
+그 계정에서 끕니다. 노드에서 그 계정으로 `LC_ALL=C sudo -n -l`을 실행해, 03의 로그에 보인 정책 줄을 직접 확인합니다.
+
 **받은 수집기를 확인하기.** 상류 수집기는 릴리스 자산으로 받고, 받기와 확인은 준비 도구 `pqcaton-collectors`로 합니다. 이 도구는
-go.mod가 고정한 상류 판(이 판은 v0.14.0)의 자산만 받고, 받은 파일을 실행하지 않습니다.
+go.mod가 고정한 상류 판(이 판은 v0.16.0)의 자산만 받고, 받은 파일을 실행하지 않습니다.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.31.0
-pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.14.0
-pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
+pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.16.0
+pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
 ```
 
 - **조건.** `gh`(GitHub CLI 2.49 이상)가 있고 로그인되어 있어야 합니다(`gh auth login`). 출처 증명을 확인하고 신뢰 루트를 받느라
@@ -216,13 +318,12 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
   기계에서 쓰려면 망이 있는 기계에서 준비 · 확인한 폴더를 옮깁니다.
 - **대상(`-arch`).** 수집기를 돌릴 노드의 아키텍처를 늘 명시합니다(`linux-amd64` 또는 `linux-arm64`). 준비 폴더의
   `provenance/TARGET`에 적히고, `verify`가 다시 견줍니다. 실행 파일의 Go 빌드 정보에 적힌 OS · 아키텍처도 대상과 같아야 합니다.
-  두 아키텍처의 노드가 함께 있으면 대상마다 따로 받습니다. Windows 수집기(`pqcota-windows-amd64.zip`)는 아직 이 도구로 받지
-  않으므로, 함께 게시된 `SHA256SUMS`로 확인한 뒤 `windows-amd64` 폴더에 둡니다.
+  두 아키텍처의 노드가 함께 있으면 대상마다 따로 받습니다.
 - **`fetch`가 하는 일.** 대상 옆의 새 임시 폴더에 자산을 받고, 자산의 출처 증명(상류 저장소 · 릴리스 워크플로 · 그 태그에 고정)을
   확인하고, `SHA256SUMS`와 견주고, 압축을 안전하게 풀고(링크 · 장치 파일 · 경로 탈출 거절), release manifest와 파일마다 해시 ·
   판 · 커밋 · 내용 해시(h1)를 견주고, 꺼낸 실행 파일의 출처 증명을 확인한 뒤, 정해진 파일만 있을 때 한 번에 옮깁니다. 하나라도
   실패하면 대상 폴더를 만들지 않습니다. 대상이 이미 있으면 덮어쓰지 않습니다.
-- **쓰는 법.** 화면을 띄우기 전에 `verify`로 다시 확인하고, 화면에는 `-collectors ~/pqcaton/collectors-v0.14.0/collectors`로
+- **쓰는 법.** 화면을 띄우기 전에 `verify`로 다시 확인하고, 화면에는 `-collectors ~/pqcaton/collectors-v0.16.0/collectors`로
   줍니다.
 
 **두 확인이 보는 것.** 배포물 검증(`pqcaton-collectors`)은 **이 파일이 상류의 그 공식 릴리스가 낸 그 파일인가**를 봅니다: 누가 어느
@@ -234,10 +335,10 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
 「확인됨」은 수집기 자신이 고정 판이고, 빌드 정보에 실린 주 모듈의 내용 해시(h1)가 이 판이 고정한 값(리포의 `go.sum`)과
 같으며, 의존 모듈에도 replace가 없는 빌드뿐입니다.
 
-**상류 v0.14.0의 릴리스 자산은 「확인됨」입니다.** v0.14.0부터 상류 릴리스는 형제 모듈을 옆 폴더가 아니라 같은 태그의 모듈로
-받아 빌드하므로, 빌드 정보에 수집기 자신과 의존 모듈이 v0.14.0으로 남고 replace가 없습니다. 옆 폴더를 두고 직접 빌드한 것(상류
+**상류 v0.16.0의 릴리스 자산은 「확인됨」입니다.** v0.14.0부터 상류 릴리스는 형제 모듈을 옆 폴더가 아니라 같은 태그의 모듈로
+받아 빌드하므로, 빌드 정보에 수집기 자신과 의존 모듈이 그 판으로 남고 replace가 없습니다. 옆 폴더를 두고 직접 빌드한 것(상류
 데모 방식)은 지금도 「확인 불가」입니다. 수집기 자신을 replace로 빌드했으면 「실제 소스: 로컬 replace(devel)」로, 태그
-체크아웃에서 빌드했으면 「수집기 소스 v0.14.0 확인 · replace 의존 소스 확인 불가」로 보입니다. 직접 빌드한 것은 빌드 정보에
+체크아웃에서 빌드했으면 「수집기 소스 v0.16.0 확인 · replace 의존 소스 확인 불가」로 보입니다. 직접 빌드한 것은 빌드 정보에
 주 모듈의 h1이 없어, replace가 없어도 「모듈 내용 해시(h1) 없음(직접 빌드)」으로 확인 불가입니다.
 
 - **맞지 않음.** 다른 판이 보이거나, 수집기끼리 판이 섞였거나, **판은 같아도 내용 해시(h1)가 고정한 값과 다르면**(같은 판
@@ -247,7 +348,7 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
   `-allow-unverified-collectors`로 띄웁니다. 허용한 사실과 파일 목록은 03 화면과 표준 오류에 남고, 작업 폴더에는 남지
   않습니다.
 - **`collector.jar`.** 없어도 됩니다(선택 항목이라 이 점검이 없습니다). 두면 **v0.30.0부터 수집기와 같은 기준으로 엄격하게
-  봅니다.** v0.14.0의 공식 JAR에는 manifest에 판(`Implementation-Version`) · 커밋(`X-Pqcota-Commit`) · 수정 여부
+  봅니다.** v0.14.0부터 공식 JAR에는 manifest에 판(`Implementation-Version`) · 커밋(`X-Pqcota-Commit`) · 수정 여부
   (`X-Pqcota-Dirty`)가 실려 있습니다.
   - **확인됨**: 정식 판이 고정 판이고, 커밋이 40자 · 64자 16진수이며, 수정 여부가 `false`입니다. 03의 collector.jar 줄에 판과
     커밋 앞 12자가 보이고, 전체 커밋은 그 줄의 설명(마우스를 올리면 보이는 `title`)에 있습니다.
@@ -261,14 +362,17 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.14.0
 
 **승인 키 준비.** 06 화면에서 새 승인에 서명하려면 승인 키가 필요합니다. 화면은 사용자 설정 폴더의
 `pqcaton/approval.key`를 기본으로 찾습니다(Linux는 `~/.config/pqcaton/`, macOS는 `~/Library/Application Support/pqcaton/`).
-그 자리에 `pqcota-keygen`의 출력을 소유자만 읽게 저장하면 플래그 없이 씁니다. 화면은 이 파일을 만들거나 권한을 고치지
-않고, 서명할 때마다 다시 읽습니다. 마지막 줄은 공개 키만 `approval.pub`에 따로 둡니다.
+그 자리에 `pqcota-keygen`의 출력(**플래그 없이** 만든 것)을 소유자만 읽게 저장하면 플래그 없이 씁니다. `pqcota-keygen -collector`로 만든
+수집기 서명 키는 승인 키로 받지 않습니다(「collector」 상태). `pqcota-keygen`은 `pqcota-ctl` 묶음에도 있습니다. 화면은 이 파일을 만들거나 권한을 고치지
+않고, 서명할 때마다 다시 읽습니다. 마지막 두 줄은 공개 키만 `approval.pub`에 따로 두고, 다른 사용자가 고칠 수 없게 합니다(06은
+그룹이 고칠 수 있는 공개 키 파일을 받지 않습니다).
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.14.0
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.16.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
+chmod 644 ~/.config/pqcaton/approval.pub
 ```
 
 macOS에서는 자리만 다릅니다.
@@ -277,6 +381,7 @@ macOS에서는 자리만 다릅니다.
 mkdir -p "$HOME/Library/Application Support/pqcaton"
 (umask 077 && pqcota-keygen > "$HOME/Library/Application Support/pqcaton/approval.key")
 grep '^PQCOTA_VERIFY_KEY=' "$HOME/Library/Application Support/pqcaton/approval.key" > "$HOME/Library/Application Support/pqcaton/approval.pub"
+chmod 644 "$HOME/Library/Application Support/pqcaton/approval.pub"
 ```
 
 - **확인용 공개 키(`approval.pub`).** 개인 키 없이도 이미 서명된 계획을 확인하고 플레이북을 만들 수 있게 합니다. 개인 키 줄이
@@ -410,12 +515,24 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 
    **02에서 확정한 정책은 바로 대조에 쓰이지 않습니다.** 대조(04 · 05)는 활성 정책 `scope-assets.csv`를 씁니다. 대조
    정책이 상류 적재에 쓴 정책과 다르면 05에서 만든 계획의 근거를 pqcota가 찾지 못하기 때문입니다. 확정한 정책을 쓰려면
-   먼저 그 정책으로 상류 적재를 다시 합니다. 결과 폴더는 작업 폴더의 `results/`를 줍니다. 연결 정보는 적재용 계정의 것을
-   `PQCOTA_DSN`으로 주고, 비밀번호는 「pqcota 준비」의 `~/.pgpass`에서 읽습니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
+   먼저 그 정책으로 상류 적재를 다시 합니다. 결과 폴더는 작업 폴더의 `results/`를 줍니다. 순서는 셋입니다.
+
+   1. **03이 서명을 확인합니다.** 03이 받은 결과는 수집기 서명이 있고, 03은 서명이 확인된 결과만 `results/`에 둡니다(3번).
+   2. **`pqcota-ingest -verify-keys`로 다시 확인합니다.** 적재와 같은 판정으로 확인하고 아무것도 저장하지 않습니다. 결과마다 수집기 ID · 서명 여부 ·
+      맞은 키의 지문 · 판정을 찍고, 거절될 결과가 있으면 종료 코드 1입니다. 그때는 적재하지 않습니다.
+   3. **판정 조직에 적재합니다.** 같은 `PQCOTA_VERIFY_KEY`로 적재하므로 서명이 맞지 않는 결과는 저장 전에 거절됩니다.
+
+   `PQCOTA_VERIFY_KEY`는 03이 신뢰하는 `verify.pub`의 값입니다(공개 키라 비밀이 아닙니다). 연결 정보는 적재용 계정의 것을
+   `PQCOTA_DSN`으로 주고, 비밀번호는 「pqcota 준비」의 `~/.pgpass`에서 읽습니다. 적재 계정은 `PQCOTA_AUTO_DDL=0`으로 돌립니다.
+   `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
    ```bash
-   PQCOTA_DSN='postgres://pqcota_ingest@<호스트>:5432/pqcota' PQCOTA_ORG='<판정 조직>' pqcota-ingest -scope-assets '<작업 폴더>/asset-scope.csv' '<작업 폴더>/results'
+   export PQCOTA_VERIFY_KEY="$(sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/verify.pub)"
+   pqcota-ingest -verify-keys '<작업 폴더>/results'
+   PQCOTA_DSN='postgres://pqcota_ingest@<호스트>:5432/pqcota' PQCOTA_ORG='<판정 조직>' PQCOTA_AUTO_DDL=0 pqcota-ingest -scope-assets '<작업 폴더>/asset-scope.csv' '<작업 폴더>/results'
    ```
+
+   05의 「pqcota 재적재」 단계도 같은 두 명령(작업 폴더 기준 상대 경로)을 보입니다.
 
    02를 확정하면 확정 알림 아래 「다음 단계」가 「04에서 현재 대조 보기」와 「05에서 활성화 절차 보기」로 잇고, 활성화하기
    전까지는 04 위쪽에도 「02에서 확정한 정책이 아직 활성화되지 않았습니다」가 떠서 그 화면의 대조가 활성 정책으로 한 것임을
@@ -465,14 +582,34 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
    있어도 노드의 최신 적재 결과가 다른 정책의 것이면 대조가 통과하지 않고, 05는 `upstream-revert`로 거절합니다. 그 정책으로
    결과를 다시 적재하면 마지막에 적재한 상태가 노드의 최신이 되어 활성화할 수 있습니다(pqcota v0.13.1 이상). v0.27.x 이하가 운영자 진술(`operator-statement`)로 연
    회차는 과거 기록으로 계속 읽히며, 05의 「이 회차를 연 정책 변경」에 「pqcota 이력과 대조하지 않았습니다」로 보입니다.
-3. **03 관측.** 관측할 노드와 접속 방법(IP · 포트 · 계정 · SSH 키 경로 · OS · SSH나 WinRM)을 적고 저장합니다. 작업 폴더의
+3. **03 관측.** 관측할 노드와 접속 방법(IP · 포트 · 계정 · SSH 키 경로 · OS)을 적고 저장합니다. Windows 노드가 있으면 관측을
+   시작하지 않습니다(2절 「관측 실행 준비」). 작업 폴더의
    `hosts.csv`에 `pqcota-hosts`가 읽는 형식으로 저장됩니다. 비밀번호는 화면에서 적지 않습니다. 파일에 있으면 「있음」으로만
-   보이고 저장해도 그대로 남습니다. 「관측 시작」을 누르면 표의 노드마다 수집기를 올려 실행하고, 결과를 `results/`로 받은
-   뒤 노드에서 지웁니다. 실행하는 동안 로그가 보이고 「중지」로 멈출 수 있습니다. **모든 노드의 결과가 오고 성공했을 때만
-   지금 결과를 한 번에 바꿉니다.** 실패하거나, 멈췄거나, 결과가 빠진 노드가 있으면 지금 결과는 그대로이고 받은 것은
-   `observations/<실행>/partial/`에 진단용으로 남습니다. 받은 결과는 상류 디코더로 읽어, 깨진 파일 · 다른 노드의 결과 ·
-   다른 수집기의 결과가 하나라도 있으면 지금 결과로 쓰지 않습니다. 끝까지 돌지 못한 실행 뒤에는 노드의 임시 폴더를 지우는
-   정리를 한 번 더 돌립니다. 화면을 끄면 돌던 관측도 멈추고, 정리가 끝난 뒤에 화면이 끝납니다. 관측은 화면이 띄운 감독
+   보이고 저장해도 그대로 남습니다. 「관측 시작」을 누르면 다음 순서로 돕니다. 실행하는 동안 로그가 보이고 「중지」로 멈출 수
+   있습니다.
+
+   1. **노드 점검.** 키 없이 모든 노드를 점검합니다(2절 「노드 점검」). 하나라도 통과하지 못하면 여기서 끝나고, 아무 노드도
+      관측하지 않으며, 노드 정리는 「불필요」입니다.
+   2. **임시 서명 키.** 원래 서명 키(`collector-keys/`)를 다시 점검하고, 이 실행에만 쓸 임시 키를 **작업 폴더 밖**에 만듭니다.
+      자리는 `XDG_RUNTIME_DIR`(이 사용자만 들어갈 수 있을 때) 아니면 시스템 임시 폴더 아래의 `pqcaton-keys-<실행 ID>`이고, 폴더는
+      0700, 키 파일은 만들 때부터 0600입니다. 실행 로그가 그 자리를 알립니다. 자리는 실행 자리의 `run-keys.json`에 먼저 적어 두므로
+      비정상 종료 뒤에도 찾을 수 있습니다. 키 값은 Ansible · ssh의 환경과 명령줄에 넣지 않고, 노드 수집기의 표준 입력으로만 넘깁니다.
+   3. **관측.** 표의 노드마다 수집기를 올려 실행하고, 결과를 받은 뒤 노드에서 지웁니다. 수집기가 표준 오류로 남긴 것은 실행
+      로그에 옮깁니다.
+   4. **서명 확인.** 받은 결과마다 `verify.pub`으로 서명을 검증합니다(적재와 같은 판정). 통과하면 실행 로그에 「signature checked
+      (key <지문>)」가 남습니다. 서명이 없거나(not signed), 다른 ID의 키로 서명했거나(그 키로 검증될 때만 그렇게 알립니다),
+      등록된 키와 맞지 않으면(서명 뒤 바뀌었거나 등록되지 않은 키) 그 까닭이 「결과가 오지 않았거나 맞지 않는 자리」에 보입니다.
+   5. **결과 교체.** **모든 노드의 결과가 오고, 상류 디코더로 읽히고, 노드 · 수집기가 맞고, 서명이 확인됐을 때만** 지금 결과를
+      한 번에 바꿉니다. 하나라도 어긋나면 지금 결과는 그대로이고 받은 것은 `observations/<실행>/partial/`에 진단용으로 남습니다.
+   6. **회수.** 임시 키를 지웁니다. 끝까지 돌지 못한 실행(실패 · 중지) 뒤에는 노드 정리를 한 번 더 돌립니다. 정리는 이 실행의
+      스테이징 자리에서 아직 도는 수집기를 먼저 끝내고(sudo로 띄운 원격 수집기는 컨트롤러가 ssh를 끝내도 제 관측 구간까지 돌기
+      때문입니다) 스테이징 폴더를 지웁니다.
+
+   **임시 키를 지우지 못하면 「회수 필요」입니다.** 실행 결과(끝남 · 실패 …)와 따로 남고, 03이 그 자리와 까닭을 보이며 새 관측을
+   시작하지 않습니다. 까닭을 고친 뒤(예: 그 폴더의 권한) 화면을 다시 시작하면 시작 때의 복구가 다시 지우고 「회수 필요」를 풉니다.
+   지울 수 없으면 그 폴더(`pqcaton-keys-<실행 ID>`)를 직접 지운 뒤 화면을 다시 시작합니다. **화면과 감독이 함께 비정상으로 끝나면
+   (전원 장애 같은 경우) 다음 시작까지 임시 키가 그 자리에 남을 수 있습니다.** 소유자만 들어갈 수 있는 폴더이고, 다음 시작의 복구가
+   실행 기록으로 찾아 지웁니다. 관측 중에는 노드 수집기 프로세스의 환경에 키가 있고, 그 노드의 root가 읽을 수 있습니다. 화면을 끄면 돌던 관측도 멈추고, 정리가 끝난 뒤에 화면이 끝납니다. 관측은 화면이 띄운 감독
    프로세스(`pqcaton-ui` 자신)가 실행하므로, 화면이 강제로 끝나도 감독이 Ansible을 끝내고 노드를 정리하고 인벤토리를
    지웁니다. 감독마저 끝났으면(전원 장애 같은 경우) 다음 시작이 이 실행의 프로세스를 찾아 끝내고 같은 정리를 합니다.
    프로세스를 끝내지 못하면 아무것도 지우거나 옮기지 않고 「회수 필요」로 남기며, 그 PID를 03 화면에 보이고 새 관측을
@@ -498,10 +635,10 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 
    이 관측이 띄운 프로세스임이 확인될 때만 정상 종료한 뒤 화면을 다시 시작합니다. 관계없는 프로세스이거나 소속을 확인할
    수 없으면 끝내지 말고, 그 프로세스가 스스로 끝난 뒤 화면을 다시 시작합니다. 다시 시작한 화면이 남은 정리를 이어서
-   합니다. 화면이 띄운 관측은 SSH 연결 공유를 쓰지 않습니다(`ControlMaster=no`). 노드에 닿지 못했으면 03
-   화면이 남았을 수 있는 스테이징 폴더를 실행 ID와 함께 적습니다:
-   `/tmp/pqcaton-observe-<실행 ID>`(Windows는 `C:\Windows\Temp\pqcaton-observe-<실행 ID>`). 네트워크 관측은 노드의 기본 경로
-   인터페이스에서 정한 구간(기본 60초) 동안 핸드셰이크를 기다립니다.
+   합니다. 화면이 띄운 관측은 SSH 연결 공유를 쓰지 않습니다(`ControlMaster=no`). 정리 때 노드에 닿지 못했으면 03
+   화면이 남았을 수 있는 스테이징 폴더를 실행 ID와 함께 적습니다: `/tmp/pqcaton-observe-<실행 ID>`. 그 노드에서는 명령줄이 그
+   자리로 시작하는 프로세스가 남지 않았는지도 봅니다. 네트워크 관측은 노드의 기본 경로 인터페이스에서 정한 구간(기본 60초) 동안
+   핸드셰이크를 기다립니다.
 4. **04 대조.** 관측이 끝나거나 pqcota 수집이 `results/`에 결과를 쓰면 화면을 다시 불러옵니다. 결과가 없으면 화면이 그
    폴더를 가리킵니다.
 5. **05 판정.** 정책마다 결론을 적고, 계획에 넣을 항목은 조치 종류 · 목표 · 수준을 고르고, 서명합니다. 「확정」을 누르면
@@ -656,6 +793,94 @@ pkill -INT -u "$USER" -x pqcaton-ui
 파일 내용은 없습니다.
 
 ## 9. 판 올리기
+
+### v0.30.0에서 v0.31.0으로
+
+v0.31.0은 상류 pqcota v0.16.0(v0.15.0 포함)을 반영합니다. 규칙 묶음(`pqcota-enrich/v4`) · 계약 · 이력의 표와 열이 v0.14.0과 같고 상태
+형식 · 세션 · 계획 형식도 v0.30.0과 같아, **규칙 전환 회차를 거치지 않고** 작업 폴더를 그대로 엽니다. 바뀌는 것은 셋입니다.
+**03 관측은 수집기 서명 키 없이 시작하지 않고, 운영자의 `ansible.cfg`를 쓰지 않으며, Windows 노드를 관측하지 않습니다.** pqcota
+이력은 스키마를 정해진 명령으로 만들고, 조회 명령은 표를 만들지 않습니다.
+
+1. 화면을 끄고 `-recover-status`가 `no unfinished transactions`를 찍는지 확인한 뒤, 작업 폴더를 [7절](#7-백업과-복원)대로
+   백업합니다.
+2. **상류 도구를 v0.16.0으로 함께 올립니다**(2절 「pqcota 준비」의 `pqcota-ctl` 묶음). 같은 이력에 적재 · 정리 · 기록하는 도구는 같은
+   판이어야 합니다.
+3. **pqcota 이력을 준비합니다.** 아래 「기존 이력을 세 역할로 옮기기」를 따릅니다. 옮기지 않고 지금의 두 역할을 그대로 쓰더라도,
+   표를 소유한 역할로 `pqcota-inventory -init-schema`를 한 번 돌립니다. v0.16.0부터 조회 명령은 표를 만들지 않으므로, 이 판이 더하는
+   표(메타데이터 · 소스 근거)가 없으면 그 명령들이 멈춥니다.
+4. [2절](#2-설치)의 `go install`로 `pqcaton-ui`와 준비 도구 `pqcaton-collectors`를 v0.31.0으로 설치하고, 「받은 수집기를 확인하기」대로
+   v0.16.0 릴리스 자산을 받아 수집기 폴더를 바꿉니다. 03은 v0.14.0 수집기를 「맞지 않음」으로 막습니다.
+5. **수집기 서명 키를 준비합니다**(2절 「수집기 서명 키 준비」). **v0.31.0의 03은 이것 없이 관측을 시작하지 않습니다.**
+6. **노드를 맞춥니다.** 접근 정보에서 Windows 노드를 뺍니다. 일반 계정으로 접속하는 노드는 그 계정의 sudo를 `NOPASSWD`로 두고
+   입출력 기록을 끕니다(2절 「노드 점검」).
+7. **`ansible.cfg`의 값을 옮깁니다**(아래 표). 03은 운영자의 `ansible.cfg`와 `ANSIBLE_*` 환경 변수를 읽지 않습니다.
+8. 화면을 띄워 03의 점검이 모두 ✓인지 보고 관측합니다. 실행 로그에서 노드마다 점검 통과와 결과마다 「signature checked」를 봅니다.
+9. **적재를 수집기 ID 결합 형식으로 바꿉니다.** 상류가 권하는 순서는 중앙 도구 → 수집기 → 확인 → 새 값입니다. 2와 4가 앞의 둘이고,
+   8에서 받은 결과를 `pqcota-ingest -verify-keys`로 확인한 뒤, 적재 쪽 `PQCOTA_VERIFY_KEY`를 `verify.pub`의 값으로 바꿉니다
+   ([6절](#6-하루-절차)의 재적재 명령). **03 밖에서 직접 돌리는 수집기도 같은 키로 서명하게 한 뒤에** 바꿉니다. 먼저 바꾸면 서명하지
+   않는 수집기의 결과가 모두 거절됩니다. 옛 키 목록 꼴(ID 없이 키만)은 상류가 경고와 함께 아직 받습니다.
+
+<a id="기존-이력을-세-역할로-옮기기"></a>
+
+**기존 이력을 세 역할로 옮기기.** v0.30.0의 안내대로 만든 이력은 적재 계정(`pqcota_ingest`)이 데이터베이스와 표를 소유합니다. 표는
+소유자만 바꿀 수 있으므로, 새 스키마 역할이 그대로 `pqcota-inventory -init-schema`를 돌리면 「must be owner of table pqcota_snapshots … (rolled back,
+nothing was changed)」로 아무것도 바꾸지 않고 실패합니다. 그래서 표의 소유자를 스키마 역할로 옮깁니다. 관리자 계정으로 실행합니다.
+
+1. 지금 누가 무엇을 소유하는지 봅니다(`pqcota` 데이터베이스에서).
+
+   ```sql
+   SELECT tablename, tableowner FROM pg_tables WHERE tablename LIKE 'pqcota\_%';
+   ```
+
+2. 스키마 역할을 만들고 연결 · 스키마 권한을 줍니다(`postgres` 데이터베이스에서 앞의 세 줄, `pqcota` 데이터베이스에서 마지막 줄).
+
+   ```sql
+   CREATE ROLE pqcota_schema LOGIN;
+   \password pqcota_schema
+   GRANT CONNECT ON DATABASE pqcota TO pqcota_schema;
+   GRANT USAGE, CREATE ON SCHEMA public TO pqcota_schema;
+   ```
+
+3. `pqcota` 데이터베이스에서 pqcota 표의 소유자를 옮기고, 2절 「pqcota 준비」 4번의 권한을 줍니다. 첫 줄은 psql의 `\gexec`로 표마다
+   `ALTER TABLE … OWNER TO pqcota_schema`를 돌립니다. 표의 시퀀스와 인덱스는 표를 따라 옮겨집니다. `REASSIGN OWNED BY pqcota_ingest`는
+   그 역할이 가진 모든 것을 옮기므로, pqcota만 쓰는 데이터베이스가 아니면 쓰지 않습니다.
+
+   ```sql
+   SELECT format('ALTER TABLE %I OWNER TO pqcota_schema', tablename) FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'pqcota\_%' \gexec
+   GRANT USAGE ON SCHEMA public TO pqcota_ingest, pqcaton_ui;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pqcota_ingest;
+   GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO pqcota_ingest;
+   GRANT SELECT ON ALL TABLES IN SCHEMA public TO pqcaton_ui;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pqcota_ingest;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT USAGE ON SEQUENCES TO pqcota_ingest;
+   ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
+   ```
+
+4. `pqcota_schema`로 `pqcota-inventory -init-schema`를 돌립니다. 있는 표는 그대로 두고 이 판이 더하는 표만 만들며, 끝나면 「schema ready: N created,
+   M already present」로 알립니다. 그 뒤로 적재 계정은 `PQCOTA_AUTO_DDL=0`으로 돌립니다. 더는 표를 소유하지
+   않으므로, 이 값 없이 적재하면 「permission denied for schema public」으로 실패합니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
+
+   ```bash
+   PQCOTA_DSN='postgres://pqcota_schema@<호스트>:5432/pqcota' pqcota-inventory -init-schema
+   ```
+
+**`ansible.cfg`에서 옮길 값.** 03은 실행마다 제품이 만든 설정 하나만 읽습니다. 기존 `ansible.cfg`에 두던 값은 아래처럼 옮기거나,
+이번 판에서는 쓰지 않습니다. 03 밖에서 운영자가 06의 플레이북을 적용할 때는 지금처럼 자기 `ansible.cfg`를 씁니다.
+
+| `ansible.cfg`의 값 | 03에서 |
+|---|---|
+| `remote_user` | 접근 정보(`hosts.csv`)의 계정(`ssh_user`)에 노드마다 적습니다 |
+| `private_key_file` | 접근 정보의 SSH 키 경로(`ssh_key`)에 적거나, `~/.ssh/config`의 `IdentityFile`로 둡니다. ssh-agent도 씁니다 |
+| `remote_port` | 접근 정보의 포트에 적습니다 |
+| `ssh_args`, 점프 호스트(`ProxyJump` · `ProxyCommand`) | `~/.ssh/config`로 옮깁니다. ssh가 그대로 읽습니다. 연결 공유(`ControlMaster` · `ControlPersist`)는 03이 끕니다. 포트는 접근 정보의 값을 언제나 쓰고, 사용자는 접근 정보에 계정을 비운 노드에서만 `~/.ssh/config`를 따릅니다 |
+| `host_key_checking = False` | 지원하지 않습니다. 03은 호스트 키를 검사하므로 노드마다 `~/.ssh/known_hosts`에 받아 둡니다 |
+| 권한 상승(`become_method` · `become_user` · `become_exe` · `become_flags` · `become_ask_pass`) | 바꿀 수 없습니다. 03은 내장 sudo로 root가 되고 비밀번호를 묻지 않습니다. root로 접속하거나 sudo를 `NOPASSWD`로 둡니다 |
+| `pipelining` · `keep_remote_files` · `verbosity` | 03이 고정합니다(pipelining 켬, 원격 파일 남기지 않음, 기본 출력) |
+| `log_path` · `callbacks_enabled` · `stdout_callback` | 지원하지 않습니다. 실행 로그는 `observations/<실행>/log.txt`와 03 화면에 남습니다 |
+| 플러그인 · 컬렉션 · 역할 경로, `library` | 쓰지 않습니다. 03은 내장 모듈만 씁니다 |
+| `interpreter_python` | 지원하지 않습니다. 노드의 Python을 자동으로 찾습니다(노드에 Python 3이 있어야 합니다) |
+| `forks` · `timeout` · `gathering` | 지원하지 않습니다. Ansible의 기본값을 씁니다 |
+| `inventory`, vault 설정 | 쓰지 않습니다. 인벤토리는 03이 접근 정보로 실행마다 만들고, 접근 비밀은 `hosts.csv`에 있습니다 |
 
 ### v0.29.1에서 v0.30.0으로
 
@@ -869,7 +1094,7 @@ v0.25는 상류 pqcota v0.10.6의 규칙 묶음(`pqcota-enrich/v3`)으로 정규
 | `damaged` | 저장 기록이나 잠금 파일이 손상되었습니다 | 화면을 끄고 진단 파일을 받아 지원을 요청합니다 |
 | `diagnostic` | 입력 파일을 읽지 못해 진단 전용으로 열었습니다 | 화면에 보인 파일을 고치고 다시 띄웁니다 |
 | `exists` | 만들려는 파일이 이미 있어 덮어쓰지 않았습니다 | 화면을 다시 불러옵니다 |
-| `run-not-ready` | 관측을 시작하기 전에 갖출 것(접근 정보 · Ansible · 수집기)이 빠졌습니다 | 03 화면의 점검 목록에서 ✗ 표시된 것을 갖춥니다 |
+| `run-not-ready` | 관측을 시작하기 전에 갖출 것(접근 정보 · Ansible · 수집기 · 수집기 서명 키 · 신뢰할 공개 키)이 빠졌거나, Windows 노드가 있거나, 「회수 필요」인 지난 관측이 있습니다 | 03 화면의 점검 목록에서 ✗ 표시된 것을 갖춥니다 |
 | `run-busy` | 이미 관측이 돌고 있습니다 | 끝나거나 멈춘 뒤에 다시 시작합니다 |
 | `sign-not-ready` | 승인 키를 쓸 수 없거나, 승인자 이름이 비었거나 콜론을 담았거나, 검토 확인을 하지 않았습니다 | 06 화면의 승인 키 점검을 보고 양식을 채웁니다 |
 | `plan-not-approvable` | 계획이 검토 중(IN_REVIEW)이 아니거나, 조치가 없거나, 이미 이 키로 서명했습니다 | 05에서 다시 확정하거나 서명한 계획을 그대로 씁니다 |

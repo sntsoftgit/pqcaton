@@ -108,8 +108,9 @@ commands once without the screen is in [Running it once with commands](docs/jour
 **In your own environment.** The build above does not start the screen by itself. The screen reads and checks the pqcota history
 (PostgreSQL), so it starts only with a pqcota v0.16.0 history that has its schema and the connection information of an account that
 reads it (`PQCOTA_DSN` or `pqcota.env`). The first time, start from [Preparing pqcota](docs/operator-guide.md#preparing-pqcota) in the
-operator guide: PostgreSQL and the accounts, fetching and checking the upstream central commands, creating the schema and read access,
-with what each task needs. Then go on with the connection, the official collectors and node access in the same section 2, the
+operator guide: PostgreSQL and its three roles, fetching and checking the upstream central commands, creating the schema with
+`-init-schema` and the privileges, with what each task needs. Then go on with the connection, the official collectors, the collector
+signing keys and node access in the same section 2, the
 workspace (section 3) and starting the screen (section 4).
 
 ## Where to go next
