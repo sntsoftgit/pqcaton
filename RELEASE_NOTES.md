@@ -160,10 +160,11 @@ created by a dedicated command while the query commands only read (v0.16.0).
 ### What was checked
 
 - The demo end to end (IC-U152) passed, run alone with the five upstream repositories at v0.16.0. The upstream demo's history was moved to
-  three roles (`-init-schema` by the schema role created the 4 tables the upstream demo lacked and left the 7 there as they were, all 12
-  tables owned by the schema role, the ingest role unable to create tables and refused
-  without `PQCOTA_AUTO_DDL=0`, the screen role only reading every table); the default organization's approval and generation (the evidence
-  resolved to real snapshots) and A → B → A in the judgment organization both passed, and the screen that activated ran as the read role. 03
+  three roles. `pqcota-inventory -init-schema` created 4 of the 11 history tables and kept the existing 7. `pqcota-records -init-schema`
+  kept the existing generation record table. All 12 tables the two tools cover are owned by the schema role, and the screen role was
+  confirmed to read them. The screen role cannot write any table, and the ingest role cannot create tables and was refused without
+  `PQCOTA_AUTO_DDL=0`. The default organization's approval and generation (the evidence resolved to real snapshots) and A → B → A in the
+  judgment organization both passed, and the screen that activated ran as the read role. 03
   ended with node check → temporary keys outside the workspace → signatures of 7 results checked → replacement → keys reclaimed, and the
   results of 03 passed `-verify-keys` and were ingested into the judgment organization by the ingest role (no signature rejected). The demo
   nodes are reached as root.
