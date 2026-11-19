@@ -91,6 +91,11 @@ go build -o bin/ ./inventory/cmd/...
 
 The commands are built into `bin/`, so run them as `./bin/...` (or copy them to a folder on your `PATH`).
 
+`go build` also downloads the four upstream pqcota modules listed in [`go.mod`](go.mod). They are stored in the Go module cache, not
+in the cloned folder. The default location is `~/go/pkg/mod`, and `go env GOMODCACHE` shows where it is. The cache is shared by every
+Go project on the machine and its files are read-only, so clear it with `go clean -modcache` rather than `rm`. That removes the cache
+for all projects, and the next build downloads the modules again.
+
 | Command | What it does |
 |---|---|
 | `pqcaton-ui` | The screen (01 Declaration to 06 Approval and generation) |
