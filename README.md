@@ -103,7 +103,8 @@ go build -o bin/ ./inventory/cmd/...
 ./bin/pqcaton-ui -h
 ```
 
-When the last line shows the help, the build is done. The commands are built into `bin/`, so run them as `./bin/...` (or copy them
+When the last line shows the help, the build is done. It ends with exit code 2 after printing the help, which is normal (a script
+that uses `set -e` stops at that line). The commands are built into `bin/`, so run them as `./bin/...` (or copy them
 to a folder on your `PATH`).
 
 **Starting the screen.** After steps 1 to 5 of [section 2, "Preparing pqcota"](docs/operator-guide.md#preparing-pqcota) in the

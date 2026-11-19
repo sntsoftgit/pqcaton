@@ -69,7 +69,8 @@ sudo의 입출력 기록만 봅니다. **sudo 밖의 감사 도구(auditd · tlo
 GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.0
 ```
 
-`pqcaton-ui -h`가 플래그 목록을 찍으면 설치된 것입니다. 화면은 다음 「pqcota 준비」를 마쳐야 뜹니다.
+`pqcaton-ui -h`가 플래그 목록을 찍으면 설치된 것입니다. 도움말을 찍은 뒤 종료 코드 2로 끝나는 것은 정상입니다.
+`set -e`를 쓰는 설치 스크립트에서는 이 줄에서 멈추므로, 스크립트에서는 `command -v pqcaton-ui`로 확인합니다. 화면은 다음 「pqcota 준비」를 마쳐야 뜹니다.
 
 <a id="pqcota-준비"></a>
 
@@ -134,7 +135,9 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
    ```
 
    `pqcota-inventory -h`가 플래그 목록을 찍으면 됩니다. macOS의 Git은 클론할 때 「refs/tags/v0.16.0 … is not a commit!」 경고를
-   찍을 수 있지만, 받은 커밋은 그 태그의 커밋입니다. 빌드 방법은 상류의
+   찍을 수 있습니다. 경고가 나면 클론이 실패 없이 끝났는지(종료 상태 0) 보고, `pqcota` 폴더에서
+   `for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git -C ../$r describe --tags --exact-match; done`이
+   다섯 줄 모두 `v0.16.0`을 찍는지 확인합니다. 하나라도 다르거나 오류가 나면 그 리포를 지우고 다시 받습니다. 빌드 방법은 상류의
    [빌드 안내(v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.ko.md) 「빌드」 절과 같고, Linux에서도
    이 길을 쓸 수 있습니다.
 
