@@ -68,6 +68,12 @@ func TestOperatorGuideFlagsExist(t *testing.T) {
 		t.Fatalf("could not read the flag list:\n%s", usage.String())
 	}
 	coll := collectorFlags(t)
+	// 표준 flag는 -h · -help를 목록에 찍지 않고 받는다(도움말을 찍고 끝낸다). 위에서 -h가 멈추는 것을 확인했고 두 도구 모두
+	// flag 패키지를 쓰므로, 둘을 있는 플래그로 본다. 빼 두면 안내서의 `pqcaton-ui -h` 같은 쓰기 좋은 확인 명령을 없는 플래그로
+	// 거절해, 시험의 한계 때문에 문서를 바꾸게 된다(2026-11-19).
+	for _, h := range []string{"h", "help"} {
+		known[h], coll[h] = true, true
+	}
 	either := map[string]bool{}
 	for k := range known {
 		either[k] = true

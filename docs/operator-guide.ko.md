@@ -69,7 +69,7 @@ sudo의 입출력 기록만 봅니다. **sudo 밖의 감사 도구(auditd · tlo
 GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.0
 ```
 
-`command -v pqcaton-ui`가 그 경로를 찍으면 설치된 것입니다. 화면은 다음 「pqcota 준비」를 마쳐야 뜹니다.
+`pqcaton-ui -h`가 플래그 목록을 찍으면 설치된 것입니다. 화면은 다음 「pqcota 준비」를 마쳐야 뜹니다.
 
 <a id="pqcota-준비"></a>
 
@@ -106,9 +106,11 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
    install -m 600 /dev/null ~/.pgpass
    ```
 
-2. **상류 중앙 명령.** 상류 릴리스의 `pqcota-ctl` 묶음에 적재 · 조회 · 승인 · 생성 · 키 만들기 명령이 들어 있습니다. 체크섬과 출처
-   증명(상류 리포 · 릴리스 워크플로 · 태그에 고정)을 확인한 뒤 풀어서 `PATH`에 있는 폴더에 둡니다. `gh`(2.49 이상, 로그인)가
-   필요합니다. arm64 기계면 `linux-amd64`를 `linux-arm64`로 바꿉니다.
+2. **상류 중앙 명령.** 적재 · 조회 · 승인 · 생성 · 키 만들기 명령입니다. 상류 릴리스 묶음(`pqcota-ctl`)은 **Linux용만** 있으므로,
+   이 기계에 맞는 길을 고릅니다. 어느 길이든 명령은 `~/.local/bin`에 들어가고, 이 폴더가 `PATH`에 있어야 합니다.
+
+   **Linux(amd64 · arm64): 릴리스 묶음.** 체크섬과 출처 증명(상류 리포 · 릴리스 워크플로 · 태그에 고정)을 확인한 뒤 풉니다.
+   `gh`(2.49 이상, 로그인)가 필요합니다. arm64 기계면 `linux-amd64`를 `linux-arm64`로 바꿉니다.
 
    ```bash
    mkdir -p ~/pqcaton/pqcota-ctl-v0.16.0 && cd ~/pqcaton/pqcota-ctl-v0.16.0
@@ -120,8 +122,21 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
    install -m 755 pqcota-ctl-linux-amd64/pqcota-* ~/.local/bin/
    ```
 
-   소스로 빌드하려면 상류의 [빌드 안내(v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.ko.md)를
-   따릅니다. 상류 명령 대부분은 `go install …@v0.16.0`으로 설치되지 않습니다(그 안내의 「소스 받기」).
+   **macOS(Intel · Apple Silicon): 태그에 고정한 소스 빌드.** 상류 리포 다섯 개를 v0.16.0 태그로 나란히 받아 빌드합니다. Git과
+   Go가 필요합니다. 상류 명령 대부분은 `go.mod`의 `replace` 때문에 `go install …@v0.16.0`으로 설치되지 않습니다.
+
+   ```bash
+   mkdir -p ~/pqcaton/pqcota-src-v0.16.0 && cd ~/pqcaton/pqcota-src-v0.16.0
+   for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone -q --branch v0.16.0 https://github.com/randyinthedev-hash/$r; done
+   cd pqcota
+   D=github.com/randyinthedev-hash
+   go build -o ~/.local/bin/ $D/pqcota-common/cmd/... $D/pqcota-discovery/cmd/... $D/pqcota-inventory/cmd/... $D/pqcota-provisioning/cmd/...
+   ```
+
+   `pqcota-inventory -h`가 플래그 목록을 찍으면 됩니다. macOS의 Git은 클론할 때 「refs/tags/v0.16.0 … is not a commit!」 경고를
+   찍을 수 있지만, 받은 커밋은 그 태그의 커밋입니다. 빌드 방법은 상류의
+   [빌드 안내(v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.ko.md) 「빌드」 절과 같고, Linux에서도
+   이 길을 쓸 수 있습니다.
 
 3. **이력 스키마 만들기.** 스키마는 `pqcota_schema`로 `pqcota-inventory -init-schema`를 한 번 돌려 만듭니다. 한 트랜잭션이고, 끝나면
    `schema ready: 11 created, 0 already present`처럼 알립니다. 다시 돌려도 있는 표와 데이터는 그대로 두고, 판을 올린 뒤에는 새 판이

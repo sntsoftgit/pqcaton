@@ -73,7 +73,7 @@ When this section is done, the screen starts on this machine. Do 1 to 3 once; do
 GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.0
 ```
 
-When `command -v pqcaton-ui` prints that path, it is installed. The screen starts only after "Preparing pqcota" next.
+When `pqcaton-ui -h` prints the list of flags, it is installed. The screen starts only after "Preparing pqcota" next.
 
 <a id="preparing-pqcota"></a>
 
@@ -112,9 +112,12 @@ the screen starts. With a pqcota history already in use, follow "Moving an exist
    install -m 600 /dev/null ~/.pgpass
    ```
 
-2. **Upstream central commands.** The `pqcota-ctl` bundle of the upstream release holds the loading, query, approval, generation and
-   key commands. Check its checksum and its attestation (pinned to the upstream repository, its release workflow and the tag), then
-   unpack it into a folder on your `PATH`. It needs `gh` (2.49 or later, logged in). On an arm64 machine use `linux-arm64` instead of
+2. **Upstream central commands.** The loading, query, approval, generation and key commands. The upstream release bundle
+   (`pqcota-ctl`) exists **for Linux only**, so pick the path for this machine. Either way the commands go into `~/.local/bin`, which
+   must be on your `PATH`.
+
+   **Linux (amd64, arm64): the release bundle.** Check its checksum and its attestation (pinned to the upstream repository, its release
+   workflow and the tag), then unpack it. It needs `gh` (2.49 or later, logged in). On an arm64 machine use `linux-arm64` instead of
    `linux-amd64`.
 
    ```bash
@@ -127,8 +130,21 @@ the screen starts. With a pqcota history already in use, follow "Moving an exist
    install -m 755 pqcota-ctl-linux-amd64/pqcota-* ~/.local/bin/
    ```
 
-   To build from source, follow the upstream [build guide (v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.md).
-   Most upstream commands cannot be installed with `go install …@v0.16.0` ("Get the source" in that guide).
+   **macOS (Intel, Apple Silicon): a source build pinned to the tag.** Put the five upstream repositories side by side at the v0.16.0
+   tag and build. It needs Git and Go. Most upstream commands cannot be installed with `go install …@v0.16.0` because of the `replace`
+   lines in their `go.mod`.
+
+   ```bash
+   mkdir -p ~/pqcaton/pqcota-src-v0.16.0 && cd ~/pqcaton/pqcota-src-v0.16.0
+   for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone -q --branch v0.16.0 https://github.com/randyinthedev-hash/$r; done
+   cd pqcota
+   D=github.com/randyinthedev-hash
+   go build -o ~/.local/bin/ $D/pqcota-common/cmd/... $D/pqcota-discovery/cmd/... $D/pqcota-inventory/cmd/... $D/pqcota-provisioning/cmd/...
+   ```
+
+   When `pqcota-inventory -h` prints the list of flags, it is done. Git on macOS may warn "refs/tags/v0.16.0 … is not a commit!" while
+   cloning; the commit you get is still the commit of that tag. This is the "Build" section of the upstream
+   [build guide (v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.md), and it works on Linux too.
 
 3. **Creating the history schema.** Create the schema by running `pqcota-inventory -init-schema` once as `pqcota_schema`. It runs in one
    transaction and ends with a line such as `schema ready: 11 created, 0 already present`. Running it again leaves the existing tables and
