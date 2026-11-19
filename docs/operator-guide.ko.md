@@ -88,21 +88,8 @@ chmod +x ~/Desktop/pqcaton-ui.command
 
 <a id="pqcota-준비"></a>
 
-**pqcota 준비.** 화면은 pqcota 이력(PostgreSQL)을 읽고 대조하므로, 처음 설치할 때는 화면보다 pqcota 쪽을 먼저 준비합니다.
-일마다 필요한 것이 다릅니다. **화면을 띄우는 데에는 상류 명령이 필요 없습니다.** 화면이 직접 실행하는 것은 관측의
-`ansible-playbook`뿐이고, 승인 서명과 플레이북 생성은 화면 안에서 합니다.
-
-| 일 | 필요한 것 |
-|---|---|
-| 화면 시작 | `pqcaton-ui`, 스키마가 있는 pqcota 이력, 그 이력을 읽는 계정의 연결 정보(아래 「pqcota 연결」) |
-| 03 관측 | Ansible과 노드 접속 정보, 공식 수집기, 수집기 서명 키와 신뢰할 공개 키(아래 「관측 실행 준비」 · 「수집기 서명 키 준비」) |
-| 관측 결과를 이력에 적재 | `pqcota-ingest`, 적재용 계정. 03의 결과는 서명을 확인(`pqcota-ingest -verify-keys`)한 뒤 판정 조직에 적재합니다(6절). 04 · 05의 대조와 05의 정책 활성화가 이 적재를 봅니다 |
-| 06 승인 서명 · 생성 | 승인 키(아래 「승인 키 준비」의 `pqcota-keygen`). 화면 밖에서 서명 · 생성할 때만 `pqcota-approve` · `pqcota-provision` |
-| 노드에 적용 · 되돌리기 | `pqcota-hosts`(Ansible 인벤토리 만들기)와 `ansible-playbook`(06의 안내) |
-| 오래된 이력 정리 | `pqcota-prune`(골라서) |
-
-아래는 **새로 설치할 때**의 순서입니다. 이미 쓰던 pqcota 이력이 있으면 [9절 「v0.30.0에서 v0.31.0으로」](#v0300에서-v0310으로)의
-「기존 이력을 세 역할로 옮기기」를 따릅니다.
+**pqcota 준비.** 화면은 pqcota 이력(PostgreSQL)을 읽으므로 화면보다 먼저 준비합니다. 아래 1~5단계를 차례로 하면 화면이 뜹니다.
+이미 쓰던 pqcota 이력이 있으면 [9절 「v0.30.0에서 v0.31.0으로」](#v0300에서-v0310으로)의 「기존 이력을 세 역할로 옮기기」를 따릅니다.
 
 1. **PostgreSQL과 세 역할.** PostgreSQL 16을 준비하고 역할을 셋 만듭니다. 권한을 나누기 위해서입니다(이름은 예입니다).
 
@@ -182,6 +169,20 @@ chmod +x ~/Desktop/pqcaton-ui.command
      확인합니다. 권한이 빠지면 「this account lacks privileges to read the pqcota history (SELECT on its tables, USAGE on their
      schema); initializing the schema does not change them」로 시작하지 않습니다. 초기화로는 고쳐지지 않으므로 권한을 줍니다.
    - 역할과 권한의 자세한 표는 상류의 [setting up the database(v0.16.0)](https://github.com/randyinthedev-hash/pqcota-inventory/blob/v0.16.0/cmd/README.md#setting-up-the-database)에 있습니다.
+
+5. **화면 연결 정보.** `pqcota.env`(0600)에 `PQCOTA_DSN=postgres://pqcaton_ui@<호스트>:5432/pqcota` 한 줄을 넣습니다. 만드는 명령과
+   파일 규칙은 아래 「pqcota 연결」에 있습니다. 여기까지 하면 화면이 뜹니다.
+
+화면을 띄운 뒤에는 일마다 아래가 더 필요합니다. 화면이 직접 실행하는 것은 관측의 `ansible-playbook`뿐이고, 승인 서명과 플레이북
+생성은 화면 안에서 합니다.
+
+| 일 | 필요한 것 |
+|---|---|
+| 03 관측 | Ansible과 노드 접속 정보, 공식 수집기, 수집기 서명 키와 신뢰할 공개 키(아래 「관측 실행 준비」 · 「수집기 서명 키 준비」) |
+| 관측 결과를 이력에 적재 | `pqcota-ingest`, 적재용 계정. 03의 결과는 서명을 확인(`pqcota-ingest -verify-keys`)한 뒤 판정 조직에 적재합니다(6절). 04 · 05의 대조와 05의 정책 활성화가 이 적재를 봅니다 |
+| 06 승인 서명 · 생성 | 승인 키(아래 「승인 키 준비」의 `pqcota-keygen`). 화면 밖에서 서명 · 생성할 때만 `pqcota-approve` · `pqcota-provision` |
+| 노드에 적용 · 되돌리기 | `pqcota-hosts`(Ansible 인벤토리 만들기)와 `ansible-playbook`(06의 안내) |
+| 오래된 이력 정리 | `pqcota-prune`(골라서) |
 
 **pqcota 연결.** pqcaton은 pqcota가 설치 · 연결되어 동작하는 환경에서만 실행합니다. 화면은 시작할 때 pqcota 이력에
 연결하고, 이력을 한 번 읽어(스키마와 읽기 권한) 통과해야 뜹니다. 연결 정보가 없거나 연결 · 조회가 10초 안에 끝나지 않으면

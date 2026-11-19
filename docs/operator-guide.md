@@ -95,21 +95,9 @@ chmod +x ~/Desktop/pqcaton-ui.command
 
 <a id="preparing-pqcota"></a>
 
-**Preparing pqcota.** The screen reads and checks the pqcota history (PostgreSQL), so on a first installation prepare the pqcota side
-before the screen. Each task needs something different. **Starting the screen needs no upstream command.** The only thing the screen
-runs itself is `ansible-playbook` for observation; it signs approvals and generates playbooks inside the screen.
-
-| Task | What it needs |
-|---|---|
-| Starting the screen | `pqcaton-ui`, a pqcota history with its schema, and the connection information of an account that reads it ("pqcota connection" below) |
-| 03 Observation | Ansible and node access, the official collectors, the collector signing keys and the trusted public keys ("Getting ready to run observations" and "Preparing the collector signing keys" below) |
-| Loading observation results into the history | `pqcota-ingest` and a loading account. The results of 03 are checked (`pqcota-ingest -verify-keys`) and then loaded under the judgment organization (section 6). Reconciliation in 04 and 05 and policy activation in 05 look at this load |
-| 06 approval signature and generation | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
-| Applying to the nodes and rolling back | `pqcota-hosts` (to make the Ansible inventory) and `ansible-playbook` (as 06 explains) |
-| Trimming old history | `pqcota-prune` (optional) |
-
-These are the steps **for a new installation**. With a pqcota history already in use, follow "Moving an existing history to three roles"
-in [section 9, "v0.30.0 to v0.31.0"](#v0300-to-v0310).
+**Preparing pqcota.** The screen reads the pqcota history (PostgreSQL), so prepare it before the screen. Follow steps 1 to 5 below and
+the screen starts. With a pqcota history already in use, follow "Moving an existing history to three roles" in
+[section 9, "v0.30.0 to v0.31.0"](#v0300-to-v0310).
 
 1. **PostgreSQL and three roles.** Prepare PostgreSQL 16 and create three roles, to keep the privileges apart (the names are examples).
 
@@ -194,6 +182,20 @@ in [section 9, "v0.30.0 to v0.31.0"](#v0300-to-v0310).
      history (SELECT on its tables, USAGE on their schema); initializing the schema does not change them"). Initializing does not fix
      it; grant the privileges.
    - The full table of roles and privileges is upstream's [setting up the database (v0.16.0)](https://github.com/randyinthedev-hash/pqcota-inventory/blob/v0.16.0/cmd/README.md#setting-up-the-database).
+
+5. **Screen connection.** Put one line, `PQCOTA_DSN=postgres://pqcaton_ui@<host>:5432/pqcota`, in `pqcota.env` (0600). The commands
+   to create it and the file rules are in "pqcota connection" below. After this the screen starts.
+
+Once the screen is up, each task needs more, as below. The only thing the screen runs itself is `ansible-playbook` for observation;
+it signs approvals and generates playbooks inside the screen.
+
+| Task | What it needs |
+|---|---|
+| 03 Observation | Ansible and node access, the official collectors, the collector signing keys and the trusted public keys ("Getting ready to run observations" and "Preparing the collector signing keys" below) |
+| Loading observation results into the history | `pqcota-ingest` and a loading account. The results of 03 are checked (`pqcota-ingest -verify-keys`) and then loaded under the judgment organization (section 6). Reconciliation in 04 and 05 and policy activation in 05 look at this load |
+| 06 approval signature and generation | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
+| Applying to the nodes and rolling back | `pqcota-hosts` (to make the Ansible inventory) and `ansible-playbook` (as 06 explains) |
+| Trimming old history | `pqcota-prune` (optional) |
 
 **pqcota connection.** pqcaton runs only where pqcota is installed, connected and working. On start the screen connects
 to the pqcota history and must pass one read of it (schema and read permission) before it comes up. If there is no
