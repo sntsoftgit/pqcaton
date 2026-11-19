@@ -39,6 +39,66 @@ fi
 docker inspect pqcota-ctl >/dev/null 2>&1 || { echo "❌ no pqcota-ctl — run pqcota/demo/scripts/{up,demo}.sh first"; exit 1; }
 docker exec pqcota-ctl bash -lc 'ls /work/results/*.json >/dev/null 2>&1' || { echo "❌ no collected results — run pqcota/demo/scripts/demo.sh first"; exit 1; }
 
+# ── pqcota 이력의 세 역할(운영자 안내서 9절 「기존 이력을 세 역할로 옮기기」) ─────────────────────────────────────────
+# 상류 데모는 슈퍼유저(postgres)로 적재해 그 계정이 표를 소유한다. 운영 배치는 셋으로 나눈다: 스키마를 만들고 표를 소유하는
+# 역할(pqcota_schema), 적재 · 생성 기록을 쓰는 역할(pqcota_ingest, PQCOTA_AUTO_DDL=0), 화면이 읽는 역할(pqcaton_ui, SELECT만).
+# 데모도 그 모양으로 돌아야 화면 · 명령이 읽기 권한만으로 서는지, 적재가 표를 소유하지 않고도 되는지가 드러난다. 그래서 상류 데모가
+# 만든 이력을 기존 설치로 보고 안내서의 전환 절차를 그대로 밟는다. postgres는 여기서 관리자 계정 자리만 맡는다.
+# 비밀번호는 실행마다 새로 뽑아 pqcota-ctl의 ~/.pgpass(0600)에만 두고, 역할에는 psql 표준 입력으로 건넨다. 연결 정보(DSN)에는
+# 비밀이 없다. 다시 돌려도 된다(있는 역할은 두고 비밀번호만 바꾼다).
+SCHEMA_DSN="postgres://pqcota_schema@pqcota-demo-pg:5432/pqcota"
+INGEST_DSN="postgres://pqcota_ingest@pqcota-demo-pg:5432/pqcota"
+UI_DSN="postgres://pqcaton_ui@pqcota-demo-pg:5432/pqcota"
+pgadmin() { docker exec -i pqcota-demo-pg psql -q -X -v ON_ERROR_STOP=1 -U postgres -d "$1" "${@:2}"; }
+echo "▶ 0/8 pqcota history: three roles (schema owner · ingest · screen), moving the demo's history as an existing install…"
+docker exec pqcota-ctl bash -c 'umask 077; for r in pqcota_schema pqcota_ingest pqcaton_ui; do
+  echo "pqcota-demo-pg:5432:pqcota:$r:$(python3 -c "import secrets; print(secrets.token_hex(24))")"; done > ~/.pgpass'
+pgadmin postgres <<'SQL'
+SELECT format('CREATE ROLE %I LOGIN', r) FROM unnest(ARRAY['pqcota_schema', 'pqcota_ingest', 'pqcaton_ui']) r
+  WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) \gexec
+REVOKE ALL ON DATABASE pqcota FROM PUBLIC;
+GRANT CONNECT ON DATABASE pqcota TO pqcota_schema, pqcota_ingest, pqcaton_ui;
+SQL
+docker exec -i pqcota-ctl sh -c 'awk -F: -f /dev/stdin ~/.pgpass' <<'AWK' | pgadmin postgres
+{ printf "ALTER ROLE %s PASSWORD '%s';\n", $4, $5 }
+AWK
+echo "   roles: pqcota_schema · pqcota_ingest · pqcaton_ui (passwords only in pqcota-ctl:~/.pgpass, 0600)"
+# 소유자를 옮기고 권한을 준다(안내서 9절 2 · 3과 같은 문장).
+pgadmin pqcota <<'SQL'
+GRANT USAGE, CREATE ON SCHEMA public TO pqcota_schema;
+SELECT format('ALTER TABLE %I OWNER TO pqcota_schema', tablename) FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'pqcota\_%' \gexec
+GRANT USAGE ON SCHEMA public TO pqcota_ingest, pqcaton_ui;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pqcota_ingest;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO pqcota_ingest;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO pqcaton_ui;
+ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pqcota_ingest;
+ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT USAGE ON SEQUENCES TO pqcota_ingest;
+ALTER DEFAULT PRIVILEGES FOR ROLE pqcota_schema IN SCHEMA public GRANT SELECT ON TABLES TO pqcaton_ui;
+SQL
+# 스키마는 스키마 역할만 만든다(안내서 9절 4). 이력과 생성 기록 둘 다다(7/8의 pqcota-provision --dsn이 기록을 쓴다).
+docker exec -e PQCOTA_DSN="$SCHEMA_DSN" pqcota-ctl pqcota-inventory -init-schema 2>&1 | sed 's/^/   pqcota-inventory -init-schema (pqcota_schema): /'
+docker exec -e PQCOTA_DSN="$SCHEMA_DSN" pqcota-ctl pqcota-records -init-schema 2>&1 | sed 's/^/   pqcota-records -init-schema (pqcota_schema): /'
+# 나눈 대로인지 값으로 본다: 표는 모두 스키마 역할의 것이고, 적재 역할은 스키마에 표를 만들 수 없으며, 화면 역할은 어느 표에도
+# 쓸 수 없다. 그리고 적재 역할이 PQCOTA_AUTO_DDL=0 없이 적재하면 거절된다(안내서 9절 4의 설명).
+ROLECHECK="$(pgadmin pqcota -tA <<'SQL'
+SELECT 'tables not owned by pqcota_schema: ' || count(*) FILTER (WHERE tableowner <> 'pqcota_schema') || ' of ' || count(*)
+  FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'pqcota\_%';
+SELECT 'pqcota_ingest may create in schema public: ' || has_schema_privilege('pqcota_ingest', 'public', 'CREATE');
+SELECT 'tables pqcaton_ui may write: ' || count(*) FILTER (WHERE has_table_privilege('pqcaton_ui', format('%I', tablename), 'INSERT,UPDATE,DELETE,TRUNCATE'))
+  || ' · tables it may read: ' || count(*) FILTER (WHERE has_table_privilege('pqcaton_ui', format('%I', tablename), 'SELECT')) || ' of ' || count(*)
+  FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'pqcota\_%';
+SQL
+)"
+echo "$ROLECHECK" | sed 's/^/   /'
+grep -q '^tables not owned by pqcota_schema: 0 of ' <<<"$ROLECHECK" || { echo "❌ a pqcota table is not owned by pqcota_schema"; exit 1; }
+grep -q '^pqcota_ingest may create in schema public: false$' <<<"$ROLECHECK" || { echo "❌ pqcota_ingest may create tables"; exit 1; }
+grep -Eq '^tables pqcaton_ui may write: 0 · tables it may read: ([0-9]+) of \1$' <<<"$ROLECHECK" || { echo "❌ pqcaton_ui may write a table, or may not read every table"; exit 1; }
+if NODDL="$(docker exec -e PQCOTA_DSN="$INGEST_DSN" -e PQCOTA_ORG=pqcaton-roles-check pqcota-ctl pqcota-ingest /work/results 2>&1)"; then
+  echo "❌ pqcota_ingest ingested without PQCOTA_AUTO_DDL=0 although it owns no table"; exit 1
+fi
+grep -q 'permission denied for schema public' <<<"$NODDL" || { echo "$NODDL" | tail -3; echo "❌ the ingest without PQCOTA_AUTO_DDL=0 failed for another reason"; exit 1; }
+echo "   pqcota_ingest without PQCOTA_AUTO_DDL=0: refused (permission denied for schema public); every load below runs with PQCOTA_AUTO_DDL=0"
+
 echo "▶ 1/8  build (pqcaton-report · pqcaton-decide)…"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 # 픽스처가 고른 별칭을 bash로 넘기는 자리. TMP와 함께 지워진다.
@@ -157,10 +217,9 @@ cp "$TMP/report.txt" "$SAMPLE_DIR/report.txt"
 # 이력만 대조하므로(v0.28.0), 운영자 안내의 계약(「pqcota 적재도 판정 조직으로 한다」)대로 처음 정책을 판정 조직에도 적재해
 # 둔다. 그래야 데모의 판정 조직 이력이 처음부터 지금 정책의 상태를 담는다(정책을 바꿀 때는 ui.sh apply-scope가 같은 조직에 다시 적재한다).
 JUDGE_ORG=demo-corp
-DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
-docker exec -e PQCOTA_DSN="$DSN" -e PQCOTA_ORG="$JUDGE_ORG" pqcota-ctl bash -lc "pqcota-ingest -scope-assets $SCOPE /work/results" >/dev/null \
+docker exec -e PQCOTA_DSN="$INGEST_DSN" -e PQCOTA_AUTO_DDL=0 -e PQCOTA_ORG="$JUDGE_ORG" pqcota-ctl bash -lc "pqcota-ingest -scope-assets $SCOPE /work/results" >/dev/null \
   || { echo "❌ could not load the results into the pqcota history of $JUDGE_ORG"; exit 1; }
-echo "   loaded the same results under the same policy into the pqcota history of the judgment organization ($JUDGE_ORG)"
+echo "   loaded the same results under the same policy into the pqcota history of the judgment organization ($JUDGE_ORG) as pqcota_ingest"
 
 echo "▶ 4/8 judgment → judged plan, IN_REVIEW (pqcaton-decide)…"
 # **대조에서 멈추지 않는다.** 여기까지만 돌리면 「관측을 판정으로 잇는다」가 데모에서
@@ -296,10 +355,10 @@ echo "▶ 7/8 generate (pqcota-provision, §3.7 gate) — resolve the plan's evi
 ANS="cd /work/ansible && ansible"
 INV="-i /work/ansible/targets.ini -i /work/ansible/groups.ini"
 # --dsn을 준다: 조치의 근거(원천 노드 · v1 지문 · 규칙 판)를 중앙 이력에서 **실제로 찾아** 레코드에
-# 남긴다. 못 찾으면 종료 3이다 — 이 데모가 보이려는 것이 바로 그 고리다.
-DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
+# 남긴다. 못 찾으면 종료 3이다 — 이 데모가 보이려는 것이 바로 그 고리다. 기록은 적재 역할이 쓴다(표를 소유하지 않으므로
+# PQCOTA_AUTO_DDL=0). 기록을 읽는 pqcota-records는 화면 역할(읽기만)로 돌린다.
 set +e
-docker exec pqcota-ctl bash -lc "pqcota-provision --level l2 --dsn '$DSN' /work/plan.approved.json > /work/ansible/provision-gov.yml" 2>&1 | sed 's/^/   /'
+docker exec -e PQCOTA_AUTO_DDL=0 pqcota-ctl bash -lc "pqcota-provision --level l2 --dsn '$INGEST_DSN' /work/plan.approved.json > /work/ansible/provision-gov.yml" 2>&1 | sed 's/^/   /'
 st=${PIPESTATUS[0]}
 set -e
 case "$st" in
@@ -309,8 +368,8 @@ case "$st" in
 esac
 echo "   ── the record now points back at the snapshot (pqcota-records) ──"
 NODE0=$(docker exec pqcota-ctl bash -lc 'python3 -c "import json; print(json.load(open(\"/work/plan.approved.json\"))[\"actions\"][0][\"targetNodeId\"])"' | tr -d '[:space:]')
-docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $NODE0" 2>&1 | grep -E 'snapshot:|plan=' | sed 's/^/   /'
-docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $NODE0" 2>&1 | grep -q 'snapshot: ingest-' \
+docker exec -e PQCOTA_DSN="$UI_DSN" pqcota-ctl bash -lc "pqcota-records $NODE0" 2>&1 | grep -E 'snapshot:|plan=' | sed 's/^/   /'
+docker exec -e PQCOTA_DSN="$UI_DSN" pqcota-ctl bash -lc "pqcota-records $NODE0" 2>&1 | grep -q 'snapshot: ingest-' \
   || { echo "❌ the record does not name a resolved snapshot"; exit 1; }
 NODES=$(docker exec pqcota-ctl bash -lc 'python3 -c "import json; print(\" \".join(sorted({a[\"targetNodeId\"] for a in json.load(open(\"/work/plan.approved.json\"))[\"actions\"]})))"')
 echo "   target nodes: $NODES"
@@ -342,10 +401,10 @@ if a[\"targetNodeId\"] == e[\"sourceNodeId\"]:
     sys.exit(\"target and source are the same - this fixture is not exercising the alias\")
 PY" || { echo "❌ the alias chain is broken"; exit 1; }
   # 레코드는 **조치의 노드**, 곧 별칭 아래 쌓인다. 그 레코드가 원천 노드의 스냅샷을 가리켜야 한다.
-  docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $E2E_ALIAS" 2>&1 \
+  docker exec -e PQCOTA_DSN="$UI_DSN" pqcota-ctl bash -lc "pqcota-records $E2E_ALIAS" 2>&1 \
     | grep 'snapshot:' | sed 's/^/   resolved /' \
     || { echo "❌ no record under the alias names a resolved snapshot"; exit 1; }
-  docker exec -e PQCOTA_DSN="$DSN" pqcota-ctl bash -lc "pqcota-records $E2E_ALIAS" 2>&1 \
+  docker exec -e PQCOTA_DSN="$UI_DSN" pqcota-ctl bash -lc "pqcota-records $E2E_ALIAS" 2>&1 \
     | grep -q "snapshot: .*:$E2E_ORIG\$" \
     || { echo "❌ the resolved snapshot is not the source node's"; exit 1; }
 fi

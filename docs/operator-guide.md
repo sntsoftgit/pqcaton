@@ -285,14 +285,15 @@ each collector ID.**
   without the flag), permissions too wide, a signing key not in `verify.pub`, one public key under two IDs, and the approval key used as a
   signing key. The "Collector signing keys" and "Trusted collector public keys" lines on 03 show the missing IDs and why.
 
-`pqcota-keygen` is in the `pqcota-ctl` bundle of "Preparing pqcota". The last two lines gather the public keys of the three into one
-line of `verify.pub` and keep others from changing it (on distributions whose default umask is 002 it would be group-writable, and 03
-refuses that).
+`pqcota-keygen` is in the `pqcota-ctl` bundle of "Preparing pqcota". The third line gathers the public keys of the three into one
+line of `verify.pub`. It runs under umask 077 too, so the file is never writable by the group or others, from the moment it is
+created. Made plainly on a distribution whose default umask is 002, it would be group-writable, and 03 refuses that. The final `chmod`
+opens it to others for reading only; 03 also takes it at 0600.
 
 ```bash
 mkdir -p ~/.config/pqcaton && mkdir -m 700 ~/.config/pqcaton/collector-keys
 for id in openssl-collector network-collector jvm-collector; do (umask 077 && pqcota-keygen -collector "$id" > ~/.config/pqcaton/collector-keys/"$id".key); done
-for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub
+(umask 077 && for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub)
 chmod 644 ~/.config/pqcaton/collector-keys/verify.pub
 ```
 
@@ -403,14 +404,15 @@ looks for `pqcaton/approval.key` in the user configuration folder (`~/.config/pq
 `~/Library/Application Support/pqcaton/` on macOS). Save the output of `pqcota-keygen` (made **without flags**) there, readable only
 by its owner, and it is used without any flag. A collector signing key made with `pqcota-keygen -collector` is not taken as the approval
 key (state "collector"). `pqcota-keygen` is in the `pqcota-ctl` bundle too. The screen neither creates this file nor changes its permissions, and reads it again at
-every signature. The last two lines put the public key alone in `approval.pub` and keep others from changing it (06 refuses a
-public key file the group can change).
+every signature. The last two lines put the public key alone in `approval.pub`. It is created under umask 077 too, so it is never
+writable by the group or others, from the moment it exists (06 refuses a public key file the group can change). The final `chmod`
+opens it to others for reading only; 06 also takes it at 0600.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.16.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
-grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
+(umask 077 && grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub)
 chmod 644 ~/.config/pqcaton/approval.pub
 ```
 
@@ -419,7 +421,7 @@ On macOS only the location differs.
 ```bash
 mkdir -p "$HOME/Library/Application Support/pqcaton"
 (umask 077 && pqcota-keygen > "$HOME/Library/Application Support/pqcaton/approval.key")
-grep '^PQCOTA_VERIFY_KEY=' "$HOME/Library/Application Support/pqcaton/approval.key" > "$HOME/Library/Application Support/pqcaton/approval.pub"
+(umask 077 && grep '^PQCOTA_VERIFY_KEY=' "$HOME/Library/Application Support/pqcaton/approval.key" > "$HOME/Library/Application Support/pqcaton/approval.pub")
 chmod 644 "$HOME/Library/Application Support/pqcaton/approval.pub"
 ```
 

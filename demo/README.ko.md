@@ -166,8 +166,21 @@ Go가 없는 호스트에서는 `PQCATON_BIN_DIR=<dir>`로 미리 빌드한 `pqc
 활성화는 화면 05에서 합니다. 「활성화 전 확인으로」를 누르면 화면이 pqcota 이력에서 노드마다 최신 적재 결과가 새 정책으로
 만든 결과와 같은지 대조하고, 일치하면 확인 페이지에 「확인 시점에 pqcota 이력과 일치했습니다」를 보입니다. 활성화를 누르면
 처음부터 다시 대조한 뒤 활성화합니다. 하나라도 없거나 다르거나 조회할 수 없으면 아무것도 쓰지 않습니다. 과거 실행에 같은
-지문이 있었다는 것만으로는 통과하지 않습니다. 데모의 화면은 `ui.sh`가 데모 DB의 `PQCOTA_DSN`을 넘겨 띄웁니다. 화면은 pqcota
-이력 없이 시작하지 않습니다.
+지문이 있었다는 것만으로는 통과하지 않습니다. 데모의 화면은 `ui.sh`가 읽기 전용 역할(`pqcaton_ui`)의 `PQCOTA_DSN`을 넘겨
+띄웁니다. 화면은 pqcota 이력 없이 시작하지 않습니다.
+
+**이력은 세 역할로 나눕니다.** 상류 데모는 관리자 계정(`postgres`)으로 적재하므로 그 계정이 표를 소유합니다. `extend.sh`는
+맨 앞(0/8)에서 이 이력을 이미 쓰던 설치로 보고, 운영자 안내서 9절 「기존 이력을 세 역할로 옮기기」를 그대로 밟습니다.
+
+| 역할 | 데모에서 하는 일 |
+|---|---|
+| `pqcota_schema` | 표를 소유하고 `pqcota-inventory -init-schema` · `pqcota-records -init-schema`를 돌립니다 |
+| `pqcota_ingest` | 판정 조직 적재, `ui.sh apply-scope`의 재적재, `extend.sh`의 생성 기록(`pqcota-provision --dsn`)을 `PQCOTA_AUTO_DDL=0`으로 합니다 |
+| `pqcaton_ui` | 화면이 이력을 읽고, 명령(`pqcaton-decide`)이 대조합니다. 모든 표에 읽기 권한만 있습니다 |
+
+`extend.sh`는 표가 모두 `pqcota_schema`의 것인지, `pqcota_ingest`가 표를 만들 수 없는지, `pqcaton_ui`가 어느 표에도 쓸 수 없는지를
+확인합니다. `pqcota_ingest`가 `PQCOTA_AUTO_DDL=0` 없이 적재하면 거절된다는 것도 확인합니다. 비밀번호는 실행마다 새로 만들어
+`pqcota-ctl`의 `~/.pgpass`(0600)에만 두므로 연결 정보에는 비밀이 없습니다.
 
 **적재는 두 조직에 갑니다.** 상류 데모의 `demo.sh`는 기본 조직에 적재하고, 그 적재는 `extend.sh`의 생성 단계(`pqcota-provision`)가
 씁니다. 화면과 명령은 판정 조직(`demo-corp`)의 pqcota 이력만 대조하므로, `extend.sh`가 같은 결과 · 같은 정책을 판정 조직에도

@@ -169,7 +169,21 @@ Activation is done in 05 on the screen. Pressing "Review before activating" make
 ingest in the pqcota history matches the results under the new policy, and when they match the confirmation page shows "At the time of
 checking, the pqcota history matched." Pressing activate reconciles again from the start, then activates. If any is missing, differs or
 cannot be looked up, nothing is written. The same fingerprint in a past run is not enough to pass. `ui.sh` starts the demo screen with the
-demo DB's `PQCOTA_DSN`. The screen does not start without the pqcota history.
+`PQCOTA_DSN` of a read-only role (`pqcaton_ui`). The screen does not start without the pqcota history.
+
+**The history is split into three roles.** The upstream demo loads as the administrator account (`postgres`), so that account owns the
+tables. At its very start (0/8), `extend.sh` treats this history as an existing install and follows "Moving an existing history to
+three roles" in section 9 of the operator guide as written.
+
+| Role | What it does in the demo |
+|---|---|
+| `pqcota_schema` | Owns the tables and runs `pqcota-inventory -init-schema` · `pqcota-records -init-schema` |
+| `pqcota_ingest` | Loads into the judgment organization, re-ingests for `ui.sh apply-scope` and writes the generation records of `extend.sh` (`pqcota-provision --dsn`), with `PQCOTA_AUTO_DDL=0` |
+| `pqcaton_ui` | The screen reads the history and the command (`pqcaton-decide`) reconciles with it. It may only read the tables |
+
+`extend.sh` checks that every table belongs to `pqcota_schema`, that `pqcota_ingest` cannot create tables and that `pqcaton_ui` cannot
+write any table. It also checks that `pqcota_ingest` is refused when it loads without `PQCOTA_AUTO_DDL=0`. The passwords are made anew
+on every run and kept only in `~/.pgpass` (0600) of `pqcota-ctl`, so the connection strings carry no secret.
 
 **The loads go to two organizations.** The upstream demo's `demo.sh` loads into the default organization, and that load is what the
 generation step of `extend.sh` (`pqcota-provision`) uses. The screen and the commands reconcile only with the pqcota history of the

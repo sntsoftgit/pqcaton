@@ -112,7 +112,10 @@ fi
 CTL=pqcota-ctl
 WS=/work/ui
 ORG=demo-corp
-DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
+# pqcota 이력의 세 역할(extend.sh 0/8이 나눈다). 명령의 대조 · 활성화는 화면과 같이 읽기만 하는 역할로, 03 결과의 적재는 표를
+# 소유하지 않는 적재 역할로(PQCOTA_AUTO_DDL=0) 한다. 비밀번호는 pqcota-ctl의 ~/.pgpass에만 있다. 아래 psql은 검증용 관리자 조회다.
+DSN="postgres://pqcaton_ui@pqcota-demo-pg:5432/pqcota"
+INGEST_DSN="postgres://pqcota_ingest@pqcota-demo-pg:5432/pqcota"
 UI="$DEMO_DIR/scripts/ui.sh"
 CKEYS=/work/ui-collector-keys # ui.sh 가 만드는 03 수집기 서명 키 자리
 
@@ -220,6 +223,14 @@ step "1) pqcota demo (up · demo) and the pqcaton extension"
 grep -q "every spot filled — the evidence resolved to real snapshots" "$COLL_ROOT/extend.log" || { tail -20 "$COLL_ROOT/extend.log"; fail "extend.sh: pqcota-provision did not resolve the evidence"; }
 grep -q "into the pqcota history of the judgment organization ($ORG)" "$COLL_ROOT/extend.log" || fail "extend.sh did not load the first policy into $ORG"
 echo "   extend.sh: pqcota-provision resolved the plan's evidence in the default organization's history; the first policy is loaded into $ORG"
+# 이력의 세 역할: 스키마 역할이 초기화했고(이력 · 생성 기록), 표는 모두 그 역할의 것이며, 적재 역할은 표를 만들 수 없고
+# PQCOTA_AUTO_DDL=0 없이는 거절되며, 화면 역할은 모든 표를 읽기만 한다. 판정 조직 적재와 생성 기록이 적재 역할로 됐다.
+for want in "pqcota-inventory -init-schema (pqcota_schema): schema ready:" "pqcota-records -init-schema (pqcota_schema): " \
+    "tables not owned by pqcota_schema: 0 of " "pqcota_ingest may create in schema public: false" "tables pqcaton_ui may write: 0 · " \
+    "pqcota_ingest without PQCOTA_AUTO_DDL=0: refused (permission denied for schema public)" "($ORG) as pqcota_ingest"; do
+  grep -qF -- "$want" "$COLL_ROOT/extend.log" || { sed -n '/0\/8/,/1\/8/p' "$COLL_ROOT/extend.log"; fail "extend.sh did not show: $want"; }
+done
+sed -n '/▶ 0\/8/,/▶ 1\/8/p' "$COLL_ROOT/extend.log" | sed '1d;$d'
 # 준비한 뒤 바뀐 폴더: 실행 파일 한 바이트를 바꾼 사본으로는 ui.sh 가 화면을 띄우지 않고 작업 폴더도 만들지 않는다.
 TAMPERED="$COLL_ROOT/tampered"
 cp -a "$PQCATON_COLLECTORS" "$TAMPERED"
@@ -410,6 +421,10 @@ docker exec "$CTL" rm -rf "$CMDWS"
 
 step "5b) the screen path, on the workspace: confirm (reconciled at that time) and activate (reconciled again)"
 "$UI" start
+# 화면은 읽기만 하는 역할로 떠 있다(그 역할은 어느 이력 표에도 쓸 수 없다. extend.sh 0/8이 확인했다).
+SCREEN_DSN="$(docker exec "$CTL" sh -c 'for p in $(pgrep -x pqcaton-ui); do tr "\000" "\n" < /proc/$p/environ | sed -n "s/^PQCOTA_DSN=//p"; done')"
+[ "$SCREEN_DSN" = "$DSN" ] || fail "the screen does not run as pqcaton_ui (PQCOTA_DSN user: $(sed -n 's#^postgres://\([^@:]*\).*#\1#p' <<<"$SCREEN_DSN"))"
+echo "   the screen runs as pqcaton_ui (SELECT only)"
 screen_activate ok || fail "the screen did not activate after the re-ingest"
 "$UI" stop
 activated "$WS" "screen"
@@ -808,6 +823,21 @@ PY
 if docker exec -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -verify-keys /tmp/pqcaton-e2e-tamper >/dev/null 2>&1; then fail "pqcota-ingest -verify-keys passed a result changed after signing"; fi
 docker exec "$CTL" rm -rf /tmp/pqcaton-e2e-tamper
 echo "   pqcota-ingest -verify-keys (bound to collector IDs) passes the results 03 made and refuses a copy changed after signing"
+# 확인을 통과한 그 결과를 실제로 적재한다: 적재 역할 · PQCOTA_AUTO_DDL=0 · 같은 공개 키 · 판정 조직 · 활성 정책. 결과는 모두
+# 받아들여지고(서명 거절 0), 관측한 노드마다 판정 조직에 관측 기록이 하나씩 늘며, 다른 조직에는 늘지 않아야 한다.
+T8="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc 'select now()' | tr -d '\n')"
+ING8="$(docker exec -e PQCOTA_DSN="$INGEST_DSN" -e PQCOTA_AUTO_DDL=0 -e PQCOTA_ORG="$ORG" -e PQCOTA_VERIFY_KEY="$VK" "$CTL" \
+  pqcota-ingest -scope-assets "$WS/scope-assets.csv" "$WS/results")" || { echo "$ING8" | tail -5; fail "the results 03 made were not ingested"; }
+SUM8="$(grep -o 'ingest result: .*' <<<"$ING8")"
+echo "   $SUM8"
+ACC8="$(sed -n 's/^ingest result: accepted \([0-9]*\) .*/\1/p' <<<"$SUM8")"
+REJ8="$(sed -n 's/.* signature-rejected \([0-9]*\) .*/\1/p' <<<"$SUM8")"
+NODES8="$(sed -n 's/.* → \([0-9]*\) nodes observed.*/\1/p' <<<"$SUM8")"
+[ "$ACC8" = "$FILES" ] && [ "$REJ8" = 0 ] && [ -n "$NODES8" ] || fail "ingest of the results 03 made: accepted ${ACC8:-?} of $FILES, signature-rejected ${REJ8:-?}"
+OWN8="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count(*) from pqcota_observations where observed_at >= '$T8' and org = '$ORG'" | tr -d '[:space:]')"
+OTHER8="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count(*) from pqcota_observations where observed_at >= '$T8' and org <> '$ORG'" | tr -d '[:space:]')"
+[ "$OWN8" = "$NODES8" ] && [ "$OTHER8" = 0 ] || fail "ingesting the results 03 made added $OWN8 observation records to $ORG (want $NODES8, one per node) and $OTHER8 elsewhere"
+echo "   ingested as pqcota_ingest (PQCOTA_AUTO_DDL=0, the same trusted keys): $ACC8 results accepted, $OWN8 observation records in $ORG (one per node), none elsewhere"
 "$UI" stop >/dev/null
 
 echo

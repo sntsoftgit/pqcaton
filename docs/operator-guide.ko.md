@@ -261,13 +261,15 @@ collectors/
   없는 서명 키, 한 공개 키를 두 ID에 둔 것, 승인 키를 서명 키로 쓴 것. 03의 「수집기 서명 키」 · 「신뢰할 수집기 공개 키」 줄이
   빠진 ID와 까닭을 보입니다.
 
-`pqcota-keygen`은 「pqcota 준비」의 `pqcota-ctl` 묶음에 있습니다. 마지막 두 줄은 세 키의 공개 키를 `verify.pub` 한 줄로 모으고, 다른 사용자가
-고칠 수 없게 합니다(기본 umask가 002인 배포판에서는 그룹이 고칠 수 있게 만들어져 03이 받지 않습니다).
+`pqcota-keygen`은 「pqcota 준비」의 `pqcota-ctl` 묶음에 있습니다. 셋째 줄은 세 키의 공개 키를 `verify.pub` 한 줄로 모읍니다. 이 줄도
+umask 077 안에서 실행하므로 파일은 만들어지는 순간부터 그룹과 다른 사용자가 고칠 수 없습니다. 기본 umask가 002인 배포판에서
+그냥 만들면 그룹이 고칠 수 있는 파일이 되고, 03은 그것을 받지 않습니다. 마지막 `chmod`는 다른 사용자에게 읽기만 엽니다. 0600으로 두어도
+03은 받습니다.
 
 ```bash
 mkdir -p ~/.config/pqcaton && mkdir -m 700 ~/.config/pqcaton/collector-keys
 for id in openssl-collector network-collector jvm-collector; do (umask 077 && pqcota-keygen -collector "$id" > ~/.config/pqcaton/collector-keys/"$id".key); done
-for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub
+(umask 077 && for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub)
 chmod 644 ~/.config/pqcaton/collector-keys/verify.pub
 ```
 
@@ -364,14 +366,15 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
 `pqcaton/approval.key`를 기본으로 찾습니다(Linux는 `~/.config/pqcaton/`, macOS는 `~/Library/Application Support/pqcaton/`).
 그 자리에 `pqcota-keygen`의 출력(**플래그 없이** 만든 것)을 소유자만 읽게 저장하면 플래그 없이 씁니다. `pqcota-keygen -collector`로 만든
 수집기 서명 키는 승인 키로 받지 않습니다(「collector」 상태). `pqcota-keygen`은 `pqcota-ctl` 묶음에도 있습니다. 화면은 이 파일을 만들거나 권한을 고치지
-않고, 서명할 때마다 다시 읽습니다. 마지막 두 줄은 공개 키만 `approval.pub`에 따로 두고, 다른 사용자가 고칠 수 없게 합니다(06은
-그룹이 고칠 수 있는 공개 키 파일을 받지 않습니다).
+않고, 서명할 때마다 다시 읽습니다. 마지막 두 줄은 공개 키만 `approval.pub`에 따로 둡니다. 이 파일도 umask 077 안에서 만들므로 만들어지는
+순간부터 그룹과 다른 사용자가 고칠 수 없습니다(06은 그룹이 고칠 수 있는 공개 키 파일을 받지 않습니다). 마지막 `chmod`는 다른 사용자에게
+읽기만 엽니다. 0600으로 두어도 06은 받습니다.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.16.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
-grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub
+(umask 077 && grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub)
 chmod 644 ~/.config/pqcaton/approval.pub
 ```
 
@@ -380,7 +383,7 @@ macOS에서는 자리만 다릅니다.
 ```bash
 mkdir -p "$HOME/Library/Application Support/pqcaton"
 (umask 077 && pqcota-keygen > "$HOME/Library/Application Support/pqcaton/approval.key")
-grep '^PQCOTA_VERIFY_KEY=' "$HOME/Library/Application Support/pqcaton/approval.key" > "$HOME/Library/Application Support/pqcaton/approval.pub"
+(umask 077 && grep '^PQCOTA_VERIFY_KEY=' "$HOME/Library/Application Support/pqcaton/approval.key" > "$HOME/Library/Application Support/pqcaton/approval.pub")
 chmod 644 "$HOME/Library/Application Support/pqcaton/approval.pub"
 ```
 

@@ -48,7 +48,10 @@ CKEYS=/work/ui-collector-keys
 # pqcota 이력(데모 DB). 화면은 이것 없이 시작하지 않는다. pqcota 이력의 조직은 판정 조직(demo-corp)과 같아야 하므로, 재적재도
 # 그 조직으로 한다(PQCOTA_ORG). 적재는 두 조직에 간다: 상류 데모의 demo.sh는 기본 조직에 적재하고(extend.sh의 생성 단계가 쓴다),
 # 이 화면은 그것을 보지 않는다. 화면이 대조하는 판정 조직의 처음 적재는 extend.sh가 같은 결과 · 같은 정책으로 해 둔다.
-DSN="postgres://postgres:pqcota@pqcota-demo-pg:5432/pqcota"
+# 이력의 역할은 extend.sh 0/8이 나눠 둔다(운영자 안내서 9절). 화면은 읽기만 하는 pqcaton_ui로 띄우고, 재적재는 표를 소유하지 않는
+# pqcota_ingest가 PQCOTA_AUTO_DDL=0으로 한다. 비밀번호는 pqcota-ctl의 ~/.pgpass에만 있고 연결 정보에는 없다.
+UI_DSN="postgres://pqcaton_ui@pqcota-demo-pg:5432/pqcota"
+INGEST_DSN="postgres://pqcota_ingest@pqcota-demo-pg:5432/pqcota"
 ORG=demo-corp
 LOG=/work/ui.log
 PORT="${PQCATON_UI_PORT:-8765}"
@@ -77,6 +80,7 @@ if [ "$MODE" = "" ]; then
   command -v python3 >/dev/null || { echo "❌ python3 not found on this machine — the relay needs it"; exit 1; }
 fi
 docker exec "$CTL" test -f /work/declaration.json || { echo "❌ no /work/declaration.json — run ./demo/scripts/extend.sh first"; exit 1; }
+docker exec "$CTL" sh -c 'test -f ~/.pgpass' || { echo "❌ no ~/.pgpass in $CTL — the pqcota history roles are made by ./demo/scripts/extend.sh (0/8)"; exit 1; }
 
 # install_bin NAME PKG: linux용으로 빌드해(또는 PQCATON_BIN_DIR에서 가져와) 컨테이너에 넣고, 거기서 실제로 도는지 본다.
 # extend.sh 1/8과 같은 이유로 컨테이너용으로 빌드한다. 아키텍처는 컨테이너에 묻는다.
@@ -194,10 +198,10 @@ if [ "$MODE" = "apply-scope" ]; then
   if docker exec "$CTL" test -f "$WS/results/.pqcaton-run"; then
     VK="$(docker exec "$CTL" sed -n 's/^PQCOTA_VERIFY_KEY=//p' "$CKEYS/verify.pub")"
     docker exec -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -verify-keys "$WS/results" | sed 's/^/   /'
-    docker exec -e PQCOTA_DSN="$DSN" -e PQCOTA_ORG="$ORG" -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
+    docker exec -e PQCOTA_DSN="$INGEST_DSN" -e PQCOTA_AUTO_DDL=0 -e PQCOTA_ORG="$ORG" -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
   else
     echo "   (results from the upstream demo carry no collector signature; ingesting them without -verify-keys)"
-    docker exec -e PQCOTA_DSN="$DSN" -e PQCOTA_ORG="$ORG" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
+    docker exec -e PQCOTA_DSN="$INGEST_DSN" -e PQCOTA_AUTO_DDL=0 -e PQCOTA_ORG="$ORG" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
   fi
   echo "✅ re-ingested. Activate it in 05 (the screen reconciles the pqcota history first): ./demo/scripts/ui.sh"
   exit 0
@@ -239,8 +243,8 @@ else
     if [ ! -d $CKEYS ]; then
       mkdir -m 700 $CKEYS
       for id in openssl-collector network-collector jvm-collector; do (umask 077; pqcota-keygen -collector \$id > $CKEYS/\$id.key); done
-      for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' $CKEYS/\$id.key; done \
-        | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > $CKEYS/verify.pub
+      (umask 077; for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' $CKEYS/\$id.key; done \
+        | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > $CKEYS/verify.pub)
       chmod 644 $CKEYS/verify.pub
       echo '   collector signing keys for 03: $CKEYS (trusted public keys: $CKEYS/verify.pub)'
     fi
@@ -262,7 +266,7 @@ else
   echo "▶ 3/3 start pqcaton-ui in $CTL (127.0.0.1:8765 inside the container)…"
   # 수집기는 확인한 공식 자산이므로 03에서 「확인됨」이고, -allow-unverified-collectors 없이 띄운다.
   # 화면은 pqcota 이력 없이 시작하지 않는다. 연결 정보는 환경 변수로만 넘긴다(명령줄 인자가 아니다).
-  docker exec -d -e PQCOTA_DSN="$DSN" "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org $ORG -approval-key $KEY -collector-keys $CKEYS >>$LOG 2>&1"
+  docker exec -d -e PQCOTA_DSN="$UI_DSN" "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org $ORG -approval-key $KEY -collector-keys $CKEYS >>$LOG 2>&1"
   for _ in $(seq 1 40); do answers && break; sleep 0.5; done
   answers || { echo "❌ pqcaton-ui did not answer — last lines of $CTL:$LOG:"; docker exec "$CTL" tail -20 "$LOG"; exit 1; }
 fi
