@@ -57,6 +57,11 @@ own. A longer architecture page is [docs/index.html](docs/index.html).
 
 ## Quick start
 
+To use the pqcaton screen, first prepare a PostgreSQL database for the pqcota history with its schema and read privileges, and set
+the connection with `PQCOTA_DSN` or `pqcota.env`. The screen checks the connection and the required reads when it starts. If this
+is your first time, follow the [demo steps](#try-it-on-the-demo) below or start from
+[Preparing pqcota](docs/operator-guide.md#preparing-pqcota) in the operator guide.
+
 <a id="써보기"></a>
 
 ### Try it on the demo
@@ -81,6 +86,9 @@ it, fetch the official collectors, open the screen at `http://127.0.0.1:8765`, a
 [Going through the screens](demo/README.md#going-through-the-screens).
 
 ### Build this repository
+
+You do not need to clone and build the pqcota repositories separately. The commands below build pqcaton and show its help. To run
+the screen, the history database above must be ready.
 
 ```bash
 git clone --branch v0.31.0 https://github.com/sntsoftgit/pqcaton

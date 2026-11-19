@@ -55,6 +55,10 @@ flowchart LR
 
 ## 빠른 시작
 
+pqcaton 화면을 사용하려면 먼저 pqcota 이력용 PostgreSQL에 스키마와 조회 권한을 준비하고, `PQCOTA_DSN` 또는 `pqcota.env`로
+연결 정보를 설정해야 합니다. 화면은 시작할 때 연결과 필수 조회를 확인합니다. 처음 사용하는 분은 아래
+[데모 절차](#데모로-써-보기)를 따르거나, 운영자 안내서의 [pqcota 준비](docs/operator-guide.ko.md#pqcota-준비)부터 진행하십시오.
+
 <a id="써보기"></a>
 
 ### 데모로 써 보기
@@ -79,6 +83,9 @@ cd pqcaton/demo
 [화면을 차례로 지나기](demo/README.ko.md#화면을-차례로-지나기)에 있습니다.
 
 ### 이 리포 빌드하기
+
+pqcota 저장소를 별도로 받아 빌드할 필요는 없습니다. 아래 명령은 pqcaton을 빌드하고 도움말을 확인합니다. 화면을 실행하려면
+위의 이력 DB 준비가 필요합니다.
 
 ```bash
 git clone --branch v0.31.0 https://github.com/sntsoftgit/pqcaton
