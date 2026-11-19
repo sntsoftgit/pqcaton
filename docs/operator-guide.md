@@ -57,41 +57,23 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 
 ## 2. Installation
 
-**The binary.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
+When this section is done, the screen starts on this machine. Do 1 to 3 once; do 4 and 5 when you use those steps.
+
+1. [Installing the screen](#installing-the-screen): the `pqcaton-ui` binary
+2. [Preparing pqcota](#preparing-pqcota): the history database, roles, upstream commands, schema, privileges and connection
+3. Starting the screen: [section 4](#4-starting-and-stopping). To start it at login, [the service and the launcher](#the-service-and-the-launcher)
+4. [Getting ready to run observations](#getting-ready-to-run-observations): to observe from 03
+5. [Getting the approval key ready](#getting-the-approval-key-ready): to sign on 06
+
+<a id="installing-the-screen"></a>
+
+**Installing the screen.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.0
 ```
 
-**Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
-the launcher starts the service and then opens the screen in a browser. Create `pqcota.env` from "pqcota connection"
-below before enabling the service. The launcher appears as "pqcaton" in the desktop's
-program list. The launcher opens it with `pqcaton-ui -open`, which waits (up to 15 seconds) until the server at the
-recorded address answers that it is the screen of the same workspace, so it never opens a stale address left by an
-abnormal exit or a screen that is not up yet. If nothing answers, it opens nothing.
-
-```bash
-mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.desktop
-systemctl --user daemon-reload
-systemctl --user enable --now pqcaton-ui.service
-```
-
-The service's log is shown by the command below. Use it to find the cause behind a reference the screen shows
-(`error ref=…`).
-
-```bash
-journalctl --user -u pqcaton-ui.service
-```
-
-**macOS: the launcher.** Double-click the downloaded file: it starts the screen in a Terminal window and opens a
-browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
-
-```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/macos/pqcaton-ui.command
-chmod +x ~/Desktop/pqcaton-ui.command
-```
+When `command -v pqcaton-ui` prints that path, it is installed. The screen starts only after "Preparing pqcota" next.
 
 <a id="preparing-pqcota"></a>
 
@@ -183,19 +165,25 @@ the screen starts. With a pqcota history already in use, follow "Moving an exist
      it; grant the privileges.
    - The full table of roles and privileges is upstream's [setting up the database (v0.16.0)](https://github.com/randyinthedev-hash/pqcota-inventory/blob/v0.16.0/cmd/README.md#setting-up-the-database).
 
-5. **Screen connection.** Put one line, `PQCOTA_DSN=postgres://pqcaton_ui@<host>:5432/pqcota`, in `pqcota.env` (0600). The commands
-   to create it and the file rules are in "pqcota connection" below. After this the screen starts.
+5. **Screen connection.** Keep the connection of the screen account as one line in `pqcota.env`. Do not put the value on the
+   command line, so the password stays out of the shell history. Create the empty file (0600) with the commands below, then put one
+   line, `PQCOTA_DSN=postgres://pqcaton_ui@<host>:5432/pqcota`, in it with an editor. The file rules are in "pqcota connection" below.
 
-Once the screen is up, each task needs more, as below. The only thing the screen runs itself is `ansible-playbook` for observation;
-it signs approvals and generates playbooks inside the screen.
+   ```bash
+   mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
+   install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
+   ```
 
-| Task | What it needs |
-|---|---|
-| 03 Observation | Ansible and node access, the official collectors, the collector signing keys and the trusted public keys ("Getting ready to run observations" and "Preparing the collector signing keys" below) |
-| Loading observation results into the history | `pqcota-ingest` and a loading account. The results of 03 are checked (`pqcota-ingest -verify-keys`) and then loaded under the judgment organization (section 6). Reconciliation in 04 and 05 and policy activation in 05 look at this load |
-| 06 approval signature and generation | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
-| Applying to the nodes and rolling back | `pqcota-hosts` (to make the Ansible inventory) and `ansible-playbook` (as 06 explains) |
-| Trimming old history | `pqcota-prune` (optional) |
+   On macOS only the location differs.
+
+   ```bash
+   mkdir -p "$HOME/Library/Application Support/pqcaton" && chmod 700 "$HOME/Library/Application Support/pqcaton"
+   install -m 600 /dev/null "$HOME/Library/Application Support/pqcaton/pqcota.env"
+   ```
+
+Now run `pqcaton-ui -no-browser` as in [section 4](#4-starting-and-stopping). The line `screen: http://127.0.0.1:8765/  (workspace …)`
+means the screen is up. If it does not start, look up the reason after `❌` in "pqcota connection" below and in the
+[error table in section 10](#10-error-table).
 
 **pqcota connection.** pqcaton runs only where pqcota is installed, connected and working. On start the screen connects
 to the pqcota history and must pass one read of it (schema and read permission) before it comes up. If there is no
@@ -218,23 +206,63 @@ address file. It only looks things up, so an account with read permission is eno
   `upstream-org` without looking anything up. So ingest pqcota under that organization too
   (`PQCOTA_ORG='<organization>' pqcota-ingest …`).
 
-Fill the file in an editor. Do not put the value on the command line, so the password stays out of the shell history.
+Once the screen is up, each task needs more, as below. The only thing the screen runs itself is `ansible-playbook` for observation;
+it signs approvals and generates playbooks inside the screen.
+
+| Task | What it needs |
+|---|---|
+| 03 Observation | Ansible and node access, the official collectors, the collector signing keys and the trusted public keys ("Getting ready to run observations" and "Preparing the collector signing keys" below) |
+| Loading observation results into the history | `pqcota-ingest` and a loading account. The results of 03 are checked (`pqcota-ingest -verify-keys`) and then loaded under the judgment organization (section 6). Reconciliation in 04 and 05 and policy activation in 05 look at this load |
+| 06 approval signature and generation | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
+| Applying to the nodes and rolling back | `pqcota-hosts` (to make the Ansible inventory) and `ansible-playbook` (as 06 explains) |
+| Trimming old history | `pqcota-prune` (optional) |
+
+<a id="the-service-and-the-launcher"></a>
+
+**Linux: the service and the launcher.** The service starts the screen when you log in (without opening a browser), and
+the launcher starts the service and then opens the screen in a browser. Finish "Preparing pqcota" above before enabling the service (the service reads the same `pqcota.env`). The launcher appears as "pqcaton" in the desktop's
+program list. The launcher opens it with `pqcaton-ui -open`, which waits (up to 15 seconds) until the server at the
+recorded address answers that it is the screen of the same workspace, so it never opens a stale address left by an
+abnormal exit or a screen that is not up yet. If nothing answers, it opens nothing.
 
 ```bash
-mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
-install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
+mkdir -p ~/.config/systemd/user ~/.local/share/applications
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.desktop
+systemctl --user daemon-reload
+systemctl --user enable --now pqcaton-ui.service
 ```
 
-On macOS only the location differs.
+The service's log is shown by the command below. Use it to find the cause behind a reference the screen shows
+(`error ref=…`).
 
 ```bash
-mkdir -p "$HOME/Library/Application Support/pqcaton" && chmod 700 "$HOME/Library/Application Support/pqcaton"
-install -m 600 /dev/null "$HOME/Library/Application Support/pqcaton/pqcota.env"
+journalctl --user -u pqcaton-ui.service
 ```
+
+**macOS: the launcher.** Double-click the downloaded file: it starts the screen in a Terminal window and opens a
+browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
+
+```bash
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/macos/pqcaton-ui.command
+chmod +x ~/Desktop/pqcaton-ui.command
+```
+
+<a id="getting-ready-to-run-observations"></a>
 
 **Getting ready to run observations.** Running an observation from the 03 Observation screen needs Ansible and the collectors on this
 machine and an account on the nodes. The screen checks these and the signing keys ("Preparing the collector signing keys" below) before
 it starts and, when something is missing, says what to do.
+
+Prepare them in this order. The details follow in the items after it.
+
+1. **Ansible.** Install ansible-core (checked with 2.16.3 and 2.21.6) so that `ansible-playbook` is on the `PATH`.
+2. **Node access.** Make the Linux nodes reachable over SSH as root, or as an account with password-less sudo (`NOPASSWD`), and connect to
+   each node once with `ssh` to accept its host key.
+3. **Collectors.** Fetch and check them as in "Checking the collectors you download" below.
+4. **Signing keys.** Make them as in "Preparing the collector signing keys" below.
+
+Then start the screen again and see that the check lines on 03 show nothing missing.
 
 - **Ansible.** `ansible-playbook` is looked up on the `PATH`. It was checked with ansible-core 2.16.3 and 2.21.6. 03 **does not read the
   operator's Ansible configuration** ("The Ansible configuration 03 uses" below).
@@ -269,76 +297,6 @@ collectors/
 └── collector.jar    without it, the provider chains of running JVMs are not observed
 ```
 
-<a id="preparing-the-collector-signing-keys"></a>
-
-**Preparing the collector signing keys.** 03 has the collectors sign their results and uses as current only results whose signature
-checks out. The upstream ingest (`pqcota-ingest`) checks them with the same keys. So an observation **starts only with a signing key for
-each collector ID.**
-
-- **Collector IDs and keys.** The ID written in a result is fixed per command: `pqcota-nodescan` writes `openssl-collector`,
-  `pqcota-netcap` `network-collector`, and `pqcota-jvmscan` `jvm-collector`. Without `collector.jar` the `jvm-collector` key is not needed.
-  There is one key per ID, and **every node running a collector of that ID shares its key.** Upstream does not bind keys to nodes yet, so
-  whoever holds the key of an ID can sign results of any node under that ID. What tells the nodes apart is the registration list and the
-  machine fingerprint check.
-- **Where.** The signing keys are `pqcaton/collector-keys/<ID>.key` in the user configuration folder, and the trusted public keys are
-  `verify.pub` in the same folder. Keep the folder outside the workspace, open only to its owner (0700), and each key file readable only by
-  its owner (0600). This is a different place and purpose from the approval key (06). To keep them elsewhere, give
-  `-collector-keys <folder>` and `-collector-verify-keys <file>`.
-- **Trusted public keys (`verify.pub`).** One line `PQCOTA_VERIFY_KEY=<ID>:<public key>,…`, **the same value you give the ingest as
-  `PQCOTA_VERIFY_KEY`.** 03 checks results only with this value (it never derives it from the private keys). A file others can change, a
-  file holding a private key, and the old list that binds no key to an ID are refused.
-- **What 03 blocks.** A missing ID, a key of another ID than its file name, a key with no collector ID (an approval-style key made
-  without the flag), permissions too wide, a signing key not in `verify.pub`, one public key under two IDs, and the approval key used as a
-  signing key. The "Collector signing keys" and "Trusted collector public keys" lines on 03 show the missing IDs and why.
-
-`pqcota-keygen` is in the `pqcota-ctl` bundle of "Preparing pqcota". The third line gathers the public keys of the three into one
-line of `verify.pub`. It runs under umask 077 too, so the file is never writable by the group or others, from the moment it is
-created. Made plainly on a distribution whose default umask is 002, it would be group-writable, and 03 refuses that. The final `chmod`
-opens it to others for reading only; 03 also takes it at 0600.
-
-```bash
-mkdir -p ~/.config/pqcaton && mkdir -m 700 ~/.config/pqcaton/collector-keys
-for id in openssl-collector network-collector jvm-collector; do (umask 077 && pqcota-keygen -collector "$id" > ~/.config/pqcaton/collector-keys/"$id".key); done
-(umask 077 && for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub)
-chmod 644 ~/.config/pqcaton/collector-keys/verify.pub
-```
-
-On macOS the place is `~/Library/Application Support/pqcaton/collector-keys`; replace `~/.config/pqcaton` in the commands above with it.
-Collectors you run yourself outside 03 must sign with the key of the same ID too, or the ingest refuses their results. To change a key,
-first add the new public key to `verify.pub` and to the ingest's value (an ID can hold two), then replace the signing key file, check
-with an observation and `pqcota-ingest -verify-keys`, and only then drop the old public key.
-
-<a id="the-ansible-configuration-03-uses"></a>
-
-**The Ansible configuration 03 uses.** 03 passes the signing keys on the standard input of the nodes. Anything else in that path could
-leak them (in the lab, a callback plugin in the operator's folder received the keys, and so did a replaced sudo executable), so only the
-verified conditions are used.
-
-- Each run reads only one configuration file made by the product. **The operator's `ansible.cfg` (`./ansible.cfg`, `~/.ansible.cfg`,
-  `/etc/ansible/ansible.cfg`) and `ANSIBLE_*` environment variables are not used by 03 observations.** Plugins and collections in the
-  operator's folders are not loaded either.
-- The connection is the built-in ssh, privilege escalation the built-in sudo (`sudo -H -S -n`, root), pipelining is on, and no remote
-  temporary file is kept.
-- The ssh client configuration (`ProxyJump`, `IdentityFile`, `Port` and so on in `~/.ssh/config`) and `~/.ssh/known_hosts` are read by ssh
-  and still apply, and so does the ssh agent (`SSH_AUTH_SOCK`).
-- How to move the values you kept in `ansible.cfg` is in [section 9, "v0.30.0 to v0.31.0"](#v0300-to-v0310).
-
-<a id="node-check"></a>
-
-**Node check.** When an observation starts, 03 first checks every node **without any key**. For each node it reads the account's uid and,
-when it is not root, `LC_ALL=C sudo -n -l`. Keys are made and the observation starts only when every node passes. If one node does not
-pass, no node is observed, the run fails, and the node cleanup ends as "not needed" (the observation never reached the nodes and the check
-leaves nothing there). The run log keeps the node, the reason, the policy lines and the command to check it on the node.
-
-| Verdict | When |
-|---|---|
-| Pass | Reached as root, or **no I/O logging setting was found** in the output form of `sudo -n -l` this check supports. What this check cannot see is in "Trust" below |
-| Refused | I/O logging is on (`log_input`, `log_output`, `log_stdin`, `log_stdout`, `log_stderr`, `log_ttyin`, `log_ttyout`), a rule's `LOG_INPUT:` or `LOG_OUTPUT:`, or `requiretty`. The key would be kept in those records |
-| Cannot be confirmed | sudo asks for a password (not `NOPASSWD`), `sudo -n -l` fails, the output is in another form, logging is both turned on and off (`!log_input`, `NOLOG_INPUT:`), there are command- or runas-specific settings, or there are rules other than one running every command as root. Which setting really applies to `/bin/sh` cannot be told from the list, so the run stops |
-
-To clear "cannot be confirmed", keep the node's sudoers simple: give the account only the rule `<account> ALL=(ALL) NOPASSWD: ALL` and
-turn I/O logging off for it. On the node, run `LC_ALL=C sudo -n -l` as that account and compare it with the policy lines shown in the 03 log.
-
 **Checking the collectors you download.** The upstream collectors come as release assets, and fetching and checking them is done
 with the preparation tool `pqcaton-collectors`. It fetches only the assets of the upstream version go.mod pins (v0.16.0 for this
 version) and never runs what it downloads.
@@ -363,6 +321,45 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
   there. If anything fails, the target is not created. An existing target is never overwritten.
 - **Using it.** Check it again with `verify` before starting the screen, and give it to the screen with
   `-collectors ~/pqcaton/collectors-v0.16.0/collectors`.
+
+<a id="preparing-the-collector-signing-keys"></a>
+
+**Preparing the collector signing keys.** 03 has the collectors sign their results and uses as current only results whose signature
+checks out. The upstream ingest (`pqcota-ingest`) checks them with the same keys. So an observation **starts only with a signing key for
+each collector ID.**
+
+`pqcota-keygen` is in the `pqcota-ctl` bundle of "Preparing pqcota". The third line gathers the public keys of the three into one
+line of `verify.pub`. It runs under umask 077 too, so the file is never writable by the group or others, from the moment it is
+created. Made plainly on a distribution whose default umask is 002, it would be group-writable, and 03 refuses that. The final `chmod`
+opens it to others for reading only; 03 also takes it at 0600.
+
+```bash
+mkdir -p ~/.config/pqcaton && mkdir -m 700 ~/.config/pqcaton/collector-keys
+for id in openssl-collector network-collector jvm-collector; do (umask 077 && pqcota-keygen -collector "$id" > ~/.config/pqcaton/collector-keys/"$id".key); done
+(umask 077 && for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub)
+chmod 644 ~/.config/pqcaton/collector-keys/verify.pub
+```
+
+On macOS the place is `~/Library/Application Support/pqcaton/collector-keys`; replace `~/.config/pqcaton` in the commands above with it.
+Collectors you run yourself outside 03 must sign with the key of the same ID too, or the ingest refuses their results. To change a key,
+first add the new public key to `verify.pub` and to the ingest's value (an ID can hold two), then replace the signing key file, check
+with an observation and `pqcota-ingest -verify-keys`, and only then drop the old public key.
+
+- **Collector IDs and keys.** The ID written in a result is fixed per command: `pqcota-nodescan` writes `openssl-collector`,
+  `pqcota-netcap` `network-collector`, and `pqcota-jvmscan` `jvm-collector`. Without `collector.jar` the `jvm-collector` key is not needed.
+  There is one key per ID, and **every node running a collector of that ID shares its key.** Upstream does not bind keys to nodes yet, so
+  whoever holds the key of an ID can sign results of any node under that ID. What tells the nodes apart is the registration list and the
+  machine fingerprint check.
+- **Where.** The signing keys are `pqcaton/collector-keys/<ID>.key` in the user configuration folder, and the trusted public keys are
+  `verify.pub` in the same folder. Keep the folder outside the workspace, open only to its owner (0700), and each key file readable only by
+  its owner (0600). This is a different place and purpose from the approval key (06). To keep them elsewhere, give
+  `-collector-keys <folder>` and `-collector-verify-keys <file>`.
+- **Trusted public keys (`verify.pub`).** One line `PQCOTA_VERIFY_KEY=<ID>:<public key>,…`, **the same value you give the ingest as
+  `PQCOTA_VERIFY_KEY`.** 03 checks results only with this value (it never derives it from the private keys). A file others can change, a
+  file holding a private key, and the old list that binds no key to an ID are refused.
+- **What 03 blocks.** A missing ID, a key of another ID than its file name, a key with no collector ID (an approval-style key made
+  without the flag), permissions too wide, a signing key not in `verify.pub`, one public key under two IDs, and the approval key used as a
+  signing key. The "Collector signing keys" and "Trusted collector public keys" lines on 03 show the missing IDs and why.
 
 **What the two checks look at.** The release check (`pqcaton-collectors`) asks **is this file the very file that upstream's official
 release published**: who built it from which tag (the attestation) and whether the bytes equal the published hashes. The version
@@ -405,14 +402,44 @@ locally)".
   **Up to v0.29.x a JAR with no version only got a warning.** Keeping a JAR you built yourself now needs the override. The
   usual fix is to replace it with the upstream release `collector.jar`. Manifest values are cut at 64 characters on the screen.
 
-**Getting the approval key ready.** Signing new approvals on the 06 screen needs an approval key. By default the screen
-looks for `pqcaton/approval.key` in the user configuration folder (`~/.config/pqcaton/` on Linux,
-`~/Library/Application Support/pqcaton/` on macOS). Save the output of `pqcota-keygen` (made **without flags**) there, readable only
-by its owner, and it is used without any flag. A collector signing key made with `pqcota-keygen -collector` is not taken as the approval
-key (state "collector"). `pqcota-keygen` is in the `pqcota-ctl` bundle too. The screen neither creates this file nor changes its permissions, and reads it again at
-every signature. The last two lines put the public key alone in `approval.pub`. It is created under umask 077 too, so it is never
-writable by the group or others, from the moment it exists (06 refuses a public key file the group can change). The final `chmod`
-opens it to others for reading only; 06 also takes it at 0600.
+<a id="the-ansible-configuration-03-uses"></a>
+
+**The Ansible configuration 03 uses.** 03 passes the signing keys on the standard input of the nodes. Anything else in that path could
+leak them (in the lab, a callback plugin in the operator's folder received the keys, and so did a replaced sudo executable), so only the
+verified conditions are used.
+
+- Each run reads only one configuration file made by the product. **The operator's `ansible.cfg` (`./ansible.cfg`, `~/.ansible.cfg`,
+  `/etc/ansible/ansible.cfg`) and `ANSIBLE_*` environment variables are not used by 03 observations.** Plugins and collections in the
+  operator's folders are not loaded either.
+- The connection is the built-in ssh, privilege escalation the built-in sudo (`sudo -H -S -n`, root), pipelining is on, and no remote
+  temporary file is kept.
+- The ssh client configuration (`ProxyJump`, `IdentityFile`, `Port` and so on in `~/.ssh/config`) and `~/.ssh/known_hosts` are read by ssh
+  and still apply, and so does the ssh agent (`SSH_AUTH_SOCK`).
+- How to move the values you kept in `ansible.cfg` is in [section 9, "v0.30.0 to v0.31.0"](#v0300-to-v0310).
+
+<a id="node-check"></a>
+
+**Node check.** When an observation starts, 03 first checks every node **without any key**. For each node it reads the account's uid and,
+when it is not root, `LC_ALL=C sudo -n -l`. Keys are made and the observation starts only when every node passes. If one node does not
+pass, no node is observed, the run fails, and the node cleanup ends as "not needed" (the observation never reached the nodes and the check
+leaves nothing there). The run log keeps the node, the reason, the policy lines and the command to check it on the node.
+
+| Verdict | When |
+|---|---|
+| Pass | Reached as root, or **no I/O logging setting was found** in the output form of `sudo -n -l` this check supports. What this check cannot see is in "Trust" below |
+| Refused | I/O logging is on (`log_input`, `log_output`, `log_stdin`, `log_stdout`, `log_stderr`, `log_ttyin`, `log_ttyout`), a rule's `LOG_INPUT:` or `LOG_OUTPUT:`, or `requiretty`. The key would be kept in those records |
+| Cannot be confirmed | sudo asks for a password (not `NOPASSWD`), `sudo -n -l` fails, the output is in another form, logging is both turned on and off (`!log_input`, `NOLOG_INPUT:`), there are command- or runas-specific settings, or there are rules other than one running every command as root. Which setting really applies to `/bin/sh` cannot be told from the list, so the run stops |
+
+To clear "cannot be confirmed", keep the node's sudoers simple: give the account only the rule `<account> ALL=(ALL) NOPASSWD: ALL` and
+turn I/O logging off for it. On the node, run `LC_ALL=C sudo -n -l` as that account and compare it with the policy lines shown in the 03 log.
+
+<a id="getting-the-approval-key-ready"></a>
+
+**Getting the approval key ready.** Signing new approvals on the 06 screen needs an approval key. The commands below make the
+approval key `approval.key` and the public key `approval.pub` at the default location (`~/.config/pqcaton/` on Linux,
+`~/Library/Application Support/pqcaton/` on macOS), where they are used without any flag. Both files are created under umask 077, so
+they are never writable by the group or others, from the moment they exist (06 refuses a public key file the group can change). The
+final `chmod` opens it to others for reading only; 06 also takes it at 0600.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.16.0
@@ -431,6 +458,11 @@ mkdir -p "$HOME/Library/Application Support/pqcaton"
 chmod 644 "$HOME/Library/Application Support/pqcaton/approval.pub"
 ```
 
+When the screen starts again, its start lines show `approval key: <path> (default location)`. A line starting with `warning:` means: see "Unusable keys" below.
+
+- **The key file.** The output of `pqcota-keygen` run **without flags**. A collector signing key made with `pqcota-keygen -collector` is
+  not taken as the approval key (state "collector"). `pqcota-keygen` is in the `pqcota-ctl` bundle too. The screen neither creates this
+  file nor changes its permissions, and reads it again at every signature.
 - **The verification key (`approval.pub`).** With it, plans already signed are checked and their playbooks generated even
   without the private key. A file that holds a private key line, or that other users can change, is not taken. When both
   files are there they must be the same key; if not, signing and checking are both blocked.
@@ -499,6 +531,9 @@ so the shell does not need it. It opens the port and then a browser (`http://127
 ```bash
 pqcaton-ui -no-browser
 ```
+
+Once it is up, the line `screen: http://127.0.0.1:8765/  (workspace <workspace folder>)` appears on standard error. If it does
+not start, look up the reason after `❌` in the [error table in section 10](#10-error-table).
 
 The address of the running screen is recorded in the workspace.
 

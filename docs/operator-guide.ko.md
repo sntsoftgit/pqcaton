@@ -53,38 +53,23 @@ sudo의 입출력 기록만 봅니다. **sudo 밖의 감사 도구(auditd · tlo
 
 ## 2. 설치
 
-**바이너리.** Go 1.26.11이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
+이 절을 마치면 이 기계에서 화면이 뜹니다. 1~3은 처음 한 번 하고, 4 · 5는 그 단계를 쓸 때 합니다.
+
+1. [화면 설치](#화면-설치): `pqcaton-ui` 바이너리
+2. [pqcota 준비](#pqcota-준비): 이력 DB · 역할 · 상류 명령 · 스키마 · 권한 · 연결 정보
+3. 화면 띄우기: [4절](#4-시작과-끝내기). 로그인할 때 띄우려면 [서비스와 실행기](#서비스와-실행기)
+4. [관측 실행 준비](#관측-실행-준비): 03에서 관측할 때
+5. [승인 키 준비](#승인-키-준비): 06에서 서명할 때
+
+<a id="화면-설치"></a>
+
+**화면 설치.** Go 1.26.11이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.0
 ```
 
-**Linux: 서비스와 실행기.** 서비스는 로그인할 때 화면을 띄우고(브라우저는 열지 않음), 실행기는 서비스를 시작한 뒤 화면을
-브라우저로 엽니다. 서비스를 켜기 전에 아래 「pqcota 연결」의 `pqcota.env`를 먼저 만듭니다. 실행기는 데스크톱의 프로그램 목록에 「pqcaton」으로 나타납니다. 실행기는 `pqcaton-ui -open`으로 엽니다.
-적힌 주소의 서버가 같은 작업 폴더의 화면이라고 답할 때까지(최대 15초) 기다린 뒤에 열기 때문에, 비정상 종료가 남긴 낡은
-주소나 아직 뜨지 않은 화면을 열지 않습니다. 끝내 답이 없으면 열지 않습니다.
-
-```bash
-mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.desktop
-systemctl --user daemon-reload
-systemctl --user enable --now pqcaton-ui.service
-```
-
-서비스의 기록은 아래 명령으로 봅니다. 화면이 보이는 참조 번호(`error ref=…`)로 원인을 찾을 때 씁니다.
-
-```bash
-journalctl --user -u pqcaton-ui.service
-```
-
-**macOS: 실행기.** 내려받은 파일을 두 번 누르면 터미널 창에서 화면을 띄우고 브라우저를 엽니다. 이미 떠 있으면 그
-화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
-
-```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/macos/pqcaton-ui.command
-chmod +x ~/Desktop/pqcaton-ui.command
-```
+`command -v pqcaton-ui`가 그 경로를 찍으면 설치된 것입니다. 화면은 다음 「pqcota 준비」를 마쳐야 뜹니다.
 
 <a id="pqcota-준비"></a>
 
@@ -170,19 +155,24 @@ chmod +x ~/Desktop/pqcaton-ui.command
      schema); initializing the schema does not change them」로 시작하지 않습니다. 초기화로는 고쳐지지 않으므로 권한을 줍니다.
    - 역할과 권한의 자세한 표는 상류의 [setting up the database(v0.16.0)](https://github.com/randyinthedev-hash/pqcota-inventory/blob/v0.16.0/cmd/README.md#setting-up-the-database)에 있습니다.
 
-5. **화면 연결 정보.** `pqcota.env`(0600)에 `PQCOTA_DSN=postgres://pqcaton_ui@<호스트>:5432/pqcota` 한 줄을 넣습니다. 만드는 명령과
-   파일 규칙은 아래 「pqcota 연결」에 있습니다. 여기까지 하면 화면이 뜹니다.
+5. **화면 연결 정보.** 화면 계정의 연결 정보를 `pqcota.env`에 한 줄로 둡니다. 비밀번호가 셸 기록에 남지 않도록 명령줄에 값을
+   쓰지 않습니다. 아래 명령으로 빈 파일(0600)을 만든 뒤, 편집기로 `PQCOTA_DSN=postgres://pqcaton_ui@<호스트>:5432/pqcota` 한 줄을
+   넣습니다. 파일 규칙은 아래 「pqcota 연결」에 있습니다.
 
-화면을 띄운 뒤에는 일마다 아래가 더 필요합니다. 화면이 직접 실행하는 것은 관측의 `ansible-playbook`뿐이고, 승인 서명과 플레이북
-생성은 화면 안에서 합니다.
+   ```bash
+   mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
+   install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
+   ```
 
-| 일 | 필요한 것 |
-|---|---|
-| 03 관측 | Ansible과 노드 접속 정보, 공식 수집기, 수집기 서명 키와 신뢰할 공개 키(아래 「관측 실행 준비」 · 「수집기 서명 키 준비」) |
-| 관측 결과를 이력에 적재 | `pqcota-ingest`, 적재용 계정. 03의 결과는 서명을 확인(`pqcota-ingest -verify-keys`)한 뒤 판정 조직에 적재합니다(6절). 04 · 05의 대조와 05의 정책 활성화가 이 적재를 봅니다 |
-| 06 승인 서명 · 생성 | 승인 키(아래 「승인 키 준비」의 `pqcota-keygen`). 화면 밖에서 서명 · 생성할 때만 `pqcota-approve` · `pqcota-provision` |
-| 노드에 적용 · 되돌리기 | `pqcota-hosts`(Ansible 인벤토리 만들기)와 `ansible-playbook`(06의 안내) |
-| 오래된 이력 정리 | `pqcota-prune`(골라서) |
+   macOS에서는 자리만 다릅니다.
+
+   ```bash
+   mkdir -p "$HOME/Library/Application Support/pqcaton" && chmod 700 "$HOME/Library/Application Support/pqcaton"
+   install -m 600 /dev/null "$HOME/Library/Application Support/pqcaton/pqcota.env"
+   ```
+
+이제 [4절](#4-시작과-끝내기)대로 `pqcaton-ui -no-browser`를 실행합니다. `screen: http://127.0.0.1:8765/  (workspace …)` 줄이
+나오면 화면이 뜬 것입니다. 시작하지 않으면 `❌` 뒤의 까닭을 아래 「pqcota 연결」과 [10절 오류 표](#10-오류-표)에서 찾습니다.
 
 **pqcota 연결.** pqcaton은 pqcota가 설치 · 연결되어 동작하는 환경에서만 실행합니다. 화면은 시작할 때 pqcota 이력에
 연결하고, 이력을 한 번 읽어(스키마와 읽기 권한) 통과해야 뜹니다. 연결 정보가 없거나 연결 · 조회가 10초 안에 끝나지 않으면
@@ -201,22 +191,60 @@ chmod +x ~/Desktop/pqcaton-ui.command
   `-upstream-org`는 같은 값만 받고, 다른 조직을 주면 시작하지 않습니다. 판정 세션의 조직이 다르면 05가 조회하지 않고
   `upstream-org`로 거절합니다. 그러므로 pqcota 적재도 그 조직으로 합니다(`PQCOTA_ORG='<조직>' pqcota-ingest …`).
 
-파일은 편집기로 채웁니다. 비밀번호가 셸 기록에 남지 않도록 명령줄에 값을 쓰지 않습니다.
+화면을 띄운 뒤에는 일마다 아래가 더 필요합니다. 화면이 직접 실행하는 것은 관측의 `ansible-playbook`뿐이고, 승인 서명과 플레이북
+생성은 화면 안에서 합니다.
+
+| 일 | 필요한 것 |
+|---|---|
+| 03 관측 | Ansible과 노드 접속 정보, 공식 수집기, 수집기 서명 키와 신뢰할 공개 키(아래 「관측 실행 준비」 · 「수집기 서명 키 준비」) |
+| 관측 결과를 이력에 적재 | `pqcota-ingest`, 적재용 계정. 03의 결과는 서명을 확인(`pqcota-ingest -verify-keys`)한 뒤 판정 조직에 적재합니다(6절). 04 · 05의 대조와 05의 정책 활성화가 이 적재를 봅니다 |
+| 06 승인 서명 · 생성 | 승인 키(아래 「승인 키 준비」의 `pqcota-keygen`). 화면 밖에서 서명 · 생성할 때만 `pqcota-approve` · `pqcota-provision` |
+| 노드에 적용 · 되돌리기 | `pqcota-hosts`(Ansible 인벤토리 만들기)와 `ansible-playbook`(06의 안내) |
+| 오래된 이력 정리 | `pqcota-prune`(골라서) |
+
+<a id="서비스와-실행기"></a>
+
+**Linux: 서비스와 실행기.** 서비스는 로그인할 때 화면을 띄우고(브라우저는 열지 않음), 실행기는 서비스를 시작한 뒤 화면을
+브라우저로 엽니다. 서비스를 켜기 전에 위 「pqcota 준비」를 마칩니다(서비스도 그 `pqcota.env`를 읽습니다). 실행기는 데스크톱의 프로그램 목록에 「pqcaton」으로 나타납니다. 실행기는 `pqcaton-ui -open`으로 엽니다.
+적힌 주소의 서버가 같은 작업 폴더의 화면이라고 답할 때까지(최대 15초) 기다린 뒤에 열기 때문에, 비정상 종료가 남긴 낡은
+주소나 아직 뜨지 않은 화면을 열지 않습니다. 끝내 답이 없으면 열지 않습니다.
 
 ```bash
-mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
-install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
+mkdir -p ~/.config/systemd/user ~/.local/share/applications
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.desktop
+systemctl --user daemon-reload
+systemctl --user enable --now pqcaton-ui.service
 ```
 
-macOS에서는 자리만 다릅니다.
+서비스의 기록은 아래 명령으로 봅니다. 화면이 보이는 참조 번호(`error ref=…`)로 원인을 찾을 때 씁니다.
 
 ```bash
-mkdir -p "$HOME/Library/Application Support/pqcaton" && chmod 700 "$HOME/Library/Application Support/pqcaton"
-install -m 600 /dev/null "$HOME/Library/Application Support/pqcaton/pqcota.env"
+journalctl --user -u pqcaton-ui.service
 ```
+
+**macOS: 실행기.** 내려받은 파일을 두 번 누르면 터미널 창에서 화면을 띄우고 브라우저를 엽니다. 이미 떠 있으면 그
+화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
+
+```bash
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/macos/pqcaton-ui.command
+chmod +x ~/Desktop/pqcaton-ui.command
+```
+
+<a id="관측-실행-준비"></a>
 
 **관측 실행 준비.** 03 관측 화면에서 관측을 실행하려면 이 기계에 Ansible과 수집기가, 노드에는 접속 계정이 있어야 합니다. 화면은
 시작하기 전에 이것들과 서명 키(아래 「수집기 서명 키 준비」)를 점검하고, 빠진 것이 있으면 무엇을 하면 되는지 보입니다.
+
+아래 순서로 준비합니다. 자세한 조건은 그 뒤의 항목에 있습니다.
+
+1. **Ansible.** ansible-core(2.16.3 · 2.21.6으로 검증)를 설치해 `ansible-playbook`이 `PATH`에 있게 합니다.
+2. **노드 접속.** Linux 노드에 root로, 또는 비밀번호 없는 sudo(`NOPASSWD`) 계정으로 SSH 접속이 되게 하고, 노드마다 `ssh`로 한 번
+   접속해 호스트 키를 받아 둡니다.
+3. **수집기.** 아래 「받은 수집기를 확인하기」대로 받고 확인합니다.
+4. **서명 키.** 아래 「수집기 서명 키 준비」대로 만듭니다.
+
+그다음 화면을 다시 띄워, 03의 점검 줄에 빠진 것이 없는지 봅니다.
 
 - **Ansible.** `ansible-playbook`을 `PATH`에서 찾습니다. ansible-core 2.16.3과 2.21.6으로 검증했습니다. 03은 **운영자의 Ansible
   설정을 읽지 않습니다**(아래 「03이 쓰는 Ansible 설정」).
@@ -247,70 +275,6 @@ collectors/
 └── collector.jar    없으면 실행 중인 JVM의 provider 체인은 관측하지 않습니다
 ```
 
-<a id="수집기-서명-키-준비"></a>
-
-**수집기 서명 키 준비.** 03은 수집기 결과에 서명하게 하고, 서명이 확인된 결과만 지금 결과로 씁니다. 상류 적재
-(`pqcota-ingest`)도 같은 키로 확인합니다. 그래서 관측은 **수집기 ID마다 서명 키가 있어야 시작합니다.**
-
-- **수집기 ID와 키.** 결과에 적히는 ID는 명령마다 정해져 있습니다. `pqcota-nodescan`은 `openssl-collector`, `pqcota-netcap`은
-  `network-collector`, `pqcota-jvmscan`은 `jvm-collector`입니다. `collector.jar`가 없으면 `jvm-collector` 키는 없어도 됩니다.
-  키는 ID마다 하나이고, **같은 ID의 수집기는 모든 노드가 그 키를 함께 씁니다.** 상류는 아직 키를 노드에 묶지 않으므로, 한 ID의 키를
-  가진 쪽은 그 ID로 어느 노드의 결과든 서명할 수 있습니다. 노드를 가리는 것은 등록 목록과 머신 지문 검사입니다.
-- **자리.** 서명 키는 사용자 설정 폴더의 `pqcaton/collector-keys/<ID>.key`이고, 신뢰할 공개 키는 같은 폴더의 `verify.pub`입니다.
-  폴더는 작업 폴더 밖에 두고 소유자만 들어가게(0700) 하며, 키 파일은 소유자만 읽게(0600) 합니다. 승인 키(06)와 자리 · 용도가
-  다릅니다. 다른 자리에 두려면 `-collector-keys <폴더>`와 `-collector-verify-keys <파일>`로 줍니다.
-- **신뢰할 공개 키(`verify.pub`).** `PQCOTA_VERIFY_KEY=<ID>:<공개 키>,…` 한 줄이고, **적재에 주는 `PQCOTA_VERIFY_KEY`와 같은
-  값입니다.** 03은 결과를 이 값으로만 검증합니다(개인 키에서 뽑아 쓰지 않습니다). 다른 사용자가 고칠 수 있거나 개인 키가 든 파일,
-  ID에 묶이지 않은 옛 목록 꼴은 받지 않습니다.
-- **03이 막는 것.** 빠진 ID, 파일 이름과 다른 ID의 키, 수집기 ID가 없는 키(플래그 없이 만든 승인 키 꼴), 넓은 권한, `verify.pub`에
-  없는 서명 키, 한 공개 키를 두 ID에 둔 것, 승인 키를 서명 키로 쓴 것. 03의 「수집기 서명 키」 · 「신뢰할 수집기 공개 키」 줄이
-  빠진 ID와 까닭을 보입니다.
-
-`pqcota-keygen`은 「pqcota 준비」의 `pqcota-ctl` 묶음에 있습니다. 셋째 줄은 세 키의 공개 키를 `verify.pub` 한 줄로 모읍니다. 이 줄도
-umask 077 안에서 실행하므로 파일은 만들어지는 순간부터 그룹과 다른 사용자가 고칠 수 없습니다. 기본 umask가 002인 배포판에서
-그냥 만들면 그룹이 고칠 수 있는 파일이 되고, 03은 그것을 받지 않습니다. 마지막 `chmod`는 다른 사용자에게 읽기만 엽니다. 0600으로 두어도
-03은 받습니다.
-
-```bash
-mkdir -p ~/.config/pqcaton && mkdir -m 700 ~/.config/pqcaton/collector-keys
-for id in openssl-collector network-collector jvm-collector; do (umask 077 && pqcota-keygen -collector "$id" > ~/.config/pqcaton/collector-keys/"$id".key); done
-(umask 077 && for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub)
-chmod 644 ~/.config/pqcaton/collector-keys/verify.pub
-```
-
-macOS에서는 자리가 `~/Library/Application Support/pqcaton/collector-keys`입니다. 위 명령의 `~/.config/pqcaton`을 그 자리로 바꿉니다.
-03 밖에서 운영자가 직접 돌리는 수집기도 같은 ID의 키로 서명해야 적재에서 거절되지 않습니다. 키를 바꿀 때는 새 공개 키를
-`verify.pub`과 적재 쪽 값에 먼저 더하고(한 ID 아래 둘을 둘 수 있습니다), 서명 키 파일을 바꾸고, 관측과 `pqcota-ingest -verify-keys`로 확인한
-뒤 옛 공개 키를 뺍니다.
-
-<a id="03이-쓰는-ansible-설정"></a>
-
-**03이 쓰는 Ansible 설정.** 03은 서명 키를 노드 표준 입력으로 넘깁니다. 그 길에 다른 설정이 끼면 키가 샐 수 있어서(운영자 폴더의
-콜백 플러그인이 키를 받거나, 다른 sudo 실행 파일이 키를 받는 것을 실험으로 확인했습니다), 검증한 조건만 씁니다.
-
-- 실행마다 제품이 만든 설정 파일 하나만 읽습니다. **운영자의 `ansible.cfg`(`./ansible.cfg` · `~/.ansible.cfg` ·
-  `/etc/ansible/ansible.cfg`)와 `ANSIBLE_*` 환경 변수는 03 관측에 쓰이지 않습니다.** 운영자 폴더의 플러그인 · 컬렉션도 읽지 않습니다.
-- 연결은 내장 ssh, 권한 상승은 내장 sudo(`sudo -H -S -n`, root), pipelining은 켜고, 원격 임시 파일은 남기지 않습니다.
-- ssh 클라이언트 설정(`~/.ssh/config`의 `ProxyJump` · `IdentityFile` · `Port` 등)과 `~/.ssh/known_hosts`는 ssh가 읽으므로 그대로
-  씁니다. ssh-agent(`SSH_AUTH_SOCK`)도 그대로 씁니다.
-- 기존 `ansible.cfg`에 두던 값을 옮기는 방법은 [9절 「v0.30.0에서 v0.31.0으로」](#v0300에서-v0310으로)에 있습니다.
-
-<a id="노드-점검"></a>
-
-**노드 점검.** 관측을 시작하면 03은 먼저 **키 없이** 모든 노드를 점검합니다. 노드마다 접속 계정의 uid와, root가 아니면
-`LC_ALL=C sudo -n -l`을 읽습니다. 모든 노드가 통과해야 키를 만들고 관측을 시작합니다. 한 노드라도 통과하지 못하면 아무 노드도
-관측하지 않고, 그 실행은 「실패」이며, 노드 정리는 「불필요」로 끝납니다(관측이 노드에 닿지 않았고 점검은 노드에 아무것도 만들지
-않습니다). 실행 로그에 노드 · 까닭 · 그 정책 줄 · 노드에서 확인할 명령이 남습니다.
-
-| 판정 | 언제 |
-|---|---|
-| 통과 | root로 접속함, 또는 `sudo -n -l`의 지원하는 출력 꼴에서 입출력 기록 설정을 **찾지 못함**. 이 점검이 보지 못하는 기록은 아래 「신뢰 전제」 |
-| 거절 | 입출력 기록이 켜짐(`log_input` · `log_output` · `log_stdin` · `log_stdout` · `log_stderr` · `log_ttyin` · `log_ttyout`), 규칙의 `LOG_INPUT:` · `LOG_OUTPUT:`, `requiretty`. 키가 그 기록에 남기 때문입니다 |
-| 확인 불가 | sudo가 비밀번호를 물음(`NOPASSWD`가 아님), `sudo -n -l`이 실패함, 출력 꼴이 다름, 켜는 설정과 끄는 설정(`!log_input` · `NOLOG_INPUT:`)이 섞임, 명령별 · runas별 설정이 있음, root로 모든 명령을 실행하는 규칙 말고 다른 규칙이 있음. 실제로 어느 설정이 `/bin/sh`에 적용되는지 이 목록만으로 가릴 수 없어 멈춥니다 |
-
-확인 불가는 노드의 sudoers를 단순하게 바꾸면 풀립니다. 그 접속 계정에 `<계정> ALL=(ALL) NOPASSWD: ALL` 규칙만 두고, 입출력 기록을
-그 계정에서 끕니다. 노드에서 그 계정으로 `LC_ALL=C sudo -n -l`을 실행해, 03의 로그에 보인 정책 줄을 직접 확인합니다.
-
 **받은 수집기를 확인하기.** 상류 수집기는 릴리스 자산으로 받고, 받기와 확인은 준비 도구 `pqcaton-collectors`로 합니다. 이 도구는
 go.mod가 고정한 상류 판(이 판은 v0.16.0)의 자산만 받고, 받은 파일을 실행하지 않습니다.
 
@@ -332,6 +296,42 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
   실패하면 대상 폴더를 만들지 않습니다. 대상이 이미 있으면 덮어쓰지 않습니다.
 - **쓰는 법.** 화면을 띄우기 전에 `verify`로 다시 확인하고, 화면에는 `-collectors ~/pqcaton/collectors-v0.16.0/collectors`로
   줍니다.
+
+<a id="수집기-서명-키-준비"></a>
+
+**수집기 서명 키 준비.** 03은 수집기 결과에 서명하게 하고, 서명이 확인된 결과만 지금 결과로 씁니다. 상류 적재
+(`pqcota-ingest`)도 같은 키로 확인합니다. 그래서 관측은 **수집기 ID마다 서명 키가 있어야 시작합니다.**
+
+`pqcota-keygen`은 「pqcota 준비」의 `pqcota-ctl` 묶음에 있습니다. 셋째 줄은 세 키의 공개 키를 `verify.pub` 한 줄로 모읍니다. 이 줄도
+umask 077 안에서 실행하므로 파일은 만들어지는 순간부터 그룹과 다른 사용자가 고칠 수 없습니다. 기본 umask가 002인 배포판에서
+그냥 만들면 그룹이 고칠 수 있는 파일이 되고, 03은 그것을 받지 않습니다. 마지막 `chmod`는 다른 사용자에게 읽기만 엽니다. 0600으로 두어도
+03은 받습니다.
+
+```bash
+mkdir -p ~/.config/pqcaton && mkdir -m 700 ~/.config/pqcaton/collector-keys
+for id in openssl-collector network-collector jvm-collector; do (umask 077 && pqcota-keygen -collector "$id" > ~/.config/pqcaton/collector-keys/"$id".key); done
+(umask 077 && for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' ~/.config/pqcaton/collector-keys/"$id".key; done | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > ~/.config/pqcaton/collector-keys/verify.pub)
+chmod 644 ~/.config/pqcaton/collector-keys/verify.pub
+```
+
+macOS에서는 자리가 `~/Library/Application Support/pqcaton/collector-keys`입니다. 위 명령의 `~/.config/pqcaton`을 그 자리로 바꿉니다.
+03 밖에서 운영자가 직접 돌리는 수집기도 같은 ID의 키로 서명해야 적재에서 거절되지 않습니다. 키를 바꿀 때는 새 공개 키를
+`verify.pub`과 적재 쪽 값에 먼저 더하고(한 ID 아래 둘을 둘 수 있습니다), 서명 키 파일을 바꾸고, 관측과 `pqcota-ingest -verify-keys`로 확인한
+뒤 옛 공개 키를 뺍니다.
+
+- **수집기 ID와 키.** 결과에 적히는 ID는 명령마다 정해져 있습니다. `pqcota-nodescan`은 `openssl-collector`, `pqcota-netcap`은
+  `network-collector`, `pqcota-jvmscan`은 `jvm-collector`입니다. `collector.jar`가 없으면 `jvm-collector` 키는 없어도 됩니다.
+  키는 ID마다 하나이고, **같은 ID의 수집기는 모든 노드가 그 키를 함께 씁니다.** 상류는 아직 키를 노드에 묶지 않으므로, 한 ID의 키를
+  가진 쪽은 그 ID로 어느 노드의 결과든 서명할 수 있습니다. 노드를 가리는 것은 등록 목록과 머신 지문 검사입니다.
+- **자리.** 서명 키는 사용자 설정 폴더의 `pqcaton/collector-keys/<ID>.key`이고, 신뢰할 공개 키는 같은 폴더의 `verify.pub`입니다.
+  폴더는 작업 폴더 밖에 두고 소유자만 들어가게(0700) 하며, 키 파일은 소유자만 읽게(0600) 합니다. 승인 키(06)와 자리 · 용도가
+  다릅니다. 다른 자리에 두려면 `-collector-keys <폴더>`와 `-collector-verify-keys <파일>`로 줍니다.
+- **신뢰할 공개 키(`verify.pub`).** `PQCOTA_VERIFY_KEY=<ID>:<공개 키>,…` 한 줄이고, **적재에 주는 `PQCOTA_VERIFY_KEY`와 같은
+  값입니다.** 03은 결과를 이 값으로만 검증합니다(개인 키에서 뽑아 쓰지 않습니다). 다른 사용자가 고칠 수 있거나 개인 키가 든 파일,
+  ID에 묶이지 않은 옛 목록 꼴은 받지 않습니다.
+- **03이 막는 것.** 빠진 ID, 파일 이름과 다른 ID의 키, 수집기 ID가 없는 키(플래그 없이 만든 승인 키 꼴), 넓은 권한, `verify.pub`에
+  없는 서명 키, 한 공개 키를 두 ID에 둔 것, 승인 키를 서명 키로 쓴 것. 03의 「수집기 서명 키」 · 「신뢰할 수집기 공개 키」 줄이
+  빠진 ID와 까닭을 보입니다.
 
 **두 확인이 보는 것.** 배포물 검증(`pqcaton-collectors`)은 **이 파일이 상류의 그 공식 릴리스가 낸 그 파일인가**를 봅니다: 누가 어느
 태그에서 만들었는지(출처 증명)와 받은 바이트가 게시된 해시와 같은지입니다. 03 화면의 판 확인은 관측 직전에 **이 파일이 이 판이
@@ -367,13 +367,41 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
   **v0.29.x까지는 판 정보가 없는 JAR에 경고만 했습니다.** 직접 빌드한 JAR을 계속 쓰려면 이제 override가 필요합니다. 기본
   해결책은 상류 릴리스의 `collector.jar`로 바꾸는 것입니다. manifest의 값은 화면에 옮길 때 64자에서 자릅니다.
 
-**승인 키 준비.** 06 화면에서 새 승인에 서명하려면 승인 키가 필요합니다. 화면은 사용자 설정 폴더의
-`pqcaton/approval.key`를 기본으로 찾습니다(Linux는 `~/.config/pqcaton/`, macOS는 `~/Library/Application Support/pqcaton/`).
-그 자리에 `pqcota-keygen`의 출력(**플래그 없이** 만든 것)을 소유자만 읽게 저장하면 플래그 없이 씁니다. `pqcota-keygen -collector`로 만든
-수집기 서명 키는 승인 키로 받지 않습니다(「collector」 상태). `pqcota-keygen`은 `pqcota-ctl` 묶음에도 있습니다. 화면은 이 파일을 만들거나 권한을 고치지
-않고, 서명할 때마다 다시 읽습니다. 마지막 두 줄은 공개 키만 `approval.pub`에 따로 둡니다. 이 파일도 umask 077 안에서 만들므로 만들어지는
-순간부터 그룹과 다른 사용자가 고칠 수 없습니다(06은 그룹이 고칠 수 있는 공개 키 파일을 받지 않습니다). 마지막 `chmod`는 다른 사용자에게
-읽기만 엽니다. 0600으로 두어도 06은 받습니다.
+<a id="03이-쓰는-ansible-설정"></a>
+
+**03이 쓰는 Ansible 설정.** 03은 서명 키를 노드 표준 입력으로 넘깁니다. 그 길에 다른 설정이 끼면 키가 샐 수 있어서(운영자 폴더의
+콜백 플러그인이 키를 받거나, 다른 sudo 실행 파일이 키를 받는 것을 실험으로 확인했습니다), 검증한 조건만 씁니다.
+
+- 실행마다 제품이 만든 설정 파일 하나만 읽습니다. **운영자의 `ansible.cfg`(`./ansible.cfg` · `~/.ansible.cfg` ·
+  `/etc/ansible/ansible.cfg`)와 `ANSIBLE_*` 환경 변수는 03 관측에 쓰이지 않습니다.** 운영자 폴더의 플러그인 · 컬렉션도 읽지 않습니다.
+- 연결은 내장 ssh, 권한 상승은 내장 sudo(`sudo -H -S -n`, root), pipelining은 켜고, 원격 임시 파일은 남기지 않습니다.
+- ssh 클라이언트 설정(`~/.ssh/config`의 `ProxyJump` · `IdentityFile` · `Port` 등)과 `~/.ssh/known_hosts`는 ssh가 읽으므로 그대로
+  씁니다. ssh-agent(`SSH_AUTH_SOCK`)도 그대로 씁니다.
+- 기존 `ansible.cfg`에 두던 값을 옮기는 방법은 [9절 「v0.30.0에서 v0.31.0으로」](#v0300에서-v0310으로)에 있습니다.
+
+<a id="노드-점검"></a>
+
+**노드 점검.** 관측을 시작하면 03은 먼저 **키 없이** 모든 노드를 점검합니다. 노드마다 접속 계정의 uid와, root가 아니면
+`LC_ALL=C sudo -n -l`을 읽습니다. 모든 노드가 통과해야 키를 만들고 관측을 시작합니다. 한 노드라도 통과하지 못하면 아무 노드도
+관측하지 않고, 그 실행은 「실패」이며, 노드 정리는 「불필요」로 끝납니다(관측이 노드에 닿지 않았고 점검은 노드에 아무것도 만들지
+않습니다). 실행 로그에 노드 · 까닭 · 그 정책 줄 · 노드에서 확인할 명령이 남습니다.
+
+| 판정 | 언제 |
+|---|---|
+| 통과 | root로 접속함, 또는 `sudo -n -l`의 지원하는 출력 꼴에서 입출력 기록 설정을 **찾지 못함**. 이 점검이 보지 못하는 기록은 아래 「신뢰 전제」 |
+| 거절 | 입출력 기록이 켜짐(`log_input` · `log_output` · `log_stdin` · `log_stdout` · `log_stderr` · `log_ttyin` · `log_ttyout`), 규칙의 `LOG_INPUT:` · `LOG_OUTPUT:`, `requiretty`. 키가 그 기록에 남기 때문입니다 |
+| 확인 불가 | sudo가 비밀번호를 물음(`NOPASSWD`가 아님), `sudo -n -l`이 실패함, 출력 꼴이 다름, 켜는 설정과 끄는 설정(`!log_input` · `NOLOG_INPUT:`)이 섞임, 명령별 · runas별 설정이 있음, root로 모든 명령을 실행하는 규칙 말고 다른 규칙이 있음. 실제로 어느 설정이 `/bin/sh`에 적용되는지 이 목록만으로 가릴 수 없어 멈춥니다 |
+
+확인 불가는 노드의 sudoers를 단순하게 바꾸면 풀립니다. 그 접속 계정에 `<계정> ALL=(ALL) NOPASSWD: ALL` 규칙만 두고, 입출력 기록을
+그 계정에서 끕니다. 노드에서 그 계정으로 `LC_ALL=C sudo -n -l`을 실행해, 03의 로그에 보인 정책 줄을 직접 확인합니다.
+
+<a id="승인-키-준비"></a>
+
+**승인 키 준비.** 06 화면에서 새 승인에 서명하려면 승인 키가 필요합니다. 아래 명령은 기본 자리(Linux
+`~/.config/pqcaton/`, macOS `~/Library/Application Support/pqcaton/`)에 승인 키 `approval.key`와 공개 키 `approval.pub`을 만듭니다.
+그 자리에 두면 플래그 없이 씁니다. 두 파일 모두 umask 077 안에서 만들므로, 만들어지는 순간부터 그룹과 다른 사용자가 고칠 수
+없습니다(06은 그룹이 고칠 수 있는 공개 키 파일을 받지 않습니다). 마지막 `chmod`는 다른 사용자에게 읽기만 엽니다. 0600으로 두어도
+06은 받습니다.
 
 ```bash
 GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.16.0
@@ -392,6 +420,11 @@ mkdir -p "$HOME/Library/Application Support/pqcaton"
 chmod 644 "$HOME/Library/Application Support/pqcaton/approval.pub"
 ```
 
+화면을 다시 띄우면 시작 줄에 `approval key: <경로> (default location)`이 나옵니다. `warning:`으로 시작하는 줄이 나오면 아래 「잘못된 키」를 봅니다.
+
+- **키 파일.** `pqcota-keygen`을 **플래그 없이** 실행한 출력입니다. `pqcota-keygen -collector`로 만든 수집기 서명 키는 승인 키로
+  받지 않습니다(「collector」 상태). `pqcota-keygen`은 `pqcota-ctl` 묶음에도 있습니다. 화면은 이 파일을 만들거나 권한을 고치지
+  않고, 서명할 때마다 다시 읽습니다.
 - **확인용 공개 키(`approval.pub`).** 개인 키 없이도 이미 서명된 계획을 확인하고 플레이북을 만들 수 있게 합니다. 개인 키 줄이
   든 파일이나 다른 사용자가 고칠 수 있는 파일은 받지 않습니다. 두 파일이 모두 있으면 같은 키여야 하고, 다르면 서명과 확인을
   모두 막습니다.
@@ -454,6 +487,9 @@ systemctl --user restart pqcaton-ui.service
 ```bash
 pqcaton-ui -no-browser
 ```
+
+뜨면 표준 오류에 `screen: http://127.0.0.1:8765/  (workspace <작업 폴더>)` 줄이 나옵니다. 시작하지 않으면 `❌` 뒤의 까닭을
+[10절 오류 표](#10-오류-표)에서 찾습니다.
 
 떠 있는 화면의 주소는 작업 폴더에 적혀 있습니다.
 

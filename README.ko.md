@@ -59,17 +59,22 @@ pqcaton 화면을 사용하려면 먼저 pqcota 이력용 PostgreSQL에 스키�
 연결 정보를 설정해야 합니다. 화면은 시작할 때 연결과 필수 조회를 확인합니다. 처음 사용하는 분은 아래
 [데모 절차](#데모로-써-보기)를 따르거나, 운영자 안내서의 [pqcota 준비](docs/operator-guide.ko.md#pqcota-준비)부터 진행하십시오.
 
+| 길 | 이럴 때 | 끝나면 |
+|---|---|---|
+| [데모로 써 보기](#데모로-써-보기) | pqcota가 아직 없고, 먼저 한 바퀴 돌려 볼 때 | Docker로 띄운 노드 세 대와 pqcota 이력으로 01~06 화면을 한 바퀴 돕니다 |
+| [이 리포 빌드하기](#이-리포-빌드하기) | 내 노드를 관측하고 판정할 때 | 내 pqcota 이력에 연결된 화면이 뜹니다 |
+
 <a id="써보기"></a>
 
 ### 데모로 써 보기
 
-데모는 결제 서비스를 흉내 낸 노드 세 대를 Docker로 띄우고(상류 pqcota의 데모), 그 위에서 pqcaton을 돌립니다. 이 기계의
-브라우저로 화면을 열어 선언 → 관측 → 대조 → 판정 → 승인 → 플레이북 생성을 한 바퀴 돕니다. 데모의 종단 검증은
-**Linux x86-64**에서 했고, macOS는 검증하지 않았습니다.
+결제 서비스를 흉내 낸 노드 세 대를 Docker로 띄우고(상류 pqcota의 데모), 그 위에서 pqcaton을 돌립니다. pqcota 이력도 데모가
+만듭니다.
 
-Git, **Go**([`go.mod`](go.mod)에 적힌 판), **Docker**, python3, **`gh`**(GitHub CLI 2.49 이상, `gh auth login`으로 로그인)가
-필요합니다. `gh`는 공식 수집기의 출처 증명을 확인할 때 씁니다. 이 리포와 상류 pqcota **v0.16.0**의 리포 다섯 개를 한 폴더 아래에
-나란히 받습니다.
+**필요한 것.** **Linux x86-64**(데모의 종단 검증을 한 곳입니다. macOS는 검증하지 않았습니다), Git, **Go**([`go.mod`](go.mod)에 적힌
+판), **Docker**, python3, **`gh`**(GitHub CLI 2.49 이상, `gh auth login`으로 로그인. 공식 수집기의 출처 증명을 확인할 때 씁니다).
+
+**받기.** 이 리포와 상류 pqcota **v0.16.0**의 리포 다섯 개를 한 폴더 아래에 나란히 받습니다.
 
 ```bash
 mkdir pqcaton-demo && cd pqcaton-demo
@@ -78,8 +83,8 @@ for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provision
 cd pqcaton/demo
 ```
 
-이어서 그 폴더(`pqcaton/demo`)에서 데모 안내의 [실행](demo/README.ko.md#실행) 절을 따릅니다. 상류 데모를 띄우고, 확장하고,
-공식 수집기를 받고, `http://127.0.0.1:8765`에서 화면을 연 뒤 내리는 데까지입니다. 화면마다 무엇을 하는지는
+**다음.** 그 폴더(`pqcaton/demo`)에서 데모 안내의 [실행](demo/README.ko.md#실행) 절을 따릅니다. 끝나면
+`http://127.0.0.1:8765`에서 화면이 열립니다. 화면마다 무엇을 하는지는
 [화면을 차례로 지나기](demo/README.ko.md#화면을-차례로-지나기)에 있습니다.
 
 ### 이 리포 빌드하기
@@ -94,12 +99,14 @@ go build -o bin/ ./inventory/cmd/...
 ./bin/pqcaton-ui -h
 ```
 
-명령은 `bin/`에 만들어지므로 `./bin/...`로 실행합니다(또는 `PATH`에 있는 폴더로 옮깁니다).
+마지막 줄이 도움말을 보이면 빌드된 것입니다. 명령은 `bin/`에 만들어지므로 `./bin/...`로 실행합니다(또는 `PATH`에 있는 폴더로
+옮깁니다).
 
-`go build`는 [`go.mod`](go.mod)에 적힌 상류 pqcota 모듈 넷도 함께 받습니다. 받은 모듈은 클론한 폴더가 아니라 Go 모듈 캐시에
-저장됩니다. 기본 위치는 `~/go/pkg/mod`이고, `go env GOMODCACHE`로 확인할 수 있습니다. 캐시는 이 기계의 Go 프로젝트가 함께
-쓰고 파일이 읽기 전용이라, 비울 때는 `rm` 대신 `go clean -modcache`를 씁니다. 그러면 모든 프로젝트의 캐시가 지워지고, 다음
-빌드 때 다시 받습니다.
+**화면 띄우기.** 운영자 안내서 [2절 「pqcota 준비」](docs/operator-guide.ko.md#pqcota-준비)의 1~5단계를 마친 뒤
+`./bin/pqcaton-ui -no-browser`를 실행합니다. `screen: http://127.0.0.1:8765/  (workspace …)` 줄이 나오면 화면이 뜬 것입니다.
+03 관측과 06 승인 서명에 필요한 준비도 [같은 2절](docs/operator-guide.ko.md#2-설치)에 있습니다.
+
+**빌드한 명령.**
 
 | 명령 | 하는 일 |
 |---|---|
@@ -109,15 +116,13 @@ go build -o bin/ ./inventory/cmd/...
 | `pqcaton-scope` | 자산 스코프 정책(계층 · 확정 · 활성화)을 명령으로 |
 | `pqcaton-collectors` | 상류 공식 수집기를 받고 확인합니다 |
 
-`make`는 리포의 관문을 먼저 돌린 뒤 빌드하고 시험합니다. 코드를 고칠 때 씁니다([빌드](docs/build.ko.md)). 화면 없이 명령으로
-한 바퀴 도는 방법은 [명령으로 한 바퀴](docs/journey.ko.md#명령으로-한-바퀴)에 있습니다.
+화면 없이 명령으로 한 바퀴 도는 방법은 [명령으로 한 바퀴](docs/journey.ko.md#명령으로-한-바퀴)에 있습니다. 코드를 고칠 때는
+`make`를 씁니다. 리포의 관문을 먼저 돌린 뒤 빌드하고 시험합니다([빌드](docs/build.ko.md)).
 
-**자기 환경에서.** 위 빌드만으로는 화면이 뜨지 않습니다. 화면은 pqcota 이력(PostgreSQL)을 읽고 대조하므로, 스키마가 있는
-pqcota v0.16.0 이력과 그 이력을 읽는 계정의 연결 정보(`PQCOTA_DSN`이나 `pqcota.env`)가 있어야 시작합니다. 처음이면 운영자
-안내서의 [pqcota 준비](docs/operator-guide.ko.md#pqcota-준비)부터 합니다. PostgreSQL과 세 역할, 상류 중앙 명령 받기와 확인,
-`-init-schema`로 스키마 만들기, 권한 순서이고, 일마다 무엇이 필요한지도 거기에 있습니다. 그다음 같은 2절의 연결 · 공식 수집기 ·
-수집기 서명 키 · 노드 접속,
-작업 폴더(3절), 화면 시작(4절) 순서로 갑니다.
+**받은 상류 모듈의 자리.** `go build`는 [`go.mod`](go.mod)에 적힌 상류 pqcota 모듈 넷도 함께 받습니다. 받은 모듈은 클론한 폴더가
+아니라 Go 모듈 캐시에 저장됩니다. 기본 위치는 `~/go/pkg/mod`이고, `go env GOMODCACHE`로 확인할 수 있습니다. 캐시는 이 기계의
+Go 프로젝트가 함께 쓰고 파일이 읽기 전용이라, 비울 때는 `rm` 대신 `go clean -modcache`를 씁니다. 그러면 모든 프로젝트의 캐시가
+지워지고, 다음 빌드 때 다시 받습니다.
 
 ## 다음에 읽을 것
 

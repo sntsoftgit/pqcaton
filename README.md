@@ -62,17 +62,23 @@ the connection with `PQCOTA_DSN` or `pqcota.env`. The screen checks the connecti
 is your first time, follow the [demo steps](#try-it-on-the-demo) below or start from
 [Preparing pqcota](docs/operator-guide.md#preparing-pqcota) in the operator guide.
 
+| Path | When | At the end |
+|---|---|---|
+| [Try it on the demo](#try-it-on-the-demo) | You have no pqcota yet and want to go round once first | You go once through the 01 to 06 screens with three nodes and a pqcota history brought up in Docker |
+| [Build this repository](#build-this-repository) | You observe and judge your own nodes | The screen starts, connected to your pqcota history |
+
 <a id="써보기"></a>
 
 ### Try it on the demo
 
-The demo brings up three nodes imitating a payment service in Docker (upstream pqcota's demo) and runs pqcaton on top of it. On the
-screen you go once through declaration → observation → reconciliation → judgment → approval → playbook generation, in a browser on this
-machine. The demo was checked end to end on **Linux x86-64**; macOS was not checked.
+The demo brings up three nodes imitating a payment service in Docker (upstream pqcota's demo) and runs pqcaton on top of it. The demo
+makes the pqcota history too.
 
-You need Git, **Go** (the version in [`go.mod`](go.mod)), **Docker**, python3 and **`gh`** (GitHub CLI 2.49 or later, logged in with
-`gh auth login`; it checks the attestations of the official collectors). Put this repository and the five repositories of upstream pqcota
-**v0.16.0** side by side in one folder:
+**What you need.** **Linux x86-64** (where the demo was checked end to end; macOS was not checked), Git, **Go** (the version in
+[`go.mod`](go.mod)), **Docker**, python3 and **`gh`** (GitHub CLI 2.49 or later, logged in with `gh auth login`; it checks the
+attestations of the official collectors).
+
+**Getting it.** Put this repository and the five repositories of upstream pqcota **v0.16.0** side by side in one folder:
 
 ```bash
 mkdir pqcaton-demo && cd pqcaton-demo
@@ -81,8 +87,8 @@ for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provision
 cd pqcaton/demo
 ```
 
-Then follow [Running it](demo/README.md#running-it) in the demo guide from that folder (`pqcaton/demo`): start the upstream demo, extend
-it, fetch the official collectors, open the screen at `http://127.0.0.1:8765`, and bring it down. What to do on each screen is in
+**Next.** Follow [Running it](demo/README.md#running-it) in the demo guide from that folder (`pqcaton/demo`). At the end the screen
+opens at `http://127.0.0.1:8765`. What to do on each screen is in
 [Going through the screens](demo/README.md#going-through-the-screens).
 
 ### Build this repository
@@ -97,12 +103,14 @@ go build -o bin/ ./inventory/cmd/...
 ./bin/pqcaton-ui -h
 ```
 
-The commands are built into `bin/`, so run them as `./bin/...` (or copy them to a folder on your `PATH`).
+When the last line shows the help, the build is done. The commands are built into `bin/`, so run them as `./bin/...` (or copy them
+to a folder on your `PATH`).
 
-`go build` also downloads the four upstream pqcota modules listed in [`go.mod`](go.mod). They are stored in the Go module cache, not
-in the cloned folder. The default location is `~/go/pkg/mod`, and `go env GOMODCACHE` shows where it is. The cache is shared by every
-Go project on the machine and its files are read-only, so clear it with `go clean -modcache` rather than `rm`. That removes the cache
-for all projects, and the next build downloads the modules again.
+**Starting the screen.** After steps 1 to 5 of [section 2, "Preparing pqcota"](docs/operator-guide.md#preparing-pqcota) in the
+operator guide, run `./bin/pqcaton-ui -no-browser`. The line `screen: http://127.0.0.1:8765/  (workspace …)` means the screen is up.
+What 03 Observation and 06 approval signatures need is in [the same section 2](docs/operator-guide.md#2-installation) too.
+
+**The commands you built.**
 
 | Command | What it does |
 |---|---|
@@ -112,16 +120,13 @@ for all projects, and the next build downloads the modules again.
 | `pqcaton-scope` | The asset-scope policy (layers, finalize, activate) as commands |
 | `pqcaton-collectors` | Fetching and checking the official upstream collectors |
 
-`make` builds and tests after running the repository's gates; it is for changing the code ([Build](docs/build.md)). Running the
-commands once without the screen is in [Running it once with commands](docs/journey.md#running-it-once-with-commands).
+Running the commands once without the screen is in [Running it once with commands](docs/journey.md#running-it-once-with-commands).
+To change the code, use `make`: it runs the repository's gates and then builds and tests ([Build](docs/build.md)).
 
-**In your own environment.** The build above does not start the screen by itself. The screen reads and checks the pqcota history
-(PostgreSQL), so it starts only with a pqcota v0.16.0 history that has its schema and the connection information of an account that
-reads it (`PQCOTA_DSN` or `pqcota.env`). The first time, start from [Preparing pqcota](docs/operator-guide.md#preparing-pqcota) in the
-operator guide: PostgreSQL and its three roles, fetching and checking the upstream central commands, creating the schema with
-`-init-schema` and the privileges, with what each task needs. Then go on with the connection, the official collectors, the collector
-signing keys and node access in the same section 2, the
-workspace (section 3) and starting the screen (section 4).
+**Where the upstream modules go.** `go build` also downloads the four upstream pqcota modules listed in [`go.mod`](go.mod). They are
+stored in the Go module cache, not in the cloned folder. The default location is `~/go/pkg/mod`, and `go env GOMODCACHE` shows where
+it is. The cache is shared by every Go project on the machine and its files are read-only, so clear it with `go clean -modcache`
+rather than `rm`. That removes the cache for all projects, and the next build downloads the modules again.
 
 ## Where to go next
 
