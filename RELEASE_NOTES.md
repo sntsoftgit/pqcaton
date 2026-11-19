@@ -74,7 +74,9 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
-## v0.31.0: Takes in upstream pqcota v0.16.0 (in progress)
+## v0.31.0: Takes in upstream pqcota v0.16.0 (2026-11-19)
+
+**Apache-2.0 conversion: 2030-11-19** (four years from the release date)
 
 **Goal**: use upstream pqcota v0.16.0 (which includes v0.15.0). The ruleset (`pqcota-enrich/v4`), the contract and the database tables
 and columns are the same as v0.14.0, so the pqcota history and the sessions and plans of v0.30.0 are used as they are. This version
@@ -84,7 +86,104 @@ created by a dedicated command while the query commands only read (v0.16.0).
 ### What changes for the receiving side
 
 - **pqcota: v0.16.0** ([version table](docs/compatibility.md)). Keep the five upstream repositories together at v0.16.0. No ruleset
-  change round is needed.
+  change round is needed. Upgrade the upstream tools that load into, prune or record in the same history to v0.16.0 as well, and replace
+  the collectors with the v0.16.0 release assets. 03 refuses the v0.14.0 collectors as "does not match".
+- **03 does not start an observation without the collector signing keys.** For each collector ID (`openssl-collector` ·
+  `network-collector`, and `jvm-collector` when there is a `collector.jar`), keep a private key made with `pqcota-keygen -collector <ID>`
+  and the trusted public keys (`verify.pub`) in the same bound form you give the ingest, outside the workspace (folder 0700 · keys 0600).
+  03 shows the missing IDs, why, and how to prepare them. Every node shares the key of an ID (upstream does not yet bind keys to nodes).
+- **03 takes only results whose signatures check as the current results.** If any result has no signature, was signed with the key of
+  another ID (shown so only when that key verifies it), or does not match the registered keys, the run's results are not taken and the
+  current results stay. The run log records "signature checked" and the key fingerprint for each result.
+- **03 observes Linux nodes only.** When the targets include a Windows node, the run is refused before it starts and the node is shown.
+  03 in this version does not pass signing keys to Windows nodes.
+- **03 checks every node before it makes the keys.** A node is reached as root, or its account can get a root shell through sudo without
+  a password, with sudo I/O logging (`log_input` · `log_output`) off. A check "passes" only in the sense that no logging setting was found
+  in the supported policy forms. If even one node is refused or cannot be confirmed, no key is made and the observation does not start;
+  the run's node cleanup is recorded as "not needed".
+- **03 does not read the operator's `ansible.cfg` or `ANSIBLE_*` environment variables.** Each run reads only the configuration the product
+  makes (SSH for the connection, sudo for privilege escalation, pipelining on, plugin and collection paths cut, built-in modules only). The
+  values to move and the settings no longer supported are in the table in section 9 of the operator guide. The versions measured are
+  ansible-core 2.16.3 and 2.21.6.
+- **03 makes temporary keys for each run and removes them.** After the checks pass, it makes the key files (0600) in a temporary folder
+  (0700) outside the workspace and passes them to the nodes only through standard input. It removes them on a normal end, failure, stop
+  and recovery at restart; when it cannot, the run is marked "needs reclaiming" and new observations are blocked. If the screen ends
+  abnormally, the temporary keys can stay until the next recovery.
+- **The pqcota re-ingest guidance of 05 has two steps.** Check without storing with `pqcota-ingest -verify-keys`, then ingest with the same
+  `PQCOTA_VERIFY_KEY` (the value of `verify.pub`).
+- **The pqcota history is split into three roles.** The schema role owns the tables and creates the schema with
+  `pqcota-inventory -init-schema`, the ingest account runs with `PQCOTA_AUTO_DDL=0`, and the screen account may only read. From upstream
+  v0.16.0 the query commands and the screen create no tables, so the screen tells "schema missing" from "no privilege" and does not start.
+  For an existing history, move the tables' owner to the schema role, then run `-init-schema`.
+- **06 does not take a collector signing key as the approval key.** A key made with `pqcota-keygen -collector` is refused in the approval
+  key and verification key places with the state "collector".
+- The upgrade steps are in [operator guide section 9, "v0.30.0 to v0.31.0"](docs/operator-guide.md#v0300-to-v0310).
+
+### What was fixed
+
+- **After an observation stopped or failed, the run's collectors kept running on the nodes.** The cleanup playbook removed only the
+  staging folder on the node and did not end the collectors started from it. Remote commands started through pipelining and sudo have no
+  tty, so they get no signal when the controller ends Ansible and ssh, and the collectors stayed as root until the end of their window.
+  The screen recorded the node cleanup as successful. In this version the signing key is in that process's environment, so this was fixed
+  before release. Cleanup now ends the processes whose command line starts with this run's staging folder, and records a cleanup failure
+  when they do not end (IC-U218). Collectors of another run on the same node are left alone. That the defect was there from v0.24.0 is an
+  estimate from reading the code; it was not reproduced with the old versions.
+- **On machines whose default umask is 002, 06 refused the verification key (`approval.pub`) made as the operator guide said.** From
+  v0.27.0 the command in the guide made a file the group could change, and 06 refuses such a public key file. No plan was signed or
+  verified wrongly. The public key file is now created under umask 077 too, and the final `chmod` opens it to others for reading only. The
+  new `verify.pub` command does the same.
+
+### What was built
+
+- Collector signing in 03: the key places and the checks before start (a missing ID, an ID other than the file name, a key without an ID,
+  wide permissions, a key not in `verify.pub`, one public key under two IDs, a key equal to the approval key; IC-U210), refusing Windows
+  nodes (IC-U211), the node check and reading `sudo -n -l` (18 output variants, IC-U209), the supervisor's order (check → keys → the
+  observation-started marker → observation → reclaiming, IC-U212), the temporary key files (IC-U213), verifying result signatures (upstream
+  `sign.VerifyBound`, IC-U214), reclaiming the temporary keys and "needs reclaiming" (IC-U215 · IC-U216), the product's Ansible configuration
+  and the environment allow list (IC-U217), and ending collectors left behind (IC-U218).
+- The screen's start check tells upstream's schema missing from no privilege (IC-S27, and IC-S28 on a real Postgres). `make test-pg` checks
+  that IC-S28 ran too. 06 refuses collector signing keys (IC-U208), and the re-ingest step of 05 has `-verify-keys` (IC-UI60).
+- Demo: at its very start (0/8), `extend.sh` moves the upstream demo's history to three roles (with the SQL of operator guide section 9 as
+  written); loads and generation records are written by the ingest role with `PQCOTA_AUTO_DDL=0`, and the screen and the command reconcile
+  through the read role. The passwords are made anew on every run and kept only in `~/.pgpass`. `ui.sh` makes the collector signing keys
+  and `verify.pub` for 03 and gives them to the screen, and `apply-scope` checks the results of 03 with `-verify-keys` before ingesting.
+- Added to the demo end to end (IC-U152): the ownership and privileges of the three roles and the refusal of a load without
+  `PQCOTA_AUTO_DDL=0`, that the screen which activates runs as the read role, the real path of 03 (check · temporary keys outside the
+  workspace · signature check · replacement · reclaiming) and key exposure, and checking the results of 03 with `-verify-keys` and actually
+  ingesting them.
+- Both operator guides: in section 2, preparing pqcota (three roles · `-init-schema` · privileges), getting ready to run observations,
+  preparing the collector signing keys, the Ansible configuration 03 uses and the node check; in section 6, the three re-ingest steps and
+  the order of 03 and "needs reclaiming"; in section 9, "v0.30.0 to v0.31.0", "Moving an existing history to three roles" and the values to
+  move from `ansible.cfg`. The environment variable document has `PQCOTA_VERIFY_KEY` · `PQCOTA_AUTO_DDL` and the environment 03 passes to
+  Ansible.
+
+### What was checked
+
+- The demo end to end (IC-U152) passed, run alone with the five upstream repositories at v0.16.0. The upstream demo's history was moved to
+  three roles (`-init-schema` by the schema role created the 4 tables the upstream demo lacked and left the 7 there as they were, all 12
+  tables owned by the schema role, the ingest role unable to create tables and refused
+  without `PQCOTA_AUTO_DDL=0`, the screen role only reading every table); the default organization's approval and generation (the evidence
+  resolved to real snapshots) and A → B → A in the judgment organization both passed, and the screen that activated ran as the read role. 03
+  ended with node check → temporary keys outside the workspace → signatures of 7 results checked → replacement → keys reclaimed, and the
+  results of 03 passed `-verify-keys` and were ingested into the judgment organization by the ingest role (no signature rejected). The demo
+  nodes are reached as root.
+- The sudo path was measured with the product `pqcaton-ui` in an isolated lab (ansible-core 2.16.3 · 2.21.6, an ordinary account then
+  NOPASSWD sudo). A normal observation, refusing a node with I/O logging on, "cannot be confirmed" for a node whose sudo asks for a
+  password, and a stop during observation all ended as expected. The two refused cases made no key and their node cleanup was "not needed".
+- Key exposure: the collector signing keys were not found in any command line of the controller and the nodes collected during the
+  observation, the nodes' temporary folders, Ansible places, sudo logs and I/O logs, the whole workspace, or the screen log. This is a
+  statement about the places checked. The trust premise stays: during a run the key is in the collector process's environment and that
+  node's root can read it. For signature failures, the checks before start stopped runs that would use a wrong key, and the official
+  collectors' error output for a wrong key did not contain the key.
+- The DB procedures and the key preparation commands of the operator guide were run as written on an isolated PostgreSQL 16 and an empty home
+  folder. For a new install, `-init-schema` created 11 tables and the screen started with a screen account that may only read. For moving an
+  existing install, `-init-schema` before moving the ownership failed with "must be owner" and changed nothing, and after the move
+  initializing, loading and querying worked. An ingest account loading without `PQCOTA_AUTO_DDL=0` failed with "permission denied for schema
+  public".
+- The official v0.16.0 linux-amd64 bundle passed all eight checks of the preparation tool, and 03 showed the collectors and `collector.jar`
+  as "verified".
+- The Postgres contract tests (IC-S26 · IC-S28 included) passed without skipping in the PostgreSQL job of GitHub CI.
+- The verification results are reported with the summary of the release gate (`make release-check`) at the release approval.
 
 ---
 
