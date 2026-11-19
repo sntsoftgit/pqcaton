@@ -74,7 +74,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 ```
 
 When `pqcaton-ui -h` prints the list of flags, it is installed. It ends with exit code 2 after printing the help, which is normal.
-An install script that uses `set -e` stops at that line, so check with `command -v pqcaton-ui` in scripts. The screen starts only after "Preparing pqcota" next.
+An install script that uses `set -e` stops at that line, so check with `command -v pqcaton-ui` in scripts.
+That only checks that the command is found on `PATH`; it does not run it. The screen starts only after "Preparing pqcota" next.
 
 <a id="preparing-pqcota"></a>
 
@@ -146,7 +147,7 @@ the screen starts. With a pqcota history already in use, follow "Moving an exist
    When `pqcota-inventory -h` prints the list of flags, it is done. Git on macOS may warn "refs/tags/v0.16.0 … is not a commit!" while
    cloning. If it does, check that the clone ended without failure (exit status 0) and that, from the `pqcota` folder,
    `for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git -C ../$r describe --tags --exact-match; done`
-   prints `v0.16.0` on all five lines. If any differs or fails, remove that repository and clone it again. This is the "Build" section of the upstream
+   prints `v0.16.0` on all five lines. If any differs or fails, stop the installation, check the state of that repository, and clone again into a new empty folder. This is the "Build" section of the upstream
    [build guide (v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.md), and it works on Linux too.
 
 3. **Creating the history schema.** Create the schema by running `pqcota-inventory -init-schema` once as `pqcota_schema`. It runs in one
