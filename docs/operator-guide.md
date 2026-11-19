@@ -223,6 +223,13 @@ mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
 install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
 ```
 
+On macOS only the location differs.
+
+```bash
+mkdir -p "$HOME/Library/Application Support/pqcaton" && chmod 700 "$HOME/Library/Application Support/pqcaton"
+install -m 600 /dev/null "$HOME/Library/Application Support/pqcaton/pqcota.env"
+```
+
 **Getting ready to run observations.** Running an observation from the 03 Observation screen needs Ansible and the collectors on this
 machine and an account on the nodes. The screen checks these and the signing keys ("Preparing the collector signing keys" below) before
 it starts and, when something is missing, says what to do.

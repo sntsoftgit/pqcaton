@@ -207,6 +207,13 @@ mkdir -p ~/.config/pqcaton && chmod 700 ~/.config/pqcaton
 install -m 600 /dev/null ~/.config/pqcaton/pqcota.env
 ```
 
+macOS에서는 자리만 다릅니다.
+
+```bash
+mkdir -p "$HOME/Library/Application Support/pqcaton" && chmod 700 "$HOME/Library/Application Support/pqcaton"
+install -m 600 /dev/null "$HOME/Library/Application Support/pqcaton/pqcota.env"
+```
+
 **관측 실행 준비.** 03 관측 화면에서 관측을 실행하려면 이 기계에 Ansible과 수집기가, 노드에는 접속 계정이 있어야 합니다. 화면은
 시작하기 전에 이것들과 서명 키(아래 「수집기 서명 키 준비」)를 점검하고, 빠진 것이 있으면 무엇을 하면 되는지 보입니다.
 
