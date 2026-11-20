@@ -56,7 +56,7 @@ sudo의 입출력 기록만 봅니다. **sudo 밖의 감사 도구(auditd · tlo
 이 절을 마치면 이 기계에서 화면이 뜹니다. 1~3은 처음 한 번 하고, 4 · 5는 그 단계를 쓸 때 합니다.
 
 1. [화면 설치](#화면-설치): `pqcaton-ui` 바이너리
-2. [pqcota 준비](#pqcota-준비): 이력 DB · 역할 · 상류 명령 · 스키마 · 권한 · 연결 정보
+2. [pqcota 준비](#pqcota-준비): PostgreSQL 16 서버 · psql(먼저 준비) · 역할 · 상류 명령 · 스키마 · 권한 · 연결 정보
 3. 화면 띄우기: [4절](#4-시작과-끝내기). 로그인할 때 띄우려면 [서비스와 실행기](#서비스와-실행기)
 4. [관측 실행 준비](#관측-실행-준비): 03에서 관측할 때
 5. [승인 키 준비](#승인-키-준비): 06에서 서명할 때
@@ -78,7 +78,11 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 **pqcota 준비.** 화면은 pqcota 이력(PostgreSQL)을 읽으므로 화면보다 먼저 준비합니다. 아래 1~5단계를 차례로 하면 화면이 뜹니다.
 이미 쓰던 pqcota 이력이 있으면 [9절 「v0.30.0에서 v0.31.0으로」](#v0300에서-v0310으로)의 「기존 이력을 세 역할로 옮기기」를 따릅니다.
 
-1. **PostgreSQL과 세 역할.** PostgreSQL 16을 준비하고 역할을 셋 만듭니다. 권한을 나누기 위해서입니다(이름은 예입니다).
+1. **PostgreSQL과 세 역할.** **접속할 PostgreSQL 16 서버와, 아래 명령을 실행할 기계의 `psql`이 먼저 준비돼 있어야 합니다.**
+   서버는 이 기계나 다른 기계에 둘 수 있습니다. 필요한 구성 요소가 없으면 PostgreSQL 공식
+   [내려받기 안내](https://www.postgresql.org/download/)에서 해당 운영체제의 설치 방법을 따릅니다
+   ([Linux](https://www.postgresql.org/download/linux/) · [macOS](https://www.postgresql.org/download/macosx/)). 준비가 끝나면 아래
+   명령으로 역할 셋을 만듭니다. 역할별로 권한을 나누며, 이름은 예입니다.
 
    | 역할 | 하는 일 |
    |---|---|

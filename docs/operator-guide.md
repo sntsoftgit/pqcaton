@@ -60,7 +60,7 @@ tunnel ([section 5](#5-viewing-from-another-machine)).
 When this section is done, the screen starts on this machine. Do 1 to 3 once; do 4 and 5 when you use those steps.
 
 1. [Installing the screen](#installing-the-screen): the `pqcaton-ui` binary
-2. [Preparing pqcota](#preparing-pqcota): the history database, roles, upstream commands, schema, privileges and connection
+2. [Preparing pqcota](#preparing-pqcota): PostgreSQL 16 server and psql (ready first), roles, upstream commands, schema, privileges and connection
 3. Starting the screen: [section 4](#4-starting-and-stopping). To start it at login, [the service and the launcher](#the-service-and-the-launcher)
 4. [Getting ready to run observations](#getting-ready-to-run-observations): to observe from 03
 5. [Getting the approval key ready](#getting-the-approval-key-ready): to sign on 06
@@ -83,7 +83,11 @@ That only checks that the command is found on `PATH`; it does not run it. The sc
 the screen starts. With a pqcota history already in use, follow "Moving an existing history to three roles" in
 [section 9, "v0.30.0 to v0.31.0"](#v0300-to-v0310).
 
-1. **PostgreSQL and three roles.** Prepare PostgreSQL 16 and create three roles, to keep the privileges apart (the names are examples).
+1. **PostgreSQL and three roles.** **The PostgreSQL 16 server you will connect to, and `psql` on the machine where you run the
+   commands below, must be ready first.** The server can be on this machine or another one. If a component is missing, follow the
+   installation steps for its operating system on the PostgreSQL [downloads page](https://www.postgresql.org/download/)
+   ([Linux](https://www.postgresql.org/download/linux/), [macOS](https://www.postgresql.org/download/macosx/)). Once ready, create the
+   three roles with the commands below. Each role gets its own privileges; the names are examples.
 
    | Role | What it does |
    |---|---|
