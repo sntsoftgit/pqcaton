@@ -225,3 +225,52 @@
   });
   show();
 })();
+
+// 05 판정: 활성화 훅은 위임 수준이 L3일 때만 펼친다.
+//
+// 수준을 고르는 선택(select[data-level])이 바뀌면 그 항목의 훅 줄(data-l3-for)을 펴거나 접는다. **칸을 없애지 않고
+// hidden만 바꾼다**: L3에서 적고 다른 수준으로 갔다가 돌아오면 적은 값이 그대로 있다. 접힌 채로 값이 있으면 그 사실을
+// 알리는 줄(data-l3-kept-for)을 보인다. 처음 모습은 서버가 같은 규칙으로 그린다(review.templ의 hooksRow).
+(function () {
+  "use strict";
+
+  function rowsFor(sel, attr) {
+    var out = [];
+    var rows = sel.form ? sel.form.querySelectorAll("[" + attr + "]") : [];
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute(attr) === sel.name) {
+        out.push(rows[i]);
+      }
+    }
+    return out;
+  }
+
+  function sync(sel) {
+    var l3 = sel.value === "L3";
+    var filled = false;
+    var hooks = rowsFor(sel, "data-l3-for");
+    for (var i = 0; i < hooks.length; i++) {
+      hooks[i].hidden = !l3;
+      var ins = hooks[i].querySelectorAll("input[type=text]");
+      for (var j = 0; j < ins.length; j++) {
+        if (ins[j].value.trim() !== "") {
+          filled = true;
+        }
+      }
+    }
+    var kept = rowsFor(sel, "data-l3-kept-for");
+    for (var k = 0; k < kept.length; k++) {
+      kept[k].hidden = l3 || !filled;
+    }
+  }
+
+  document.addEventListener("change", function (evt) {
+    if (evt.target.matches && evt.target.matches("select[data-level]")) {
+      sync(evt.target);
+    }
+  });
+  var all = document.querySelectorAll("select[data-level]");
+  for (var i = 0; i < all.length; i++) {
+    sync(all[i]);
+  }
+})();

@@ -272,3 +272,71 @@ func TestStepGridAndKeyPathWidthShip(t *testing.T) {
 		t.Errorf("%d step cards, want 6", n)
 	}
 }
+
+// IC-U225 — **05에서 고른 조치 종류와 위임 수준, L3의 훅이 저장되고 다시 열었을 때 그대로 골라져 있다.** 화면의 이름으로
+// 고른 조치 종류는 계약 어휘(`REMEDIATION_KIND_PROVIDER_INJECT`)로 세션에 남는다. L3로 저장하면 훅 줄이 펼쳐진 채로
+// 다시 그려지고, L2로 바꿔 저장하면 훅 줄은 접히되 적은 값은 세션과 양식에 남아 있고 그 사실을 알리는 줄이 보인다.
+// 좁은 화면의 카드 배치와 접힌 줄을 접어 두는 스타일이 실려 나간다.
+func TestJudgmentChoicesSurviveASave(t *testing.T) {
+	s, _ := withDecl(t)
+	const id = "host://local/openssl/libssl"
+	form := formOf(get(t, s, ui.ScreenReview+"?lang=ko").Body.String())
+	form.Set("kind:"+id, "REMEDIATION_KIND_PROVIDER_INJECT")
+	form.Set("level:"+id, "L3")
+	form.Set("target:"+id, "ML-KEM (FIPS 203)")
+	form.Set("activate:"+id, "systemctl reload nginx")
+	form.Set("restart:"+id, "systemctl restart nginx")
+	form.Set("rollback:"+id, "typed-rollback")
+	location(t, postFormLang(t, s, "/save", "ko", form))
+	saved := readFile(t, s.path)
+	for _, want := range []string{`"REMEDIATION_KIND_PROVIDER_INJECT"`, `"L3"`, "systemctl reload nginx", "typed-rollback"} {
+		if !strings.Contains(saved, want) {
+			t.Errorf("the session file has no %s", want)
+		}
+	}
+	hooks := regexp.MustCompile(`<tr[^>]*data-l3-for="level:` + regexp.QuoteMeta(id) + `"[^>]*>`)
+	kept := regexp.MustCompile(`<tr[^>]*data-l3-kept-for="level:` + regexp.QuoteMeta(id) + `"[^>]*>`)
+	for _, c := range []struct{ lang, name string }{
+		{"ko", "provider 추가와 설정 (provider_inject)"},
+		{"en", "Add a provider and config (provider_inject)"},
+	} {
+		body := get(t, s, ui.ScreenReview+"?lang="+c.lang).Body.String()
+		for _, want := range []string{
+			`<option value="REMEDIATION_KIND_PROVIDER_INJECT" selected>` + c.name + `</option>`,
+			`<option value="L3" selected>L3</option>`,
+			`name="activate:` + id + `" value="systemctl reload nginx"`, `name="rollback:` + id + `" value="typed-rollback"`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s: the reopened screen has no %s", c.lang, want)
+			}
+		}
+		if strings.Contains(hooks.FindString(body), " hidden") || !strings.Contains(kept.FindString(body), " hidden") {
+			t.Errorf("%s: at L3 the hooks row is folded, or the kept-values row is shown", c.lang)
+		}
+	}
+
+	// L2로 바꿔 저장한다. 훅에 적은 값은 지워지지 않는다.
+	form = formOf(get(t, s, ui.ScreenReview+"?lang=ko").Body.String())
+	if form.Get("kind:"+id) != "REMEDIATION_KIND_PROVIDER_INJECT" || form.Get("level:"+id) != "L3" {
+		t.Fatalf("the reopened form does not carry the saved choices: kind %q, level %q", form.Get("kind:"+id), form.Get("level:"+id))
+	}
+	form.Set("level:"+id, "L2")
+	location(t, postFormLang(t, s, "/save", "ko", form))
+	body := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
+	if !strings.Contains(hooks.FindString(body), " hidden") || strings.Contains(kept.FindString(body), " hidden") {
+		t.Error("at L2 the hooks row is not folded, or the kept-values row is not shown")
+	}
+	if !strings.Contains(body, `name="restart:`+id+`" value="systemctl restart nginx"`) || !strings.Contains(readFile(t, s.path), "systemctl restart nginx") {
+		t.Error("moving to L2 dropped the hook values")
+	}
+
+	css := get(t, s, ui.StaticPath+"app.css").Body.String()
+	for _, want := range []string{"body.wb table.editable tr[hidden] { display: none; }", "body.wb table.judge tbody.item { border: 1px solid var(--line);"} {
+		if !strings.Contains(css, want) {
+			t.Errorf("the stylesheet has no %q", want)
+		}
+	}
+	if js := get(t, s, ui.StaticPath+"app.js").Body.String(); !strings.Contains(js, "select[data-level]") || !strings.Contains(js, "data-l3-kept-for") {
+		t.Error("app.js does not fold and unfold the L3 hooks")
+	}
+}

@@ -41,36 +41,42 @@ templ reviewForm(v ReviewView) {
 					</p>
 				}
 				<div class="table-wrap">
-					<table>
-						<tr>
-							<th>{ tColTarget.In(v.Page.Lang) }</th>
-							<th>{ tColState.In(v.Page.Lang) }</th>
-							<th>{ tColConfidence.In(v.Page.Lang) }</th>
-							<th>{ tColInPlan.In(v.Page.Lang) }</th>
-							<th>{ tColKind.In(v.Page.Lang) }</th>
-							<th>{ tColTarget2.In(v.Page.Lang) }</th>
-							<th>{ tColLevel.In(v.Page.Lang) }</th>
-							<th>{ tColException.In(v.Page.Lang) }</th>
-						</tr>
-						for _, it := range g.Items {
-							<tr>
-								<td>
-									<code>{ it.ID }</code>
-									if it.Rescan {
-										<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
-									}
-									if platformFix(it.Runtime) {
-										<span class="hint">{ tPlatformFix.In(v.Page.Lang) }</span>
-									}
-								</td>
-								<td class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
-								<td>{ confCell(it, v.RulesetVersion) }</td>
-								@planCells(v.Page.Lang, it)
-								<td><input type="text" name={ "item:" + it.ID } value={ it.Conclusion } aria-label={ itemLabel(tColException.In(v.Page.Lang), it.ID) }/></td>
+					// 항목 하나가 tbody 하나다. 좁은 화면에서는 그 tbody가 카드 하나로 접혀, 읽고 판정하고 저장하기까지
+					// 표를 옆으로 밀 일이 없다(app.css의 table.judge).
+					<table class="editable judge" role="table">
+						<thead role="rowgroup">
+							<tr role="row">
+								<th role="columnheader">{ tColTarget.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColState.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColConfidence.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColInPlan.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColKind.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColTarget2.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColLevel.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColException.In(v.Page.Lang) }</th>
 							</tr>
-							@hooksRow(v.Page.Lang, it, 8)
-							@installsRow(v.Page.Lang, it, 8)
-							@previousRow(v.Page.Lang, it, 8)
+						</thead>
+						for _, it := range g.Items {
+							<tbody role="rowgroup" class="item">
+								<tr role="row">
+									<td role="cell" data-label={ tColTarget.In(v.Page.Lang) }>
+										<code>{ it.ID }</code>
+										if it.Rescan {
+											<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
+										}
+										if platformFix(it.Runtime) {
+											<span class="hint">{ tPlatformFix.In(v.Page.Lang) }</span>
+										}
+									</td>
+									<td role="cell" data-label={ tColState.In(v.Page.Lang) } class={ templ.KV("must", it.Mandatory) }>{ it.State }</td>
+									<td role="cell" data-label={ tColConfidence.In(v.Page.Lang) }>{ confCell(it, v.RulesetVersion) }</td>
+									@planCells(v.Page.Lang, it)
+									<td role="cell" data-label={ tColException.In(v.Page.Lang) }><input type="text" name={ "item:" + it.ID } value={ it.Conclusion } aria-label={ itemLabel(tColException.In(v.Page.Lang), it.ID) }/></td>
+								</tr>
+								@hooksRow(v.Page.Lang, it, 8)
+								@installsRow(v.Page.Lang, it, 8)
+								@previousRow(v.Page.Lang, it, 8)
+							</tbody>
 						}
 					</table>
 				</div>
@@ -81,26 +87,30 @@ templ reviewForm(v ReviewView) {
 				<legend>{ tAutopassLegend.In(v.Page.Lang) }</legend>
 				@tip(v.Page.Lang, tAutopassHint.In(v.Page.Lang))
 				<div class="table-wrap">
-					<table>
-						<tr>
-							<th>{ tColTarget.In(v.Page.Lang) }</th>
-							<th>{ tColState.In(v.Page.Lang) }</th>
-							<th>{ tColConfidence.In(v.Page.Lang) }</th>
-							<th>{ tColInPlan.In(v.Page.Lang) }</th>
-							<th>{ tColKind.In(v.Page.Lang) }</th>
-							<th>{ tColTarget2.In(v.Page.Lang) }</th>
-							<th>{ tColLevel.In(v.Page.Lang) }</th>
-						</tr>
-						for _, it := range v.Autopass {
-							<tr>
-								<td><code>{ it.ID }</code></td>
-								<td>{ it.State }</td>
-								<td>{ confCell(it, v.RulesetVersion) }</td>
-								@planCells(v.Page.Lang, it)
+					<table class="editable judge" role="table">
+						<thead role="rowgroup">
+							<tr role="row">
+								<th role="columnheader">{ tColTarget.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColState.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColConfidence.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColInPlan.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColKind.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColTarget2.In(v.Page.Lang) }</th>
+								<th role="columnheader">{ tColLevel.In(v.Page.Lang) }</th>
 							</tr>
-							@hooksRow(v.Page.Lang, it, 7)
-							@installsRow(v.Page.Lang, it, 7)
-							@previousRow(v.Page.Lang, it, 7)
+						</thead>
+						for _, it := range v.Autopass {
+							<tbody role="rowgroup" class="item">
+								<tr role="row">
+									<td role="cell" data-label={ tColTarget.In(v.Page.Lang) }><code>{ it.ID }</code></td>
+									<td role="cell" data-label={ tColState.In(v.Page.Lang) }>{ it.State }</td>
+									<td role="cell" data-label={ tColConfidence.In(v.Page.Lang) }>{ confCell(it, v.RulesetVersion) }</td>
+									@planCells(v.Page.Lang, it)
+								</tr>
+								@hooksRow(v.Page.Lang, it, 7)
+								@installsRow(v.Page.Lang, it, 7)
+								@previousRow(v.Page.Lang, it, 7)
+							</tbody>
 						}
 					</table>
 				</div>
@@ -139,18 +149,19 @@ templ reviewForm(v ReviewView) {
 // planCells — 계획 축의 칸. 리뷰 항목과 자동통과 항목이 **같은 칸**을 쓴다. 두 벌로 만들면 한쪽만
 // 고쳐지는 날이 오고, 그날 한쪽 항목은 계획에 넣을 수 없는 칸을 든다.
 templ planCells(lang Lang, it review.Item) {
-	<td><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan } disabled?={ !plannable(it) } aria-label={ itemLabel(tColInPlan.In(lang), it.ID) }/></td>
-	<td>
+	<td role="cell" data-label={ tColInPlan.In(lang) }><input type="checkbox" name={ "plan:" + it.ID } checked?={ it.Plan } disabled?={ !plannable(it) } aria-label={ itemLabel(tColInPlan.In(lang), it.ID) }/></td>
+	<td role="cell" data-label={ tColKind.In(lang) }>
+		// 보이는 이름은 그 말로 풀어 쓰고(kindLabel), 보내는 값은 계약 어휘 그대로다.
 		<select name={ "kind:" + it.ID } aria-label={ itemLabel(tColKind.In(lang), it.ID) }>
 			<option value="" selected?={ it.Kind == "" }>{ tKindAuto.In(lang) }</option>
 			for _, k := range remediationKinds {
-				<option value={ k } selected?={ it.Kind == k }>{ shortKind(k) }</option>
+				<option value={ k } selected?={ it.Kind == k }>{ kindName(lang, k) }</option>
 			}
 		</select>
 	</td>
-	<td><input type="text" name={ "target:" + it.ID } value={ it.TargetAlgorithm } placeholder="ML-KEM (FIPS 203)" aria-label={ itemLabel(tColTarget2.In(lang), it.ID) }/></td>
-	<td>
-		<select name={ "level:" + it.ID } aria-label={ itemLabel(tColLevel.In(lang), it.ID) }>
+	<td role="cell" data-label={ tColTarget2.In(lang) }><input type="text" name={ "target:" + it.ID } value={ it.TargetAlgorithm } placeholder="ML-KEM (FIPS 203)" aria-label={ itemLabel(tColTarget2.In(lang), it.ID) }/></td>
+	<td role="cell" data-label={ tColLevel.In(lang) }>
+		<select name={ "level:" + it.ID } aria-label={ itemLabel(tColLevel.In(lang), it.ID) } data-level>
 			<option value="" selected?={ it.Level == "" }>{ tKindAuto.In(lang) }</option>
 			for _, l := range deployLevels {
 				<option value={ l } selected?={ it.Level == l }>{ l }</option>
@@ -162,8 +173,8 @@ templ planCells(lang Lang, it review.Item) {
 // previousRow — 규칙 전환 회차가 옮겨 온 옛 판정(참고값)과 「다시 채택」. 현재 값이 아니라는 것을 먼저 적는다.
 templ previousRow(lang Lang, it review.Item, span int) {
 	if p := it.Previous; p != nil {
-		<tr class="previous">
-			<td colspan={ strconv.Itoa(span) }>
+		<tr role="row" class="previous">
+			<td role="cell" data-label="" colspan={ strconv.Itoa(span) }>
 				<span class="hint">{ tPrevHead.In(lang) }</span>
 				if p.Conclusion != "" {
 					{ tPrevConclusion.In(lang) } <q>{ p.Conclusion }</q>
@@ -180,8 +191,8 @@ templ previousRow(lang Lang, it review.Item, span int) {
 // installsRow — 한 키 아래 설치가 둘 이상일 때 그 목록과 「전부에 적용」 · 「설치마다 다름」 선택. 설치가 하나면 그리지 않는다.
 templ installsRow(lang Lang, it review.Item, span int) {
 	if ins := review.Installations(it); len(ins) > 1 {
-		<tr class="installs">
-			<td colspan={ strconv.Itoa(span) }>
+		<tr role="row" class="installs">
+			<td role="cell" data-label="" colspan={ strconv.Itoa(span) }>
 				<span class="hint">{ tInstallsHead.In(lang) }</span>
 				<ul class="installs">
 					for _, r := range installRows(it) {
@@ -202,15 +213,30 @@ templ installsRow(lang Lang, it review.Item, span int) {
 	}
 }
 
-// hooksRow — 활성화 훅과 되돌림 메모. 되돌림 메모는 판정 결론이 아니라 계획 축의 값이다.
+// hooksRow — 활성화 훅 넷과 되돌림 메모.
+//
+// **훅은 위임 수준이 L3일 때만 펼친다.** L3에서만 쓰이는 칸 넷이 모든 항목에 늘 펼쳐져 있어 판정 표가 그 칸으로 덮였다.
+// 접어도 칸은 양식에 그대로 있어서, L3에서 적고 다른 수준으로 갔다가 돌아오면 적은 값이 남아 있다(app.js가 `hidden`만
+// 바꾼다). 접힌 채로 값이 있으면 그 사실을 한 줄로 알린다. 보이지 않는 값이 계획에 실리는 것을 모르게 두지 않는다.
+// 스크립트가 막힌 환경에서는 L3를 골라 저장하면 펼쳐진 채로 다시 그려진다.
+//
+// **되돌림 메모는 L3 전용이 아니다.** 판정 결론이 아니라 계획 축의 값이고(계약의 rollback_note) 어느 수준에서든 계획에
+// 실리므로 늘 보인다.
 templ hooksRow(lang Lang, it review.Item, span int) {
-	<tr class="hooks">
-		<td colspan={ strconv.Itoa(span) }>
+	<tr role="row" class="hooks" data-l3-for={ "level:" + it.ID } hidden?={ it.Level != "L3" }>
+		<td role="cell" data-label="" colspan={ strconv.Itoa(span) }>
 			<span class="hint">{ tHooks.In(lang) }</span>
 			<label>{ tHookPre.In(lang) } <input type="text" name={ "pre:" + it.ID } value={ it.Pre }/></label>
 			<label>{ tHookActivate.In(lang) } <input type="text" name={ "activate:" + it.ID } value={ it.Activate }/></label>
 			<label>{ tHookDeact.In(lang) } <input type="text" name={ "deactivate:" + it.ID } value={ it.Deactivate }/></label>
 			<label>{ tHookRestart.In(lang) } <input type="text" name={ "restart:" + it.ID } value={ it.Restart }/></label>
+		</td>
+	</tr>
+	<tr role="row" class="hooks-kept" data-l3-kept-for={ "level:" + it.ID } hidden?={ it.Level == "L3" || !hasHooks(it) }>
+		<td role="cell" data-label="" colspan={ strconv.Itoa(span) }><span class="hint">{ tHooksKept.In(lang) }</span></td>
+	</tr>
+	<tr role="row" class="rollback">
+		<td role="cell" data-label="" colspan={ strconv.Itoa(span) }>
 			<label>{ tRollbackNote.In(lang) } <input type="text" name={ "rollback:" + it.ID } value={ it.RollbackNote }/></label>
 		</td>
 	</tr>

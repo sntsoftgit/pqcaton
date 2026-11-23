@@ -339,3 +339,17 @@ body.wb table.editable:has(input.wide:focus) { min-width: calc(100% + 18rem); }
   body.wb table.editable input.wide, body.wb table.editable input.wide:focus { min-width: 0; }
   body.wb table.editable:has(input.wide:focus) { min-width: 0; }
 }
+
+/* 05 판정 표(table.judge). 항목 하나가 tbody 하나다.
+   - hidden으로 접은 줄(L3가 아닐 때의 활성화 훅)은 좁은 화면의 display: block에도 접힌 채로 둔다.
+   - 훅과 되돌림 메모의 칸은 이름표 아래 한 줄을 다 쓴다.
+   - 650px 이하에서는 항목 하나가 카드 하나다. 읽고 판정하고 저장하기까지 표를 옆으로 밀 일이 없다. 줄마다 그리던
+     테는 카드(tbody)로 옮긴다. */
+body.wb table.editable tr[hidden] { display: none; }
+body.wb table.judge tr.hooks label, body.wb table.judge tr.rollback label { display: block; margin: .3rem 0; }
+body.wb table.judge tbody.item > tr:not(:first-child) > td { border-top: 0; padding-top: 0; }
+@media (max-width: 650px) {
+  body.wb table.judge tbody.item { border: 1px solid var(--line); border-radius: 8px; padding: .4rem .6rem; margin: .6rem 0; }
+  body.wb table.judge tbody.item > tr { border: 0; border-radius: 0; padding: 0; margin: 0; }
+  body.wb table.judge select { max-width: 100%; }
+}

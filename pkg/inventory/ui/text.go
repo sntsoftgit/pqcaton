@@ -405,6 +405,7 @@ var (
 	tColLevel           = T{KO: "위임 수준", EN: "Delegation level"}
 	tKindAuto           = T{KO: "고르지 않음", EN: "not chosen"}
 	tHooks              = T{KO: "활성화 훅 (L3 전용)", EN: "Activation hooks (used at L3 only)"}
+	tHooksKept          = T{KO: "이 항목에는 활성화 훅에 적어 둔 값이 있습니다. 위임 수준이 L3일 때만 쓰이고, L3를 고르면 다시 보입니다.", EN: "This item has activation hooks filled in. They are used only at delegation level L3, and show again when you pick L3."}
 	tInstallsHead       = T{KO: "같은 자산 키 아래 설치(경로를 확인하지 못한 설치 후보 포함)가 둘 이상입니다. 이 판정과 조치는 아래 설치 전부에 적용됩니다.", EN: "There is more than one installation under this asset key (counting candidates whose path could not be confirmed). This judgment and its action apply to all of the installations below."}
 	tPrevHead           = T{KO: "지난 판정(이전 회차의 참고값이며 현재 값이 아닙니다):", EN: "Earlier judgment (from the previous round; a reference value, not the current one):"}
 	tPrevConclusion     = T{KO: "결론", EN: "conclusion"}
@@ -1515,3 +1516,15 @@ var (
 	tVerifyKeyOK       = T{KO: "확인용 공개 키: %s · 키 지문: %s", EN: "Verification key: %s · key fingerprint: %s"}
 	tVerifyKeyBad      = T{KO: "확인용 공개 키를 사용할 수 없습니다(%s): %s", EN: "The verification key cannot be used (%s): %s"}
 )
+
+// kindNames — 조치 종류를 그 말로 풀어 쓴 뜻. 상류 계약(plan.proto의 RemediationKind)의 설명을 따른다. 값은 바꾸지 않는다.
+var kindNames = map[string]T{
+	"REMEDIATION_KIND_CONFIG_ONLY":     {KO: "설정만 변경", EN: "Config change only"},
+	"REMEDIATION_KIND_PROVIDER_INJECT": {KO: "provider 추가와 설정", EN: "Add a provider and config"},
+	"REMEDIATION_KIND_JDK_UPGRADE":     {KO: "JDK 업그레이드", EN: "JDK upgrade"},
+	"REMEDIATION_KIND_FORK_REPLACE":    {KO: "포크로 교체", EN: "Replace with a fork"},
+	"REMEDIATION_KIND_PROXY_FRONT":     {KO: "앞단에 프록시", EN: "Front with a proxy"},
+	"REMEDIATION_KIND_APP_RECONFIG":    {KO: "앱 코드 · 설정 변경", EN: "App code or config change"},
+	"REMEDIATION_KIND_REBUILD":         {KO: "다시 빌드", EN: "Rebuild"},
+	"REMEDIATION_KIND_DECOMMISSION":    {KO: "폐기 또는 리스크 수용", EN: "Decommission or accept the risk"},
+}
