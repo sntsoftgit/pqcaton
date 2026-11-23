@@ -104,8 +104,9 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
    GRANT CONNECT ON DATABASE pqcota TO pqcota_ingest, pqcaton_ui;
    ```
 
-   비밀번호는 연결 정보에 넣지 않고 `~/.pgpass`(0600)에 둡니다. 한 줄에 `호스트:포트:데이터베이스:계정:비밀번호`이고, 편집기로
-   채웁니다. 다른 자리에 두려면 `PGPASSFILE`로 알립니다. 그러면 연결 정보는 `postgres://pqcaton_ui@<호스트>:5432/pqcota`처럼
+   비밀번호는 연결 정보에 넣지 않고 `~/.pgpass`(0600)에 둡니다. 이 파일은 DB 서버가 있는 기계가 아니라 명령과 화면을 돌리는
+   기계에, 그 명령을 실행하는 사용자의 홈에 둡니다. 한 줄에 `호스트:포트:데이터베이스:계정:비밀번호`이고, 편집기로 채웁니다.
+   다른 자리에 두려면 `PGPASSFILE`로 알립니다. 그러면 연결 정보는 `postgres://pqcaton_ui@<호스트>:5432/pqcota`처럼
    비밀 없이 적을 수 있습니다.
 
    ```bash

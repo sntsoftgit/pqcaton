@@ -110,7 +110,8 @@ the screen starts. With a pqcota history already in use, follow "Moving an exist
    GRANT CONNECT ON DATABASE pqcota TO pqcota_ingest, pqcaton_ui;
    ```
 
-   Keep the passwords out of the connection information, in `~/.pgpass` (0600): one line per account,
+   Keep the passwords out of the connection information, in `~/.pgpass` (0600). The file goes on the machine that runs the commands
+   and the screen, not the database server, in the home directory of the user who runs them: one line per account,
    `host:port:database:user:password`, filled in with an editor. To keep it elsewhere, point `PGPASSFILE` at it. The connection
    information can then be written without a secret, as in `postgres://pqcaton_ui@<host>:5432/pqcota`.
 
