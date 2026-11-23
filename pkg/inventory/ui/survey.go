@@ -44,6 +44,8 @@ type AssetRow struct {
 	Node, Runtime, Component, State string
 	Conf                            float64
 	Rescan                          bool
+	// Excluded — 02 정책이 관리 대상에서 뺐다(EXCLUDED_BY_POLICY). 판정 큐에 오르지 않는다.
+	Excluded bool
 }
 
 // EdgeRow — 엣지 한 줄.
@@ -68,6 +70,7 @@ func NewSurveyView(r *report.Result, page Page) SurveyView {
 		v.Assets = append(v.Assets, AssetRow{
 			Node: rec.Key.NodeID, Runtime: rec.Key.Runtime, Component: rec.Key.Component,
 			State: string(rec.State), Conf: rec.Confidence, Rescan: rec.RescanCandidate,
+			Excluded: rec.Managed == reconcile.ExcludedByPolicy,
 		})
 	}
 	// **필수 리뷰가 위로.** UNDECLARED가 이 도구가 주는 첫 번째 쓸모라 맨 앞에 있어야 한다(§3.3②).
@@ -140,8 +143,12 @@ func gradeLabel(l Lang, grade string) string {
 // SurveySummary — 대조 요약 화면(`/survey-next`)이 쓰는 숫자.
 type SurveySummary struct {
 	Confirmed, Undeclared, Unobserved int
-	// ToJudge — 사람이 확인해야 하는 항목. 확정된 것은 기계가 답을 냈으므로 빼고 센다.
+	// ToJudge — 판정 큐에 필수로 오르는 항목(reconcile.BuildReviewQueue의 Mandatory와 같은 대상). 선언과 어긋난
+	// 자산(UNDECLARED · UNOBSERVED) 가운데 정책이 뺀 것은 세지 않는다. 05의 「필수 판정」이 세는 것과 같은 항목이고,
+	// 05는 그 가운데 결론이 아직 빈 것만 센다.
 	ToJudge int
+	// Excluded — 선언과 어긋났지만 정책이 관리 대상에서 빼 판정 큐에 오르지 않는 자산.
+	Excluded int
 	// Rescan — **다시 관측해 봐야 하는 자산.** 이 수가 0이 아니면 UNOBSERVED를 부재로
 	// 읽으면 안 된다 — 못 본 것인지 없는 것인지 아직 갈리지 않았다.
 	Rescan int
@@ -151,11 +158,18 @@ type SurveySummary struct {
 func (v SurveyView) Summary() SurveySummary {
 	s := SurveySummary{
 		Confirmed: v.Confirmed, Undeclared: v.Undeclared, Unobserved: v.Unobserved,
-		ToJudge: v.Undeclared + v.Unobserved,
 	}
 	for _, a := range v.Assets {
 		if a.Rescan {
 			s.Rescan++
+		}
+		if a.State == string(reconcile.Confirmed) {
+			continue
+		}
+		if a.Excluded {
+			s.Excluded++
+		} else {
+			s.ToJudge++
 		}
 	}
 	return s

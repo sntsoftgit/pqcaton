@@ -956,6 +956,11 @@ var (
 		KO: "선언과 관측이 모두 맞물렸습니다. 판정으로 넘어갈 것이 없습니다.",
 		EN: "Declaration and observation line up. Nothing is waiting for judgment."}
 	tNextSurveyGoReview = T{KO: "판정 큐 열기", EN: "Open the review queue"}
+	tNextSurveyExcluded = T{
+		KO: "선언과 어긋난 자산 가운데 %d개는 암호 자산 스코프 정책(02)이 관리 대상에서 뺀 것이어서 판정 큐에 오르지 않고, 위 숫자에도 세지 않았습니다. 아래 표에 「정책 제외」로 적혀 있습니다.",
+		EN: "Assets that diverge from the declaration but that the crypto asset scope policy (02) excludes: %d. Such assets do not go to the review queue and are not counted above; the table below marks them as excluded by policy."}
+	tNextSurveyNoneToJudge = T{KO: "판정할 항목이 없습니다", EN: "Nothing is waiting for a judgment"}
+	tSurveyExcluded        = T{KO: "정책 제외", EN: "excluded by policy"}
 
 	tNextSurveyDetail     = T{KO: "자산과 엣지 원본", EN: "The assets and edges themselves"}
 	tNextSurveyDetailLede = T{
@@ -1012,7 +1017,7 @@ var (
 )
 
 var (
-	tStepReviewOpen  = T{KO: "필수 판정 %d개", EN: "%d required judgments"}
+	tStepReviewOpen  = T{KO: "남은 필수 판정 %d개", EN: "%d required judgments left"}
 	tStepReviewSign  = T{KO: "승인 서명이 남음", EN: "signature left"}
 	tStepReviewReady = T{KO: "확정할 수 있음", EN: "ready to finalize"}
 	// tStepReviewRuleset — 다른 상류 규칙 판의 세션. 잠겨 있어 확정할 수 없다.

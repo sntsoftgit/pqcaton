@@ -83,6 +83,9 @@ templ surveyBody(v SurveyView) {
 							if a.Rescan {
 								<span class="hint">{ tRescan.In(v.Page.Lang) }</span>
 							}
+							if a.Excluded {
+								<span class="hint">{ tSurveyExcluded.In(v.Page.Lang) }</span>
+							}
 						</td>
 					</tr>
 				}

@@ -92,9 +92,16 @@ templ surveyNextTodo(v SurveyView) {
 		<div class="next done">
 			<div class="next-icon">✓</div>
 			<div>
-				<strong>{ tNextSurveyDone.In(v.Page.Lang) }</strong>
-				<span>{ tNextSurveyDoneBody.In(v.Page.Lang) }</span>
+				if s.Excluded > 0 {
+					<strong>{ tNextSurveyNoneToJudge.In(v.Page.Lang) }</strong>
+				} else {
+					<strong>{ tNextSurveyDone.In(v.Page.Lang) }</strong>
+					<span>{ tNextSurveyDoneBody.In(v.Page.Lang) }</span>
+				}
 			</div>
 		</div>
+	}
+	if s.Excluded > 0 {
+		<p class="hint" data-survey-excluded={ strconv.Itoa(s.Excluded) }>{ tNextSurveyExcluded.F(v.Page.Lang, s.Excluded) }</p>
 	}
 }
