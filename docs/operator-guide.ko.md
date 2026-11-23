@@ -109,9 +109,22 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
    다른 자리에 두려면 `PGPASSFILE`로 알립니다. 그러면 연결 정보는 `postgres://pqcaton_ui@<호스트>:5432/pqcota`처럼
    비밀 없이 적을 수 있습니다.
 
+   파일이 없을 때만 빈 파일을 만듭니다. 이미 있는 `~/.pgpass`를 `install`로 다시 만들면 내용이 지워지므로, 있으면 그대로 둡니다.
+
    ```bash
-   install -m 600 /dev/null ~/.pgpass
+   [ -e ~/.pgpass ] || install -m 600 /dev/null ~/.pgpass
    ```
+
+   계정마다 한 줄씩 적습니다. 이 기계에서 쓰는 역할의 줄만 있으면 됩니다. 예(같은 기계의 서버, `<…>`는 실제 비밀번호):
+
+   ```text
+   127.0.0.1:5432:pqcota:pqcota_schema:<스키마 역할 비밀번호>
+   127.0.0.1:5432:pqcota:pqcota_ingest:<적재 역할 비밀번호>
+   127.0.0.1:5432:pqcota:pqcaton_ui:<조회 역할 비밀번호>
+   ```
+
+   위에서부터 처음 맞는 줄을 씁니다. 호스트 칸은 연결 정보에 적은 값과 글자까지 같아야 합니다(`localhost`와 `127.0.0.1`은
+   다른 값으로 봅니다).
 
 2. **상류 중앙 명령.** 적재 · 조회 · 승인 · 생성 · 키 만들기 명령입니다. 상류 릴리스 묶음(`pqcota-ctl`)은 **Linux용만** 있으므로,
    이 기계에 맞는 길을 고릅니다. 어느 길이든 명령은 `~/.local/bin`에 들어가고, 이 폴더가 `PATH`에 있어야 합니다.

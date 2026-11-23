@@ -115,9 +115,24 @@ the screen starts. With a pqcota history already in use, follow "Moving an exist
    `host:port:database:user:password`, filled in with an editor. To keep it elsewhere, point `PGPASSFILE` at it. The connection
    information can then be written without a secret, as in `postgres://pqcaton_ui@<host>:5432/pqcota`.
 
+   Create an empty file only if there is none. Recreating an existing `~/.pgpass` with `install` empties it, so an existing one is
+   left alone.
+
    ```bash
-   install -m 600 /dev/null ~/.pgpass
+   [ -e ~/.pgpass ] || install -m 600 /dev/null ~/.pgpass
    ```
+
+   Write one line per account; only the roles used on this machine need a line. For example (server on the same machine, `<…>` is
+   the real password):
+
+   ```text
+   127.0.0.1:5432:pqcota:pqcota_schema:<schema role password>
+   127.0.0.1:5432:pqcota:pqcota_ingest:<loading role password>
+   127.0.0.1:5432:pqcota:pqcaton_ui:<query role password>
+   ```
+
+   The first matching line from the top is used. The host field must match the connection information character for character
+   (`localhost` and `127.0.0.1` count as different values).
 
 2. **Upstream central commands.** The loading, query, approval, generation and key commands. The upstream release bundle
    (`pqcota-ctl`) exists **for Linux only**, so pick the path for this machine. Either way the commands go into `~/.local/bin`, which
