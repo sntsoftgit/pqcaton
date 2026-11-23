@@ -38,6 +38,8 @@ const (
 	// ScopeRowPath — 자산 스코프의 규칙 한 줄. 선언의 것과 나눈 것은 계층 번호가
 	// 하나 더 붙기 때문이다 — 한 주소에 둘을 밀어 넣으면 둘 다 읽기 어려워진다.
 	ScopeRowPath = "/scope/row"
+	// RuleRemovePath — 02 규칙 줄의 「제거」와 「되돌리기」. 그 줄을 표시만 바꿔 다시 그린다. 파일은 「규칙 저장」이 쓴다.
+	RuleRemovePath = "/scope/rule/remove"
 	// DeclCreatePath — 작업 폴더에 빈 선언을 만든다(POST). 이미 있으면 덮어쓰지 않는다.
 	DeclCreatePath = "/decl/create"
 	// LayerCreatePath — 작업 폴더에 빈 계층 CSV를 만드는 POST.

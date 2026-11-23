@@ -313,7 +313,7 @@ func TestApplyLayersRoundTrip(t *testing.T) {
 		"rule.0.0.lib": {"libcrypto.so.*"}, "rule.0.0.app_key": {"/usr/bin/python*"},
 		"rule.0.0.note": {"python runtime"},
 	}
-	got := ui.ApplyLayers(files, f)
+	got, _ := ui.ApplyLayers(files, f)
 	if len(got) != 1 || len(got[0].Layer.Rules) != 1 {
 		t.Fatalf("규칙 수가 다르다: %+v", got)
 	}
@@ -325,39 +325,42 @@ func TestApplyLayersRoundTrip(t *testing.T) {
 	}
 }
 
-// IC-UI15 — **세 칸이 모두 빈 줄은 규칙이 아니다.**
+// IC-UI15 — **세 칸이 모두 빈 줄은 규칙이 되지 않는다.**
 //
-// pqcota는 빈 칸을 `*`로 읽습니다. 그대로 만들면 `exclude,*,*,*` — **인벤토리가 통째로
-// 빕니다.** 미리 열어 둔 빈 줄에서 action만 잘못 골라도 그렇게 됩니다. 「전부」를
-// 뜻하려면 `*`를 적어야 합니다.
-func TestApplyLayersDropsEmptyRows(t *testing.T) {
+// pqcota는 빈 칸을 `*`로 읽습니다. 그대로 만들면 `exclude,*,*,*`, 곧 **인벤토리가 통째로
+// 빕니다.** 그래서 조건이 빈 줄은 규칙으로 만들지 않고 그 줄을 짚어 저장을 막습니다(IC-UI66).
+// 「전부」를 뜻하려면 `*`를 적어야 합니다.
+func TestApplyLayersNeverMakesAnUnconditionalRule(t *testing.T) {
 	f := url.Values{
 		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {"openssl"},
 		"rule.0.0.lib": {"libssl.so.3"}, "rule.0.0.app_key": {"*"},
-		// 빈 줄인데 action만 exclude로 남았다
+		// 조건 없이 action만 exclude로 남았다
 		"rule.0.1.action": {"exclude"}, "rule.0.1.runtime": {""},
 		"rule.0.1.lib": {""}, "rule.0.1.app_key": {""}, "rule.0.1.note": {"적다 만 줄"},
 	}
-	got := ui.ApplyLayers(layerFiles(), f)
-	if n := len(got[0].Layer.Rules); n != 1 {
-		t.Fatalf("규칙 %d개 — 빈 줄이 규칙이 됐다: %+v", n, got[0].Layer.Rules)
+	got, bad := ui.ApplyLayers(layerFiles(), f)
+	if n := len(got[0].Layer.Rules); n != 1 || len(bad) != 1 {
+		t.Fatalf("규칙 %d개, 막은 줄 %d개: 조건 없는 줄이 규칙이 됐거나 막지 않았다: %+v", n, len(bad), got[0].Layer.Rules)
 	}
 	// 「전부」를 뜻하려면 *를 적는다. 그것은 그대로 규칙이 된다.
 	f.Set("rule.0.1.runtime", "*")
-	if n := len(ui.ApplyLayers(layerFiles(), f)[0].Layer.Rules); n != 2 {
-		t.Fatalf("`*` 를 적었는데 규칙이 되지 않았다: %d개", n)
+	got, bad = ui.ApplyLayers(layerFiles(), f)
+	if n := len(got[0].Layer.Rules); n != 2 || len(bad) != 0 {
+		t.Fatalf("`*` 를 적었는데 규칙이 되지 않았다: %d개, 막은 줄 %d개", n, len(bad))
 	}
 }
 
-// IC-UI16 — 줄을 지우는 방법은 **세 칸을 비우는 것** 하나다. 그 방법이 먹지 않으면
-// 화면에서 규칙을 뺄 길이 없다.
-func TestApplyLayersRemovesRuleWhenCleared(t *testing.T) {
+// IC-UI16 — 줄을 지우는 방법은 **「제거」로 표시하는 것** 하나다. 표시한 줄은 값이 남아 있어도
+// 파일에 쓰지 않는다. 그 방법이 먹지 않으면 화면에서 규칙을 뺄 길이 없다.
+func TestApplyLayersRemovesAMarkedRule(t *testing.T) {
 	f := url.Values{
-		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {""},
-		"rule.0.0.lib": {""}, "rule.0.0.app_key": {""}, "rule.0.0.note": {"python runtime"},
+		"rule.0.0.was": {"1"}, "rule.0.0.remove": {"1"},
+		"rule.0.0.action": {"exclude"}, "rule.0.0.runtime": {"openssl"},
+		"rule.0.0.lib": {"libcrypto.so.*"}, "rule.0.0.app_key": {"/usr/bin/python*"}, "rule.0.0.note": {"python runtime"},
 	}
-	if n := len(ui.ApplyLayers(layerFiles(), f)[0].Layer.Rules); n != 0 {
-		t.Fatalf("비운 줄이 남았다: %d개", n)
+	got, bad := ui.ApplyLayers(layerFiles(), f)
+	if n := len(got[0].Layer.Rules); n != 0 || len(bad) != 0 {
+		t.Fatalf("표시한 줄이 남았다: 규칙 %d개, 막은 줄 %d개", n, len(bad))
 	}
 }
 

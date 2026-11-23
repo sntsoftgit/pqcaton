@@ -321,3 +321,7 @@ body.wb .actions.sticky { position: sticky; bottom: 0; z-index: 2; align-items: 
   padding: .7rem 0; background: var(--canvas); border-top: 1px solid var(--line); }
 body.wb .actions .unsaved { color: var(--amber); font-size: .9rem; font-weight: 600; }
 body.wb .actions .unsaved:empty { display: none; }
+
+/* 02 규칙 줄의 「삭제 예정」. 줄은 남기고 흐리게 긋는다. 색만으로 알리지 않는다: 줄 끝에 「삭제 예정」이라고 적는다. */
+body.wb tr.removing input[type=text], body.wb tr.removing select { text-decoration: line-through; opacity: .55; }
+body.wb .removing-note { color: var(--amber); font-size: .85rem; font-weight: 600; margin-right: .4rem; }

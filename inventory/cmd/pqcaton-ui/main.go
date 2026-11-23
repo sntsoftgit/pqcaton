@@ -542,6 +542,7 @@ func (s *server) handler() http.Handler {
 	r.Post(ui.LayerCreatePath, s.layerCreate)
 	r.Get(ui.ScreenScope, s.scopeEdit)
 	r.Get(ui.ScopeRowPath, s.scopeRow)
+	r.Get(ui.RuleRemovePath, s.scopeRuleRemove)
 	r.Post("/scope/rules", s.scopeRules)
 	r.Post("/scope/save", s.scopeSave)
 	r.Post("/scope/finalize/confirm", s.scopeConfirm)
@@ -1033,7 +1034,12 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 		}
 		was = sf
 		sf = ui.ApplyScope(sf, r.PostForm)
-		edited = ui.ApplyLayers(files, r.PostForm)
+		// **저장할 수 없는 줄이 하나라도 있으면 쓰지 않는다.** 조건을 모두 비운 규칙을 지운 줄로 읽어 계층 파일에서
+		// 빼지 않는다. 지우는 것은 「제거」로 표시한 줄뿐이다.
+		var bad []ui.DeclFieldError
+		if edited, bad = ui.ApplyLayers(files, r.PostForm); len(bad) > 0 {
+			return nil, errRuleFields
+		}
 		var changes []store.Change
 		for _, lf := range edited {
 			b, err := scope.EncodeLayer(lf)
@@ -1056,6 +1062,10 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 		}
 		return append(changes, store.Change{Path: s.scope, Content: b}), nil
 	})
+	if errors.Is(err, errRuleFields) {
+		s.scopeRefused(w, r)
+		return
+	}
 	if err != nil {
 		s.fail(w, r, back, err, files...)
 		return
@@ -1070,6 +1080,32 @@ func (s *server) scopeRules(w http.ResponseWriter, r *http.Request) {
 		msg = append(msg, ui.N(ui.NoticeSignatureCleared))
 	}
 	redirect(w, r, back, msg, nil)
+}
+
+// errRuleFields: 규칙 양식에 저장을 막는 줄이 있다(조건이 모두 빈 규칙).
+var errRuleFields = errors.New("the rule form has rows that cannot be saved")
+
+// scopeRuleRemove — 규칙 줄의 「제거」와 「되돌리기」. **서버는 아무것도 바꾸지 않는다**(그래서 GET이다). 그 줄에 적혀 있던
+// 값을 그대로 들고 표시만 바꾼 줄을 돌려준다. 파일에서 빠지는 것은 「규칙 저장」을 누를 때다.
+func (s *server) scopeRuleRemove(w http.ResponseWriter, r *http.Request) {
+	n := len(s.layerFiles())
+	if n == 0 {
+		missingInput(w, r, "layer")
+		return
+	}
+	q := r.URL.Query()
+	layer, err := strconv.Atoi(q.Get("layer"))
+	if err != nil || layer < 0 || layer >= n {
+		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
+		return
+	}
+	i, err := strconv.Atoi(q.Get("i"))
+	if err != nil || i < 0 || i > maxRows {
+		errorPage(w, r, http.StatusBadRequest, ui.ErrBadRequest, nil)
+		return
+	}
+	row := ui.RuleRowFromForm(q, layer, i, q.Get("undo") != "1")
+	html(w, r, func(out io.Writer) error { return ui.RenderRuleState(out, ui.PickLang(r), layer, i, row) })
 }
 
 // scopeRow — 규칙 표의 「행 추가」.
@@ -1160,7 +1196,7 @@ func (s *server) rulesPending(r *http.Request) error {
 	return nil
 }
 
-// scopeRefused — 「저장만」이나 「확정」을 거절한 스코프 화면(422). 01의 declRefused와 같다: 돌려보내지 않고 그 자리에서
+// scopeRefused — 「규칙 저장」 · 「저장만」 · 「확정」을 거절한 스코프 화면(422). 01의 declRefused와 같다: 돌려보내지 않고 그 자리에서
 // 그려, 고친 규칙 · 적은 결론 · 승인 칸을 요청에 실려 온 그대로 보인다. 아무것도 쓰지 않았으므로 받은 rev를 그대로 싣는다.
 func (s *server) scopeRefused(w http.ResponseWriter, r *http.Request) {
 	wd := s.load()
@@ -1171,8 +1207,9 @@ func (s *server) scopeRefused(w http.ResponseWriter, r *http.Request) {
 	page := s.nextPage(r, ui.ScreenScope, s.scope, s.steps(wd))
 	page.Org = wd.scope.Org
 	page.Rev = r.PostForm.Get(ui.RevField)
-	v := ui.NewScopeView(ui.ApplyScope(wd.scope, r.PostForm), page).Editable(ui.ApplyLayers(wd.scopeFiles, r.PostForm))
-	v.RulesUnsaved = true
+	// 규칙 줄은 틀린 줄과 「제거」로 표시한 줄까지 적은 그대로 그린다. 저장을 막은 줄이 있으면 그 줄을 짚는다.
+	v := ui.NewScopeView(ui.ApplyScope(wd.scope, r.PostForm), page).EditableForm(wd.scopeFiles, r.PostForm)
+	v.RulesUnsaved = len(v.FieldErrors) == 0
 	var buf bytes.Buffer
 	if err := ui.RenderScope(&buf, v); err != nil {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, fmt.Errorf("rendering: %w", err))

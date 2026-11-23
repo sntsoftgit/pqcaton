@@ -154,7 +154,9 @@
     var els = form.elements;
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
-      if (!el.name || el.disabled || el.type === "hidden" || el.type === "submit" || el.type === "button") {
+      // 숨은 칸도 견준다: 02의 「제거」 표시(rule.L.I.remove)는 숨은 칸으로만 드러난다. 토큰과 rev는 입력이 아니다.
+      if (!el.name || el.disabled || el.type === "submit" || el.type === "button" ||
+          (el.type === "hidden" && (el.name === "csrf_token" || el.name === "rev"))) {
         continue;
       }
       if (el.type === "checkbox" || el.type === "radio") {

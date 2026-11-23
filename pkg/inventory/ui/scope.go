@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 
 	kscope "github.com/randyinthedev-hash/pqcota-common/pkg/kernel/scope"
@@ -37,6 +38,21 @@ type ScopeView struct {
 	// RulesUnsaved — 방금 「저장만」이나 「확정」을 거절했다: 양식의 규칙이 계층 파일과 달랐다. 이때 화면의 규칙 · 결론 ·
 	// 승인 칸은 파일이 아니라 사람이 적은 그대로다.
 	RulesUnsaved bool
+	// Refused · FieldErrors — 방금 저장을 거절했고(규칙 저장 · 저장만 · 확정), 저장을 막은 규칙 줄들. 이때 화면의 값은
+	// 사람이 적은 그대로다.
+	Refused     bool
+	FieldErrors []DeclFieldError
+}
+
+func (v ScopeView) fieldErrs() fieldErrs {
+	if len(v.FieldErrors) == 0 {
+		return nil
+	}
+	out := fieldErrs{}
+	for _, e := range v.FieldErrors {
+		out[e.Field] = e
+	}
+	return out
 }
 
 // LayerEdit — 화면에서 고치는 계층 하나.
@@ -49,7 +65,16 @@ type LayerEdit struct {
 	Index int
 	Name  string
 	Path  string
-	Rules []scope.Rule
+	Rules []RuleRow
+}
+
+// RuleRow — 편집 표의 규칙 한 줄.
+type RuleRow struct {
+	scope.Rule
+	// Was — 계층 파일에 있던 규칙이다(양식의 숨은 칸 `rule.L.I.was`). 조건을 모두 비우면 지운 것으로 읽지 않고 거절한다.
+	Was bool
+	// Removing — 「제거」로 표시했다(`rule.L.I.remove`). 「규칙 저장」을 누르면 파일에서 빠진다. 그때까지는 화면에 남는다.
+	Removing bool
 }
 
 // LayerGroup — 한 계층과 그에 묶인 변경들.
@@ -92,7 +117,7 @@ func (v ScopeView) Editable(files []scope.LayerFile) ScopeView {
 	for i, f := range files {
 		e := LayerEdit{Index: i, Name: f.Layer.Name, Path: f.Path}
 		for _, r := range f.Layer.Rules {
-			e.Rules = append(e.Rules, toRule(r))
+			e.Rules = append(e.Rules, RuleRow{Rule: toRule(r), Was: true})
 		}
 		v.Editing = append(v.Editing, e)
 	}
@@ -107,38 +132,96 @@ func toRule(r kscope.AssetRule) scope.Rule {
 	return scope.Rule{Action: act, Runtime: r.Runtime, Lib: r.Lib, AppKey: r.AppKey, Note: r.Note}
 }
 
-// ApplyLayers — 폼에서 온 규칙으로 계층을 **다시 만든다.**
+// 규칙 줄의 폼 이름 가운데 값이 아닌 것: 기존 규칙이라는 표시와 「제거」 표시.
+const (
+	ruleWas    = "was"
+	ruleRemove = "remove"
+)
+
+// FieldRuleEmpty — 규칙의 조건(runtime · lib · app_key)이 모두 비었다.
+const FieldRuleEmpty = "rule-empty"
+
+// KindRule — 저장을 막은 칸이 02의 규칙 줄에 있다.
+const KindRule = "rule"
+
+// readRules — 양식의 규칙 줄을 읽는다. edits는 화면에 다시 그릴 줄(틀린 줄 · 「제거」로 표시한 줄 포함, 번호는 다시
+// 매긴다), out은 계층 파일에 쓸 규칙, errs는 저장을 막는 줄이다.
 //
-// 얹지 않고 다시 만드는 이유는 선언 편집과 같다 — 줄을 지우는 방법이 「칸을 비우는 것」
-// 이므로, 기존 것에 얹으면 지운 줄이 되살아난다.
+// **조건을 비운 줄은 지운 줄이 아니다.** 예전에는 세 칸이 빈 줄을 건너뛰어, 조건을 고치다 만 규칙이 note가 남아 있어도
+// 알림 없이 사라졌다. 지우는 뜻은 「제거」가 받는다(그 줄은 「규칙 저장」 때 빠진다). 버리는 것은 쓰지 않은 새 줄뿐이다:
+// 기존 규칙이 아니고, action이 기본값(include)이고, 나머지 칸이 모두 빈 줄.
 //
-// **세 칸이 모두 빈 줄은 규칙이 아니라 빈 줄이다.** pqcota는 빈 칸을 `*`로 읽으므로,
-// 그대로 만들면 `exclude,*,*,*` — **전부 제외**가 된다. 미리 열어 둔 빈 줄에서 action만
-// 잘못 골라도 인벤토리가 통째로 비는 규칙이 생긴다. 「전부」를 뜻하려면 `*`를 적는다.
-func ApplyLayers(files []scope.LayerFile, f url.Values) []scope.LayerFile {
-	out := make([]scope.LayerFile, 0, len(files))
+// **조건이 빈 줄을 규칙으로 만들지도 않는다.** pqcota는 빈 칸을 `*`로 읽으므로 그대로 쓰면 `exclude,*,*,*`, 곧 전부
+// 제외가 된다. 「전부」를 뜻하려면 `*`를 적는다.
+//
+// 줄 번호가 끊겨도 읽는다(formRows). 끊기는 자리에서 멈추면 그 뒤의 규칙이 저장에서 통째로 빠진다.
+func readRules(files []scope.LayerFile, f url.Values) (edits []LayerEdit, out []scope.LayerFile, errs []DeclFieldError) {
 	for li, lf := range files {
+		e := LayerEdit{Index: li, Name: lf.Layer.Name, Path: lf.Path}
 		lf.Layer.Rules = nil
-		for i := 0; ; i++ {
-			act, ok := f[ruleField(li, i, "action")]
-			if !ok {
-				break
+		for _, i := range formRows(f, "rule."+strconv.Itoa(li)+".", ".action") {
+			get := func(name string) string { return strings.TrimSpace(f.Get(ruleField(li, i, name))) }
+			r := RuleRow{
+				Rule: scope.Rule{Action: "include", Runtime: get("runtime"), Lib: get("lib"), AppKey: get("app_key"), Note: get("note")},
+				Was:  get(ruleWas) != "", Removing: get(ruleRemove) != "",
 			}
-			get := func(name string) string {
-				return strings.TrimSpace(f.Get(ruleField(li, i, name)))
+			if get("action") == "exclude" {
+				r.Action = "exclude"
 			}
-			runtime, lib, appKey := get("runtime"), get("lib"), get("app_key")
-			if runtime == "" && lib == "" && appKey == "" {
-				continue
+			unconditional := r.Runtime == "" && r.Lib == "" && r.AppKey == ""
+			if unconditional && !r.Was && r.Action == "include" && r.Note == "" {
+				continue // 쓰지 않은 새 줄
 			}
-			lf.Layer.Rules = append(lf.Layer.Rules, kscope.AssetRule{
-				Exclude: strings.TrimSpace(first(act)) == "exclude",
-				Runtime: runtime, Lib: lib, AppKey: appKey, Note: get("note"),
-			})
+			j := len(e.Rules)
+			e.Rules = append(e.Rules, r)
+			switch {
+			case r.Removing:
+				// 「제거」로 표시한 줄. 화면에는 남기고 파일에는 쓰지 않는다.
+			case unconditional:
+				errs = append(errs, DeclFieldError{Field: ruleField(li, j, "runtime"), Code: FieldRuleEmpty,
+					kind: KindRule, node: li, row: j, col: T{KO: "runtime", EN: "runtime"}})
+			default:
+				lf.Layer.Rules = append(lf.Layer.Rules, kscope.AssetRule{
+					Exclude: r.Action == "exclude", Runtime: r.Runtime, Lib: r.Lib, AppKey: r.AppKey, Note: r.Note})
+			}
 		}
+		edits = append(edits, e)
 		out = append(out, lf)
 	}
-	return out
+	return edits, out, errs
+}
+
+// ApplyLayers — 폼에서 온 규칙으로 계층을 **다시 만든다.** 얹지 않는다: 「제거」로 표시한 줄이 되살아나지 않아야 한다.
+//
+// errs — 저장을 막는 줄(readRules). 하나라도 있으면 부르는 쪽은 아무것도 쓰지 않고 적은 값을 되돌려 보인다(EditableForm).
+func ApplyLayers(files []scope.LayerFile, f url.Values) ([]scope.LayerFile, []DeclFieldError) {
+	_, out, errs := readRules(files, f)
+	return out, errs
+}
+
+// EditableForm — 저장을 거절한 양식의 규칙 줄을 **적은 값 그대로** 편집 표로 만든다. 파일에서 읽지 않는다.
+func (v ScopeView) EditableForm(files []scope.LayerFile, f url.Values) ScopeView {
+	v.Editing, _, v.FieldErrors = readRules(files, f)
+	v.Refused = true
+	return v
+}
+
+// RuleRowFromForm — 「제거」와 「되돌리기」가 돌려줄 줄 하나. 그 줄에 적혀 있던 값을 그대로 들고, 표시만 바꾼다.
+func RuleRowFromForm(f url.Values, layer, i int, removing bool) RuleRow {
+	get := func(name string) string { return strings.TrimSpace(f.Get(ruleField(layer, i, name))) }
+	r := RuleRow{
+		Rule: scope.Rule{Action: "include", Runtime: get("runtime"), Lib: get("lib"), AppKey: get("app_key"), Note: get("note")},
+		Was:  get(ruleWas) != "", Removing: removing,
+	}
+	if get("action") == "exclude" {
+		r.Action = "exclude"
+	}
+	return r
+}
+
+// RenderRuleState — 「제거」 · 「되돌리기」가 갈아 끼울 줄.
+func RenderRuleState(w io.Writer, l Lang, layer, i int, r RuleRow) error {
+	return ruleRow(l, layer, i, r, nil).Render(context.Background(), w)
 }
 
 // RulesShownField — 양식이 규칙 편집기를 싣고 왔다는 표시(숨은 칸). 편집기가 없는 양식(계층 파일 없이 승인만 하는
@@ -154,7 +237,10 @@ func RulesEdited(files []scope.LayerFile, f url.Values) (bool, error) {
 	if f.Get(RulesShownField) == "" {
 		return false, nil
 	}
-	edited := ApplyLayers(files, f)
+	edited, errs := ApplyLayers(files, f)
+	if len(errs) > 0 {
+		return true, nil // 저장할 수 없는 줄도 고친 것이다
+	}
 	for i := range files {
 		was, err := scope.EncodeLayer(files[i])
 		if err != nil {

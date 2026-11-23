@@ -30,6 +30,28 @@ func ruleLabel(l Lang, layer, i int, col string) string {
 	return fmt.Sprintf("%s %d · %s %d %s", tLayer.In(l), layer+1, tRowRule.In(l), i+1, col)
 }
 
+// undoParam · ruleButtonText · confirmAttr — 규칙 줄의 「제거」 · 「되돌리기」 버튼.
+func undoParam(removing bool) string {
+	if removing {
+		return "1"
+	}
+	return "0"
+}
+
+func ruleButtonText(l Lang, removing bool) string {
+	if removing {
+		return tRuleUndo.In(l)
+	}
+	return tRemove.In(l)
+}
+
+func confirmAttr(ask bool, text string) templ.Attributes {
+	if !ask {
+		return nil
+	}
+	return templ.Attributes{"hx-confirm": text}
+}
+
 // itemLabel — 「목표 알고리즘 · host://local/openssl/libssl」. 판정 표의 줄은 번호보다 항목 ID가
 // 사람이 찾는 이름이다.
 func itemLabel(col, id string) string { return col + " · " + id }

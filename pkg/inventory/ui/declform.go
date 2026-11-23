@@ -88,6 +88,8 @@ func (e DeclFieldError) Label(l Lang) string {
 		return assetLabel(l, e.node, e.row, e.col.In(l))
 	case KindEdge:
 		return rowLabel(l, tRowEdge, e.row+1, e.col.In(l))
+	case KindRule:
+		return ruleLabel(l, e.node, e.row, e.col.In(l))
 	}
 	return rowLabel(l, tRowNode, e.row+1, e.col.In(l))
 }
@@ -109,6 +111,8 @@ func (e DeclFieldError) Text(l Lang) string {
 		return tFieldEdgeDstMissing.In(l)
 	case FieldPortMalformed:
 		return tFieldPortMalformed.F(l, strconv.Quote(e.Value))
+	case FieldRuleEmpty:
+		return tFieldRuleEmpty.In(l)
 	}
 	return e.Code
 }

@@ -38,7 +38,7 @@ var (
 		KO: " · 판정 %d건을 %s에 남겼습니다",
 		EN: " · %d judgments appended to %s"}
 	tRulesSaved = T{
-		KO: "계층 %d개에 규칙 %d개를 썼습니다. 판정할 변경이 %d건이고, 그중 %d건은 왜 뺐는지를 적어야 합니다",
+		KO: "규칙 %d개를 계층 %d개에 썼습니다. 판정할 변경이 %d건이고, 그중 %d건은 왜 뺐는지를 적어야 합니다",
 		EN: "Wrote %d rules across %d layers — %d changes to judge, %d of them needing a recorded reason"}
 	tSignatureCleared = T{
 		KO: " · 정책이 달라져 서명을 지웠습니다",
@@ -520,13 +520,14 @@ var (
 
 	tRuleEmptyWarn = T{
 		KO: "<b>빈 칸은 「전부」입니다.</b> 그래서 <code>runtime</code>·<code>lib</code>·" +
-			"<code>app_key</code> 세 칸이 모두 빈 줄은 규칙으로 만들지 않습니다. 그대로 두면 " +
+			"<code>app_key</code> 세 칸이 모두 빈 줄은 저장하지 않고 그 줄을 짚습니다. 그대로 쓰면 " +
 			"<code>exclude</code> 하나로 <b>인벤토리가 통째로 빕니다.</b> 「전부」를 뜻하려면 " +
-			"<code>*</code>를 적으십시오.",
+			"<code>*</code>를 적으십시오. 아무것도 적지 않은 새 줄은 버립니다.",
 		EN: "<b>An empty cell means “all”.</b> That is why a row with " +
 			"<code>runtime</code>, <code>lib</code> and <code>app_key</code> all empty is not " +
-			"turned into a rule — as written, a single <code>exclude</code> would " +
-			"<b>empty the entire inventory.</b> Write <code>*</code> if you really mean all."}
+			"saved, and the screen points at it — as written, a single <code>exclude</code> would " +
+			"<b>empty the entire inventory.</b> Write <code>*</code> if you really mean all. " +
+			"A new row with nothing typed is dropped."}
 	tRuleLayerOrder = T{
 		KO: "<b>같은 자산에 규칙이 여럿 걸리면 아래 계층의 것이 적용됩니다.</b> " +
 			"계층은 위에서 아래로 겹치기 때문입니다(조직 → 환경 → 노드군). 그래서 위 계층이 " +
@@ -550,8 +551,19 @@ var (
 			"changed need judging again."}
 	tScopeEditResult = T{KO: "고친 결과: 승인할 변경", EN: "What your edits change — for approval"}
 	tRemoveRuleHint  = T{
-		KO: "줄을 지우려면 <code>runtime</code>·<code>lib</code>·<code>app_key</code>를 모두 비우십시오.",
-		EN: "To delete a row, clear <code>runtime</code>, <code>lib</code> and <code>app_key</code>."}
+		KO: "규칙을 지우려면 그 줄의 「제거」를 누르십시오. 「삭제 예정」으로 표시되고, 「규칙 저장」을 눌러야 파일에서 빠집니다.",
+		EN: "To delete a rule, use Remove on its row. It is marked “To be removed” and leaves the file only when you use Save rules."}
+	tRemoveRuleAsk = T{
+		KO: "이 규칙을 삭제 예정으로 표시합니다. 「규칙 저장」을 눌러야 파일에 반영됩니다. 표시할까요?",
+		EN: "This marks the rule to be removed. It reaches the file only when you use Save rules. Mark it?"}
+	tRuleRemoving   = T{KO: "삭제 예정", EN: "To be removed"}
+	tRuleUndo       = T{KO: "되돌리기", EN: "Undo"}
+	tFieldRuleEmpty = T{
+		KO: "조건(runtime · lib · app_key)이 모두 비어 있습니다. 전체에 적용하려면 별표(*)를 적으십시오. 이 규칙을 지우려면 「제거」를 누르십시오.",
+		EN: "The conditions (runtime · lib · app_key) are all empty. To apply to everything, write *. To delete this rule, use Remove."}
+	tRulesRefusedLede = T{
+		KO: "계층 파일과 세션 파일은 그대로이고, 적으신 값은 이 화면에 남아 있습니다. 아래 줄을 고친 뒤 「규칙 저장」을 누르십시오.",
+		EN: "The layer files and the session file are unchanged, and what you typed is still on this screen. Fix the rows below and use Save rules."}
 
 	tChanges          = T{KO: "변경", EN: "changes"}
 	tReasonNeeded     = T{KO: "근거를 적어야 하는 것", EN: "need a recorded reason"}

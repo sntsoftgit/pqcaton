@@ -5,6 +5,7 @@ package main
 
 import (
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -144,5 +145,103 @@ func TestScopeSaveDoesNotDropEditedRules(t *testing.T) {
 		if b, err := os.ReadFile(s.scope); err != nil || !strings.Contains(string(b), "typed-reviewer") {
 			t.Errorf("the session after Save rules does not hold the reviewer (%v)", err)
 		}
+	}
+}
+
+// IC-U224 — **02의 규칙은 「제거」로 표시한 것만 지워지고, 조건을 비운 규칙은 저장을 거절한다.** 세 규칙의 가운데 줄을
+// 「제거」하면 서버는 그 줄을 「삭제 예정」으로 다시 그릴 뿐 아무것도 쓰지 않고, 「되돌리기」는 원래 줄을 돌려준다.
+// 표시한 양식으로 「규칙 저장」을 누르면 앞뒤 두 규칙이 그 순서로 남고, 다시 연 화면에 두 줄이 있다. 기존 규칙의 조건
+// 세 칸을 비워 「규칙 저장」을 누르면 422이고 계층 파일과 세션 파일은 바이트까지 그대로이며, 화면은 그 줄로 가는 링크와
+// 적은 note · 승인자를 보인다. 조건 없이 exclude만 고른 새 줄도 422다. 기본값 그대로인 빈 새 줄은 버리고 저장한다.
+func TestScopeRulesAreRemovedOnlyByRemove(t *testing.T) {
+	s, _ := fullServer(t)
+	layer := s.layers[0]
+	three := "action,runtime,lib,app_key,note\n" +
+		"exclude,openssl,liba,/a,first\n" +
+		"include,jca,libb,/b,second\n" +
+		"exclude,cng,libc,/c,third\n"
+	if err := os.WriteFile(layer, []byte(three), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	open := func() url.Values { return formOf(get(t, s, ui.ScreenScope+"?lang=ko").Body.String()) }
+	form := open()
+	if form.Get("rule.0.1.was") == "" || form.Get("rule.0.2.lib") != "libc" {
+		t.Fatalf("the scope form does not carry the three existing rules: %v", form)
+	}
+
+	// 「제거」: 그 줄의 값을 실어 보내면 삭제 예정 줄이 온다. 파일은 그대로다.
+	q := url.Values{"layer": {"0"}, "i": {"1"}, "undo": {"0"}, "lang": {"ko"}}
+	for _, k := range []string{"action", "runtime", "lib", "app_key", "note", "was"} {
+		q.Set("rule.0.1."+k, form.Get("rule.0.1."+k))
+	}
+	marked := get(t, s, ui.RuleRemovePath+"?"+q.Encode())
+	if marked.Code != http.StatusOK || readFile(t, layer) != three {
+		t.Fatalf("Remove: status %d, or the layer file changed", marked.Code)
+	}
+	for _, want := range []string{`name="rule.0.1.remove" value="1"`, `name="rule.0.1.lib" value="libb"`, "삭제 예정", "되돌리기", `class="removing"`} {
+		if !strings.Contains(marked.Body.String(), want) {
+			t.Errorf("the marked row has no %s:\n%s", want, marked.Body.String())
+		}
+	}
+	q.Set("undo", "1")
+	if undone := get(t, s, ui.RuleRemovePath+"?"+q.Encode()).Body.String(); strings.Contains(undone, ".remove") || !strings.Contains(undone, `name="rule.0.1.lib" value="libb"`) {
+		t.Errorf("Undo does not give the row back:\n%s", undone)
+	}
+	for _, bad := range []string{"?layer=9&i=0", "?layer=0&i=-1", "?layer=x&i=0"} {
+		if w := get(t, s, ui.RuleRemovePath+bad); w.Code != http.StatusBadRequest {
+			t.Errorf("%s: status %d, want 400", bad, w.Code)
+		}
+	}
+
+	// 가운데 줄을 표시한 양식으로 「규칙 저장」.
+	form.Set("rule.0.1.remove", "1")
+	location(t, postFormLang(t, s, "/scope/rules", "ko", form))
+	two := "action,runtime,lib,app_key,note\nexclude,openssl,liba,/a,first\nexclude,cng,libc,/c,third\n"
+	if got := readFile(t, layer); got != two {
+		t.Fatalf("the layer file after removing the middle rule:\n%s", got)
+	}
+	form = open()
+	if form.Get("rule.0.0.lib") != "liba" || form.Get("rule.0.1.lib") != "libc" || form.Get("rule.0.2.action") != "" {
+		t.Fatalf("the reopened screen does not show the two remaining rules in order: %v", form)
+	}
+
+	// 기존 규칙의 조건 세 칸을 비운다(note는 남는다). 승인자도 함께 적는다.
+	session := readFile(t, s.scope)
+	form.Set("rule.0.1.runtime", "")
+	form.Set("rule.0.1.lib", "")
+	form.Set("rule.0.1.app_key", "")
+	form.Set("reviewer", "typed-reviewer")
+	w := postFormLang(t, s, "/scope/rules", "ko", form)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422\n%s", w.Code, w.Body.String())
+	}
+	if readFile(t, layer) != two || readFile(t, s.scope) != session {
+		t.Fatal("a file changed although Save rules was refused")
+	}
+	body := w.Body.String()
+	for _, want := range []string{
+		"저장하지 않았습니다", `href="#f-rule.0.1.runtime"`, `aria-invalid="true"`, "별표(*)를 적으십시오",
+		`name="rule.0.1.note" value="third"`, `name="rule.0.0.lib" value="liba"`, `name="reviewer" value="typed-reviewer"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the refused screen has no %s", want)
+		}
+	}
+	// 같은 양식을 「저장만」으로 보내도 쓰지 않는다.
+	if w := postFormLang(t, s, "/scope/save", "ko", form); w.Code != http.StatusUnprocessableEntity || readFile(t, s.scope) != session {
+		t.Errorf("Save only with an emptied rule: status %d, or the session changed", w.Code)
+	}
+
+	// 새 줄: 조건 없이 exclude만 고르면 422, 기본값 그대로면 버리고 저장한다.
+	form = open()
+	form.Set("rule.0.2.action", "exclude")
+	if w := postFormLang(t, s, "/scope/rules", "ko", form); w.Code != http.StatusUnprocessableEntity || readFile(t, layer) != two {
+		t.Errorf("a new row with exclude and no conditions: status %d, or the layer file changed", w.Code)
+	}
+	form.Set("rule.0.2.action", "include")
+	form.Set("rule.0.2.runtime", "")
+	location(t, postFormLang(t, s, "/scope/rules", "ko", form))
+	if got := readFile(t, layer); got != two {
+		t.Errorf("an unused new row changed the layer file:\n%s", got)
 	}
 }
