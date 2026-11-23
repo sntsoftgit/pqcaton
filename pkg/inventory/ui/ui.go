@@ -314,7 +314,7 @@ type DeclView struct {
 	// Nodes — 관리 대상 노드와, 그 노드에 선언한 자산.
 	Nodes []DeclNode
 	// Edges — 통신 엣지. 노드 둘을 잇는 것이라 노드 안에 넣지 않는다.
-	Edges []decl.Edge
+	Edges []DeclEdge
 	// Comment — 생성 도구가 남긴 머리말. 화면에 칸은 없지만 저장에서 사라지면 안 된다.
 	Comment string
 	// Unmatched — 관측에는 있는데 **어느 선언 노드에도 붙지 않은** 노드 이름.
@@ -324,6 +324,10 @@ type DeclView struct {
 	Unmatched []string
 	// Problems — 선언이 스스로 앞뒤가 안 맞는 자리(decl.Check). **막지는 않고 짚는다.**
 	Problems []DeclProblem
+	// Refused · FieldErrors — 방금 저장을 거절했고, 그 까닭이 된 칸들(declform.go). 이때 화면의 값은 파일이 아니라
+	// 사람이 적은 그대로다.
+	Refused     bool
+	FieldErrors []DeclFieldError
 }
 
 // DeclProblem — 선언 문제 하나. 어느 자리(노드 · 자산 · 엣지)의 어느 칸이, 무엇이 어긋났고 그대로 두면
@@ -375,6 +379,12 @@ func declProblemField(c decl.Code) T {
 type DeclNode struct {
 	Name string
 	IPs  []string
+	// Was — 파일에 있던 이름. **이 줄이 기존 노드라는 표시다**(양식의 숨은 칸 `node.was.N`). 새로 추가한 줄은 비어 있다.
+	// 기존 노드의 이름을 비우면 지운 것으로 읽지 않고 저장을 거절한다.
+	Was string
+	// Typed — 양식에서 읽은 줄이다. IP와 관측 이름 칸에 **적은 글자 그대로**(IPsTyped · SeenTyped) 되돌려 보인다.
+	Typed               bool
+	IPsTyped, SeenTyped string
 	// Assets — 그 노드에서 쓰인다고 선언한 암호 런타임과 컴포넌트.
 	Assets []DeclAsset
 	// ObservedAs — 관측이 이 노드를 부르는 이름. 호스트명이 이름과 같으면 비워 둔다.
@@ -391,11 +401,24 @@ type DeclNode struct {
 type DeclAsset struct {
 	Runtime   string
 	Component string
+	// Was — 파일에 있던 컴포넌트. 기존 자산이라는 표시다(`asset.N.M.was`). 관측 후보(Seen)에서는 비어 있다.
+	Was string
 }
 
 // IPText · ObservedAsText — 여러 값을 한 칸에 넣을 문자열.
-func (n DeclNode) IPText() string         { return strings.Join(n.IPs, ", ") }
-func (n DeclNode) ObservedAsText() string { return strings.Join(n.ObservedAs, ", ") }
+func (n DeclNode) IPText() string {
+	if n.Typed {
+		return n.IPsTyped
+	}
+	return strings.Join(n.IPs, ", ")
+}
+
+func (n DeclNode) ObservedAsText() string {
+	if n.Typed {
+		return n.SeenTyped
+	}
+	return strings.Join(n.ObservedAs, ", ")
+}
 
 // WithObserved — 관측된 자산을 노드마다 후보로 붙인다. 관측이 없으면(결과 디렉터리를
 // 주지 않았으면) 붙일 것이 없고, 화면은 그대로 손으로 적는 자리가 된다.
@@ -430,7 +453,7 @@ func (v DeclView) WithObserved(seen map[string][]DeclAsset, unmatched []string) 
 // 앞뒤가 안 맞는 자리(decl.Check)도 함께 옮긴다. 화면이 칸 단위로 짚는다(v0.23.0).
 func NewDeclView(d decl.Declaration, page Page) DeclView {
 	return DeclView{Page: page, Org: d.Org, Comment: d.Comment,
-		Nodes: groupByNode(d), Edges: d.Edges, Problems: declProblems(page.Lang, decl.Check(d))}
+		Nodes: groupByNode(d), Edges: declEdges(d.Edges), Problems: declProblems(page.Lang, decl.Check(d))}
 }
 
 // groupByNode — 파일의 세 목록(scope · nodes · assets)을 노드마다 한 덩어리로 묶는다.
@@ -453,7 +476,7 @@ func groupByNode(d decl.Declaration) []DeclNode {
 			return i
 		}
 		at[name] = len(out)
-		out = append(out, DeclNode{Name: name})
+		out = append(out, DeclNode{Name: name, Was: name})
 		return at[name]
 	}
 	// **스코프 순서를 앞세운다** — 사람이 관리 대상을 적은 차례가 그 사람의 순서다.
@@ -468,7 +491,7 @@ func groupByNode(d decl.Declaration) []DeclNode {
 	}
 	for _, a := range d.Assets {
 		if i := add(a.Node); i >= 0 {
-			out[i].Assets = append(out[i].Assets, DeclAsset{Runtime: a.Runtime, Component: a.Component})
+			out[i].Assets = append(out[i].Assets, DeclAsset{Runtime: a.Runtime, Component: a.Component, Was: strings.TrimSpace(a.Component)})
 		}
 	}
 	return out
@@ -482,61 +505,6 @@ func groupByNode(d decl.Declaration) []DeclNode {
 // node는 자산일 때만 쓴다 — 자산은 어느 노드의 것인지가 폼 이름에 들어간다.
 func RenderRow(w io.Writer, l Lang, kind string, node, i int) error {
 	return rowFragment(l, kind, node, i).Render(context.Background(), w)
-}
-
-// ApplyDecl — 폼에서 온 값으로 선언을 다시 만든다.
-//
-// **얹는 것이 아니라 다시 만든다.** 표에서 줄을 지우는 방법이 「이름을 비우는 것」이므로,
-// 기존 것에 얹으면 지운 줄이 되살아난다. `_comment`는 생성 도구가 남긴 머리말이라 그대로
-// 들고 간다 — 사람이 편집할 자리가 아니다.
-//
-// dropped — IP를 적지 않아 관리 대상에서 뺀 이름. 화면이 그 사실을 말해야 한다 —
-// 저장하면 그 줄이 표에서 사라지므로, 말하지 않으면 지워진 것으로 보인다.
-func ApplyDecl(prev decl.Declaration, f url.Values) (d decl.Declaration, dropped []string) {
-	d = decl.Declaration{Comment: prev.Comment, Org: strings.TrimSpace(f.Get("org"))}
-
-	// **IP를 적은 줄만 관리 대상이 된다.** IP가 없으면 관측에 찍힌 주소를 이 이름과
-	// 이을 근거가 없어, 선언한 엣지는 미관측으로 관측된 엣지는 UNDECLARED로 구분된다 —
-	// 대조가 막히지 않은 채로 틀린다. 이름만 적어 두는 것은 관리가 아니다.
-	//
-	// **자산은 그 노드에 묶여 있다.** 노드가 빠지면 그 노드의 자산도 함께 빠진다 —
-	// 어느 노드의 것인지 없는 자산은 대조할 자리가 없다.
-	for _, ni := range formRows(f, "node.name.", "") {
-		nm := strings.TrimSpace(f.Get("node.name." + strconv.Itoa(ni)))
-		if nm == "" {
-			continue // 이름을 비우면 지운 것이다
-		}
-		ips := splitList(f.Get("node.ips." + strconv.Itoa(ni)))
-		if len(ips) == 0 {
-			dropped = append(dropped, nm)
-			continue
-		}
-		d.Scope = append(d.Scope, nm)
-		d.Nodes = append(d.Nodes, decl.Node{Name: nm, IPs: ips,
-			ObservedAs: splitList(f.Get("node.seen." + strconv.Itoa(ni)))})
-		for _, i := range formRows(f, "asset."+strconv.Itoa(ni)+".", ".component") {
-			c := strings.TrimSpace(f.Get(assetField(ni, i, "component")))
-			if c == "" {
-				continue // 컴포넌트를 비우면 지운 줄이다
-			}
-			d.Assets = append(d.Assets, decl.Asset{Node: nm,
-				Runtime:   strings.TrimSpace(f.Get(assetField(ni, i, "runtime"))),
-				Component: c})
-		}
-	}
-	for _, i := range formRows(f, "edge.src.", "") {
-		src := strings.TrimSpace(f.Get("edge.src." + strconv.Itoa(i)))
-		dst := strings.TrimSpace(f.Get("edge.dst." + strconv.Itoa(i)))
-		if src == "" || dst == "" {
-			continue
-		}
-		port, _ := strconv.ParseUint(strings.TrimSpace(f.Get("edge.port."+strconv.Itoa(i))), 10, 32)
-		d.Edges = append(d.Edges, decl.Edge{
-			Src: src, Dst: dst, Port: uint32(port),
-			Proto: strings.TrimSpace(f.Get("edge.proto." + strconv.Itoa(i))),
-		})
-	}
-	return d, dropped
 }
 
 // formRows — 폼에 실제로 온 줄 번호를 차례대로.

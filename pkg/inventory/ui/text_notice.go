@@ -24,7 +24,6 @@ var noticeText = map[string]noticeSpec{
 	NoticeSigned:              {tSignedNotice, ""},
 	NoticeGenerated:           {tGeneratedNotice, "n"},
 	NoticeArchived:            {tArchivedNotice, "n"},
-	NoticeDeclDropped:         {tDeclDroppedNoIP, "n"},
 	NoticeDeclStillOff:        {tDeclStillOff, "n"},
 	NoticeFinalizedAlready:    {tFinalizedAlready, ""},
 	NoticeFinalizedSuperseded: {tFinalizedSuperseded, ""},

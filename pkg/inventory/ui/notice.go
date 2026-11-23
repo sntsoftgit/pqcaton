@@ -37,7 +37,6 @@ const (
 	NoticeRulesSaved          = "rules-saved"
 	NoticeSignatureCleared    = "signature-cleared"
 	NoticeDeclSaved           = "decl-saved"
-	NoticeDeclDropped         = "decl-dropped"
 	NoticeDeclStillOff        = "decl-still-off"
 	NoticeFinalizedAlready    = "finalized-already"
 	NoticeFinalizedSuperseded = "finalized-superseded"

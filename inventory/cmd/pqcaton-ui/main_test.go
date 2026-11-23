@@ -462,15 +462,11 @@ func TestDeclSaveRoundTrips(t *testing.T) {
 	}
 }
 
-// IC-U12 — **이름을 비우면 그 줄이 지워진다.** 표에서 줄을 없애는 유일한 방법이라, 얹기만
-// 하면 지운 줄이 되살아난다.
-func TestDeclBlankNameRemovesRow(t *testing.T) {
+// IC-U12 — **양식에 실려 오지 않은 줄이 지워진다.** 「제거」가 그 줄을 양식에서 빼므로, 얹기만 하면 지운 줄이
+// 되살아난다. 이름을 비운 줄은 지운 것으로 읽지 않는다(IC-U219).
+func TestDeclAbsentRowIsRemoved(t *testing.T) {
 	s, _ := withDecl(t)
-	location(t, postForm(t, s, "/decl/save", url.Values{
-		"org": {"acme"}, "scope": {"web-gw"},
-		"node.name.0": {""}, "node.ips.0": {"10.0.0.1"}, // 지운다
-		"asset.0.0.runtime": {"openssl"}, "asset.0.0.component": {"libssl"},
-	}))
+	location(t, postForm(t, s, "/decl/save", url.Values{"org": {"acme"}}))
 	d, err := decl.Load(s.decl)
 	if err != nil {
 		t.Fatal(err)

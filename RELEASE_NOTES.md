@@ -74,6 +74,58 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
+## v0.31.1: Fixes the 01 declaration saving an input mistake as a deleted node (2026-11-23)
+
+**Apache-2.0 conversion: 2030-11-23** (four years from the release date)
+
+**Goal**: fix a defect in saving the 01 declaration. No feature is added. The state format, the session and plan formats, the ruleset
+(`pqcota-enrich/v4`) and the pqcota used with it are the same as v0.31.0, so the workspace opens as it is.
+
+### What changes for the receiving side
+
+- **pqcota: v0.16.0** ([version table](docs/compatibility.md)). The same as v0.31.0.
+- **01 does not save when a field is missing or a value is malformed.** The response is 422 and the declaration file is byte-for-byte
+  unchanged. "Not saved" stands at the top of the screen with a link to each field, and what was typed stays on the screen. Fix the
+  fields and save again from that screen. These are refused:
+  - a node row whose name or IP is empty, whether it was emptied on an existing node or only one of the two was typed on a new row;
+  - an asset row whose component is empty (a new row only when a runtime was picked);
+  - an edge row whose sending or receiving side is empty;
+  - an IP that is not an address (a hostname, an address with a port), and a port that is not a number from 0 to 65535.
+- **A new row with nothing typed is still dropped.** To delete a node, an asset or an edge, use Remove (it asks first).
+- **A node without an IP is refused instead of being left out.** Since v0.15.0 a row without an IP was left out of the save with a
+  notice. If the declaration file already has a node without an IP (a hand-edited file), 01 shows that row, and saving needs its IP
+  filled in or the row removed with Remove.
+- **IPs are saved as typed.** IPv6 with an embedded IPv4 (`::ffff:10.0.0.1`) is accepted. A zone (`fe80::1%eth0`) is not.
+- **An empty port and `0` behave as before.** They are saved as 0 and pointed at with "the port is 0". A shared IP, a shared observed
+  name and a sending side that is not under management are saved and pointed at as before too.
+- **The browser stops the same things first.** The `pattern` and `required` of the fields come from the same expressions as the
+  server's check. A request that did not pass the browser's check is refused by the server.
+- The upgrade order is in [section 9 of the operator guide, "v0.31.0 to v0.31.1"](docs/operator-guide.md#v0310-to-v0311).
+
+### What was fixed
+
+- **Emptying a node's name on 01 and saving removed the node and its assets from the declaration. The defect had been there since
+  v0.6.0.** The form read a row with an empty name as a deleted row, and the help on the screen said so. Saving with the name field
+  emptied by mistake left out the node and its assets with no question and no notice; the result of the save showed only the smaller
+  counts. Emptying an asset's component or one end of an edge left that row out the same way. The assets of a node left out this way
+  came up as UNDECLARED in the next reconciliation.
+- **A port that is not a number was saved as 0 on 01. The defect had been there since v0.6.0.** A value that cannot be read, such as
+  `xyz`, was replaced with 0 and saved, and only "the port is 0" was shown. What was typed did not stay on the screen. An edge with
+  port 0 does not match an observed edge.
+- **Removing an existing node's last IP on 01 and saving left the node and its assets out of the declaration. This had been so since
+  v0.15.0.** Leaving a row without an IP out of management, with a notice, was intended then. But an existing node whose IP was removed
+  by mistake took the same path, and its assets went with it.
+- In all three cases what was left out affected only the declaration file. The judgment ledger and finalized plans were not changed.
+  Reconciliations and judgments after that were computed from the smaller declaration, so check on 01 that the node and asset counts
+  are what you expect.
+
+### What was built
+
+- New cases IC-UI61 to IC-UI64 and IC-U219 to IC-U221: an empty name, an empty IP, an empty component, an edge with one end, and a
+  malformed IP or port are refused and no declaration is built; the refused screen gives back what was typed and the node's assets, and
+  saving after fixing succeeds; the browser's `pattern` is the server's expression and does not disagree with `net.ParseIP`. IC-U12
+  and IC-UI27 measured the old behaviour, so their meaning was changed.
+
 ## v0.31.0: Takes in upstream pqcota v0.16.0 (2026-11-19)
 
 **Apache-2.0 conversion: 2030-11-19** (four years from the release date)

@@ -306,3 +306,10 @@ body.wb pre.run-log { max-height: 24rem; overflow: auto; white-space: pre-wrap; 
 body.wb .problems code { overflow-wrap: anywhere; }
 body.wb label.check { display: flex; gap: .4rem; align-items: center; margin: .5rem 0; }
 body.wb .run-start label, body.wb form > label { display: block; margin: .5rem 0; }
+
+/* 저장을 거절했을 때(01 선언). 상자는 본문 맨 위에 서고, 막은 칸에는 테를 두른다. 색만으로 알리지 않는다: 상자의 글과
+   칸의 aria-invalid · aria-describedby가 같은 것을 말한다. */
+.ui-next .problems.refused { border-color: var(--red); background: var(--red-soft); margin-top: 0; }
+.ui-next .problems.refused h2 { margin-top: 0; color: var(--red); }
+.ui-next .problems.refused:focus { outline: 2px solid var(--red); outline-offset: 2px; }
+body.wb input[aria-invalid="true"] { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-soft); }

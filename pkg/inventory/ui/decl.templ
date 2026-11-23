@@ -25,7 +25,7 @@ templ declForm(v DeclView) {
 			@tip(v.Page.Lang, tDeclScopeHint.In(v.Page.Lang)+" "+tDeclNodesHint.In(v.Page.Lang)+" "+tDeclAssetsHint.In(v.Page.Lang))
 			<div id={ rowsID(KindNode) }>
 				for i, n := range v.Nodes {
-					@nodeBlock(v.Page.Lang, i, n)
+					@nodeBlock(v.Page.Lang, i, n, v.fieldErrs())
 				}
 			</div>
 			@addRow(v.Page.Lang, KindNode, 0, len(v.Nodes), false)
@@ -46,7 +46,7 @@ templ declForm(v DeclView) {
 					</thead>
 					<tbody role="rowgroup" id={ rowsID(KindEdge) }>
 						for i, e := range v.Edges {
-							@edgeRow(v.Page.Lang, i, e.Src, e.Dst, portText(e.Port), e.Proto)
+							@edgeRow(v.Page.Lang, i, e, v.fieldErrs())
 						}
 					</tbody>
 				</table>
@@ -64,7 +64,7 @@ templ declForm(v DeclView) {
 // nodeBlock — 노드 한 대와 그 안의 자산. **자산을 노드 안에 둔다** — 「이 노드에서 이
 // 모듈이 쓰인다」가 자산이므로, 따로 둔 표에서는 노드 이름을 사람이 다시 적어야 했다.
 // 오타 하나면 선언은 있는데 아무 노드에도 붙지 않는 자산이 된다.
-templ nodeBlock(l Lang, i int, n DeclNode) {
+templ nodeBlock(l Lang, i int, n DeclNode, fe fieldErrs) {
 	<div class="node" id={ nodeBlockID(i) }>
 		<div class="table-wrap">
 			<table class="node-head editable" role="table">
@@ -78,8 +78,34 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 				</thead>
 				<tbody role="rowgroup">
 					<tr role="row">
-						<td role="cell" data-label={ tColName.In(l) }><input type="text" name={ "node.name." + strconv.Itoa(i) } value={ n.Name } aria-label={ rowLabel(l, tRowNode, i+1, tColName.In(l)) }/></td>
-						<td role="cell" data-label={ tColIP.In(l) }><input type="text" name={ "node.ips." + strconv.Itoa(i) } value={ n.IPText() } aria-label={ rowLabel(l, tRowNode, i+1, tColIP.In(l)) }/></td>
+						<td role="cell" data-label={ tColName.In(l) }>
+							// 기존 노드라는 표시. 이름을 비워 보내면 서버가 지운 것으로 읽지 않고 거절한다.
+							if n.Was != "" {
+								<input type="hidden" name={ "node.was." + strconv.Itoa(i) } value={ n.Was }/>
+							}
+							<input
+								type="text"
+								name={ "node.name." + strconv.Itoa(i) }
+								value={ n.Name }
+								aria-label={ rowLabel(l, tRowNode, i+1, tColName.In(l)) }
+								required?={ n.Was != "" }
+								data-need-scope=".node"
+								{ fieldAttrs(fe, "node.name." + strconv.Itoa(i))... }
+							/>
+						</td>
+						<td role="cell" data-label={ tColIP.In(l) }>
+							<input
+								type="text"
+								name={ "node.ips." + strconv.Itoa(i) }
+								value={ n.IPText() }
+								aria-label={ rowLabel(l, tRowNode, i+1, tColIP.In(l)) }
+								pattern={ IPListPattern }
+								title={ tFieldIPTitle.In(l) }
+								required?={ n.Was != "" }
+								data-need-scope=".node"
+								{ fieldAttrs(fe, "node.ips." + strconv.Itoa(i))... }
+							/>
+						</td>
 						<td role="cell" data-label={ tColObservedAs.In(l) }>
 							<input
 								type="text"
@@ -115,7 +141,7 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 					</thead>
 					<tbody role="rowgroup" id={ assetRowsID(i) }>
 						for j, a := range n.Assets {
-							@assetRow(l, i, j, a.Runtime, a.Component)
+							@assetRow(l, i, j, a, fe)
 						}
 					</tbody>
 				</table>
@@ -129,27 +155,44 @@ templ nodeBlock(l Lang, i int, n DeclNode) {
 //
 // **화면과 「행 추가」가 같은 조각을 쓴다.** 조각이 둘이면 이름이 어긋나는 날이 오고, 그러면
 // 새로 추가한 줄이 저장에서 빠져도 오류가 보고되지 않는다 — 폼 이름이 곧 저장 경로이기 때문이다.
-templ assetRow(l Lang, node, i int, runtime, component string) {
+templ assetRow(l Lang, node, i int, a DeclAsset, fe fieldErrs) {
 	{{ list := seenListID(node) }}
 	<tr role="row">
 		<td role="cell" data-label={ tColRuntime.In(l) }>
 			<select name={ assetField(node, i, "runtime") } aria-label={ assetLabel(l, node, i, tColRuntime.In(l)) }>
-				for _, rt := range runtimeOptions(runtime) {
-					<option value={ rt } selected?={ rt == runtime }>{ rt }</option>
+				for _, rt := range runtimeOptions(a.Runtime) {
+					<option value={ rt } selected?={ rt == a.Runtime }>{ rt }</option>
 				}
 			</select>
 		</td>
-		<td role="cell" data-label={ tColComponent.In(l) }><input type="text" name={ assetField(node, i, "component") } value={ component } placeholder="libssl" list={ list } aria-label={ assetLabel(l, node, i, tColComponent.In(l)) }/></td>
+		<td role="cell" data-label={ tColComponent.In(l) }>
+			if a.Was != "" {
+				<input type="hidden" name={ assetField(node, i, "was") } value={ a.Was }/>
+			}
+			<input
+				type="text"
+				name={ assetField(node, i, "component") }
+				value={ a.Component }
+				placeholder="libssl"
+				list={ list }
+				aria-label={ assetLabel(l, node, i, tColComponent.In(l)) }
+				required?={ a.Was != "" }
+				data-need-scope="tr"
+				{ fieldAttrs(fe, assetField(node, i, "component"))... }
+			/>
+		</td>
 		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveAssetAsk.In(l))</td>
 	</tr>
 }
 
-templ edgeRow(l Lang, i int, src, dst, port, proto string) {
+// edgeRow — 엣지 한 줄. 보내는 쪽과 받는 쪽은 그 줄에 무엇이든 적었으면 있어야 한다(app.js가 required를 건다. 서버도 같은
+// 것을 본다). 포트의 pattern은 서버가 쓰는 식과 같다.
+templ edgeRow(l Lang, i int, e DeclEdge, fe fieldErrs) {
 	<tr role="row">
-		<td role="cell" data-label={ tColSrc.In(l) }><input type="text" name={ "edge.src." + strconv.Itoa(i) } value={ src } aria-label={ rowLabel(l, tRowEdge, i+1, tColSrc.In(l)) }/></td>
-		<td role="cell" data-label={ tColDst.In(l) }><input type="text" name={ "edge.dst." + strconv.Itoa(i) } value={ dst } aria-label={ rowLabel(l, tRowEdge, i+1, tColDst.In(l)) }/></td>
-		<td role="cell" data-label={ tColPort.In(l) }><input type="text" name={ "edge.port." + strconv.Itoa(i) } value={ port } aria-label={ rowLabel(l, tRowEdge, i+1, tColPort.In(l)) }/></td>
-		<td role="cell" data-label={ tColProto.In(l) }><input type="text" name={ "edge.proto." + strconv.Itoa(i) } value={ proto } placeholder="TLS | SSH" aria-label={ rowLabel(l, tRowEdge, i+1, tColProto.In(l)) }/></td>
+		<td role="cell" data-label={ tColSrc.In(l) }><input type="text" name={ "edge.src." + strconv.Itoa(i) } value={ e.Src } aria-label={ rowLabel(l, tRowEdge, i+1, tColSrc.In(l)) } data-need-scope="tr" { fieldAttrs(fe, "edge.src." + strconv.Itoa(i))... }/></td>
+		<td role="cell" data-label={ tColDst.In(l) }><input type="text" name={ "edge.dst." + strconv.Itoa(i) } value={ e.Dst } aria-label={ rowLabel(l, tRowEdge, i+1, tColDst.In(l)) } data-need-scope="tr" { fieldAttrs(fe, "edge.dst." + strconv.Itoa(i))... }/></td>
+		<td role="cell" data-label={ tColPort.In(l) }><input type="text" name={ "edge.port." + strconv.Itoa(i) } value={ e.Port } aria-label={ rowLabel(l, tRowEdge, i+1, tColPort.In(l)) } inputmode="numeric" pattern={ PortPattern } title={ tFieldPortTitle.In(l) } { fieldAttrs(fe, "edge.port." + strconv.Itoa(i))... }/></td>
+		<td role="cell" data-label={ tColProto.In(l) }><input type="text" name={ "edge.proto." + strconv.Itoa(i) } value={ e.Proto } placeholder="TLS | SSH" aria-label={ rowLabel(l, tRowEdge, i+1, tColProto.In(l)) }/></td>
 		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveEdgeAsk.In(l))</td>
 	</tr>
 }
@@ -197,11 +240,11 @@ templ addRow(l Lang, kind string, node, next int, oob bool) {
 templ rowFragment(l Lang, kind string, node, i int) {
 	switch kind {
 		case KindNode:
-			@nodeBlock(l, i, DeclNode{})
+			@nodeBlock(l, i, DeclNode{}, nil)
 		case KindAsset:
-			@assetRow(l, node, i, "", "")
+			@assetRow(l, node, i, DeclAsset{}, nil)
 		case KindEdge:
-			@edgeRow(l, i, "", "", "", "")
+			@edgeRow(l, i, DeclEdge{}, nil)
 		case KindHost:
 			@hostRow(l, i, HostRow{})
 	}

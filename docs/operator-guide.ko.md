@@ -5,7 +5,7 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.31.0 기준입니다.
+이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.31.1 기준입니다.
 영어판은 [operator-guide.md](operator-guide.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
@@ -66,7 +66,7 @@ sudo의 입출력 기록만 봅니다. **sudo 밖의 감사 도구(auditd · tlo
 **화면 설치.** Go 1.26.11이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.1
 ```
 
 `pqcaton-ui -h`가 플래그 목록을 찍으면 설치된 것입니다. 도움말을 찍은 뒤 종료 코드 2로 끝나는 것은 정상입니다.
@@ -248,8 +248,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -264,7 +264,7 @@ journalctl --user -u pqcaton-ui.service
 화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -316,7 +316,7 @@ collectors/
 go.mod가 고정한 상류 판(이 판은 v0.16.0)의 자산만 받고, 받은 파일을 실행하지 않습니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.31.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.31.1
 pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.16.0
 pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
 ```
@@ -589,8 +589,9 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
 (미확정 · 확정됨 · 대체됨 · 복구 필요)도 적혀 있습니다.
 
 1. **01 선언.** 처음이면 조직 이름을 넣어 빈 선언을 만듭니다. 관리 대상 노드와 IP, 노드에서 쓰는 암호 자산, 통신 엣지를
-   적고 저장합니다. 앞뒤가 맞지 않는 자리(IP 형식 · 겹친 IP · 포트 0 같은 것)는 화면이 칸 단위로 짚습니다. 저장은 막지
-   않지만 그대로 두면 대조 결과가 오류 없이 틀립니다.
+   적고 저장합니다. 앞뒤가 맞지 않는 자리(겹친 IP · 포트 0 같은 것)는 화면이 칸 단위로 짚습니다. 저장은 막지
+   않지만 그대로 두면 대조 결과가 오류 없이 틀립니다. 이름이나 IP를 비운 줄, 주소가 아닌 IP, 숫자가 아닌 포트는 저장하지 않고 그
+   칸을 짚습니다. 적은 값은 화면에 남습니다. 노드나 자산을 지울 때는 「제거」를 누릅니다.
 2. **02 자산 스코프.** 처음이면 계층 이름을 넣어 빈 계층을 만듭니다. 규칙을 적고, 바뀐 규칙마다 결론을 적고, 서명해
    확정합니다. 확정하면 `asset-scope.csv`가 생깁니다.
 
@@ -874,6 +875,13 @@ pkill -INT -u "$USER" -x pqcaton-ui
 파일 내용은 없습니다.
 
 ## 9. 판 올리기
+
+### v0.31.0에서 v0.31.1로
+
+v0.31.1은 01 선언의 저장 결함(v0.6.0부터)을 고친 패치입니다. 상태 형식 · 세션 · 계획 형식 · 규칙 묶음과 함께 쓰는 pqcota가
+v0.31.0과 같아 작업 폴더를 그대로 엽니다. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다. 01은 이제 이름이나 IP가
+빈 노드를 저장하지 않습니다. 선언 파일에 IP 없는 노드가 이미 있으면(손으로 고친 파일) 01이 그 줄을 보여 주고, IP를 채우거나
+「제거」로 지워야 저장됩니다.
 
 ### v0.30.0에서 v0.31.0으로
 

@@ -72,3 +72,61 @@
 
   document.addEventListener("htmx:afterSettle", apply);
 })();
+
+// 선언 양식: 적다 만 줄과 오류 목록.
+//
+// 줄에 무엇이든 적었으면 그 줄의 이름과 IP(자산은 컴포넌트, 엣지는 보내는 쪽 · 받는 쪽)가 있어야 한다. 자산 줄의 런타임을
+// 기본값에서 바꾼 것도 적은 것으로 본다. 서버가 같은 것을 보고 저장을 거절하므로
+// (pkg/inventory/ui/declform.go), 여기서는 보내기 전에 브라우저가 그 칸을 짚게 required만 건다. 기존 줄의 required는
+// 서버가 그릴 때 이미 달려 있고 여기서 떼지 않는다. 아무것도 적지 않은 새 줄은 걸지 않는다(서버도 그 줄을 버린다).
+//
+// 오류 목록의 링크는 그 칸으로 포커스를 옮긴다. 스크립트가 막혀도 링크는 그 칸으로 간다.
+(function () {
+  "use strict";
+
+  function need(el) {
+    var scope = el.closest(el.getAttribute("data-need-scope"));
+    if (!scope) {
+      return;
+    }
+    if (el.getAttribute("data-need-kept") === null) {
+      el.setAttribute("data-need-kept", el.required ? "1" : "0");
+    }
+    var filled = el.getAttribute("data-need-kept") === "1";
+    var others = scope.querySelectorAll("input[type=text]");
+    for (var i = 0; i < others.length; i++) {
+      if (others[i] !== el && others[i].value.trim() !== "") {
+        filled = true;
+      }
+    }
+    var picked = scope.querySelectorAll("select");
+    for (var j = 0; j < picked.length; j++) {
+      if (picked[j].selectedIndex > 0) {
+        filled = true;
+      }
+    }
+    el.required = filled;
+  }
+
+  function needAll() {
+    var all = document.querySelectorAll("[data-need-scope]");
+    for (var i = 0; i < all.length; i++) {
+      need(all[i]);
+    }
+  }
+
+  document.addEventListener("input", needAll);
+  document.addEventListener("change", needAll);
+  document.addEventListener("htmx:afterSettle", needAll);
+  needAll();
+
+  document.addEventListener("click", function (evt) {
+    var a = evt.target.closest ? evt.target.closest("a[data-focus-field]") : null;
+    var to = a ? document.getElementById(a.getAttribute("href").slice(1)) : null;
+    if (to) {
+      evt.preventDefault();
+      to.focus();
+      to.scrollIntoView({ block: "center" });
+    }
+  });
+})();

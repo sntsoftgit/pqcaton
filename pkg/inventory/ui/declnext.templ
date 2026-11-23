@@ -16,6 +16,7 @@ templ declNextPage(v DeclView) {
 		// 스코프 없이 넣으면 옛 화면의 저장 버튼까지 함께 바뀐다. 옛 것을 그대로 두기로
 		// 했으므로 울타리를 친다.
 		<div class="ui-next">
+			@declRefused(v)
 			<p class="eyebrow">{ tNextDeclEyebrow.In(v.Page.Lang) }</p>
 			<h2>{ tNextDeclHead.In(v.Page.Lang) }</h2>
 			<p class="lede">{ tNextDeclLede.In(v.Page.Lang) }</p>
@@ -122,4 +123,22 @@ templ declNodeCard(v DeclView, i int, n DeclNode) {
 		<span class={ "tag", templ.KV("warn", warn) }>{ tag.In(v.Page.Lang) }</span>
 		<a class="quiet" href={ templ.SafeURL("#" + nodeBlockID(i)) }>{ tNextGoEdit.In(v.Page.Lang) }</a>
 	</article>
+}
+
+// declRefused — 저장을 거절한 까닭. **본문 맨 위에 두고 포커스를 여기 둔다**: 저장을 누른 사람이 「저장됐다」고 읽고 떠나지
+// 않게 한다. 줄마다 그 칸으로 가는 링크가 있고, 칸의 aria-describedby가 그 줄을 가리킨다.
+templ declRefused(v DeclView) {
+	if v.Refused {
+		<section class="problems refused" id="save-refused" role="alert" tabindex="-1" autofocus aria-labelledby="save-refused-head">
+			<h2 id="save-refused-head">{ tDeclRefusedHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tDeclRefusedLede.In(v.Page.Lang) }</p>
+			<ul>
+				for _, e := range v.FieldErrors {
+					<li id={ FieldErrID(e.Field) }>
+						<a href={ templ.SafeURL("#" + FieldID(e.Field)) } data-focus-field>{ e.Label(v.Page.Lang) }</a>: { e.Text(v.Page.Lang) }
+					</li>
+				}
+			</ul>
+		</section>
+	}
 }

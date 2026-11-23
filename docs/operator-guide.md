@@ -5,7 +5,7 @@ English · [한국어](operator-guide.ko.md)
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.31.0.
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.31.1.
 The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -70,7 +70,7 @@ When this section is done, the screen starts on this machine. Do 1 to 3 once; do
 **Installing the screen.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.1
 ```
 
 When `pqcaton-ui -h` prints the list of flags, it is installed. It ends with exit code 2 after printing the help, which is normal.
@@ -267,8 +267,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -284,7 +284,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.0/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -342,7 +342,7 @@ with the preparation tool `pqcaton-collectors`. It fetches only the assets of th
 version) and never runs what it downloads.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.31.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.31.1
 pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.16.0
 pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
 ```
@@ -640,8 +640,10 @@ required).
 
 1. **01 Declaration.** The first time, enter the organization name to create an empty declaration. Write the managed nodes
    and their IPs, the crypto assets used on each node, and the communication edges, and save. The screen points at the
-   fields that do not add up (an IP's format, a shared IP, port 0 and the like). Saving is not blocked, but left as is,
-   reconciliation is wrong without any error.
+   fields that do not add up (a shared IP, port 0 and the like). Saving is not blocked, but left as is,
+   reconciliation is wrong without any error. A row with its name or IP emptied, an IP that is not an address, and a port that is
+   not a number are not saved; the screen points at the field and keeps what you typed. To delete a node or an asset, use
+   Remove.
 2. **02 Asset scope.** The first time, enter a layer name to create an empty layer. Write the rules, a conclusion for each
    changed rule, sign, and finalize. Finalizing creates `asset-scope.csv`.
 
@@ -956,6 +958,14 @@ cut). Send the diagnostics file and the files you kept. The diagnostics file hol
 contents.
 
 ## 9. Upgrading
+
+### v0.31.0 to v0.31.1
+
+v0.31.1 is a patch that fixes a defect in saving the 01 declaration (there since v0.6.0). The state format, the session and plan
+formats, the ruleset and the pqcota used with it are the same as v0.31.0, so the workspace opens as it is. Stop the screen and replace
+the binary with the `go install` of [section 2](#2-installation). 01 no longer saves a node whose name or IP is empty. If the
+declaration file already has a node without an IP (a hand-edited file), 01 shows that row, and saving needs its IP filled in or the
+row removed with Remove.
 
 ### v0.30.0 to v0.31.0
 

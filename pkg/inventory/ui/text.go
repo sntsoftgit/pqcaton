@@ -46,9 +46,6 @@ var (
 	tDeclSaved = T{
 		KO: "선언을 저장했습니다. 노드 %d · 자산 %d · 엣지 %d",
 		EN: "Declaration saved — %d nodes · %d assets · %d edges"}
-	tDeclDroppedNoIP = T{
-		KO: " · IP를 적지 않은 노드 %d개는 관리 대상에서 뺐습니다",
-		EN: " · left out of management for having no IP: %d nodes"}
 	tDeclStillOff = T{
 		KO: " · 맞지 않는 자리 %d곳이 남아 있습니다",
 		EN: " · still not adding up: %d places"}
@@ -244,9 +241,9 @@ var (
 			"decided on the Asset scope tab."}
 	tDeclNodesHint = T{
 		KO: "IP는 <b>관측에 찍힌 주소를 이 이름과 잇는 근거</b>입니다. 한 노드가 망 둘에 " +
-			"걸치면 IP도 둘이니 쉼표나 공백으로 나눠 적으십시오. <b>IP를 적지 않은 줄은 " +
-			"관리 대상이 되지 않습니다</b>. 이을 근거가 없으면 대조 결과가 오류 없이 " +
-			"틀리기 때문입니다. 저장하면 그 줄은 표에서 사라집니다. 이름을 비워도 지워집니다.<br>" +
+			"걸치면 IP도 둘이니 쉼표나 공백으로 나눠 적으십시오. <b>이름이나 IP를 비운 줄은 " +
+			"저장하지 않습니다</b>. 이을 근거가 없으면 대조 결과가 오류 없이 " +
+			"틀리기 때문입니다. 그 칸을 채우십시오. 노드를 지우려면 「제거」를 누르십시오.<br>" +
 			"<b>「관측 이름」은 관측이 이 노드를 부르는 이름입니다.</b> 자산 대조는 노드 " +
 			"이름이 글자 그대로 같아야 맞는데, collector는 자기가 붙인 " +
 			"id(<code>node:1a2b…</code>)나 호스트명으로 보내는 일이 흔합니다. 이름이 서로 다르면 " +
@@ -255,9 +252,9 @@ var (
 			"그때는 저절로 이어집니다. 아직 어느 노드에도 붙지 않은 관측 이름은 " +
 			"이 칸에서 고를 수 있습니다.",
 		EN: "The IP is <b>what ties an observed address back to this name</b>. A node on two " +
-			"networks has two IPs — separate them with commas or spaces. <b>A row with no IP " +
-			"is not under management</b> — without that tie, reconciliation comes out wrong " +
-			"without erroring. Saving drops the row. Clearing the name drops it too.<br>" +
+			"networks has two IPs — separate them with commas or spaces. <b>A row with an empty " +
+			"name or IP is not saved</b> — without that tie, reconciliation comes out wrong " +
+			"without erroring. Fill the field in. To delete a node, use Remove.<br>" +
 			"<b>“Observed as” is what observation calls this node.</b> Asset reconciliation " +
 			"matches node names literally, but a collector often reports its own " +
 			"id (<code>node:1a2b…</code>) or a hostname. When the names diverge, <b>every asset " +
@@ -319,8 +316,39 @@ var (
 	// 선언 문제 목록(decl.Check). 막지 않고 짚는다.
 	tDeclProblemsHead = T{KO: "앞뒤가 맞지 않는 자리", EN: "Places that do not add up"}
 	tDeclProblemsLede = T{
-		KO: "저장은 막지 않습니다. 다만 그대로 두면 대조 결과가 오류 없이 틀리므로, 아래 칸을 고친 뒤 저장하십시오.",
-		EN: "Saving is not blocked. Left as is, though, reconciliation is wrong without any error, so fix these fields and save."}
+		KO: "형식이 틀린 값은 저장할 때 거절합니다. 그 밖의 자리는 저장을 막지 않지만, 그대로 두면 대조 결과가 오류 없이 틀리므로 아래 칸을 고친 뒤 저장하십시오.",
+		EN: "Malformed values are refused when you save. The other places do not block saving, but left as is, reconciliation is wrong without any error, so fix these fields and save."}
+	// 저장을 거절했을 때(declform.go). 무엇이 틀렸는지와 함께 **파일과 적은 값이 어떻게 됐는지**를 말한다.
+	tDeclRefusedHead = T{KO: "저장하지 않았습니다", EN: "Not saved"}
+	tDeclRefusedLede = T{
+		KO: "선언 파일은 그대로이고, 적으신 값은 이 화면에 남아 있습니다. 아래 칸을 고친 뒤 다시 저장하십시오.",
+		EN: "The declaration file is unchanged, and what you typed is still on this screen. Fix the fields below and save again."}
+	tFieldNameMissing = T{
+		KO: "이름이 비어 있습니다. 이 노드와 그 안의 암호 자산을 지우려면 「제거」를 누르십시오.",
+		EN: "The name is empty. To delete this node and the crypto assets inside it, use Remove."}
+	tFieldIPMissing = T{
+		KO: "IP가 비어 있습니다. 관측된 주소를 이 노드로 이으려면 IP가 있어야 합니다. 이 노드와 그 안의 암호 자산을 지우려면 「제거」를 누르십시오.",
+		EN: "The IP is empty. An IP is needed to link observed addresses to this node. To delete this node and the crypto assets inside it, use Remove."}
+	tFieldIPMalformed = T{
+		KO: "IP 주소가 아닙니다: %s. 주소만 적고, 여럿이면 쉼표나 공백으로 나눕니다. 호스트명과 포트는 적지 않습니다.",
+		EN: "Not an IP address: %s. Enter addresses only, separated by commas or spaces. Do not enter hostnames or ports."}
+	tFieldComponentMissing = T{
+		KO: "컴포넌트가 비어 있습니다. 이 자산을 지우려면 「제거」를 누르십시오.",
+		EN: "The component is empty. To delete this asset, use Remove."}
+	tFieldEdgeSrcMissing = T{
+		KO: "보내는 쪽이 비어 있습니다. 이 엣지를 지우려면 「제거」를 누르십시오.",
+		EN: "The sending side is empty. To delete this edge, use Remove."}
+	tFieldEdgeDstMissing = T{
+		KO: "받는 쪽이 비어 있습니다. 이 엣지를 지우려면 「제거」를 누르십시오.",
+		EN: "The receiving side is empty. To delete this edge, use Remove."}
+	tFieldPortMalformed = T{
+		KO: "포트가 아닙니다: %s. 0부터 65535까지의 숫자를 적습니다.",
+		EN: "Not a port: %s. Enter a number from 0 to 65535."}
+	// 칸의 title. 브라우저가 pattern에 맞지 않는 값을 막을 때 함께 보인다.
+	tFieldIPTitle = T{
+		KO: "IP 주소만 적습니다. 여럿이면 쉼표나 공백으로 나눕니다.",
+		EN: "IP addresses only, separated by commas or spaces."}
+	tFieldPortTitle = T{KO: "0부터 65535까지의 숫자", EN: "A number from 0 to 65535"}
 	tDeclProblemsIf = T{KO: "그대로 두면", EN: "If left as is"}
 
 	tColName = T{KO: "이름", EN: "Name"}

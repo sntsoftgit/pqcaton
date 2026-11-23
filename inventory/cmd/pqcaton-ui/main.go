@@ -29,6 +29,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -1520,6 +1521,9 @@ func (s *server) declRemove(w http.ResponseWriter, r *http.Request) {
 // 많아질 일이 없다. 많다면 파일을 만들어 넣을 일이다.
 const maxRows = 10000
 
+// errDeclForm: 선언 양식에 저장을 막는 칸이 있다. 저장소의 build가 이것을 돌려주면 아무것도 쓰이지 않는다.
+var errDeclForm = errors.New("the declaration form has fields that cannot be saved")
+
 func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 	back := ui.ScreenDecl
 	if s.decl == "" {
@@ -1530,8 +1534,8 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var (
-		d       decl.Declaration
-		dropped []string
+		d   decl.Declaration
+		bad []ui.DeclFieldError
 	)
 	id := store.Identity{Kind: kindDecl, Org: s.orgName(), SessionID: "declaration"}
 	err := s.st.SaveChecked(id, []string{s.decl}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
@@ -1539,26 +1543,50 @@ func (s *server) declSave(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil, err
 		}
-		d, dropped = ui.ApplyDecl(prev, r.PostForm)
+		// **틀린 칸이 하나라도 있으면 쓰지 않는다.** 이름이나 IP를 비운 줄을 지운 것으로, 숫자가 아닌 포트를 0으로 읽어
+		// 저장하지 않는다. rev는 이미 맞았으므로(이 build는 그 뒤에 불린다) 거절한 화면은 같은 rev로 다시 저장할 수 있다.
+		if d, bad = ui.ApplyDecl(prev, r.PostForm); len(bad) > 0 {
+			return nil, errDeclForm
+		}
 		b, err := decl.Encode(d)
 		return []store.Change{{Path: s.decl, Content: b}}, err
 	})
+	if errors.Is(err, errDeclForm) {
+		s.declRefused(w, r)
+		return
+	}
 	if err != nil {
 		s.fail(w, r, back, err, file(ui.PickLang(r), "declaration", s.decl))
 		return
 	}
 	s.adoptOrg(d.Org)
 	msg := []ui.Notice{ui.N(ui.NoticeDeclSaved, len(d.Nodes), len(d.Assets), len(d.Edges))}
-	// **뺀 줄은 알린다.** IP 없는 줄은 관리 대상이 아니라 저장에서 빠지는데, 표에서
-	// 사라진 것만 보이면 지워진 것으로 읽힌다.
-	if len(dropped) > 0 {
-		msg = append(msg, ui.N(ui.NoticeDeclDropped, len(dropped)))
-	}
 	// **저장은 됐지만 앞뒤가 안 맞으면 그 사실을 함께 알린다.** 막지는 않는다.
 	if p := decl.Check(d); len(p) > 0 {
 		msg = append(msg, ui.N(ui.NoticeDeclStillOff, len(p)))
 	}
 	redirect(w, r, back, msg, nil)
+}
+
+// declRefused — 저장을 거절한 선언 화면(422). **돌려보내지 않고 그 자리에서 그린다**: 돌려보내면 화면이 파일에서 다시
+// 그려져 사람이 적은 값이 사라진다. 양식의 값은 요청에 실려 온 그대로이고, 절차 카드와 관측 후보만 파일에서 읽는다.
+// 파일은 바뀌지 않았으므로 요청이 들고 온 rev를 그대로 싣는다.
+func (s *server) declRefused(w http.ResponseWriter, r *http.Request) {
+	wd := s.load()
+	page := s.nextPage(r, ui.ScreenDecl, s.decl, s.steps(wd))
+	if wd.declErr == nil {
+		page.Org = wd.decl.OrgOrDefault()
+	}
+	page.Rev = r.PostForm.Get(ui.RevField)
+	v := ui.NewDeclFormView(r.PostForm, page).WithObserved(wd.seen, wd.unmatched)
+	var buf bytes.Buffer
+	if err := ui.RenderDecl(&buf, v); err != nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, fmt.Errorf("rendering: %w", err))
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	_, _ = w.Write(buf.Bytes())
 }
 
 // health: 이 화면의 상태 디렉토리 ID. 실행기가 낡은 주소나 다른 화면을 열지 않게 견주는 값이다. 보기 전용

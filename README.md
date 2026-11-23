@@ -82,7 +82,7 @@ attestations of the official collectors).
 
 ```bash
 mkdir pqcaton-demo && cd pqcaton-demo
-git clone --branch v0.31.0 https://github.com/sntsoftgit/pqcaton
+git clone --branch v0.31.1 https://github.com/sntsoftgit/pqcaton
 for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.16.0 https://github.com/randyinthedev-hash/$r; done
 cd pqcaton/demo
 ```
@@ -97,7 +97,7 @@ You do not need to clone and build the pqcota repositories separately. The comma
 the screen, the history database above must be ready.
 
 ```bash
-git clone --branch v0.31.0 https://github.com/sntsoftgit/pqcaton
+git clone --branch v0.31.1 https://github.com/sntsoftgit/pqcaton
 cd pqcaton
 go build -o bin/ ./inventory/cmd/...
 ./bin/pqcaton-ui -h

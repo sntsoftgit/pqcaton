@@ -812,37 +812,34 @@ func TestDeclMergesScopeAndAddressesIntoOneTable(t *testing.T) {
 	}
 }
 
-// IC-UI27 — **IP를 적은 줄만 관리 대상이 된다.**
+// IC-UI27 — **IP가 없는 노드는 저장하지 않는다.**
 //
-// IP가 없으면 관측에 찍힌 주소를 이 이름과 이을 근거가 없습니다. 그런 이름을 관리
-// 대상에 넣어 두면 선언한 엣지는 미관측으로, 관측된 엣지는 UNDECLARED로 구분됩니다 —
-// 막히지 않으니 눈으로는 알 수 없습니다. 그래서 저장에서 뺍니다. 다만 **뺀 것은
-// 말해야 합니다** — 표에서 사라진 것만 보이면 지워진 것으로 읽힙니다.
-func TestApplyDeclDerivesScopeFromTheTable(t *testing.T) {
-	got, dropped := ui.ApplyDecl(decl.Declaration{}, url.Values{
+// IP가 없으면 관측에 찍힌 주소를 이 이름과 이을 근거가 없습니다. 예전에는 그런 줄을 저장에서 빼고 알렸는데,
+// 그러면 마지막 IP를 실수로 지운 기존 노드와 그 자산이 함께 빠졌습니다. 이제 IP 칸을 짚고 선언을 만들지
+// 않습니다. 아무것도 적지 않은 새 줄만 버립니다.
+func TestApplyDeclRefusesANodeWithoutAnIP(t *testing.T) {
+	_, bad := ui.ApplyDecl(decl.Declaration{}, url.Values{
 		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},
-		"node.name.1": {"db"}, "node.ips.1": {""}, // IP를 모르면 관리 대상이 아니다
-		"node.name.2": {""}, "node.ips.2": {"10.0.0.9"}, // 이름이 없으면 지운 줄이다
+		"node.name.1": {"db"}, "node.ips.1": {" "}, // 새 줄에 이름만 적었다
+		"node.name.2": {""}, "node.ips.2": {""}, // 쓰지 않은 새 줄은 버린다
+		"node.was.3": {"cache"}, "node.name.3": {"cache"}, "node.ips.3": {""}, // 기존 노드의 마지막 IP를 지웠다
+		"asset.3.0.was": {"libssl"}, "asset.3.0.runtime": {"openssl"}, "asset.3.0.component": {"libssl"},
 	})
-	if strings.Join(got.Scope, ",") != "web" {
-		t.Fatalf("관리 대상이 다르다: %v", got.Scope)
+	if got := codes(bad); got != "node.ips.1=ip-missing node.ips.2=ip-missing" {
+		t.Fatalf("막은 칸이 다르다: %q", got)
 	}
-	if len(got.Nodes) != 1 || got.Nodes[0].Name != "web" {
-		t.Fatalf("주소 표에 IP 없는 줄이 들어갔다: %+v", got.Nodes)
-	}
-	if strings.Join(dropped, ",") != "db" {
-		t.Fatalf("뺀 이름을 말하지 않는다: %v", dropped)
-	}
-	// 한 바퀴 돌려도 같은 표가 나온다 — 뺀 이름은 파일에 없으므로 표에도 없다.
-	back := ui.NewDeclView(got, ui.Page{Lang: ui.KO}).Nodes
-	if len(back) != 1 || back[0].Name != "web" {
-		t.Fatalf("다시 그리면 달라진다: %+v", back)
+	got, bad := ui.ApplyDecl(decl.Declaration{}, url.Values{
+		"node.name.0": {"web"}, "node.ips.0": {"10.0.0.1"},
+		"node.name.2": {""}, "node.ips.2": {""},
+	})
+	if len(bad) != 0 || strings.Join(got.Scope, ",") != "web" || len(got.Nodes) != 1 {
+		t.Fatalf("쓰지 않은 새 줄: 막은 칸 %q, 선언 %+v", codes(bad), got)
 	}
 }
 
 // IC-UI30 — **손으로 고친 파일의 IP 없는 이름은 표에 올린다.**
 //
-// 저장하면 빠지지만, 화면에서 지워 버리면 IP를 채워 넣을 자리조차 없어집니다.
+// 그 줄은 IP를 채우거나 「제거」해야 저장됩니다(IC-UI27). 화면에서 지워 버리면 IP를 채워 넣을 자리조차 없어집니다.
 func TestScopeOnlyNameStillShowsForFixing(t *testing.T) {
 	v := ui.NewDeclView(decl.Declaration{Scope: []string{"web", "db"},
 		Nodes: []decl.Node{{Name: "web", IPs: []string{"10.0.0.1"}}}}, ui.Page{Lang: ui.KO})
