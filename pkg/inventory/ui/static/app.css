@@ -200,7 +200,10 @@ body.wb .hero p { margin: 7px 0 0; color: var(--muted); }
    갈라졌다. 상한보다 긴 경로만 그 안에서 줄을 바꾼다. */
 body.wb .source { color: var(--muted); font-size: .85rem; text-align: right;
                   overflow-wrap: anywhere; flex: 0 0 auto; max-width: min(34rem, 45%); }
-body.wb .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+/* 절차 카드 여섯과 조회 탭. **넓은 화면에서는 01~06이 한 줄에 차례대로 서고 조회 탭이 그 끝에 붙는다.** 예전 격자는
+   카드 넷을 기준으로 잡혀 있어서, 단계가 여섯이 된 뒤로 05가 좁은 끝 칸에 끼고 06과 조회 탭이 둘째 줄로 밀렸다.
+   1100px 이하에서는 세 칸 두 줄(01~03 · 04~06)이고 조회 탭이 그 아래 한 줄을 다 쓴다. 650px 이하는 한 칸이다. */
+body.wb .steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
                  gap: 8px; margin: 0 0 24px; }
 body.wb .step { min-height: 68px; display: flex; align-items: center; gap: 10px;
                 text-align: left; border: 1px solid var(--line); border-radius: 11px;
@@ -222,16 +225,13 @@ body.wb .dot.danger { background: var(--red); }
 body.wb .dot.ok { background: var(--green); }
 
 @media (max-width: 980px) {
-  body.wb .steps { grid-template-columns: repeat(2, 1fr); }
   body.wb .topbar, body.wb .hero { align-items: start; flex-direction: column; }
   body.wb .source { text-align: left; max-width: 100%; }
 }
 @media (max-width: 650px) {
   body.wb { padding: 0 16px 40px; }
-  body.wb .steps { grid-template-columns: 1fr; }
 }
 /* 조회 탭. 절차 카드 옆에 붙되 번호가 없어서 좁다. **단계로 읽히면 안 된다.** */
-body.wb .steps { grid-template-columns: repeat(4, minmax(0, 1fr)) auto; }
 body.wb .inventory-tab { min-height: 68px; display: flex; align-items: center;
                          justify-content: center; white-space: nowrap;
                          border: 1px solid var(--line); border-radius: 11px;
@@ -240,13 +240,12 @@ body.wb .inventory-tab { min-height: 68px; display: flex; align-items: center;
 body.wb .inventory-tab:hover { border-color: var(--blue); }
 body.wb .inventory-tab.active { color: var(--navy); border-color: var(--blue);
                                 box-shadow: 0 0 0 3px var(--blue-soft); }
-@media (max-width: 980px) {
-  body.wb .steps { grid-template-columns: repeat(2, 1fr); }
-  body.wb .inventory-tab { grid-column: span 2; }
+@media (max-width: 1100px) {
+  body.wb .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.wb .inventory-tab { grid-column: 1 / -1; min-height: 44px; }
 }
 @media (max-width: 650px) {
   body.wb .steps { grid-template-columns: 1fr; }
-  body.wb .inventory-tab { grid-column: auto; }
 }
 
 /* ── 표와 좁은 화면(v0.22.0) ────────────────────────────────────────────────
@@ -325,3 +324,18 @@ body.wb .actions .unsaved:empty { display: none; }
 /* 02 규칙 줄의 「삭제 예정」. 줄은 남기고 흐리게 긋는다. 색만으로 알리지 않는다: 줄 끝에 「삭제 예정」이라고 적는다. */
 body.wb tr.removing input[type=text], body.wb tr.removing select { text-decoration: line-through; opacity: .55; }
 body.wb .removing-note { color: var(--amber); font-size: .85rem; font-weight: 600; margin-right: .4rem; }
+
+/* 03 접근 정보 표의 SSH 키 경로 칸. 다른 열이 폭을 다 가져가 1280px에서 29px로 눌려 경로가 두 글자만 보였다. 이 칸에
+   최소 폭을 주고(모자라면 표가 상자 안에서 옆으로 스크롤된다) 다른 열을 줄였다. 좁은 화면의 카드 모양에서는 한 줄을 다
+   쓴다. */
+body.wb table.editable input.wide { min-width: 14rem; }
+/* 포커스가 가면 긴 경로가 한눈에 들어오게 넓힌다. 왼쪽 열은 그대로이고 오른쪽 열이 상자 안에서 밀린다. 포커스가 떠나면
+   돌아온다. 전체 경로는 title로도 볼 수 있다. */
+body.wb table.editable input.wide:focus { min-width: min(38rem, 70vw); }
+/* 넓어진 만큼 표를 늘린다. 늘리지 않으면 표가 제 폭 안에서 다른 열을 두 글자 폭까지 누른다. 늘어난 표는 상자
+   (.table-wrap) 안에서 옆으로 스크롤된다. */
+body.wb table.editable:has(input.wide:focus) { min-width: calc(100% + 18rem); }
+@media (max-width: 650px) {
+  body.wb table.editable input.wide, body.wb table.editable input.wide:focus { min-width: 0; }
+  body.wb table.editable:has(input.wide:focus) { min-width: 0; }
+}

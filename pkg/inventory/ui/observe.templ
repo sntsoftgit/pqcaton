@@ -156,16 +156,16 @@ templ hostsForm(v ObserveView) {
 				<table class="editable" role="table">
 					<thead role="rowgroup">
 						<tr role="row">
-							<th role="columnheader" style="width:9rem">{ tColNodeID.In(v.Page.Lang) }</th>
-							<th role="columnheader" style="width:10rem">{ tColName.In(v.Page.Lang) }</th>
-							<th role="columnheader" style="width:9rem">{ tColIP.In(v.Page.Lang) }</th>
-							<th role="columnheader" style="width:5rem">{ tColPort.In(v.Page.Lang) }</th>
-							<th role="columnheader" style="width:7rem">{ tColUser.In(v.Page.Lang) }</th>
-							<th role="columnheader">{ tColKey.In(v.Page.Lang) }</th>
-							<th role="columnheader" style="width:7rem">{ tColOS.In(v.Page.Lang) }</th>
-							<th role="columnheader" style="width:7rem">{ tColConn.In(v.Page.Lang) }</th>
-							<th role="columnheader" style="width:6rem">{ tColPass.In(v.Page.Lang) }</th>
-							<th role="columnheader" style="width:5rem"></th>
+							<th role="columnheader" style="width:6.5rem">{ tColNodeID.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:7.5rem">{ tColName.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:7.5rem">{ tColIP.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:4.5rem">{ tColPort.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:5.5rem">{ tColUser.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:28%">{ tColKey.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:6rem">{ tColOS.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:5.5rem">{ tColConn.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:4.5rem">{ tColPass.In(v.Page.Lang) }</th>
+							<th role="columnheader" style="width:4rem"></th>
 						</tr>
 					</thead>
 					<tbody role="rowgroup" id={ rowsID(KindHost) }>
@@ -197,7 +197,7 @@ templ hostRow(l Lang, i int, h HostRow) {
 		<td role="cell" data-label={ tColIP.In(l) }><input type="text" name={ "host.ip." + n } value={ h.IP } aria-label={ rowLabel(l, tRowHost, i+1, tColIP.In(l)) }/></td>
 		<td role="cell" data-label={ tColPort.In(l) }><input type="number" min="1" max="65535" name={ "host.port." + n } value={ h.Port } aria-label={ rowLabel(l, tRowHost, i+1, tColPort.In(l)) }/></td>
 		<td role="cell" data-label={ tColUser.In(l) }><input type="text" name={ "host.user." + n } value={ h.User } aria-label={ rowLabel(l, tRowHost, i+1, tColUser.In(l)) }/></td>
-		<td role="cell" data-label={ tColKey.In(l) }><input type="text" name={ "host.key." + n } value={ h.Key } placeholder="~/.ssh/id_ed25519" aria-label={ rowLabel(l, tRowHost, i+1, tColKey.In(l)) }/></td>
+		<td role="cell" data-label={ tColKey.In(l) }><input type="text" class="wide" name={ "host.key." + n } value={ h.Key } title={ h.Key } placeholder="~/.ssh/id_ed25519" aria-label={ rowLabel(l, tRowHost, i+1, tColKey.In(l)) }/></td>
 		<td role="cell" data-label={ tColOS.In(l) }>
 			<select name={ "host.os." + n } aria-label={ rowLabel(l, tRowHost, i+1, tColOS.In(l)) }>
 				<option value="linux" selected?={ h.OS != "windows" }>Linux</option>

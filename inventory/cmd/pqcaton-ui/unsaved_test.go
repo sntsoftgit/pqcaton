@@ -245,3 +245,30 @@ func TestScopeRulesAreRemovedOnlyByRemove(t *testing.T) {
 		t.Errorf("an unused new row changed the layer file:\n%s", got)
 	}
 }
+
+// IC-UI68 — **절차 카드 여섯이 한 줄에 서는 격자와, 03의 SSH 키 경로 칸의 최소 폭이 실려 나간다.** 격자는 카드 여섯에
+// 조회 탭 하나(`repeat(6, …) auto`)이고, 좁아지면 세 칸, 더 좁아지면 한 칸이다. 예전의 네 칸 격자는 남아 있지 않다.
+// 키 경로 칸은 `wide`이고(포커스가 가면 더 넓어진다) 전체 경로를 title로도 든다. 실제 배치는 브라우저에서 1280px · 375px로 확인한다.
+func TestStepGridAndKeyPathWidthShip(t *testing.T) {
+	s, _ := fullServer(t)
+	css := get(t, s, ui.StaticPath+"app.css").Body.String()
+	if !regexp.MustCompile(`body\.wb \.steps\s*\{[^}]*grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) auto`).MatchString(css) {
+		t.Error("app.css does not lay the six step cards and the inventory tab on one row")
+	}
+	if strings.Contains(css, "repeat(4, minmax(0, 1fr))") || strings.Contains(css, "repeat(2, 1fr)") {
+		t.Error("app.css still has the grid made for four step cards")
+	}
+	if !regexp.MustCompile(`(?s)@media \(max-width: 1100px\) \{.*?\.steps \{ grid-template-columns: repeat\(3,`).MatchString(css) ||
+		!regexp.MustCompile(`input\.wide\s*\{\s*min-width:\s*14rem`).MatchString(css) ||
+		!regexp.MustCompile(`input\.wide:focus\s*\{\s*min-width:\s*min\(38rem`).MatchString(css) {
+		t.Error("app.css has no three-column step grid for narrower screens, or no minimum width for the key path field")
+	}
+	body := get(t, s, ui.ScreenObserve+"?lang=en").Body.String()
+	key := regexp.MustCompile(`<input[^>]*name="host\.key\.0"[^>]*>`).FindString(body)
+	if !strings.Contains(key, `class="wide"`) || !strings.Contains(key, `title="/home/me/.ssh/id_ed25519"`) {
+		t.Errorf("the key path field is not wide or does not carry the full path as its title:\n%s", key)
+	}
+	if n := len(cards(t, body)); n != 6 {
+		t.Errorf("%d step cards, want 6", n)
+	}
+}
