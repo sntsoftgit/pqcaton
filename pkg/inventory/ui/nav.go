@@ -175,6 +175,10 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 
 // observeState — 관측 카드의 한 줄. 접근 정보가 없으면 관측을 시작할 수 없다.
 func observeState(l Lang, s ObserveSummary) (string, string) {
+	// 도는 동안에는 어느 화면에서든 카드가 그것을 말한다. 다른 화면을 보다가 돌아올 곳을 알 수 있어야 한다.
+	if s.Running {
+		return tStepObserveRunning.In(l), "warn"
+	}
 	if s.Hosts == 0 {
 		return tStepObserveNoHosts.In(l), "warn"
 	}

@@ -94,8 +94,32 @@ func (s *server) runStatusFragment(w http.ResponseWriter, r *http.Request) {
 		notFound(w, r)
 		return
 	}
+	st := s.run.status()
+	// 도는 동안에는 요약과 로그 조각만 따로 다시 받는다(중지 버튼이 갈리지 않게). 요청이 실어 온 상태와 지금 상태가 같을
+	// 때만 그 조각을 준다. 달라졌으면 요약 조각의 응답이 상자 전체를 갈아 끼우거나(마무리 중이 됐다) 화면을 새로 받게
+	// 하고(끝났다), 로그 조각은 아무것도 바꾸지 않는다(204).
+	if part := r.URL.Query().Get(ui.RunPartParam); part == ui.RunPartLive || part == ui.RunPartLog {
+		same := st != nil && !st.Over() && string(st.State) == r.URL.Query().Get(ui.RunStateParam)
+		switch {
+		case same:
+			html(w, r, func(out io.Writer) error { return ui.RenderRunPart(out, ui.PickLang(r), part, st) })
+			return
+		case part == ui.RunPartLog:
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		// 실행이 끝났으면 화면을 통째로 새로 받게 한다. 이 상자 밖에도 달라지는 것이 있다: 03 카드의 「관측 중」이 걷히고
+		// 「관측 시작」 양식이 다시 나온다. 조각만 갈면 새로 고칠 때까지 카드는 「관측 중」으로 남는다.
+		if st == nil || st.Over() {
+			w.Header().Set("HX-Refresh", "true")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("HX-Retarget", "#run-status")
+		w.Header().Set("HX-Reswap", "outerHTML")
+	}
 	html(w, r, func(out io.Writer) error {
-		return ui.RenderRunStatus(out, ui.PickLang(r), csrfToken(r), s.run.status())
+		return ui.RenderRunStatus(out, ui.PickLang(r), csrfToken(r), st)
 	})
 }
 

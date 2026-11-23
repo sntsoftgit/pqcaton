@@ -239,6 +239,8 @@ type RunStatus struct {
 	StuckWhy string
 	// StuckProcs — Stuck 을 남길 때 찾은 PID와 시작 시각. 지금 상태는 시작 전 점검(RunStuckItem)의 Procs 가 보인다.
 	StuckProcs []ProcRecord
+	// Nodes — 이 실행의 노드(로그에 찍히는 별칭과 노드 ID). 노드별 진행의 근거를 로그에서 찾는 데 쓴다(runprogress.go).
+	Nodes []RunNode
 }
 
 // ProcRecord — 「회수 필요」로 남긴 프로세스 하나(찾을 때의 PID와 시작 시각).
@@ -283,7 +285,7 @@ func (s RunStatus) StagingPaths() string {
 func (s RunStatus) Text(l Lang) string {
 	switch s.State {
 	case RunRunning:
-		return tRunRunning.F(l, s.Started.Format("15:04:05"))
+		return tRunRunning.F(l, s.StartedText())
 	case RunDone:
 		return tRunDone.F(l, s.Received)
 	case RunStopped:
@@ -303,6 +305,8 @@ func (s RunStatus) Text(l Lang) string {
 // ObserveSummary — 관측 카드에 적을 것.
 type ObserveSummary struct {
 	Hosts int
+	// Running — 관측이 돌고 있거나 마무리하는 중이다. 카드에 「관측 중」을 적는다.
+	Running bool
 }
 
 // Summary — 카드의 숫자.
@@ -431,6 +435,22 @@ func EncodeHosts(hosts []inventory.Host) ([]byte, error) {
 // RenderRunStatus — 관측 실행 상태 조각. 화면이 돌고 있는 동안 몇 초마다 다시 받는다.
 func RenderRunStatus(w io.Writer, l Lang, csrf string, st *RunStatus) error {
 	return runStatus(l, csrf, st).Render(context.Background(), w)
+}
+
+// 실행 상태에서 따로 다시 받는 두 조각과, 그 요청이 싣는 것(runStatus).
+const (
+	RunPartParam  = "part"
+	RunStateParam = "state"
+	RunPartLive   = "live"
+	RunPartLog    = "log"
+)
+
+// RenderRunPart — 도는 동안 다시 받는 조각 하나(요약 또는 로그).
+func RenderRunPart(w io.Writer, l Lang, part string, st *RunStatus) error {
+	if part == RunPartLog {
+		return runLogLive(l, st).Render(context.Background(), w)
+	}
+	return runLive(l, st).Render(context.Background(), w)
 }
 
 // RenderObserve — 03 관측 화면.

@@ -162,6 +162,15 @@ type runSlot struct {
 	OS    string `json:"os"`
 }
 
+// runNodes: 화면이 로그의 별칭을 노드 ID로 읽을 수 있게 실행의 노드를 넘긴다.
+func runNodes(slots []runSlot) []ui.RunNode {
+	out := make([]ui.RunNode, 0, len(slots))
+	for _, sl := range slots {
+		out = append(out, ui.RunNode{Alias: sl.Alias, Node: sl.Node})
+	}
+	return out
+}
+
 // status: 화면에 보일 것. 잠금 안에서 복사해 내보낸다.
 func (r *runner) status() *ui.RunStatus {
 	r.mu.Lock()
@@ -195,7 +204,7 @@ func (r *runner) status() *ui.RunStatus {
 	}
 	return &ui.RunStatus{ID: m.ID, State: m.State, Started: m.Started, Ended: m.Ended, Received: m.Received,
 		Exit: m.Exit, Window: m.Window, Dropped: j.dropped, Missing: m.Missing, NodeCleanup: m.NodeCleanup, Stuck: m.Stuck,
-		StuckWhy: m.StuckWhy, StuckProcs: procRecords(m.StuckProcs),
+		StuckWhy: m.StuckWhy, StuckProcs: procRecords(m.StuckProcs), Nodes: runNodes(m.Nodes),
 		Log: strings.Join(j.log, "\n")}
 }
 

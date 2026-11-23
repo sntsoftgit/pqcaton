@@ -274,3 +274,29 @@
     sync(all[i]);
   }
 })();
+
+// 다시 받는 조각 안의 펼침 상태를 지킨다(03의 상세 로그).
+//
+// 관측이 도는 동안 실행 상태 조각은 2초마다 통째로 갈린다. 그대로 두면 펼쳐 둔 상세 로그가 그때마다 접힌다. 갈기 전에
+// 펼쳐져 있던 것(details[data-keep-open])을 기억했다가 간 뒤에 다시 편다. 사람이 접으면 접힌 채로 둔다.
+(function () {
+  "use strict";
+
+  var open = {};
+
+  document.addEventListener("toggle", function (evt) {
+    var key = evt.target.getAttribute && evt.target.getAttribute("data-keep-open");
+    if (key) {
+      open[key] = evt.target.open;
+    }
+  }, true);
+
+  document.addEventListener("htmx:afterSettle", function () {
+    var all = document.querySelectorAll("details[data-keep-open]");
+    for (var i = 0; i < all.length; i++) {
+      if (open[all[i].getAttribute("data-keep-open")]) {
+        all[i].open = true;
+      }
+    }
+  });
+})();

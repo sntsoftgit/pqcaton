@@ -5,11 +5,13 @@ package main
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
@@ -297,8 +299,8 @@ func TestJudgmentChoicesSurviveASave(t *testing.T) {
 	hooks := regexp.MustCompile(`<tr[^>]*data-l3-for="level:` + regexp.QuoteMeta(id) + `"[^>]*>`)
 	kept := regexp.MustCompile(`<tr[^>]*data-l3-kept-for="level:` + regexp.QuoteMeta(id) + `"[^>]*>`)
 	for _, c := range []struct{ lang, name string }{
-		{"ko", "provider 추가와 설정 (provider_inject)"},
-		{"en", "Add a provider and config (provider_inject)"},
+		{"ko", "프로바이더 추가 및 설정 (provider_inject)"},
+		{"en", "Add and configure a provider (provider_inject)"},
 	} {
 		body := get(t, s, ui.ScreenReview+"?lang="+c.lang).Body.String()
 		for _, want := range []string{
@@ -338,5 +340,105 @@ func TestJudgmentChoicesSurviveASave(t *testing.T) {
 	}
 	if js := get(t, s, ui.StaticPath+"app.js").Body.String(); !strings.Contains(js, "select[data-level]") || !strings.Contains(js, "data-l3-kept-for") {
 		t.Error("app.js does not fold and unfold the L3 hooks")
+	}
+}
+
+// IC-U226 — **플레이북 셋의 모든 단계가 진행 표시의 단계로 읽히고, 도는 동안 03 카드가 「관측 중」이다.** 임베드된
+// 점검 · 관측 · 정리 플레이북의 단계 이름 하나하나가 여섯 단계 가운데 하나로 읽힌다(이름을 바꾸고 화면을 안 고치면
+// 진행 표시가 그 단계에서 멈춘다). 실행이 도는 동안에는 어느 화면에서든 03 카드에 「관측 중」이 적히고, 03을 다시 열면
+// 같은 실행의 상태 · 시작 시각(시간대 포함) · 지금 단계가 그대로 보인다. 실행이 없으면 카드는 노드 수를 적는다.
+func TestObservationProgressFollowsThePlaybooks(t *testing.T) {
+	task := regexp.MustCompile(`(?m)^\s+- name: (.+)\n(\s+)(\S+)`)
+	for play, book := range map[string][]byte{"pqcaton observation check": checkPlaybook, "pqcaton observation": observePlaybook, "pqcaton observation cleanup": cleanupPlaybook} {
+		if !strings.Contains(string(book), "- name: "+play+"\n") {
+			t.Fatalf("the playbook is not named %q", play)
+		}
+		n := 0
+		for _, m := range task.FindAllStringSubmatch(string(book), -1) {
+			if m[3] == "block:" {
+				continue // 묶음의 이름은 단계로 찍히지 않는다
+			}
+			n++
+			if ui.PhaseOfTask(play, m[1]) == "" {
+				t.Errorf("%s: the task %q is not read as any phase", play, m[1])
+			}
+		}
+		if n == 0 {
+			t.Errorf("%s: no task found to check", play)
+		}
+	}
+	if ui.PhaseOfTask("pqcaton observation", "A task this build does not know") != "" || ui.PhaseOfTask("another play", "Gathering Facts") != "" {
+		t.Error("an unknown task or play is read as a phase")
+	}
+
+	s, _ := fullServer(t)
+	if got := cards(t, get(t, s, ui.ScreenDecl+"?lang=ko").Body.String())["03"]; !strings.Contains(got, "관측할 노드 2대") {
+		t.Fatalf("with no run the 03 card says %q", got)
+	}
+	started := time.Date(2026, 11, 23, 7, 8, 4, 0, time.UTC)
+	s.run.job = &runJob{done: make(chan struct{}),
+		m: runManifest{ID: "20261123T070804-aaaaaaaaaaaa", State: ui.RunRunning, Started: started, Window: 60,
+			Nodes: []runSlot{{Alias: "n1", Node: "web"}, {Alias: "n2", Node: "db"}}},
+		log: []string{"PLAY [pqcaton observation] ****", "", "TASK [Make the staging directory] ****", "changed: [n1]", "",
+			"TASK [Observe TLS and SSH handshakes] ****"}}
+	for _, c := range []struct{ lang, card, running, phase string }{
+		{"ko", "관측 중", "관측 중입니다(2026-11-23 07:08:04 UTC 시작)", "지금 단계 5/6"},
+		{"en", "observing now", "Observing (started at 2026-11-23 07:08:04 UTC)", "Step 5 of 6 now"},
+	} {
+		for _, sc := range []string{ui.ScreenDecl, ui.ScreenReview, ui.ScreenObserve} {
+			if got := cards(t, get(t, s, sc+"?lang="+c.lang).Body.String())["03"]; !strings.Contains(got, c.card) {
+				t.Errorf("%s (%s): while a run is going the 03 card says %q", sc, c.lang, got)
+			}
+		}
+		// 다시 열어도(새로고침) 같은 실행이 이어진다.
+		for i := 0; i < 2; i++ {
+			body := get(t, s, ui.ScreenObserve+"?lang="+c.lang).Body.String()
+			for _, want := range []string{c.running, c.phase, "web: ", `action="` + ui.RunStopPath + `"`} {
+				if !strings.Contains(body, want) {
+					t.Errorf("%s: the reopened 03 screen has no %s", c.lang, want)
+				}
+			}
+			if strings.Contains(body, "db: ") {
+				t.Errorf("%s: a node with no line in the log is shown", c.lang)
+			}
+		}
+	}
+	// 도는 동안 다시 받는 것은 요약과 로그 조각이고, 그 사이의 중지 버튼은 다시 받는 조각 밖에 있다.
+	body := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	live, stop, logAt := strings.Index(body, `id="run-live"`), strings.Index(body, `action="`+ui.RunStopPath+`"`), strings.Index(body, `id="run-log"`)
+	if live < 0 || stop < live || logAt < stop || strings.Count(body, `hx-trigger="every 2s"`) != 2 {
+		t.Errorf("the polled summary, the Stop form and the polled log are not in that order (at %d, %d, %d)", live, stop, logAt)
+	}
+	if strings.Index(body, `id="run-status"`) > strings.Index(body, `<ul class="checks">`) {
+		t.Error("the run status sits below the pre-start checks")
+	}
+	part := func(name, state string) *httptest.ResponseRecorder {
+		return get(t, s, ui.RunPath+"?lang=ko&"+ui.RunPartParam+"="+name+"&"+ui.RunStateParam+"="+state)
+	}
+	if w := part(ui.RunPartLive, "running"); w.Header().Get("HX-Retarget") != "" || !strings.Contains(w.Body.String(), `id="run-live"`) || strings.Contains(w.Body.String(), ui.RunStopPath) {
+		t.Errorf("the summary part of a run in the same state is not just the summary:\n%s", w.Body.String())
+	}
+	if w := part(ui.RunPartLog, "running"); !strings.Contains(w.Body.String(), `id="run-log"`) || !strings.Contains(w.Body.String(), "Observe TLS and SSH handshakes") {
+		t.Errorf("the log part does not carry the log:\n%s", w.Body.String())
+	}
+	// 상태가 바뀌었으면 요약 조각의 응답이 상자 전체를 갈아 끼우고, 로그 조각은 아무것도 바꾸지 않는다.
+	if w := part(ui.RunPartLive, "finishing"); w.Header().Get("HX-Retarget") != "#run-status" || w.Header().Get("HX-Reswap") != "outerHTML" || !strings.Contains(w.Body.String(), `id="run-status"`) {
+		t.Errorf("a summary part asked for under another state does not replace the whole box: %v", w.Header())
+	}
+	if w := part(ui.RunPartLog, "finishing"); w.Code != http.StatusNoContent {
+		t.Errorf("a log part asked for under another state: status %d, want 204", w.Code)
+	}
+	// 실행이 끝나면 요약 조각의 응답이 화면을 통째로 새로 받게 한다: 카드의 「관측 중」이 걷히고 시작 양식이 다시 나온다.
+	s.run.job.m.State, s.run.job.m.Ended = ui.RunDone, started.Add(time.Minute)
+	close(s.run.job.done)
+	if w := part(ui.RunPartLive, "running"); w.Header().Get("HX-Refresh") != "true" || w.Header().Get("HX-Retarget") != "" {
+		t.Errorf("a summary part asked for after the run ended does not refresh the screen: %v", w.Header())
+	}
+	if got := cards(t, get(t, s, ui.ScreenObserve+"?lang=ko").Body.String())["03"]; strings.Contains(got, "관측 중") {
+		t.Errorf("after the run ended the 03 card still says %q", got)
+	}
+	js := get(t, s, ui.StaticPath+"app.js").Body.String()
+	if !strings.Contains(js, "details[data-keep-open]") {
+		t.Error("app.js does not keep the detailed log open across the polling swaps")
 	}
 }

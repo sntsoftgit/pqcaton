@@ -353,3 +353,11 @@ body.wb table.judge tbody.item > tr:not(:first-child) > td { border-top: 0; padd
   body.wb table.judge tbody.item > tr { border: 0; border-radius: 0; padding: 0; margin: 0; }
   body.wb table.judge select { max-width: 100%; }
 }
+
+/* 03 관측 실행의 진행. 상태 · 단계 · 노드가 위에 있고 중지 버튼이 그 아래, 상세 로그는 접혀 있다. */
+body.wb .run-summary .run-phase { font-weight: 600; margin: .3rem 0; }
+body.wb ul.run-nodes { list-style: none; padding-left: 0; margin: .2rem 0 .6rem; display: flex; flex-wrap: wrap; gap: .3rem .9rem; }
+body.wb ul.run-nodes li[data-node-state="failed"] { color: var(--red); font-weight: 600; }
+body.wb ul.run-nodes li[data-node-state="done"] { color: var(--green); }
+body.wb .run-log-box { margin-top: .8rem; }
+body.wb .run-log-box > summary { cursor: pointer; color: var(--muted); font-size: .9rem; width: max-content; max-width: 100%; }

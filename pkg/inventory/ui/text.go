@@ -1117,6 +1117,7 @@ var (
 
 	tStepObserveNoHosts = T{KO: "아직 접근 정보가 없습니다", EN: "no access written yet"}
 	tStepObserveHosts   = T{KO: "관측할 노드 %d대", EN: "%d nodes to observe"}
+	tStepObserveRunning = T{KO: "관측 중", EN: "observing now"}
 )
 
 // ── 03 관측 · 실행 ──────────────────────────────────────────────────────────
@@ -1156,7 +1157,20 @@ var (
 		KO: "이미 관측이 돌고 있습니다. 끝나거나 멈춘 뒤에 다시 시작하십시오.",
 		EN: "An observation is already running. Start again after it finishes or is stopped."}
 	tRunRunning = T{KO: "관측 중입니다(%s 시작)", EN: "Observing (started at %s)"}
-	tRunDone    = T{
+	// 진행(runprogress.go). 단계와 노드별 상태는 실행 로그에서 읽은 것만 적는다.
+	tPhaseOf            = T{KO: "지금 단계 %d/%d: %s", EN: "Step %d of %d now: %s"}
+	tPhaseNetworkWindow = T{KO: "네트워크 핸드셰이크 관측(관측 구간 %d초 동안 기다립니다)", EN: "observing TLS and SSH handshakes (waits for the %d-second window)"}
+	tRunStoppedAt       = T{KO: "멈춘 단계: %d/%d %s", EN: "Stopped at: %d of %d, %s"}
+	tRunTimes           = T{KO: "시작 %s · 종료 %s", EN: "Started %s · ended %s"}
+	tRunNodesHead       = T{KO: "노드별 상태(로그에서 확인된 것만)", EN: "Per node (only what the log confirms)"}
+	tNodeStarted        = T{KO: "수집 중", EN: "collecting"}
+	tNodeDone           = T{KO: "끝남", EN: "finished"}
+	tNodeUnfinished     = T{KO: "끝나지 않음", EN: "did not finish"}
+	tNodeFailed         = T{KO: "실패", EN: "failed"}
+	tRunLogDetails      = T{KO: "상세 로그(%d줄)", EN: "Detailed log (%d lines)"}
+	tRunAgain           = T{KO: "원인을 고친 뒤 「관측 시작」으로 다시 실행합니다. 지금 결과는 바뀌지 않았습니다.", EN: "Fix the cause, then run it again with “Start observation”. The current results were not changed."}
+	tRunAgainStopped    = T{KO: "이어서 하려면 「관측 시작」으로 다시 실행합니다. 지금 결과는 바뀌지 않았습니다.", EN: "To go on, run it again with “Start observation”. The current results were not changed."}
+	tRunDone            = T{
 		KO: "관측을 마쳤습니다. 받은 결과 파일 %d개가 지금 결과가 됐습니다",
 		EN: "The observation finished, and what it received is now the current results (files: %d)"}
 	tRunStopped = T{
@@ -1520,11 +1534,21 @@ var (
 // kindNames — 조치 종류를 그 말로 풀어 쓴 뜻. 상류 계약(plan.proto의 RemediationKind)의 설명을 따른다. 값은 바꾸지 않는다.
 var kindNames = map[string]T{
 	"REMEDIATION_KIND_CONFIG_ONLY":     {KO: "설정만 변경", EN: "Config change only"},
-	"REMEDIATION_KIND_PROVIDER_INJECT": {KO: "provider 추가와 설정", EN: "Add a provider and config"},
+	"REMEDIATION_KIND_PROVIDER_INJECT": {KO: "프로바이더 추가 및 설정", EN: "Add and configure a provider"},
 	"REMEDIATION_KIND_JDK_UPGRADE":     {KO: "JDK 업그레이드", EN: "JDK upgrade"},
 	"REMEDIATION_KIND_FORK_REPLACE":    {KO: "포크로 교체", EN: "Replace with a fork"},
-	"REMEDIATION_KIND_PROXY_FRONT":     {KO: "앞단에 프록시", EN: "Front with a proxy"},
-	"REMEDIATION_KIND_APP_RECONFIG":    {KO: "앱 코드 · 설정 변경", EN: "App code or config change"},
+	"REMEDIATION_KIND_PROXY_FRONT":     {KO: "앞단에 프록시 배치", EN: "Place a proxy in front"},
+	"REMEDIATION_KIND_APP_RECONFIG":    {KO: "앱 코드 또는 설정 변경", EN: "Change app code or configuration"},
 	"REMEDIATION_KIND_REBUILD":         {KO: "다시 빌드", EN: "Rebuild"},
-	"REMEDIATION_KIND_DECOMMISSION":    {KO: "폐기 또는 리스크 수용", EN: "Decommission or accept the risk"},
+	"REMEDIATION_KIND_DECOMMISSION":    {KO: "폐기 또는 위험 수용", EN: "Decommission or accept the risk"},
+}
+
+// phaseNames — 관측 실행의 단계 이름.
+var phaseNames = map[RunPhase]T{
+	PhaseCheck:   {KO: "노드 접속과 권한 점검", EN: "checking access to the nodes"},
+	PhaseStaging: {KO: "수집기를 노드에 올리는 중", EN: "copying the collectors to the nodes"},
+	PhaseOpenSSL: {KO: "OpenSSL 런타임 관측", EN: "observing the OpenSSL runtime"},
+	PhaseJCA:     {KO: "JCA 프로바이더 관측", EN: "observing the JCA providers"},
+	PhaseNetwork: {KO: "네트워크 핸드셰이크 관측", EN: "observing TLS and SSH handshakes"},
+	PhaseCleanup: {KO: "노드의 스테이징 폴더 정리", EN: "removing the staging folders on the nodes"},
 }

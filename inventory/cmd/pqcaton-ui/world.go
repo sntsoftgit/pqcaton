@@ -171,6 +171,9 @@ func (s *server) steps(wd *world) ui.StepState {
 			unavailable("observe", err)
 		} else {
 			got := ui.ObserveSummary{Hosts: len(hosts)}
+			if run := s.run.status(); run != nil && (run.State == ui.RunRunning || run.State == ui.RunFinishing) {
+				got.Running = true
+			}
 			st.Observe = &got
 		}
 	}
