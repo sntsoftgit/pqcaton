@@ -10,6 +10,7 @@ import "strconv"
 templ scopeNextPage(v ScopeView) {
 	@nextShell(v.Page) {
 		<div class="ui-next">
+			@scopeRulesUnsaved(v)
 			<p class="eyebrow">{ tNextScopeEyebrow.In(v.Page.Lang) }</p>
 			<h2>{ tNextScopeHead.In(v.Page.Lang) }</h2>
 			<p class="lede">{ tNextScopeLede.In(v.Page.Lang) }</p>
@@ -111,5 +112,17 @@ templ scopeActivationNext(v ScopeView) {
 				<a class="quiet" href={ templ.SafeURL(ScreenReview + "#" + scopeActivateAnchor) }>{ tScopeNextSteps.In(v.Page.Lang) }</a>
 			</div>
 		</div>
+	}
+}
+
+// scopeRulesUnsaved — 「저장만」이나 「확정」을 거절한 까닭: 고친 규칙이 아직 계층 파일에 없다. 01의 거절 상자와 같은 자리 ·
+// 같은 모양이고, 포커스를 여기 둔다. 링크는 「규칙 저장」 버튼으로 간다.
+templ scopeRulesUnsaved(v ScopeView) {
+	if v.RulesUnsaved {
+		<section class="problems refused" id="save-refused" role="alert" tabindex="-1" autofocus aria-labelledby="save-refused-head">
+			<h2 id="save-refused-head">{ tDeclRefusedHead.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tRulesUnsavedBody.In(v.Page.Lang) }</p>
+			<p><a href="#rules-save" data-focus-field>{ tRulesUnsavedGo.In(v.Page.Lang) }</a></p>
+		</section>
 	}
 }

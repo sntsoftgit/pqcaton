@@ -34,6 +34,9 @@ type ScopeView struct {
 	// ActivationNext — 방금 02를 확정했고(확정 알림), 그 정책이 05와 같은 판정으로 활성화를 기다린다. 확정 알림 아래에
 	// 다음 단계(04에서 현재 대조 보기 · 05에서 활성화 절차 보기)를 보인다. 링크는 화면이 정한 두 주소뿐이다.
 	ActivationNext bool
+	// RulesUnsaved — 방금 「저장만」이나 「확정」을 거절했다: 양식의 규칙이 계층 파일과 달랐다. 이때 화면의 규칙 · 결론 ·
+	// 승인 칸은 파일이 아니라 사람이 적은 그대로다.
+	RulesUnsaved bool
 }
 
 // LayerEdit — 화면에서 고치는 계층 하나.
@@ -136,6 +139,36 @@ func ApplyLayers(files []scope.LayerFile, f url.Values) []scope.LayerFile {
 		out = append(out, lf)
 	}
 	return out
+}
+
+// RulesShownField — 양식이 규칙 편집기를 싣고 왔다는 표시(숨은 칸). 편집기가 없는 양식(계층 파일 없이 승인만 하는
+// 화면)은 규칙 칸이 없으므로, 이 표시가 있을 때만 양식의 규칙을 파일과 견준다.
+const RulesShownField = "rules.shown"
+
+// RulesEdited — 양식에 실려 온 규칙이 계층 파일의 규칙과 다른가.
+//
+// **「저장만」과 「확정」은 규칙을 쓰지 않는다**(세션만 쓴다). 규칙을 고친 채 그 버튼을 누르면 고친 규칙이 화면과 함께
+// 사라지므로, 부르는 쪽이 이것으로 알아보고 쓰지 않은 채 적은 값을 되돌려 보인다. 규칙을 쓰는 것은 「규칙 저장」이다.
+// 견주는 것은 파일에 쓸 바이트다(ApplyLayers가 만드는 것과 같다).
+func RulesEdited(files []scope.LayerFile, f url.Values) (bool, error) {
+	if f.Get(RulesShownField) == "" {
+		return false, nil
+	}
+	edited := ApplyLayers(files, f)
+	for i := range files {
+		was, err := scope.EncodeLayer(files[i])
+		if err != nil {
+			return false, err
+		}
+		now, err := scope.EncodeLayer(edited[i])
+		if err != nil {
+			return false, err
+		}
+		if string(was) != string(now) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // kindLabel — 변경의 종류를 그 말로. 파일에는 코드(added · removed)가 담기고, 사람이

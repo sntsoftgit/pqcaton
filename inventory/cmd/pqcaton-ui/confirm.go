@@ -203,6 +203,10 @@ func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 		id      store.Identity
 	)
 	cur, err := s.snapshot("/scope/finalize/confirm", func() error {
+		// 확정은 파일의 규칙으로 한다. 양식에 저장하지 않은 규칙 편집이 있으면 확인으로 넘어가지 않는다.
+		if err := s.rulesPending(r); err != nil {
+			return err
+		}
 		sf, err := s.applyScope(r)
 		if err != nil {
 			return err
@@ -214,6 +218,10 @@ func (s *server) scopeConfirm(w http.ResponseWriter, r *http.Request) {
 		id = s.scopeID()
 		return err
 	})
+	if errors.Is(err, errRulesPending) {
+		s.scopeRefused(w, r)
+		return
+	}
 	if err != nil {
 		redirect(w, r, back, nil, problemsFor(r, err))
 		return

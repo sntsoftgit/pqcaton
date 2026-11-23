@@ -17,7 +17,7 @@ import (
 
 var (
 	textInput      = regexp.MustCompile(`<input\s+type="text"\s+name="([^"]*)"\s+value="([^"]*)"`)
-	selectedOption = regexp.MustCompile(`(?s)<select name="([^"]*)"[^>]*>(?:(?:<option[^>]*>[^<]*</option>)*?)<option value="([^"]*)" selected`)
+	selectedOption = regexp.MustCompile(`(?s)<select name="([^"]*)"[^>]*>(?:\s*<option[^>]*>[^<]*</option>)*?\s*<option value="([^"]*)" selected`)
 )
 
 func htmlUnescape(s string) string { return htmlpkg.UnescapeString(s) }
@@ -25,6 +25,15 @@ func htmlUnescape(s string) string { return htmlpkg.UnescapeString(s) }
 // screenForm: 선언 화면이 그린 양식을 브라우저가 보낼 그대로 읽는다(숨은 칸과 글 칸. 런타임은 고른 값).
 func screenForm(t *testing.T, body string) url.Values {
 	t.Helper()
+	out := formOf(body)
+	if out.Get("node.name.0") == "" && !strings.Contains(body, `name="node.name.0"`) {
+		t.Fatalf("no declaration form in:\n%s", body)
+	}
+	return out
+}
+
+// formOf: 화면이 그린 양식의 값(숨은 칸 · 글 칸 · 고른 선택). 토큰은 뺀다(보내는 쪽 도우미가 쿠키와 같은 값으로 싣는다).
+func formOf(body string) url.Values {
 	out := hiddenFields(body)
 	for _, m := range textInput.FindAllStringSubmatch(body, -1) {
 		out.Set(htmlUnescape(m[1]), htmlUnescape(m[2]))
@@ -32,11 +41,7 @@ func screenForm(t *testing.T, body string) url.Values {
 	for _, m := range selectedOption.FindAllStringSubmatch(body, -1) {
 		out.Set(htmlUnescape(m[1]), htmlUnescape(m[2]))
 	}
-	// 토큰은 보내는 쪽 도우미가 쿠키와 같은 값으로 싣는다. rev는 화면이 실은 그대로 보낸다.
 	out.Del(ui.CSRFField)
-	if out.Get("node.name.0") == "" && !strings.Contains(body, `name="node.name.0"`) {
-		t.Fatalf("no declaration form in:\n%s", body)
-	}
 	return out
 }
 

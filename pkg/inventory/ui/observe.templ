@@ -147,7 +147,7 @@ templ hostProblemList(v ObserveView) {
 }
 
 templ hostsForm(v ObserveView) {
-	<form method="post" action={ templ.SafeURL(HostsSavePath) }>
+	<form method="post" action={ templ.SafeURL(HostsSavePath) } data-guard="">
 		@csrfField(v.Page)
 		<fieldset>
 			<legend>{ tHostsLegend.In(v.Page.Lang) }</legend>
@@ -177,9 +177,10 @@ templ hostsForm(v ObserveView) {
 			</div>
 			@addRow(v.Page.Lang, KindHost, 0, len(v.Hosts), false)
 		</fieldset>
-		<div class="actions">
+		<div class="actions sticky">
 			<button class="primary">{ tHostsSave.In(v.Page.Lang) }</button>
 			@reloadButton(v.Page.Lang, v.Page.Self)
+			@unsavedNote(v.Page.Lang)
 		</div>
 	</form>
 }

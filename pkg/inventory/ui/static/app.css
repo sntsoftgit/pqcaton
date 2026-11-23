@@ -313,3 +313,11 @@ body.wb .run-start label, body.wb form > label { display: block; margin: .5rem 0
 .ui-next .problems.refused h2 { margin-top: 0; color: var(--red); }
 .ui-next .problems.refused:focus { outline: 2px solid var(--red); outline-offset: 2px; }
 body.wb input[aria-invalid="true"] { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-soft); }
+
+/* 편집 양식의 버튼 줄. 양식을 보는 동안 화면 아래에 붙어 있어, 긴 양식 어디에서든 저장 버튼과 「저장하지 않은
+   변경」 표시가 보인다. 붙은 줄이 포커스가 간 칸을 가리지 않게 스크롤 여백을 둔다. */
+html { scroll-padding-bottom: 6rem; }
+body.wb .actions.sticky { position: sticky; bottom: 0; z-index: 2; align-items: center; margin-top: 1.2rem;
+  padding: .7rem 0; background: var(--canvas); border-top: 1px solid var(--line); }
+body.wb .actions .unsaved { color: var(--amber); font-size: .9rem; font-weight: 600; }
+body.wb .actions .unsaved:empty { display: none; }

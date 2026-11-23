@@ -141,6 +141,15 @@ func fieldAttrs(fe fieldErrs, name string) templ.Attributes {
 	return a
 }
 
+// guardState — 편집 양식의 `data-guard` 값. 저장을 거절한 화면은 그릴 때부터 저장하지 않은 입력을 들고 있으므로
+// "dirty"다. 그 밖에는 빈 값이고, 달라졌는지는 스크립트가 처음 모습과 견줘 안다(app.js).
+func guardState(refused bool) string {
+	if refused {
+		return "dirty"
+	}
+	return ""
+}
+
 // DeclEdge — 엣지 한 줄. **포트는 적은 글자 그대로 든다**: 숫자가 아닌 값을 되돌려 보여야 고칠 수 있다.
 type DeclEdge struct {
 	Src, Dst, Port, Proto string

@@ -1117,6 +1117,9 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err := s.st.SaveChecked(s.scopeID(), []string{s.scope}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
+		if err := s.rulesPending(r); err != nil {
+			return nil, err
+		}
 		sf, err := s.applyScope(r)
 		if err != nil {
 			return nil, err
@@ -1124,11 +1127,60 @@ func (s *server) scopeSave(w http.ResponseWriter, r *http.Request) {
 		b, err := scope.EncodeSession(sf)
 		return []store.Change{{Path: s.scope, Content: b}}, err
 	})
+	if errors.Is(err, errRulesPending) {
+		s.scopeRefused(w, r)
+		return
+	}
 	if err != nil {
 		s.fail(w, r, back, err, file(ui.PickLang(r), "scope-session", s.scope))
 		return
 	}
 	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeSaved)}, nil)
+}
+
+// errRulesPending: 양식의 규칙이 계층 파일과 다른데 규칙을 쓰지 않는 버튼(「저장만」 · 「확정」)으로 왔다.
+var errRulesPending = errors.New("the form carries rule edits that are not saved to the layer files")
+
+// rulesPending — 양식에 저장하지 않은 규칙 편집이 있으면 errRulesPending. 저장소의 잠금이나 스냅샷 안에서 부른다.
+//
+// 「저장만」은 세션만 쓰고 화면을 파일에서 다시 그린다. 규칙을 고친 채 누르면 고친 규칙이 알림 없이 사라졌다. 화면
+// 아래에 붙어 있는 줄이 그 버튼이라 더 쉽게 눌린다.
+func (s *server) rulesPending(r *http.Request) error {
+	_, files, err := s.scopeSession()
+	if err != nil {
+		return err
+	}
+	edited, err := ui.RulesEdited(files, r.PostForm)
+	if err != nil {
+		return err
+	}
+	if edited {
+		return errRulesPending
+	}
+	return nil
+}
+
+// scopeRefused — 「저장만」이나 「확정」을 거절한 스코프 화면(422). 01의 declRefused와 같다: 돌려보내지 않고 그 자리에서
+// 그려, 고친 규칙 · 적은 결론 · 승인 칸을 요청에 실려 온 그대로 보인다. 아무것도 쓰지 않았으므로 받은 rev를 그대로 싣는다.
+func (s *server) scopeRefused(w http.ResponseWriter, r *http.Request) {
+	wd := s.load()
+	if wd.scopeErr != nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, wd.scopeErr)
+		return
+	}
+	page := s.nextPage(r, ui.ScreenScope, s.scope, s.steps(wd))
+	page.Org = wd.scope.Org
+	page.Rev = r.PostForm.Get(ui.RevField)
+	v := ui.NewScopeView(ui.ApplyScope(wd.scope, r.PostForm), page).Editable(ui.ApplyLayers(wd.scopeFiles, r.PostForm))
+	v.RulesUnsaved = true
+	var buf bytes.Buffer
+	if err := ui.RenderScope(&buf, v); err != nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, fmt.Errorf("rendering: %w", err))
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	_, _ = w.Write(buf.Bytes())
 }
 
 // scopeFinalize — **명령과 같은 검사를 거친다.** 세션 · 정책 CSV(앞 판은 .prev로) · 판정 원장 ·

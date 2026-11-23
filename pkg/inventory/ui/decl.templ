@@ -6,7 +6,7 @@ import "strconv"
 // 그대로 쓴다. 폼 이름이 곧 저장 경로라(`node.name.0` → 선언의 그 자리) 두 벌로 두면
 // 어긋나는 날이 오고, 그날 저장이 오류로 드러나지 않은 채 어긋난다.
 templ declForm(v DeclView) {
-	<form method="post" action="/decl/save">
+	<form method="post" action="/decl/save" data-guard={ guardState(v.Refused) }>
 		@csrfField(v.Page)
 		<fieldset>
 			<legend>{ tDeclOrg.In(v.Page.Lang) }</legend>
@@ -53,9 +53,10 @@ templ declForm(v DeclView) {
 			</div>
 			@addRow(v.Page.Lang, KindEdge, 0, len(v.Edges), false)
 		</fieldset>
-		<div class="actions">
+		<div class="actions sticky">
 			<button class="primary">{ tDeclSave.In(v.Page.Lang) }</button>
 			@reloadButton(v.Page.Lang, v.Page.Self)
+			@unsavedNote(v.Page.Lang)
 			@tip(v.Page.Lang, tDeclSaveHint.In(v.Page.Lang))
 		</div>
 	</form>
@@ -268,4 +269,11 @@ templ reloadButton(l Lang, self string) {
 		hx-swap="outerHTML"
 		hx-confirm={ tReloadAsk.In(l) }
 	>{ tReload.In(l) }</a>
+}
+
+// unsavedNote — 저장하지 않은 입력이 있다는 표시가 설 자리. **글은 스크립트가 넣는다**(app.js): 입력이 파일과 달라졌는지는
+// 브라우저만 안다. 스크립트가 막힌 환경에서는 비어 있다. 버튼 줄(`.actions.sticky`)은 양식을 보는 동안 화면 아래에 붙어
+// 있으므로, 긴 양식 어디에서든 이 표시와 저장 버튼이 보인다.
+templ unsavedNote(l Lang) {
+	<span class="unsaved" aria-live="polite" data-unsaved-text={ tUnsaved.In(l) }></span>
 }

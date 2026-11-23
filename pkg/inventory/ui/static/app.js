@@ -130,3 +130,96 @@
     }
   });
 })();
+
+
+// 저장하지 않은 입력을 두고 떠나지 않게 한다(편집 양식: form[data-guard]).
+//
+// 양식의 처음 모습을 기억해 두고 지금 모습과 견준다. 다르면 버튼 줄에 그 사실을 적고(data-unsaved-text), 화면을 떠나려 할
+// 때(단계 카드 · 새로 고침 · 탭 닫기 · 말 바꾸기) 브라우저가 묻게 한다. 묻는 창의 글은 브라우저가 정한다. 그 양식을 보내는
+// 중에는 묻지 않는다. 같은 화면의 다른 양식을 보내 떠날 때는 묻는다.
+//
+// 견줄 때 빈 칸과 기본값 그대로인 선택은 뺀다. 「행 추가」로 연 빈 줄은 입력이 아니다(서버도 그 줄을 버린다). 줄을
+// 「제거」한 것과 값을 지운 것은 처음 모습에 있던 것이 빠지므로 달라진 것으로 본다. 저장을 거절한 화면은 서버가
+// data-guard="dirty"로 그려, 처음부터 저장하지 않은 입력이 있는 것으로 본다.
+//
+// 「다시 불러오기」는 양식을 통째로 갈아 끼운다. 새 양식은 그때의 모습이 처음 모습이다.
+(function () {
+  "use strict";
+
+  var first = new WeakMap();
+  var sending = null;
+
+  function shape(form) {
+    var out = [];
+    var els = form.elements;
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (!el.name || el.disabled || el.type === "hidden" || el.type === "submit" || el.type === "button") {
+        continue;
+      }
+      if (el.type === "checkbox" || el.type === "radio") {
+        if (el.checked) {
+          out.push(el.name + "=" + el.value);
+        }
+      } else if (el.tagName === "SELECT") {
+        var opt = el.options[el.selectedIndex];
+        var def = 0;
+        for (var j = 0; j < el.options.length; j++) {
+          if (el.options[j].defaultSelected) {
+            def = j;
+          }
+        }
+        if (opt && el.selectedIndex !== def) {
+          out.push(el.name + "=" + opt.value);
+        }
+      } else if (el.value !== "") {
+        out.push(el.name + "=" + el.value);
+      }
+    }
+    return out.sort().join("\n");
+  }
+
+  function forms() {
+    return document.querySelectorAll("form[data-guard]");
+  }
+
+  function dirty(form) {
+    if (!first.has(form)) {
+      first.set(form, shape(form));
+    }
+    return form.getAttribute("data-guard") === "dirty" || first.get(form) !== shape(form);
+  }
+
+  function show() {
+    var all = forms();
+    for (var i = 0; i < all.length; i++) {
+      var is = dirty(all[i]);
+      var notes = all[i].querySelectorAll("[data-unsaved-text]");
+      for (var j = 0; j < notes.length; j++) {
+        var text = is ? notes[j].getAttribute("data-unsaved-text") : "";
+        if (notes[j].textContent !== text) {
+          notes[j].textContent = text;
+        }
+      }
+    }
+  }
+
+  document.addEventListener("input", show);
+  document.addEventListener("change", show);
+  document.addEventListener("htmx:afterSettle", show);
+  document.addEventListener("submit", function (evt) {
+    sending = evt.target;
+  });
+  window.addEventListener("beforeunload", function (evt) {
+    var all = forms();
+    for (var i = 0; i < all.length; i++) {
+      if (all[i] !== sending && dirty(all[i])) {
+        evt.preventDefault();
+        evt.returnValue = "";
+        sending = null;
+        return;
+      }
+    }
+  });
+  show();
+})();

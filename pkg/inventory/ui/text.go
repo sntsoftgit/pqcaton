@@ -344,6 +344,13 @@ var (
 	tFieldPortMalformed = T{
 		KO: "포트가 아닙니다: %s. 0부터 65535까지의 숫자를 적습니다.",
 		EN: "Not a port: %s. Enter a number from 0 to 65535."}
+	// 02: 규칙을 고친 채 「저장만」이나 「확정」을 눌렀을 때. 그 버튼들은 규칙을 쓰지 않는다.
+	tRulesUnsavedBody = T{
+		KO: "고친 규칙이 아직 계층 파일에 저장되지 않았습니다. 먼저 「규칙 저장」을 누르십시오. 「규칙 저장」은 아래에 적은 결론도 함께 저장합니다. 적으신 값은 이 화면에 남아 있습니다.",
+		EN: "The rules you changed are not saved to the layer files yet. Use “Save rules” first. It saves the conclusions you wrote below as well. What you typed is still on this screen."}
+	tRulesUnsavedGo = T{KO: "「규칙 저장」 버튼으로 가기", EN: "Go to the “Save rules” button"}
+	// 편집 양식의 버튼 줄에 서는 표시(app.js가 넣는다). 떠날 때 묻는 창의 글은 브라우저가 정한다.
+	tUnsaved = T{KO: "저장하지 않은 변경이 있습니다", EN: "There are unsaved changes"}
 	// 칸의 title. 브라우저가 pattern에 맞지 않는 값을 막을 때 함께 보인다.
 	tFieldIPTitle = T{
 		KO: "IP 주소만 적습니다. 여럿이면 쉼표나 공백으로 나눕니다.",

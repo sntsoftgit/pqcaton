@@ -33,7 +33,8 @@ func TestSavingReturnsToTheScreen(t *testing.T) {
 		{"/scope/save", ui.ScreenScope},
 		{"/save", ui.ScreenReview},
 	} {
-		form := hiddenFields(get(t, s, c.screen).Body.String())
+		body := get(t, s, c.screen).Body.String()
+		form := hiddenFields(body)
 		if form.Get(ui.CSRFField) == "" || form.Get(ui.RevField) == "" {
 			t.Errorf("%s: the form does not carry the CSRF token and rev: %v", c.screen, form)
 		}
@@ -41,6 +42,10 @@ func TestSavingReturnsToTheScreen(t *testing.T) {
 			t.Errorf("%s: the form still carries return_to", c.screen)
 		}
 		form.Del(ui.CSRFField) // 화면이 받은 쿠키가 아니라 테스트 쿠키의 토큰을 싣는다
+		if c.screen == ui.ScreenScope {
+			// 02는 브라우저가 보내는 그대로 보낸다. 숨은 칸만 보내면 규칙 편집기의 칸이 빠져 규칙을 고친 것으로 읽힌다.
+			form = formOf(body)
+		}
 		if got := landed(t, postForm(t, s, c.save, form)); got != c.screen {
 			t.Errorf("save from %s landed on %s", c.screen, got)
 		}
