@@ -20,7 +20,7 @@
             "sourceNodeId": "pay-app",
             "content": {
               "formatVersion": "pqcota-snapshot-content/v1",
-              "digest": "f722975076a6e25e0ab5b0b0cddd663a3a75417c24a4abafdfa7d97b1bb6eff6",
+              "digest": "0000000000000000000000000000000000000000000000000000000000000000",
               "rulesetVersion": "pqcota-enrich/v4"
             }
           }
@@ -44,7 +44,7 @@
             "sourceNodeId": "pay-db",
             "content": {
               "formatVersion": "pqcota-snapshot-content/v1",
-              "digest": "ac19de8ab1c9887de8f1ff567309a8046323df1625cb66b80bec2ba9fc49e65f",
+              "digest": "0000000000000000000000000000000000000000000000000000000000000000",
               "rulesetVersion": "pqcota-enrich/v4"
             }
           }

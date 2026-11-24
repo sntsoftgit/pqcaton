@@ -279,6 +279,9 @@ docker cp pqcota-ctl:/work/plan.json "$SAMPLE_DIR/plan.json" 2>/dev/null || true
 # 새로 뽑는 세션 UUID가 들어 있다. 그대로 두면 데모를 돌릴 때마다 기대 파일이 더러워져
 # **진짜 달라진 날을 알아볼 수 없다.** 세션 id는 자리만 보이면 되므로 고정값으로 바꾼다 -
 # 실제 실행의 id는 콘솔과 판정 원장에 남는다.
+# **근거의 스냅샷 지문도 고정값으로 바꾼다.** 상류 v0.18.0부터 netcap은 받은 연결도 기록하는데, 상류 데모는 연결을 여는
+# 노드에서만 캡처와 트래픽의 순서를 맞춘다. 받는 노드가 그 연결을 보는지는 실행마다 달라서, 받는 노드의 스냅샷 지문이
+# 돌릴 때마다 바뀐다. 실제 지문은 /work/plan.json 과 상류 이력에 남는다.
 python3 - "$SAMPLE_DIR/plan.json" <<'PYFMT' || true
 import json, re, sys
 p = sys.argv[1]
@@ -287,6 +290,11 @@ FIXED = "00000000-0000-4000-8000-000000000000"
 uuid = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 if isinstance(d.get("id"), str):
     d["id"] = re.sub(uuid, FIXED, d["id"])
+for a in d.get("actions") or []:
+    for ev in a.get("evidenceSources") or []:
+        content = (ev.get("snapshot") or {}).get("content")
+        if isinstance(content, dict) and "digest" in content:
+            content["digest"] = "0" * 64
 json.dump(d, open(p, "w"), indent=2, ensure_ascii=False, sort_keys=False)
 open(p, "a").write("\n")
 PYFMT

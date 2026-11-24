@@ -36,8 +36,11 @@ the fixture makes are not in the default topology, so placing them here would ma
 
 **These files are not made by hand.** `extend.sh` copies them as it runs. Only the **session UUID in `plan.json` is replaced with a
 fixed value.** It is drawn anew on every run, so left as it is the file would change on every run and the day the contents really
-changed could not be told. The real run's id stays in the console and the judgment ledger. Only `report.txt` was hand-made for a while,
-so it stayed Korean even after the command output became English (fixed on 2026-08-19).
+changed could not be told. The real run's id stays in the console and the judgment ledger. **The snapshot digests of the evidence
+(`digest`) are replaced with a fixed value too (64 zeros).** From upstream v0.18.0 the collectors also record the connections a node
+accepts, and in the demo whether an accepting node sees a connection differs between runs, so that node's snapshot digest changes on
+every run. The real digests stay in `/work/plan.json` of the demo you ran and in the upstream history. `report.txt` was hand-made for a
+while, so it stayed Korean even after the command output became English (fixed on 2026-08-19).
 
 **Why ① comes first**: someone who reads only this report without going through the pqcota demo should see what came before
 reconciliation. Above all, without "the layers not seen", readers cannot tell whether an UNOBSERVED in ② means "absent" or "could not be

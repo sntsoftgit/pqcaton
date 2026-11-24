@@ -146,6 +146,9 @@ state format, the sessions and the plan format are the same as v0.31.1, so the w
   summary and the log are fetched again.
 - Four remediation kind names were reworded (the saved values are unchanged): "Add and configure a provider", "Place a proxy in front",
   "Change app code or configuration" and "Decommission or accept the risk".
+- `plan.json` in the demo's expected output keeps the snapshot digests of the evidence as a fixed value. In the upstream demo whether
+  an accepting node sees a connection differs between runs, so that node's snapshot digest changes on every run. The plan of a real
+  run carries the real digests.
 - The last sentence of the failure message on 03 now reads "The detailed errors are in the run log below".
 - New cases IC-E5, IC-E6, IC-UI65 to IC-UI75 and IC-U222 to IC-U226. IC-R8 also measures linking an IPv4 peer written with `::ffff:`
   to its node.
