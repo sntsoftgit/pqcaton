@@ -118,11 +118,17 @@ templ surveyBody(v SurveyView) {
 							if e.Uncovered {
 								<span class="hint">{ tUncoveredSrc.In(v.Page.Lang) }</span>
 							}
+							if e.OffScopeSrc {
+								<span class="hint">{ tOffScope.In(v.Page.Lang) }</span>
+							}
 						</td>
 						<td>
 							<code>{ e.Dst }</code>
 							if e.OffScope {
 								<span class="hint">{ tOffScope.In(v.Page.Lang) }</span>
+							}
+							if e.ServerOnly {
+								<span class="hint" data-edge-server-only>{ tServerOnly.In(v.Page.Lang) }</span>
 							}
 						</td>
 						<td>{ portText(e.Port) }</td>
@@ -142,6 +148,31 @@ templ surveyBody(v SurveyView) {
 				}
 			</table>
 		</div>
+		if len(v.Unconfirmed) > 0 {
+			<p data-edges-unconfirmed={ strconv.Itoa(len(v.Unconfirmed)) }><b>{ tUnconfirmedEdges.F(v.Page.Lang, len(v.Unconfirmed)) }</b></p>
+			<p class="hint">{ tUnconfirmedEdgesHint.In(v.Page.Lang) }</p>
+			<div class="table-wrap">
+				<table>
+					<tr>
+						<th>{ tColNode.In(v.Page.Lang) }</th>
+						<th>{ tColPeer.In(v.Page.Lang) }</th>
+						<th>{ tColProto.In(v.Page.Lang) }</th>
+					</tr>
+					for _, u := range v.Unconfirmed {
+						<tr>
+							<td><code>{ u.Node }</code></td>
+							<td>
+								<code>{ u.Peer }</code>
+								if u.OffScopePeer {
+									<span class="hint">{ tOffScope.In(v.Page.Lang) }</span>
+								}
+							</td>
+							<td>{ u.Proto }</td>
+						</tr>
+					}
+				</table>
+			</div>
+		}
 	</fieldset>
 	<fieldset>
 		<legend>{ tTopology.In(v.Page.Lang) }</legend>

@@ -78,8 +78,9 @@ func main() {
 
 	fmt.Println("\n──────── ③ Communication edges + quantum-resistance grade ────────")
 	printEdges(r.Edges, r.Uncovered)
+	printUnconfirmed(r.UnconfirmedEdges)
 
-	dot := reconcile.RenderTopologyDOT(r.Edges, r.Uncovered)
+	dot := reconcile.RenderTopologyDOT(r.Edges, r.Uncovered, r.UnconfirmedEdges)
 	if err := os.WriteFile(dotOut, []byte(dot), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "write dot:", err)
 	} else {
@@ -165,6 +166,12 @@ func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
 		if e.OffScopeDst {
 			flags += " [off-scope → needs enrollment decision]"
 		}
+		if e.OffScopeSrc {
+			flags += " [off-scope source → needs enrollment decision]"
+		}
+		if e.SeenByServer && !e.SeenByClient {
+			flags += " [seen by the accepting node only]"
+		}
 		if e.RescanCandidate {
 			flags += " [rescan candidate]"
 		}
@@ -174,6 +181,21 @@ func printEdges(recs []reconcile.ReconciledEdge, uncovered map[string]bool) {
 	fmt.Printf("\n  grade totals: 🟢 PQC %d · 🔴 classical %d · ⚪ unknown %d\n", pqc, classical, unknown)
 	if len(uncovered) > 0 {
 		fmt.Printf("  collectors not installed (partial observation): %v\n", keys(uncovered))
+	}
+}
+
+// printUnconfirmed — 역할을 확인하지 못한 기록. 없으면 아무것도 찍지 않는다(없는 것이 보통이다).
+func printUnconfirmed(us []reconcile.UnconfirmedEdge) {
+	if len(us) == 0 {
+		return
+	}
+	fmt.Printf("\n  role not confirmed: %d (no port and no negotiated group, so not reconciled and not counted above)\n", len(us))
+	for _, u := range us {
+		flag := ""
+		if u.OffScopePeer {
+			flag = " [off-scope → needs enrollment decision]"
+		}
+		fmt.Printf("  ↔ %-10s — %-18s %-6s%s\n", u.Node, u.Peer, u.Proto, flag)
 	}
 }
 

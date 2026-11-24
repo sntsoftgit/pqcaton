@@ -4,6 +4,7 @@
 package reconcile
 
 import (
+	"net"
 	"sort"
 
 	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
@@ -33,9 +34,52 @@ type ReconciledEdge struct {
 	NeedsReview     bool                       // UNDECLARED·UNOBSERVED·off-scope는 사람 판정 필수
 	RescanCandidate bool                       // UNOBSERVED인데 네트워크 계층 갭으로 설명됨(§2.6)
 	OffScopeDst     bool                       // dst가 스코프 마스터 미등재 → "등재 판정 요청"(§1.4/§5, IC-E3)
+	// OffScopeSrc — 연결을 연 쪽(src)이 스코프 마스터 미등재. 받은 쪽 기록에서만 생긴다(IC-E5).
+	OffScopeSrc bool
+	// SeenByClient · SeenByServer — 이 엣지를 관측한 쪽. 연결을 연 노드의 기록과 받은 노드의 기록은 한 엣지로 합친다.
+	SeenByClient, SeenByServer bool
+}
+
+// UnconfirmedEdge — 수집기가 어느 쪽이 연결을 열었는지 확인하지 못한 기록(상류 role = UNSPECIFIED, 포트 0, 협상 그룹 없음).
+// 방향과 포트를 모르므로 선언과 대조하지 않고 따로 보인다(IC-E6).
+type UnconfirmedEdge struct {
+	Node  string // 관측한 노드
+	Peer  string // 상대: 이어진 노드 ID 또는 원시 주소
+	Proto string
+	// OffScopePeer — 상대를 잇지 못했거나 스코프 마스터에 없다.
+	OffScopePeer bool
+}
+
+// edgeSide — 관측 기록이 연결의 어느 쪽에서 나왔는가.
+type edgeSide int
+
+const (
+	sideClient      edgeSide = iota // 관측 노드가 연결을 열었다: src = 관측 노드, dst = 상대
+	sideServer                      // 관측 노드가 연결을 받았다(상류 v0.18.0부터): src = 상대, dst = 관측 노드
+	sideUnconfirmed                 // 역할을 확인하지 못했다
+)
+
+// sideOf — 기록의 역할을 읽는다.
+//   - SERVER인데 dst_addr에 포트가 있으면 연 쪽 기록으로 본다. 상류 v0.18.0 전의 netcap은 받은 연결을 기록하지 않았고,
+//     자기 ClientHello를 놓친 클라이언트 기록에 SERVER를 적는 일이 있었다. 받은 쪽 기록의 dst_addr는 포트 없는 상대 IP다.
+//   - 역할이 없고 포트가 있으면 연 쪽 기록이다(역할을 적지 않던 기록). 포트가 0이면 확인하지 못한 기록이다.
+func sideOf(oe *discoveryv1.ObservedEdge) edgeSide {
+	switch oe.GetRole() {
+	case discoveryv1.EdgeRole_EDGE_ROLE_SERVER:
+		if _, _, err := net.SplitHostPort(oe.GetDstAddr()); err == nil {
+			return sideClient
+		}
+		return sideServer
+	case discoveryv1.EdgeRole_EDGE_ROLE_UNSPECIFIED:
+		if oe.GetPort() == 0 {
+			return sideUnconfirmed
+		}
+	}
+	return sideClient
 }
 
 // reconcileEdges — 관측 엣지(network-collector) vs 선언 엣지를 3-상태로 분류한다(IC-E1).
+// 받은 쪽 기록은 뒤집어 연 쪽 기록과 한 엣지로 합치고(IC-E5), 역할을 확인하지 못한 기록은 넣지 않는다(IC-E6, [UnconfirmedEdges]).
 //
 // **조직 검사를 지난 뒤에만 불린다**([Engine.ReconcileEdges]). 관측 엣지에는 조직이 없어
 // 여기서 찍는다 — 관측은 늘 그 엔진의 조직에서 온 것이다.
@@ -54,32 +98,51 @@ func reconcileEdges(o org.ID, declared []EdgeKey, observed []*discoveryv1.Observ
 	seen := map[EdgeKey]bool{}
 	var out []ReconciledEdge
 
-	// 관측 기준: 선언에도 있으면 CONFIRMED, 없으면 UNDECLARED.
-	for _, oe := range observed {
-		key, offScope := observedEdgeKey(o, oe, scope)
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
+	// 관측 기준: 선언에도 있으면 CONFIRMED, 없으면 UNDECLARED. 연 쪽 기록을 먼저 놓고 받은 쪽 기록을 거기에 합친다.
+	// 순서를 정해 두어야 두 기록의 협상 그룹이 다를 때 결과가 입력 순서에 좌우되지 않는다.
+	at := map[EdgeKey]int{}
+	for _, side := range []edgeSide{sideClient, sideServer} {
+		for _, oe := range observed {
+			if sideOf(oe) != side {
+				continue
+			}
+			key, offSrc, offDst := observedEdgeKey(o, oe, side, scope)
+			if i, ok := at[key]; ok {
+				re := &out[i]
+				re.SeenByClient = re.SeenByClient || side == sideClient
+				re.SeenByServer = re.SeenByServer || side == sideServer
+				if re.Group == "" && oe.GetNegotiatedGroup() != "" {
+					re.Group = oe.GetNegotiatedGroup()
+					re.Posture = posture.Classify(oe.GetNegotiatedGroup(), oe.GetCipher())
+				}
+				continue
+			}
+			seen[key] = true
+			at[key] = len(out)
 
-		ev := evidenceStr(normalize.EvidenceStrength(oe.GetDetectionMethod()))
-		post := posture.Classify(oe.GetNegotiatedGroup(), oe.GetCipher())
-		re := ReconciledEdge{
-			Key:         key,
-			Posture:     post,
-			Group:       oe.GetNegotiatedGroup(),
-			OffScopeDst: offScope,
+			ev := evidenceStr(normalize.EvidenceStrength(oe.GetDetectionMethod()))
+			post := posture.Classify(oe.GetNegotiatedGroup(), oe.GetCipher())
+			offScope := offSrc || offDst
+			re := ReconciledEdge{
+				Key:          key,
+				Posture:      post,
+				Group:        oe.GetNegotiatedGroup(),
+				OffScopeDst:  offDst,
+				OffScopeSrc:  offSrc,
+				SeenByClient: side == sideClient,
+				SeenByServer: side == sideServer,
+			}
+			if dset[key] {
+				re.State = Confirmed
+				re.Confidence = confidence(Confirmed, ev)
+				re.NeedsReview = offScope // 정상 CONFIRMED는 자동통과 후보, off-scope면 리뷰
+			} else {
+				re.State = Undeclared // 관측 only = UNDECLARED 통신
+				re.Confidence = confidence(Undeclared, ev)
+				re.NeedsReview = true
+			}
+			out = append(out, re)
 		}
-		if dset[key] {
-			re.State = Confirmed
-			re.Confidence = confidence(Confirmed, ev)
-			re.NeedsReview = offScope // 정상 CONFIRMED는 자동통과 후보, off-scope면 리뷰
-		} else {
-			re.State = Undeclared // 관측 only = UNDECLARED 통신
-			re.Confidence = confidence(Undeclared, ev)
-			re.NeedsReview = true
-		}
-		out = append(out, re)
 	}
 
 	// 선언만 있고 관측 안 됨 → UNOBSERVED. 네트워크 갭이면 재수집 후보.
@@ -121,22 +184,55 @@ func sortEdges(es []ReconciledEdge) {
 
 // observedEdgeKey — ObservedEdge에서 EdgeKey를 만들고 off-scope 여부를 판정한다.
 // dst_node_id가 노드로 이어지고 스코프에 등재돼 있으면 in-scope, 아니면(못 이었거나 미등재) off-scope.
-func observedEdgeKey(o org.ID, oe *discoveryv1.ObservedEdge, scope map[string]bool) (EdgeKey, bool) {
-	dst := oe.GetDstNodeId()
-	offScope := false
-	if dst == "" {
-		dst = oe.GetDstAddr() // 잇지 못한 상대 → 원시 주소로 식별
-		offScope = true
-	} else if scope != nil && !scope[dst] {
-		offScope = true // 이어졌지만 스코프 마스터 미등재
+// observedEdgeKey — 관측 기록을 「연 쪽 → 받은 쪽」 방향의 엣지 키로 옮긴다. 기록은 늘 관측한 노드 아래에 적히므로
+// (src_node_id = 관측 노드), 받은 쪽 기록은 뒤집어야 연 쪽 기록 · 선언과 같은 키가 된다.
+func observedEdgeKey(o org.ID, oe *discoveryv1.ObservedEdge, side edgeSide, scope map[string]bool) (key EdgeKey, offSrc, offDst bool) {
+	peer, offPeer := edgePeer(oe, scope)
+	key = EdgeKey{Org: o, Src: oe.GetSrcNodeId(), Dst: peer, Port: oe.GetPort(), Proto: protoName(oe.GetProtocol())}
+	if side == sideServer {
+		key.Src, key.Dst = peer, oe.GetSrcNodeId()
+		return key, offPeer, false
 	}
-	return EdgeKey{
-		Org:   o,
-		Src:   oe.GetSrcNodeId(),
-		Dst:   dst,
-		Port:  oe.GetPort(),
-		Proto: protoName(oe.GetProtocol()),
-	}, offScope
+	return key, false, offPeer
+}
+
+// edgePeer — 기록의 상대. 노드로 이어졌으면 그 ID, 아니면 원시 주소다. 잇지 못했거나 스코프 마스터에 없으면 off-scope다.
+func edgePeer(oe *discoveryv1.ObservedEdge, scope map[string]bool) (peer string, offScope bool) {
+	peer = oe.GetDstNodeId()
+	if peer == "" {
+		return oe.GetDstAddr(), true // 잇지 못한 상대 → 원시 주소로 식별
+	}
+	return peer, scope != nil && !scope[peer] // 이어졌지만 스코프 마스터 미등재
+}
+
+// UnconfirmedEdges — 역할을 확인하지 못한 기록을 (관측 노드 · 상대 · 프로토콜)마다 한 줄로 모은다. 순서는 정해져 있다.
+func UnconfirmedEdges(observed []*discoveryv1.ObservedEdge, scope map[string]bool) []UnconfirmedEdge {
+	seen := map[UnconfirmedEdge]bool{}
+	var out []UnconfirmedEdge
+	for _, oe := range observed {
+		if sideOf(oe) != sideUnconfirmed {
+			continue
+		}
+		peer, off := edgePeer(oe, scope)
+		u := UnconfirmedEdge{Node: oe.GetSrcNodeId(), Peer: peer, Proto: protoName(oe.GetProtocol()), OffScopePeer: off}
+		if seen[u] {
+			continue
+		}
+		seen[u] = true
+		out = append(out, u)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		switch {
+		case a.Node != b.Node:
+			return a.Node < b.Node
+		case a.Peer != b.Peer:
+			return a.Peer < b.Peer
+		default:
+			return a.Proto < b.Proto
+		}
+	})
+	return out
 }
 
 func protoName(p discoveryv1.NetworkProtocol) string {

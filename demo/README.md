@@ -26,7 +26,7 @@ and **the declaration is made from it, so there is nothing to change on our side
 
 ## What it adds
 
-This demo is **an extension, not a separate stack**. It starts [pqcota's discovery demo](https://github.com/randyinthedev-hash/pqcota/tree/v0.16.0/demo)
+This demo is **an extension, not a separate stack**. It starts [pqcota's discovery demo](https://github.com/randyinthedev-hash/pqcota/tree/v0.20.0/demo)
 as it is, and on top of it adds this repository's features: **three-state reconciliation against the declaration
 (CONFIRMED/UNDECLARED/UNOBSERVED) + the review queue + the governance topology**.
 
@@ -59,7 +59,7 @@ python3 and `gh` logged in ([Requirements](#requirements)). The demo was checked
 # 3) (optional) see the same demo on the screen. The screen runs inside pqcota-ctl and opens in this machine's browser
 #    first fetch and verify the official collectors of the version go.mod pins (needs gh logged in). ui.sh downloads nothing.
 #    -arch is the target of the pqcota-ctl container (usually linux-amd64; Docker on Apple Silicon is linux-arm64). ui.sh refuses a mismatch
-(cd .. && go run ./inventory/cmd/pqcaton-collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-v0.16.0)
+(cd .. && go run ./inventory/cmd/pqcaton-collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-v0.20.0)
 ./scripts/ui.sh              # → http://127.0.0.1:8765 · to stop: ./scripts/ui.sh stop
 
 # 4) clean up (the core demo owns the environment)
@@ -199,7 +199,7 @@ judgment organization (`demo-corp`), so `extend.sh` also loads the same results 
 ### End-to-end check
 
 `make e2e-demo` starts this demo from scratch, runs the policy activation to the end along both the screen and the command paths, and
-measures the failure paths too (IC-U152). Take the five upstream repositories side by side at v0.16.0 and give the upstream `pqcota`
+measures the failure paths too (IC-U152). Take the five upstream repositories side by side at v0.20.0 and give the upstream `pqcota`
 checkout with `PQCOTA_DIR`. Replace each `<…>` with the real path before running it.
 
 ```bash
@@ -224,13 +224,13 @@ the container is removed, so it can be used as it is for a test that an older ve
 ## Requirements
 - **A pqcota repository checkout**: the declaration is made from its `topology.yaml`. Put it in a sibling directory (`../pqcota`) or
   give it with `PQCOTA_DIR=/path`.
-- **Take pqcota at v0.16.0.** The upstream demo takes the five repositories side by side and bundles them in one image, so take all five
+- **Take pqcota at v0.20.0.** The upstream demo takes the five repositories side by side and bundles them in one image, so take all five
   at the same tag next to this repository. With another version upstream builds its history with a different ruleset, and the evidence
   of the plans this repository makes may not be found in the upstream history. The version to use with each pqcaton version is in the
   [version table](../docs/compatibility.md).
 
   ```bash
-  for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.16.0 https://github.com/randyinthedev-hash/$r; done
+  for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.20.0 https://github.com/randyinthedev-hash/$r; done
   ```
 - The pqcota discovery demo running (step 1 above).
 - **Docker** on this machine: the upstream demo runs the nodes, the control container and the database in Docker.

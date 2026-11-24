@@ -5,6 +5,7 @@ package reconcile
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	commonv1 "github.com/randyinthedev-hash/pqcota-common/gen/pqcota/common/v1"
@@ -171,5 +172,101 @@ func TestReconcileEdges_orderIgnoresInputOrder(t *testing.T) {
 				t.Errorf("순서 %v: [%d] = %v, want %v", p, i, got[i].Key, want[i])
 			}
 		}
+	}
+}
+
+// withRole — 역할을 적은 관측 기록. 받은 쪽 기록(상류 v0.18.0부터)은 dst_addr가 포트 없는 상대 IP이고 port가 받은 포트다.
+func withRole(e *discoveryv1.ObservedEdge, role discoveryv1.EdgeRole) *discoveryv1.ObservedEdge {
+	e.Role = role
+	return e
+}
+
+// IC-E5: **받은 쪽 기록은 뒤집어 연 쪽 기록과 한 엣지로 합친다.**
+//
+// 기록은 늘 관측한 노드 아래에 적힌다. 받은 쪽 기록을 연 쪽 기록처럼 읽으면 `app → web`이라는 거꾸로 된 미선언 엣지가 생기고,
+// 선언한 `web → app`은 양쪽에서 보고도 한 번만 대조된다.
+func TestReconcileEdges_serverSideRecord(t *testing.T) {
+	tls := discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_TLS
+	client, server := discoveryv1.EdgeRole_EDGE_ROLE_CLIENT, discoveryv1.EdgeRole_EDGE_ROLE_SERVER
+	scope := map[string]bool{"web": true, "app": true, "db": true}
+	declared := []EdgeKey{ek("web", "app", 8443, "TLS"), ek("app", "db", 5432, "TLS")}
+	observed := []*discoveryv1.ObservedEdge{
+		// 받은 쪽 기록이 먼저 와도 결과는 같다. 그룹이 빈 연 쪽 기록은 받은 쪽 기록의 그룹으로 채운다.
+		withRole(oe("app", "web", "10.0.0.1", 8443, tls, "X25519MLKEM768"), server),
+		withRole(oe("web", "app", "10.0.0.2:8443", 8443, tls, ""), client),
+		// 연 쪽(app)은 이 연결을 놓쳤고 받은 쪽(db)만 보았다: 선언과 맞는 엣지다.
+		withRole(oe("db", "app", "10.0.0.2", 5432, tls, "X25519"), server),
+		// 등재되지 않은 상대에서 받은 연결.
+		withRole(oe("db", "", "203.0.113.9", 5432, tls, "X25519"), server),
+		// 상류 v0.18.0 전의 기록: 연 쪽 기록인데 SERVER가 적혔다. dst_addr에 포트가 있으면 뒤집지 않는다.
+		withRole(oe("web", "db", "10.0.0.3:22", 22, discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_SSH, "curve25519-sha256"), server),
+	}
+	got := map[EdgeKey]ReconciledEdge{}
+	all := recEdges(t, declared, observed, scope, nil)
+	for _, r := range all {
+		got[r.Key] = r
+	}
+	if len(all) != 4 {
+		t.Fatalf("%d edges, want 4: %+v", len(all), all)
+	}
+	both := got[ek("web", "app", 8443, "TLS")]
+	if both.State != Confirmed || !both.SeenByClient || !both.SeenByServer || both.Group != "X25519MLKEM768" ||
+		both.Posture != discoveryv1.QuantumPosture_QUANTUM_POSTURE_PQC_HYBRID {
+		t.Errorf("the edge seen on both nodes is %+v, want one CONFIRMED edge with the negotiated group of the record that has it", both)
+	}
+	if _, reversed := got[ek("app", "web", 8443, "TLS")]; reversed {
+		t.Error("the accepting node's record became a reversed edge app → web")
+	}
+	only := got[ek("app", "db", 5432, "TLS")]
+	if only.State != Confirmed || only.SeenByClient || !only.SeenByServer || only.OffScopeSrc || only.OffScopeDst {
+		t.Errorf("the edge seen on the accepting node only is %+v, want CONFIRMED and seen by the server side only", only)
+	}
+	ext := got[ek("203.0.113.9", "db", 5432, "TLS")]
+	if ext.State != Undeclared || !ext.OffScopeSrc || ext.OffScopeDst || !ext.NeedsReview {
+		t.Errorf("a connection accepted from an unlisted peer is %+v, want UNDECLARED with an off-scope source", ext)
+	}
+	old := got[ek("web", "db", 22, "SSH")]
+	if old.State != Undeclared || !old.SeenByClient || old.SeenByServer {
+		t.Errorf("a pre-v0.18.0 client record that carries the server role is %+v, want it read as web → db", old)
+	}
+}
+
+// IC-E6: **역할을 확인하지 못한 기록은 대조하지 않고 따로 모은다.**
+//
+// 방향과 포트를 모르는 기록을 3-상태 표에 넣으면 포트 0의 미선언 엣지가 되고, 재관측으로 풀릴 것을 사람에게 판정하라고 올리게 된다.
+func TestReconcileEdges_unconfirmedRole(t *testing.T) {
+	ssh := discoveryv1.NetworkProtocol_NETWORK_PROTOCOL_SSH
+	scope := map[string]bool{"web": true, "db": true}
+	observed := []*discoveryv1.ObservedEdge{
+		oe("web", "db", "10.0.0.3", 0, ssh, ""),      // 역할 없음 · 포트 0
+		oe("web", "db", "10.0.0.3", 0, ssh, ""),      // 같은 기록이 또 왔다
+		oe("db", "", "198.51.100.7", 0, ssh, ""),     // 잇지 못한 상대
+		oe("web", "db", "10.0.0.3:22", 22, ssh, "x"), // 역할 없음 · 포트 있음: 역할을 적지 않던 연 쪽 기록
+	}
+	edges := recEdges(t, nil, observed, scope, nil)
+	if len(edges) != 1 || edges[0].Key != ek("web", "db", 22, "SSH") {
+		t.Errorf("reconciled edges %+v, want only web → db:22", edges)
+	}
+	got := UnconfirmedEdges(observed, scope)
+	want := []UnconfirmedEdge{
+		{Node: "db", Peer: "198.51.100.7", Proto: "SSH", OffScopePeer: true},
+		{Node: "web", Peer: "db", Proto: "SSH"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("unconfirmed %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("unconfirmed[%d] = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	dot := RenderTopologyDOT(edges, nil, got)
+	for _, sub := range []string{`"web" -> "db" [label="SSH role not confirmed", color="#999999", style=dotted, dir=none];`, "role not confirmed (not reconciled)", "needs decision"} {
+		if !strings.Contains(dot, sub) {
+			t.Errorf("the topology lacks %q:\n%s", sub, dot)
+		}
+	}
+	if strings.Contains(RenderTopologyDOT(edges, nil, nil), "role not confirmed") {
+		t.Error("the legend mentions unconfirmed roles when there are none")
 	}
 }

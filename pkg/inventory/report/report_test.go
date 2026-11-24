@@ -99,9 +99,11 @@ func TestResolveEdgeDsts(t *testing.T) {
 		edge("", "172.18.0.2"),
 		edge("", "10.9.9.9:22"),
 		edge("이미-이어짐", "172.19.0.4"),
+		// 받은 쪽 기록의 상대(상류 v0.18.0부터): 포트 없는 IP이고, IPv4 연결을 IPv6 소켓으로 받으면 `::ffff:`가 붙는다.
+		edge("", "::ffff:172.19.0.4"),
 	}
 	report.ResolveEdgeDsts(edges, nodes)
-	want := []string{"pay-app", "pay-db", "", "이미-이어짐"}
+	want := []string{"pay-app", "pay-db", "", "이미-이어짐", "pay-app"}
 	for i, w := range want {
 		if got := edges[i].GetDstNodeId(); got != w {
 			t.Errorf("%d번 엣지 = %q, want %q", i, got, w)

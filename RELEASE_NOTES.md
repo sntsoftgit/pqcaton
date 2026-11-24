@@ -74,6 +74,46 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
+## v0.32.0: Takes in upstream pqcota v0.20.0 (in progress)
+
+**Goal**: use upstream pqcota v0.20.0 (which includes v0.17.0, v0.18.0 and v0.19.0). The ruleset (`pqcota-enrich/v4`), the contract and
+the database tables and columns are the same as v0.16.0, so the pqcota history and the sessions and plans of v0.31.x are used as they are.
+
+### What changes for the receiving side
+
+- **pqcota: v0.20.0** ([version table](docs/compatibility.md)). Keep the five upstream repositories together at v0.20.0.
+  No ruleset change round is needed.
+- **With the v0.20.0 collectors on the nodes, accepted connections are observed too.** From upstream v0.18.0 `pqcota-netcap` records
+  the connections a node accepts, not only the ones it opens. The first observation after replacing the collectors can add communication
+  edges for nodes that only accept connections. The assets do not change.
+- **04 reads the accepting node's record as "opener → acceptor" and merges it with the opener's record into one edge.** A connection
+  recorded by both nodes is one line in the reconciliation table. When the sending node was not observed but the accepting node saw the
+  connection, the edge is in the table and is marked "observed on the accepting node only". A connection accepted from an unlisted peer
+  gets "needs enrollment decision" on the From side.
+- **Connections whose direction was not confirmed are kept out of the reconciliation table and shown separately under it.** A record
+  for which the collector could not confirm which side opened the connection (for example SSH whose start was not seen) has no port and
+  no negotiated group. It is not reconciled with the declaration and is not counted in "negotiated connections". The topology draws it
+  as a dotted line without an arrow. Observing again may confirm it.
+- **"Negotiated connections" counts edges.** It used to count records. A connection recorded by both nodes is one.
+- **The collector signing keys are as in v0.31.0.** 03 uses one key per collector ID. The screen of this version does not handle the
+  per-node key file of upstream v0.17.0 (`PQCOTA_VERIFY_KEY_FILE`). `PQCOTA_VERIFY_KEY` in the collector-bound form works unchanged with
+  upstream v0.20.0. The limitation that a key taken from one node can sign results for another node remains.
+- The order of the upgrade is in [operator guide, section 9, "v0.31.1 to v0.32.0"](docs/operator-guide.md#v0311-to-v0320).
+
+### What was fixed
+
+- The `pqcota-netcap` before upstream v0.18.0 could write the accepting role on a client record that missed its own ClientHello;
+  upstream fixed that. When result files of that version are still in the workspace, 04 reads such a record as the opener's record (it
+  is told apart by the port in the peer address).
+
+### What was built
+
+- New cases IC-E5, IC-E6 and IC-UI75 measure turning the accepting node's record around and merging it, keeping records with an
+  unconfirmed direction out of the reconciliation and collecting them separately, and 04 showing the two apart. IC-R8 also measures
+  linking an IPv4 peer written with `::ffff:` to its node.
+
+---
+
 ## v0.31.1: Fixes the 01 declaration saving an input mistake as a deleted node (2026-11-23)
 
 **Apache-2.0 conversion: 2030-11-23** (four years from the release date)

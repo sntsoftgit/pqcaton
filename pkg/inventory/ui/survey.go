@@ -27,6 +27,8 @@ type SurveyView struct {
 
 	Assets []AssetRow
 	Edges  []EdgeRow
+	// Unconfirmed — 어느 쪽이 연결을 열었는지 확인하지 못한 기록. 대조 표에 넣지 않고 그 아래에 따로 보인다.
+	Unconfirmed []reconcile.UnconfirmedEdge
 
 	// DOT — 토폴로지 원문. `dot`이 없는 기계에서도 **무엇을 그리려 했는지는 보여 준다.**
 	DOT string
@@ -56,6 +58,10 @@ type EdgeRow struct {
 	Mark, Grade string
 	Group       string
 	OffScope    bool
+	// OffScopeSrc — 연결을 연 쪽이 등재되지 않았다. 받은 쪽 기록에서만 생긴다.
+	OffScopeSrc bool
+	// ServerOnly — 받은 노드의 기록으로만 본 엣지다. 연 쪽 노드를 관측하지 못했거나 그쪽 수집기가 이 연결을 놓쳤다.
+	ServerOnly bool
 	// Uncovered — 보내는 쪽을 관측하지 못했다. **부재가 아니라 미관측**이다.
 	Uncovered bool
 }
@@ -83,12 +89,14 @@ func NewSurveyView(r *report.Result, page Page) SurveyView {
 		v.Edges = append(v.Edges, EdgeRow{
 			Src: e.Key.Src, Dst: e.Key.Dst, Port: e.Key.Port, Proto: e.Key.Proto,
 			State: string(e.State), Mark: mark, Grade: grade, Group: e.Group,
-			OffScope: e.OffScopeDst, Uncovered: r.Uncovered[e.Key.Src],
+			OffScope: e.OffScopeDst, OffScopeSrc: e.OffScopeSrc, ServerOnly: e.SeenByServer && !e.SeenByClient,
+			Uncovered: r.Uncovered[e.Key.Src],
 		})
 	}
 	sort.SliceStable(v.Edges, func(i, j int) bool { return v.Edges[i].Src < v.Edges[j].Src })
 
-	v.DOT = reconcile.RenderTopologyDOT(r.Edges, r.Uncovered)
+	v.Unconfirmed = r.UnconfirmedEdges
+	v.DOT = reconcile.RenderTopologyDOT(r.Edges, r.Uncovered, r.UnconfirmedEdges)
 	return v
 }
 

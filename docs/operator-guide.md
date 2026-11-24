@@ -5,7 +5,10 @@ English · [한국어](operator-guide.ko.md)
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.31.1.
+> **`main` is under development for v0.32.0.** It takes in upstream pqcota v0.20.0 (the ruleset stays `pqcota-enrich/v4`). For
+> operation use the [v0.31.1 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.31.1) with pqcota v0.16.0.
+
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.32.0.
 The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -70,7 +73,7 @@ When this section is done, the screen starts on this machine. Do 1 to 3 once; do
 **Installing the screen.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.31.1
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.32.0
 ```
 
 When `pqcaton-ui -h` prints the list of flags, it is installed. It ends with exit code 2 after printing the help, which is normal.
@@ -143,32 +146,32 @@ the screen starts. With a pqcota history already in use, follow "Moving an exist
    `linux-amd64`.
 
    ```bash
-   mkdir -p ~/pqcaton/pqcota-ctl-v0.16.0 && cd ~/pqcaton/pqcota-ctl-v0.16.0
-   gh release download v0.16.0 -R randyinthedev-hash/pqcota -p 'pqcota-ctl-linux-amd64.tar.gz' -p SHA256SUMS
+   mkdir -p ~/pqcaton/pqcota-ctl-v0.20.0 && cd ~/pqcaton/pqcota-ctl-v0.20.0
+   gh release download v0.20.0 -R randyinthedev-hash/pqcota -p 'pqcota-ctl-linux-amd64.tar.gz' -p SHA256SUMS
    sha256sum -c --ignore-missing SHA256SUMS
    gh attestation verify pqcota-ctl-linux-amd64.tar.gz --repo randyinthedev-hash/pqcota \
-     --signer-workflow randyinthedev-hash/pqcota/.github/workflows/release.yml --source-ref refs/tags/v0.16.0 --deny-self-hosted-runners
+     --signer-workflow randyinthedev-hash/pqcota/.github/workflows/release.yml --source-ref refs/tags/v0.20.0 --deny-self-hosted-runners
    tar -xzf pqcota-ctl-linux-amd64.tar.gz
    install -m 755 pqcota-ctl-linux-amd64/pqcota-* ~/.local/bin/
    ```
 
-   **macOS (Intel, Apple Silicon): a source build pinned to the tag.** Put the five upstream repositories side by side at the v0.16.0
-   tag and build. It needs Git and Go. Most upstream commands cannot be installed with `go install …@v0.16.0` because of the `replace`
+   **macOS (Intel, Apple Silicon): a source build pinned to the tag.** Put the five upstream repositories side by side at the v0.20.0
+   tag and build. It needs Git and Go. Most upstream commands cannot be installed with `go install …@v0.20.0` because of the `replace`
    lines in their `go.mod`.
 
    ```bash
-   mkdir -p ~/pqcaton/pqcota-src-v0.16.0 && cd ~/pqcaton/pqcota-src-v0.16.0
-   for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone -q --branch v0.16.0 https://github.com/randyinthedev-hash/$r; done
+   mkdir -p ~/pqcaton/pqcota-src-v0.20.0 && cd ~/pqcaton/pqcota-src-v0.20.0
+   for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone -q --branch v0.20.0 https://github.com/randyinthedev-hash/$r; done
    cd pqcota
    D=github.com/randyinthedev-hash
    go build -o ~/.local/bin/ $D/pqcota-common/cmd/... $D/pqcota-discovery/cmd/... $D/pqcota-inventory/cmd/... $D/pqcota-provisioning/cmd/...
    ```
 
-   When `pqcota-inventory -h` prints the list of flags, it is done. Git on macOS may warn "refs/tags/v0.16.0 … is not a commit!" while
+   When `pqcota-inventory -h` prints the list of flags, it is done. Git on macOS may warn "refs/tags/v0.20.0 … is not a commit!" while
    cloning. If it does, check that the clone ended without failure (exit status 0) and that, from the `pqcota` folder,
    `for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git -C ../$r describe --tags --exact-match; done`
-   prints `v0.16.0` on all five lines. If any differs or fails, stop the installation, check the state of that repository, and clone again into a new empty folder. This is the "Build" section of the upstream
-   [build guide (v0.16.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.16.0/docs/build.md), and it works on Linux too.
+   prints `v0.20.0` on all five lines. If any differs or fails, stop the installation, check the state of that repository, and clone again into a new empty folder. This is the "Build" section of the upstream
+   [build guide (v0.20.0)](https://github.com/randyinthedev-hash/pqcota/blob/v0.20.0/docs/build.md), and it works on Linux too.
 
 3. **Creating the history schema.** Create the schema by running `pqcota-inventory -init-schema` once as `pqcota_schema`. It runs in one
    transaction and ends with a line such as `schema ready: 11 created, 0 already present`. Running it again leaves the existing tables and
@@ -203,7 +206,7 @@ the screen starts. With a pqcota history already in use, follow "Moving an exist
      and column of the history store. Without the privileges it does not start ("this account lacks privileges to read the pqcota
      history (SELECT on its tables, USAGE on their schema); initializing the schema does not change them"). Initializing does not fix
      it; grant the privileges.
-   - The full table of roles and privileges is upstream's [setting up the database (v0.16.0)](https://github.com/randyinthedev-hash/pqcota-inventory/blob/v0.16.0/cmd/README.md#setting-up-the-database).
+   - The full table of roles and privileges is upstream's [setting up the database (v0.20.0)](https://github.com/randyinthedev-hash/pqcota-inventory/blob/v0.20.0/cmd/README.md#setting-up-the-database).
 
 5. **Screen connection.** Keep the connection of the screen account as one line in `pqcota.env`. Do not put the value on the
    command line, so the password stays out of the shell history. Create the empty file (0600) with the commands below, then put one
@@ -267,8 +270,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -284,7 +287,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.31.1/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -317,9 +320,9 @@ Then start the screen again and see that the check lines on 03 show nothing miss
   signature check. With a Windows node in the access file, 03 shows it and does not start. Take Windows nodes out of the access file and
   observe them by running `pqcota-cngscan` and `pqcota-jvmscan` yourself with their signing keys.
 - **Collectors.** Put the collectors of the upstream release in the workspace's `collectors` folder (or `-collectors
-  <folder>`), shaped like this. Keep them on pqcota v0.16.0 (the pqcota version for each pqcaton version is in the
+  <folder>`), shaped like this. Keep them on pqcota v0.20.0 (the pqcota version for each pqcaton version is in the
   [version table](compatibility.md)), and the `collector.jar` put on the nodes on the same version.
-  This screen normalizes the collection results it reads with the v0.16.0 ruleset (`pqcota-enrich/v4`). From v0.12.0
+  This screen normalizes the collection results it reads with the v0.20.0 ruleset (`pqcota-enrich/v4`). From v0.12.0
   `pqcota-jvmscan` reports the JVMs that run the same application as one deployment, and from v0.13.0 `pqcota-nodescan` and
   `pqcota-netcap` give a user service the app key `user@<uid>.service/<unit>` and give each edge to the application that
   opened the connection. From v0.15.0 every collector signs its results with `PQCOTA_SIGN_KEY`, and one given a key it cannot sign with
@@ -338,13 +341,13 @@ collectors/
 ```
 
 **Checking the collectors you download.** The upstream collectors come as release assets, and fetching and checking them is done
-with the preparation tool `pqcaton-collectors`. It fetches only the assets of the upstream version go.mod pins (v0.16.0 for this
+with the preparation tool `pqcaton-collectors`. It fetches only the assets of the upstream version go.mod pins (v0.20.0 for this
 version) and never runs what it downloads.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.31.1
-pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.16.0
-pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.32.0
+pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.20.0
+pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.20.0
 ```
 
 - **Conditions.** `gh` (GitHub CLI 2.49 or later) must be there and logged in (`gh auth login`). Checking the attestations and
@@ -360,7 +363,7 @@ pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.16.0
   the attestations of the unpacked programs, and moves the folder into place at once only when exactly the expected files are
   there. If anything fails, the target is not created. An existing target is never overwritten.
 - **Using it.** Check it again with `verify` before starting the screen, and give it to the screen with
-  `-collectors ~/pqcaton/collectors-v0.16.0/collectors`.
+  `-collectors ~/pqcaton/collectors-v0.20.0/collectors`.
 
 <a id="preparing-the-collector-signing-keys"></a>
 
@@ -412,11 +415,11 @@ reads only the Go build information. "Verified" is only a build whose collector 
 module content hash (h1) in the build information equals the value this version pins (the repository's `go.sum`), and whose
 dependencies carry no replace either.
 
-**The release assets of upstream v0.16.0 are "verified".** From v0.14.0 the upstream release builds the sibling modules from
+**The release assets of upstream v0.20.0 are "verified".** From v0.14.0 the upstream release builds the sibling modules from
 the same tag's modules instead of the folders next to it, so the build information keeps the collector itself and its
 dependencies at that version with no replace. A build of your own next to the sibling folders (as the upstream demo does) is still
 "cannot be verified": a collector built itself through a replace shows "actual source: local replace (devel)", and one built
-from a tag checkout shows "collector source v0.16.0 verified · replaced dependency sources cannot be verified". A build of your
+from a tag checkout shows "collector source v0.20.0 verified · replaced dependency sources cannot be verified". A build of your
 own carries no h1 for its main module, so even without a replace it cannot be verified: "no module content hash (h1) (built
 locally)".
 
@@ -482,7 +485,7 @@ they are never writable by the group or others, from the moment they exist (06 r
 final `chmod` opens it to others for reading only; 06 also takes it at 0600.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.16.0
+GOBIN="$HOME/.local/bin" go install github.com/randyinthedev-hash/pqcota-common/cmd/pqcota-keygen@v0.20.0
 mkdir -p ~/.config/pqcaton
 (umask 077 && pqcota-keygen > ~/.config/pqcaton/approval.key)
 (umask 077 && grep '^PQCOTA_VERIFY_KEY=' ~/.config/pqcaton/approval.key > ~/.config/pqcaton/approval.pub)
@@ -958,6 +961,26 @@ cut). Send the diagnostics file and the files you kept. The diagnostics file hol
 contents.
 
 ## 9. Upgrading
+
+### v0.31.1 to v0.32.0
+
+v0.32.0 takes in upstream pqcota v0.20.0 (which includes v0.17.0, v0.18.0 and v0.19.0). The ruleset (`pqcota-enrich/v4`), the contract and
+the history's tables and columns are the same as v0.16.0, and the state format, the sessions and the plan format are the same as v0.31.1,
+so the workspace opens as it is.
+
+1. Stop the screen.
+2. **Upgrade the upstream tools together to v0.20.0** (the `pqcota-ctl` bundle of "Preparing pqcota" in section 2). Keep the tools that
+   load into, prune or record in the same history at the same version. The schema is the same as v0.16.0, so `pqcota-inventory -init-schema`
+   does not have to be run again.
+3. Install `pqcaton-ui` and the preparation tool `pqcaton-collectors` at v0.32.0 with the `go install` of [section 2](#2-installation), and
+   fetch the v0.20.0 release assets as in "Checking the collectors you download" to replace the collector folder. 03 refuses the v0.16.0
+   collectors as not matching.
+4. Keep the collector signing keys and the verification value (`PQCOTA_VERIFY_KEY` in the collector-bound form) as they are. Do not move
+   to the per-node key file of upstream v0.17.0 (`PQCOTA_VERIFY_KEY_FILE`): 03 of this version signs with one key per collector ID.
+5. Start the screen and observe again on 03. The `pqcota-netcap` of v0.20.0 also records the connections a node accepts, so nodes that
+   only accept connections can get new communication edges. 04 shows the two records of one connection as one edge, and shows the
+   connections whose direction was not confirmed separately under the reconciliation table. Upstream `pqcota-inventory -diff` lists the
+   accepting node's records as added; the assets did not change.
 
 ### v0.31.0 to v0.31.1
 

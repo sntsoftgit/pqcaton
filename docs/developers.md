@@ -76,6 +76,10 @@ Each communication edge is classified by declared ∩ observed. The deterministi
   absent" from "cannot be seen in principle (a gap)". A gap means collect again; otherwise a person judges.
 - Input: observed edges (network-collector TLS grades + CBOM) and declared edges (declaration-importer). evidence_strength propagates
   into confidence.
+- An edge points from the side that opened the connection to the side that accepted it. An observation record is always written under
+  the node that observed it, so the accepting node's record (from upstream v0.18.0, `role = SERVER`) is turned around and merged with the
+  opening node's record into one edge. A record whose role the collector could not confirm has no known direction or port, so it is not
+  reconciled and is shown separately.
 
 **Reconciliation is bound to an organization.** The engine opens for one organization (`reconcile.For`), and if even one asset or edge of
 another organization is mixed into the input, it **stops without reconciling.** Neither pqcota snapshots nor the contract's `Envelope`

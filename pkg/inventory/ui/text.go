@@ -667,6 +667,17 @@ var (
 	tGradeUnknown   = T{KO: "불명", EN: "unknown"}
 	tUncoveredSrc   = T{KO: "관측 안 된 노드", EN: "node not observed"}
 	tOffScope       = T{KO: "등재 판정 요청", EN: "needs enrollment decision"}
+	tServerOnly     = T{KO: "받은 노드에서만 관측", EN: "observed on the accepting node only"}
+	tColPeer        = T{KO: "상대", EN: "Peer"}
+
+	tUnconfirmedEdges = T{
+		KO: "방향을 확인하지 못한 연결: %d건",
+		EN: "Connections whose direction was not confirmed: %d"}
+	tUnconfirmedEdgesHint = T{
+		KO: "수집기가 어느 쪽이 연결을 열었는지 확인하지 못한 기록입니다. 포트와 협상 그룹이 없어서 선언과 대조하지 않았고, 위 표와 " +
+			"수에도 넣지 않았습니다. 다시 관측하면 확인될 수 있습니다.",
+		EN: "The collector could not confirm which side opened these connections. They carry no port and no negotiated " +
+			"group, so they are not reconciled with the declaration and are not counted above. Observing again may confirm them."}
 
 	tTopology     = T{KO: "토폴로지", EN: "Topology"}
 	tTopologyHint = T{

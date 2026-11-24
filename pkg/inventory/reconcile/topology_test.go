@@ -19,7 +19,7 @@ func TestRenderTopologyDOT(t *testing.T) {
 		{Key: ek("db", "app", 5432, "TLS"), State: Unobserved},
 		{Key: ek("web", "203.0.113.5:443", 443, "TLS"), State: Undeclared, OffScopeDst: true, Posture: discoveryv1.QuantumPosture_QUANTUM_POSTURE_UNSPECIFIED},
 	}
-	dot := RenderTopologyDOT(edges, map[string]bool{"db": true})
+	dot := RenderTopologyDOT(edges, map[string]bool{"db": true}, nil)
 
 	checks := []struct{ name, sub string }{
 		{"digraph 시작", "digraph crypto_topology"},

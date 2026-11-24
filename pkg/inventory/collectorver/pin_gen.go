@@ -7,8 +7,8 @@ package collectorver
 
 // Pinned holds the upstream modules this repository requires: the version in go.mod and the content hash (h1) in go.sum.
 var Pinned = map[string]Pin{
-	"github.com/randyinthedev-hash/pqcota-common":       {Version: "v0.16.0", Sum: "h1:/4lEEf6VLUtRxr0IYQ412ECyBlt+E8YkgkkO+HVZvSU="},
-	"github.com/randyinthedev-hash/pqcota-discovery":    {Version: "v0.16.0", Sum: "h1:0PgyUNrEiJJ0Hx7wuIl1UJsuhKCCo4BR+zNJG7J/cQA="},
-	"github.com/randyinthedev-hash/pqcota-inventory":    {Version: "v0.16.0", Sum: "h1:wbwp141HhKtIfotZi4yAt/qVJ/deomgcR17lHy+NvSY="},
-	"github.com/randyinthedev-hash/pqcota-provisioning": {Version: "v0.16.0", Sum: "h1:O2wELix2y59Eyx6ZzAOdU1HxBIrJtp1e4GD31tQh0pI="},
+	"github.com/randyinthedev-hash/pqcota-common":       {Version: "v0.20.0", Sum: "h1:vlzsqhyS+pqQuo8d0wAwD9+TAiOJDne78zXDdbe7pz0="},
+	"github.com/randyinthedev-hash/pqcota-discovery":    {Version: "v0.20.0", Sum: "h1:FcJ1YQ3MYeeK/i1oIZ2duflm5Zak2eZ8Kyqx2DjsnVU="},
+	"github.com/randyinthedev-hash/pqcota-inventory":    {Version: "v0.20.0", Sum: "h1:TREzJFRt3LBIrk5A/feyy12g3si4F6tnwHeQmeoduDQ="},
+	"github.com/randyinthedev-hash/pqcota-provisioning": {Version: "v0.20.0", Sum: "h1:JKBjG4WMNbykKgWSMnnwssS7KkhdfkpJ4Le5gwFHYDs="},
 }

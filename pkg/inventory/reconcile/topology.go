@@ -19,8 +19,9 @@ import (
 //   - 선형 = reconciliation 상태: 실선=CONFIRMED, 굵은선=UNDECLARED(UNDECLARED 경고), 점선=UNOBSERVED
 //   - 미관측 엣지는 "연결 없음"이 아니라 점선으로 그린다(미관측≠부재).
 //   - off-scope 상대(스코프 미등재)는 점선 박스 + "판정요청" 표기(§1.4).
+//   - 역할을 확인하지 못한 기록은 화살표 없는 점선(dotted)이다. 방향을 모르는 것을 화살표로 그리지 않는다(IC-E6).
 //   - uncovered(collector 미설치) 노드는 회색 처리 — 그 노드의 엣지는 반쪽만 보임(인벤토리 설계 §6.2).
-func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool) string {
+func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool, unconfirmed []UnconfirmedEdge) string {
 	// 노드 수집: 등장한 모든 src/dst. off-scope dst는 별도 표기.
 	offScope := map[string]bool{}
 	nodeSet := map[string]bool{}
@@ -29,6 +30,16 @@ func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool) string
 		nodeSet[e.Key.Dst] = true
 		if e.OffScopeDst {
 			offScope[e.Key.Dst] = true
+		}
+		if e.OffScopeSrc {
+			offScope[e.Key.Src] = true
+		}
+	}
+	for _, u := range unconfirmed {
+		nodeSet[u.Node] = true
+		nodeSet[u.Peer] = true
+		if u.OffScopePeer {
+			offScope[u.Peer] = true
 		}
 	}
 	nodes := make([]string, 0, len(nodeSet))
@@ -42,7 +53,11 @@ func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool) string
 	// rankdir=TB(위→아래) 세로 배치 + 하단 캡션 범례(옆으로 안 퍼지게). 폭 축소.
 	b.WriteString("  rankdir=TB;\n  ranksep=0.5;\n  nodesep=0.3;\n")
 	b.WriteString(`  labelloc="b"; fontsize=11;` + "\n")
-	b.WriteString(`  label="colour = grade: 🟢 PQC · 🔴 classical · ⚪ unknown\nline: solid CONFIRMED · bold UNDECLARED · dashed UNOBSERVED";` + "\n")
+	legend := `colour = grade: 🟢 PQC · 🔴 classical · ⚪ unknown\nline: solid CONFIRMED · bold UNDECLARED · dashed UNOBSERVED`
+	if len(unconfirmed) > 0 {
+		legend += `\ndotted, no arrow: role not confirmed (not reconciled)`
+	}
+	b.WriteString(`  label="` + legend + `";` + "\n")
 	b.WriteString(`  node [shape=box, style="rounded,filled", fillcolor="#eeeeff", fontname="sans"];` + "\n")
 	b.WriteString(`  edge [fontname="sans", fontsize=10];` + "\n\n")
 
@@ -63,6 +78,14 @@ func RenderTopologyDOT(edges []ReconciledEdge, uncovered map[string]bool) string
 
 	for _, e := range edges {
 		b.WriteString("  " + dotEdge(e) + "\n")
+	}
+	// 역할을 확인하지 못한 기록: 방향을 모르므로 화살표 없이 점선으로 그린다.
+	for _, u := range unconfirmed {
+		label := "role not confirmed"
+		if u.Proto != "" {
+			label = u.Proto + " " + label
+		}
+		b.WriteString(fmt.Sprintf("  %q -> %q [label=%q, color=\"#999999\", style=dotted, dir=none];\n", u.Node, u.Peer, label))
 	}
 
 	b.WriteString("}\n")

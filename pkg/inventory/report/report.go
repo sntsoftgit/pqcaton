@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/netip"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -45,6 +46,8 @@ type Result struct {
 
 	Assets []reconcile.Reconciled
 	Edges  []reconcile.ReconciledEdge
+	// UnconfirmedEdges — 수집기가 어느 쪽이 연결을 열었는지 확인하지 못한 기록. 선언과 대조하지 않고 따로 보인다.
+	UnconfirmedEdges []reconcile.UnconfirmedEdge
 	// Snapshots — 원천 노드마다 정규화한 스냅샷의 위치(원천 노드 · v1 지문 · 규칙 판). **관리 자산이 하나도 없는 노드도
 	// 든다.** 정책이 노드의 자산을 모두 뺀 것도 정책 변경의 결과이므로, 상류 확인(upstream.Refs)은 자산의 근거가 아니라
 	// 이것을 본다. 원천 노드의 순서는 결과를 읽은 순서다.
@@ -62,6 +65,8 @@ type Result struct {
 	// ManagedAssets — 그 가운데 관리 대상(MANAGED). 계획에 들 수 있는 것의 수다.
 	ObservedAssets int
 	ManagedAssets  int
+	// ObservedEdges — 관측된 엣지의 수(방향 · 포트 · 프로토콜이 같은 것은 하나). 연 쪽과 받은 쪽이 따로 낸 기록은 한 엣지다.
+	// 역할을 확인하지 못한 기록(UnconfirmedEdges)은 세지 않는다.
 	ObservedEdges  int
 	DeclaredAssets int
 	DeclaredEdges  int
@@ -179,7 +184,8 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 		}
 	}
 
-	// 관측 IP → 스코프 노드 잇기(§1.4). 이어지면 CONFIRMED로 잡히고, 안 되면 off-scope다.
+	// 관측 IP → 스코프 노드 잇기(§1.4). 이어지면 CONFIRMED로 잡히고, 안 되면 off-scope다. 기록의 상대 주소를 잇는 것이라
+	// 받은 쪽 기록(상류 v0.18.0부터)에서는 연결을 연 노드가 이어진다.
 	ResolveEdgeDsts(observedEdges, d.Nodes)
 
 	declaredEdges := make([]reconcile.EdgeKey, 0, len(d.Edges))
@@ -194,6 +200,7 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 	if out.Edges, err = eng.ReconcileEdges(declaredEdges, observedEdges, scope, nil); err != nil {
 		return nil, err
 	}
+	out.UnconfirmedEdges = reconcile.UnconfirmedEdges(observedEdges, scope)
 
 	for _, n := range d.Scope {
 		if !covered[n] {
@@ -208,7 +215,11 @@ func BuildWith(dir string, d decl.Declaration, policy *scope.AssetPolicy) (*Resu
 			}
 		}
 	}
-	out.ObservedEdges = len(observedEdges)
+	for _, e := range out.Edges {
+		if e.State != reconcile.Unobserved {
+			out.ObservedEdges++
+		}
+	}
 	out.DeclaredAssets, out.DeclaredEdges = len(declaredAssets), len(declaredEdges)
 	return out, nil
 }
@@ -402,7 +413,12 @@ func ResolveEdgeDsts(edges []*discoveryv1.ObservedEdge, nodes []decl.Node) {
 		if h, _, err := net.SplitHostPort(host); err == nil {
 			host = h
 		}
-		if node, ok := ip2node[strings.TrimSpace(host)]; ok {
+		host = strings.TrimSpace(host)
+		// 받은 쪽 기록의 상대는 포트 없는 IP이고, IPv4 연결을 IPv6 소켓으로 받으면 `::ffff:10.0.0.1`로 적힌다.
+		if a, err := netip.ParseAddr(host); err == nil && a.Is4In6() {
+			host = a.Unmap().String()
+		}
+		if node, ok := ip2node[host]; ok {
 			e.DstNodeId = node
 		}
 	}

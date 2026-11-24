@@ -25,7 +25,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 
 ## 무엇을 얹나
 
-이 데모는 **독립 스택이 아니라 확장**입니다. [pqcota의 디스커버리 데모](https://github.com/randyinthedev-hash/pqcota/tree/v0.16.0/demo)를
+이 데모는 **독립 스택이 아니라 확장**입니다. [pqcota의 디스커버리 데모](https://github.com/randyinthedev-hash/pqcota/tree/v0.20.0/demo)를
 그대로 띄운 뒤, 그 위에 이 리포의 기능, 곧 **선언 대비 3-상태 대조(CONFIRMED/UNDECLARED/UNOBSERVED) +
 리뷰 큐 + 거버넌스 토폴로지**를 얹습니다.
 
@@ -58,7 +58,7 @@ pqcota 데모를 처음 보는 사람을 위해 적습니다. **결제 서비스
 # 3) (골라서) 같은 데모를 화면으로 본다. 화면은 pqcota-ctl 안에서 돌고, 이 기계의 브라우저로 연다
 #    먼저 go.mod가 고정한 판의 공식 수집기를 받아 확인해 둔다(gh 로그인 필요). ui.sh는 내려받지 않는다.
 #    -arch는 pqcota-ctl 컨테이너의 대상이다(보통 linux-amd64, Apple Silicon의 Docker는 linux-arm64). ui.sh가 다르면 거절한다
-(cd .. && go run ./inventory/cmd/pqcaton-collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-v0.16.0)
+(cd .. && go run ./inventory/cmd/pqcaton-collectors fetch -arch linux-amd64 -out ~/.cache/pqcaton-demo/collectors-v0.20.0)
 ./scripts/ui.sh              # → http://127.0.0.1:8765 · 끝낼 때: ./scripts/ui.sh stop
 
 # 4) 정리 (core 데모가 환경 소유)
@@ -195,7 +195,7 @@ Go가 없는 호스트에서는 `PQCATON_BIN_DIR=<dir>`로 미리 빌드한 `pqc
 ### 종단 검증
 
 `make e2e-demo`가 이 데모를 처음부터 띄워 정책 활성화를 화면과 명령 두 길로 끝까지 돌리고 실패 경로까지 잽니다(IC-U152). 상류 다섯 리포를
-v0.16.0으로 나란히 받아 두고 `PQCOTA_DIR`로 상류 `pqcota` 체크아웃을 줍니다. `<…>`를 실제 경로로 바꾼 뒤 실행하십시오.
+v0.20.0으로 나란히 받아 두고 `PQCOTA_DIR`로 상류 `pqcota` 체크아웃을 줍니다. `<…>`를 실제 경로로 바꾼 뒤 실행하십시오.
 
 ```bash
 PQCOTA_DIR='<상류 pqcota 체크아웃 경로>' make e2e-demo
@@ -219,13 +219,13 @@ dind 안의 데몬은 `docker exec`로 띄운 프로세스에 umask 0000을 물�
 ## 요구 사항
 - **pqcota 리포 체크아웃**: 선언을 그쪽 `topology.yaml`에서 만듭니다. 형제 디렉터리
   (`../pqcota`)에 두거나 `PQCOTA_DIR=/경로`로 알려 줍니다.
-- **pqcota는 v0.16.0으로 받습니다.** 상류 데모는 다섯 리포를 나란히 받아 한 이미지로 묶으므로, 다섯 리포를
+- **pqcota는 v0.20.0으로 받습니다.** 상류 데모는 다섯 리포를 나란히 받아 한 이미지로 묶으므로, 다섯 리포를
   모두 같은 태그로 이 리포 옆에 받습니다. 다른 판을 받으면 상류가 다른 규칙 묶음으로 이력을 쌓아, 이 리포가
   만든 계획의 근거를 상류 이력에서 찾지 못할 수 있습니다. pqcaton 판마다 함께 쓰는 판은
   [판별 표](../docs/compatibility.ko.md)에 있습니다.
 
   ```bash
-  for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.16.0 https://github.com/randyinthedev-hash/$r; done
+  for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.20.0 https://github.com/randyinthedev-hash/$r; done
   ```
 - 실행 중인 pqcota 디스커버리 데모(위 1단계).
 - 이 기계의 **Docker**: 상류 데모가 노드 · 제어 컨테이너 · 데이터베이스를 Docker로 띄웁니다.
