@@ -262,6 +262,11 @@ body.wb input[type=text], body.wb textarea, body.wb select { box-sizing: border-
 /* 버튼 줄은 접히고, 펼친 도움말 안의 긴 명령 이름은 줄을 바꾼다. 영어 문구가 더 길어 320px에서 넘쳤다. */
 body.wb .actions { flex-wrap: wrap; }
 body.wb .tip, body.wb .hint { min-width: 0; overflow-wrap: anywhere; }
+/* 엣지 표: 좁은 화면에서도 어느 노드가 보냈고 어느 노드가 받았는지 읽혀야 한다. 노드 이름은 꺾지 않고, 칸에 붙는 표시
+   (등재 판정 요청 · 받은 노드에서만 관측)는 이름 아래에 두고 낱말 단위로만 꺾는다(영어 표시는 길다). 보내는 쪽과 받는 쪽
+   두 열이 375px 안에 들어오는 폭이다. 넘치는 열은 .table-wrap 안에서 옆으로 스크롤된다. */
+body.wb table.edges td code { white-space: nowrap; }
+body.wb table.edges td .hint { display: block; min-width: 7.5rem; overflow-wrap: normal; }
 body.wb .table-wrap > table:not(.editable) th:first-child,
 body.wb .table-wrap > table:not(.editable) td:first-child {
   position: sticky; left: 0; z-index: 1; background: var(--surface); }

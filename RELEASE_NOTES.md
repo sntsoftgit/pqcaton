@@ -74,10 +74,14 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
-## v0.32.0: Takes in upstream pqcota v0.20.0 (in progress)
+## v0.32.0: Takes in upstream pqcota v0.20.0, and the screen tells you about unsaved input and the progress of an observation (2026-11-24)
 
-**Goal**: use upstream pqcota v0.20.0 (which includes v0.17.0, v0.18.0 and v0.19.0). The ruleset (`pqcota-enrich/v4`), the contract and
-the database tables and columns are the same as v0.16.0, so the pqcota history and the sessions and plans of v0.31.x are used as they are.
+**Apache-2.0 conversion: 2030-11-24** (four years from the release date)
+
+**Goal**: two things. First, use upstream pqcota v0.20.0 (which includes v0.17.0, v0.18.0 and v0.19.0). The ruleset (`pqcota-enrich/v4`),
+the contract and the database tables and columns are the same as v0.16.0, so the pqcota history and the sessions and plans of v0.31.x are
+used as they are. Second, fix the places on the screen where input disappeared without notice and where progress could not be seen. The
+state format, the sessions and the plan format are the same as v0.31.1, so the workspace opens as it is.
 
 ### What changes for the receiving side
 
@@ -98,19 +102,71 @@ the database tables and columns are the same as v0.16.0, so the pqcota history a
 - **The collector signing keys are as in v0.31.0.** 03 uses one key per collector ID. The screen of this version does not handle the
   per-node key file of upstream v0.17.0 (`PQCOTA_VERIFY_KEY_FILE`). `PQCOTA_VERIFY_KEY` in the collector-bound form works unchanged with
   upstream v0.20.0. The limitation that a key taken from one node can sign results for another node remains.
+- **The four editing screens ask before you leave with unsaved input.** They are the 01 declaration, the 02 scope, the 03 access
+  information and the 05 judgment. The row of save buttons stays at the bottom of the screen and shows "There are unsaved changes" when
+  something was edited.
+- **To delete a rule on 02, press "Remove".** The row turns into "To be removed" and is dropped at "Save rules"; "Undo" cancels it. A
+  rule whose conditions are all empty is not read as a deleted row: saving is refused (422). Pressing "Save only" or "Finalize" with
+  edited rules writes nothing and tells you to press "Save rules" first (422). In both cases the files are unchanged and what you typed
+  stays on the screen.
+- **While an observation runs, 03 shows the current step and the state of each node above the detailed log.** The 03 card reads
+  "observing now", and the page shows which of the six steps is running, the start time with its time zone and the stop button. A node's
+  state is written only when the run log has a line for that node. When the run ends the screen reloads itself: after a success it
+  links to 04, and after a failure or a stop it shows the step it stopped at, the result of the cleanup and how to try again.
+- **"Items to judge" on 04 counts only what goes to the review queue as required.** These are the same items as the required
+  judgments on 05. Assets that the crypto asset scope policy excludes are reported as a separate number, and their rows in the table
+  are marked "excluded by policy". The 05 card counts only the conclusions still empty and reads "N required judgments left".
+- **The judgment form on 05 changed.** The four activation hooks are unfolded only for items whose delegation level is L3. Folded
+  values are kept, and the form says so when there are any. The remediation kind is shown by a written-out name while the saved value
+  stays the contract word. On a narrow screen each item folds into one card.
+- **The six step cards and the inventory tab stand in one row in order.** The SSH key path field on 03 has a minimum width and widens
+  when focused.
 - The order of the upgrade is in [operator guide, section 9, "v0.31.1 to v0.32.0"](docs/operator-guide.md#v0311-to-v0320).
 
 ### What was fixed
 
+- **On 02, pressing "Save only" or "Finalize" with edited rules made the edits disappear without notice.** Those buttons wrote only
+  the session and redrew the screen from the files. What was lost was the edit on the screen; the rules in the layer files were unchanged.
+- **On 02, emptying every condition of a rule and pressing "Save rules" dropped that rule from the layer file without notice.** A
+  rule whose conditions were being edited was read as a deleted row. Check the number of rules on 02 to see whether a rule was dropped.
+- **"Items to judge" on 04 counted assets that are not in the review queue.** Assets that diverge from the declaration and that the
+  scope policy excludes do not go to the review queue, yet 04 counted them: under the same observation and policy 04 showed 2 and 05
+  showed 1. The review queue and the plan were computed correctly.
+- The notice shown after saving rules on 02 had its numbers in the wrong order in the Korean sentence; that is fixed.
 - The `pqcota-netcap` before upstream v0.18.0 could write the accepting role on a client record that missed its own ClientHello;
   upstream fixed that. When result files of that version are still in the workspace, 04 reads such a record as the opener's record (it
   is told apart by the port in the peer address).
 
 ### What was built
 
-- New cases IC-E5, IC-E6 and IC-UI75 measure turning the accepting node's record around and merging it, keeping records with an
-  unconfirmed direction out of the reconciliation and collecting them separately, and 04 showing the two apart. IC-R8 also measures
-  linking an IPv4 peer written with `::ffff:` to its node.
+- The reconciliation engine (`pkg/inventory/reconcile`) reads the role of an observation record. It places the openers' records first
+  and merges the acceptors' records into the same keys, so the result does not depend on the input order. Records whose role was not
+  confirmed are collected separately, one line per (observing node, peer, protocol).
+- The progress display on 03 reads the current step from the play and task lines of the run log. While a run is going, only the
+  summary and the log are fetched again.
+- Four remediation kind names were reworded (the saved values are unchanged): "Add and configure a provider", "Place a proxy in front",
+  "Change app code or configuration" and "Decommission or accept the risk".
+- The last sentence of the failure message on 03 now reads "The detailed errors are in the run log below".
+- New cases IC-E5, IC-E6, IC-UI65 to IC-UI75 and IC-U222 to IC-U226. IC-R8 also measures linking an IPv4 peer written with `::ffff:`
+  to its node.
+
+### What was checked
+
+- The demo end-to-end run (IC-U152) passed with the five upstream repositories at v0.20.0 and the official v0.20.0 release collectors,
+  inside a separate Docker daemon. It includes the step where the preparation tool downloads the release assets and verifies their
+  provenance.
+- The real observation results of that run held five records from the accepting side (`pay-app`, `pay-db`) and five from the opening
+  side (`web-gw`). The report and 04 merged them into four edges, and no reversed edge appeared. In a browser, the 04 table and the
+  topology point the same way and "negotiated connections" is 4.
+- **An edge seen by the accepting node only and a connection whose direction was not confirmed were checked with test input.** Such
+  records were added by hand to a copy of the real results, and the browser showed "observed on the accepting node only", "needs
+  enrollment decision" for the unlisted sender, the list of unconfirmed directions and the dotted line without an arrow in the topology.
+  They were not checked with records produced by a real collector. An IPv6 peer in an accepting-side record was measured by unit tests only.
+- At 375px the From and To columns of the edge table are both visible without horizontal scrolling, in both languages.
+- The leave warning for unsaved input, the refusals on 02, the 05 form, the card layout and the progress display on 03 (a normal end,
+  a stop and a failure) were checked in a browser against a separate demo. The failure seen on 03 was `pay-db` failing at the first
+  step (node access and privilege check). A failure in the middle of collection was not measured.
+- The results are reported as the summary of the release gate (`make release-check`) when the release is approved.
 
 ---
 

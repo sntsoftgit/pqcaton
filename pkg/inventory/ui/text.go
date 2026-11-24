@@ -1193,8 +1193,8 @@ var (
 		KO: "관측을 멈췄습니다. 지금 결과는 그대로이고, 받은 파일 %d개는 진단용으로 따로 두었습니다",
 		EN: "The observation was stopped. The current results are unchanged; what arrived is kept aside for diagnosis (files: %d)"}
 	tRunFailed = T{
-		KO: "관측이 실패했습니다(종료 코드 %d). 지금 결과는 그대로이고, 받은 파일 %d개는 진단용으로 따로 두었습니다. 아래 로그에서 어느 노드의 어느 단계인지 보십시오",
-		EN: "The observation failed (exit code %d). The current results are unchanged; what arrived is kept aside for diagnosis (files: %d). The log below shows which node and which step"}
+		KO: "관측이 실패했습니다(종료 코드 %d). 지금 결과는 그대로이고, 받은 파일 %d개는 진단용으로 따로 두었습니다. 자세한 오류는 아래 실행 로그에서 확인할 수 있습니다",
+		EN: "The observation failed (exit code %d). The current results are unchanged; what arrived is kept aside for diagnosis (files: %d). The detailed errors are in the run log below"}
 	tRunIncomplete = T{
 		KO: "결과가 오지 않았거나 맞지 않는 자리 %d곳이 있어 지금 결과로 쓰지 않았습니다. 받은 파일 %d개는 진단용으로 따로 두었습니다",
 		EN: "Some results did not arrive or do not check out (places: %d), so this run was not used as the current results; what arrived is kept aside for diagnosis (files: %d)"}
