@@ -177,14 +177,9 @@ templ surveyBody(v SurveyView) {
 	<fieldset>
 		<legend>{ tTopology.In(v.Page.Lang) }</legend>
 		@tip(v.Page.Lang, tTopologyHint.In(v.Page.Lang))
-		if v.SVG != "" {
-			<div style="overflow-x:auto">
-				@templ.Raw(v.SVG)
-			</div>
-		} else {
-			@pictureMissing(v.Page.Lang, v.Picture)
-			<textarea readonly style="min-height:12rem" aria-label="DOT">{ v.DOT }</textarea>
-		}
+		<div id="survey-picture" hx-get={ SurveyPicturePath + "?" + LangParam + "=" + string(v.Page.Lang) } hx-trigger="load" hx-swap="innerHTML">
+			<p class="hint" data-picture="pending">{ tSurveyPicturePending.In(v.Page.Lang) }</p>
+		</div>
 		<p style="margin-top:.8rem">
 			<a class="quiet" href={ templ.SafeURL(ScreenHistTopo) } data-hist-topo-link>{ tHistTopoTitle.In(v.Page.Lang) }</a>
 		</p>
@@ -203,6 +198,20 @@ templ jcaUnconfirmed(lang Lang, nodes []string) {
 				}
 			</ul>
 		</div>
+	}
+}
+
+// surveyPictureBody — 04의 그림 조각. 그리지 못했으면 까닭과 DOT 원문을 보인다(다른 기계에서 그릴 수 있게).
+templ surveyPictureBody(lang Lang, svg, state, dot string, unreadable bool) {
+	if unreadable {
+		<p class="hint" data-picture="unreadable">{ tSurveyPictureUnreadable.In(lang) }</p>
+	} else if svg != "" {
+		<div class="picture-scroll" data-survey-picture>
+			@templ.Raw(svg)
+		</div>
+	} else {
+		@pictureMissing(lang, state)
+		<textarea readonly style="min-height:12rem" aria-label="DOT">{ dot }</textarea>
 	}
 }
 

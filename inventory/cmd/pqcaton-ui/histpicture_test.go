@@ -108,9 +108,9 @@ func TestPictureNeverHoldsTheTable(t *testing.T) {
 		t.Errorf("a refused drawing: %s", p)
 	}
 	works("after a refused drawing")
-	if body := get(t, s, ui.ScreenSurvey+"?lang=ko").Body.String(); !strings.Contains(body, `data-picture="refused"`) ||
-		!strings.Contains(body, "digraph crypto_topology") || strings.Contains(body, "example.invalid") {
-		t.Error("04 with a refused drawing does not show the reason and the DOT source")
+	if body := get(t, s, ui.SurveyPicturePath+"?lang=ko").Body.String(); !strings.Contains(body, `data-picture="refused"`) ||
+		!strings.Contains(body, "digraph crypto_topology") || strings.Contains(body, "example.invalid") || strings.Contains(body, "<svg") {
+		t.Error("04's picture with a refused drawing does not show the reason and the DOT source")
 	}
 
 	// 그려진 그림은 조각으로 온다. 관측에서 온 글자는 이스케이프된 채다.
@@ -165,5 +165,48 @@ func TestDotRunIsBounded(t *testing.T) {
 	dotCache.Unlock()
 	if filled {
 		t.Error("a missing dot was remembered: installing it would not show until the DOT changes")
+	}
+}
+
+// IC-U230 — **04는 그림을 기다리지 않는다.** 먼저 읽을 것은 대조 결과와 판정할 항목 수다.
+//
+// 04 화면은 `dot`을 돌리지 않고 뜨고, 그림은 따로 받는 조각이다. `dot`이 끝나지 않아도 04의 수 · 엣지 표 · 05로 가는 링크는
+// 바로 나가고, 그림 조각은 상한에서 끊겨 까닭과 DOT 원문을 준다. 그려지면 검사를 지난 SVG가 조각으로 온다.
+func TestSurveyDoesNotWaitForThePicture(t *testing.T) {
+	s, _ := activationReady(t)
+	oldRun, oldTimeout := runDot, dotTimeout
+	t.Cleanup(func() { runDot, dotTimeout = oldRun, oldTimeout; forgetPicture() })
+	calls := 0
+	answer := func(ctx context.Context, _ string) ([]byte, error) { <-ctx.Done(); return nil, ctx.Err() } // 끝나지 않는 dot
+	runDot = func(ctx context.Context, dot string) ([]byte, error) { calls++; return answer(ctx, dot) }
+	dotTimeout = 50 * time.Millisecond
+	forgetPicture()
+
+	page := get(t, s, ui.ScreenSurvey+"?lang=ko")
+	body := page.Body.String()
+	for _, sub := range []string{`hx-get="` + ui.SurveyPicturePath + `?lang=ko"`, `hx-trigger="load"`, `data-picture="pending"`,
+		`class="metrics"`, `table class="edges"`, `href="` + ui.ScreenReview + `"`, `data-hist-topo-link`} {
+		if !strings.Contains(body, sub) {
+			t.Errorf("04 lacks %q", sub)
+		}
+	}
+	if page.Code != http.StatusOK || calls != 0 || strings.Contains(body, "<svg") || strings.Contains(body, "digraph crypto_topology") {
+		t.Fatalf("04 answered %d after running dot %d times; it must not draw or carry the picture itself", page.Code, calls)
+	}
+	// 그림 조각: 상한에서 끊기고 까닭과 DOT 원문을 준다. 그 뒤에도 04는 그대로 뜨고 05로 갈 수 있다.
+	if p := get(t, s, ui.SurveyPicturePath+"?lang=ko").Body.String(); !strings.Contains(p, `data-picture="timeout"`) || !strings.Contains(p, "digraph crypto_topology") {
+		t.Errorf("04's picture with a dot that never ends: %s", p)
+	}
+	if w := get(t, s, ui.ScreenSurvey+"?lang=ko"); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `class="metrics"`) {
+		t.Errorf("04 after a picture timeout: %d", w.Code)
+	}
+	if w := get(t, s, ui.ScreenReview+"?lang=ko"); w.Code != http.StatusOK {
+		t.Errorf("05 after a picture timeout: %d", w.Code)
+	}
+	// 그려지면 검사를 지난 그림이 조각으로 온다.
+	forgetPicture()
+	answer = func(context.Context, string) ([]byte, error) { return []byte(graphvizSVG), nil }
+	if p := get(t, s, ui.SurveyPicturePath+"?lang=en").Body.String(); !strings.Contains(p, "data-survey-picture") || !strings.Contains(p, "<svg") || strings.Contains(p, "<textarea") {
+		t.Errorf("04's drawn picture: %s", p)
 	}
 }

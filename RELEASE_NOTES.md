@@ -74,11 +74,14 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
-## v0.33.0: See app connections from the pqcota history on 04 (in progress)
+## v0.33.0: See app connections from the pqcota history on 04, with pictures drawn apart from the screen (2026-11-24)
+
+**Apache-2.0 conversion: 2030-11-24** (four years from the release date)
 
 **Goal**: open "App connections from the history" on 04 to see, from the observations loaded into the pqcota history of the judgment
-organization, which app on each node talked to what. The pqcota to use with it, the ruleset, the state format, the sessions and the plan
-format are the same as v0.32.0.
+organization, which app on each node talked to what. And keep a topology picture from holding the screen back. The pqcota to use with it,
+the ruleset, the state format, the sessions and the plan format are the same as v0.32.0, so the workspace and the history are used as
+they are.
 
 ### What changes for the receiving side
 
@@ -87,16 +90,58 @@ format are the same as v0.32.0.
   read privileges of the screen's account. The picture is drawn by the same function as upstream `pqcota-inventory -topology`. The
   reconciliation picture on 04 is unchanged.
   - The top names the organization queried and each node's history snapshot, and says by the snapshot digest of the same node whether
-    it is the "same" as the results in the workspace, "different", or "cannot compare".
+    it is the "same" as the results in the workspace, "different", or "cannot compare". Time is never used to decide.
   - The summary by node (apps, libraries observed with the same app key, stored connection records) and the DOT download work without
-    `dot`. A record is stored per observing node, so the number is not the "negotiated connections" count of 04.
-  - A peer is tied to a node only through the endpoints registered for the judgment organization. An unregistered peer shows as an address.
-  - The picture covers the whole organization and is drawn after the screen appears. Drawing has a time limit (10 seconds) and a size
-    limit (4 MiB); beyond them the reason shows.
-- **The topology picture on 04 is checked before it is embedded too.** When the SVG that `dot` wrote holds anything other than the
-  elements, attributes and value forms Graphviz draws with, the picture is not embedded and the reason and the DOT source show. The
-  same time and size limits apply.
+    `dot`. A record is stored per observing node, so the number is not the "negotiated connections" count of 04. Choosing a node
+    narrows the table to that node.
+  - A peer is tied to a node only through the endpoints registered for the judgment organization. An unregistered peer shows as an
+    address. Names are not filled in from the IPs of the declaration or from another organization's registrations. How to register is
+    in the operator guide, section 6, under 04: "When a peer shows only as an address".
+- **The pictures on 04 and on the history screen are drawn after the screen appears.** 04 first shows the numbers of the
+  reconciliation, the tables and the link to 05, and the picture arrives afterwards. With a slow `dot` you can still read the tables
+  and move on.
+- **Drawing has limits.** They are 10 seconds and 4 MiB. Beyond them the picture is not drawn and the reason shows. 04 keeps the DOT
+  source and the history screen keeps the DOT download.
+- **A picture is checked before it is embedded.** When the SVG that `dot` wrote holds anything other than the elements, attributes and
+  value forms Graphviz draws with, the whole picture is left out and the reason shows. If another version of Graphviz writes something
+  outside this list, the reason can show in place of the picture. The tables and the DOT work regardless.
 - The order of the upgrade is in [operator guide, section 9, "v0.32.0 to v0.33.0"](docs/operator-guide.md#v0320-to-v0330).
+
+### What was built
+
+- The history screen reads with upstream `inventory.LoadTopology` and draws with `inventory.RenderTopology`. The screen builds the
+  summary table from the same input. The rules of the table (collecting app keys, assets with the same app key, tying a peer IP to the
+  one registered endpoint) are carried over from the upstream renderer, and a test compares the table with the DOT of the same input.
+- The picture check (`safeSVG`) reads the SVG as XML and accepts only the allowed elements and, per attribute, a set form of value
+  (a colour, a number, coordinates, path data or a fixed word). It refuses the whole drawing instead of stripping it. An accepted
+  drawing is rewritten without the declaration, the DOCTYPE and comments, with its text escaped again.
+- The reason a picture is not drawn is told apart: no `dot`, a failure, a refusal by the check, the time limit, the size limit. The
+  same picture is not drawn twice.
+- The demo end-to-end run gained a path through the history screen: opened as the screen's account, it checks the judgment
+  organization, the per-node digest match, the summary table and the DOT download.
+- New cases IC-S29, IC-UI76 and IC-U227 to IC-U230.
+
+### What was checked
+
+- **The read-only account and the organization boundary.** The three roles of the operator guide were created in a separate
+  PostgreSQL, and the query ran as the screen's account (read privileges only). With endpoints registered only for another
+  organization, the picture of the judgment organization was byte-identical to the one before; once they were registered for the
+  judgment organization, the three peers shown as addresses became nodes. The screen's account could not write endpoints.
+- **The registration command of the guide.** The `pqcota-hosts` command was run exactly as the guide writes it, with the `hosts.csv`
+  produced by saving the access information on 03 of a separate screen. It registered without converting columns or granting more
+  privileges, the three peers on the screen changed to the right node names, and the result for another organization stayed
+  byte-identical.
+- **The boundary of the pictures.** Results carrying a script, an event attribute, an external image and a DOT quote break-out in the
+  places of observed values (app key, peer address) were drawn with a real `dot` (Graphviz 2.42.4) and viewed on both screens. The
+  strings stayed as text in the tables and the pictures, no script ran and no request went out. With a disallowed attribute inserted
+  into the output of `dot`, both screens left the picture out and showed the reason. Graphviz was measured with this one version.
+- **A slow `dot`.** With a `dot` that hangs for 60 seconds, 04 showed its tables before the picture and moved on to 05. On the
+  history screen the table with a node chosen and the DOT download worked at once. On both screens the time limit showed in place of
+  the picture after about 10 seconds.
+- **A narrow screen.** At 375px a node was chosen and its apps, directions and peers were read without horizontal scrolling. The
+  picture scrolls sideways only inside its box.
+- Not measured: the query time and the length of the tables for an organization with many nodes (three nodes were used).
+- The results are reported as the summary of the release gate (`make release-check`) when the release is approved.
 
 ---
 

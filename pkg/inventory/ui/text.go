@@ -768,6 +768,12 @@ var (
 	tSVGTooLarge = T{
 		KO: "그림이 화면에 싣는 크기 상한을 넘어 그리지 않았습니다. DOT을 내려받아 따로 그리십시오.",
 		EN: "The picture is larger than this screen embeds, so it is not drawn. Download the DOT and draw it elsewhere."}
+	tSurveyPicturePending = T{
+		KO: "그림을 그리고 있습니다. 위의 대조 결과와 표는 그림과 관계없이 볼 수 있습니다.",
+		EN: "The picture is being drawn. The reconciliation and the tables above can be read regardless of the picture."}
+	tSurveyPictureUnreadable = T{
+		KO: "대조 결과를 읽지 못해 그림을 그리지 못했습니다. 04를 다시 여십시오.",
+		EN: "The reconciliation could not be read, so the picture is not drawn. Open 04 again."}
 	tHistPicturePending = T{
 		KO: "그림을 그리고 있습니다. 위의 표와 DOT 내려받기는 그림과 관계없이 쓸 수 있습니다.",
 		EN: "The picture is being drawn. The table above and the DOT download work regardless of the picture."}

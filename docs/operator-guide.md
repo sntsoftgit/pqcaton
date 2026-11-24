@@ -5,9 +5,6 @@ English · [한국어](operator-guide.ko.md)
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-> **`main` is under development for v0.33.0.** It adds "App connections from the history", opened from 04. The pqcota to use with it
-> stays v0.20.0. For operation use the [v0.32.0 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.32.0).
-
 This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.33.0.
 The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
@@ -815,7 +812,8 @@ required).
       libraries observed with the same app key and the stored connection records (direction, peer, connection, count) remain. A
       record is stored per observing node, so a connection seen by both nodes is two rows; this number is therefore not the
       "negotiated connections" count of 04. A library with the same app key is not evidence that the connection used it.
-   3. **The picture and the DOT.** The picture covers the whole organization and is drawn after the screen appears. Without `dot`
+   3. **The picture and the DOT.** The picture covers the whole organization and is drawn after the screen appears (so is the
+      reconciliation picture on 04). Without `dot`
       (Graphviz), or when drawing exceeds the time or size limit, the reason shows in its place. The table and "Download DOT" work
       regardless. The downloaded file can be drawn on another machine with `dot -Tsvg pqcota-topology.dot -o topology.svg`.
 
@@ -824,7 +822,9 @@ required).
    screen says so and writes every peer as an address. To see node names, register the endpoints for the judgment organization with
    upstream `pqcota-hosts`; the `hosts.csv` that 03 saves is in its format. Run, as the loading account,
    `PQCOTA_ORG='<judgment organization>' PQCOTA_AUTO_DDL=0 pqcota-hosts --dsn 'postgres://pqcota_ingest@<host>:5432/pqcota' '<workspace>/hosts.csv'`.
-   No connection secret goes into the history; only the node ID, name, IP and port are registered. The registered IP is the one address
+   When it ends it reports the number registered and the organization, as in
+   `[hosts] upserted 3 endpoints into the inventory (organization <judgment organization>; no secrets)`. Reload the screen and those
+   peers show as node names. No connection secret goes into the history; only the node ID, name, IP and port are registered. The registered IP is the one address
    SSH reaches, so a node that talked on another of its addresses still shows as an address. An IP shared by several registered nodes
    is reported as such and tied to none of them.
 5. **05 Judgment.** Write a conclusion for each policy; for the items going into the plan, pick the action kind, target and
@@ -995,8 +995,9 @@ v0.33.0 adds "App connections from the history", opened from 04. The pqcota to u
 sessions and the plan format are the same as v0.32.0, so the workspace and the history are used as they are. Stop the screen and replace
 the binary with the `go install` of [section 2](#2-installation). The new screen opens with the read privileges the screen's account
 already has, so grant nothing more. To see peers as node names, register the endpoints for the judgment organization as "When a peer
-shows only as an address" under 04 in [section 6](#6-a-days-procedure) describes. The topology picture on 04 is now embedded only
-after the SVG that `dot` wrote is checked, and drawing has a time and a size limit. When it is not drawn, the reason and the DOT source show.
+shows only as an address" under 04 in [section 6](#6-a-days-procedure) describes. The topology picture on 04 is now drawn after the screen
+appears and embedded only after the SVG that `dot` wrote is checked, and drawing has a time limit (10 seconds) and a size limit (4 MiB).
+When it is not drawn, the reason and the DOT source show.
 
 ### v0.31.1 to v0.32.0
 

@@ -557,6 +557,7 @@ func (s *server) handler() http.Handler {
 	r.Post(ui.ArchivePath, s.approveArchive)
 	r.Post(ui.GeneratePath, s.approveGenerate)
 	r.Get(ui.ScreenSurvey, s.survey)
+	r.Get(ui.SurveyPicturePath, s.surveyPicture)
 	r.Get(ui.ScreenHistTopo, s.histTopology)
 	r.Get(ui.HistTopoDotPath, s.histTopologyDOT)
 	r.Get(ui.HistTopoPicturePath, s.histTopologyPicture)
@@ -1309,12 +1310,26 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	page := s.nextPage(r, ui.ScreenSurvey, s.results, s.steps(wd))
 	page.Org = res.Org
 	v := ui.NewSurveyView(res, page)
-	v.SVG, v.Picture = renderDOT(v.DOT)
 	// 05와 같은 판정이다. 할 수 없으면(같은 정책 · 확정하지 않은 후보 · 잠긴 세션) 알리지 않는다.
 	if o, err := s.activationOffer(); err == nil {
 		v.Activation = o
 	}
 	html(w, r, func(out io.Writer) error { return ui.RenderSurvey(out, v) })
+}
+
+// surveyPicture — 04의 대조 그림 조각. **04 화면은 `dot`을 돌리지 않고 뜬다**: 먼저 읽을 것은 대조 결과와 판정할 항목 수이고,
+// 그림이 느려도 표와 05로 가는 길은 바로 쓸 수 있어야 한다. 이력 화면과 같은 renderDOT(검사 · 시간 · 크기 상한)을 지난다.
+// 그리지 못하면 까닭과 DOT 원문을 준다. 끼워 넣는 쪽이 오류 응답을 싣지 않으므로 그때도 200이다.
+func (s *server) surveyPicture(w http.ResponseWriter, r *http.Request) {
+	l := ui.PickLang(r)
+	var dot, svg, state string
+	wd := s.load()
+	unreadable := s.results == "" || wd.resErr != nil || wd.res == nil
+	if !unreadable {
+		dot = reconcile.RenderTopologyDOT(wd.res.Edges, wd.res.Uncovered, wd.res.UnconfirmedEdges)
+		svg, state = renderDOT(dot)
+	}
+	html(w, r, func(out io.Writer) error { return ui.RenderSurveyPicture(out, l, svg, state, dot, unreadable) })
 }
 
 // ── 인벤토리 조회 ──────────────────────────────────────────────────────────

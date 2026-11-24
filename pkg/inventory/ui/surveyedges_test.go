@@ -55,7 +55,10 @@ func TestSurveyShowsServerSideAndUnconfirmedEdges(t *testing.T) {
 		if n := strings.Count(body, off); n != 2 {
 			t.Errorf("%s: %q appears %d times, want 2", l, off, n)
 		}
-		for _, s := range []string{only, title, `data-edges-unconfirmed="2"`, "198.51.100.7", "role not confirmed"} {
+		if !strings.Contains(v.DOT, "role not confirmed") {
+			t.Errorf("%s: the topology DOT does not draw the unconfirmed records", l)
+		}
+		for _, s := range []string{only, title, `data-edges-unconfirmed="2"`, "198.51.100.7"} {
 			if !strings.Contains(body, s) {
 				t.Errorf("%s: 04 does not show %q", l, s)
 			}

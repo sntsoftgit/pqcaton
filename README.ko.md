@@ -4,9 +4,6 @@
 
 **개요** · [릴리스 노트](RELEASE_NOTES.ko.md) · [여정](docs/journey.ko.md) · [설계](docs/developers.ko.md) · [검증 기준](docs/testcases.ko.md) · [데모](demo/README.ko.md) · [구조 그림](#한-그림으로)
 
-> **`main`은 v0.33.0 개발 중입니다.** 04에서 여는 「이력에서 앱별 통신 보기」를 더하고 있습니다. 함께 쓰는 pqcota는 v0.20.0 그대로입니다.
-> 운영에는 [v0.32.0 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.32.0)를 쓰십시오.
-
 **PQC 이관에서 무엇을 바꿀지 정하는 자리입니다.** [pqcota](https://github.com/randyinthedev-hash/pqcota)가 시스템이 쓰는 암호를
 관측하면, pqcaton은 **그 관측을 조직이 선언한 것과 대조하고, 결정이 필요한 것을 리뷰 큐에 올리고, 사람이 내린 판정을 확정해**
 pqcota가 승인하고 실행할 수 있는 계획으로 만듭니다. 이 판은 pqcota **v0.20.0**과 함께 씁니다([판별 표](docs/compatibility.ko.md)).

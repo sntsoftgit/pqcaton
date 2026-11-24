@@ -32,11 +32,6 @@ type SurveyView struct {
 
 	// DOT — 토폴로지 원문. `dot`이 없는 기계에서도 **무엇을 그리려 했는지는 보여 준다.**
 	DOT string
-	// SVG — 그려진 토폴로지. `dot`이 있으면 채운다. 우리가 만든 DOT에서 `dot`이
-	// 낸 것이라 밖에서 온 값이 아니다 — 그래서 그대로 내보낸다.
-	SVG string
-	// Picture — 그림의 상태(그렸다 · `dot`이 없다 · 실패했다 · 검사에서 걸러졌다).
-	Picture string
 
 	// Activation — 02에서 확정한 정책이 활성 정책과 달라 활성화할 수 있으면 그 두 지문(05의 활성화 상자와 같은 판정). 04는
 	// 이 대조가 활성 정책으로 한 것이라고 알리고 05의 활성화 상자로 잇기만 한다. 활성화 양식은 05에만 둔다. 없으면 nil이다.
@@ -189,6 +184,12 @@ func (v SurveyView) Summary() SurveySummary {
 const surveyEditAnchor = "survey-detail"
 
 // RenderSurvey — 대조 화면(`/survey`).
+// RenderSurveyPicture — 04의 그림 조각. 화면이 뜬 뒤에 따로 받아 끼운다. svg는 검사를 지난 것이고, 비었으면 state가 까닭이며
+// 그때는 DOT 원문을 함께 보인다. unreadable이면 대조 결과를 읽지 못한 것이다.
+func RenderSurveyPicture(w io.Writer, l Lang, svg, state, dot string, unreadable bool) error {
+	return surveyPictureBody(l, svg, state, dot, unreadable).Render(context.Background(), w)
+}
+
 func RenderSurvey(w io.Writer, v SurveyView) error {
 	return surveyNextPage(v).Render(context.Background(), w)
 }
