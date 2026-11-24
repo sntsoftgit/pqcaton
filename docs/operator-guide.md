@@ -5,7 +5,10 @@ English · [한국어](operator-guide.ko.md)
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.32.0.
+> **`main` is under development for v0.33.0.** It adds "App connections from the history", opened from 04. The pqcota to use with it
+> stays v0.20.0. For operation use the [v0.32.0 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.32.0).
+
+This guide is for someone who installs the pqcaton screen (`pqcaton-ui`) on one machine and runs it alone. It covers v0.33.0.
 The Korean edition is [operator-guide.ko.md](operator-guide.ko.md). The two editions have the same contents, commands and error
 codes, and a test checks that.
 
@@ -70,7 +73,7 @@ When this section is done, the screen starts on this machine. Do 1 to 3 once; do
 **Installing the screen.** Go 1.26.11 is needed. The command below makes `~/.local/bin/pqcaton-ui`. That folder must be on `PATH`.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.32.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.33.0
 ```
 
 When `pqcaton-ui -h` prints the list of flags, it is installed. It ends with exit code 2 after printing the help, which is normal.
@@ -267,8 +270,8 @@ abnormal exit or a screen that is not up yet. If nothing answers, it opens nothi
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.33.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.33.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -284,7 +287,7 @@ journalctl --user -u pqcaton-ui.service
 browser. If the screen is already running, it only opens that screen. To stop it, press Ctrl+C in that Terminal window.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.33.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -342,7 +345,7 @@ with the preparation tool `pqcaton-collectors`. It fetches only the assets of th
 version) and never runs what it downloads.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.32.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.33.0
 pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.20.0
 pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.20.0
 ```
@@ -797,6 +800,33 @@ required).
    interface for the window you set (60 seconds by default).
 4. **04 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
    screen. With no results, the screen points at that folder.
+
+   **To see which app talked to what**, open "App connections from the history" under the topology on 04. The picture on 04 is the
+   workspace results reconciled with the declaration; this screen shows the observations loaded into the pqcota history as they are.
+   It opens with nothing more than the read privileges of the screen's account.
+
+   1. **Check the organization queried and the comparison.** The top names the organization queried (the judgment organization) and
+      each node's history snapshot, and says whether it is the same as the observation results in the workspace: "same", "different"
+      or "cannot compare". That is decided by the snapshot digest of the same node. "different" means the results were observed again
+      after the load, or loaded under another policy; to see the current results, load them again as 05 describes. "cannot compare"
+      means the workspace has no results for that node. "The pqcota history holds no snapshot for this organization" means the
+      results of 03 have not been loaded under that organization yet.
+   2. **Choose a node and read its apps and peers.** In "Summary by node" choose a node and press "Show": that node's apps, the
+      libraries observed with the same app key and the stored connection records (direction, peer, connection, count) remain. A
+      record is stored per observing node, so a connection seen by both nodes is two rows; this number is therefore not the
+      "negotiated connections" count of 04. A library with the same app key is not evidence that the connection used it.
+   3. **The picture and the DOT.** The picture covers the whole organization and is drawn after the screen appears. Without `dot`
+      (Graphviz), or when drawing exceeds the time or size limit, the reason shows in its place. The table and "Download DOT" work
+      regardless. The downloaded file can be drawn on another machine with `dot -Tsvg pqcota-topology.dot -o topology.svg`.
+
+   **When a peer shows only as an address.** This screen ties a peer to a node only through the endpoints registered for the judgment
+   organization. It does not use the IPs of the declaration or another organization's registrations. With no endpoint registered the
+   screen says so and writes every peer as an address. To see node names, register the endpoints for the judgment organization with
+   upstream `pqcota-hosts`; the `hosts.csv` that 03 saves is in its format. Run, as the loading account,
+   `PQCOTA_ORG='<judgment organization>' PQCOTA_AUTO_DDL=0 pqcota-hosts --dsn 'postgres://pqcota_ingest@<host>:5432/pqcota' '<workspace>/hosts.csv'`.
+   No connection secret goes into the history; only the node ID, name, IP and port are registered. The registered IP is the one address
+   SSH reaches, so a node that talked on another of its addresses still shows as an address. An IP shared by several registered nodes
+   is reported as such and tied to none of them.
 5. **05 Judgment.** Write a conclusion for each policy; for the items going into the plan, pick the action kind, target and
    level; and sign. "Finalize" shows a confirmation page with what will be written, and confirming writes the session,
    plan and ledger together. Finalizing the same session with the same content again writes nothing again.
@@ -958,6 +988,15 @@ cut). Send the diagnostics file and the files you kept. The diagnostics file hol
 contents.
 
 ## 9. Upgrading
+
+### v0.32.0 to v0.33.0
+
+v0.33.0 adds "App connections from the history", opened from 04. The pqcota to use with it (v0.20.0), the ruleset, the state format, the
+sessions and the plan format are the same as v0.32.0, so the workspace and the history are used as they are. Stop the screen and replace
+the binary with the `go install` of [section 2](#2-installation). The new screen opens with the read privileges the screen's account
+already has, so grant nothing more. To see peers as node names, register the endpoints for the judgment organization as "When a peer
+shows only as an address" under 04 in [section 6](#6-a-days-procedure) describes. The topology picture on 04 is now embedded only
+after the SVG that `dot` wrote is checked, and drawing has a time and a size limit. When it is not drawn, the reason and the DOT source show.
 
 ### v0.31.1 to v0.32.0
 

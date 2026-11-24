@@ -5,7 +5,10 @@
 <!-- SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd. -->
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
-이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.32.0 기준입니다.
+> **`main`은 v0.33.0 개발 중입니다.** 04에서 여는 「이력에서 앱별 통신 보기」를 더하고 있습니다. 함께 쓰는 pqcota는 v0.20.0 그대로입니다.
+> 운영에는 [v0.32.0 태그](https://github.com/sntsoftgit/pqcaton/tree/v0.32.0)를 쓰십시오.
+
+이 안내서는 pqcaton 화면(`pqcaton-ui`)을 한 기계에 설치해 혼자 운영하는 사람을 위한 것입니다. v0.33.0 기준입니다.
 영어판은 [operator-guide.md](operator-guide.md)입니다. 두 판은 차례 · 명령 · 오류 코드가 같고, 시험이 그것을 잽니다.
 
 **범위.** pqcaton 안의 절차(선언 · 스코프 · 관측 · 대조 · 판정 · 확정 · 승인 · 플레이북 생성)는 터미널 없이 화면에서
@@ -66,7 +69,7 @@ sudo의 입출력 기록만 봅니다. **sudo 밖의 감사 도구(auditd · tlo
 **화면 설치.** Go 1.26.11이 필요합니다. 아래 명령은 `~/.local/bin/pqcaton-ui`를 만듭니다. 이 폴더가 `PATH`에 있어야 합니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.32.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-ui@v0.33.0
 ```
 
 `pqcaton-ui -h`가 플래그 목록을 찍으면 설치된 것입니다. 도움말을 찍은 뒤 종료 코드 2로 끝나는 것은 정상입니다.
@@ -248,8 +251,8 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.local/share/applications
-curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/linux/pqcaton-ui.service
-curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/linux/pqcaton-ui.desktop
+curl -fsSLo ~/.config/systemd/user/pqcaton-ui.service https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.33.0/packaging/linux/pqcaton-ui.service
+curl -fsSLo ~/.local/share/applications/pqcaton-ui.desktop https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.33.0/packaging/linux/pqcaton-ui.desktop
 systemctl --user daemon-reload
 systemctl --user enable --now pqcaton-ui.service
 ```
@@ -264,7 +267,7 @@ journalctl --user -u pqcaton-ui.service
 화면만 엽니다. 끝낼 때는 그 터미널 창에서 Ctrl+C를 누릅니다.
 
 ```bash
-curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.32.0/packaging/macos/pqcaton-ui.command
+curl -fsSLo ~/Desktop/pqcaton-ui.command https://raw.githubusercontent.com/sntsoftgit/pqcaton/v0.33.0/packaging/macos/pqcaton-ui.command
 chmod +x ~/Desktop/pqcaton-ui.command
 ```
 
@@ -316,7 +319,7 @@ collectors/
 go.mod가 고정한 상류 판(이 판은 v0.20.0)의 자산만 받고, 받은 파일을 실행하지 않습니다.
 
 ```bash
-GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.32.0
+GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/pqcaton-collectors@v0.33.0
 pqcaton-collectors fetch -arch linux-amd64 -out ~/pqcaton/collectors-v0.20.0
 pqcaton-collectors verify -arch linux-amd64 -dir ~/pqcaton/collectors-v0.20.0
 ```
@@ -723,6 +726,30 @@ ssh -N -L 8765:127.0.0.1:8765 operator@screen-host
    핸드셰이크를 기다립니다.
 4. **04 대조.** 관측이 끝나거나 pqcota 수집이 `results/`에 결과를 쓰면 화면을 다시 불러옵니다. 결과가 없으면 화면이 그
    폴더를 가리킵니다.
+
+   **어느 앱이 무엇과 통신했는지 보려면** 04의 토폴로지 아래에서 「이력에서 앱별 통신 보기」를 엽니다. 04의 그림은 작업 폴더의
+   결과를 선언과 대조한 것이고, 이 화면은 pqcota 이력에 적재된 관측을 그대로 보입니다. 화면 계정의 조회 권한만으로 열립니다.
+
+   1. **조회한 조직과 비교 결과를 봅니다.** 첫머리에 조회한 조직(판정 조직)과 노드마다의 이력 스냅샷이 있고, 작업 폴더의 관측
+      결과와 같은지가 「일치」 · 「다름」 · 「비교 불가」로 적혀 있습니다. 같은 노드의 스냅샷 지문으로 견준 것입니다. 「다름」이면 적재한
+      뒤에 다시 관측했거나 다른 정책으로 적재한 것이므로, 지금 결과를 보려면 05의 안내대로 다시 적재합니다. 「비교 불가」는 작업
+      폴더에 그 노드의 결과가 없다는 뜻입니다. 「이 조직의 pqcota 이력에 스냅샷이 없습니다」가 보이면 03의 결과를 그 조직으로 아직
+      적재하지 않은 것입니다.
+   2. **노드를 골라 앱과 상대를 읽습니다.** 「노드별 요약」에서 노드를 고르고 「보기」를 누르면 그 노드의 앱, 같은 앱 키로 관측된
+      라이브러리, 저장된 연결 기록(방향 · 상대 · 통신 · 횟수)이 남습니다. 기록은 관측한 노드마다 하나씩 저장되므로 같은 연결을 두
+      노드가 보면 두 줄입니다. 그래서 이 수는 04의 「협상된 통신」 건수와 다릅니다. 같은 앱 키의 라이브러리는 그 연결이 그것을
+      썼다는 근거가 아닙니다.
+   3. **그림과 DOT.** 그림은 조직 전체이고 화면이 뜬 뒤에 따로 그려집니다. `dot`(Graphviz)이 없거나, 그리는 데 정한 시간이나
+      크기를 넘으면 그림 대신 까닭이 보입니다. 표와 「DOT 내려받기」는 그와 관계없이 됩니다. 받은 파일은 다른 기계에서
+      `dot -Tsvg pqcota-topology.dot -o topology.svg`로 그릴 수 있습니다.
+
+   **상대가 주소로만 보일 때.** 이 화면은 판정 조직에 등록된 엔드포인트로만 상대를 노드로 잇습니다. 선언의 IP나 다른 조직의
+   등록 정보는 쓰지 않습니다. 등록된 엔드포인트가 없으면 화면이 그렇게 알리고 모든 상대를 주소로 적습니다. 노드 이름으로 보려면
+   상류 `pqcota-hosts`로 판정 조직에 엔드포인트를 등록합니다. 03이 저장한 `hosts.csv`가 그 형식입니다. 적재 계정으로
+   `PQCOTA_ORG='<판정 조직>' PQCOTA_AUTO_DDL=0 pqcota-hosts --dsn 'postgres://pqcota_ingest@<호스트>:5432/pqcota' '<작업 폴더>/hosts.csv'`를
+   실행합니다. 접속 비밀은 이력에 들어가지 않고 노드 ID · 이름 · IP · 포트만 등록됩니다. 등록되는 IP는 SSH로 접속하는 주소
+   하나이므로, 노드가 다른 주소로 통신했으면 그 상대는 여전히 주소로 보입니다. 한 IP를 등록 노드 여럿이 함께 쓰면 그 사실을
+   적고 어느 노드로도 잇지 않습니다.
 5. **05 판정.** 정책마다 결론을 적고, 계획에 넣을 항목은 조치 종류 · 목표 · 수준을 고르고, 서명합니다. 「확정」을 누르면
    확인 페이지가 무엇이 쓰이는지 보이고, 확인하면 세션 · 계획 · 원장을 한 번에 씁니다. 같은 세션을 같은 내용으로 다시
    확정해도 다시 쓰지 않습니다.
@@ -875,6 +902,14 @@ pkill -INT -u "$USER" -x pqcaton-ui
 파일 내용은 없습니다.
 
 ## 9. 판 올리기
+
+### v0.32.0에서 v0.33.0으로
+
+v0.33.0은 04에서 여는 「이력에서 앱별 통신 보기」를 더합니다. 함께 쓰는 pqcota(v0.20.0) · 규칙 묶음 · 상태 형식 · 세션 · 계획 형식이
+v0.32.0과 같아 작업 폴더와 이력을 그대로 씁니다. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다. 새 화면은 화면
+계정이 이미 가진 조회 권한으로 열리므로 권한을 더 주지 않습니다. 상대를 노드 이름으로 보려면 [6절](#6-하루-절차) 04 항목의
+「상대가 주소로만 보일 때」대로 판정 조직에 엔드포인트를 등록합니다. 04의 토폴로지 그림은 이제 `dot`이 낸 SVG를 검사한 뒤에 싣고,
+그리는 데 시간과 크기 상한이 있습니다. 그리지 못하면 까닭과 DOT 원문이 보입니다.
 
 ### v0.31.1에서 v0.32.0으로
 

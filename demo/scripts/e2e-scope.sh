@@ -501,6 +501,25 @@ if grep -q 'action="/approve/sign/confirm"' <<<"$APPROVE"; then fail "06 offers 
 REVIEW="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/review?lang=en')"
 grep -q "Earlier policy conclusion (from the previous round; a reference value)" <<<"$REVIEW" || fail "05 does not show the earlier conclusions as references"
 grep -q "At the time of checking, the pqcota history matched" <<<"$REVIEW" || fail "05 does not show the pqcota history reconciliation as the basis of this round"
+# 04에서 여는 「이력에서 앱별 통신 보기」(IC-U227). 화면 계정(pqcaton_ui, SELECT만)으로 판정 조직의 이력을 읽어 조직 · 노드별
+# 비교 · 요약 표를 보이고 DOT을 준다. 방금 이 정책으로 대조한 이력이므로 노드마다 작업 폴더와 「same」이다. 화면은 그림을
+# 기다리지 않는다. 그림을 그리는지는 여기서 재지 않는다(Graphviz는 선택 사항이고 따로 시험한다).
+SURVEY="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/survey?lang=en')"
+grep -q 'href="/survey/history"' <<<"$SURVEY" || fail "04 has no link to the history topology"
+HIST="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/survey/history?lang=en')"
+grep -q "data-hist-org>$ORG<" <<<"$HIST" || fail "the history topology does not name the judgment organization $ORG"
+HNODES="$(grep -o 'data-hist-node=' <<<"$HIST" | grep -c . || true)"
+HSAME="$(grep -o 'data-compare="same"' <<<"$HIST" | grep -c . || true)"
+[ "$HNODES" -ge 1 ] || fail "the history topology lists no node"
+[ "$HSAME" = "$HNODES" ] || fail "the history topology: $HSAME of $HNODES nodes match the workspace by digest, want all"
+grep -q 'data-hist-counts' <<<"$HIST" || fail "the history topology has no summary"
+grep -q 'data-hist-summary=' <<<"$HIST" || fail "the history topology has no per-node table"
+if grep -q '<svg' <<<"$HIST"; then fail "the history topology screen carries the picture instead of fetching it apart"; fi
+HDOT="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/survey/history.dot')"
+[ "$(head -1 <<<"$HDOT")" = "digraph pqcota_topology {" ] || fail "the DOT download is not the upstream topology"
+HTYPE="$(docker exec "$CTL" curl -fsS -o /dev/null -w '%{content_type}' 'http://127.0.0.1:8765/survey/history.dot')"
+case "$HTYPE" in text/vnd.graphviz*) ;; *) fail "the DOT download is served as $HTYPE" ;; esac
+echo "   04 → history: organization $ORG · $HNODES nodes, all the same as the workspace by digest · per-node table · DOT $(grep -c . <<<"$HDOT") lines (read as pqcaton_ui)"
 "$UI" stop
 
 # 지금 활성 정책으로 만든 계획은 06에서 서명되고 플레이북이 만들어져야 한다. 상류 v0.10.7의 승인 정규형 검사

@@ -213,6 +213,10 @@ templ pictureMissing(lang Lang, state string) {
 			<p class="hint" data-picture="refused">{ tSVGRefused.In(lang) }</p>
 		case PictureFailed:
 			<p class="hint" data-picture="failed">@templ.Raw(tSVGFailed.In(lang))</p>
+		case PictureTimeout:
+			<p class="hint" data-picture="timeout">{ tSVGTimeout.In(lang) }</p>
+		case PictureTooLarge:
+			<p class="hint" data-picture="too-large">{ tSVGTooLarge.In(lang) }</p>
 		default:
 			<p class="hint" data-picture="no-dot">@templ.Raw(tNoDot.In(lang))</p>
 			@tip(lang, tNoDotHelp.In(lang))

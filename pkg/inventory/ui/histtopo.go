@@ -25,6 +25,9 @@ const (
 	PictureNoDot   = "no-dot"
 	PictureFailed  = "failed"
 	PictureRefused = "refused"
+	// PictureTimeout · PictureTooLarge — 그리는 데 둔 상한(시간 · 크기)을 넘었다.
+	PictureTimeout  = "timeout"
+	PictureTooLarge = "too-large"
 )
 
 // LocalSnapshot — 작업 폴더의 관측 결과에서 화면이 만든 스냅샷 하나의 지문.
@@ -45,9 +48,6 @@ type HistTopoView struct {
 	OnlyLocal []string
 	// Node — 요약 표에서 고른 노드. 비어 있으면 모든 노드다. 그림은 고른 것과 관계없이 조직 전체다.
 	Node string
-	// SVG · Picture — 그린 그림(검사를 지난 것)과 그 상태.
-	SVG     string
-	Picture string
 	// Err — 이력을 읽지 못했다. 까닭(연결 정보는 싣지 않은 분류)이다.
 	Err string
 }
@@ -134,6 +134,12 @@ func dirLabel(l Lang, role string) string {
 		return tDirAccepted.In(l)
 	}
 	return tDirUnknown.In(l)
+}
+
+// RenderHistPicture — 그림 조각. 화면이 뜬 뒤에 따로 받아 끼운다. svg는 검사를 지난 것이고, 비었으면 state가 까닭이다.
+// unreadable이면 이력을 읽지 못한 것이다.
+func RenderHistPicture(w io.Writer, l Lang, svg, state string, unreadable bool) error {
+	return histPictureBody(l, svg, state, unreadable).Render(context.Background(), w)
 }
 
 // RenderHistTopo — 화면을 그린다.

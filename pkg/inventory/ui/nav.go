@@ -16,6 +16,8 @@ const (
 	// ScreenHistTopo — 04에서 여는 조회 화면. 절차의 단계가 아니다. HistTopoDotPath는 그 그림의 DOT 내려받기다.
 	ScreenHistTopo  = "/survey/history"
 	HistTopoDotPath = "/survey/history.dot"
+	// HistTopoPicturePath — 그 화면의 그림 조각. 표와 따로 그린다(조직 전체의 그림은 오래 걸릴 수 있다).
+	HistTopoPicturePath = "/survey/history/picture"
 )
 
 // screens7 — 화면 일곱. 순서는 절차 순서다(조회는 절차가 아니라 맨 뒤에 둔다).

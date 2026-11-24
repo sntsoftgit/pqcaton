@@ -74,6 +74,32 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
+## v0.33.0: See app connections from the pqcota history on 04 (in progress)
+
+**Goal**: open "App connections from the history" on 04 to see, from the observations loaded into the pqcota history of the judgment
+organization, which app on each node talked to what. The pqcota to use with it, the ruleset, the state format, the sessions and the plan
+format are the same as v0.32.0.
+
+### What changes for the receiving side
+
+- **pqcota: v0.20.0** ([version table](docs/compatibility.md)). The same as v0.32.0.
+- **"App connections from the history" is new under the topology on 04.** It reads the history of the judgment organization with the
+  read privileges of the screen's account. The picture is drawn by the same function as upstream `pqcota-inventory -topology`. The
+  reconciliation picture on 04 is unchanged.
+  - The top names the organization queried and each node's history snapshot, and says by the snapshot digest of the same node whether
+    it is the "same" as the results in the workspace, "different", or "cannot compare".
+  - The summary by node (apps, libraries observed with the same app key, stored connection records) and the DOT download work without
+    `dot`. A record is stored per observing node, so the number is not the "negotiated connections" count of 04.
+  - A peer is tied to a node only through the endpoints registered for the judgment organization. An unregistered peer shows as an address.
+  - The picture covers the whole organization and is drawn after the screen appears. Drawing has a time limit (10 seconds) and a size
+    limit (4 MiB); beyond them the reason shows.
+- **The topology picture on 04 is checked before it is embedded too.** When the SVG that `dot` wrote holds anything other than the
+  elements, attributes and value forms Graphviz draws with, the picture is not embedded and the reason and the DOT source show. The
+  same time and size limits apply.
+- The order of the upgrade is in [operator guide, section 9, "v0.32.0 to v0.33.0"](docs/operator-guide.md#v0320-to-v0330).
+
+---
+
 ## v0.32.0: Takes in upstream pqcota v0.20.0, and the screen tells you about unsaved input and the progress of an observation (2026-11-24)
 
 **Apache-2.0 conversion: 2030-11-24** (four years from the release date)

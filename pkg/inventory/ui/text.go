@@ -754,14 +754,23 @@ var (
 	tPeerNoSnap      = T{KO: "이력에 스냅샷 없음", EN: "no snapshot in the history"}
 	tHistPicture     = T{KO: "그림(조직 전체)", EN: "Picture (the whole organization)"}
 	tHistPictureNote = T{
-		KO: "그림은 위에서 고른 노드와 관계없이 이 조직의 모든 노드를 그립니다. 넓으면 이 상자 안에서 좌우로 움직입니다. 선 하나는 저장된 기록 하나이고, 라벨은 상류 도구가 쓴 영어 그대로입니다.",
-		EN: "The picture draws every node of this organization, whatever node is chosen above. When it is wide, scroll sideways inside this box. One line is one stored record, and the labels are the English the upstream tool writes."}
+		KO: "그림은 위에서 고른 노드와 관계없이 이 조직의 모든 노드를 그립니다. 넓으면 이 상자 안에서 좌우로 움직입니다. 선 하나는 저장된 기록 하나이고, 라벨은 상류 도구가 쓴 영어 그대로입니다. 그림은 표와 따로 그리며, 정한 시간이나 크기를 넘으면 그리지 않습니다.",
+		EN: "The picture draws every node of this organization, whatever node is chosen above. When it is wide, scroll sideways inside this box. One line is one stored record, and the labels are the English the upstream tool writes. The picture is drawn apart from the table, and is not drawn when it exceeds the time or size limit."}
 	tSVGRefused = T{
 		KO: "그림에 화면이 싣지 않는 요소가 있어 보이지 않습니다. DOT을 내려받아 따로 그리십시오.",
 		EN: "The drawing holds something this screen does not embed, so it is not shown. Download the DOT and draw it elsewhere."}
 	tSVGFailed = T{
 		KO: "<code>dot</code>이 그림을 그리지 못했습니다. DOT을 내려받아 확인하십시오.",
 		EN: "<code>dot</code> could not draw the picture. Download the DOT to check it."}
+	tSVGTimeout = T{
+		KO: "그림을 그리는 데 정한 시간을 넘겨 그리지 않았습니다. DOT을 내려받아 따로 그리십시오.",
+		EN: "Drawing the picture took longer than the limit, so it is not drawn. Download the DOT and draw it elsewhere."}
+	tSVGTooLarge = T{
+		KO: "그림이 화면에 싣는 크기 상한을 넘어 그리지 않았습니다. DOT을 내려받아 따로 그리십시오.",
+		EN: "The picture is larger than this screen embeds, so it is not drawn. Download the DOT and draw it elsewhere."}
+	tHistPicturePending = T{
+		KO: "그림을 그리고 있습니다. 위의 표와 DOT 내려받기는 그림과 관계없이 쓸 수 있습니다.",
+		EN: "The picture is being drawn. The table above and the DOT download work regardless of the picture."}
 	tDotDownload = T{KO: "DOT 내려받기", EN: "Download DOT"}
 
 	tTopology     = T{KO: "토폴로지", EN: "Topology"}

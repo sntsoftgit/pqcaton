@@ -231,19 +231,28 @@ templ histRecord(lang Lang, r upstream.TopoRecord) {
 	</tr>
 }
 
-// histPicture — 상류가 그린 그림. 조직 전체이고 노드 고르기와 무관하다. DOT 내려받기는 그림이 없어도 있다.
+// histPicture — 상류가 그린 그림의 자리. 조직 전체이고 노드 고르기와 무관하다. **그림은 화면이 뜬 뒤에 따로 받는다**: 표와
+// DOT 내려받기가 `dot`을 기다리지 않게 한다. DOT 내려받기는 그림이 없어도 있다.
 templ histPicture(v HistTopoView) {
 	<fieldset>
 		<legend>{ tHistPicture.In(v.Page.Lang) }</legend>
 		<p class="hint">{ tHistPictureNote.In(v.Page.Lang) }</p>
 		<p><a class="quiet" href={ templ.SafeURL(HistTopoDotPath) } download="pqcota-topology.dot" data-hist-dot>{ tDotDownload.In(v.Page.Lang) }</a></p>
-		if v.SVG != "" {
-			<div class="picture-scroll" data-hist-picture>
-				@templ.Raw(v.SVG)
-			</div>
-		} else {
-			@pictureMissing(v.Page.Lang, v.Picture)
-			<textarea readonly style="min-height:12rem" aria-label="DOT">{ v.T.DOT }</textarea>
-		}
+		<div id="hist-picture" hx-get={ HistTopoPicturePath + "?" + LangParam + "=" + string(v.Page.Lang) } hx-trigger="load" hx-swap="innerHTML">
+			<p class="hint" data-picture="pending">{ tHistPicturePending.In(v.Page.Lang) }</p>
+		</div>
 	</fieldset>
+}
+
+// histPictureBody — 그림 조각. 그림이 없으면 까닭만 적는다(DOT은 위의 내려받기로 받는다).
+templ histPictureBody(lang Lang, svg, state string, unreadable bool) {
+	if unreadable {
+		<p class="hint" data-picture="unreadable">{ tHistUnreachable.In(lang) }</p>
+	} else if svg != "" {
+		<div class="picture-scroll" data-hist-picture>
+			@templ.Raw(svg)
+		</div>
+	} else {
+		@pictureMissing(lang, state)
+	}
 }

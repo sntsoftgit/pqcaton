@@ -4,6 +4,9 @@ English · [한국어](README.ko.md)
 
 **Overview** · [Release notes](RELEASE_NOTES.md) · [Journey](docs/journey.md) · [Design](docs/developers.md) · [Acceptance criteria](docs/testcases.md) · [Demo](demo/README.md) · [Structure diagram](#how-it-fits-together)
 
+> **`main` is under development for v0.33.0.** It adds "App connections from the history", opened from 04. The pqcota to use with it
+> stays v0.20.0. For operation use the [v0.32.0 tag](https://github.com/sntsoftgit/pqcaton/tree/v0.32.0).
+
 **The place to decide what to change in a PQC migration.** [pqcota](https://github.com/randyinthedev-hash/pqcota) observes which
 cryptography your systems use; pqcaton **reconciles those observations with what your organization declared, puts what needs a decision
 in a review queue, and finalizes the decisions people make** into a plan pqcota can approve and carry out. This version is used with
@@ -82,7 +85,7 @@ attestations of the official collectors).
 
 ```bash
 mkdir pqcaton-demo && cd pqcaton-demo
-git clone --branch v0.32.0 https://github.com/sntsoftgit/pqcaton
+git clone --branch v0.33.0 https://github.com/sntsoftgit/pqcaton
 for r in pqcota pqcota-common pqcota-inventory pqcota-discovery pqcota-provisioning; do git clone --branch v0.20.0 https://github.com/randyinthedev-hash/$r; done
 cd pqcaton/demo
 ```
@@ -97,7 +100,7 @@ You do not need to clone and build the pqcota repositories separately. The comma
 the screen, the history database above must be ready.
 
 ```bash
-git clone --branch v0.32.0 https://github.com/sntsoftgit/pqcaton
+git clone --branch v0.33.0 https://github.com/sntsoftgit/pqcaton
 cd pqcaton
 go build -o bin/ ./inventory/cmd/...
 ./bin/pqcaton-ui -h

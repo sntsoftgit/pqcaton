@@ -75,7 +75,8 @@ func TestHistoryTopologyStatesItsSourceAndReadsWithoutThePicture(t *testing.T) {
 				"IP shared by registered nodes: 2", "unregistered address", "← accepted", "→ opened", "↔ not confirmed", "Download DOT"}
 		}
 		for _, s := range append(words, `data-hist-org>demo-corp<`, `data-compare="same"`, `data-compare="differ"`, `data-compare="none"`,
-			`data-hist-only-local="1"`, `data-hist-endpoints="2"`, `href="`+ui.HistTopoDotPath+`"`, `data-picture="no-dot"`,
+			`data-hist-only-local="1"`, `data-hist-endpoints="2"`, `href="`+ui.HistTopoDotPath+`"`, `data-picture="pending"`,
+			`hx-get="`+ui.HistTopoPicturePath+`?lang=`+string(l)+`"`, `hx-trigger="load"`,
 			`title="`+strings.Repeat("b", 64)+`"`, "/opt/apps/&lt;script&gt;alert(1)&lt;/script&gt;") {
 			if !strings.Contains(body, s) {
 				t.Errorf("%s: the screen does not show %q", l, s)
@@ -128,11 +129,28 @@ func TestHistoryTopologyStatesItsSourceAndReadsWithoutThePicture(t *testing.T) {
 		t.Error("an unreadable history is not shown as such")
 	}
 
-	// 그림이 검사에서 걸러졌으면 `dot`이 없다고 하지 않는다.
-	top.Endpoints = 2
-	v = ui.NewHistTopoView(top, "demo-corp", local, "", ui.Page{Title: "x", Lang: ui.KO})
-	v.Picture = ui.PictureRefused
-	if b := renderHist(t, v); !strings.Contains(b, `data-picture="refused"`) || strings.Contains(b, `data-picture="no-dot"`) {
-		t.Error("a refused drawing is reported as a missing dot")
+	// 화면은 그림을 싣지 않고 나간다. 그림은 따로 받는 조각이고, 그리지 못한 까닭을 가려 적는다.
+	if strings.Contains(renderHist(t, ui.NewHistTopoView(histTopology(), "demo-corp", local, "", ui.Page{Title: "x", Lang: ui.KO})), "<svg") {
+		t.Error("the screen carries a drawing: it must come as a separate fragment")
+	}
+	for state, word := range map[string]string{
+		ui.PictureNoDot: "이 기계에 없어", ui.PictureFailed: "그리지 못했습니다", ui.PictureRefused: "화면이 싣지 않는 요소",
+		ui.PictureTimeout: "정한 시간을 넘겨", ui.PictureTooLarge: "크기 상한을 넘어",
+	} {
+		var b strings.Builder
+		if err := ui.RenderHistPicture(&b, ui.KO, "", state, false); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(b.String(), `data-picture="`+state+`"`) || !strings.Contains(b.String(), word) {
+			t.Errorf("the picture fragment for %q: %s", state, b.String())
+		}
+	}
+	var b strings.Builder
+	if err := ui.RenderHistPicture(&b, ui.EN, `<svg xmlns="http://www.w3.org/2000/svg"></svg>`, "", false); err != nil || !strings.Contains(b.String(), "data-hist-picture") || !strings.Contains(b.String(), "<svg") {
+		t.Errorf("a drawn picture fragment: %v %s", err, b.String())
+	}
+	b.Reset()
+	if err := ui.RenderHistPicture(&b, ui.KO, "", "", true); err != nil || !strings.Contains(b.String(), `data-picture="unreadable"`) {
+		t.Errorf("the fragment of an unreadable history: %v %s", err, b.String())
 	}
 }

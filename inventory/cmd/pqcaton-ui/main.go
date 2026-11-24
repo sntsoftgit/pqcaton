@@ -559,6 +559,7 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.ScreenSurvey, s.survey)
 	r.Get(ui.ScreenHistTopo, s.histTopology)
 	r.Get(ui.HistTopoDotPath, s.histTopologyDOT)
+	r.Get(ui.HistTopoPicturePath, s.histTopologyPicture)
 	r.Get(ui.ScreenInventory, s.inventory)
 	r.Get(ui.ScreenReview, s.review)
 	r.Post("/save", s.save)

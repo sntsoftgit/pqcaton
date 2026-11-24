@@ -65,7 +65,7 @@ func TestHistoryTopologyScreen(t *testing.T) {
 	if w.Code != http.StatusOK || nodes == 0 || strings.Count(body, `data-compare="same"`) != nodes {
 		t.Fatalf("a history loaded from these results: %d, %d nodes, %d same\n%s", w.Code, nodes, strings.Count(body, `data-compare="same"`), body)
 	}
-	for _, sub := range []string{`data-hist-endpoints="0"`, "data-hist-counts", "data-hist-dot", "digraph pqcota_topology", `aria-current="step"`} {
+	for _, sub := range []string{`data-hist-endpoints="0"`, "data-hist-counts", "data-hist-dot", `hx-get="` + ui.HistTopoPicturePath + `?lang=ko"`, `aria-current="step"`} {
 		if !strings.Contains(body, sub) {
 			t.Errorf("the screen lacks %q", sub)
 		}
@@ -144,21 +144,31 @@ func TestOnlyPlainDrawingsAreEmbedded(t *testing.T) {
 		return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g>` + inner + `</g></svg>`
 	}
 	for name, bad := range map[string]string{
-		"a script":           in(`<script>alert(1)</script>`),
-		"an event attribute": in(`<text onclick="alert(1)">x</text>`),
-		"a link":             in(`<a xlink:href="https://example.invalid/"><text>x</text></a>`),
-		"an href attribute":  in(`<text href="javascript:alert(1)">x</text>`),
-		"an image":           in(`<image xlink:href="https://example.invalid/x.png"/>`),
-		"a foreignObject":    in(`<foreignObject><p>x</p></foreignObject>`),
-		"a style element":    in(`<style>text{fill:red}</style>`),
-		"a style attribute":  in(`<text style="fill:url(https://example.invalid/)">x</text>`),
-		"a url in a fill":    in(`<path fill="url(https://example.invalid/#a)" d="M0,0"/>`),
-		"a use element":      in(`<use xlink:href="https://example.invalid/x.svg#a"/>`),
-		"another namespace":  `<svg xmlns="http://www.w3.org/2000/svg"><h:script xmlns:h="http://www.w3.org/1999/xhtml">alert(1)</h:script></svg>`,
-		"not an svg":         `<html><body>x</body></html>`,
-		"broken XML":         `<svg xmlns="http://www.w3.org/2000/svg"><g>`,
-		"an unknown entity":  in(`<text>&xxe;</text>`),
-		"nothing":            ``,
+		"a script":                     in(`<script>alert(1)</script>`),
+		"an event attribute":           in(`<text onclick="alert(1)">x</text>`),
+		"a link":                       in(`<a xlink:href="https://example.invalid/"><text>x</text></a>`),
+		"an href attribute":            in(`<text href="javascript:alert(1)">x</text>`),
+		"an image":                     in(`<image xlink:href="https://example.invalid/x.png"/>`),
+		"a foreignObject":              in(`<foreignObject><p>x</p></foreignObject>`),
+		"a style element":              in(`<style>text{fill:red}</style>`),
+		"a style attribute":            in(`<text style="fill:url(https://example.invalid/)">x</text>`),
+		"a url in a fill":              in(`<path fill="url(https://example.invalid/#a)" d="M0,0"/>`),
+		"a local url in a fill":        in(`<path fill="url(#a)" d="M0,0"/>`),
+		"a colour that is a function":  in(`<path fill="rgb(1,2,3)" d="M0,0"/>`),
+		"an id with markup":            in(`<g id="a&quot; onload=&quot;x">x</g>`),
+		"a class that is not a word":   in(`<g class="node x-1">x</g>`),
+		"a transform that is a matrix": in(`<g transform="matrix(1 0 0 1 0 0)">x</g>`),
+		"path data with letters":       in(`<path d="M0,0 url(x)"/>`),
+		"a font with a quote":          in(`<text font-family="a';b">x</text>`),
+		"a width in percent":           `<svg xmlns="http://www.w3.org/2000/svg" width="100%"><g></g></svg>`,
+		"a number with a unit":         in(`<text x="1em">x</text>`),
+		"an anchor that is not one":    in(`<text text-anchor="left">x</text>`),
+		"a use element":                in(`<use xlink:href="https://example.invalid/x.svg#a"/>`),
+		"another namespace":            `<svg xmlns="http://www.w3.org/2000/svg"><h:script xmlns:h="http://www.w3.org/1999/xhtml">alert(1)</h:script></svg>`,
+		"not an svg":                   `<html><body>x</body></html>`,
+		"broken XML":                   `<svg xmlns="http://www.w3.org/2000/svg"><g>`,
+		"an unknown entity":            in(`<text>&xxe;</text>`),
+		"nothing":                      ``,
 	} {
 		if out, err := safeSVG(bad); err == nil {
 			t.Errorf("%s was accepted: %s", name, out)

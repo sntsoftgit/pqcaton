@@ -60,6 +60,7 @@ func localSnapshots(wd *world) map[string]ui.LocalSnapshot {
 }
 
 // histTopology — 조회 화면. 이력을 읽지 못해도 화면은 뜨고(503), 어느 조직을 읽으려 했는지와 까닭을 보인다.
+// **여기서는 `dot`을 돌리지 않는다.** 그림은 화면이 뜬 뒤 histTopologyPicture가 따로 그린다.
 func (s *server) histTopology(w http.ResponseWriter, r *http.Request) {
 	if s.needsDecl(w, r) {
 		return
@@ -75,10 +76,23 @@ func (s *server) histTopology(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "history topology:", err)
 		v.Err, status = err.Error(), http.StatusServiceUnavailable
-	} else if len(t.Nodes) > 0 {
-		v.SVG, v.Picture = renderDOT(t.DOT)
 	}
 	htmlStatus(w, r, status, func(out io.Writer) error { return ui.RenderHistTopo(out, v) })
+}
+
+// histTopologyPicture — 그림 조각. 조직 전체의 그림이라 노드가 많으면 오래 걸리고 커진다. 그래서 표와 따로 받고, 그리는
+// 데 시간 · 크기 상한을 둔다(renderDOT). 같은 DOT은 다시 그리지 않는다. 그리지 못해도 200으로 까닭을 적은 조각을 준다:
+// 끼워 넣는 쪽이 오류 응답을 화면에 싣지 않기 때문이다.
+func (s *server) histTopologyPicture(w http.ResponseWriter, r *http.Request) {
+	l := ui.PickLang(r)
+	t, err := s.readHistTopology()
+	svg, state := "", ""
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "history topology:", err)
+	} else {
+		svg, state = renderDOT(t.DOT)
+	}
+	html(w, r, func(out io.Writer) error { return ui.RenderHistPicture(out, l, svg, state, err != nil) })
 }
 
 // histTopologyDOT — 그 그림의 DOT. 상류가 낸 그대로이고 `dot`이 없어도 받을 수 있다. 브라우저가 열지 않고 받게 한다.
