@@ -267,6 +267,13 @@ body.wb .tip, body.wb .hint { min-width: 0; overflow-wrap: anywhere; }
    두 열이 375px 안에 들어오는 폭이다. 넘치는 열은 .table-wrap 안에서 옆으로 스크롤된다. */
 body.wb table.edges td code { white-space: nowrap; }
 body.wb table.edges td .hint { display: block; min-width: 7.5rem; overflow-wrap: normal; }
+/* 이력에서 앱별 통신 보기: 앱 키(실행 파일 경로)는 길다. 표가 좁은 화면에 들어오도록 어디서든 꺾되 짧은 노드 이름이
+   글자 단위로 꺾이지 않게 최소 폭을 두고, 방향은 꺾지 않는다.
+   그림은 넓어도 그 상자 안에서만 옆으로 움직인다. */
+body.wb table.histtopo td code { display: inline-block; min-width: 4.5rem; overflow-wrap: anywhere; }
+body.wb table.histtopo td .hint { display: block; }
+body.wb table.histtopo td.dir { white-space: nowrap; }
+body.wb .picture-scroll { overflow-x: auto; max-width: 100%; }
 body.wb .table-wrap > table:not(.editable) th:first-child,
 body.wb .table-wrap > table:not(.editable) td:first-child {
   position: sticky; left: 0; z-index: 1; background: var(--surface); }

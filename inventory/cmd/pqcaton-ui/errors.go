@@ -71,12 +71,18 @@ func writePage(w http.ResponseWriter, status int, render func(io.Writer) error) 
 
 // html: 화면 한 장을 그린다(200). 그리다 실패하면 내부 오류 페이지다.
 func html(w http.ResponseWriter, r *http.Request, render func(io.Writer) error) {
+	htmlStatus(w, r, http.StatusOK, render)
+}
+
+// htmlStatus: 화면 한 장을 그 상태 코드로 그린다. 읽지 못한 것을 알리는 화면이 200으로 나가지 않게 한다.
+func htmlStatus(w http.ResponseWriter, r *http.Request, status int, render func(io.Writer) error) {
 	var buf bytes.Buffer
 	if err := render(&buf); err != nil {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, fmt.Errorf("rendering: %w", err))
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 	_, _ = w.Write(buf.Bytes())
 }
 

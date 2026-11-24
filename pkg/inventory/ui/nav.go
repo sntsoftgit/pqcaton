@@ -13,6 +13,9 @@ const (
 	ScreenReview    = "/review"
 	ScreenApprove   = "/approve"
 	ScreenInventory = "/inventory"
+	// ScreenHistTopo — 04에서 여는 조회 화면. 절차의 단계가 아니다. HistTopoDotPath는 그 그림의 DOT 내려받기다.
+	ScreenHistTopo  = "/survey/history"
+	HistTopoDotPath = "/survey/history.dot"
 )
 
 // screens7 — 화면 일곱. 순서는 절차 순서다(조회는 절차가 아니라 맨 뒤에 둔다).
@@ -58,6 +61,8 @@ func ScreenTitle(here string, l Lang) string {
 		return tTitleSurvey.In(l)
 	case ScreenInventory:
 		return tTitleInventory.In(l)
+	case ScreenHistTopo:
+		return tHistTopoTitle.In(l)
 	case ScreenApprove:
 		return tTitleApprove.In(l)
 	}

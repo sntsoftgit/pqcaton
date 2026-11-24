@@ -182,10 +182,13 @@ templ surveyBody(v SurveyView) {
 				@templ.Raw(v.SVG)
 			</div>
 		} else {
-			<p class="hint">@templ.Raw(tNoDot.In(v.Page.Lang))</p>
-			@tip(v.Page.Lang, tNoDotHelp.In(v.Page.Lang))
+			@pictureMissing(v.Page.Lang, v.Picture)
 			<textarea readonly style="min-height:12rem" aria-label="DOT">{ v.DOT }</textarea>
 		}
+		<p style="margin-top:.8rem">
+			<a class="quiet" href={ templ.SafeURL(ScreenHistTopo) } data-hist-topo-link>{ tHistTopoTitle.In(v.Page.Lang) }</a>
+		</p>
+		<p class="hint">{ tHistTopoLinkHint.In(v.Page.Lang) }</p>
 	</fieldset>
 }
 
@@ -200,5 +203,18 @@ templ jcaUnconfirmed(lang Lang, nodes []string) {
 				}
 			</ul>
 		</div>
+	}
+}
+
+// pictureMissing — 그림이 없는 까닭. `dot`이 없는 것(선택 사항)과 그렸지만 싣지 않는 것을 가른다. 04와 이력 화면이 함께 쓴다.
+templ pictureMissing(lang Lang, state string) {
+	switch state {
+		case PictureRefused:
+			<p class="hint" data-picture="refused">{ tSVGRefused.In(lang) }</p>
+		case PictureFailed:
+			<p class="hint" data-picture="failed">@templ.Raw(tSVGFailed.In(lang))</p>
+		default:
+			<p class="hint" data-picture="no-dot">@templ.Raw(tNoDot.In(lang))</p>
+			@tip(lang, tNoDotHelp.In(lang))
 	}
 }

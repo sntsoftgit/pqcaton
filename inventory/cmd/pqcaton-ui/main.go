@@ -36,7 +36,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"regexp"
@@ -558,6 +557,8 @@ func (s *server) handler() http.Handler {
 	r.Post(ui.ArchivePath, s.approveArchive)
 	r.Post(ui.GeneratePath, s.approveGenerate)
 	r.Get(ui.ScreenSurvey, s.survey)
+	r.Get(ui.ScreenHistTopo, s.histTopology)
+	r.Get(ui.HistTopoDotPath, s.histTopologyDOT)
 	r.Get(ui.ScreenInventory, s.inventory)
 	r.Get(ui.ScreenReview, s.review)
 	r.Post("/save", s.save)
@@ -1307,31 +1308,12 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	page := s.nextPage(r, ui.ScreenSurvey, s.results, s.steps(wd))
 	page.Org = res.Org
 	v := ui.NewSurveyView(res, page)
-	v.SVG = renderDOT(v.DOT)
+	v.SVG, v.Picture = renderDOT(v.DOT)
 	// 05와 같은 판정이다. 할 수 없으면(같은 정책 · 확정하지 않은 후보 · 잠긴 세션) 알리지 않는다.
 	if o, err := s.activationOffer(); err == nil {
 		v.Activation = o
 	}
 	html(w, r, func(out io.Writer) error { return ui.RenderSurvey(out, v) })
-}
-
-// renderDOT — `dot`이 있으면 SVG로 그린다. 없으면 빈 값을 돌려주고 화면이 원문을 보인다.
-//
-// **의존성이 아니라 있으면 좋은 것이다.** 없다고 화면이 깨지면 표준 라이브러리만 쓴다는
-// 약속이 무의미해진다.
-func renderDOT(dot string) string {
-	bin, err := exec.LookPath("dot")
-	if err != nil {
-		return ""
-	}
-	cmd := exec.Command(bin, "-Tsvg")
-	cmd.Stdin = strings.NewReader(dot)
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	// `dot`이 낸 SVG다. 우리가 만든 DOT에서 나온 것이라 밖에서 온 값이 아니다.
-	return string(out)
 }
 
 // ── 인벤토리 조회 ──────────────────────────────────────────────────────────

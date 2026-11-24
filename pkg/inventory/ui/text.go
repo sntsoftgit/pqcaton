@@ -679,6 +679,91 @@ var (
 		EN: "The collector could not confirm which side opened these connections. They carry no port and no negotiated " +
 			"group, so they are not reconciled with the declaration and are not counted above. Observing again may confirm them."}
 
+	// 이력에서 앱별 통신 보기(04에서 여는 조회 화면).
+	tHistTopoTitle    = T{KO: "이력에서 앱별 통신 보기", EN: "App connections from the history"}
+	tHistTopoLinkHint = T{
+		KO: "pqcota 이력에 적재된 관측에서 노드마다 어느 앱이 무엇과 통신했는지 봅니다. 위 그림과 달리 선언과 대조하지 않습니다.",
+		EN: "See which app on each node talked to what, from the observations loaded into the pqcota history. Unlike the picture above, it is not reconciled with the declaration."}
+	tHistBack       = T{KO: "04 대조로 돌아가기", EN: "Back to 04 reconciliation"}
+	tHistSource     = T{KO: "출처", EN: "Source"}
+	tHistSourceOrg  = T{KO: "조회한 조직(판정 조직)", EN: "Organization queried (the judgment organization)"}
+	tHistSourceBody = T{
+		KO: "이 조직의 pqcota 이력에서 읽었습니다. 노드마다 그 노드의 현재 스냅샷이고, 적재 시각은 노드마다 다릅니다. 작업 폴더의 관측 결과와 같은지는 같은 노드의 스냅샷 지문으로 견줍니다. 시각으로는 판단하지 않습니다.",
+		EN: "Read from this organization's pqcota history. Each node shows its current snapshot, and load times differ per node. Whether it is the same as the observation results in the workspace is decided by the snapshot digest of the same node, never by the time."}
+	tColHistSnap   = T{KO: "이력 스냅샷", EN: "History snapshot"}
+	tColDigest     = T{KO: "스냅샷 지문", EN: "Snapshot digest"}
+	tColHistTime   = T{KO: "적재 시각(UTC)", EN: "Loaded at (UTC)"}
+	tColCompare    = T{KO: "작업 폴더와 비교", EN: "Against the workspace"}
+	tHistCreated   = T{KO: "적재 기록이 없어 스냅샷 생성 시각입니다", EN: "no load record: this is when the snapshot was created"}
+	tCmpSame       = T{KO: "일치", EN: "same"}
+	tCmpDiffer     = T{KO: "다름", EN: "different"}
+	tCmpNone       = T{KO: "비교 불가", EN: "cannot compare"}
+	tCmpNoLocal    = T{KO: "작업 폴더에 이 노드의 결과가 없습니다", EN: "the workspace has no results for this node"}
+	tCmpUnreadable = T{KO: "작업 폴더의 결과를 읽지 못했습니다", EN: "the results in the workspace could not be read"}
+	tCmpDifferHint = T{
+		KO: "작업 폴더의 결과가 이 스냅샷과 다릅니다. 적재한 뒤에 다시 관측했거나 다른 정책으로 적재한 경우입니다",
+		EN: "the results in the workspace differ from this snapshot: observed again after the load, or loaded under another policy"}
+	tHistOnlyLocal = T{
+		KO: "작업 폴더에는 결과가 있고 이 조직의 이력에는 스냅샷이 없는 노드",
+		EN: "Nodes with results in the workspace and no snapshot in this organization's history"}
+	tHistEmpty     = T{KO: "이 조직의 pqcota 이력에 스냅샷이 없습니다.", EN: "The pqcota history holds no snapshot for this organization."}
+	tHistEmptyNext = T{
+		KO: "03에서 관측한 결과를 이 조직(<code>PQCOTA_ORG</code>)으로 <code>pqcota-ingest</code>에 적재한 뒤 이 화면을 다시 여십시오. 다른 조직으로 적재한 이력은 여기에 보이지 않습니다.",
+		EN: "Load the results observed on 03 with <code>pqcota-ingest</code> under this organization (<code>PQCOTA_ORG</code>), then open this screen again. A history loaded under another organization does not show here."}
+	tHistUnreachable = T{
+		KO: "pqcota 이력을 읽지 못했습니다. 연결과 화면 계정의 조회 권한을 확인한 뒤 다시 여십시오.",
+		EN: "The pqcota history could not be read. Check the connection and the read privileges of the screen's account, then open this screen again."}
+	tHistEndpoints = T{
+		KO: "이 조직에 등록된 엔드포인트: %d개. 상대의 IP가 등록된 엔드포인트 하나에만 속할 때 그 노드로 적고, 그렇지 않으면 주소로 적습니다. 선언이나 다른 조직의 등록 정보로 이름을 채우지 않습니다.",
+		EN: "Endpoints registered for this organization: %d. A peer is written as a node only when its IP belongs to exactly one registered endpoint; otherwise it is written as an address. Names are not filled in from the declaration or from another organization's registrations."}
+	tHistNoEndpoints = T{
+		KO: "등록된 엔드포인트가 없어 모든 상대가 주소로 나옵니다. 노드로 이어 보려면 이 조직으로 <code>pqcota-hosts</code>를 돌려 엔드포인트를 등록하십시오.",
+		EN: "No endpoint is registered, so every peer shows as an address. To tie peers to nodes, register the endpoints with <code>pqcota-hosts</code> under this organization."}
+	tHistSummary = T{KO: "노드별 요약", EN: "Summary by node"}
+	tHistCounts  = T{
+		KO: "노드 %d대 · 저장된 연결 기록 %d건 · 노드로 잇지 못한 상대 %d곳",
+		EN: "Nodes: %d · stored connection records: %d · peers not tied to a node: %d"}
+	tHistRecordsNote = T{
+		KO: "기록은 관측한 노드마다 하나씩 저장됩니다. 같은 연결을 두 노드가 보면 두 줄이므로, 이 수는 04의 「협상된 통신」 건수와 다릅니다. 횟수는 그 기록의 것이고 더하지 않습니다.",
+		EN: "A record is stored per observing node. A connection seen by both nodes is two rows, so this number is not the “negotiated connections” count of 04. A count belongs to its record and is not added up."}
+	tHistPick    = T{KO: "노드 고르기", EN: "Choose a node"}
+	tHistAll     = T{KO: "모든 노드", EN: "All nodes"}
+	tHistShow    = T{KO: "보기", EN: "Show"}
+	tColApp      = T{KO: "앱", EN: "App"}
+	tColLibs     = T{KO: "같은 앱 키로 관측된 라이브러리", EN: "Libraries observed with the same app key"}
+	tHistLibNote = T{
+		KO: "같은 스냅샷에서 같은 앱 키로 관측됐다는 뜻입니다. 그 연결이 이 라이브러리를 썼다는 근거가 아닙니다.",
+		EN: "They were observed in the same snapshot with the same app key. That is not evidence that the connection used them."}
+	tHistApps        = T{KO: "앱과 라이브러리", EN: "Apps and libraries"}
+	tHistRecords     = T{KO: "저장된 연결 기록", EN: "Stored connection records"}
+	tHistNoApps      = T{KO: "앱으로 귀속된 연결 기록이 없습니다.", EN: "No connection record is attributed to an app."}
+	tHistNoLibs      = T{KO: "없음", EN: "none"}
+	tHistNoRecords   = T{KO: "저장된 연결 기록이 없습니다.", EN: "No connection record is stored."}
+	tColDirection    = T{KO: "방향", EN: "Direction"}
+	tDirOpened       = T{KO: "→ 열었음", EN: "→ opened"}
+	tDirAccepted     = T{KO: "← 받았음", EN: "← accepted"}
+	tDirUnknown      = T{KO: "↔ 방향 미확인", EN: "↔ not confirmed"}
+	tColWire         = T{KO: "통신", EN: "Connection"}
+	tColCount        = T{KO: "횟수", EN: "Count"}
+	tNoApp           = T{KO: "(앱 미귀속)", EN: "(no app)"}
+	tGroupUnknown    = T{KO: "그룹 불명", EN: "group unknown"}
+	tCountNone       = T{KO: "기록 없음", EN: "not recorded"}
+	tPeerUnreg       = T{KO: "등록되지 않은 주소", EN: "unregistered address"}
+	tPeerShared      = T{KO: "등록 노드 %d대가 함께 쓰는 IP", EN: "IP shared by registered nodes: %d"}
+	tPeerNotIP       = T{KO: "IP가 아닌 주소", EN: "not an IP address"}
+	tPeerNoSnap      = T{KO: "이력에 스냅샷 없음", EN: "no snapshot in the history"}
+	tHistPicture     = T{KO: "그림(조직 전체)", EN: "Picture (the whole organization)"}
+	tHistPictureNote = T{
+		KO: "그림은 위에서 고른 노드와 관계없이 이 조직의 모든 노드를 그립니다. 넓으면 이 상자 안에서 좌우로 움직입니다. 선 하나는 저장된 기록 하나이고, 라벨은 상류 도구가 쓴 영어 그대로입니다.",
+		EN: "The picture draws every node of this organization, whatever node is chosen above. When it is wide, scroll sideways inside this box. One line is one stored record, and the labels are the English the upstream tool writes."}
+	tSVGRefused = T{
+		KO: "그림에 화면이 싣지 않는 요소가 있어 보이지 않습니다. DOT을 내려받아 따로 그리십시오.",
+		EN: "The drawing holds something this screen does not embed, so it is not shown. Download the DOT and draw it elsewhere."}
+	tSVGFailed = T{
+		KO: "<code>dot</code>이 그림을 그리지 못했습니다. DOT을 내려받아 확인하십시오.",
+		EN: "<code>dot</code> could not draw the picture. Download the DOT to check it."}
+	tDotDownload = T{KO: "DOT 내려받기", EN: "Download DOT"}
+
 	tTopology     = T{KO: "토폴로지", EN: "Topology"}
 	tTopologyHint = T{
 		KO: "색은 양자내성 등급, 선 모양은 대조 상태입니다. <b>보지 못한 것은 점선</b>이라 " +

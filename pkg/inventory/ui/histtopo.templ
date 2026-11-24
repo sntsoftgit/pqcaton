@@ -1,0 +1,249 @@
+package ui
+
+import (
+	"strconv"
+	"strings"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/upstream"
+)
+
+// histTopoPage — 이력에서 앱별 통신 보기. 출처 → 요약 표 → 그림 순서다. 요약 표와 DOT 내려받기는 `dot` 없이도 된다.
+templ histTopoPage(v HistTopoView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			<p class="eyebrow">{ tNextSurveyEyebrow.In(v.Page.Lang) }</p>
+			<h2>{ tHistTopoTitle.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tHistTopoLinkHint.In(v.Page.Lang) }</p>
+			<p><a class="quiet" href={ templ.SafeURL(ScreenSurvey) }>{ tHistBack.In(v.Page.Lang) }</a></p>
+			@histSource(v)
+			if v.Err == "" && len(v.T.Nodes) > 0 {
+				@histSummary(v)
+				@histPicture(v)
+			}
+		</div>
+	}
+}
+
+// histSource — 어느 조직의 이력을 읽었고, 노드마다 어느 스냅샷이며, 작업 폴더의 것과 같은가.
+templ histSource(v HistTopoView) {
+	<fieldset>
+		<legend>{ tHistSource.In(v.Page.Lang) }</legend>
+		<p>{ tHistSourceOrg.In(v.Page.Lang) }: <code data-hist-org>{ v.Org }</code></p>
+		if v.Err != "" {
+			<div class="warn-list" role="alert" data-hist-error>
+				<strong>{ tHistUnreachable.In(v.Page.Lang) }</strong>
+				<p class="hint"><code>{ v.Err }</code></p>
+			</div>
+		} else if len(v.T.Nodes) == 0 {
+			<div class="warn-list" role="status" data-hist-empty>
+				<strong>{ tHistEmpty.In(v.Page.Lang) }</strong>
+				<p class="hint">@templ.Raw(tHistEmptyNext.In(v.Page.Lang))</p>
+			</div>
+		} else {
+			<p class="hint">{ tHistSourceBody.In(v.Page.Lang) }</p>
+			<div class="table-wrap">
+				<table class="edges">
+					<tr>
+						<th>{ tColNode.In(v.Page.Lang) }</th>
+						<th>{ tColCompare.In(v.Page.Lang) }</th>
+						<th>{ tColHistSnap.In(v.Page.Lang) }</th>
+						<th>{ tColDigest.In(v.Page.Lang) }</th>
+						<th>{ tColHistTime.In(v.Page.Lang) }</th>
+					</tr>
+					for _, r := range v.Rows {
+						<tr data-hist-node={ r.ID } data-compare={ r.Compare }>
+							<td>
+								<code>{ r.ID }</code>
+								if r.Name != "" {
+									<span class="hint">{ r.Name }</span>
+								}
+							</td>
+							<td class={ templ.KV("must", r.Compare == CompareDiffer) }>
+								{ compareLabel(v.Page.Lang, r.Compare) }
+								switch r.Compare {
+									case CompareDiffer:
+										<span class="hint">{ tCmpDifferHint.In(v.Page.Lang) }</span>
+									case CompareUnknown:
+										if v.LocalRead {
+											<span class="hint">{ tCmpNoLocal.In(v.Page.Lang) }</span>
+										} else {
+											<span class="hint">{ tCmpUnreadable.In(v.Page.Lang) }</span>
+										}
+								}
+							</td>
+							<td><code title={ r.Snapshot }>{ short12(r.Snapshot) }</code></td>
+							<td><code title={ r.Digest }>{ short12(r.Digest) }</code></td>
+							<td>
+								{ histTime(r.At) }
+								if !r.Loaded {
+									<span class="hint">{ tHistCreated.In(v.Page.Lang) }</span>
+								}
+							</td>
+						</tr>
+					}
+				</table>
+			</div>
+			if len(v.OnlyLocal) > 0 {
+				<p class="hint" data-hist-only-local={ strconv.Itoa(len(v.OnlyLocal)) }>
+					{ tHistOnlyLocal.In(v.Page.Lang) }:
+					for i, n := range v.OnlyLocal {
+						if i > 0 {
+							{ ", " }
+						}
+						<code>{ n }</code>
+					}
+				</p>
+			}
+			if v.T.Endpoints == 0 {
+				<p class="hint" data-hist-endpoints="0">@templ.Raw(tHistNoEndpoints.In(v.Page.Lang))</p>
+			} else {
+				<p class="hint" data-hist-endpoints={ strconv.Itoa(v.T.Endpoints) }>{ tHistEndpoints.F(v.Page.Lang, v.T.Endpoints) }</p>
+			}
+		}
+	</fieldset>
+}
+
+// histSummary — 노드 · 앱 · 라이브러리 · 통신 상대의 표. 노드 고르기는 이 표에만 걸린다.
+templ histSummary(v HistTopoView) {
+	<fieldset>
+		<legend>{ tHistSummary.In(v.Page.Lang) }</legend>
+		<p data-hist-counts>{ tHistCounts.F(v.Page.Lang, len(v.T.Nodes), v.T.Summary.Edges, v.T.Addresses()) }</p>
+		<p class="hint">{ tHistRecordsNote.In(v.Page.Lang) }</p>
+		<form method="get" action={ templ.SafeURL(ScreenHistTopo) } class="actions">
+			<label for="hist-node">{ tHistPick.In(v.Page.Lang) }</label>
+			<select id="hist-node" name="node">
+				<option value="" selected?={ v.Node == "" }>{ tHistAll.In(v.Page.Lang) }</option>
+				for _, n := range v.T.Nodes {
+					<option value={ n.ID } selected?={ v.Node == n.ID }>{ n.ID }</option>
+				}
+			</select>
+			<button type="submit">{ tHistShow.In(v.Page.Lang) }</button>
+		</form>
+		for _, n := range v.Shown() {
+			<h3 data-hist-summary={ n.ID }>
+				<code>{ n.ID }</code>
+				if n.Name != "" {
+					<span class="hint">{ n.Name }</span>
+				}
+			</h3>
+			<h4>{ tHistApps.In(v.Page.Lang) }</h4>
+			if len(n.Apps) == 0 {
+				<p class="hint">{ tHistNoApps.In(v.Page.Lang) }</p>
+			} else {
+				<div class="table-wrap">
+					<table class="histtopo">
+						<tr>
+							<th>{ tColApp.In(v.Page.Lang) }</th>
+							<th>{ tColLibs.In(v.Page.Lang) }</th>
+						</tr>
+						for _, a := range n.Apps {
+							<tr>
+								<td>
+									<code>{ a.Key }</code>
+									if len(a.Kinds) > 0 {
+										<span class="hint">{ strings.Join(a.Kinds, ", ") }</span>
+									}
+								</td>
+								<td>
+									if len(a.Libraries) == 0 {
+										<span class="hint">{ tHistNoLibs.In(v.Page.Lang) }</span>
+									}
+									for _, l := range a.Libraries {
+										<code>{ l }</code>
+										{ " " }
+									}
+								</td>
+							</tr>
+						}
+					</table>
+				</div>
+				<p class="hint">{ tHistLibNote.In(v.Page.Lang) }</p>
+			}
+			<h4>{ tHistRecords.In(v.Page.Lang) }</h4>
+			if len(n.Records) == 0 {
+				<p class="hint">{ tHistNoRecords.In(v.Page.Lang) }</p>
+			} else {
+				<div class="table-wrap">
+					<table class="histtopo">
+						<tr>
+							<th>{ tColApp.In(v.Page.Lang) }</th>
+							<th>{ tColDirection.In(v.Page.Lang) }</th>
+							<th>{ tColPeer.In(v.Page.Lang) }</th>
+							<th>{ tColWire.In(v.Page.Lang) }</th>
+							<th>{ tColCount.In(v.Page.Lang) }</th>
+						</tr>
+						for _, r := range n.Records {
+							@histRecord(v.Page.Lang, r)
+						}
+					</table>
+				</div>
+			}
+		}
+	</fieldset>
+}
+
+// histRecord — 저장된 연결 기록 한 줄. 관측에서 온 값(앱 키 · 주소 · 그룹)은 글자로만 적는다.
+templ histRecord(lang Lang, r upstream.TopoRecord) {
+	{{ mark, _ := posture(r.Posture) }}
+	<tr data-hist-record={ r.Role }>
+		<td>
+			if r.App != "" {
+				<code>{ r.App }</code>
+			} else {
+				<span class="hint">{ tNoApp.In(lang) }</span>
+			}
+		</td>
+		<td class="dir">{ dirLabel(lang, r.Role) }</td>
+		<td>
+			<code>{ r.Peer }</code>
+			switch r.PeerKind {
+				case upstream.PeerUnregistered:
+					<span class="hint">{ tPeerUnreg.In(lang) }</span>
+				case upstream.PeerShared:
+					<span class="hint">{ tPeerShared.F(lang, r.SharedBy) }</span>
+				case upstream.PeerNotIP:
+					<span class="hint">{ tPeerNotIP.In(lang) }</span>
+				default:
+					if !r.PeerHasSnapshot {
+						<span class="hint">{ tPeerNoSnap.In(lang) }</span>
+					}
+			}
+		</td>
+		<td>
+			{ mark } { r.Proto }
+			if r.Port != 0 {
+				{ " :" + portText(r.Port) }
+			}
+			<span class="hint">
+				if r.Group != "" {
+					{ r.Group }
+				} else {
+					{ tGroupUnknown.In(lang) }
+				}
+			</span>
+		</td>
+		<td>
+			if r.Count > 0 {
+				{ "×" + strconv.FormatUint(r.Count, 10) }
+			} else {
+				<span class="hint">{ tCountNone.In(lang) }</span>
+			}
+		</td>
+	</tr>
+}
+
+// histPicture — 상류가 그린 그림. 조직 전체이고 노드 고르기와 무관하다. DOT 내려받기는 그림이 없어도 있다.
+templ histPicture(v HistTopoView) {
+	<fieldset>
+		<legend>{ tHistPicture.In(v.Page.Lang) }</legend>
+		<p class="hint">{ tHistPictureNote.In(v.Page.Lang) }</p>
+		<p><a class="quiet" href={ templ.SafeURL(HistTopoDotPath) } download="pqcota-topology.dot" data-hist-dot>{ tDotDownload.In(v.Page.Lang) }</a></p>
+		if v.SVG != "" {
+			<div class="picture-scroll" data-hist-picture>
+				@templ.Raw(v.SVG)
+			</div>
+		} else {
+			@pictureMissing(v.Page.Lang, v.Picture)
+			<textarea readonly style="min-height:12rem" aria-label="DOT">{ v.T.DOT }</textarea>
+		}
+	</fieldset>
+}
