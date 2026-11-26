@@ -5,7 +5,7 @@ package ui
 // **옛 껍데기(shell)를 그대로 두고 하나 더 둔다.** 옮기는 동안 두 판이 나란히 서야
 // 비교가 되는데, 한 껍데기를 고치면 지금 쓰는 화면 넷이 함께 움직인다.
 //
-// 위쪽이 셋으로 나뉜다. 무엇을 보고 있나(topbar) · 무엇을 먼저 할까(hero) · 절차가
+// 위쪽이 둘로 나뉜다. 무엇을 보고 있나(topbar) · 절차가
 // 지금 어디까지 왔나(steps). 마지막 것이 이 판의 핵심이다 — **번호와 이름만 있는 탭은
 // 어디부터 볼지 말해 주지 않는다.**
 templ nextShell(p Page) {
@@ -54,12 +54,6 @@ templ nextShell(p Page) {
 					}
 				</div>
 			</header>
-			<section class="hero">
-				<div>
-					<h1>{ tWbTagline.In(p.Lang) }</h1>
-					<p>{ tWbLede.In(p.Lang) }</p>
-				</div>
-			</section>
 			if len(p.Steps) > 0 {
 				<nav class="steps" aria-label={ tWbStepsAria.In(p.Lang) }>
 					for _, st := range p.Steps {
