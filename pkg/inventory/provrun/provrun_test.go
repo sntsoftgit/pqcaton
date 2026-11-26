@@ -405,6 +405,9 @@ func TestGrantIsBoundTimedAndSingleUse(t *testing.T) {
 // 것이거나, 줄이 끝나지 않았으면 아니다). 결과를 기다리는 작업은 시작이 있고 결과가 없는 (노드, 작업)이다.
 func TestReadyAndPending(t *testing.T) {
 	head := string(Header("R"))
+	if head != `{"ev":"open","run":"R","seq":0}`+"\n" {
+		t.Errorf("header = %q", head)
+	}
 	ready := `{"seq":1,"run":"R","ev":"ready"}` + "\n"
 	if !Ready([]byte(head+ready), "R") {
 		t.Error("header and ready should be ready")

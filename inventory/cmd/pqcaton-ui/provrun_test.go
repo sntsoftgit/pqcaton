@@ -511,6 +511,10 @@ func TestApplyFixedCaseFirstDoneSecondFailedThirdNotStarted(t *testing.T) {
 			t.Errorf("the screen lacks %q", want)
 		}
 	}
+	// 상태와 이유의 문구가 같으면 이유를 따로 적지 않는다(「작업 실패 작업 실패」가 되지 않게).
+	if strings.Contains(page, `<span class="why">일부 작업만 끝남</span>`) || !strings.Contains(page, `<span class="why">작업 실패</span>`) {
+		t.Error("the reason should appear once, beside a state it differs from")
+	}
 	if out := fakeOut(t, "prov.txt"); strings.Contains(out, "--check") {
 		t.Errorf("an apply run was started with --check:\n%s", out)
 	}

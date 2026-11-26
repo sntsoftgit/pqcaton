@@ -82,7 +82,7 @@ templ provResult(l Lang, r ProvResult) {
 						<td><code>{ n.Node }</code></td>
 						<td>
 							{ r.StateText(l, n) }
-							if n.Why != "" {
+							if n.Why != "" && r.WhyText(l, n) != r.StateText(l, n) {
 								<span class="why">{ r.WhyText(l, n) }</span>
 							}
 							if !r.Check && n.State == "done" {

@@ -121,7 +121,7 @@ type event struct {
 
 // Header — 감독이 기록 파일을 만들며 쓰는 첫 줄. callback은 이 파일에 덧붙이기만 한다.
 func Header(run string) []byte {
-	b, _ := json.Marshal(event{Seq: 0, Run: run, Ev: "open"})
+	b, _ := json.Marshal(map[string]any{"seq": 0, "run": run, "ev": "open"})
 	return append(b, '\n')
 }
 

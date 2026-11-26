@@ -681,7 +681,7 @@ func provResult(l Lang, r ProvResult) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if n.Why != "" {
+			if n.Why != "" && r.WhyText(l, n) != r.StateText(l, n) {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<span class=\"why\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
