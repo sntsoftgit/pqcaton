@@ -55,6 +55,12 @@ func runMarker(id string) string { return "PQCATON_RUN=" + id }
 
 func supervise(string, string) int { return 3 }
 
+func provSupervise(string, string) int { return 3 }
+
+const provSuperviseFlag = "-provision-supervise"
+
+func writeDurable(string, any) error { return errors.New("not supported on this platform") }
+
 type runMark struct {
 	Marker  string
 	Suspect []int

@@ -63,6 +63,10 @@ const (
 	SignPath        = "/approve/sign"
 	SignConfirmPath = "/approve/sign/confirm"
 	GeneratePath    = "/approve/generate"
+	// ProvRunPath — 06의 실행 상태 조각(GET). ProvPreviewPath — 대상 노드 미리 보기를 시작한다. ProvStopPath — 멈춘다.
+	ProvRunPath     = "/approve/run"
+	ProvPreviewPath = "/approve/preview"
+	ProvStopPath    = "/approve/run/stop"
 	// ArchivePath — 지난 서명과 그 플레이북을 이름에 시각을 붙여 보관한다(지우지 않는다).
 	ArchivePath = "/approve/archive"
 	// HealthPath — 떠 있는 화면이 자기 상태 디렉토리의 ID를 알려 주는 자리. 실행기(pqcaton-ui -open)가 적힌 주소의

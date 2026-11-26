@@ -53,6 +53,8 @@ type ApproveView struct {
 	// FieldsProblem — 지금 계획(또는 서명한 계획)에 pqcaton 이 아직 검토 · 생성하지 않는 상류 필드(소스 근거 · 가이드)가 있다.
 	// FieldsSigned — 그것이 서명한 계획 쪽이다. 서명도 생성도 하지 않고, 서명한 계획이면 보관만 한다.
 	FieldsProblem, FieldsSigned bool
+	// Run — 대상 노드 미리 보기와 마지막 실행의 판정(provrun.go). 화면만 채운다(카드는 쓰지 않는다).
+	Run ProvRun
 }
 
 // 06이 계획을 서명 · 생성하지 않는 정책 쪽 사유. 검사 순서(계획 ID 형식 → 동일성 → 계획 파일 해시 → 정책 지문)와 같다.

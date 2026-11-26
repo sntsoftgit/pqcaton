@@ -31,6 +31,9 @@ func TestMain(m *testing.M) {
 		beforeSupervise()
 		os.Exit(supervise(os.Args[2], os.Args[3]))
 	}
+	if len(os.Args) == 4 && os.Args[1] == provSuperviseFlag {
+		os.Exit(provSupervise(os.Args[2], os.Args[3]))
+	}
 	if len(os.Args) >= 5 && os.Args[1] == "-test-sign" {
 		os.Exit(testSign(os.Args[2], os.Args[3], os.Args[4], os.Args[5:]))
 	}

@@ -1,0 +1,104 @@
+package ui
+
+// approveRun — 06의 대상 노드 미리 보기와 마지막 실행의 결과. 플레이북을 만든 뒤에만 보인다.
+//
+// 이 판에는 적용 버튼이 없다. 미리 보기가 낸 적용 권한은 상태만 보인다.
+templ approveRun(v ApproveView) {
+	if v.Playbooks.Made || v.Run.Last != nil || v.Run.Running {
+		<h3 id="approve-run">{ tProvHead.In(v.Page.Lang) }</h3>
+		<p class="lede">{ tProvLede.In(v.Page.Lang) }</p>
+		<p class="hint">{ tProvScope.In(v.Page.Lang) }</p>
+		if v.Run.Running {
+			@provRunning(v.Page.Lang, v.Page.CSRF)
+		} else if v.Run.CanPreview() {
+			<form method="post" action={ templ.SafeURL(ProvPreviewPath) }>
+				<input type="hidden" name={ CSRFField } value={ v.Page.CSRF }/>
+				<div class="actions">
+					<button class="primary" data-prov-preview>{ tProvPreview.F(v.Page.Lang, len(v.Run.Targets)) }</button>
+				</div>
+			</form>
+		} else if len(v.Run.Blocks) > 0 {
+			<section class="problems" aria-labelledby="prov-blocked" data-prov-blocked>
+				<h3 id="prov-blocked">{ tProvBlockedHead.In(v.Page.Lang) }</h3>
+				<ul>
+					for _, b := range v.Run.Blocks {
+						<li data-prov-block={ b.Code }>
+							if b.Node != "" {
+								<code>{ b.Node }</code>
+								{ " " }
+							}
+							if b.Task != "" {
+								<code>{ b.Task }</code>
+								{ " " }
+							}
+							{ b.Text(v.Page.Lang) }
+						</li>
+					}
+				</ul>
+				<p class="hint">{ tProvBlockedFoot.In(v.Page.Lang) }</p>
+			</section>
+		}
+		if v.Run.Last != nil {
+			@provResult(v.Page.Lang, *v.Run.Last)
+		}
+	}
+}
+
+// provRunning — 도는 동안 2초마다 다시 받는다. 끝나면 서버가 화면을 통째로 새로 받게 한다.
+templ provRunning(l Lang, csrf string) {
+	<div id="prov-running" hx-get={ ProvRunPath + "?" + LangParam + "=" + string(l) } hx-trigger="every 2s" hx-swap="outerHTML">
+		<p class="msg" role="status">{ tProvRunningText.In(l) }</p>
+		<form method="post" action={ templ.SafeURL(ProvStopPath) }>
+			<input type="hidden" name={ CSRFField } value={ csrf }/>
+			<button type="submit">{ tProvStop.In(l) }</button>
+		</form>
+	</div>
+}
+
+// provResult — 실행 하나의 판정. 노드 상태는 실행 기록에서만 온다.
+templ provResult(l Lang, r ProvResult) {
+	<section id="prov-result" data-prov-run={ r.ID } data-prov-outcome={ r.Outcome }>
+		if r.Check {
+			<h3>{ tProvLastPreview.F(l, r.Started.Local().Format("2006-01-02 15:04:05")) }</h3>
+		} else {
+			<h3>{ tProvLastApply.F(l, r.Started.Local().Format("2006-01-02 15:04:05")) }</h3>
+		}
+		<p class={ "msg", templ.KV("ok", r.Good()), templ.KV("bad", !r.Good()) }>{ r.OutcomeText(l) }</p>
+		if r.EndText(l) != "" {
+			<p class="msg bad" data-prov-end={ r.End }>{ r.EndText(l) }</p>
+		}
+		if r.Grant != "" {
+			<p class="hint" data-prov-grant={ r.Grant }>{ r.GrantText(l) }</p>
+		}
+		<div class="table-wrap">
+			<table class="provrun">
+				<tr>
+					<th>{ tProvColNode.In(l) }</th>
+					<th>{ tProvColState.In(l) }</th>
+					<th>{ tProvColTasks.In(l) }</th>
+				</tr>
+				for _, n := range r.Nodes {
+					<tr data-prov-node={ n.Node } data-prov-state={ n.State }>
+						<td><code>{ n.Node }</code></td>
+						<td>
+							{ r.StateText(l, n) }
+							if n.Why != "" {
+								<span class="why">{ r.WhyText(l, n) }</span>
+							}
+							if !r.Check && n.State == "done" {
+								<span class="why">{ tProvNotVerified.In(l) }</span>
+							}
+						</td>
+						<td>
+							<ul>
+								for _, t := range n.Tasks {
+									<li data-prov-task={ t.Status }>{ t.Name }: { r.TaskText(l, t) }</li>
+								}
+							</ul>
+						</td>
+					</tr>
+				}
+			</table>
+		</div>
+	</section>
+}

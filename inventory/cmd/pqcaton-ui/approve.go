@@ -385,6 +385,7 @@ func (s *server) approve(w http.ResponseWriter, r *http.Request) {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
+	v.Run = s.provModel(v)
 	v.Page = s.nextPage(r, ui.ScreenApprove, s.planOut, s.steps(s.load()))
 	v.Page.Rev = rev
 	html(w, r, func(out io.Writer) error { return ui.RenderApprove(out, v) })

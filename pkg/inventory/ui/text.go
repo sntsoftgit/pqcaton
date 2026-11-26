@@ -1758,3 +1758,109 @@ var phaseNames = map[RunPhase]T{
 	PhaseNetwork: {KO: "네트워크 핸드셰이크 관측", EN: "observing TLS and SSH handshakes"},
 	PhaseCleanup: {KO: "노드의 스테이징 폴더 정리", EN: "removing the staging folders on the nodes"},
 }
+
+// 06 프로비저닝: 대상 노드 미리 보기와 실행 결과(provrun.go · provrun.templ).
+var (
+	tProvHead = T{KO: "대상 노드 미리 보기", EN: "Preview on the target nodes"}
+	tProvLede = T{
+		KO: "승인된 계획에서 L2로 생성한, 설정 파일만 놓는 플레이북을 대상 노드에 --check로 실행해 무엇이 바뀔지 확인합니다. 노드를 바꾸지 않습니다.",
+		EN: "Runs the playbook generated at L2 from the approved plan (it only places configuration files) against the target nodes with --check, to see what would change. It does not change the nodes."}
+	tProvScope = T{
+		KO: "이 판의 화면은 미리 보기까지만 실행합니다. 적용 · 활성화 · 되돌리기는 운영자가 수행합니다.",
+		EN: "This version of the screen runs the preview only. Applying, activating and rolling back are the operator's job."}
+	tProvBlockedHead = T{KO: "화면에서 실행하지 않는 까닭", EN: "Why the screen does not run this"}
+	tProvBlockedFoot = T{
+		KO: "생성된 플레이북 파일은 그대로 있습니다. 운영자가 직접 실행할 수 있습니다.",
+		EN: "The generated playbook file is untouched. The operator can run it directly."}
+	tProvPreview     = T{KO: "%d개 노드 미리 보기", EN: "Preview on %d nodes"}
+	tProvRunningText = T{KO: "미리 보기를 실행하고 있습니다.", EN: "The preview is running."}
+	tProvStop        = T{KO: "중지", EN: "Stop"}
+	tProvLastPreview = T{KO: "마지막 미리 보기: %s", EN: "Last preview: %s"}
+	tProvLastApply   = T{KO: "마지막 적용 실행: %s", EN: "Last apply run: %s"}
+	tProvColNode     = T{KO: "노드", EN: "Node"}
+	tProvColState    = T{KO: "실행 기록의 상태", EN: "State in the run record"}
+	tProvColTasks    = T{KO: "작업", EN: "Tasks"}
+	tProvNotVerified = T{
+		KO: "서비스 활성화와 운영 상태: 확인하지 않음",
+		EN: "Service activation and the running state: not checked"}
+	tProvGrantValid = T{
+		KO: "미리 본 내용은 %s까지, 한 번의 적용에만 유효합니다. 그 사이에도 노드의 상태는 바뀔 수 있습니다. 이 판의 화면에는 적용 버튼이 없습니다.",
+		EN: "What was previewed is good until %s, for one apply. The nodes can still change in the meantime. This version of the screen has no apply button."}
+	tProvGrantExpired = T{
+		KO: "미리 보기가 만료됐습니다(끝난 뒤 10분). 다시 미리 보십시오.",
+		EN: "The preview has expired (10 minutes after it ended). Preview again."}
+	tProvGrantChanged = T{
+		KO: "미리 본 뒤 입력이 바뀌었습니다(계획 · 플레이북 · 접근 정보 · 실행 설정 가운데 하나). 다시 미리 보십시오.",
+		EN: "An input changed after the preview (the plan, the playbook, the access details or the run settings). Preview again."}
+	tProvGrantUsed = T{KO: "이 미리 보기는 이미 한 번 쓰였습니다. 다시 미리 보십시오.", EN: "This preview was already used once. Preview again."}
+
+	tProvRefusedHead     = T{KO: "미리 보기를 시작하지 않았습니다", EN: "The preview was not started"}
+	tProvRefusedNotReady = T{
+		KO: "화면에서 실행할 조건이 맞지 않습니다. 06 화면의 「화면에서 실행하지 않는 까닭」을 확인하십시오.",
+		EN: "The conditions for running from the screen are not met. See \"Why the screen does not run this\" on screen 06."}
+	tProvRefusedBusy = T{KO: "이미 실행이 돌고 있습니다. 끝난 뒤 다시 하십시오.", EN: "A run is already going. Try again when it ends."}
+)
+
+var provBlockText = map[string]T{
+	ProvViewOnly:     {KO: "보기 전용으로 열려 있어 실행하지 않습니다.", EN: "The screen is open view-only, so nothing is run."},
+	ProvNotApproved:  {KO: "지금 계획에 대한, 이 키로 확인되는 승인이 있어야 합니다.", EN: "The current plan needs an approval this key can check."},
+	ProvNoPlaybook:   {KO: "플레이북을 먼저 생성하십시오.", EN: "Generate the playbooks first."},
+	ProvLevel:        {KO: "화면은 L2로 생성한 플레이북만 실행합니다. L2로 다시 생성하십시오.", EN: "The screen only runs a playbook generated at L2. Generate it again at L2."},
+	ProvNotGenerated: {KO: "플레이북 파일이 승인된 계획에서 생성한 것과 다릅니다. 다시 생성하십시오.", EN: "The playbook file differs from what the approved plan generates. Generate it again."},
+	ProvUnknownForm:  {KO: "플레이북에 이 판이 알지 못하는 형식의 줄이 있습니다.", EN: "The playbook has a line in a form this version does not know."},
+	ProvNoHosts:      {KO: "접근 정보(hosts.csv)에서 이 노드를 읽지 못했습니다.", EN: "This node could not be read from the access details (hosts.csv)."},
+	ProvWindows:      {KO: "Windows 노드는 화면에서 실행하지 않습니다.", EN: "Windows nodes are not run from the screen."},
+	ProvNoAnsible:    {KO: "ansible-playbook을 찾지 못했습니다.", EN: "ansible-playbook was not found."},
+	ProvUnsupported + "-provider": {
+		KO: "provider 모듈을 놓거나 확인하는 작업입니다. 미리 보기로 확인할 수 없어 화면에서 실행하지 않습니다.",
+		EN: "This task stages or verifies a provider module. A preview cannot check it, so the screen does not run it."},
+	ProvUnsupported + "-l3":      {KO: "활성화 · 재시작(L3) 조치입니다. 화면에서 실행하지 않습니다.", EN: "An activation or restart (L3) action. The screen does not run it."},
+	ProvUnsupported + "-manual":  {KO: "설정으로 전달할 수 없는 수동 단계가 있습니다.", EN: "There is a manual step that configuration cannot deliver."},
+	ProvUnsupported + "-unknown": {KO: "화면이 실행하지 않는 종류의 작업이거나, 그대로 쓸 수 없는 노드 이름입니다.", EN: "A kind of task the screen does not run, or a node name it cannot use as is."},
+}
+
+var provOutcomeText = map[string]T{
+	"ready":       {KO: "미리 보기를 마쳤습니다. 기대한 작업을 모두 확인했고 바뀔 것이 있습니다.", EN: "The preview is complete. Every expected task was checked, and there are changes to make."},
+	"no-change":   {KO: "적용할 변경이 없습니다. 기대한 작업이 빠짐없이 「바뀔 것 없음」으로 확인됐습니다.", EN: "There is nothing to apply. Every expected task was checked and none would change anything."},
+	"incomplete":  {KO: "미리 보기 미완료. 확인하지 못한 작업이 있어 적용 권한을 만들지 않았습니다.", EN: "The preview is incomplete. Some tasks were not checked, so nothing may be applied from it."},
+	"applied":     {KO: "모든 노드에서 L2 배치의 성공이 기록됐습니다.", EN: "The run record shows the L2 placement succeeded on every node."},
+	"not-applied": {KO: "L2 배치가 끝까지 기록되지 않은 노드가 있습니다.", EN: "On some nodes the L2 placement is not recorded to the end."},
+}
+
+var provEndText = map[string]T{
+	"stall": {
+		KO: "%d초 동안 결과를 받지 못해 컨트롤러에서 실행을 중단했습니다. 이미 시작한 원격 작업은 뒤늦게 끝날 수 있습니다.",
+		EN: "No result came for %d seconds, so the run was stopped on the controller. A remote task that had already started may still finish later."},
+	"stopped": {
+		KO: "컨트롤러에서 실행을 중단했습니다. 이미 시작한 원격 작업은 뒤늦게 끝날 수 있습니다.",
+		EN: "The run was stopped on the controller. A remote task that had already started may still finish later."},
+	"not-ready": {
+		KO: "실행 기록을 준비하지 못해 원격 작업을 시작하지 않았습니다.",
+		EN: "The run record could not be made ready, so no remote task was started."},
+	"lost": {
+		KO: "실행 기록 중단. 감독이 결과를 남기지 못하고 끝났습니다. 이미 시작한 원격 작업은 뒤늦게 끝날 수 있습니다.",
+		EN: "The run record was cut short: the supervisor ended without leaving a result. A remote task that had already started may still finish later."},
+	"cut": {
+		KO: "실행 기록 중단. 기록이 끝까지 이어지지 않습니다.",
+		EN: "The run record was cut short: it does not run to the end."},
+}
+
+var provStateText = map[string]T{
+	"not-run": {KO: "실행하지 않음", EN: "Not run"}, "partial": {KO: "일부 작업만 끝남", EN: "Only some tasks finished"},
+	"failed": {KO: "작업 실패", EN: "Task failed"}, "unreachable": {KO: "접속하지 못함", EN: "Could not connect"},
+	"unknown": {KO: "결과를 알 수 없음", EN: "Result unknown"}, "skipped": {KO: "건너뛴 작업 있음", EN: "Some tasks were skipped"},
+	"done-check": {KO: "확인함", EN: "Checked"}, "done-apply": {KO: "L2 배치 완료", EN: "L2 placement done"},
+}
+
+var provWhyText = map[string]T{
+	"unreachable": {KO: "접속하지 못함", EN: "could not connect"}, "task-failed": {KO: "작업 실패", EN: "task failed"},
+	"stalled": {KO: "%d초 동안 결과를 받지 못함", EN: "no result for %d seconds"}, "stopped": {KO: "컨트롤러에서 중단", EN: "stopped on the controller"},
+	"record-cut": {KO: "실행 기록 중단", EN: "run record cut short"}, "skipped": {KO: "건너뜀", EN: "skipped"},
+}
+
+var provTaskText = map[string]T{
+	"ok": {KO: "바뀔 것 없음", EN: "no change"}, "changed-check": {KO: "바뀜 예정", EN: "would change"},
+	"changed-apply": {KO: "바꿈", EN: "changed"}, "failed": {KO: "실패", EN: "failed"}, "skipped": {KO: "건너뜀", EN: "skipped"},
+	"unreachable": {KO: "접속 실패", EN: "could not connect"}, "no-result": {KO: "결과 없음", EN: "no result"},
+	"not-started": {KO: "시작 안 함", EN: "not started"},
+}

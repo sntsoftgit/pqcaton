@@ -34,6 +34,12 @@ const (
 
 // ansibleConfig: 실행 자리에 쓰는 설정. dir은 실행 자리다.
 func ansibleConfig(dir string) []byte {
+	return ansibleConfigWith(dir, "", "ansible.builtin.default")
+}
+
+// ansibleConfigWith: callbackDir가 있으면 callback 플러그인만 그 폴더에서 읽고(06의 전용 callback), stdout은 표준 출력용
+// callback의 이름이다. 나머지 플러그인 경로는 03과 같이 빈 폴더다.
+func ansibleConfigWith(dir, callbackDir, stdout string) []byte {
 	none := filepath.Join(dir, runPluginsNone)
 	var b strings.Builder
 	b.WriteString("# pqcaton: the only Ansible configuration an observation reads. Written for one run and removed when it ends.\n[defaults]\n")
@@ -41,11 +47,15 @@ func ansibleConfig(dir string) []byte {
 		"connection_plugins", "doc_fragment_plugins", "filter_plugins", "httpapi_plugins", "inventory_plugins", "library",
 		"lookup_plugins", "module_utils", "netconf_plugins", "strategy_plugins", "terminal_plugins", "test_plugins", "vars_plugins",
 		"collections_path"} {
+		if k == "callback_plugins" && callbackDir != "" {
+			b.WriteString(k + " = " + callbackDir + "\n")
+			continue
+		}
 		b.WriteString(k + " = " + none + "\n")
 	}
 	// callbacks_enabled는 적지 않는다: 이 설정 밖은 읽지 않으므로 기본값(없음)이고, 2.21은 빈 값을 주면 예외로 멈춘다.
 	b.WriteString(`collections_scan_sys_path = False
-stdout_callback = ansible.builtin.default
+stdout_callback = ` + stdout + `
 display_args_to_stdout = False
 transport = ansible.builtin.ssh
 keep_remote_files = False

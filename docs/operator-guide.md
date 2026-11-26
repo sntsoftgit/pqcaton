@@ -839,7 +839,14 @@ required).
    confirmation, nothing is signed. The signed plan is kept separately in `plan.signed.json` (FINALIZED) and `plan.json`
    stays as it is. **An existing signed file is never overwritten.** If it does not match the current plan, "Archive the
    earlier signature" renames it with the current time beside it, and then the new plan can be signed. Then pick the
-   default delegation level and press "Generate the playbooks": `plan.provision.yml` and `plan.rollback.yml` are written. When the generator flags gaps, their number and content are shown. Applying them to the machines is not
+   default delegation level and press "Generate the playbooks": `plan.provision.yml` and `plan.rollback.yml` are written. When the generator flags gaps, their number and content are shown.
+   When the playbook was generated at L2 and only places configuration files, "Preview on N nodes" runs it against the
+   target nodes with `--check` to show what would change. The preview does not change the nodes, and it runs only on nodes
+   that are in the access details (`hosts.csv`). When there is a task that stages a provider module, an L3 action or a
+   manual step, the screen names the node, the task and the reason, and runs nothing. When a node that started a task does
+   not answer for 120 seconds, the run is stopped and that node reads "Result unknown". A remote task that had already
+   started may still finish later.
+   Applying them to the machines is not
    done by the screen; the operator runs the commands in the 06 screen's help. When 05 is finalized again and the plan
    changes, the 06 card reads "the signature does not match the plan", and generating needs the earlier signature archived
    and a new signature on the new plan.
@@ -1372,6 +1379,8 @@ screen.
 | `exists` | The file to create is already there, so it was not overwritten | Reload the screen |
 | `run-not-ready` | Something needed before an observation (access, Ansible, collectors, collector signing keys, trusted public keys) is missing, there is a Windows node, or an earlier observation needs recovery | Provide the items marked ✗ in the checklist on the 03 screen |
 | `run-busy` | An observation is already running | Start again after it finishes or is stopped |
+| `prov-not-ready` | The conditions for running the 06 preview from the screen are not met (approval, an L2 playbook, access details, Ansible, or a kind of task the screen does not run) | Provide what "Why the screen does not run this" on the 06 screen lists |
+| `prov-busy` | A 06 run is already going | Start again after it finishes or is stopped |
 | `sign-not-ready` | The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed | See the approval key check on the 06 screen and fill in the form |
 | `plan-not-approvable` | The plan is not in review (IN_REVIEW), has no actions, or is already signed with this key | Finalize again at 05, or use the signed plan as it is |
 | `generate-not-ready` | The current plan has no approval that checks out with this key | Sign the approval first |

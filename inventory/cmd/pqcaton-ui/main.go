@@ -75,6 +75,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 3 && args[0] == superviseFlag {
 		return supervise(args[1], args[2])
 	}
+	// 06의 실행 감독 모드(provsupervise.go). 이것도 화면이 띄운다.
+	if len(args) == 3 && args[0] == provSuperviseFlag {
+		return provSupervise(args[1], args[2])
+	}
 	c, err := parseStart(args, stderr)
 	if errors.Is(err, errUsage) {
 		return 2
@@ -201,6 +205,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		// 돌고 있는 관측도 끝내고 **정리가 끝나기를 기다린다.** 먼저 끝나면 Ansible 자식과 비밀이 실린 인벤토리가 남는다.
 		s.shutdownRun()
+		s.shutdownProv()
 		close(stopped)
 		_ = ln.Close()
 	}()
@@ -317,11 +322,13 @@ func (s *server) openState(dir string) error {
 		fmt.Fprintln(os.Stderr, "   The screen opens in recovery mode: every page answers 503 until this is resolved and the screen is restarted.")
 		s.st, s.recovering = st, true
 		s.recoverRuns()
+		s.recoverProv()
 		return nil
 	}
 	s.st = st
 	// 지난번에 관측 도중 끝났으면 접근 비밀이 담긴 인벤토리가 남아 있다. 무엇보다 먼저 지운다.
 	s.recoverRuns()
+	s.recoverProv()
 	// 진단 전용이면 깨진 입력으로 세션을 세우지 않는다(화면이 까닭을 보인다).
 	if len(s.diag) > 0 {
 		return nil
@@ -458,6 +465,7 @@ type server struct {
 	// collectorKeys · collectorVerify: 수집기 서명 키 폴더와 신뢰할 공개 키 파일(collectorkeys.go). 둘 다 작업 폴더 밖이다.
 	collectorKeys, collectorVerify string
 	run                            runner
+	prov                           provRunner
 	// collectorPin: 수집기가 맞춰야 하는 상류 판(collectorPin()). allowUnverified: -allow-unverified-collectors.
 	// checkCollector: 수집기 하나를 판정한다(nil 이면 collectorver.CheckGo). 시험이 바꾼다.
 	collectorPin    string
@@ -561,6 +569,9 @@ func (s *server) handler() http.Handler {
 	r.Post(ui.SignPath, s.approveSign)
 	r.Post(ui.ArchivePath, s.approveArchive)
 	r.Post(ui.GeneratePath, s.approveGenerate)
+	r.Get(ui.ProvRunPath, s.provStatus)
+	r.Post(ui.ProvPreviewPath, s.provPreview)
+	r.Post(ui.ProvStopPath, s.provStop)
 	r.Get(ui.ScreenSurvey, s.survey)
 	r.Get(ui.SurveyPicturePath, s.surveyPicture)
 	r.Get(ui.SurveyDotPath, s.surveyDOT)

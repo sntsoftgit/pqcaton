@@ -31,6 +31,9 @@ const (
 	// RefusedRunNotReady · RefusedRunBusy — 관측을 시작하지 않았다(409). 빠진 것이 있거나 이미 돌고 있다.
 	RefusedRunNotReady = "run-not-ready"
 	RefusedRunBusy     = "run-busy"
+	// RefusedProvNotReady · RefusedProvBusy — 06의 미리 보기를 시작하지 않았다(409).
+	RefusedProvNotReady = "prov-not-ready"
+	RefusedProvBusy     = "prov-busy"
 	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 06 화면이 서명 · 생성을 하지 않았다(409).
 	RefusedSignNotReady      = "sign-not-ready"
 	RefusedPlanNotApprovable = "plan-not-approvable"
@@ -96,6 +99,7 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedUnsafe: {body: tRefusedUnsafe}, RefusedMismatch: {body: tRefusedMismatch}, RefusedDamaged: {body: tRefusedDamaged},
 	RefusedDiagnostic: {tErrInputBrokenHead, tRefusedDiagnostic}, RefusedExists: {body: tRefusedExists},
 	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
+	RefusedProvNotReady: {tProvRefusedHead, tProvRefusedNotReady}, RefusedProvBusy: {tProvRefusedHead, tProvRefusedBusy},
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
 	RefusedRulesetChanged:      {body: tRefusedRulesetChanged},
