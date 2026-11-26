@@ -18,7 +18,7 @@ var (
 	tTitleObserve = T{KO: "관측", EN: "Observation"}
 	tTitleSurvey  = T{KO: "대조", EN: "Reconciliation"}
 	tTitleReview  = T{KO: "판정(리뷰 큐)", EN: "Judgment (review queue)"}
-	tTitleApprove = T{KO: "승인 · 생성", EN: "Approval & generation"}
+	tTitleApprove = T{KO: "프로비저닝", EN: "Provisioning"}
 
 	tSubOrg     = T{KO: "조직", EN: "org"}
 	tSubSession = T{KO: "세션", EN: "session"}
@@ -1550,9 +1550,9 @@ var collectorReasonText = map[string]T{
 	"no-commit":      {KO: "커밋 · 수정 여부 정보 없음", EN: "no commit or modified flag"},
 }
 
-// ── 06 승인 · 생성 ──────────────────────────────────────────────────────────
+// ── 06 프로비저닝(승인 서명 · 플레이북 생성) ──────────────────────────────────────────────────────────
 var (
-	tApproveEyebrow = T{KO: "06 · 승인 · 생성", EN: "06 · Approval & generation"}
+	tApproveEyebrow = T{KO: "06 · 프로비저닝", EN: "06 · Provisioning"}
 	tApproveHead    = T{
 		KO: "확정한 계획에 승인 서명을 하고 플레이북을 만듭니다",
 		EN: "Sign the approval of the finalized plan and generate the playbooks"}

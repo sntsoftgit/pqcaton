@@ -111,7 +111,7 @@ go build -o bin/ ./inventory/cmd/...
 
 | 명령 | 하는 일 |
 |---|---|
-| `pqcaton-ui` | 화면(01 선언부터 06 승인 · 생성까지) |
+| `pqcaton-ui` | 화면(01 선언부터 06 프로비저닝까지) |
 | `pqcaton-decide` | 같은 판정 단계를 명령으로(`open` · `close` · `delta`) |
 | `pqcaton-report` | 모은 결과로 대조 보고서와 거버넌스 토폴로지를 만듭니다 |
 | `pqcaton-scope` | 자산 스코프 정책(계층 · 확정 · 활성화)을 명령으로 |

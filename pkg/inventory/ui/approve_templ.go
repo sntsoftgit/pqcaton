@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "strings"
 
-// approvePage — 06 승인 · 생성. **무엇에 서명하는지 먼저 보인다** — 승인자는 계획의 이름이 아니라 조치의
+// approvePage — 06 프로비저닝. **무엇에 서명하는지 먼저 보인다** — 승인자는 계획의 이름이 아니라 조치의
 // 내용에 책임을 진다.
 func approvePage(v ApproveView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

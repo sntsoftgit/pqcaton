@@ -3,7 +3,7 @@
 
 package main
 
-// 06 승인 · 생성 화면. 서명한 계획과 플레이북은 plan.json 옆에 쓴다(작업 폴더 모드면 작업 폴더다).
+// 06 프로비저닝 화면(승인 서명 · 플레이북 생성). 서명한 계획과 플레이북은 plan.json 옆에 쓴다(작업 폴더 모드면 작업 폴더다).
 //
 // **서명 · 확인 · 생성은 상류 함수다.** pqcota-approve와 pqcota-provision이 하는 일을 같은 함수로 한다
 // (provisioning.PrepareApproval · sign.SignApproval · sign.VerifyApprovals · provisioning.Generate…Playbook).

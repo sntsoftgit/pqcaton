@@ -253,7 +253,7 @@ it signs approvals and generates playbooks inside the screen.
 |---|---|
 | 03 Observation | Ansible and node access, the official collectors, the collector signing keys and the trusted public keys ("Getting ready to run observations" and "Preparing the collector signing keys" below) |
 | Loading observation results into the history | `pqcota-ingest` and a loading account. The results of 03 are checked (`pqcota-ingest -verify-keys`) and then loaded under the judgment organization (section 6). Reconciliation in 04 and 05 and policy activation in 05 look at this load |
-| 06 approval signature and generation | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
+| 06 Provisioning (approval signature and playbook generation) | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
 | Applying to the nodes and rolling back | `pqcota-hosts` (to make the Ansible inventory) and `ansible-playbook` (as 06 explains) |
 | Trimming old history | `pqcota-prune` (optional) |
 
@@ -833,7 +833,7 @@ required).
 5. **05 Judgment.** Write a conclusion for each policy; for the items going into the plan, pick the action kind, target and
    level; and sign. "Finalize" shows a confirmation page with what will be written, and confirming writes the session,
    plan and ledger together. Finalizing the same session with the same content again writes nothing again.
-6. **06 Approval & generation.** Check the actions of the plan to approve, enter the approver's name and confirm the
+6. **06 Provisioning.** This screen does the approval signature and the playbook generation. Check the actions of the plan to approve, enter the approver's name and confirm the
    review, and press "Sign the approval". A confirmation page shows the plan, the plan file's hash, the approver and the
    key fingerprint, and signing happens only on a second press there. If the plan or the key changed after the
    confirmation, nothing is signed. The signed plan is kept separately in `plan.signed.json` (FINALIZED) and `plan.json`

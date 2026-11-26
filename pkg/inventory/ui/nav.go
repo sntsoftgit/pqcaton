@@ -50,7 +50,7 @@ type Screens struct {
 	Decl, Scope, Survey, Inventory bool
 	// Observe — 관측 화면. 작업 폴더 모드에서만 연다(접근 정보의 자리가 그 폴더 안에 정해져 있다).
 	Observe bool
-	// Approve — 승인 · 생성 화면. 계획 출력이 있으면 연다(서명한 계획과 플레이북은 그 옆에 쓴다).
+	// Approve — 프로비저닝 화면(승인 서명 · 플레이북 생성). 계획 출력이 있으면 연다(서명한 계획과 플레이북은 그 옆에 쓴다).
 	Approve bool
 	// NoReview — 판정 화면을 닫는다. 작업 폴더에 선언이 아직 없으면 판정할 것이 없다(기본은 연다).
 	NoReview bool

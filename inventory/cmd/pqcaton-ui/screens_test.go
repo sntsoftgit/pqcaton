@@ -62,7 +62,7 @@ func TestDefaultAddressesAreTheScreens(t *testing.T) {
 
 // titles: 화면마다 브라우저 제목. 단계 카드의 이름과 같다.
 var titles = map[string]string{
-	ui.ScreenDecl: "선언", ui.ScreenScope: "암호 자산 스코프", ui.ScreenObserve: "관측", ui.ScreenSurvey: "대조", ui.ScreenApprove: "승인 · 생성",
+	ui.ScreenDecl: "선언", ui.ScreenScope: "암호 자산 스코프", ui.ScreenObserve: "관측", ui.ScreenSurvey: "대조", ui.ScreenApprove: "프로비저닝",
 	ui.ScreenReview: "판정(리뷰 큐)", ui.ScreenInventory: "인벤토리·판정 이력",
 }
 

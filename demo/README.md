@@ -86,7 +86,7 @@ The order below starts from the screen `ui.sh` opens for the first time. The top
 | 03 Observation | The access table holds the 3 nodes, and every collector and `collector.jar` row is ✓ "verified" | Press **Start the observation**. It takes about a minute (the network window is 60 seconds) | "The observation finished, and what it received is now the current results"; then **See them in 04 Reconciliation** |
 | 04 Reconciliation | 2 items to judge, 1 asset to observe again | Read the counts (CONFIRMED · UNDECLARED · UNOBSERVED) and which rows they come from. An edge with no traffic during the observation window shows as UNOBSERVED | **Open the review queue** |
 | 05 Review | 1 policy (`openssl/libssl`) without a conclusion | Write a **Conclusion for this policy**. For 06 to have something to generate, tick **In plan** on one machine-answered row (for example `pay-db/openssl/libssl`) and choose a **Remediation kind**, a **Target algorithm** and a **Delegation level**. Fill in **Approver** and **Signature**, press **Finalize and emit the plan**, check the page that follows and press **Finalize** | "This review session is finalized"; go to 06 |
-| 06 Approval and generation | The finalized plan with its actions, the approval key ✓ | Fill in **Approver**, tick "I have reviewed the actions above and approve them", press **Sign the approval** and then **Sign this** on the check page. Then press **Generate the playbooks** | `plan.provision.yml` and `plan.rollback.yml` are listed. Applying them to the nodes is the operator's job with Ansible |
+| 06 Provisioning | The finalized plan with its actions, the approval key ✓ | Fill in **Approver**, tick "I have reviewed the actions above and approve them", press **Sign the approval** and then **Sign this** on the check page. Then press **Generate the playbooks** | `plan.provision.yml` and `plan.rollback.yml` are listed. Applying them to the nodes is the operator's job with Ansible |
 
 ### Seeing it on the screen
 
@@ -108,7 +108,7 @@ would put it.
 | The asset-scope policy given to the upstream ingest (`scope-assets.csv`) | 04 · 05. It must be the same policy, or the snapshot fingerprints do not match the upstream history |
 | Node access information (`hosts.csv`) and the official upstream collectors fetched and verified by the preparation tool | 03 Observation runs |
 | The observation results so far | 04 Reconciliation. Observing again in 03 replaces them with the new results |
-| The approval signing key (outside the workspace, `/work/ui-approval.key`) | 06 Approval and generation |
+| The approval signing key (outside the workspace, `/work/ui-approval.key`) | 06 Provisioning |
 
 02 opens with "No layers yet." The layers to edit are empty, but the asset-scope policy that 04 and 05 use (`scope-assets.csv`) is the
 one given to the upstream ingest. When you create and finalize layers in 02, the new policy goes out as `asset-scope.csv`, and the

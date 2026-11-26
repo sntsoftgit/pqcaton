@@ -115,7 +115,7 @@ What 03 Observation and 06 approval signatures need is in [the same section 2](d
 
 | Command | What it does |
 |---|---|
-| `pqcaton-ui` | The screen (01 Declaration to 06 Approval and generation) |
+| `pqcaton-ui` | The screen (01 Declaration to 06 Provisioning) |
 | `pqcaton-decide` | The same judgment steps as commands (`open`, `close`, `delta`) |
 | `pqcaton-report` | The reconciliation report and the governance topology from collected results |
 | `pqcaton-scope` | The asset-scope policy (layers, finalize, activate) as commands |

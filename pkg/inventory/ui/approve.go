@@ -3,7 +3,7 @@
 
 package ui
 
-// 06 승인 · 생성 화면.
+// 06 프로비저닝 화면(승인 서명 · 플레이북 생성).
 //
 // **서명과 생성은 상류 함수가 한다.** 계획을 FINALIZED로 올리고 서명하는 일(`PrepareApproval` ·
 // `SignApproval`), 서명을 확인하고 플레이북을 만드는 일(`VerifyApprovals` · `Generate…Playbook`)은
@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-// ApproveView — 06 승인 · 생성 화면.
+// ApproveView — 06 프로비저닝 화면(승인 서명 · 플레이북 생성).
 type ApproveView struct {
 	Page
 	// Plan — 05에서 확정한 계획. nil이면 아직 없다.
@@ -314,7 +314,7 @@ func (v ApproveView) RulesetText() string {
 	}
 }
 
-// RenderApprove — 06 승인 · 생성 화면.
+// RenderApprove — 06 프로비저닝 화면(승인 서명 · 플레이북 생성).
 func RenderApprove(w io.Writer, v ApproveView) error {
 	return approvePage(v).Render(context.Background(), w)
 }
