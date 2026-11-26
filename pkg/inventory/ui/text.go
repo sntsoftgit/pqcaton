@@ -1841,7 +1841,7 @@ var (
 		EN: "Detected ansible-core version: %s. The 06 preview, apply and recheck only run with ansible-core %s. Make the ansible-playbook found first on the PATH of the environment that started the screen be %s, then open this screen again. Signing the approval, generating the playbooks and reading earlier run records still work."}
 	tProvVersionUnread = T{KO: "판독할 수 없음", EN: "could not be read"}
 
-	tProvRefusedHead     = T{KO: "미리 보기를 시작하지 않았습니다", EN: "The preview was not started"}
+	tProvRefusedHead     = T{KO: "06의 원격 실행을 시작하지 않았습니다", EN: "The 06 remote run was not started"}
 	tProvRefusedNotReady = T{
 		KO: "화면에서 실행할 조건이 맞지 않습니다. 06 화면의 「화면에서 실행하지 않는 까닭」을 확인하십시오.",
 		EN: "The conditions for running from the screen are not met. See \"Why the screen does not run this\" on screen 06."}
