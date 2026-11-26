@@ -846,6 +846,11 @@ required).
    manual step, the screen names the node, the task and the reason, and runs nothing. When a node that started a task does
    not answer for 120 seconds, the run is stopped and that node reads "Result unknown". A remote task that had already
    started may still finish later.
+   **The 06 preview, apply and recheck only run with ansible-core 2.16.3.** The screen checks the version of the
+   `ansible-playbook` it would actually run; with another version, or one it cannot read, it shows the detected version and
+   the reason and starts nothing. Make the `ansible-playbook` found first on the PATH of the environment that started the
+   screen be 2.16.3. Signing the approval, generating the playbooks and reading earlier run records work regardless of that
+   version. Observations at 03 are not under this limit.
    When the preview ends with changes to make, "Apply to N nodes: go to the confirmation" appears. The confirmation page shows
    the organization, the target nodes, the approved plan, the generated playbook, when the preview ended and until when it is
    good, and the tasks that would change on each node; the apply starts only when "Apply to N nodes" is pressed there. A
@@ -1388,7 +1393,7 @@ screen.
 | `exists` | The file to create is already there, so it was not overwritten | Reload the screen |
 | `run-not-ready` | Something needed before an observation (access, Ansible, collectors, collector signing keys, trusted public keys) is missing, there is a Windows node, or an earlier observation needs recovery | Provide the items marked ✗ in the checklist on the 03 screen |
 | `run-busy` | An observation is already running | Start again after it finishes or is stopped |
-| `prov-not-ready` | The conditions for running the 06 preview from the screen are not met (approval, an L2 playbook, access details, Ansible, or a kind of task the screen does not run) | Provide what "Why the screen does not run this" on the 06 screen lists |
+| `prov-not-ready` | The conditions for running the 06 preview, apply or recheck from the screen are not met (approval, an L2 playbook, access details, Ansible and its version (ansible-core 2.16.3), or a kind of task the screen does not run) | Provide what "Why the screen does not run this" on the 06 screen lists |
 | `prov-busy` | A 06 run is already going | Start again after it finishes or is stopped |
 | `prov-grant` | There is no valid preview to apply from (none · ended more than 10 minutes ago · an input changed after it · already used once) | Preview again on the 06 screen, then apply |
 | `sign-not-ready` | The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed | See the approval key check on the 06 screen and fill in the form |

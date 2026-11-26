@@ -28,7 +28,10 @@ import (
 //	hang2 둘째 노드의 둘째 작업을 시작하고 멈춤 · cut 첫 노드의 둘째 작업 앞에서 말없이 끝남 · noload 준비 신호 없이 250으로 끝남
 //	replay 앞 실행(FAKE_PROV_OLD)의 ID로 사건을 씀 · recfail2 둘째 노드의 둘째 작업을 시작한 뒤 기록을 쓰지 못해 끝남(251)
 //	garble2 둘째 노드의 둘째 작업 앞에 읽을 수 없는 줄을 쓰고 계속함
+//
+// `--version`에는 core 2.16.3이라고 답한다. 옆에 `<이 파일>.core`가 있으면 그 내용을 답한다(IC-U245).
 const fakeProvAnsible = `#!/bin/sh
+if [ "$1" = "--version" ]; then if [ -f "$0.core" ]; then cat "$0.core"; else echo "ansible-playbook [core 2.16.3]"; fi; exit 0; fi
 { echo "ARGS=$*"; echo "ANSIBLE_ENV=$(env | grep -c '^ANSIBLE_')"; echo "INVENTORY=$(test -f inventory.yml && echo yes || echo no)"
   echo "GO_AT_START=$(test -e "$PQCATON_GO" && echo yes || echo no)"; } >> "$FAKE_OUT/prov.txt"
 [ "$FAKE_PROV" = noload ] && exit 250
@@ -869,5 +872,90 @@ func TestGrantIsConsumedJustBeforeRemoteWorkIsAllowed(t *testing.T) {
 	refused("after a restart")
 	if began(run.dir) {
 		t.Error("after a restart the record should still show no remote work")
+	}
+}
+
+// IC-U245 — **06의 원격 실행은 ansible-core 2.16.3에서만 한다.** 실제로 부를 `ansible-playbook`이 스스로 밝히는 core 판을 본다.
+//   - 2.16.3이면 미리 보기가 돈다.
+//   - 실행 파일이 다른 패치 판(2.16.4)으로 바뀌면 06은 감지한 판 · 지원하는 판 · 할 일을 보이고 미리 보기 · 적용 버튼을 내지
+//     않는다. 미리 보기 뒤에 바뀌었으면 이미 받아 둔 확인 양식으로 보낸 적용도 409이고, 적용 실행이 생기지 않으며 권한은
+//     미사용이다. 판을 읽을 수 없어도 같다(「판독할 수 없음」). 그동안에도 지난 실행 기록은 보이고 플레이북 생성 양식은 그대로 있다.
+//   - **화면이 모르는 사이에 바뀌어도 감독이 막는다.** 화면이 적용을 받아들인 뒤라도, 감독이 띄우기 직전에 직접 물어 판이 다르면
+//     Ansible을 띄우지 않는다: 기록 파일이 생기지 않고(원격 작업 0건) 권한은 미사용이며 화면은 그 까닭을 보인다.
+func TestRemoteRunsNeedTheSupportedAnsibleCore(t *testing.T) {
+	s := provServer(t, "", threeNodes)
+	fake := ansibleCommand
+	original := readFile(t, fake)
+	// setCore: 가짜가 답할 판을 바꾼다. replace면 실행 파일 자체도 바꾼다(크기가 달라진다: 화면이 다시 묻는다).
+	setCore := func(line string, replace bool) {
+		t.Helper()
+		if err := os.WriteFile(fake+".core", []byte(line+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if replace {
+			if err := os.WriteFile(fake, []byte(original+"# "+line+"\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	page := preview(t, s)
+	if !strings.Contains(page, `data-prov-outcome="ready"`) {
+		t.Fatalf("with core 2.16.3 the preview should run:\n%s", section(page, "approve-run"))
+	}
+	grantDir := lastProv(t, s)
+	w := postFormLang(t, s, ui.ProvApplyConfirmPath, "ko", withRev(url.Values{}, s.revFor(ui.ScreenApprove)))
+	if w.Code != http.StatusOK {
+		t.Fatalf("confirm = %d", w.Code)
+	}
+	form := hiddenFields(w.Body.String())
+	runsBefore := len(s.provAll())
+
+	for line, shown := range map[string]string{"ansible-playbook [core 2.16.4]": "감지한 ansible-core 버전: 2.16.4", "ansible 9.9.9": "감지한 ansible-core 버전: 판독할 수 없음"} {
+		setCore(line, true)
+		page = get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+		for _, want := range []string{`data-prov-block="ansible-version"`, shown, "ansible-core 2.16.3에서만 실행합니다", "PATH", `data-prov-run="` + filepath.Base(grantDir) + `"`, `action="` + ui.GeneratePath + `"`} {
+			if !strings.Contains(page, want) {
+				t.Errorf("%s: the screen lacks %q", line, want)
+			}
+		}
+		if strings.Contains(page, "data-prov-preview") || strings.Contains(page, "data-prov-apply") {
+			t.Errorf("%s: the screen still offers a remote run", line)
+		}
+		for _, path := range []string{ui.ProvApplyPath, ui.ProvPreviewPath, ui.ProvRecheckPath, ui.ProvApplyConfirmPath} {
+			f := form
+			if path != ui.ProvApplyPath {
+				f = withRev(url.Values{}, s.revFor(ui.ScreenApprove))
+			}
+			if w := postForm(t, s, path, f); w.Code != http.StatusConflict {
+				t.Errorf("%s: POST %s = %d, want 409", line, path, w.Code)
+			}
+		}
+		if len(s.provAll()) != runsBefore || provrun.Used(grantDir) {
+			t.Errorf("%s: a run was started or the grant was used", line)
+		}
+	}
+
+	// 화면이 모르는 사이에: 실행 파일은 그대로(화면은 다시 묻지 않는다)인데 답하는 판만 달라진다.
+	setCore("ansible-playbook [core 2.16.3]", true)
+	preview(t, s)
+	grantDir = lastProv(t, s)
+	w = postFormLang(t, s, ui.ProvApplyConfirmPath, "ko", withRev(url.Values{}, s.revFor(ui.ScreenApprove)))
+	if w.Code != http.StatusOK {
+		t.Fatalf("confirm = %d\n%s", w.Code, w.Body.String())
+	}
+	setCore("ansible-playbook [core 2.16.4]", false)
+	args := strings.Count(fakeOut(t, "prov.txt"), "ARGS=")
+	if w := postForm(t, s, ui.ProvApplyPath, hiddenFields(w.Body.String())); w.Code != http.StatusSeeOther {
+		t.Fatalf("apply = %d, want the screen to accept it (it has not noticed)\n%s", w.Code, w.Body.String())
+	}
+	waitProv(t, s)
+	runs := applyRuns(s)
+	run := runs[len(runs)-1]
+	page = get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	if isFile(filepath.Join(run.dir, provEventsFile)) || strings.Count(fakeOut(t, "prov.txt"), "ARGS=") != args || provrun.Used(grantDir) {
+		t.Errorf("the supervisor should not have started Ansible or used the grant: record=%v", isFile(filepath.Join(run.dir, provEventsFile)))
+	}
+	if got := applyStates(page); got != "web=not-run app=not-run db=not-run" || !strings.Contains(page, `data-prov-end="ansible-version"`) || !strings.Contains(page, "미리 보기를 쓰지 않았습니다") {
+		t.Errorf("after the supervisor refused: %q\n%s", got, section(page, "prov-apply"))
 	}
 }

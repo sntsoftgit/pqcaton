@@ -68,6 +68,13 @@ func provSupervise(dir, ansible string) int {
 	parentGone := make(chan struct{})
 	go func() { _, _ = io.Copy(io.Discard, os.Stdin); close(parentGone) }()
 
+	// **띄우기 직전에, 실제로 부를 그 실행 파일의 core 판을 직접 묻는다.** 화면이 떠 있는 동안 실행 파일이 바뀔 수 있다. 지원하는
+	// 판이 아니거나 읽을 수 없으면 Ansible을 띄우지 않는다: 원격 작업은 0건이고 권한은 그대로다. 미리 보기와 재확인도 같다.
+	core := ansibleCoreVersion(ansible)
+	if core != provAnsibleCore {
+		return end(3, provrun.EndVersion)
+	}
+
 	// 적용 실행은 미리 보기가 낸 권한이 있어야 한다. 띄우기 전에 먼저 본다: 권한이 유효하고, 이 실행 자리의 입력 사본이 미리 본
 	// 묶음과 같아야 한다. 여기서는 소비하지 않는다(아직 callback이 준비되지 않았다).
 	grantDir := ""
@@ -76,7 +83,7 @@ func provSupervise(dir, ansible string) int {
 			return end(3, provrun.EndNoGrant)
 		}
 		grantDir = filepath.Join(filepath.Dir(dir), m.Grant)
-		bind, err := provBindingOf(dir, ansible, m.Stall)
+		bind, err := provBindingOf(dir, ansible, core, m.Stall)
 		g, gerr := provrun.ReadGrant(grantDir)
 		if err != nil || gerr != nil || g == nil || g.State(time.Now(), bind.Digest(), provrun.Used(grantDir)) != provrun.GrantValid {
 			return end(3, provrun.EndNoGrant)
@@ -153,7 +160,7 @@ loop:
 					// 준비 신호를 읽었다. 적용 실행이면 이제 권한을 소비한다. **소비 기록이 디스크에 닿은 뒤에만 허용한다.**
 					if !m.Check && !consumed {
 						provHook("before-consume", dir)
-						bind, err := provBindingOf(dir, ansible, m.Stall)
+						bind, err := provBindingOf(dir, ansible, core, m.Stall)
 						if err != nil || provrun.Consume(grantDir, time.Now(), bind.Digest(), m.ID) != nil {
 							stop(provrun.EndNoGrant)
 							continue

@@ -1836,6 +1836,11 @@ var (
 	tProvRecheckUnreached = T{KO: "재확인하지 못함", EN: "Not rechecked"}
 	tProvRunID            = T{KO: "실행 ID %s", EN: "Run ID %s"}
 
+	tProvVersionBlock = T{
+		KO: "감지한 ansible-core 버전: %s. 06의 미리 보기 · 적용 · 재확인은 ansible-core %s에서만 실행합니다. 화면을 띄운 환경의 PATH에서 먼저 찾아지는 ansible-playbook이 %s이 되게 한 뒤 이 화면을 다시 여십시오. 승인 서명, 플레이북 생성, 지난 실행 기록 조회는 그대로 할 수 있습니다.",
+		EN: "Detected ansible-core version: %s. The 06 preview, apply and recheck only run with ansible-core %s. Make the ansible-playbook found first on the PATH of the environment that started the screen be %s, then open this screen again. Signing the approval, generating the playbooks and reading earlier run records still work."}
+	tProvVersionUnread = T{KO: "판독할 수 없음", EN: "could not be read"}
+
 	tProvRefusedHead     = T{KO: "미리 보기를 시작하지 않았습니다", EN: "The preview was not started"}
 	tProvRefusedNotReady = T{
 		KO: "화면에서 실행할 조건이 맞지 않습니다. 06 화면의 「화면에서 실행하지 않는 까닭」을 확인하십시오.",
@@ -1894,6 +1899,9 @@ var provEndText = map[string]T{
 	"lost-idle": {
 		KO: "감독이 결과를 남기지 못하고 끝났습니다. 기록에 실행의 시작이 없습니다.",
 		EN: "The supervisor ended without leaving a result. The record has no start of the run."},
+	"ansible-version": {
+		KO: "실행하려던 ansible-playbook이 지원하는 버전이 아니거나 버전을 읽을 수 없어 시작하지 않았습니다. 원격 작업은 없었습니다.",
+		EN: "The ansible-playbook about to be run was not a supported version, or its version could not be read, so nothing was started. There was no remote work."},
 	"cut": {
 		KO: "실행 기록 중단. 기록이 끝까지 이어지지 않습니다.",
 		EN: "The run record was cut short: it does not run to the end."},

@@ -32,6 +32,8 @@ const (
 	EndNoGrant  = "no-grant"  // 적용 권한을 소비하지 못해 원격 작업을 허용하지 않았다(없음 · 이미 쓰임 · 만료 · 입력이 다름)
 	// EndNotAllowed: 권한을 소비했지만 허용을 전하지 못했다. 원격 작업은 없었고 권한은 소비된 채다.
 	EndNotAllowed = "not-allowed"
+	// EndVersion: 부를 ansible-playbook이 지원하는 판이 아니거나 판을 읽을 수 없어 띄우지 않았다.
+	EndVersion = "ansible-version"
 )
 
 // ExitRecord — callback이 기록을 쓰지 못해 Ansible을 끝낼 때의 종료 코드. 감독이 이것을 EndRecord로 적는다.
@@ -269,7 +271,7 @@ func Evaluate(run string, check bool, plays []Play, record []byte, res *Result) 
 	// 허용하지 않았다. 근거는 순서다: callback은 감독의 허용을 받기 전에는 아무것도 시작하지 않고, play와 작업을 알리는 줄을
 	// 디스크에 내린 뒤에야 Ansible이 그 작업을 노드에 보내며, 쓰지 못하면 보내기 전에 실행이 끝난다. 그래서 온전히 읽히는 기록에
 	// 알린 줄이 없는 작업은 보내지지 않았다. 읽을 수 없는 줄이 있으면 이 근거가 서지 않는다.
-	evidence := (!damaged && len(lines) > 0) || res.Reason == EndNotReady || res.Reason == EndNoGrant || res.Reason == EndNotAllowed
+	evidence := (!damaged && len(lines) > 0) || res.Reason == EndNotReady || res.Reason == EndNoGrant || res.Reason == EndNotAllowed || res.Reason == EndVersion
 
 	allDone, anyChanged := true, false
 	for i, p := range plays {

@@ -20,10 +20,13 @@ package main
 // ssh 클라이언트 설정(~/.ssh/config)은 ssh가 읽으므로 그대로 듣는다. 그래서 키는 환경 변수로 넘기지 않는다(SendEnv가 넘긴다).
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -117,4 +120,42 @@ func writeRunConfig(dir string) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, runConfigName), ansibleConfig(dir), 0o600)
+}
+
+// provAnsibleCore: 06이 원격 실행(미리 보기 · 적용 · 재확인)을 허용하는 ansible-core 판. **하나뿐이다.**
+//
+// 06은 「이 노드에는 실행하지 않았다」고 말한다. 그 근거는 Ansible 안의 순서다: 작업을 알린 뒤(callback이 그 줄을 디스크에
+// 내린 뒤)에야 그 작업을 노드에 보낸다. 이 순서를 확인한 판이 2.16.3이다(pqcaton-aai
+// reports/2026-11-26-provisioning-apply-path.md). 다른 판을 더할 때는 그 판에서 callback 호출 순서와 기록 중단 시의 동작을
+// 확인한 뒤에 넓힌다. 03 관측의 지원 범위는 이것과 무관하다.
+const provAnsibleCore = "2.16.3"
+
+var coreVersionLine = regexp.MustCompile(`^ansible-playbook \[core ([0-9][0-9A-Za-z.+-]*)\]`)
+
+// ansibleCoreVersion: 그 `ansible-playbook`이 스스로 밝히는 core 판(`--version`의 첫 줄). 읽지 못하면 빈 값이다. 운영자의
+// ANSIBLE_* 환경은 넘기지 않는다(ansibleEnv와 같은 허용 목록).
+var ansibleCoreVersion = func(path string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, path, "--version")
+	cmd.Dir = os.TempDir()
+	for _, e := range os.Environ() {
+		k, _, _ := strings.Cut(e, "=")
+		keep := contains(envKeep, k)
+		for _, p := range envKeepPrefixes {
+			keep = keep || strings.HasPrefix(k, p)
+		}
+		if keep {
+			cmd.Env = append(cmd.Env, e)
+		}
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	first, _, _ := strings.Cut(string(out), "\n")
+	if m := coreVersionLine.FindStringSubmatch(strings.TrimSpace(first)); m != nil {
+		return m[1]
+	}
+	return ""
 }

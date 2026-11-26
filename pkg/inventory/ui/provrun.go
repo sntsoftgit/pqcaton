@@ -21,11 +21,15 @@ const (
 	ProvNoHosts      = "no-hosts"
 	ProvWindows      = "windows"
 	ProvNoAnsible    = "no-ansible"
+	// ProvAnsibleVersion — 부를 ansible-playbook의 core 판이 06이 지원하는 판이 아니거나 읽을 수 없다.
+	ProvAnsibleVersion = "ansible-version"
 )
 
 // ProvBlock — 화면에서 실행하지 않는 까닭 하나. Node · Task는 해당하는 노드와 작업(또는 조치 ID)이다.
 type ProvBlock struct {
 	Code, Node, Task string
+	// Have · Want — ProvAnsibleVersion일 때 감지한 core 판(읽지 못했으면 빈 값)과 지원하는 판.
+	Have, Want string
 }
 
 // ProvTask · ProvNode · ProvResult — 실행 하나의 판정. 값은 provrun 패키지의 것 그대로다(상태 · 이유 · 결과의 코드).
@@ -114,7 +118,16 @@ func (p ProvRun) CanRecheck() bool { return p.Apply != nil && p.RecheckSame && !
 func (p ProvRun) CanPreview() bool { return len(p.Blocks) == 0 && len(p.Targets) > 0 && !p.Running }
 
 // Text — 막는 까닭의 문구.
-func (b ProvBlock) Text(l Lang) string { return provBlockText[b.Code].In(l) }
+func (b ProvBlock) Text(l Lang) string {
+	if b.Code == ProvAnsibleVersion {
+		have := b.Have
+		if have == "" {
+			have = tProvVersionUnread.In(l)
+		}
+		return tProvVersionBlock.F(l, have, b.Want, b.Want)
+	}
+	return provBlockText[b.Code].In(l)
+}
 
 // EndText — 실행 전체에 붙는 한 줄. 감독이 끝낸 까닭이 있으면 그것이고, 없는데 기록이 끝까지 이어지지 않으면 「실행 기록
 // 중단」이다. 비면 붙일 말이 없다.

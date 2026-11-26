@@ -22,7 +22,7 @@ templ approveRun(v ApproveView) {
 				<h3 id="prov-blocked">{ tProvBlockedHead.In(v.Page.Lang) }</h3>
 				<ul>
 					for _, b := range v.Run.Blocks {
-						<li data-prov-block={ b.Code }>
+						<li data-prov-block={ b.Code } data-prov-have={ b.Have }>
 							if b.Node != "" {
 								<code>{ b.Node }</code>
 								{ " " }

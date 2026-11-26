@@ -74,6 +74,8 @@ type provManifest struct {
 type provRunner struct {
 	mu  sync.Mutex
 	job *provJob
+	// coreKey · core: 마지막으로 물어본 ansible-playbook과 그 core 판(provCore).
+	coreKey, core string
 }
 
 type provJob struct {
@@ -192,27 +194,45 @@ func (s *server) provCheck(v ui.ApproveView) (provReady, []ui.ProvBlock) {
 	if err != nil {
 		return rd, block(ui.ProvNoAnsible, "", "")
 	}
+	// 실제로 부를 그 실행 파일의 core 판을 본다. 지원하는 판이 아니거나 읽을 수 없으면 원격 실행을 시작하지 않는다.
+	core := s.provCore(ansible, fi)
+	if core != provAnsibleCore {
+		return rd, []ui.ProvBlock{{Code: ui.ProvAnsibleVersion, Have: core, Want: provAnsibleCore}}
+	}
 	vars, _ := json.Marshal(runVars())
 	// 설정은 실행 자리의 경로를 담는다. 묶음에는 자리를 뺀 꼴의 해시를 넣는다.
 	cfg := ansibleConfigWith(".", provCallbackDir, provrun.CallbackName)
 	rd = provReady{plays: pb.Plays, playbook: book, inv: inv, cfg: cfg, vars: vars, signed: signedBytes, ansible: ansible,
-		binding: provBinding(signedBytes, book, inv, vars, cfg, provrun.CallbackPlugin, ansible, fi, provStall)}
+		binding: provBinding(signedBytes, book, inv, vars, cfg, provrun.CallbackPlugin, ansible, fi, core, provStall)}
 	return rd, nil
 }
 
 // provBinding: 실행에 들어가는 것의 묶음. 화면이 지금의 입력으로 잴 때와 감독이 실행 자리의 사본으로 잴 때 같은 함수를 쓴다.
-func provBinding(signed, book, inv, vars, cfg, callback []byte, ansible string, fi os.FileInfo, stall int) provrun.Binding {
+func provBinding(signed, book, inv, vars, cfg, callback []byte, ansible string, fi os.FileInfo, core string, stall int) provrun.Binding {
 	return provrun.Binding{
 		"plan": provrun.Hash(signed), "playbook": provrun.Hash(book), "inventory": provrun.Hash(inv),
 		"vars": provrun.Hash(vars), "config": provrun.Hash(cfg), "callback": provrun.Hash(callback),
-		"ansible": fmt.Sprintf("%s|%d|%d", ansible, fi.Size(), fi.ModTime().UnixNano()),
-		"stall":   fmt.Sprint(stall),
+		"ansible":      fmt.Sprintf("%s|%d|%d", ansible, fi.Size(), fi.ModTime().UnixNano()),
+		"ansible-core": core,
+		"stall":        fmt.Sprint(stall),
 	}
+}
+
+// provCore: 그 실행 파일의 core 판. 같은 파일(경로 · 크기 · 고친 시각)이면 다시 묻지 않는다: 06 화면을 그릴 때마다 Ansible을
+// 띄우지 않으려는 것이다. 파일이 바뀌면 다시 묻는다. **감독은 이 기억을 쓰지 않고 띄우기 직전에 직접 묻는다.**
+func (s *server) provCore(ansible string, fi os.FileInfo) string {
+	key := fmt.Sprintf("%s|%d|%d", ansible, fi.Size(), fi.ModTime().UnixNano())
+	s.prov.mu.Lock()
+	defer s.prov.mu.Unlock()
+	if s.prov.coreKey != key {
+		s.prov.coreKey, s.prov.core = key, ansibleCoreVersion(ansible)
+	}
+	return s.prov.core
 }
 
 // provBindingOf: **실행 자리의 사본으로** 묶음을 잰다. Ansible이 읽는 것이 바로 이 파일들이다. 설정은 실행 자리의 경로를 담고
 // 있어 그 경로를 걷어 낸 꼴로 견준다(화면이 잴 때의 꼴과 같아진다).
-func provBindingOf(dir, ansible string, stall int) (provrun.Binding, error) {
+func provBindingOf(dir, ansible, core string, stall int) (provrun.Binding, error) {
 	var parts [6][]byte
 	for i, name := range []string{provPlanCopy, provPlaybook, provInventory, "vars.json", runConfigName,
 		filepath.Join(provCallbackDir, provrun.CallbackName+".py")} {
@@ -227,7 +247,7 @@ func provBindingOf(dir, ansible string, stall int) (provrun.Binding, error) {
 		return nil, err
 	}
 	cfg := bytes.ReplaceAll(parts[4], []byte(dir+string(filepath.Separator)), nil)
-	return provBinding(parts[0], parts[1], parts[2], parts[3], cfg, parts[5], ansible, fi, stall), nil
+	return provBinding(parts[0], parts[1], parts[2], parts[3], cfg, parts[5], ansible, fi, core, stall), nil
 }
 
 // renderProvTargets: 06 실행의 인벤토리. 플레이북이 노드 ID로 겨누므로 호스트 이름이 노드 ID다(03은 별칭을 쓴다). 이름은
