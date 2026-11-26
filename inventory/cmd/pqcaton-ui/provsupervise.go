@@ -22,6 +22,8 @@ package main
 //     플레이북의 줄이 실릴 수 있어 버린다. 화면이 보이는 것은 기록에서 근거를 댈 수 있는 것뿐이다.
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"os"
@@ -92,6 +94,12 @@ func provSupervise(dir, ansible string) int {
 		return end(3, provrun.EndNotReady)
 	}
 
+	// 허용은 「그 경로에 무엇이 있다」가 아니다. 감독이 이 Ansible 프로세스에만 넘긴 토큰과 실행 ID를 적은 파일이다.
+	raw := make([]byte, 16)
+	if _, err := rand.Read(raw); err != nil {
+		return end(3, provrun.EndNotReady)
+	}
+	token := hex.EncodeToString(raw)
 	marker := runMarker(m.ID)
 	mine := runMark{Marker: marker, Suspect: []int{syscall.Getpgrp()}}
 	goFile := filepath.Join(dir, provGoFile)
@@ -101,7 +109,7 @@ func provSupervise(dir, ansible string) int {
 	}
 	cmd := exec.Command(ansible, append(args, provPlaybook)...)
 	cmd.Dir = dir
-	cmd.Env = append(ansibleEnv(dir, marker), "PQCATON_EVENTS="+rec, "PQCATON_RUN_ID="+m.ID, "PQCATON_GO="+goFile)
+	cmd.Env = append(ansibleEnv(dir, marker), "PQCATON_EVENTS="+rec, "PQCATON_RUN_ID="+m.ID, "PQCATON_GO="+goFile, "PQCATON_GO_TOKEN="+token)
 	if err := cmd.Start(); err != nil {
 		return end(3, provrun.EndNotReady)
 	}
@@ -154,7 +162,7 @@ loop:
 						provHook("after-consume", dir)
 					}
 					// 허용한다. 허용 파일을 두지 못하면 callback이 기다리다 스스로 끝난다(권한은 소비된 채다).
-					ready = writeDurable(goFile, map[string]string{"run": m.ID}) == nil
+					ready = writeDurable(goFile, map[string]string{"run": m.ID, "token": token}) == nil
 				case now.Sub(began) > provReadyWait:
 					stop(provrun.EndNotReady)
 				}
@@ -177,6 +185,9 @@ loop:
 	}
 	if reason == "" && code == provrun.ExitRecord {
 		reason = provrun.EndRecord // callback이 기록을 더 쓰지 못해 스스로 끝냈다
+	}
+	if reason == "" && consumed && !ready {
+		reason = provrun.EndNotAllowed // 소비는 했지만 허용을 전하지 못했다. callback이 기다리다 스스로 끝났다
 	}
 	if reason == "" && !ready {
 		reason = provrun.EndNotReady // Ansible이 준비 신호 전에 스스로 끝났다(callback을 불러오지 못했다)

@@ -55,6 +55,8 @@ func TestMain(m *testing.M) {
 						g.Expires = time.Now().Add(-time.Second)
 						_ = provrun.WriteGrant(gd, *g)
 					}
+				case "block":
+					_ = os.Mkdir(filepath.Join(dir, provGoFile), 0o700)
 				case "swap":
 					f, _ := os.OpenFile(filepath.Join(dir, provPlaybook), os.O_WRONLY|os.O_APPEND, 0)
 					_, _ = f.WriteString("# changed after the preview\n")

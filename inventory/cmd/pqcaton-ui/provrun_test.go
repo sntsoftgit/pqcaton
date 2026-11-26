@@ -37,7 +37,7 @@ ev="$PQCATON_EVENTS"; run="$PQCATON_RUN_ID"; seq=0
 check=false; for a in "$@"; do [ "$a" = --check ] && check=true; book="$a"; done
 emit() { seq=$((seq+1)); printf '{"seq":%d,"run":"%s",%s}\n' "$seq" "$run" "$1" >> "$ev"; }
 emit '"ev":"ready"'
-i=0; while [ ! -e "$PQCATON_GO" ]; do i=$((i+1)); [ $i -gt 60 ] && exit 250; sleep 0.05; done
+i=0; while ! { [ -f "$PQCATON_GO" ] && grep -q "\"$PQCATON_RUN_ID\"" "$PQCATON_GO" && grep -q "\"$PQCATON_GO_TOKEN\"" "$PQCATON_GO"; }; do i=$((i+1)); [ $i -gt 60 ] && exit 250; sleep 0.05; done
 emit "\"ev\":\"begin\",\"check\":$check"
 node=""; n=0; t=0; k=0
 task() {
@@ -769,6 +769,8 @@ func TestApplyGoesThroughTheConfirmationOnce(t *testing.T) {
 //   - **소비 직후, 허용하기 전에 감독이 죽으면: 권한은 그 실행의 ID로 소비된 채이고 기록에 실행의 시작이 없다.** 화면은 「미리
 //     보기를 썼지만 원격 작업을 시작하지 않았습니다」와 새 미리 보기 안내를 보인다. 다시 보낸 요청과, 다시 띄운 뒤의 요청은
 //     409다. 두 번째 적용 실행은 시작되지 않는다.
+//   - 허용은 감독이 넘긴 토큰과 실행 ID를 적은 파일이다. 허용 파일 자리에 폴더가 있으면 감독은 소비한 뒤 허용을 전하지 못하고,
+//     callback은 그것을 허용으로 받아들이지 않는다: 원격 작업 0건 · 권한 소비 1건(사유 「허용하지 못함」).
 func TestGrantIsConsumedJustBeforeRemoteWorkIsAllowed(t *testing.T) {
 	s := provServer(t, "", threeNodes)
 	began := func(dir string) bool {
@@ -822,6 +824,15 @@ func TestGrantIsConsumedJustBeforeRemoteWorkIsAllowed(t *testing.T) {
 	runs := applyRuns(s)
 	if u := provrun.UsedBy(grantDir); u == nil || u.By != runs[len(runs)-1].m.ID || !began(runs[len(runs)-1].dir) {
 		t.Errorf("the retry should consume the grant and begin: %+v", u)
+	}
+
+	// 허용 파일 자리에 폴더가 있으면 감독은 소비한 뒤 허용을 전하지 못한다. **그 자리에 무엇이 있다는 것만으로는 허용이 아니다.**
+	blocked, brun, bgrant := try("before-consume:block")
+	if began(brun.dir) {
+		t.Fatal("a directory at the go-ahead path was taken for a go-ahead")
+	}
+	if u := provrun.UsedBy(bgrant); u == nil || u.By != brun.m.ID || !strings.Contains(blocked, `data-prov-end="not-allowed"`) || !strings.Contains(blocked, "data-prov-consumed") {
+		t.Errorf("blocked go-ahead: use=%+v\n%s", u, section(blocked, "prov-apply"))
 	}
 
 	before := len(applyRuns(s))

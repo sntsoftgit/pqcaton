@@ -12,11 +12,15 @@
 # the first task when the stdout callback cannot be set up. So: no record, no run.
 #
 # The supervisor creates the record file and writes line 0. This plugin only appends to that file (it never creates
-# one), writes "ready", and then waits for the supervisor's go-ahead file. Without it nothing remote starts.
+# one), writes "ready", and then waits for the supervisor's go-ahead. Without it nothing remote starts.
+#
+# The go-ahead is not "something exists at that path". It is a regular file whose content names this run and carries
+# the token the supervisor handed this process. A directory, an empty file or another run's file is not a go-ahead.
 from __future__ import annotations
 
 import json
 import os
+import stat
 import time
 
 from ansible import context
@@ -44,6 +48,7 @@ class CallbackModule(CallbackBase):
         super().__init__()
         self._run = os.environ["PQCATON_RUN_ID"]
         go = os.environ["PQCATON_GO"]
+        token = os.environ["PQCATON_GO_TOKEN"]
         # No O_CREAT: only the file the supervisor made for this run.
         self._fd = os.open(os.environ["PQCATON_EVENTS"], os.O_WRONLY | os.O_APPEND)
         self._seq = 0
@@ -51,11 +56,21 @@ class CallbackModule(CallbackBase):
         self._live = False
         self._emit("ready")
         deadline = time.monotonic() + GO_WAIT_SECONDS
-        while not os.path.exists(go):
+        while not self._allowed(go, token):
             if time.monotonic() > deadline:
                 raise RuntimeError("the supervisor gave no go-ahead")
             time.sleep(0.05)
         self._live = True
+
+    def _allowed(self, path, token):
+        try:
+            if not stat.S_ISREG(os.lstat(path).st_mode):
+                return False
+            with open(path, encoding="utf-8") as f:
+                said = json.load(f)
+            return isinstance(said, dict) and said.get("run") == self._run and token != "" and said.get("token") == token
+        except (OSError, ValueError):
+            return False
 
     def _emit(self, ev, **fields):
         self._seq += 1

@@ -1888,6 +1888,9 @@ var provEndText = map[string]T{
 	"no-grant": {
 		KO: "유효한 미리 보기를 쓸 수 없어 원격 작업을 시작하지 않았습니다(없음 · 만료 · 입력이 바뀜 · 이미 쓰임).",
 		EN: "No valid preview could be used, so no remote work was started (none, expired, inputs changed, or already used)."},
+	"not-allowed": {
+		KO: "원격 작업을 허용하지 못해 시작하지 않았습니다.",
+		EN: "Remote work could not be allowed, so none was started."},
 	"cut": {
 		KO: "실행 기록 중단. 기록이 끝까지 이어지지 않습니다.",
 		EN: "The run record was cut short: it does not run to the end."},
