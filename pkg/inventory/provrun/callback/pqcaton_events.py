@@ -66,7 +66,8 @@ class CallbackModule(CallbackBase):
         except OSError:
             if not self._live:
                 raise
-            # The record cannot be written any more. Ansible would only warn and go on, so end the run here.
+            # The record cannot be written any more. Ansible would only warn and go on, so end the run here. The
+            # supervisor reads this exit code as "the record was cut" (provrun.ExitRecord).
             os._exit(251)
 
     def v2_playbook_on_start(self, playbook):

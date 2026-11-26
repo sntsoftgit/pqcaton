@@ -37,7 +37,17 @@ type ProvTask struct {
 type ProvNode struct {
 	Node, State, Why string
 	Tasks            []ProvTask
+	// Recheck — 이 실행에 연결한 재확인이 이 노드에 대해 낸 것(RecheckMatch · RecheckDiffers · RecheckUnreached). 재확인이
+	// 없으면 비어 있다. **실행 기록의 상태(State)는 재확인으로 바뀌지 않는다.**
+	Recheck string
 }
+
+// 재확인이 노드 하나에 대해 내는 것.
+const (
+	RecheckMatch     = "match"     // 그 시각에 대상 파일이 기대 상태와 같다
+	RecheckDiffers   = "differs"   // 바뀔 작업이 있다
+	RecheckUnreached = "unreached" // 재확인이 이 노드의 작업을 모두 확인하지 못했다
+)
 
 type ProvResult struct {
 	ID             string
@@ -50,6 +60,22 @@ type ProvResult struct {
 	// Grant — 적용 권한의 지금 상태(valid · expired · changed · used). 비면 권한이 없다.
 	Grant        string
 	GrantExpires time.Time
+	// RecheckID · RecheckAt — 이 적용 실행에 연결한 가장 최근 재확인과 그 시각. 없으면 비어 있다.
+	RecheckID string
+	RecheckAt time.Time
+}
+
+// RecheckText — 노드의 재확인 칸. 재확인 시각(UTC)과 결과다.
+func (r ProvResult) RecheckText(l Lang, n ProvNode) string {
+	switch n.Recheck {
+	case RecheckMatch:
+		return tProvRecheckMatch.F(l, r.RecheckAt.UTC().Format("15:04 UTC"))
+	case RecheckDiffers:
+		return tProvRecheckDiffers.F(l, r.RecheckAt.UTC().Format("15:04 UTC"))
+	case RecheckUnreached:
+		return tProvRecheckUnreached.In(l)
+	}
+	return ""
 }
 
 // ProvRun — 06의 실행 구역.
@@ -58,8 +84,15 @@ type ProvRun struct {
 	Targets   []string
 	Running   bool
 	RunningID string
-	Last      *ProvResult
+	// Apply — 마지막 적용 실행과 그 재확인. Last — 마지막 미리 보기(재확인이 아닌 것).
+	Apply *ProvResult
+	Last  *ProvResult
+	// RecheckSame — 지금의 입력이 그 적용 실행의 것과 같다. 같을 때만 재확인할 수 있다.
+	RecheckSame bool
 }
+
+// CanRecheck — 재확인 버튼을 낼 수 있는가.
+func (p ProvRun) CanRecheck() bool { return p.Apply != nil && p.RecheckSame && !p.Running }
 
 // CanPreview — 미리 보기 버튼을 낼 수 있는가.
 func (p ProvRun) CanPreview() bool { return len(p.Blocks) == 0 && len(p.Targets) > 0 && !p.Running }
@@ -139,4 +172,12 @@ func (r ProvResult) GrantText(l Lang) string {
 // RenderProvRunning — 도는 동안 다시 받는 조각.
 func RenderProvRunning(w io.Writer, l Lang, csrf string) error {
 	return provRunning(l, csrf).Render(context.Background(), w)
+}
+
+// provSectionID — 결과 구역의 id. 적용 실행과 미리 보기가 한 화면에 함께 있다.
+func provSectionID(r ProvResult) string {
+	if r.Check {
+		return "prov-result"
+	}
+	return "prov-apply"
 }

@@ -427,3 +427,42 @@ func TestReadyAndPending(t *testing.T) {
 		t.Errorf("nothing should be pending: %q", got)
 	}
 }
+
+// IC-PR8 — **「실행하지 않음」은 근거가 있을 때만이다.** 기록이 읽을 수 있는 데까지가 전부이면(끝줄에서 그냥 끝났거나 쓰다 만
+// 끝줄이면) 사건이 없는 노드는 실행하지 않은 것이다. callback이 기록을 쓰지 못해 끝낸 실행(EndRecord)에서는 시작만 있는 작업의
+// 노드가 「결과를 알 수 없음」이고, 작업 사이에서 끝났으면 기록된 성공까지만 인정해 「일부 작업만 끝남(실행 기록 중단)」이다.
+// 기록 가운데에 읽을 수 없는 줄이 있거나 기록이 아예 없으면, 사건이 없는 노드도 「결과를 알 수 없음」이다. 감독이 원격 작업을
+// 허용하지 않은 실행(EndNotReady)은 기록이 없어도 「실행하지 않음」이다.
+func TestNotRunNeedsEvidence(t *testing.T) {
+	p := three()
+	cut := &Result{Exit: ExitRecord, Reason: EndRecord}
+	mid := newRec("R", false).node(p[0], "ok", "changed", "changed", "changed").node(p[1], "ok", "changed", "-")
+	between := newRec("R", false).node(p[0], "ok", "changed", "changed", "changed").node(p[1], "ok", "changed")
+	torn := append(mid.bytes(), []byte(`{"seq":99,"run":"R","ev":"res`)...)
+	junk := newRec("R", false).node(p[0], "ok", "changed", "changed", "changed")
+	junk.lines = append(junk.lines, "not a record line")
+	for name, c := range map[string]struct {
+		record []byte
+		res    *Result
+		want   string
+	}{
+		"cut with a start and no result": {mid.bytes(), cut, "done unknown(record-cut) not-run"},
+		"cut between tasks":              {between.bytes(), cut, "done partial(record-cut) not-run"},
+		"a torn last line":               {torn, cut, "done unknown(record-cut) not-run"},
+		"an unreadable line in between":  {junk.bytes(), cut, "done unknown(record-cut) unknown(record-cut)"},
+		"no record, supervisor lost":     {nil, nil, "unknown(record-cut) unknown(record-cut) unknown(record-cut)"},
+		"no record, never allowed":       {nil, &Result{Exit: 3, Reason: EndNotReady}, "not-run not-run not-run"},
+		"stopped, record damaged":        {junk.bytes(), &Result{Exit: 125, Reason: EndStopped}, "done unknown(record-cut) unknown(record-cut)"},
+	} {
+		v := Evaluate("R", false, p, c.record, c.res)
+		if got := states(v); got != c.want {
+			t.Errorf("%s: %s, want %s", name, got, c.want)
+		}
+		if v.Outcome != ApplyPartial || v.RecordWhole {
+			t.Errorf("%s: outcome %s whole=%v", name, v.Outcome, v.RecordWhole)
+		}
+		if w := Evaluate("R", true, p, c.record, c.res); w.Outcome != PreviewPartial {
+			t.Errorf("%s as a preview: %s", name, w.Outcome)
+		}
+	}
+}

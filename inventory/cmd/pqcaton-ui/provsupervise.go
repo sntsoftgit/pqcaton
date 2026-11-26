@@ -142,6 +142,9 @@ loop:
 	if code < 0 {
 		code = 125
 	}
+	if reason == "" && code == provrun.ExitRecord {
+		reason = provrun.EndRecord // callback이 기록을 더 쓰지 못해 스스로 끝냈다
+	}
 	if reason == "" && !ready {
 		reason = provrun.EndNotReady // Ansible이 준비 신호 전에 스스로 끝났다(callback을 불러오지 못했다)
 	}

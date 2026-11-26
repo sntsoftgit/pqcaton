@@ -28,7 +28,11 @@ const (
 	EndOrphaned = "orphaned"  // 화면이 사라졌다
 	EndNotReady = "not-ready" // callback의 준비 신호를 받지 못해 원격 작업을 허용하지 않았다
 	EndLost     = "lost"      // 감독이 결과를 남기지 못하고 끝났다(다음 시작이 적는다)
+	EndRecord   = "record"    // callback이 기록을 더 쓰지 못해 실행을 끝냈다(ExitRecord)
 )
+
+// ExitRecord — callback이 기록을 쓰지 못해 Ansible을 끝낼 때의 종료 코드. 감독이 이것을 EndRecord로 적는다.
+const ExitRecord = 251
 
 // Result — 감독이 실행 끝에 적는 것.
 type Result struct {
@@ -191,7 +195,10 @@ func Evaluate(run string, check bool, plays []Play, record []byte, res *Result) 
 		return plays[pi].Tasks[ti-1].Name
 	}
 
-	whole, sawEnd, began, checkSeen := true, false, false, false
+	// damaged — 읽을 수 없는 줄이 있다(깨졌거나, 순번이 끊겼거나, 다른 실행의 것이거나, 기대와 다른 내용이다). 그 뒤에 무엇이
+	// 있었는지 알 수 없으므로, 사건이 없는 노드도 「실행하지 않음」이라고 하지 못한다. 줄 끝에서 끊긴 것(쓰다 만 끝줄)은 damaged가
+	// 아니다: 거기까지가 기록의 전부다.
+	whole, sawEnd, began, checkSeen, damaged := true, false, false, false, false
 	pi, ti := -1, -1
 	lines := strings.Split(string(record), "\n")
 	if n := len(lines); n > 0 && lines[n-1] == "" {
@@ -205,7 +212,7 @@ func Evaluate(run string, check bool, plays []Play, record []byte, res *Result) 
 	for i, line := range lines {
 		var e event
 		if json.Unmarshal([]byte(line), &e) != nil || e.Seq != i || e.Run != run || sawEnd {
-			whole = false
+			whole, damaged = false, true
 			break
 		}
 		bad := false
@@ -244,11 +251,15 @@ func Evaluate(run string, check bool, plays []Play, record []byte, res *Result) 
 			bad = true
 		}
 		if bad {
-			whole = false
+			whole, damaged = false, true
 			break
 		}
 	}
 	v.RecordWhole = whole && sawEnd && began && checkSeen == check
+	// 「실행하지 않음」의 근거: 기록이 읽을 수 있는 데까지가 전부이고(damaged가 아니고) 한 줄이라도 있거나, 감독이 원격 작업을
+	// 허용하지 않았다. callback은 작업을 내보내기 전에 시작을 기록하고, 쓰지 못하면 실행을 끝낸다. 그래서 온전히 읽히는 기록에
+	// 시작이 없는 작업은 시작되지 않았다.
+	evidence := (!damaged && len(lines) > 0) || res.Reason == EndNotReady
 
 	allDone, anyChanged := true, false
 	for i, p := range plays {
@@ -267,8 +278,10 @@ func Evaluate(run string, check bool, plays []Play, record []byte, res *Result) 
 		switch {
 		case onlyGood && !has[TaskNotStarted]:
 			nv.State = NodeDone
-		case onlyGood && !has[TaskOK] && !has[TaskChanged]:
+		case onlyGood && !has[TaskOK] && !has[TaskChanged] && evidence:
 			nv.State = NodeNotRun
+		case onlyGood && !has[TaskOK] && !has[TaskChanged]:
+			nv.State, nv.Why = NodeUnknown, WhyRecordCut
 		case has[TaskNoResult]:
 			nv.State, nv.Why = NodeUnknown, cutWhy(res.Reason)
 		case has[TaskUnreachable] && !doneChange:
@@ -281,9 +294,12 @@ func Evaluate(run string, check bool, plays []Play, record []byte, res *Result) 
 			nv.State, nv.Why = NodeFailed, WhyTaskFailed
 		case has[TaskSkipped]:
 			nv.State, nv.Why = NodeSkipped, WhySkipped
-		case res.Reason == EndStall || res.Reason == EndStopped || res.Reason == EndOrphaned:
+		case evidence && (res.Reason == EndStall || res.Reason == EndStopped || res.Reason == EndOrphaned):
 			// 작업 사이에서 감독이 끝냈다. 시작이 기록되지 않은 작업은 시작되지 않았다.
 			nv.State, nv.Why = NodePartial, WhyStopped
+		case evidence && res.Reason == EndRecord:
+			// 작업 사이에서 callback이 기록을 쓰지 못해 끝냈다. 기록된 성공까지만 인정한다.
+			nv.State, nv.Why = NodePartial, WhyRecordCut
 		default:
 			// 기록이 작업 사이에서 끊겼다. 뒤 작업이 기록 없이 돌았는지 알 수 없다.
 			nv.State, nv.Why = NodeUnknown, WhyRecordCut

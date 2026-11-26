@@ -1794,6 +1794,19 @@ var (
 		EN: "An input changed after the preview (the plan, the playbook, the access details or the run settings). Preview again."}
 	tProvGrantUsed = T{KO: "이 미리 보기는 이미 한 번 쓰였습니다. 다시 미리 보십시오.", EN: "This preview was already used once. Preview again."}
 
+	tProvColRecheck  = T{KO: "재확인", EN: "Recheck"}
+	tProvRecheck     = T{KO: "이 실행 재확인", EN: "Recheck this run"}
+	tProvRecheckHint = T{
+		KO: "재확인은 그 시각에 대상 파일이 기대 상태와 같은지를 봅니다. 적용 실행이 어디까지 실행했는지를 알려 주지는 않습니다. 실행 기록의 상태는 재확인으로 바뀌지 않습니다.",
+		EN: "A recheck tells whether the target files match the expected state at that moment. It does not tell how far the apply run got. The state in the run record is not changed by a recheck."}
+	tProvRecheckChanged = T{
+		KO: "이 실행 뒤에 입력이 바뀌어 재확인할 수 없습니다. 재확인은 적용한 것과 같은 계획 · 플레이북 · 접근 정보 · 실행 설정으로만 합니다.",
+		EN: "An input changed after this run, so it cannot be rechecked. A recheck only runs with the same plan, playbook, access details and run settings as the apply run."}
+	tProvRecheckMatch     = T{KO: "재확인 %s · 파일 일치", EN: "Rechecked %s · files match"}
+	tProvRecheckDiffers   = T{KO: "재확인 %s · 다름", EN: "Rechecked %s · differs"}
+	tProvRecheckUnreached = T{KO: "재확인하지 못함", EN: "Not rechecked"}
+	tProvRunID            = T{KO: "실행 ID %s", EN: "Run ID %s"}
+
 	tProvRefusedHead     = T{KO: "미리 보기를 시작하지 않았습니다", EN: "The preview was not started"}
 	tProvRefusedNotReady = T{
 		KO: "화면에서 실행할 조건이 맞지 않습니다. 06 화면의 「화면에서 실행하지 않는 까닭」을 확인하십시오.",
@@ -1840,6 +1853,9 @@ var provEndText = map[string]T{
 	"lost": {
 		KO: "실행 기록 중단. 감독이 결과를 남기지 못하고 끝났습니다. 이미 시작한 원격 작업은 뒤늦게 끝날 수 있습니다.",
 		EN: "The run record was cut short: the supervisor ended without leaving a result. A remote task that had already started may still finish later."},
+	"record": {
+		KO: "실행 기록 중단. 기록을 더 쓰지 못해 실행을 끝냈습니다. 결과가 기록되지 않은 작업은 노드에서 끝났을 수 있습니다.",
+		EN: "The run record was cut short: it could not be written any more, so the run was ended. A task whose result is not recorded may have finished on the node."},
 	"cut": {
 		KO: "실행 기록 중단. 기록이 끝까지 이어지지 않습니다.",
 		EN: "The run record was cut short: it does not run to the end."},

@@ -26,7 +26,8 @@ import (
 //
 //	(없음) 모든 작업이 changed · nochange 모두 ok · skip 첫 노드의 둘째 작업을 건너뜀 · fail2 둘째 노드의 둘째 작업이 실패
 //	hang2 둘째 노드의 둘째 작업을 시작하고 멈춤 · cut 첫 노드의 둘째 작업 앞에서 말없이 끝남 · noload 준비 신호 없이 250으로 끝남
-//	replay 앞 실행(FAKE_PROV_OLD)의 ID로 사건을 씀
+//	replay 앞 실행(FAKE_PROV_OLD)의 ID로 사건을 씀 · recfail2 둘째 노드의 둘째 작업을 시작한 뒤 기록을 쓰지 못해 끝남(251)
+//	garble2 둘째 노드의 둘째 작업 앞에 읽을 수 없는 줄을 쓰고 계속함
 const fakeProvAnsible = `#!/bin/sh
 { echo "ARGS=$*"; echo "ANSIBLE_ENV=$(env | grep -c '^ANSIBLE_')"; echo "INVENTORY=$(test -f inventory.yml && echo yes || echo no)"
   echo "GO_AT_START=$(test -e "$PQCATON_GO" && echo yes || echo no)"; } >> "$FAKE_OUT/prov.txt"
@@ -56,6 +57,9 @@ while IFS= read -r line; do
         fail2) if [ $n = 2 ] && [ $t = 2 ]; then task "$name" failed; exit 2; fi ;;
         hang2) if [ $n = 2 ] && [ $t = 2 ]; then st=hang; fi ;;
         cut) if [ $n = 1 ] && [ $t = 2 ]; then exit 0; fi ;;
+        recfail2) if [ $n = 2 ] && [ $t = 2 ]; then k=$((k+1)); emit "\"ev\":\"task\",\"task\":\"t$k\",\"name\":\"$name\""
+            emit "\"ev\":\"start\",\"host\":\"$node\",\"task\":\"t$k\""; exit 251; fi ;;
+        garble2) if [ $n = 2 ] && [ $t = 2 ]; then echo "not a record line" >> "$ev"; fi ;;
       esac
       task "$name" "$st" ;;
   esac
@@ -146,17 +150,28 @@ func waitProv(t *testing.T, s *server) {
 // lastProv: 가장 최근 실행 자리.
 func lastProv(t *testing.T, s *server) string {
 	t.Helper()
-	ids := s.provRuns()
-	if len(ids) == 0 {
+	all := s.provAll()
+	if len(all) == 0 {
 		t.Fatal("no run folder")
 	}
-	return filepath.Join(s.provDir(), ids[len(ids)-1])
+	return all[len(all)-1].dir
 }
 
 var provAttr = regexp.MustCompile(`data-prov-node="([^"]+)" data-prov-state="([^"]+)"`)
 
-// provStates: 화면의 노드 줄에서 「노드=상태」를 읽는다.
-func provStates(page string) string {
+// provStates: 미리 보기 구역의 노드 줄에서 「노드=상태」를 읽는다. applyStates는 적용 실행 구역의 것이다.
+func provStates(page string) string  { return statesIn(page, "prov-result") }
+func applyStates(page string) string { return statesIn(page, "prov-apply") }
+
+func statesIn(page, id string) string {
+	i := strings.Index(page, `<section id="`+id+`"`)
+	if i < 0 {
+		return ""
+	}
+	page = page[i:]
+	if j := strings.Index(page, "</section>"); j >= 0 {
+		page = page[:j]
+	}
 	var out []string
 	for _, m := range provAttr.FindAllStringSubmatch(page, -1) {
 		out = append(out, m[1]+"="+m[2])
@@ -475,7 +490,7 @@ func TestRestartSaysOnlyWhatTheRecordSays(t *testing.T) {
 		t.Error("the recovery changed the run record")
 	}
 	page = get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
-	if got := provStates(page); got != "web=unknown app=not-run db=not-run" {
+	if got := applyStates(page); got != "web=unknown app=not-run db=not-run" {
 		t.Errorf("after a restart: %q", got)
 	}
 	for _, want := range []string{`data-prov-end="lost"`, "실행 기록 중단", "마지막 적용 실행"} {
@@ -498,12 +513,12 @@ func TestApplyFixedCaseFirstDoneSecondFailedThirdNotStarted(t *testing.T) {
 	if len(blocks) != 0 {
 		t.Fatalf("blocks: %v", blocks)
 	}
-	if err := s.startProv(rd, false); err != nil {
+	if err := s.startProv(rd, false, ""); err != nil {
 		t.Fatal(err)
 	}
 	waitProv(t, s)
 	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
-	if got := provStates(page); got != "web=done app=partial db=not-run" {
+	if got := applyStates(page); got != "web=done app=partial db=not-run" {
 		t.Errorf("node states = %q", got)
 	}
 	for _, want := range []string{"마지막 적용 실행", "L2 배치 완료", "서비스 활성화와 운영 상태: 확인하지 않음", "일부 작업만 끝남", "작업 실패", "실행하지 않음", `data-prov-outcome="not-applied"`} {
@@ -520,5 +535,151 @@ func TestApplyFixedCaseFirstDoneSecondFailedThirdNotStarted(t *testing.T) {
 	}
 	if g, _ := provrun.ReadGrant(lastProv(t, s)); g != nil || strings.Contains(page, "data-prov-grant") {
 		t.Error("an apply run left a grant")
+	}
+}
+
+// applyDirect: 이 판에는 적용을 시작하는 주소가 없어 적용 실행을 직접 띄우고 끝나기를 기다린다.
+func applyDirect(t *testing.T, s *server) string {
+	t.Helper()
+	v, err := s.approveModel(ui.Page{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rd, blocks := s.provCheck(v)
+	if len(blocks) != 0 {
+		t.Fatalf("blocks: %v", blocks)
+	}
+	if err := s.startProv(rd, false, ""); err != nil {
+		t.Fatal(err)
+	}
+	waitProv(t, s)
+	return get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+}
+
+// IC-U241 — **준비 신호를 주고받은 뒤에 기록이 끊기면, 기록된 성공까지만 인정한다.** 둘째 노드가 작업을 시작한 뒤 callback이
+// 기록을 쓰지 못해 실행을 끝내면(종료 251) 감독은 그것을 「기록 중단」으로 적는다(운영자 중지와 다른 사유다). 미리 보기는
+// 「미완료」이고 적용 권한이 없다. 적용 실행에서는 첫째 노드 「L2 배치 완료」, 시작만 기록된 둘째 노드 「결과를 알 수 없음(실행 기록
+// 중단)」, 셋째 노드는 기록이 읽을 수 있는 데까지가 전부이므로 「실행하지 않음」이다. **기록 가운데에 읽을 수 없는 줄이 있으면**
+// 그 뒤를 알 수 없으므로 셋째 노드도 「실행하지 않음」이 아니라 「결과를 알 수 없음」이다.
+func TestRecordCutAfterTheHandshake(t *testing.T) {
+	s := provServer(t, "recfail2", threeNodes)
+	page := preview(t, s)
+	for _, want := range []string{`data-prov-outcome="incomplete"`, `data-prov-end="record"`, "기록을 더 쓰지 못해 실행을 끝냈습니다"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("preview: the screen lacks %q", want)
+		}
+	}
+	if strings.Contains(page, "data-prov-grant") || strings.Contains(page, "컨트롤러에서 실행을 중단했습니다") {
+		t.Error("preview: a cut record must leave no grant and must not read as an operator stop")
+	}
+	if got := provStates(page); got != "web=done app=unknown db=not-run" {
+		t.Errorf("preview: %q", got)
+	}
+	if g, _ := provrun.ReadGrant(lastProv(t, s)); g != nil {
+		t.Error("preview: a grant was written")
+	}
+	page = applyDirect(t, s)
+	if got := applyStates(page); got != "web=done app=unknown db=not-run" {
+		t.Errorf("apply: %q", got)
+	}
+	if !strings.Contains(page, `<span class="why">실행 기록 중단</span>`) || !strings.Contains(page, "결과 없음") {
+		t.Errorf("apply: the node with a start and no result should read unknown, record cut:\n%s", section(page, "prov-apply"))
+	}
+
+	t.Setenv("FAKE_PROV", "garble2")
+	page = applyDirect(t, s)
+	if got := applyStates(page); got != "web=done app=unknown db=unknown" {
+		t.Errorf("a record with an unreadable line: %q", got)
+	}
+	if !strings.Contains(page, `data-prov-outcome="not-applied"`) || !strings.Contains(page, "실행 기록 중단") {
+		t.Errorf("a record with an unreadable line:\n%s", section(page, "prov-apply"))
+	}
+}
+
+var recheckAttr = regexp.MustCompile(`data-prov-recheck-node="([^"]*)"`)
+
+// rechecks: 적용 실행 구역의 노드별 재확인 칸.
+func rechecks(page string) string {
+	i := strings.Index(page, `<section id="prov-apply"`)
+	if i < 0 {
+		return ""
+	}
+	page = page[i:]
+	if j := strings.Index(page, "</section>"); j >= 0 {
+		page = page[:j]
+	}
+	var out []string
+	for _, m := range recheckAttr.FindAllStringSubmatch(page, -1) {
+		out = append(out, m[1])
+	}
+	return strings.Join(out, " ")
+}
+
+// IC-U242 — **적용 기록과 재확인을 한 화면에서 견준다.** 적용 실행(첫째 완료 → 둘째 실패 → 셋째 미시작) 뒤 화면은 그 실행의
+// ID와 노드별 상태, 「이 실행 재확인」을 보인다. 재확인하면 노드마다 재확인 시각(UTC)과 결과가 상태 옆에 붙는다: 모든 작업이 ok면
+// 「파일 일치」, 바뀔 작업이 있으면 「다름」, 재확인이 앞 노드에서 멈춰 닿지 못했으면 「재확인하지 못함」. **실행 기록의 상태는
+// 그대로다**(셋째 노드는 「파일 일치」여도 「실행하지 않음」이다). 재확인은 적용 권한을 남기지 않는다. 관계는 실행 자리의 기록에
+// 있어, 화면의 실행 상태를 비운 뒤(다시 띄운 것과 같다)에도 같은 실행과 재확인이 이어진다. 입력이 바뀌면 재확인 버튼 대신 까닭이
+// 보이고 직접 보낸 요청은 409다.
+func TestApplyRecordAndRecheckSideBySide(t *testing.T) {
+	s := provServer(t, "fail2", threeNodes)
+	page := applyDirect(t, s)
+	apply := filepath.Base(lastProv(t, s))
+	if !strings.Contains(page, "실행 ID "+apply) || !strings.Contains(page, "data-prov-recheck>") || rechecks(page) != "" {
+		t.Fatalf("after the apply run:\n%s", section(page, "prov-apply"))
+	}
+	recheck := func(mode string) string {
+		t.Helper()
+		t.Setenv("FAKE_PROV", mode)
+		if w := postForm(t, s, ui.ProvRecheckPath, url.Values{}); w.Code != http.StatusSeeOther {
+			t.Fatalf("recheck = %d\n%s", w.Code, w.Body.String())
+		}
+		waitProv(t, s)
+		return get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	}
+	page = recheck("nochange")
+	first := filepath.Base(lastProv(t, s))
+	if got := rechecks(page); got != "match match match" {
+		t.Errorf("rechecks = %q", got)
+	}
+	if got := applyStates(page); got != "web=done app=partial db=not-run" {
+		t.Errorf("the run record changed after a recheck: %q", got)
+	}
+	for _, want := range []string{`data-prov-recheck-run="` + first + `"`, "UTC · 파일 일치", "실행 ID " + apply, "실행하지 않음"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("after a recheck the screen lacks %q", want)
+		}
+	}
+	if g, _ := provrun.ReadGrant(lastProv(t, s)); g != nil || strings.Contains(page, "data-prov-grant") || strings.Contains(page, `id="prov-result"`) {
+		t.Error("a recheck must leave no grant and must not show as a preview")
+	}
+
+	page = recheck("fail2")
+	second := filepath.Base(lastProv(t, s))
+	if got := rechecks(page); got != "differs unreached unreached" {
+		t.Errorf("a recheck that stopped at the second node: %q", got)
+	}
+	if !strings.Contains(page, "재확인하지 못함") || !strings.Contains(page, "UTC · 다름") {
+		t.Errorf("the recheck column:\n%s", section(page, "prov-apply"))
+	}
+	// 화면을 다시 띄운 것처럼: 메모리의 실행 상태를 비우고 다시 그린다.
+	s.prov.mu.Lock()
+	s.prov.job = nil
+	s.prov.mu.Unlock()
+	again := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	if !strings.Contains(again, "실행 ID "+apply) || !strings.Contains(again, `data-prov-recheck-run="`+second+`"`) || rechecks(again) != "differs unreached unreached" ||
+		applyStates(again) != "web=done app=partial db=not-run" {
+		t.Errorf("after a restart the run and its recheck are not the same pair:\n%s", section(again, "prov-apply"))
+	}
+
+	if err := os.WriteFile(s.hosts, []byte(strings.Replace(provHosts, "10.0.0.9", "10.0.0.10", 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	changed := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	if strings.Contains(changed, "data-prov-recheck>") || !strings.Contains(changed, "data-prov-recheck-blocked") {
+		t.Error("with changed inputs the screen should explain instead of offering a recheck")
+	}
+	if w := postForm(t, s, ui.ProvRecheckPath, url.Values{}); w.Code != http.StatusConflict {
+		t.Errorf("recheck with changed inputs = %d, want 409", w.Code)
 	}
 }

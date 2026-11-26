@@ -59,6 +59,9 @@ type provManifest struct {
 	Stall   int             `json:"stall"`
 	Plays   []provrun.Play  `json:"plays"`
 	Binding provrun.Binding `json:"binding"`
+	// RecheckOf: 이 실행이 재확인하는 적용 실행의 ID. 비면 재확인이 아니다. 재확인은 미리 보기와 같은 실행(--check)이지만 적용
+	// 권한을 남기지 않는다.
+	RecheckOf string `json:"recheck_of,omitempty"`
 }
 
 type provRunner struct {
@@ -226,7 +229,7 @@ func renderProvTargets(hosts []inventory.Host) ([]byte, error) {
 var errProvBusy = errors.New("a provisioning run is already going")
 
 // startProv: 미리 보기를 띄운다. 끝나기를 기다리지 않는다. 띄우기 전에 실패하면 실행 자리에 결과(not-ready)를 남긴다.
-func (s *server) startProv(rd provReady, check bool) error {
+func (s *server) startProv(rd provReady, check bool, recheckOf string) error {
 	p := &s.prov
 	p.mu.Lock()
 	if p.job != nil && !p.job.closed() {
@@ -238,7 +241,8 @@ func (s *server) startProv(rd provReady, check bool) error {
 		p.mu.Unlock()
 		return err
 	}
-	j := &provJob{m: provManifest{ID: id, Check: check, Started: s.now(), Stall: provStall, Plays: rd.plays, Binding: rd.binding},
+	// 시작 시각은 실제 시각이다(화면의 시계를 시험이 바꿔도 실행의 순서는 실제 순서다).
+	j := &provJob{m: provManifest{ID: id, Check: check, Started: time.Now(), Stall: provStall, Plays: rd.plays, Binding: rd.binding, RecheckOf: recheckOf},
 		dir: filepath.Join(s.provDir(), id), done: make(chan struct{})}
 	p.job = j
 	p.mu.Unlock()
@@ -314,7 +318,7 @@ func (s *server) finishProv(dir string, m provManifest, pgid int) {
 	}
 	removeProvSecrets(dir)
 	v, res := provVerdict(dir, m)
-	if v.Outcome == provrun.PreviewReady && res != nil {
+	if v.Outcome == provrun.PreviewReady && res != nil && m.RecheckOf == "" {
 		if err := provrun.WriteGrant(dir, provrun.NewGrant(m.ID, m.Binding.Digest(), res.Ended)); err != nil {
 			fmt.Fprintln(s.stderr, "provisioning run "+m.ID+": the apply grant could not be written:", writeFailure(err))
 		}
@@ -404,7 +408,92 @@ func (s *server) shutdownProv() {
 	}
 }
 
-// provModel: 06의 실행 구역. 조건, 도는 실행, 마지막 실행의 판정과 적용 권한의 상태.
+// provRun: 실행 자리 하나를 읽은 것.
+type provRun struct {
+	dir string
+	m   provManifest
+}
+
+// provPicks: 화면이 보일 실행 셋. 가장 최근의 적용 실행, 그 실행에 연결한 가장 최근의 재확인, 가장 최근의 미리 보기(재확인이
+// 아닌 것). 도는 실행(skip)은 뺀다. **관계는 실행 자리의 기록(run.json의 recheck_of)에 있다.** 화면을 새로 받거나 다시 띄워도
+// 같은 실행과 재확인이 이어진다.
+func (s *server) provPicks(skip string) (apply, recheck, preview *provRun, newest string) {
+	all := s.provAll()
+	for k := len(all) - 1; k >= 0; k-- {
+		r := &all[k]
+		if r.m.ID == skip {
+			continue
+		}
+		if newest == "" && r.m.RecheckOf == "" {
+			newest = r.m.ID
+		}
+		switch {
+		case !r.m.Check && apply == nil:
+			apply = r
+		case r.m.Check && r.m.RecheckOf == "" && preview == nil:
+			preview = r
+		}
+	}
+	for k := len(all) - 1; k >= 0 && apply != nil && recheck == nil; k-- {
+		if r := &all[k]; r.m.ID != skip && r.m.Check && r.m.RecheckOf == apply.m.ID {
+			recheck = r
+		}
+	}
+	return apply, recheck, preview, newest
+}
+
+// provAll: 읽을 수 있는 실행 자리 모두, 시작한 순서대로. **ID의 글자 순서로 세지 않는다**: ID의 시각은 초까지라, 같은 초에
+// 시작한 두 실행은 뒤의 무작위 부분으로 순서가 뒤바뀐다. 기록의 시작 시각으로 센다.
+func (s *server) provAll() []provRun {
+	var out []provRun
+	for _, id := range s.provRuns() {
+		dir := filepath.Join(s.provDir(), id)
+		if m, ok := readProvManifest(dir); ok {
+			out = append(out, provRun{dir: dir, m: m})
+		}
+	}
+	sort.SliceStable(out, func(a, b int) bool {
+		if !out[a].m.Started.Equal(out[b].m.Started) {
+			return out[a].m.Started.Before(out[b].m.Started)
+		}
+		return out[a].m.ID < out[b].m.ID
+	})
+	return out
+}
+
+// provResult: 실행 하나의 판정을 화면 모델로.
+func provResult(r *provRun) (*ui.ProvResult, provrun.Verdict) {
+	vd, res := provVerdict(r.dir, r.m)
+	out := &ui.ProvResult{ID: r.m.ID, Check: r.m.Check, Started: r.m.Started, Outcome: string(vd.Outcome), End: vd.End,
+		RecordWhole: vd.RecordWhole, Stall: r.m.Stall}
+	if res != nil {
+		out.Ended = res.Ended
+	}
+	for _, n := range vd.Nodes {
+		pn := ui.ProvNode{Node: n.Node, State: string(n.State), Why: n.Why}
+		for _, t := range n.Tasks {
+			pn.Tasks = append(pn.Tasks, ui.ProvTask{Name: t.Name, Status: t.Status})
+		}
+		out.Nodes = append(out.Nodes, pn)
+	}
+	return out, vd
+}
+
+// recheckOf: 재확인이 한 노드에 대해 말하는 것. 모든 작업이 ok면 「파일 일치」, 바뀔 작업이 있으면 「다름」이다. 재확인이 그 노드의
+// 모든 작업을 확인하지 못했으면(앞 노드에서 멈췄거나, 접속하지 못했거나, 결과를 받지 못했으면) 「재확인하지 못함」이다.
+func recheckOf(n provrun.NodeVerdict) string {
+	if n.State != provrun.NodeDone {
+		return ui.RecheckUnreached
+	}
+	for _, t := range n.Tasks {
+		if t.Status != provrun.TaskOK {
+			return ui.RecheckDiffers
+		}
+	}
+	return ui.RecheckMatch
+}
+
+// provModel: 06의 실행 구역. 조건, 도는 실행, 마지막 적용 실행과 그 재확인, 마지막 미리 보기와 적용 권한의 상태.
 func (s *server) provModel(v ui.ApproveView) ui.ProvRun {
 	out := ui.ProvRun{}
 	rd, blocks := s.provCheck(v)
@@ -417,44 +506,40 @@ func (s *server) provModel(v ui.ApproveView) ui.ProvRun {
 		out.Running, out.RunningID = true, j.m.ID
 	}
 	s.prov.mu.Unlock()
-	ids := s.provRuns()
-	if len(ids) == 0 {
-		return out
-	}
-	id := ids[len(ids)-1]
-	if out.Running && id == out.RunningID {
-		if len(ids) == 1 {
-			return out
+	apply, recheck, preview, newest := s.provPicks(out.RunningID)
+	if apply != nil {
+		out.Apply, _ = provResult(apply)
+		// 재확인은 적용한 것과 같은 묶음으로만 한다. 입력이 바뀌었으면 그 실행의 기대 상태를 다시 잴 수 없다.
+		out.RecheckSame = len(blocks) == 0 && rd.binding.Digest() == apply.m.Binding.Digest()
+		if recheck != nil {
+			rr, vd := provResult(recheck)
+			out.Apply.RecheckID, out.Apply.RecheckAt = rr.ID, rr.Ended
+			if rr.Ended.IsZero() {
+				out.Apply.RecheckAt = rr.Started
+			}
+			by := map[string]string{}
+			for _, n := range vd.Nodes {
+				by[n.Node] = recheckOf(n)
+			}
+			for k := range out.Apply.Nodes {
+				out.Apply.Nodes[k].Recheck = by[out.Apply.Nodes[k].Node]
+				if out.Apply.Nodes[k].Recheck == "" {
+					out.Apply.Nodes[k].Recheck = ui.RecheckUnreached
+				}
+			}
 		}
-		id = ids[len(ids)-2]
 	}
-	dir := filepath.Join(s.provDir(), id)
-	m, ok := readProvManifest(dir)
-	if !ok {
-		return out
-	}
-	vd, res := provVerdict(dir, m)
-	last := &ui.ProvResult{ID: m.ID, Check: m.Check, Started: m.Started, Outcome: string(vd.Outcome), End: vd.End,
-		RecordWhole: vd.RecordWhole, Stall: m.Stall}
-	if res != nil {
-		last.Ended = res.Ended
-	}
-	for _, n := range vd.Nodes {
-		pn := ui.ProvNode{Node: n.Node, State: string(n.State), Why: n.Why}
-		for _, t := range n.Tasks {
-			pn.Tasks = append(pn.Tasks, ui.ProvTask{Name: t.Name, Status: t.Status})
+	if preview != nil {
+		out.Last, _ = provResult(preview)
+		// 적용 권한은 가장 최근 실행이 이 미리 보기일 때만 본다(그 뒤에 적용 실행이 있었으면 이미 지난 미리 보기다). 묶음은 지금 다시 잰다.
+		if g, err := provrun.ReadGrant(preview.dir); err == nil && g != nil && preview.m.ID == newest {
+			digest := ""
+			if len(blocks) == 0 {
+				digest = rd.binding.Digest()
+			}
+			out.Last.Grant, out.Last.GrantExpires = string(g.State(s.now(), digest, provrun.Used(preview.dir))), g.Expires
 		}
-		last.Nodes = append(last.Nodes, pn)
 	}
-	// 적용 권한은 가장 최근 실행의 것만 본다. 묶음은 지금 다시 잰다.
-	if g, err := provrun.ReadGrant(dir); err == nil && g != nil && id == ids[len(ids)-1] {
-		digest := ""
-		if len(blocks) == 0 {
-			digest = rd.binding.Digest()
-		}
-		last.Grant, last.GrantExpires = string(g.State(s.now(), digest, provrun.Used(dir))), g.Expires
-	}
-	out.Last = last
 	return out
 }
 
@@ -478,7 +563,40 @@ func (s *server) provPreview(w http.ResponseWriter, r *http.Request) {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedProvNotReady, back, nil)
 		return
 	}
-	if err := s.startProv(rd, true); err != nil {
+	if err := s.startProv(rd, true, ""); err != nil {
+		if errors.Is(err, errProvBusy) {
+			s.refuse(w, r, http.StatusConflict, ui.RefusedProvBusy, back, nil)
+			return
+		}
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, err)
+		return
+	}
+	http.Redirect(w, r, back+"?"+ui.LangParam+"="+string(ui.PickLang(r))+"#approve-run", http.StatusSeeOther)
+}
+
+// provRecheck: 마지막 적용 실행을 재확인한다(POST). 그 실행과 같은 묶음일 때만 한다. 미리 보기와 같은 실행이고, 그 적용
+// 실행의 ID를 기록에 남긴다.
+func (s *server) provRecheck(w http.ResponseWriter, r *http.Request) {
+	back := ui.ScreenApprove
+	if s.planOut == "" {
+		notFound(w, r)
+		return
+	}
+	if !s.writable(w, r, back) {
+		return
+	}
+	v, err := s.approveModel(ui.Page{})
+	if err != nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
+		return
+	}
+	rd, blocks := s.provCheck(v)
+	apply, _, _, _ := s.provPicks("")
+	if len(blocks) > 0 || apply == nil || rd.binding.Digest() != apply.m.Binding.Digest() {
+		s.refuse(w, r, http.StatusConflict, ui.RefusedProvNotReady, back, nil)
+		return
+	}
+	if err := s.startProv(rd, true, apply.m.ID); err != nil {
 		if errors.Is(err, errProvBusy) {
 			s.refuse(w, r, http.StatusConflict, ui.RefusedProvBusy, back, nil)
 			return

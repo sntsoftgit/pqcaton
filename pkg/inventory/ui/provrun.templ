@@ -38,6 +38,20 @@ templ approveRun(v ApproveView) {
 				<p class="hint">{ tProvBlockedFoot.In(v.Page.Lang) }</p>
 			</section>
 		}
+		if v.Run.Apply != nil {
+			@provResult(v.Page.Lang, *v.Run.Apply)
+			if v.Run.CanRecheck() {
+				<form method="post" action={ templ.SafeURL(ProvRecheckPath) }>
+					<input type="hidden" name={ CSRFField } value={ v.Page.CSRF }/>
+					<div class="actions">
+						<button data-prov-recheck>{ tProvRecheck.In(v.Page.Lang) }</button>
+						@tip(v.Page.Lang, tProvRecheckHint.In(v.Page.Lang))
+					</div>
+				</form>
+			} else if !v.Run.RecheckSame && !v.Run.Running {
+				<p class="hint" data-prov-recheck-blocked>{ tProvRecheckChanged.In(v.Page.Lang) }</p>
+			}
+		}
 		if v.Run.Last != nil {
 			@provResult(v.Page.Lang, *v.Run.Last)
 		}
@@ -57,12 +71,13 @@ templ provRunning(l Lang, csrf string) {
 
 // provResult — 실행 하나의 판정. 노드 상태는 실행 기록에서만 온다.
 templ provResult(l Lang, r ProvResult) {
-	<section id="prov-result" data-prov-run={ r.ID } data-prov-outcome={ r.Outcome }>
+	<section id={ provSectionID(r) } data-prov-run={ r.ID } data-prov-outcome={ r.Outcome } data-prov-recheck-run={ r.RecheckID }>
 		if r.Check {
 			<h3>{ tProvLastPreview.F(l, r.Started.Local().Format("2006-01-02 15:04:05")) }</h3>
 		} else {
 			<h3>{ tProvLastApply.F(l, r.Started.Local().Format("2006-01-02 15:04:05")) }</h3>
 		}
+		<p class="hint">{ tProvRunID.F(l, r.ID) }</p>
 		<p class={ "msg", templ.KV("ok", r.Good()), templ.KV("bad", !r.Good()) }>{ r.OutcomeText(l) }</p>
 		if r.EndText(l) != "" {
 			<p class="msg bad" data-prov-end={ r.End }>{ r.EndText(l) }</p>
@@ -75,6 +90,9 @@ templ provResult(l Lang, r ProvResult) {
 				<tr>
 					<th>{ tProvColNode.In(l) }</th>
 					<th>{ tProvColState.In(l) }</th>
+					if r.RecheckID != "" {
+						<th>{ tProvColRecheck.In(l) }</th>
+					}
 					<th>{ tProvColTasks.In(l) }</th>
 				</tr>
 				for _, n := range r.Nodes {
@@ -89,6 +107,9 @@ templ provResult(l Lang, r ProvResult) {
 								<span class="why">{ tProvNotVerified.In(l) }</span>
 							}
 						</td>
+						if r.RecheckID != "" {
+							<td data-prov-recheck-node={ n.Recheck }>{ r.RecheckText(l, n) }</td>
+						}
 						<td>
 							<ul>
 								for _, t := range n.Tasks {
