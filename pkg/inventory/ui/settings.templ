@@ -1,0 +1,78 @@
+package ui
+
+import "strings"
+
+// settingsPage — 설정. 묶음마다 표 하나이고, 줄마다 지금 값 · 상태 · 바꾸는 법 · 다시 띄워야 하는지를 적는다.
+templ settingsPage(v SettingsView) {
+	@nextShell(v.Page) {
+		<div class="ui-next">
+			<h2>{ tTitleSettings.In(v.Page.Lang) }</h2>
+			<p class="lede">{ tSetLede.In(v.Page.Lang) }</p>
+			for _, g := range v.Groups {
+				<fieldset id={ "settings-" + g.ID }>
+					<legend>{ g.Title }</legend>
+					<div class="table-wrap">
+						<table class="settings">
+							<tr>
+								<th>{ tSetColName.In(v.Page.Lang) }</th>
+								<th>{ tSetColValue.In(v.Page.Lang) }</th>
+								<th>{ tSetColHow.In(v.Page.Lang) }</th>
+							</tr>
+							for _, r := range g.Rows {
+								<tr data-setting={ r.ID }>
+									<td>{ r.Name }</td>
+									<td>
+										if r.Live {
+											@settingsLang(v.Page.Lang)
+										} else {
+											if r.Plain {
+												{ r.Value }
+											} else {
+												<code>{ r.Value }</code>
+											}
+											if r.State != "" {
+												<span class="hint" data-setting-state>{ r.State }</span>
+											}
+										}
+									</td>
+									<td>
+										@codeSpans(r.How)
+										if r.Live {
+											<span class="hint">{ tSetLive.In(v.Page.Lang) }</span>
+										} else if r.Restart {
+											<span class="hint" data-setting-restart>{ tSetRestart.In(v.Page.Lang) }</span>
+										}
+									</td>
+								</tr>
+							}
+						</table>
+					</div>
+				</fieldset>
+			}
+		</div>
+	}
+}
+
+// codeSpans — 문구 안의 백틱으로 싼 조각(플래그 · 파일 이름)을 code로 그린다. 문구는 text.go의 것이고 값은 섞지 않는다.
+templ codeSpans(s string) {
+	for i, part := range strings.Split(s, "`") {
+		if i%2 == 1 {
+			<code>{ part }</code>
+		} else {
+			{ part }
+		}
+	}
+}
+
+// settingsLang — 표시 언어. 이 화면에서 바로 바꾼다. 고른 말은 쿠키에 남아 다른 화면에서도 쓰인다.
+templ settingsLang(l Lang) {
+	<span class="actions">
+		for _, o := range []Lang{KO, EN} {
+			if o == l {
+				<strong data-lang-current={ string(o) }>{ o.Label() }</strong>
+			} else {
+				<a class="quiet" href={ templ.SafeURL(ScreenSettings + "?" + LangParam + "=" + string(o)) } rel="nofollow" data-lang-switch={ string(o) }>{ o.Label() }</a>
+			}
+		}
+	</span>
+}

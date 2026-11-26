@@ -112,6 +112,7 @@ templ scopeForm(v ScopeView) {
 			<div class="actions sticky">
 				<button formaction="/scope/save">{ tSaveOnly.In(v.Page.Lang) }</button>
 				<button formaction="/scope/finalize/confirm" class="primary">{ tFinalizePolicy.In(v.Page.Lang) }</button>
+				@saveTarget(v.Page.Lang, v.Page.Subtitle)
 				@unsavedNote(v.Page.Lang)
 				@tip(v.Page.Lang, tScopeGateHint.In(v.Page.Lang))
 			</div>
@@ -145,7 +146,7 @@ templ layerEditor(l Lang, e LayerEdit, fe fieldErrs) {
 	<fieldset id={ layerBlockID(e.Index) }>
 		<legend>
 			{ tLayer.In(l) } { e.Name }
-			<span class="n">— { e.Path } · { strconv.Itoa(len(e.Rules)) } { tLayerRules.In(l) }</span>
+			<span class="n" title={ e.Path }>— { baseName(e.Path) } · { strconv.Itoa(len(e.Rules)) } { tLayerRules.In(l) }</span>
 		</legend>
 		<div class="table-wrap">
 			<table class="editable" role="table">

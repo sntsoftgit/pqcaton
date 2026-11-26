@@ -56,6 +56,7 @@ templ declForm(v DeclView) {
 		<div class="actions sticky">
 			<button class="primary">{ tDeclSave.In(v.Page.Lang) }</button>
 			@reloadButton(v.Page.Lang, v.Page.Self)
+			@saveTarget(v.Page.Lang, v.Page.Subtitle)
 			@unsavedNote(v.Page.Lang)
 			@tip(v.Page.Lang, tDeclSaveHint.In(v.Page.Lang))
 		</div>
@@ -274,6 +275,14 @@ templ reloadButton(l Lang, self string) {
 // unsavedNote — 저장하지 않은 입력이 있다는 표시가 설 자리. **글은 스크립트가 넣는다**(app.js): 입력이 파일과 달라졌는지는
 // 브라우저만 안다. 스크립트가 막힌 환경에서는 비어 있다. 버튼 줄(`.actions.sticky`)은 양식을 보는 동안 화면 아래에 붙어
 // 있으므로, 긴 양식 어디에서든 이 표시와 저장 버튼이 보인다.
+// saveTarget — 이 버튼 줄이 쓰는 파일의 짧은 이름. 전체 경로는 상단에서 걷어 설정 화면에 두었으므로, 저장하는 자리에서는
+// 어느 파일인지 이름만 가까이에 남긴다. 경로가 없으면 그리지 않는다.
+templ saveTarget(l Lang, path string) {
+	if path != "" {
+		<span class="hint" data-save-target>{ tSaveTarget.In(l) } <code>{ baseName(path) }</code></span>
+	}
+}
+
 templ unsavedNote(l Lang) {
 	<span class="unsaved" aria-live="polite" data-unsaved-text={ tUnsaved.In(l) }></span>
 }

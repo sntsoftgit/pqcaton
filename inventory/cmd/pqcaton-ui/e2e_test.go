@@ -508,7 +508,7 @@ func TestRoundsAcrossARestart(t *testing.T) {
 	stop()
 	base, _ = serving(t, "-workspace", ws)
 	b = browserAt(t, base, "en")
-	if page := b.open(ui.ScreenReview); !strings.Contains(page, "Saving enabled") {
+	if page := b.open(ui.ScreenSettings); !strings.Contains(page, "Saving enabled") || strings.Contains(b.open(ui.ScreenReview), "data-mode=") {
 		t.Fatal("the restarted screen is not in the saving mode")
 	}
 	finalizeBoth()

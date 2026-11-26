@@ -143,6 +143,7 @@ func (s *server) connectUpstream() error {
 		return fmt.Errorf("pqcota history (connection from %s): %w — the screen does not start without it", where, err)
 	}
 	s.upstream, s.upstreamOrgName = l, name
+	s.dsnFromEnv = os.Getenv(upstream.DSNEnv) != ""
 	return nil
 }
 

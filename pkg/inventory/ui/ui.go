@@ -60,9 +60,12 @@ type Page struct {
 	//
 	// Steps — 위쪽에 늘어놓는 절차 카드.
 	Steps []Step
-	// Org · Results — 상단에 적는 「무엇을 보고 있나」. 조직과 관측 결과 자리다.
+	// Org — 상단에 적는 「어느 조직을 다루고 있나」. Results는 화면이 읽는 관측 결과 폴더다(상단에는 보이지 않고 설정 화면에 있다).
 	Org     string
 	Results string
+	// SettingsHref — 설정으로 가는 자리. 절차 카드가 아니라 상단의 탐색 링크다. 복구 · 진단 상태에서는 비어 있다(모든 화면이
+	// 그 상태 화면이다).
+	SettingsHref string
 	// InventoryHref — 조회로 가는 자리. **절차 카드에 넣지 않고 옆에 둔다** — 조회는
 	// 단계가 아니라 아무 때나 들어오는 자리라, 번호를 달면 ④ 다음에 하는 일로 읽힌다.
 	InventoryHref string

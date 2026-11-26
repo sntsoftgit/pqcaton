@@ -168,6 +168,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "❌", err)
 		return 1
 	}
+	s.addr = addr
 	if s.st != nil {
 		if err := recordAddr(s.st.Dir, addr); err != nil {
 			fmt.Fprintln(stderr, "warning: could not record the screen address:", err)
@@ -480,6 +481,10 @@ type server struct {
 	st *store.State
 	// recovering: 시작할 때 복구 필요가 남아 있었다. 다시 띄울 때까지 모든 화면이 503이다.
 	recovering bool
+	// addr: 듣는 주소. dsnFromEnv: pqcota 연결 정보를 환경 변수에서 읽었는가(아니면 pqcota.env). 둘 다 설정 화면이 보인다.
+	// 연결 정보의 값은 어디에도 두지 않는다.
+	addr       string
+	dsnFromEnv bool
 	// workspace: 작업 폴더 모드면 그 폴더(아니면 빈 값). diag · diagRef: 작업 폴더 모드에서 시작할 때 읽지 못한
 	// 입력과 그 참조 번호. 있으면 진단 전용 모드다 — 모든 화면이 503이고 저장하지 않는다.
 	workspace string
@@ -563,6 +568,7 @@ func (s *server) handler() http.Handler {
 	r.Get(ui.HistTopoDotPath, s.histTopologyDOT)
 	r.Get(ui.HistTopoPicturePath, s.histTopologyPicture)
 	r.Get(ui.ScreenInventory, s.inventory)
+	r.Get(ui.ScreenSettings, s.settings)
 	r.Get(ui.ScreenReview, s.review)
 	r.Post("/save", s.save)
 	r.Post("/finalize/confirm", s.finalizeConfirm)
@@ -638,6 +644,7 @@ func (s *server) page(r *http.Request, here, subtitle string) ui.Page {
 		Problem: ui.NoticeLines(l, ui.DecodeNotices(r.URL.Query().Get(ui.ProblemParam)), s.fileName, "\n"),
 		CSRF:    csrfToken(r),
 		Self:    here, Mode: mode,
+		SettingsHref: s.settingsHref(),
 		// rev는 여기서 재지 않는다. 화면 모델과 같은 시점에 잰 값(snapshot)을 처리기가 넣는다.
 	}
 }

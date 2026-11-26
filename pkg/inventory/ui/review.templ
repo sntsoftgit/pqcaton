@@ -139,6 +139,7 @@ templ reviewForm(v ReviewView) {
 			<div class="actions sticky">
 				<button formaction="/save">{ tSaveOnly.In(v.Page.Lang) }</button>
 				<button formaction="/finalize/confirm" class="primary">{ tFinalizePlan.In(v.Page.Lang) }</button>
+				@saveTarget(v.Page.Lang, v.Page.Subtitle)
 				@unsavedNote(v.Page.Lang)
 				@tip(v.Page.Lang, tReviewGateHint.In(v.Page.Lang))
 			</div>

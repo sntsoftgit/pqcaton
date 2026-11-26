@@ -304,8 +304,9 @@ var (
 
 	tDeclSave     = T{KO: "저장", EN: "Save"}
 	tDeclSaveHint = T{
-		KO: "저장하면 화면 위에 적힌 선언 파일에 씁니다.",
-		EN: "Saving writes to the declaration file named at the top of this page."}
+		KO: "저장하면 선언 파일에 씁니다. 파일 이름은 버튼 옆에 있고, 전체 경로는 설정에서 볼 수 있습니다.",
+		EN: "Saving writes to the declaration file. Its name is next to the buttons, and the full path is in the settings."}
+	tSaveTarget = T{KO: "저장하는 파일:", EN: "Saves to:"}
 
 	// 관측 결과 폴더가 비어 있을 때. 결과를 넣으면 화면을 다시 불러오는 것만으로 대조에 들어간다(세션은 읽을 때마다 다시 세운다).
 	tEmptyResultsHead = T{KO: "아직 관측 결과가 없습니다", EN: "No observed results yet"}
@@ -969,8 +970,101 @@ var (
 
 	tDeclCreateOrg = T{KO: "조직 이름", EN: "Organization name"}
 	tDeclCreateDo  = T{KO: "선언 만들기", EN: "Create the declaration"}
-	tWbSelfHost    = T{KO: "직접 설치", EN: "self-hosted"}
-	tWbStepsAria   = T{KO: "거버넌스 절차", EN: "Governance steps"}
+	// 설정 화면.
+	tTitleSettings = T{KO: "설정", EN: "Settings"}
+	tSetLede       = T{
+		KO: "화면을 띄울 때 정해진 값과 그 상태입니다. 대부분은 플래그나 파일로 정하므로 여기서는 보기만 하고, 값마다 무엇으로 바꾸는지 적었습니다. 연결 문자열 · 비밀번호 · 키의 내용은 보이지 않습니다.",
+		EN: "The values fixed when the screen started, and their state. Most are set by a flag or a file, so they are only shown here, each with how to change it. Connection strings, passwords and the contents of keys are not shown."}
+	tSetColName  = T{KO: "항목", EN: "Item"}
+	tSetColValue = T{KO: "지금 값", EN: "Current value"}
+	tSetColHow   = T{KO: "바꾸는 법", EN: "How to change it"}
+	tSetRestart  = T{KO: "바꾼 뒤 화면을 다시 띄웁니다", EN: "restart the screen after changing it"}
+	tSetLive     = T{KO: "다시 띄우지 않아도 됩니다", EN: "no restart needed"}
+	tSetNone     = T{KO: "(없음)", EN: "(none)"}
+	tSetYes      = T{KO: "켬", EN: "on"}
+	tSetNo       = T{KO: "끔", EN: "off"}
+
+	tSetGroupScreen     = T{KO: "화면", EN: "The screen"}
+	tSetGroupWork       = T{KO: "조직과 파일", EN: "Organization and files"}
+	tSetGroupHistory    = T{KO: "pqcota 이력", EN: "The pqcota history"}
+	tSetGroupKeys       = T{KO: "키", EN: "Keys"}
+	tSetGroupCollectors = T{KO: "수집기", EN: "Collectors"}
+
+	tSetLang             = T{KO: "표시 언어", EN: "Display language"}
+	tSetLangHow          = T{KO: "여기서 고릅니다. 고른 말은 다른 화면에서도 쓰입니다.", EN: "Choose it here. The choice carries over to the other screens."}
+	tSetMode             = T{KO: "저장 상태", EN: "Saving state"}
+	tSetModeWriteNext    = T{KO: "할 일이 없습니다. 저장하고 확정할 수 있습니다.", EN: "Nothing to do. Saving and finalizing work."}
+	tSetModeViewOnlyNext = T{
+		KO: "이 플랫폼에서는 화면이 파일을 쓰지 않습니다. 저장하려면 지원 플랫폼(운영자 안내서 1절)에서 같은 작업 폴더로 띄웁니다.",
+		EN: "On this platform the screen writes no file. To save, start it on a supported platform (operator guide, section 1) with the same workspace."}
+	tSetModeRecoveryNext = T{
+		KO: "끝나지 않은 저장이 남아 있습니다. 화면이 보이는 복구 안내대로 정리한 뒤 다시 띄웁니다(운영자 안내서 8절).",
+		EN: "An unfinished save is left. Resolve it as the recovery screen says, then restart (operator guide, section 8)."}
+	tSetModeDiagnosticNext = T{
+		KO: "읽지 못한 입력 파일이 있습니다. 화면이 보이는 진단대로 파일을 고친 뒤 다시 띄웁니다(운영자 안내서 8절).",
+		EN: "An input file could not be read. Fix it as the diagnostics screen says, then restart (operator guide, section 8)."}
+	tSetVersion    = T{KO: "화면의 판", EN: "Version of the screen"}
+	tSetVersionHow = T{KO: "다른 판을 설치합니다(운영자 안내서 9절).", EN: "Install another version (operator guide, section 9)."}
+	tSetAddr       = T{KO: "듣는 주소", EN: "Listening address"}
+	tSetAddrHow    = T{KO: "`-addr` 플래그로 줍니다.", EN: "Give it with the `-addr` flag."}
+
+	tSetOrg        = T{KO: "조직(판정 조직)", EN: "Organization (of the judgments)"}
+	tSetOrgHowDecl = T{
+		KO: "선언 파일의 조직입니다. 다른 조직은 그 조직의 작업 폴더로 화면을 따로 띄웁니다.",
+		EN: "It is the organization of the declaration file. For another organization, start a screen with that organization's workspace."}
+	tSetOrgHowFlag       = T{KO: "`-org` 플래그로 줍니다.", EN: "Give it with the `-org` flag."}
+	tSetWorkspace        = T{KO: "작업 폴더", EN: "Workspace"}
+	tSetWorkspaceHow     = T{KO: "`-workspace` 플래그로 줍니다.", EN: "Give it with the `-workspace` flag."}
+	tSetFileHowWorkspace = T{KO: "작업 폴더 안의 정해진 이름입니다. 따로 바꾸지 않습니다.", EN: "A fixed name inside the workspace. It is not changed on its own."}
+	tSetFileHowFlag      = T{KO: "`%s` 플래그로 줍니다.", EN: "Give it with the `%s` flag."}
+	tSetFileDecl         = T{KO: "선언", EN: "Declaration"}
+	tSetFileLayer        = T{KO: "자산 스코프 계층", EN: "Asset scope layer"}
+	tSetFileScopeActive  = T{KO: "활성 정책(대조에 쓰는 것)", EN: "Active policy (used for reconciliation)"}
+	tSetFileScopeOut     = T{KO: "02에서 확정한 정책", EN: "Policy finalized on 02"}
+	tSetFileScopeSess    = T{KO: "자산 스코프 세션", EN: "Asset scope session"}
+	tSetFileSession      = T{KO: "판정 세션", EN: "Judgment session"}
+	tSetFilePlan         = T{KO: "계획", EN: "Plan"}
+	tSetFileJudgments    = T{KO: "판정 원장", EN: "Judgment ledger"}
+	tSetFileResults      = T{KO: "관측 결과 폴더", EN: "Observation results folder"}
+	tSetFileHosts        = T{KO: "접근 정보", EN: "Access information"}
+	tSetStateDir         = T{KO: "상태 폴더", EN: "State folder"}
+	tSetStateDirHow      = T{KO: "`-state-dir` 플래그로 줍니다. 같은 파일을 바꾸는 명령은 같은 폴더를 써야 합니다.", EN: "Give it with the `-state-dir` flag. Commands that change the same files must use the same folder."}
+
+	tSetUpstreamOrg    = T{KO: "조회하는 조직", EN: "Organization queried"}
+	tSetUpstreamOrgHow = T{
+		KO: "판정 조직과 같습니다. `pqcota-ingest`도 `PQCOTA_ORG`를 이 값으로 주고 적재해야 여기서 보입니다.",
+		EN: "It is the organization of the judgments. `pqcota-ingest` must load with `PQCOTA_ORG` set to this value for the data to show here."}
+	tSetDSN     = T{KO: "연결 정보의 출처", EN: "Where the connection comes from"}
+	tSetDSNEnv  = T{KO: "환경 변수 PQCOTA_DSN", EN: "the environment variable PQCOTA_DSN"}
+	tSetDSNFile = T{KO: "사용자 설정 폴더의 pqcaton/pqcota.env", EN: "pqcaton/pqcota.env in the user configuration folder"}
+	tSetDSNHow  = T{
+		KO: "환경 변수 `PQCOTA_DSN`이 먼저이고, 없으면 사용자 설정 폴더의 `pqcaton/pqcota.env`를 읽습니다. 값은 화면에 보이지 않습니다.",
+		EN: "The environment variable `PQCOTA_DSN` comes first; without it the screen reads `pqcaton/pqcota.env` in the user configuration folder. The value is not shown on the screen."}
+
+	tSetApprovalKey    = T{KO: "승인 서명 키", EN: "Approval signing key"}
+	tSetApprovalKeyHow = T{
+		KO: "자리는 `-approval-key` 플래그로 바꿉니다. 같은 자리의 파일을 바꾸면 다음 서명부터 쓰입니다.",
+		EN: "Change the place with the `-approval-key` flag. Replacing the file in the same place takes effect from the next signature."}
+	tSetVerifyKey          = T{KO: "승인 확인용 공개 키", EN: "Approval verification key"}
+	tSetVerifyKeyHow       = T{KO: "자리는 `-approval-verify-key` 플래그로 바꿉니다.", EN: "Change the place with the `-approval-verify-key` flag."}
+	tSetCollectorKeys      = T{KO: "수집기 서명 키 폴더", EN: "Collector signing key folder"}
+	tSetCollectorKeysHow   = T{KO: "자리는 `-collector-keys` 플래그로 바꿉니다.", EN: "Change the place with the `-collector-keys` flag."}
+	tSetCollectorVerify    = T{KO: "수집기 신뢰 공개 키", EN: "Trusted collector public keys"}
+	tSetCollectorVerifyHow = T{KO: "자리는 `-collector-verify-keys` 플래그로 바꿉니다.", EN: "Change the place with the `-collector-verify-keys` flag."}
+	tSetKeyOK              = T{KO: "쓸 수 있음", EN: "usable"}
+	tSetKeyNone            = T{KO: "없음", EN: "not there"}
+	tSetKeyDisabled        = T{KO: "찾지 않음(기본 위치 검색을 껐습니다)", EN: "not looked for (the default location is turned off)"}
+	tSetKeyUnusable        = T{
+		KO: "쓸 수 없음. 까닭은 그 키를 쓰는 화면에 있습니다(승인 키는 06, 수집기 키는 03)",
+		EN: "not usable. The reason is on the screen that uses the key (06 for approval keys, 03 for collector keys)"}
+
+	tSetCollectors         = T{KO: "수집기 폴더", EN: "Collector folder"}
+	tSetCollectorsHow      = T{KO: "`-collectors` 플래그로 줍니다. 작업 폴더로 띄우면 그 안의 collectors 폴더입니다.", EN: "Give it with the `-collectors` flag. With a workspace it is the collectors folder inside it."}
+	tSetCollectorPin       = T{KO: "맞춰야 하는 상류 판", EN: "Upstream version to match"}
+	tSetCollectorPinHow    = T{KO: "화면의 판이 정합니다. 화면의 판을 바꾸면 달라집니다.", EN: "The version of the screen decides it. It changes with the version of the screen."}
+	tSetAllowUnverified    = T{KO: "확인할 수 없는 수집기 허용", EN: "Allowing collectors that cannot be verified"}
+	tSetAllowUnverifiedHow = T{KO: "`-allow-unverified-collectors` 플래그로 켭니다.", EN: "Turn it on with the `-allow-unverified-collectors` flag."}
+	tWbStepsAria           = T{KO: "거버넌스 절차", EN: "Governance steps"}
 
 	// 접근성: 건너뛰기 링크와 표 칸의 이름에 쓰는 행 이름.
 	tSkipToMain = T{KO: "본문으로 건너뛰기", EN: "Skip to main content"}

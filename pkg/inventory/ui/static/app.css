@@ -188,6 +188,13 @@ body.wb .context { color: var(--muted); font-size: .9rem; min-width: 0; max-widt
 body.wb .context strong { color: var(--ink); }
 body.wb .mode { border: 1px solid var(--line); background: var(--surface);
                 border-radius: 999px; padding: 7px 11px; color: var(--muted); font-size: .85rem; }
+/* 상단의 탐색 링크(설정 · 언어). 좁은 화면에서도 조직 이름과 한 줄에 선다. */
+body.wb .topnav { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+body.wb .ctx-label { margin-right: 6px; }
+body.wb .ctx-here { display: none; margin-left: 10px; color: var(--ink); }
+body.wb a.mode { text-decoration: none; color: inherit; }
+body.wb table.settings td code { overflow-wrap: anywhere; }
+body.wb table.settings td .hint { display: block; }
 body.wb .langbtn { font-size: .85rem; color: var(--muted); border: 1px solid var(--line);
                    background: var(--surface); border-radius: 999px; padding: 7px 12px;
                    text-decoration: none; white-space: nowrap; }
@@ -195,11 +202,6 @@ body.wb .hero { display: flex; justify-content: space-between; align-items: end;
                 gap: 24px; padding: 22px 0 18px; }
 body.wb .hero h1 { margin: 0; font-size: 1.6rem; letter-spacing: -.02em; }
 body.wb .hero p { margin: 7px 0 0; color: var(--muted); }
-/* 작업 파일 경로. **줄어들지 않게 두고 폭의 상한만 준다.** 줄어들게 두면 옆의 설명 글이 자리를 먼저
-   차지하고, anywhere의 최소 폭은 글자 하나라 1280px에서도 경로가 파일 이름 가운데서 여러 줄로
-   갈라졌다. 상한보다 긴 경로만 그 안에서 줄을 바꾼다. */
-body.wb .source { color: var(--muted); font-size: .85rem; text-align: right;
-                  overflow-wrap: anywhere; flex: 0 0 auto; max-width: min(34rem, 45%); }
 /* 절차 카드 여섯과 조회 탭. **넓은 화면에서는 01~06이 한 줄에 차례대로 서고 조회 탭이 그 끝에 붙는다.** 예전 격자는
    카드 넷을 기준으로 잡혀 있어서, 단계가 여섯이 된 뒤로 05가 좁은 끝 칸에 끼고 06과 조회 탭이 둘째 줄로 밀렸다.
    1100px 이하에서는 세 칸 두 줄(01~03 · 04~06)이고 조회 탭이 그 아래 한 줄을 다 쓴다. 650px 이하는 한 칸이다. */
@@ -225,10 +227,16 @@ body.wb .dot.danger { background: var(--red); }
 body.wb .dot.ok { background: var(--green); }
 
 @media (max-width: 980px) {
-  body.wb .topbar, body.wb .hero { align-items: start; flex-direction: column; }
-  body.wb .source { text-align: left; max-width: 100%; }
+  body.wb .hero { align-items: start; flex-direction: column; }
+  /* 상단은 좁아져도 한 줄에 둔다: 어느 조직인지와 설정으로 가는 링크가 늘 첫 줄에 보인다. 자리가 모자라면 접는다. */
+  body.wb .topbar { flex-wrap: wrap; gap: 8px 12px; padding: 10px 0; min-height: 0; }
+  body.wb .ctx-here { display: inline; }
+  /* 조직과 지금 단계는 한 줄을 통째로 쓰고 잘리지 않게 접는다. 첫 줄에는 이름과 탐색 링크(설정 · 언어)가 선다. */
+  body.wb .context { order: 3; flex-basis: 100%; white-space: normal; overflow: visible; }
 }
 @media (max-width: 650px) {
+  /* 좁은 화면의 첫 줄에 이름과 탐색 링크가 함께 서도록 이름의 뒷부분을 감춘다. */
+  body.wb .brand span { display: none; }
   body.wb { padding: 0 16px 40px; }
 }
 /* 조회 탭. 절차 카드 옆에 붙되 번호가 없어서 좁다. **단계로 읽히면 안 된다.** */

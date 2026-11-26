@@ -24,28 +24,41 @@ templ nextShell(p Page) {
 			<a class="skip" href="#main">{ tSkipToMain.In(p.Lang) }</a>
 			<header class="topbar">
 				<div class="brand">pqcaton <span>/ workbench</span></div>
-				<div class="context" title={ p.Results }>
+				<div class="context">
 					if p.Org != "" {
-						<strong>{ p.Org }</strong>
+						<span class="ctx-label">{ tSubOrg.In(p.Lang) }</span>
+						<strong data-org>{ p.Org }</strong>
 					}
-					<span>{ " · " + tWbSelfHost.In(p.Lang) }</span>
-					if p.Results != "" {
-						<code>{ p.Results }</code>
+					// 지금 단계. 좁은 화면에서는 절차 카드가 세로로 쌓여 지금 단계의 카드가 아래로 밀리므로, 머리에도 적는다
+					// (넓은 화면에서는 카드가 바로 보이므로 감춘다).
+					for _, st := range p.Steps {
+						if st.Here {
+							<span class="ctx-here" data-here>{ st.Num } { st.Title }</span>
+						}
 					}
 				</div>
-				if p.Mode != "" {
-					<div class={ "mode", "mode-" + string(p.Mode) }>{ p.Mode.text(p.Lang) }</div>
+				// 저장 상태는 정상이 아닐 때만 보인다. 정상일 때의 「저장 가능」은 늘 같은 말이라 뺐다. 설정에서 볼 수 있다.
+				if p.Mode != "" && p.Mode != ModeWrite {
+					if p.SettingsHref != "" {
+						<a class={ "mode", "mode-" + string(p.Mode) } href={ templ.SafeURL(p.SettingsHref + "#settings-screen") } data-mode={ string(p.Mode) }>{ p.Mode.text(p.Lang) }</a>
+					} else {
+						<div class={ "mode", "mode-" + string(p.Mode) } data-mode={ string(p.Mode) }>{ p.Mode.text(p.Lang) }</div>
+					}
 				}
-				if p.LangHref != "" {
-					<a class="langbtn" href={ templ.SafeURL(p.LangHref) } rel="nofollow">{ p.Lang.Other().Label() }</a>
-				}
+				<div class="topnav">
+					if p.SettingsHref != "" {
+						<a class="langbtn" href={ templ.SafeURL(p.SettingsHref) } data-settings-link { ariaCurrent(p.Title == tTitleSettings.In(p.Lang), "page")... }>{ tTitleSettings.In(p.Lang) }</a>
+					}
+					if p.LangHref != "" {
+						<a class="langbtn" href={ templ.SafeURL(p.LangHref) } rel="nofollow">{ p.Lang.Other().Label() }</a>
+					}
+				</div>
 			</header>
 			<section class="hero">
 				<div>
 					<h1>{ tWbTagline.In(p.Lang) }</h1>
 					<p>{ tWbLede.In(p.Lang) }</p>
 				</div>
-				<div class="source">{ p.Subtitle }</div>
 			</section>
 			if len(p.Steps) > 0 {
 				<nav class="steps" aria-label={ tWbStepsAria.In(p.Lang) }>
