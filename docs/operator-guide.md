@@ -851,6 +851,9 @@ required).
    the reason and starts nothing. Make the `ansible-playbook` found first on the PATH of the environment that started the
    screen be 2.16.3. Signing the approval, generating the playbooks and reading earlier run records work regardless of that
    version. Observations at 03 are not under this limit.
+   **Do not replace the controller's Ansible installation while a 06 remote run is going.** Upgrade after the run has
+   ended. The screen checks the version just before it starts a run, so if the installation changes after that check, an
+   Ansible other than the one checked may run.
    When the preview ends with changes to make, "Apply to N nodes: go to the confirmation" appears. The confirmation page shows
    the organization, the target nodes, the approved plan, the generated playbook, when the preview ended and until when it is
    good, and the tasks that would change on each node; the apply starts only when "Apply to N nodes" is pressed there. A
