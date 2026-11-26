@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -102,5 +103,39 @@ func TestSettingsShowWhatTheScreenStartedWith(t *testing.T) {
 	bare.decl = filepath.Join(t.TempDir(), "declaration.json")
 	if w := get(t, bare, ui.ScreenSettings+"?lang=ko"); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `data-setting="lang"`) {
 		t.Errorf("settings without a declaration: %d", w.Code)
+	}
+}
+
+// IC-U233 — **저장을 멈춘 상태에서 설정을 직접 열면 그 상태의 화면이 뜨고, 지금 상태와 다음 할 일을 적는다.**
+//
+// 복구 필요 · 진단 전용에서는 모든 화면이 그 상태 화면이다. 설정도 예외가 아니다: 주소를 직접 열어도 503으로 상태 화면이 오고
+// 머리에 상태가 보인다. 설정 링크는 두지 않는다(눌러도 같은 화면이다).
+func TestSettingsInStoppedStatesShowTheStateScreen(t *testing.T) {
+	rec, _ := recoveringServer(t)
+	diag, _ := newServer(t)
+	diag.diag, diag.diagRef = []diagProblem{{role: "declaration", path: "/work/declaration.json", err: errors.New("unexpected end of JSON input")}}, "ref-1"
+	for _, c := range []struct {
+		name   string
+		s      *server
+		ko, en []string
+	}{
+		{"recovery", rec, []string{"복구가 필요합니다", "진단 파일 내려받기", "화면을 끄고 다시 띄웁니다"}, []string{"Recovery required", "Download the diagnostics file", "Stop the screen and start it again"}},
+		{"diagnostic", diag, []string{"진단 전용으로 열렸습니다", "파일을 고치거나 백업에서 되돌린 뒤 화면을 다시 띄우십시오", "declaration.json"}, []string{"opened for diagnostics only", "Fix them or restore them from a backup, then start the screen again", "declaration.json"}},
+	} {
+		for lang, want := range map[string][]string{"ko": c.ko, "en": c.en} {
+			w := get(t, c.s, ui.ScreenSettings+"?lang="+lang)
+			body := w.Body.String()
+			if w.Code != http.StatusServiceUnavailable {
+				t.Errorf("%s (%s): /settings answered %d, want the 503 state screen", c.name, lang, w.Code)
+			}
+			for _, sub := range append(want, `data-mode="`+c.name+`"`) {
+				if !strings.Contains(body, sub) {
+					t.Errorf("%s (%s): the state screen at /settings lacks %q", c.name, lang, sub)
+				}
+			}
+			if strings.Contains(body, "data-settings-link") || strings.Contains(body, `data-setting="`) {
+				t.Errorf("%s (%s): the settings rows or the settings link show in a stopped state", c.name, lang)
+			}
+		}
 	}
 }

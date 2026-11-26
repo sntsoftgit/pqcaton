@@ -19,7 +19,7 @@ templ settingsPage(v SettingsView) {
 								<th>{ tSetColHow.In(v.Page.Lang) }</th>
 							</tr>
 							for _, r := range g.Rows {
-								<tr data-setting={ r.ID }>
+								<tr id={ "setting-" + r.ID } data-setting={ r.ID }>
 									<td>{ r.Name }</td>
 									<td>
 										if r.Live {

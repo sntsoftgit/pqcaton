@@ -575,6 +575,9 @@ pqcaton-ui -no-browser
 Once it is up, the line `screen: http://127.0.0.1:8765/  (workspace <workspace folder>)` appears on standard error. If it does
 not start, look up the reason after `❌` in the [error table in section 10](#10-error-table).
 
+To check the current organization, the file paths, where the connection comes from and the state of the keys, open "Settings" at
+the top of the screen.
+
 The address of the running screen is recorded in the workspace.
 
 <!-- run -->

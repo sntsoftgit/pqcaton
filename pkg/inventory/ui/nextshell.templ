@@ -40,7 +40,7 @@ templ nextShell(p Page) {
 				// 저장 상태는 정상이 아닐 때만 보인다. 정상일 때의 「저장 가능」은 늘 같은 말이라 뺐다. 설정에서 볼 수 있다.
 				if p.Mode != "" && p.Mode != ModeWrite {
 					if p.SettingsHref != "" {
-						<a class={ "mode", "mode-" + string(p.Mode) } href={ templ.SafeURL(p.SettingsHref + "#settings-screen") } data-mode={ string(p.Mode) }>{ p.Mode.text(p.Lang) }</a>
+						<a class={ "mode", "mode-" + string(p.Mode) } href={ templ.SafeURL(p.SettingsHref + "#setting-mode") } data-mode={ string(p.Mode) }>{ p.Mode.text(p.Lang) }</a>
 					} else {
 						<div class={ "mode", "mode-" + string(p.Mode) } data-mode={ string(p.Mode) }>{ p.Mode.text(p.Lang) }</div>
 					}

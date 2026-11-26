@@ -43,11 +43,11 @@ func TestModeMatchesWhatTheServerDoes(t *testing.T) {
 			}
 			// 보기 전용은 설정으로 가는 링크이고, 설정 화면이 다음 할 일을 적는다. 복구 상태는 모든 화면이 복구 화면이다.
 			if c.name == "view-only" {
-				if !strings.Contains(body, `href="`+ui.ScreenSettings+`#settings-screen" data-mode="view-only"`) {
+				if !strings.Contains(body, `href="`+ui.ScreenSettings+`#setting-mode" data-mode="view-only"`) {
 					t.Errorf("view-only (%s): the state in the header does not lead to the settings", lang)
 				}
 				next := map[string]string{"ko": "지원 플랫폼", "en": "a supported platform"}[lang]
-				if set := get(t, s, ui.ScreenSettings+"?lang="+lang).Body.String(); !strings.Contains(set, next) || !strings.Contains(set, want) {
+				if set := get(t, s, ui.ScreenSettings+"?lang="+lang).Body.String(); !strings.Contains(set, next) || !strings.Contains(set, want) || !strings.Contains(set, `id="setting-mode"`) {
 					t.Errorf("view-only (%s): the settings screen does not say what to do next", lang)
 				}
 			}
