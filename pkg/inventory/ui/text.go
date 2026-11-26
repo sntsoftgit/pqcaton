@@ -1605,12 +1605,12 @@ var (
 		EN: "The playbooks were generated, but the places below are empty; pqcota-provision would end with exit status 3. " +
 			"Fill them in at 05 and finalize again, or go on knowingly."}
 	tApplyHint = T{
-		KO: "<b>적용은 운영자가 합니다.</b> 관측에 쓴 것과 같은 인벤토리로 실행합니다. " +
+		KO: "<b>화면이 적용하지 않는 플레이북은 운영자가 실행합니다.</b> 관측에 쓴 것과 같은 인벤토리로 실행합니다. " +
 			"<code>pqcota-hosts --ansible-out targets.ini hosts.csv</code>로 만든 뒤 " +
 			"<code>ansible-playbook -i targets.ini plan.provision.yml</code>을 실행하고, 되돌릴 때는 plan.rollback.yml을 실행합니다. " +
 			"targets.ini에는 접근 비밀이 들어가니 끝나면 지우십시오.<br>" +
 			"provider 모듈 파일은 도구가 주지 않습니다. 플레이북이 컨트롤러의 files/ 아래에서 찾습니다.",
-		EN: "<b>Applying is the operator's job.</b> Run it with the same inventory the observation used: make it with " +
+		EN: "<b>What the screen does not apply, the operator runs.</b> Run it with the same inventory the observation used: make it with " +
 			"<code>pqcota-hosts --ansible-out targets.ini hosts.csv</code>, then run " +
 			"<code>ansible-playbook -i targets.ini plan.provision.yml</code>; to undo, run plan.rollback.yml. " +
 			"targets.ini holds access secrets, so remove it afterwards.<br>" +
@@ -1766,8 +1766,37 @@ var (
 		KO: "승인된 계획에서 L2로 생성한, 설정 파일만 놓는 플레이북을 대상 노드에 --check로 실행해 무엇이 바뀔지 확인합니다. 노드를 바꾸지 않습니다.",
 		EN: "Runs the playbook generated at L2 from the approved plan (it only places configuration files) against the target nodes with --check, to see what would change. It does not change the nodes."}
 	tProvScope = T{
-		KO: "이 판의 화면은 미리 보기까지만 실행합니다. 적용 · 활성화 · 되돌리기는 운영자가 수행합니다.",
-		EN: "This version of the screen runs the preview only. Applying, activating and rolling back are the operator's job."}
+		KO: "화면은 별도 확인을 거쳐 L2 플레이북을 대상 노드에 적용합니다. 활성화와 되돌리기는 운영자가 수행합니다.",
+		EN: "After a separate confirmation the screen applies the L2 playbook to the target nodes. Activating and rolling back are the operator's job."}
+	tApplyGo           = T{KO: "%d개 노드에 적용: 확인으로", EN: "Apply to %d nodes: go to the confirmation"}
+	tApplyDo           = T{KO: "%d개 노드에 적용", EN: "Apply to %d nodes"}
+	tApplyConfirmTitle = T{KO: "적용 확인", EN: "Confirm the apply"}
+	tApplyConfirmBody  = T{
+		KO: "아래 내용을 대상 노드에 적용합니다. 이 화면을 여는 것만으로는 아무것도 바뀌지 않고 미리 보기도 쓰이지 않습니다. 미리 보기는 적용이 원격 작업을 시작하기 직전에 한 번 쓰입니다.",
+		EN: "What is below will be applied to the target nodes. Opening this page changes nothing and does not use up the preview. The preview is used once, just before the apply starts its remote work."}
+	tApplyLineOrg      = T{KO: "조직: %s", EN: "Organization: %s"}
+	tApplyLineNodes    = T{KO: "대상 노드 %d개: %s", EN: "Target nodes (%d): %s"}
+	tApplyLinePlan     = T{KO: "승인된 계획: %s (SHA-256 %s)", EN: "Approved plan: %s (SHA-256 %s)"}
+	tApplyLinePlaybook = T{KO: "생성된 플레이북: %s (SHA-256 %s)", EN: "Generated playbook: %s (SHA-256 %s)"}
+	tApplyLinePreview  = T{KO: "미리 보기: 실행 %s, %s에 끝남, %s까지 유효", EN: "Preview: run %s, ended %s, good until %s"}
+	tApplyLineChange   = T{KO: "%s의 변경 예정 %d건: %s", EN: "%s, %d to change: %s"}
+	tApplyLineNoChange = T{KO: "%s: 바뀔 것 없음", EN: "%s: nothing to change"}
+	tApplyLineDrift    = T{
+		KO: "미리 본 뒤에도 노드의 상태는 바뀔 수 있습니다. 적용은 미리 본 것과 같은 입력으로만 시작합니다.",
+		EN: "The nodes can still have changed since the preview. The apply only starts with the same inputs that were previewed."}
+	tApplyLineScope = T{
+		KO: "적용은 L2 배치까지입니다. 서비스 활성화와 되돌리기는 하지 않습니다.",
+		EN: "The apply goes as far as the L2 placement. It does not activate services or roll back."}
+	tApplyRefusedHead  = T{KO: "적용을 시작하지 않았습니다", EN: "The apply was not started"}
+	tApplyRefusedGrant = T{
+		KO: "유효한 미리 보기가 없습니다. 미리 보기가 없거나, 끝난 지 10분이 지났거나, 미리 본 뒤 입력이 바뀌었거나, 이미 한 번 쓰였습니다. 다시 미리 보십시오.",
+		EN: "There is no valid preview: there is none, it ended more than 10 minutes ago, an input changed after it, or it was already used once. Preview again."}
+	tApplyNotBegunConsumed = T{
+		KO: "이 실행은 미리 보기를 썼지만 원격 작업을 시작하지 않았습니다. 노드는 바뀌지 않았습니다. 다시 적용하려면 새로 미리 보십시오.",
+		EN: "This run used up the preview but started no remote work. The nodes were not changed. To apply again, preview again."}
+	tApplyNotBegunUnused = T{
+		KO: "이 실행은 원격 작업을 시작하지 않았고 미리 보기를 쓰지 않았습니다. 노드는 바뀌지 않았습니다. 미리 보기가 아직 유효하면 다시 적용할 수 있습니다.",
+		EN: "This run started no remote work and did not use up the preview. The nodes were not changed. If the preview is still valid, you can apply again."}
 	tProvBlockedHead = T{KO: "화면에서 실행하지 않는 까닭", EN: "Why the screen does not run this"}
 	tProvBlockedFoot = T{
 		KO: "생성된 플레이북 파일은 그대로 있습니다. 운영자가 직접 실행할 수 있습니다.",
@@ -1784,8 +1813,8 @@ var (
 		KO: "서비스 활성화와 운영 상태: 확인하지 않음",
 		EN: "Service activation and the running state: not checked"}
 	tProvGrantValid = T{
-		KO: "미리 본 내용은 %s까지, 한 번의 적용에만 유효합니다. 그 사이에도 노드의 상태는 바뀔 수 있습니다. 이 판의 화면에는 적용 버튼이 없습니다.",
-		EN: "What was previewed is good until %s, for one apply. The nodes can still change in the meantime. This version of the screen has no apply button."}
+		KO: "미리 본 내용은 %s까지, 한 번의 적용에만 유효합니다. 그 사이에도 노드의 상태는 바뀔 수 있습니다.",
+		EN: "What was previewed is good until %s, for one apply. The nodes can still change in the meantime."}
 	tProvGrantExpired = T{
 		KO: "미리 보기가 만료됐습니다(끝난 뒤 10분). 다시 미리 보십시오.",
 		EN: "The preview has expired (10 minutes after it ended). Preview again."}
@@ -1856,6 +1885,9 @@ var provEndText = map[string]T{
 	"record": {
 		KO: "실행 기록 중단. 기록을 더 쓰지 못해 실행을 끝냈습니다. 결과가 기록되지 않은 작업은 노드에서 끝났을 수 있습니다.",
 		EN: "The run record was cut short: it could not be written any more, so the run was ended. A task whose result is not recorded may have finished on the node."},
+	"no-grant": {
+		KO: "유효한 미리 보기를 쓸 수 없어 원격 작업을 시작하지 않았습니다(없음 · 만료 · 입력이 바뀜 · 이미 쓰임).",
+		EN: "No valid preview could be used, so no remote work was started (none, expired, inputs changed, or already used)."},
 	"cut": {
 		KO: "실행 기록 중단. 기록이 끝까지 이어지지 않습니다.",
 		EN: "The run record was cut short: it does not run to the end."},

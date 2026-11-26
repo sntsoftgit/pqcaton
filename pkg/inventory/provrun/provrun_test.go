@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -361,18 +363,18 @@ func TestGrantIsBoundTimedAndSingleUse(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	if err := Consume(dir, ended, digest); !errors.Is(err, ErrGrant{GrantNone}) {
+	if err := Consume(dir, ended, digest, "A1"); !errors.Is(err, ErrGrant{GrantNone}) {
 		t.Errorf("no grant: %v", err)
 	}
 	if err := WriteGrant(dir, g); err != nil {
 		t.Fatal(err)
 	}
 	for when, want := range map[time.Duration]GrantState{GrantTTL: GrantExpired} {
-		if err := Consume(dir, ended.Add(when), digest); !errors.Is(err, ErrGrant{want}) || Used(dir) {
+		if err := Consume(dir, ended.Add(when), digest, "A1"); !errors.Is(err, ErrGrant{want}) || Used(dir) {
 			t.Errorf("consume at +%s: %v used=%v", when, err, Used(dir))
 		}
 	}
-	if err := Consume(dir, ended.Add(time.Minute), digest+"x"); !errors.Is(err, ErrGrant{GrantChanged}) || Used(dir) {
+	if err := Consume(dir, ended.Add(time.Minute), digest+"x", "A1"); !errors.Is(err, ErrGrant{GrantChanged}) || Used(dir) {
 		t.Errorf("consume with another binding: %v used=%v", err, Used(dir))
 	}
 	var wg sync.WaitGroup
@@ -380,24 +382,39 @@ func TestGrantIsBoundTimedAndSingleUse(t *testing.T) {
 	won := 0
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
-		go func() {
+		go func(i int) {
 			defer wg.Done()
-			if Consume(dir, ended.Add(time.Minute), digest) == nil {
+			if Consume(dir, ended.Add(time.Minute), digest, fmt.Sprint("A", i)) == nil {
 				mu.Lock()
 				won++
 				mu.Unlock()
 			}
-		}()
+		}(i)
 	}
 	wg.Wait()
 	if won != 1 {
 		t.Errorf("%d of 8 concurrent uses succeeded, want 1", won)
 	}
-	if err := Consume(dir, ended.Add(2*time.Minute), digest); !errors.Is(err, ErrGrant{GrantUsed}) {
+	if err := Consume(dir, ended.Add(2*time.Minute), digest, "A9"); !errors.Is(err, ErrGrant{GrantUsed}) {
 		t.Errorf("second use: %v", err)
 	}
 	if got, _ := ReadGrant(dir); got == nil || got.State(ended.Add(2*time.Minute), digest, Used(dir)) != GrantUsed {
 		t.Error("a used grant should read as used")
+	}
+	// 소비 기록은 어느 실행이 언제 소비했는지를 남긴다. 진 쪽의 이름으로 덮이지 않는다.
+	if u := UsedBy(dir); u == nil || !strings.HasPrefix(u.By, "A") || u.By == "A9" || !u.At.Equal(ended.Add(time.Minute)) {
+		t.Errorf("the use record = %+v", u)
+	}
+	// 표시는 있는데 읽을 수 없으면(쓰다 끊겼으면) 소비한 것으로 본다.
+	torn := t.TempDir()
+	if err := WriteGrant(torn, g); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(torn, usedFile), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !Used(torn) || !errors.Is(Consume(torn, ended.Add(time.Minute), digest, "A1"), ErrGrant{GrantUsed}) {
+		t.Error("a torn use record should still read as used")
 	}
 }
 
@@ -432,7 +449,8 @@ func TestReadyAndPending(t *testing.T) {
 // 끝줄이면) 사건이 없는 노드는 실행하지 않은 것이다. callback이 기록을 쓰지 못해 끝낸 실행(EndRecord)에서는 시작만 있는 작업의
 // 노드가 「결과를 알 수 없음」이고, 작업 사이에서 끝났으면 기록된 성공까지만 인정해 「일부 작업만 끝남(실행 기록 중단)」이다.
 // 기록 가운데에 읽을 수 없는 줄이 있거나 기록이 아예 없으면, 사건이 없는 노드도 「결과를 알 수 없음」이다. 감독이 원격 작업을
-// 허용하지 않은 실행(EndNotReady)은 기록이 없어도 「실행하지 않음」이다.
+// 허용하지 않은 실행(EndNotReady · EndNoGrant)은 기록이 없어도 「실행하지 않음」이다. **작업을 알린 줄이 있으면 그 작업은
+// 보냈을 수 있다**(시작 줄이 없어도 「결과를 알 수 없음」이다). 알린 줄이 없는 작업만 보내지 않은 것이다.
 func TestNotRunNeedsEvidence(t *testing.T) {
 	p := three()
 	cut := &Result{Exit: ExitRecord, Reason: EndRecord}
@@ -441,6 +459,12 @@ func TestNotRunNeedsEvidence(t *testing.T) {
 	torn := append(mid.bytes(), []byte(`{"seq":99,"run":"R","ev":"res`)...)
 	junk := newRec("R", false).node(p[0], "ok", "changed", "changed", "changed")
 	junk.lines = append(junk.lines, "not a record line")
+	// 둘째 노드의 play와 첫 작업을 알린 줄까지만 있고 시작이 없다. 알린 뒤에는 보냈을 수 있다.
+	announced := newRec("R", false).node(p[0], "ok", "changed", "changed", "changed")
+	announced.add("play", map[string]any{"hosts": []string{p[1].Node}}).add("task", map[string]any{"task": "t9", "name": GatherTask})
+	// 둘째 노드의 play를 알린 줄까지만 있다. 작업은 알리지 않았다.
+	played := newRec("R", false).node(p[0], "ok", "changed", "changed", "changed")
+	played.add("play", map[string]any{"hosts": []string{p[1].Node}})
 	for name, c := range map[string]struct {
 		record []byte
 		res    *Result
@@ -450,6 +474,9 @@ func TestNotRunNeedsEvidence(t *testing.T) {
 		"cut between tasks":              {between.bytes(), cut, "done partial(record-cut) not-run"},
 		"a torn last line":               {torn, cut, "done unknown(record-cut) not-run"},
 		"an unreadable line in between":  {junk.bytes(), cut, "done unknown(record-cut) unknown(record-cut)"},
+		"a task announced, not started":  {announced.bytes(), cut, "done unknown(record-cut) not-run"},
+		"a play announced, no task":      {played.bytes(), cut, "done not-run not-run"},
+		"no grant, nothing allowed":      {nil, &Result{Exit: 3, Reason: EndNoGrant}, "not-run not-run not-run"},
 		"no record, supervisor lost":     {nil, nil, "unknown(record-cut) unknown(record-cut) unknown(record-cut)"},
 		"no record, never allowed":       {nil, &Result{Exit: 3, Reason: EndNotReady}, "not-run not-run not-run"},
 		"stopped, record damaged":        {junk.bytes(), &Result{Exit: 125, Reason: EndStopped}, "done unknown(record-cut) unknown(record-cut)"},

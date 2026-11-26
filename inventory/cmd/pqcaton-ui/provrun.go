@@ -34,8 +34,11 @@ import (
 	"github.com/randyinthedev-hash/pqcota-provisioning/pkg/provisioning"
 
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/provrun"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
+
+const kindProvApply = "provision-apply"
 
 const (
 	wsProvisionRuns  = "provision-runs"
@@ -46,6 +49,7 @@ const (
 	provInventory    = "inventory.yml"
 	provPlaybook     = "playbook.yml"
 	provCallbackDir  = "callback"
+	provPlanCopy     = "plan.signed.json"
 )
 
 // provStall: 작업을 시작한 뒤 결과를 기다리는 상한(초). 설정 파일 배치의 첫 운영 기본값이다. 시험이 줄인다.
@@ -62,6 +66,9 @@ type provManifest struct {
 	// RecheckOf: 이 실행이 재확인하는 적용 실행의 ID. 비면 재확인이 아니다. 재확인은 미리 보기와 같은 실행(--check)이지만 적용
 	// 권한을 남기지 않는다.
 	RecheckOf string `json:"recheck_of,omitempty"`
+	// Grant: 적용 실행이 소비할 권한을 낸 미리 보기의 실행 ID. 적용 실행에는 반드시 있다. 감독이 준비 신호를 확인한 뒤, 원격
+	// 작업을 허용하기 직전에 소비한다(provsupervise.go).
+	Grant string `json:"grant,omitempty"`
 }
 
 type provRunner struct {
@@ -92,7 +99,7 @@ func (s *server) provDir() string { return filepath.Join(filepath.Dir(s.planOut)
 type provReady struct {
 	plays              []provrun.Play
 	playbook, inv, cfg []byte
-	vars               []byte
+	vars, signed       []byte
 	ansible            string
 	binding            provrun.Binding
 }
@@ -188,13 +195,39 @@ func (s *server) provCheck(v ui.ApproveView) (provReady, []ui.ProvBlock) {
 	vars, _ := json.Marshal(runVars())
 	// 설정은 실행 자리의 경로를 담는다. 묶음에는 자리를 뺀 꼴의 해시를 넣는다.
 	cfg := ansibleConfigWith(".", provCallbackDir, provrun.CallbackName)
-	rd = provReady{plays: pb.Plays, playbook: book, inv: inv, cfg: cfg, vars: vars, ansible: ansible, binding: provrun.Binding{
-		"plan": provrun.Hash(signedBytes), "playbook": provrun.Hash(book), "inventory": provrun.Hash(inv),
-		"vars": provrun.Hash(vars), "config": provrun.Hash(cfg), "callback": provrun.Hash(provrun.CallbackPlugin),
-		"ansible": fmt.Sprintf("%s|%d|%d", ansible, fi.Size(), fi.ModTime().UnixNano()),
-		"stall":   fmt.Sprint(provStall),
-	}}
+	rd = provReady{plays: pb.Plays, playbook: book, inv: inv, cfg: cfg, vars: vars, signed: signedBytes, ansible: ansible,
+		binding: provBinding(signedBytes, book, inv, vars, cfg, provrun.CallbackPlugin, ansible, fi, provStall)}
 	return rd, nil
+}
+
+// provBinding: 실행에 들어가는 것의 묶음. 화면이 지금의 입력으로 잴 때와 감독이 실행 자리의 사본으로 잴 때 같은 함수를 쓴다.
+func provBinding(signed, book, inv, vars, cfg, callback []byte, ansible string, fi os.FileInfo, stall int) provrun.Binding {
+	return provrun.Binding{
+		"plan": provrun.Hash(signed), "playbook": provrun.Hash(book), "inventory": provrun.Hash(inv),
+		"vars": provrun.Hash(vars), "config": provrun.Hash(cfg), "callback": provrun.Hash(callback),
+		"ansible": fmt.Sprintf("%s|%d|%d", ansible, fi.Size(), fi.ModTime().UnixNano()),
+		"stall":   fmt.Sprint(stall),
+	}
+}
+
+// provBindingOf: **실행 자리의 사본으로** 묶음을 잰다. Ansible이 읽는 것이 바로 이 파일들이다. 설정은 실행 자리의 경로를 담고
+// 있어 그 경로를 걷어 낸 꼴로 견준다(화면이 잴 때의 꼴과 같아진다).
+func provBindingOf(dir, ansible string, stall int) (provrun.Binding, error) {
+	var parts [6][]byte
+	for i, name := range []string{provPlanCopy, provPlaybook, provInventory, "vars.json", runConfigName,
+		filepath.Join(provCallbackDir, provrun.CallbackName+".py")} {
+		b, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			return nil, err
+		}
+		parts[i] = b
+	}
+	fi, err := os.Stat(ansible)
+	if err != nil {
+		return nil, err
+	}
+	cfg := bytes.ReplaceAll(parts[4], []byte(dir+string(filepath.Separator)), nil)
+	return provBinding(parts[0], parts[1], parts[2], parts[3], cfg, parts[5], ansible, fi, stall), nil
 }
 
 // renderProvTargets: 06 실행의 인벤토리. 플레이북이 노드 ID로 겨누므로 호스트 이름이 노드 ID다(03은 별칭을 쓴다). 이름은
@@ -229,7 +262,7 @@ func renderProvTargets(hosts []inventory.Host) ([]byte, error) {
 var errProvBusy = errors.New("a provisioning run is already going")
 
 // startProv: 미리 보기를 띄운다. 끝나기를 기다리지 않는다. 띄우기 전에 실패하면 실행 자리에 결과(not-ready)를 남긴다.
-func (s *server) startProv(rd provReady, check bool, recheckOf string) error {
+func (s *server) startProv(rd provReady, check bool, recheckOf, grant string) error {
 	p := &s.prov
 	p.mu.Lock()
 	if p.job != nil && !p.job.closed() {
@@ -242,7 +275,7 @@ func (s *server) startProv(rd provReady, check bool, recheckOf string) error {
 		return err
 	}
 	// 시작 시각은 실제 시각이다(화면의 시계를 시험이 바꿔도 실행의 순서는 실제 순서다).
-	j := &provJob{m: provManifest{ID: id, Check: check, Started: time.Now(), Stall: provStall, Plays: rd.plays, Binding: rd.binding, RecheckOf: recheckOf},
+	j := &provJob{m: provManifest{ID: id, Check: check, Started: time.Now(), Stall: provStall, Plays: rd.plays, Binding: rd.binding, RecheckOf: recheckOf, Grant: grant},
 		dir: filepath.Join(s.provDir(), id), done: make(chan struct{})}
 	p.job = j
 	p.mu.Unlock()
@@ -269,7 +302,7 @@ func (s *server) startProv(rd provReady, check bool, recheckOf string) error {
 	for _, f := range []struct {
 		name string
 		body []byte
-	}{{provInventory, rd.inv}, {"vars.json", rd.vars}, {provPlaybook, rd.playbook},
+	}{{provInventory, rd.inv}, {"vars.json", rd.vars}, {provPlaybook, rd.playbook}, {provPlanCopy, rd.signed},
 		{runConfigName, ansibleConfigWith(j.dir, filepath.Join(j.dir, provCallbackDir), provrun.CallbackName)},
 		{filepath.Join(provCallbackDir, provrun.CallbackName+".py"), provrun.CallbackPlugin}} {
 		if err := os.WriteFile(filepath.Join(j.dir, f.name), f.body, 0o600); err != nil {
@@ -508,7 +541,14 @@ func (s *server) provModel(v ui.ApproveView) ui.ProvRun {
 	s.prov.mu.Unlock()
 	apply, recheck, preview, newest := s.provPicks(out.RunningID)
 	if apply != nil {
-		out.Apply, _ = provResult(apply)
+		var avd provrun.Verdict
+		out.Apply, avd = provResult(apply)
+		out.Apply.Began = avd.Began
+		if apply.m.Grant != "" && filepath.Base(apply.m.Grant) == apply.m.Grant {
+			if u := provrun.UsedBy(filepath.Join(s.provDir(), apply.m.Grant)); u != nil && u.By == apply.m.ID {
+				out.Apply.Consumed = true
+			}
+		}
 		// 재확인은 적용한 것과 같은 묶음으로만 한다. 입력이 바뀌었으면 그 실행의 기대 상태를 다시 잴 수 없다.
 		out.RecheckSame = len(blocks) == 0 && rd.binding.Digest() == apply.m.Binding.Digest()
 		if recheck != nil {
@@ -531,13 +571,16 @@ func (s *server) provModel(v ui.ApproveView) ui.ProvRun {
 	}
 	if preview != nil {
 		out.Last, _ = provResult(preview)
-		// 적용 권한은 가장 최근 실행이 이 미리 보기일 때만 본다(그 뒤에 적용 실행이 있었으면 이미 지난 미리 보기다). 묶음은 지금 다시 잰다.
-		if g, err := provrun.ReadGrant(preview.dir); err == nil && g != nil && preview.m.ID == newest {
+		// 적용 권한은 가장 최근 미리 보기의 것만 본다. 묶음은 지금 다시 잰다. 소비 전에 끝난 적용 실행 뒤에는 권한이 아직
+		// 유효할 수 있고, 그때는 다시 적용할 수 있다.
+		_ = newest
+		if g, err := provrun.ReadGrant(preview.dir); err == nil && g != nil {
 			digest := ""
 			if len(blocks) == 0 {
 				digest = rd.binding.Digest()
 			}
 			out.Last.Grant, out.Last.GrantExpires = string(g.State(s.now(), digest, provrun.Used(preview.dir))), g.Expires
+			out.CanApply = out.Last.Grant == string(provrun.GrantValid) && !out.Running
 		}
 	}
 	return out
@@ -563,7 +606,7 @@ func (s *server) provPreview(w http.ResponseWriter, r *http.Request) {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedProvNotReady, back, nil)
 		return
 	}
-	if err := s.startProv(rd, true, ""); err != nil {
+	if err := s.startProv(rd, true, "", ""); err != nil {
 		if errors.Is(err, errProvBusy) {
 			s.refuse(w, r, http.StatusConflict, ui.RefusedProvBusy, back, nil)
 			return
@@ -596,7 +639,134 @@ func (s *server) provRecheck(w http.ResponseWriter, r *http.Request) {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedProvNotReady, back, nil)
 		return
 	}
-	if err := s.startProv(rd, true, apply.m.ID); err != nil {
+	if err := s.startProv(rd, true, apply.m.ID, ""); err != nil {
+		if errors.Is(err, errProvBusy) {
+			s.refuse(w, r, http.StatusConflict, ui.RefusedProvBusy, back, nil)
+			return
+		}
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, err)
+		return
+	}
+	http.Redirect(w, r, back+"?"+ui.LangParam+"="+string(ui.PickLang(r))+"#approve-run", http.StatusSeeOther)
+}
+
+// applyPayload: 적용 확인이 덮는 것. 미리 보기의 실행 ID와 그 묶음의 해시다.
+func applyPayload(preview, digest string) string { return preview + "|" + digest }
+
+// provApplyReady: 지금 적용할 수 있는가. 가장 최근 미리 보기의 권한이 유효해야 한다(미사용 · 10분 안 · 지금의 입력과 같음).
+// 막히면 거절을 그리고 false다.
+func (s *server) provApplyReady(w http.ResponseWriter, r *http.Request) (rd provReady, preview *provRun, g *provrun.Grant, ok bool) {
+	back := ui.ScreenApprove
+	v, err := s.approveModel(ui.Page{})
+	if err != nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
+		return rd, nil, nil, false
+	}
+	rd, blocks := s.provCheck(v)
+	if len(blocks) > 0 {
+		s.refuse(w, r, http.StatusConflict, ui.RefusedProvNotReady, back, nil)
+		return rd, nil, nil, false
+	}
+	_, _, preview, _ = s.provPicks("")
+	if preview != nil {
+		g, _ = provrun.ReadGrant(preview.dir)
+	}
+	if preview == nil || g == nil || g.State(s.now(), rd.binding.Digest(), provrun.Used(preview.dir)) != provrun.GrantValid {
+		s.refuse(w, r, http.StatusConflict, ui.RefusedProvGrant, back, nil)
+		return rd, nil, nil, false
+	}
+	return rd, preview, g, true
+}
+
+// provApplyConfirm: 적용 전 확인(POST). 아무것도 쓰지 않고 **권한을 소비하지 않는다.** 조직, 대상 노드, 승인된 계획, 생성된
+// 플레이북, 미리 보기의 시각과 만료 시각, 노드별 변경 예정 작업을 보이고, 미리 보기의 실행 ID와 묶음을 확인 토큰에 묶는다.
+func (s *server) provApplyConfirm(w http.ResponseWriter, r *http.Request) {
+	back := ui.ScreenApprove
+	if s.planOut == "" {
+		notFound(w, r)
+		return
+	}
+	if !s.writable(w, r, back) {
+		return
+	}
+	var (
+		rd      provReady
+		preview *provRun
+		g       *provrun.Grant
+		ok      bool
+		signed  *provisioningv1.FinalizedPlan
+	)
+	cur, err := s.snapshot(ui.ProvApplyConfirmPath, func() error {
+		var err error
+		signed, err = loadPlanFile(s.signedPath())
+		return err
+	})
+	if err != nil || signed == nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
+		return
+	}
+	if rd, preview, g, ok = s.provApplyReady(w, r); !ok {
+		return
+	}
+	vd, res := provVerdict(preview.dir, preview.m)
+	l := ui.PickLang(r)
+	var nodes []string
+	var changes []ui.ApplyChange
+	for _, n := range vd.Nodes {
+		nodes = append(nodes, n.Node)
+		c := ui.ApplyChange{Node: n.Node}
+		for _, t := range n.Tasks {
+			if t.Status == provrun.TaskChanged {
+				c.Tasks = append(c.Tasks, t.Name)
+			}
+		}
+		changes = append(changes, c)
+	}
+	ended := preview.m.Started
+	if res != nil {
+		ended = res.Ended
+	}
+	lines := ui.ApplyConfirmLines(l, s.orgName(), nodes, signed.GetId(), provrun.Hash(rd.signed), filepath.Base(s.provisionPath()),
+		provrun.Hash(rd.playbook), preview.m.ID, ended, g.Expires, changes)
+	files := []ui.FileRef{file(l, "signed-plan", s.signedPath()), file(l, "playbook", s.provisionPath())}
+	s.confirmPageWith(w, r, kindProvApply, ui.ProvApplyPath, "", back, store.Identity{SessionID: preview.m.ID}, cur,
+		applyPayload(preview.m.ID, rd.binding.Digest()), lines, files, fmt.Sprintf("apply:%d", len(nodes)))
+}
+
+// provApply: 확인을 거친 적용(POST). 확인한 미리 보기와 묶음이 지금도 같고 권한이 유효해야 한다. 실행 자리에 입력 사본을 두고
+// 감독을 띄운다. **권한은 여기서 소비하지 않는다**: 감독이 callback의 준비 신호를 확인한 뒤, 원격 작업을 허용하기 직전에
+// 소비한다. 한 작업 폴더에서 실행은 하나뿐이다. 더블클릭이나 같은 요청의 재전송은 「이미 돌고 있음」이거나, 앞 실행이 권한을
+// 소비한 뒤라면 「권한 없음」으로 거절된다.
+func (s *server) provApply(w http.ResponseWriter, r *http.Request) {
+	back := ui.ScreenApprove
+	if s.planOut == "" {
+		notFound(w, r)
+		return
+	}
+	if !s.writable(w, r, back) {
+		return
+	}
+	// 도는 실행이 있으면 먼저 거절한다(권한을 보기 전에: 앞 요청이 아직 소비하지 않았을 수 있다).
+	s.prov.mu.Lock()
+	busy := s.prov.job != nil && !s.prov.job.closed()
+	s.prov.mu.Unlock()
+	if busy {
+		s.refuse(w, r, http.StatusConflict, ui.RefusedProvBusy, back, nil)
+		return
+	}
+	rd, preview, _, ok := s.provApplyReady(w, r)
+	if !ok {
+		return
+	}
+	payload, ok := s.confirmed(w, r, kindProvApply, back, store.Identity{SessionID: preview.m.ID})
+	if !ok {
+		return
+	}
+	if payload != applyPayload(preview.m.ID, rd.binding.Digest()) {
+		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
+		return
+	}
+	if err := s.startProv(rd, false, "", preview.m.ID); err != nil {
 		if errors.Is(err, errProvBusy) {
 			s.refuse(w, r, http.StatusConflict, ui.RefusedProvBusy, back, nil)
 			return

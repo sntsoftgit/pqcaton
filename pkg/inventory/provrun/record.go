@@ -29,6 +29,7 @@ const (
 	EndNotReady = "not-ready" // callback의 준비 신호를 받지 못해 원격 작업을 허용하지 않았다
 	EndLost     = "lost"      // 감독이 결과를 남기지 못하고 끝났다(다음 시작이 적는다)
 	EndRecord   = "record"    // callback이 기록을 더 쓰지 못해 실행을 끝냈다(ExitRecord)
+	EndNoGrant  = "no-grant"  // 적용 권한을 소비하지 못해 원격 작업을 허용하지 않았다(없음 · 이미 쓰임 · 만료 · 입력이 다름)
 )
 
 // ExitRecord — callback이 기록을 쓰지 못해 Ansible을 끝낼 때의 종료 코드. 감독이 이것을 EndRecord로 적는다.
@@ -107,7 +108,9 @@ type Verdict struct {
 	// RecordWhole — 기록이 이 실행의 것이고 처음부터 끝(end)까지 이어진다.
 	RecordWhole bool
 	// End — 감독이 끝낸 까닭(Result.Reason).
-	End   string
+	End string
+	// Began — 기록에 실행의 시작(begin)이 있다. callback은 감독의 허용을 받은 뒤에만 이것을 쓴다. 없으면 원격 작업이 없었다.
+	Began bool
 	Nodes []NodeVerdict
 }
 
@@ -228,13 +231,16 @@ func Evaluate(run string, check bool, plays []Play, record []byte, res *Result) 
 			pi, ti = pi+1, -1
 			bad = !began || pi >= len(plays) || len(e.Hosts) != 1 || e.Hosts[0] != plays[pi].Node
 		case "task":
+			// **작업을 알린 줄부터 「보냈을 수 있다」로 본다.** Ansible은 작업을 알린 뒤(v2_playbook_on_task_start)에야 노드에
+			// 보낼 차례에 넣는다. callback은 이 줄을 디스크에 내린 뒤에 돌아오고, 쓰지 못하면 실행을 끝낸다. 그래서 이 줄이 없는
+			// 작업은 보내지지 않았다. 이 줄 뒤에 기록이 끊겼으면 보내졌는지 알 수 없다.
 			ti++
 			bad = pi < 0 || pi >= len(plays) || ti >= len(status[pi]) || e.Name != name(pi, ti)
-		case "start":
-			bad = pi < 0 || ti < 0 || e.Host != plays[pi].Node || status[pi][ti] != TaskNotStarted
 			if !bad {
 				status[pi][ti] = TaskNoResult
 			}
+		case "start":
+			bad = pi < 0 || ti < 0 || e.Host != plays[pi].Node || status[pi][ti] != TaskNoResult
 		case "result":
 			bad = pi < 0 || ti < 0 || e.Host != plays[pi].Node || status[pi][ti] != TaskNoResult
 			if !bad {
@@ -256,10 +262,12 @@ func Evaluate(run string, check bool, plays []Play, record []byte, res *Result) 
 		}
 	}
 	v.RecordWhole = whole && sawEnd && began && checkSeen == check
+	v.Began = began
 	// 「실행하지 않음」의 근거: 기록이 읽을 수 있는 데까지가 전부이고(damaged가 아니고) 한 줄이라도 있거나, 감독이 원격 작업을
-	// 허용하지 않았다. callback은 작업을 내보내기 전에 시작을 기록하고, 쓰지 못하면 실행을 끝낸다. 그래서 온전히 읽히는 기록에
-	// 시작이 없는 작업은 시작되지 않았다.
-	evidence := (!damaged && len(lines) > 0) || res.Reason == EndNotReady
+	// 허용하지 않았다. 근거는 순서다: callback은 감독의 허용을 받기 전에는 아무것도 시작하지 않고, play와 작업을 알리는 줄을
+	// 디스크에 내린 뒤에야 Ansible이 그 작업을 노드에 보내며, 쓰지 못하면 보내기 전에 실행이 끝난다. 그래서 온전히 읽히는 기록에
+	// 알린 줄이 없는 작업은 보내지지 않았다. 읽을 수 없는 줄이 있으면 이 근거가 서지 않는다.
+	evidence := (!damaged && len(lines) > 0) || res.Reason == EndNotReady || res.Reason == EndNoGrant
 
 	allDone, anyChanged := true, false
 	for i, p := range plays {

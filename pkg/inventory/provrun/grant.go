@@ -111,20 +111,35 @@ func ReadGrant(dir string) (*Grant, error) {
 	return &g, nil
 }
 
-// Used — 이 권한을 이미 썼는가.
-func Used(dir string) bool {
-	_, err := os.Lstat(filepath.Join(dir, usedFile))
-	return err == nil
+// Use — 권한을 소비한 기록. 어느 적용 실행이 언제 소비했는지다.
+type Use struct {
+	By string    `json:"by"`
+	At time.Time `json:"at"`
 }
+
+// UsedBy — 소비 기록. 소비하지 않았으면 nil이다. 표시는 있는데 읽을 수 없으면(쓰다 끊겼으면) 빈 기록이다: 소비한 것으로 본다.
+func UsedBy(dir string) *Use {
+	b, err := os.ReadFile(filepath.Join(dir, usedFile))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	var u Use
+	_ = json.Unmarshal(b, &u)
+	return &u
+}
+
+// Used — 이 권한을 이미 썼는가.
+func Used(dir string) bool { return UsedBy(dir) != nil }
 
 // ErrGrant — 권한을 쓸 수 없다. State가 까닭이다.
 type ErrGrant struct{ State GrantState }
 
 func (e ErrGrant) Error() string { return "the apply grant cannot be used: " + string(e.State) }
 
-// Consume — 권한을 쓴다. 유효할 때만, 한 번만 성공한다: 쓴 표시를 새로 만들 수 있어야 한다(O_EXCL). 두 요청이 함께 와도
-// 하나만 만든다.
-func Consume(dir string, now time.Time, digest string) error {
+// Consume — 권한을 소비한다. 유효할 때만, 한 번만 성공한다. 소비 기록(어느 실행이 언제)을 새로 만들 수 있어야 하고(O_EXCL: 두
+// 요청이 함께 와도 하나만 만든다), **그 기록이 디스크에 닿은 뒤에야 성공을 돌려준다**(파일과 폴더를 fsync한다). 부르는 쪽은
+// 성공을 받은 뒤에만 원격 작업을 허용한다. 기록을 만들다 실패하면 표시가 남을 수 있다: 그때 권한은 소비된 것이다(다시 쓰지 못한다).
+func Consume(dir string, now time.Time, digest, by string) error {
 	g, err := ReadGrant(dir)
 	if err != nil {
 		return err
@@ -142,5 +157,17 @@ func Consume(dir string, now time.Time, digest string) error {
 	if err != nil {
 		return err
 	}
-	return f.Close()
+	b, _ := json.Marshal(Use{By: by, At: now})
+	_, werr := f.Write(append(b, '\n'))
+	serr := f.Sync()
+	cerr := f.Close()
+	if werr != nil || serr != nil || cerr != nil {
+		return errors.Join(werr, serr, cerr)
+	}
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	return d.Sync()
 }

@@ -11,7 +11,7 @@ codes, and a test checks that.
 
 **Scope.** The procedure inside pqcaton (declaration, scope, observation, reconciliation, judgment, finalize, approval,
 playbook generation) runs on the screen without a terminal. Observations run with the Ansible and collectors the operator
-installs. Applying the generated playbooks to the machines is not done by the screen but by the operator's own Ansible run.
+installs. After a separate confirmation the screen applies the L2 playbook to the target nodes. Activating and rolling back are the operator's job.
 Installing and recovering need a terminal or a file manager.
 
 **Trust model.** The screen runs on one machine as **one OS user** and opens only on **loopback** (it has no
@@ -846,8 +846,17 @@ required).
    manual step, the screen names the node, the task and the reason, and runs nothing. When a node that started a task does
    not answer for 120 seconds, the run is stopped and that node reads "Result unknown". A remote task that had already
    started may still finish later.
-   Applying them to the machines is not
-   done by the screen; the operator runs the commands in the 06 screen's help. When 05 is finalized again and the plan
+   When the preview ends with changes to make, "Apply to N nodes: go to the confirmation" appears. The confirmation page shows
+   the organization, the target nodes, the approved plan, the generated playbook, when the preview ended and until when it is
+   good, and the tasks that would change on each node; the apply starts only when "Apply to N nodes" is pressed there. A
+   preview is good for 10 minutes after it ended and for one apply. If the plan, the playbook or the access details changed
+   after the preview, preview again. The apply goes as far as the L2 placement: it only places configuration files and does
+   not activate services or roll back. When a node fails, the nodes after it are not started, and nodes already changed stay
+   as they are. The result table reads "L2 placement done", "Only some tasks finished", "Result unknown" or "Not run" per
+   node, and "Recheck this run" tells whether the target files match the expected state at that moment. To undo, the operator
+   runs `plan.rollback.yml`.
+   A playbook the screen does not apply (L1, L3, a provider module) is run by the operator with the commands in the 06
+   screen's help. When 05 is finalized again and the plan
    changes, the 06 card reads "the signature does not match the plan", and generating needs the earlier signature archived
    and a new signature on the new plan.
 7. **The next round.** A finalized session cannot be changed and is shown read-only. When new observations arrive or a
@@ -1381,6 +1390,7 @@ screen.
 | `run-busy` | An observation is already running | Start again after it finishes or is stopped |
 | `prov-not-ready` | The conditions for running the 06 preview from the screen are not met (approval, an L2 playbook, access details, Ansible, or a kind of task the screen does not run) | Provide what "Why the screen does not run this" on the 06 screen lists |
 | `prov-busy` | A 06 run is already going | Start again after it finishes or is stopped |
+| `prov-grant` | There is no valid preview to apply from (none · ended more than 10 minutes ago · an input changed after it · already used once) | Preview again on the 06 screen, then apply |
 | `sign-not-ready` | The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed | See the approval key check on the 06 screen and fill in the form |
 | `plan-not-approvable` | The plan is not in review (IN_REVIEW), has no actions, or is already signed with this key | Finalize again at 05, or use the signed plan as it is |
 | `generate-not-ready` | The current plan has no approval that checks out with this key | Sign the approval first |

@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/randyinthedev-hash/pqcota-common/pkg/kernel/sign"
@@ -124,8 +125,13 @@ func (s *server) confirmPageWith(w http.ResponseWriter, r *http.Request, kind, a
 	case "activate":
 		p.Title = ui.ActivateConfirmTitle(p.Lang)
 	}
+	applyNodes := 0
+	if n, ok := strings.CutPrefix(mode, "apply:"); ok {
+		applyNodes, _ = strconv.Atoi(n)
+		p.Title = ui.ApplyConfirmTitle(p.Lang)
+	}
 	p.Rev = rev
-	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files, Sign: mode == "sign", Activate: mode == "activate",
+	v := ui.ConfirmView{Page: p, Action: action, SaveAction: saveAction, Back: back, Lines: lines, Files: files, Sign: mode == "sign", Activate: mode == "activate", ApplyNodes: applyNodes,
 		Hidden: ui.CarryForm(r.PostForm), Exp: exp, Payload: payload, SessionID: id.SessionID,
 		Token: s.confirmToken(kind, id.SessionID, rev, payload, exp)}
 	html(w, r, func(out io.Writer) error { return ui.RenderConfirm(out, v) })

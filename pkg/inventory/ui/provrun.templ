@@ -38,6 +38,14 @@ templ approveRun(v ApproveView) {
 				<p class="hint">{ tProvBlockedFoot.In(v.Page.Lang) }</p>
 			</section>
 		}
+		if v.Run.CanApply {
+			<form method="post" action={ templ.SafeURL(ProvApplyConfirmPath) }>
+				@csrfField(v.Page)
+				<div class="actions">
+					<button class="primary" data-prov-apply>{ tApplyGo.F(v.Page.Lang, len(v.Run.Targets)) }</button>
+				</div>
+			</form>
+		}
 		if v.Run.Apply != nil {
 			@provResult(v.Page.Lang, *v.Run.Apply)
 			if v.Run.CanRecheck() {
@@ -81,6 +89,9 @@ templ provResult(l Lang, r ProvResult) {
 		<p class={ "msg", templ.KV("ok", r.Good()), templ.KV("bad", !r.Good()) }>{ r.OutcomeText(l) }</p>
 		if r.EndText(l) != "" {
 			<p class="msg bad" data-prov-end={ r.End }>{ r.EndText(l) }</p>
+		}
+		if r.GrantNote(l) != "" {
+			<p class="msg" data-prov-begun="no" data-prov-consumed?={ r.Consumed }>{ r.GrantNote(l) }</p>
 		}
 		if r.Grant != "" {
 			<p class="hint" data-prov-grant={ r.Grant }>{ r.GrantText(l) }</p>

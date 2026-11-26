@@ -60,6 +60,9 @@ type ProvResult struct {
 	// Grant — 적용 권한의 지금 상태(valid · expired · changed · used). 비면 권한이 없다.
 	Grant        string
 	GrantExpires time.Time
+	// Began — 기록에 실행의 시작이 있다(감독이 원격 작업을 허용했다). Consumed — 이 적용 실행이 적용 권한을 소비했다.
+	// 둘은 따로다: 소비했는데 시작하지 못한 실행이 있을 수 있다(그때 원격 작업은 0건이고 새 미리 보기가 필요하다).
+	Began, Consumed bool
 	// RecheckID · RecheckAt — 이 적용 실행에 연결한 가장 최근 재확인과 그 시각. 없으면 비어 있다.
 	RecheckID string
 	RecheckAt time.Time
@@ -89,6 +92,19 @@ type ProvRun struct {
 	Last  *ProvResult
 	// RecheckSame — 지금의 입력이 그 적용 실행의 것과 같다. 같을 때만 재확인할 수 있다.
 	RecheckSame bool
+	// CanApply — 가장 최근 미리 보기의 권한이 지금 유효하다. 이때만 적용 확인으로 가는 버튼을 낸다.
+	CanApply bool
+}
+
+// GrantNote — 적용 실행이 원격 작업을 시작하지 못했을 때 권한이 어떻게 됐는지의 한 줄. 시작했으면 비어 있다.
+func (r ProvResult) GrantNote(l Lang) string {
+	switch {
+	case r.Check || r.Began:
+		return ""
+	case r.Consumed:
+		return tApplyNotBegunConsumed.In(l)
+	}
+	return tApplyNotBegunUnused.In(l)
 }
 
 // CanRecheck — 재확인 버튼을 낼 수 있는가.

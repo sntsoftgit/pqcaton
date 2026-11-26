@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/url"
 	"sort"
+	"strings"
+	"time"
 )
 
 // 확정 전 확인. **확인 요청은 아무것도 바꾸지 않는다.** 확정 버튼이 보낸 폼 값(저장하지 않은 편집
@@ -39,6 +41,8 @@ type ConfirmView struct {
 	Sign bool
 	// Activate — 확정이 아니라 자산 스코프 정책 활성화를 확인한다. 말이 활성화의 것이 된다.
 	Activate bool
+	// ApplyNodes — 0보다 크면 확정이 아니라 06의 적용을 확인한다. 대상 노드 수이고, 마지막 버튼이 그 수를 적는다.
+	ApplyNodes int
 }
 
 // ActivateConfirmTitle: 정책 활성화 확인 페이지의 제목.
@@ -97,3 +101,30 @@ func LinePlanActions(l Lang, n int) string { return tLinePlanActions.F(l, n) }
 func LineJudgments(l Lang, n int) string { return tLineJudgments.F(l, n) }
 
 func LinePolicyRules(l Lang, n int) string { return tLinePolicyRules.F(l, n) }
+
+// ApplyConfirmTitle: 06 적용 확인 페이지의 제목.
+func ApplyConfirmTitle(l Lang) string { return tApplyConfirmTitle.In(l) }
+
+// ApplyChange — 미리 보기가 한 노드에 대해 「바뀜 예정」으로 낸 작업들.
+type ApplyChange struct {
+	Node  string
+	Tasks []string
+}
+
+// ApplyConfirmLines: 적용 확인 페이지에 적을 것. 조직, 대상 노드와 수, 승인된 계획, 생성된 플레이북, 미리 보기의 실행 · 끝난
+// 시각 · 만료 시각, 노드별 변경 예정 작업, 그리고 이 적용이 하지 않는 일.
+func ApplyConfirmLines(l Lang, org string, nodes []string, planID, planHash, playbook, playbookHash, preview string,
+	ended, expires time.Time, changes []ApplyChange) []string {
+	const stamp = "2006-01-02 15:04:05 UTC"
+	out := []string{tApplyLineOrg.F(l, org), tApplyLineNodes.F(l, len(nodes), strings.Join(nodes, ", ")),
+		tApplyLinePlan.F(l, planID, planHash), tApplyLinePlaybook.F(l, playbook, playbookHash),
+		tApplyLinePreview.F(l, preview, ended.UTC().Format(stamp), expires.UTC().Format(stamp))}
+	for _, c := range changes {
+		if len(c.Tasks) == 0 {
+			out = append(out, tApplyLineNoChange.F(l, c.Node))
+			continue
+		}
+		out = append(out, tApplyLineChange.F(l, c.Node, len(c.Tasks), strings.Join(c.Tasks, " · ")))
+	}
+	return append(out, tApplyLineDrift.In(l), tApplyLineScope.In(l))
+}

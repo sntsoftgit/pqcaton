@@ -13,6 +13,9 @@ package main
 //   - **기록이 준비된 뒤에만 원격 작업을 허용한다.** 감독이 이번 실행의 기록 파일을 만들고 첫 줄을 쓴다. 전용 callback은
 //     그 파일에 덧붙이기만 하고(만들지 않는다) 「준비됨」을 쓴 뒤 감독의 허용 파일을 기다린다. 감독은 그 줄을 읽은 뒤에만
 //     허용 파일을 둔다. 기록을 만들 수 없거나, callback을 불러오지 못하거나, 준비 신호가 오지 않으면 첫 작업 전에 끝난다.
+//   - **적용 권한은 허용 직전에 소비한다.** 적용 실행이면 준비 신호를 읽은 뒤, 실행 자리의 입력 사본으로 묶음을 다시 재어
+//     권한을 소비한다(미사용 · 10분 안 · 미리 본 입력과 같음). 어느 실행이 소비했는지의 기록이 디스크에 닿은 뒤에만 허용
+//     파일을 둔다. 소비하지 못하면 허용하지 않고 실행을 끝낸다: 원격 작업은 0건이다. Ansible은 그 사본만 읽는다.
 //   - **결과를 기다리는 상한.** 어떤 노드가 작업을 시작한 뒤 상한 동안 결과가 없으면 실행을 끝낸다. 그 노드의 상태는
 //     「결과를 알 수 없음」이다: 이미 노드에 건너간 요청은 컨트롤러가 거둘 수 없고, 뒤늦게 끝날 수 있다.
 //   - **Ansible의 출력을 남기지 않는다.** 전용 callback은 화면에 아무것도 쓰지 않는다. 그 밖의 출력(경고 · 오류)에는
@@ -36,6 +39,10 @@ const provSuperviseFlag = "-provision-supervise"
 // provReadyWait: callback의 준비 신호를 기다리는 시간. 넘으면 원격 작업을 허용하지 않고 끝낸다.
 var provReadyWait = 20 * time.Second
 
+// provHook: 감독이 권한을 소비하기 직전("before-consume")과 직후("after-consume", 허용 파일을 두기 전)에 부른다. 제품에서는
+// 아무것도 하지 않는다. 시험이 그 두 자리에서 감독을 죽이거나 입력을 바꾼다.
+var provHook = func(point, dir string) {}
+
 // provSupervise: 감독 모드. 종료 코드는 Ansible의 것이다(신호로 끝났으면 125). 기록을 준비하지 못하면 3이고 Ansible을
 // 띄우지 않는다.
 func provSupervise(dir, ansible string) int {
@@ -58,6 +65,21 @@ func provSupervise(dir, ansible string) int {
 	}
 	parentGone := make(chan struct{})
 	go func() { _, _ = io.Copy(io.Discard, os.Stdin); close(parentGone) }()
+
+	// 적용 실행은 미리 보기가 낸 권한이 있어야 한다. 띄우기 전에 먼저 본다: 권한이 유효하고, 이 실행 자리의 입력 사본이 미리 본
+	// 묶음과 같아야 한다. 여기서는 소비하지 않는다(아직 callback이 준비되지 않았다).
+	grantDir := ""
+	if !m.Check {
+		if m.Grant == "" || filepath.Base(m.Grant) != m.Grant {
+			return end(3, provrun.EndNoGrant)
+		}
+		grantDir = filepath.Join(filepath.Dir(dir), m.Grant)
+		bind, err := provBindingOf(dir, ansible, m.Stall)
+		g, gerr := provrun.ReadGrant(grantDir)
+		if err != nil || gerr != nil || g == nil || g.State(time.Now(), bind.Digest(), provrun.Used(grantDir)) != provrun.GrantValid {
+			return end(3, provrun.EndNoGrant)
+		}
+	}
 
 	// 기록 파일은 감독이 만든다. 이미 있으면(다른 실행의 것이면) 쓰지 않는다.
 	rec := filepath.Join(dir, provEventsFile)
@@ -86,7 +108,7 @@ func provSupervise(dir, ansible string) int {
 	done := make(chan struct{})
 	go func() { _ = cmd.Wait(); close(done) }()
 
-	reason, ready := "", false
+	reason, ready, consumed := "", false, false
 	stop := func(why string) {
 		if reason == "" {
 			reason = why
@@ -120,7 +142,18 @@ loop:
 			if !ready {
 				switch {
 				case provrun.Ready(b, m.ID):
-					// 준비 신호를 읽었다. 이제 허용한다. 허용 파일을 두지 못하면 callback이 기다리다 스스로 끝난다.
+					// 준비 신호를 읽었다. 적용 실행이면 이제 권한을 소비한다. **소비 기록이 디스크에 닿은 뒤에만 허용한다.**
+					if !m.Check && !consumed {
+						provHook("before-consume", dir)
+						bind, err := provBindingOf(dir, ansible, m.Stall)
+						if err != nil || provrun.Consume(grantDir, time.Now(), bind.Digest(), m.ID) != nil {
+							stop(provrun.EndNoGrant)
+							continue
+						}
+						consumed = true
+						provHook("after-consume", dir)
+					}
+					// 허용한다. 허용 파일을 두지 못하면 callback이 기다리다 스스로 끝난다(권한은 소비된 채다).
 					ready = writeDurable(goFile, map[string]string{"run": m.ID}) == nil
 				case now.Sub(began) > provReadyWait:
 					stop(provrun.EndNotReady)

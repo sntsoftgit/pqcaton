@@ -4,8 +4,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +18,7 @@ import (
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory/history"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/provrun"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/upstream"
 )
 
@@ -32,6 +36,32 @@ func TestMain(m *testing.M) {
 		os.Exit(supervise(os.Args[2], os.Args[3]))
 	}
 	if len(os.Args) == 4 && os.Args[1] == provSuperviseFlag {
+		// FAKE_PROV_HOOK="<자리>:<할 일>": 감독이 권한을 소비하기 직전 · 직후에 죽거나(die), 권한을 만료시키거나(expire), 실행 자리의
+		// 플레이북 사본을 바꾼다(swap). IC-U244.
+		if point, act, ok := strings.Cut(os.Getenv("FAKE_PROV_HOOK"), ":"); ok {
+			provHook = func(at, dir string) {
+				if at != point {
+					return
+				}
+				switch act {
+				case "die":
+					os.Exit(137)
+				case "expire":
+					var m provManifest
+					b, _ := os.ReadFile(filepath.Join(dir, provManifestFile))
+					_ = json.Unmarshal(b, &m)
+					gd := filepath.Join(filepath.Dir(dir), m.Grant)
+					if g, _ := provrun.ReadGrant(gd); g != nil {
+						g.Expires = time.Now().Add(-time.Second)
+						_ = provrun.WriteGrant(gd, *g)
+					}
+				case "swap":
+					f, _ := os.OpenFile(filepath.Join(dir, provPlaybook), os.O_WRONLY|os.O_APPEND, 0)
+					_, _ = f.WriteString("# changed after the preview\n")
+					_ = f.Close()
+				}
+			}
+		}
 		os.Exit(provSupervise(os.Args[2], os.Args[3]))
 	}
 	if len(os.Args) >= 5 && os.Args[1] == "-test-sign" {

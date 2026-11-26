@@ -157,7 +157,7 @@ the ruleset built into it (`pqcota-enrich/v4`) and carries those snapshot finger
 | It does not | Instead |
 |---|---|
 | Collect | pqcota's collectors observe; the screen only runs them with your Ansible |
-| Apply changes | The screen generates playbooks with pqcota's generator; your Ansible applies them |
+| Apply changes | The screen generates playbooks with pqcota's generator and, after a separate confirmation, applies the L2 playbook to the target nodes. Activating and rolling back are the operator's job |
 | Judge for you | It structures what is to be judged; **people finalize** |
 | Decide UNOBSERVED | Whether something exists but was not seen, or is gone, only people know |
 

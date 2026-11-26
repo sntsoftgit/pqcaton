@@ -184,7 +184,8 @@ var threeNodes = planOn("", "web", "app", "db")
 // IC-U234 — **06은 승인된 L2 설정 배치 플레이북을 대상 노드에 미리 본다.** 미리 보기 버튼은 대상 노드 수를 적는다. 실행은
 // `--check`로 돌고, 운영자의 ANSIBLE_* 환경은 설정 파일 하나를 가리키는 것 말고 넘어가지 않는다. 감독은 callback의 준비 신호를
 // 본 뒤에만 허용 파일을 둔다(시작할 때는 없다). 끝나면 화면은 「바뀔 것이 있다」와 노드마다 「확인함」을 보이고, 미리 본 내용이
-// 언제까지 유효한지 적는다. 접속 정보가 실린 인벤토리와 변수는 실행 자리에 남지 않는다. **적용 버튼과 적용 주소는 없다.**
+// 언제까지 유효한지 적고, 적용 확인으로 가는 버튼을 낸다(대상 수를 적는다). 접속 정보가 실린 인벤토리와 변수는 실행 자리에
+// 남지 않는다. 확인 토큰 없이 적용 주소로 직접 보낸 요청은 거절된다.
 func TestPreviewRunsTheApprovedPlaybookInCheckMode(t *testing.T) {
 	s := provServer(t, "", threeNodes)
 	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
@@ -218,11 +219,14 @@ func TestPreviewRunsTheApprovedPlaybookInCheckMode(t *testing.T) {
 	if strings.Contains(readFile(t, filepath.Join(dir, provEventsFile)), "s3cret-pw") {
 		t.Error("the run record holds an access secret")
 	}
-	if strings.Contains(page, "/approve/apply") || strings.Contains(page, "노드에 적용") {
-		t.Error("this version must not offer an apply button")
+	if !strings.Contains(page, "data-prov-apply") || !strings.Contains(page, "3개 노드에 적용: 확인으로") {
+		t.Error("after a ready preview the screen should offer the way to the apply confirmation")
 	}
-	if w := postForm(t, s, "/approve/apply", url.Values{}); w.Code != http.StatusNotFound && w.Code != http.StatusMethodNotAllowed {
-		t.Errorf("POST /approve/apply = %d, want no such route", w.Code)
+	if w := postForm(t, s, ui.ProvApplyPath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusForbidden {
+		t.Errorf("POST apply without a confirmation token = %d, want 403", w.Code)
+	}
+	if len(applyRuns(s)) != 0 || provrun.Used(dir) {
+		t.Error("a refused apply started a run or used the grant")
 	}
 }
 
@@ -333,7 +337,7 @@ func TestPreviewVerdictsAndTheGrant(t *testing.T) {
 	}
 	dir := lastProv(t, s)
 	m, _ := readProvManifest(dir)
-	if err := provrun.Consume(dir, time.Now(), m.Binding.Digest()); err != nil {
+	if err := provrun.Consume(dir, time.Now(), m.Binding.Digest(), "test"); err != nil {
 		t.Fatal(err)
 	}
 	if got := grant(); got != "used" {
@@ -500,24 +504,12 @@ func TestRestartSaysOnlyWhatTheRecordSays(t *testing.T) {
 	}
 }
 
-// IC-U240 — **적용 실행의 고정 사례: 첫째 노드 완료 → 둘째 노드 실패 → 셋째 노드 미시작.** 이 판에는 적용을 시작하는 주소가
-// 없어 실행을 직접 띄운다. 화면은 첫째 「L2 배치 완료」(서비스 활성화와 운영 상태: 확인하지 않음), 둘째 「일부 작업만 끝남」
+// IC-U240 — **적용 실행의 고정 사례: 첫째 노드 완료 → 둘째 노드 실패 → 셋째 노드 미시작.** 06의 적용 확인을 거쳐 시작한다.
+// 화면은 첫째 「L2 배치 완료」(서비스 활성화와 운영 상태: 확인하지 않음), 둘째 「일부 작업만 끝남」
 // (작업 실패), 셋째 「실행하지 않음」을 보인다. 실패의 까닭은 「작업 실패」뿐이고, 적용 실행은 적용 권한을 남기지 않는다.
 func TestApplyFixedCaseFirstDoneSecondFailedThirdNotStarted(t *testing.T) {
-	s := provServer(t, "fail2", threeNodes)
-	v, err := s.approveModel(ui.Page{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	rd, blocks := s.provCheck(v)
-	if len(blocks) != 0 {
-		t.Fatalf("blocks: %v", blocks)
-	}
-	if err := s.startProv(rd, false, ""); err != nil {
-		t.Fatal(err)
-	}
-	waitProv(t, s)
-	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	s := provServer(t, "", threeNodes)
+	page := applyVia(t, s, "fail2")
 	if got := applyStates(page); got != "web=done app=partial db=not-run" {
 		t.Errorf("node states = %q", got)
 	}
@@ -530,27 +522,36 @@ func TestApplyFixedCaseFirstDoneSecondFailedThirdNotStarted(t *testing.T) {
 	if strings.Contains(page, `<span class="why">일부 작업만 끝남</span>`) || !strings.Contains(page, `<span class="why">작업 실패</span>`) {
 		t.Error("the reason should appear once, beside a state it differs from")
 	}
-	if out := fakeOut(t, "prov.txt"); strings.Contains(out, "--check") {
-		t.Errorf("an apply run was started with --check:\n%s", out)
+	if out := fakeOut(t, "prov.txt"); strings.Count(out, "ARGS=") != 2 || strings.Count(out, "--check") != 1 {
+		t.Errorf("want one preview with --check and one apply without:\n%s", out)
 	}
-	if g, _ := provrun.ReadGrant(lastProv(t, s)); g != nil || strings.Contains(page, "data-prov-grant") {
-		t.Error("an apply run left a grant")
+	if g, _ := provrun.ReadGrant(lastProv(t, s)); g != nil {
+		t.Error("an apply run left a grant of its own")
 	}
 }
 
-// applyDirect: 이 판에는 적용을 시작하는 주소가 없어 적용 실행을 직접 띄우고 끝나기를 기다린다.
-func applyDirect(t *testing.T, s *server) string {
+// applyRuns: 적용 실행의 자리들(시작한 순서대로).
+func applyRuns(s *server) []provRun {
+	var out []provRun
+	for _, r := range s.provAll() {
+		if !r.m.Check {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// applyVia: 화면이 하는 그대로 적용한다. 미리 보기(모든 작업이 바뀜 예정)로 권한을 받고, 적용 확인 페이지를 거쳐 그 양식을 보낸다.
+// 적용 실행의 가짜 Ansible은 mode로 돈다. 끝난 뒤의 06 화면을 돌려준다.
+func applyVia(t *testing.T, s *server, mode string) string {
 	t.Helper()
-	v, err := s.approveModel(ui.Page{})
-	if err != nil {
-		t.Fatal(err)
+	t.Setenv("FAKE_PROV", "")
+	if page := preview(t, s); !strings.Contains(page, "data-prov-apply") {
+		t.Fatalf("no way to the apply confirmation after a preview:\n%s", section(page, "approve-run"))
 	}
-	rd, blocks := s.provCheck(v)
-	if len(blocks) != 0 {
-		t.Fatalf("blocks: %v", blocks)
-	}
-	if err := s.startProv(rd, false, ""); err != nil {
-		t.Fatal(err)
+	t.Setenv("FAKE_PROV", mode)
+	if w := finalizeVia(t, s, "ko", ui.ProvApplyConfirmPath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusSeeOther {
+		t.Fatalf("apply = %d\n%s", w.Code, w.Body.String())
 	}
 	waitProv(t, s)
 	return get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
@@ -578,7 +579,7 @@ func TestRecordCutAfterTheHandshake(t *testing.T) {
 	if g, _ := provrun.ReadGrant(lastProv(t, s)); g != nil {
 		t.Error("preview: a grant was written")
 	}
-	page = applyDirect(t, s)
+	page = applyVia(t, s, "recfail2")
 	if got := applyStates(page); got != "web=done app=unknown db=not-run" {
 		t.Errorf("apply: %q", got)
 	}
@@ -586,8 +587,7 @@ func TestRecordCutAfterTheHandshake(t *testing.T) {
 		t.Errorf("apply: the node with a start and no result should read unknown, record cut:\n%s", section(page, "prov-apply"))
 	}
 
-	t.Setenv("FAKE_PROV", "garble2")
-	page = applyDirect(t, s)
+	page = applyVia(t, s, "garble2")
 	if got := applyStates(page); got != "web=done app=unknown db=unknown" {
 		t.Errorf("a record with an unreadable line: %q", got)
 	}
@@ -622,8 +622,8 @@ func rechecks(page string) string {
 // 있어, 화면의 실행 상태를 비운 뒤(다시 띄운 것과 같다)에도 같은 실행과 재확인이 이어진다. 입력이 바뀌면 재확인 버튼 대신 까닭이
 // 보이고 직접 보낸 요청은 409다.
 func TestApplyRecordAndRecheckSideBySide(t *testing.T) {
-	s := provServer(t, "fail2", threeNodes)
-	page := applyDirect(t, s)
+	s := provServer(t, "", threeNodes)
+	page := applyVia(t, s, "fail2")
 	apply := filepath.Base(lastProv(t, s))
 	if !strings.Contains(page, "실행 ID "+apply) || !strings.Contains(page, "data-prov-recheck>") || rechecks(page) != "" {
 		t.Fatalf("after the apply run:\n%s", section(page, "prov-apply"))
@@ -650,7 +650,7 @@ func TestApplyRecordAndRecheckSideBySide(t *testing.T) {
 			t.Errorf("after a recheck the screen lacks %q", want)
 		}
 	}
-	if g, _ := provrun.ReadGrant(lastProv(t, s)); g != nil || strings.Contains(page, "data-prov-grant") || strings.Contains(page, `id="prov-result"`) {
+	if g, _ := provrun.ReadGrant(lastProv(t, s)); g != nil || strings.Contains(page, `data-prov-run="`+first+`"`) {
 		t.Error("a recheck must leave no grant and must not show as a preview")
 	}
 
@@ -681,5 +681,178 @@ func TestApplyRecordAndRecheckSideBySide(t *testing.T) {
 	}
 	if w := postForm(t, s, ui.ProvRecheckPath, url.Values{}); w.Code != http.StatusConflict {
 		t.Errorf("recheck with changed inputs = %d, want 409", w.Code)
+	}
+}
+
+// IC-U243 — **적용은 확인을 거치고, 권한은 한 번만 쓰이고, 두 번째 실행은 시작되지 않는다.** 확인 페이지는 조직 · 대상 노드
+// 이름과 수 · 승인된 계획 · 생성된 플레이북 · 미리 보기의 실행과 만료 · 노드별 변경 예정 작업을 보이고, 마지막 버튼은 「3개 노드에
+// 적용」이다. **확인 페이지를 여는 것만으로는 권한이 쓰이지 않는다.** 적용을 누르면 실행 자리에 입력 사본(서명한 계획 · 플레이북)
+// 을 두고 `--check` 없이 돈다. 같은 양식을 도는 동안 다시 보내면 409(이미 돌고 있음)이고, 끝난 뒤에 다시 보내도, 화면의 실행
+// 상태를 비운 뒤(다시 띄운 것과 같다) 다시 보내도 409(유효한 미리 보기 없음)다. 적용 실행은 하나뿐이고, 권한의 소비 기록은 그
+// 실행의 ID를 적는다. 그 뒤 화면에는 적용으로 가는 버튼이 없다.
+func TestApplyGoesThroughTheConfirmationOnce(t *testing.T) {
+	s := provServer(t, "", threeNodes)
+	provStall = 3 // 상한은 미리 본 입력의 하나다. 미리 보기 전에 정한다(뒤에 바꾸면 입력이 바뀐 것이다)
+	preview(t, s)
+	grantDir := lastProv(t, s)
+	w := postFormLang(t, s, ui.ProvApplyConfirmPath, "ko", withRev(url.Values{}, s.revFor(ui.ScreenApprove)))
+	if w.Code != http.StatusOK {
+		t.Fatalf("confirm = %d\n%s", w.Code, w.Body.String())
+	}
+	confirm := w.Body.String()
+	signed, _ := loadPlanFile(s.signedPath())
+	for _, want := range []string{"조직: " + s.orgName(), "대상 노드 3개: web, app, db", signed.GetId(), "plan.provision.yml", filepath.Base(grantDir),
+		"web의 변경 예정", "db의 변경 예정", ">3개 노드에 적용<", "까지 유효", "L2 배치까지입니다"} {
+		if !strings.Contains(confirm, want) {
+			t.Errorf("the confirmation page lacks %q", want)
+		}
+	}
+	if provrun.Used(grantDir) || len(applyRuns(s)) != 0 {
+		t.Fatal("opening the confirmation page used the grant or started a run")
+	}
+	form := hiddenFields(confirm)
+	t.Setenv("FAKE_PROV", "hang2")
+	if w := postForm(t, s, ui.ProvApplyPath, form); w.Code != http.StatusSeeOther {
+		t.Fatalf("apply = %d\n%s", w.Code, w.Body.String())
+	}
+	if w := postForm(t, s, ui.ProvApplyPath, form); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedProvBusy) {
+		t.Errorf("the same form again while the run goes = %d, want 409 %s", w.Code, ui.RefusedProvBusy)
+	}
+	waitProv(t, s)
+	runs := applyRuns(s)
+	if len(runs) != 1 {
+		t.Fatalf("%d apply runs, want 1", len(runs))
+	}
+	if u := provrun.UsedBy(grantDir); u == nil || u.By != runs[0].m.ID {
+		t.Errorf("the use record = %+v, want by %s", u, runs[0].m.ID)
+	}
+	if out := fakeOut(t, "prov.txt"); strings.Count(out, "ARGS=") != 2 || strings.Count(out, "--check") != 1 {
+		t.Errorf("want one preview and one apply without --check:\n%s", out)
+	}
+	for _, name := range []string{provPlanCopy, provPlaybook} {
+		want := s.signedPath()
+		if name == provPlaybook {
+			want = s.provisionPath()
+		}
+		if readFile(t, filepath.Join(runs[0].dir, name)) != readFile(t, want) {
+			t.Errorf("the run folder's %s is not a copy of the input", name)
+		}
+	}
+	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
+	if got := applyStates(page); got != "web=done app=unknown db=not-run" || strings.Contains(page, "data-prov-apply") || !strings.Contains(page, `data-prov-grant="used"`) {
+		t.Errorf("after the apply: %q\n%s", got, section(page, "approve-run"))
+	}
+	again := func(what string) {
+		t.Helper()
+		if w := postForm(t, s, ui.ProvApplyPath, form); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedProvGrant) {
+			t.Errorf("%s: the same form = %d, want 409 %s", what, w.Code, ui.RefusedProvGrant)
+		}
+		if w := postForm(t, s, ui.ProvApplyConfirmPath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusConflict {
+			t.Errorf("%s: a new confirmation = %d, want 409", what, w.Code)
+		}
+		if len(applyRuns(s)) != 1 {
+			t.Errorf("%s: a second apply run was started", what)
+		}
+	}
+	again("after the run ended")
+	s.prov.mu.Lock()
+	s.prov.job = nil
+	s.prov.mu.Unlock()
+	s.recoverProv()
+	again("after a restart")
+}
+
+// IC-U244 — **권한은 준비 신호 뒤, 원격 작업을 허용하기 직전에 소비한다. 그 앞뒤에서 끊겨도 원격 작업은 0건이다.**
+//   - 소비 직전에 감독이 죽으면: 권한은 미사용이고 기록에 실행의 시작이 없다. 화면은 「원격 작업을 시작하지 않았고 미리 보기를
+//     쓰지 않았습니다」를 보이고, 같은 미리 보기로 다시 적용할 수 있다.
+//   - 소비 직전에 권한이 만료됐거나, 실행 자리의 입력 사본이 미리 본 것과 달라졌으면: 소비하지 않고 허용하지 않는다.
+//   - **소비 직후, 허용하기 전에 감독이 죽으면: 권한은 그 실행의 ID로 소비된 채이고 기록에 실행의 시작이 없다.** 화면은 「미리
+//     보기를 썼지만 원격 작업을 시작하지 않았습니다」와 새 미리 보기 안내를 보인다. 다시 보낸 요청과, 다시 띄운 뒤의 요청은
+//     409다. 두 번째 적용 실행은 시작되지 않는다.
+func TestGrantIsConsumedJustBeforeRemoteWorkIsAllowed(t *testing.T) {
+	s := provServer(t, "", threeNodes)
+	began := func(dir string) bool {
+		return strings.Contains(readOr(filepath.Join(dir, provEventsFile)), `"ev":"begin"`)
+	}
+	try := func(hook string) (string, provRun, string) {
+		t.Helper()
+		t.Setenv("FAKE_PROV_HOOK", "")
+		t.Setenv("FAKE_PROV", "")
+		preview(t, s)
+		grantDir := lastProv(t, s)
+		t.Setenv("FAKE_PROV_HOOK", hook)
+		if w := finalizeVia(t, s, "ko", ui.ProvApplyConfirmPath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusSeeOther {
+			t.Fatalf("%s: apply = %d\n%s", hook, w.Code, w.Body.String())
+		}
+		waitProv(t, s)
+		runs := applyRuns(s)
+		return get(t, s, ui.ScreenApprove+"?lang=ko").Body.String(), runs[len(runs)-1], grantDir
+	}
+	for _, hook := range []string{"before-consume:die", "before-consume:expire", "before-consume:swap"} {
+		page, run, grantDir := try(hook)
+		if began(run.dir) || provrun.Used(grantDir) {
+			t.Errorf("%s: began=%v used=%v, want no remote work and an unused grant", hook, began(run.dir), provrun.Used(grantDir))
+		}
+		if got := applyStates(page); got != "web=not-run app=not-run db=not-run" || !strings.Contains(page, `data-prov-begun="no"`) || strings.Contains(page, "data-prov-consumed") ||
+			!strings.Contains(page, "미리 보기를 쓰지 않았습니다") {
+			t.Errorf("%s: %q\n%s", hook, got, section(page, "prov-apply"))
+		}
+		if hook != "before-consume:die" && !strings.Contains(page, `data-prov-end="no-grant"`) {
+			t.Errorf("%s: the run should end for want of a usable grant", hook)
+		}
+	}
+	// 소비 직전에 죽은 뒤에는 같은 미리 보기로 다시 적용할 수 있다.
+	t.Setenv("FAKE_PROV_HOOK", "")
+	t.Setenv("FAKE_PROV", "")
+	preview(t, s)
+	grantDir := lastProv(t, s)
+	t.Setenv("FAKE_PROV_HOOK", "before-consume:die")
+	if w := finalizeVia(t, s, "ko", ui.ProvApplyConfirmPath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusSeeOther {
+		t.Fatalf("apply = %d", w.Code)
+	}
+	waitProv(t, s)
+	t.Setenv("FAKE_PROV_HOOK", "")
+	if page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String(); !strings.Contains(page, "data-prov-apply") {
+		t.Fatalf("after a run that died before consuming, the same preview should still allow an apply:\n%s", section(page, "approve-run"))
+	}
+	if w := finalizeVia(t, s, "ko", ui.ProvApplyConfirmPath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusSeeOther {
+		t.Fatalf("the retry = %d\n%s", w.Code, w.Body.String())
+	}
+	waitProv(t, s)
+	runs := applyRuns(s)
+	if u := provrun.UsedBy(grantDir); u == nil || u.By != runs[len(runs)-1].m.ID || !began(runs[len(runs)-1].dir) {
+		t.Errorf("the retry should consume the grant and begin: %+v", u)
+	}
+
+	before := len(applyRuns(s))
+	page, run, grantDir := try("after-consume:die")
+	if began(run.dir) {
+		t.Fatal("after-consume: remote work began although the go-ahead was never given")
+	}
+	if u := provrun.UsedBy(grantDir); u == nil || u.By != run.m.ID {
+		t.Errorf("after-consume: the use record = %+v, want by %s", u, run.m.ID)
+	}
+	if got := applyStates(page); got != "web=not-run app=not-run db=not-run" || !strings.Contains(page, "data-prov-consumed") || !strings.Contains(page, "미리 보기를 썼지만 원격 작업을 시작하지 않았습니다") ||
+		strings.Contains(page, "data-prov-apply") || !strings.Contains(page, `data-prov-grant="used"`) {
+		t.Errorf("after-consume: %q\n%s", got, section(page, "approve-run"))
+	}
+	t.Setenv("FAKE_PROV_HOOK", "")
+	refused := func(what string) {
+		t.Helper()
+		if w := postForm(t, s, ui.ProvApplyConfirmPath, withRev(url.Values{}, s.revFor(ui.ScreenApprove))); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedProvGrant) {
+			t.Errorf("%s: a new apply = %d, want 409 %s", what, w.Code, ui.RefusedProvGrant)
+		}
+		if len(applyRuns(s)) != before+1 {
+			t.Errorf("%s: another apply run was started", what)
+		}
+	}
+	refused("after the run")
+	s.prov.mu.Lock()
+	s.prov.job = nil
+	s.prov.mu.Unlock()
+	s.recoverProv()
+	refused("after a restart")
+	if began(run.dir) {
+		t.Error("after a restart the record should still show no remote work")
 	}
 }

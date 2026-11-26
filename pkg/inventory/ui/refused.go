@@ -34,6 +34,8 @@ const (
 	// RefusedProvNotReady · RefusedProvBusy — 06의 미리 보기를 시작하지 않았다(409).
 	RefusedProvNotReady = "prov-not-ready"
 	RefusedProvBusy     = "prov-busy"
+	// RefusedProvGrant — 적용을 시작하지 않았다(409). 유효한 미리 보기가 없다(없음 · 만료 · 입력이 바뀜 · 이미 쓰임).
+	RefusedProvGrant = "prov-grant"
 	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 06 화면이 서명 · 생성을 하지 않았다(409).
 	RefusedSignNotReady      = "sign-not-ready"
 	RefusedPlanNotApprovable = "plan-not-approvable"
@@ -100,6 +102,7 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedDiagnostic: {tErrInputBrokenHead, tRefusedDiagnostic}, RefusedExists: {body: tRefusedExists},
 	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
 	RefusedProvNotReady: {tProvRefusedHead, tProvRefusedNotReady}, RefusedProvBusy: {tProvRefusedHead, tProvRefusedBusy},
+	RefusedProvGrant:    {tApplyRefusedHead, tApplyRefusedGrant},
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
 	RefusedRulesetChanged:      {body: tRefusedRulesetChanged},

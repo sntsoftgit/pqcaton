@@ -573,6 +573,8 @@ func (s *server) handler() http.Handler {
 	r.Post(ui.ProvPreviewPath, s.provPreview)
 	r.Post(ui.ProvStopPath, s.provStop)
 	r.Post(ui.ProvRecheckPath, s.provRecheck)
+	r.Post(ui.ProvApplyConfirmPath, s.provApplyConfirm)
+	r.Post(ui.ProvApplyPath, s.provApply)
 	r.Get(ui.ScreenSurvey, s.survey)
 	r.Get(ui.SurveyPicturePath, s.surveyPicture)
 	r.Get(ui.SurveyDotPath, s.surveyDOT)
