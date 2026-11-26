@@ -124,6 +124,9 @@ func (r ProvResult) EndText(l Lang) string {
 		return provEndText["stall"].F(l, r.Stall)
 	case r.End == "orphaned":
 		return provEndText["stopped"].In(l)
+	case r.End == "lost" && !r.Began:
+		// 원격 작업이 시작된 적이 없는 실행이다. 「이미 시작한 원격 작업」을 말하지 않는다.
+		return provEndText["lost-idle"].In(l)
 	case r.End != "":
 		return provEndText[r.End].In(l)
 	case !r.RecordWhole:

@@ -1891,6 +1891,9 @@ var provEndText = map[string]T{
 	"not-allowed": {
 		KO: "원격 작업을 허용하지 못해 시작하지 않았습니다.",
 		EN: "Remote work could not be allowed, so none was started."},
+	"lost-idle": {
+		KO: "감독이 결과를 남기지 못하고 끝났습니다. 기록에 실행의 시작이 없습니다.",
+		EN: "The supervisor ended without leaving a result. The record has no start of the run."},
 	"cut": {
 		KO: "실행 기록 중단. 기록이 끝까지 이어지지 않습니다.",
 		EN: "The run record was cut short: it does not run to the end."},

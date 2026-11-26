@@ -498,7 +498,7 @@ func (s *server) provAll() []provRun {
 func provResult(r *provRun) (*ui.ProvResult, provrun.Verdict) {
 	vd, res := provVerdict(r.dir, r.m)
 	out := &ui.ProvResult{ID: r.m.ID, Check: r.m.Check, Started: r.m.Started, Outcome: string(vd.Outcome), End: vd.End,
-		RecordWhole: vd.RecordWhole, Stall: r.m.Stall}
+		RecordWhole: vd.RecordWhole, Stall: r.m.Stall, Began: vd.Began}
 	if res != nil {
 		out.Ended = res.Ended
 	}
@@ -541,9 +541,7 @@ func (s *server) provModel(v ui.ApproveView) ui.ProvRun {
 	s.prov.mu.Unlock()
 	apply, recheck, preview, newest := s.provPicks(out.RunningID)
 	if apply != nil {
-		var avd provrun.Verdict
-		out.Apply, avd = provResult(apply)
-		out.Apply.Began = avd.Began
+		out.Apply, _ = provResult(apply)
 		if apply.m.Grant != "" && filepath.Base(apply.m.Grant) == apply.m.Grant {
 			if u := provrun.UsedBy(filepath.Join(s.provDir(), apply.m.Grant)); u != nil && u.By == apply.m.ID {
 				out.Apply.Consumed = true

@@ -843,6 +843,10 @@ func TestGrantIsConsumedJustBeforeRemoteWorkIsAllowed(t *testing.T) {
 	if u := provrun.UsedBy(grantDir); u == nil || u.By != run.m.ID {
 		t.Errorf("after-consume: the use record = %+v, want by %s", u, run.m.ID)
 	}
+	// 시작한 적이 없는 실행에 「이미 시작한 원격 작업」을 말하지 않는다.
+	if strings.Contains(section(page, "prov-apply"), "이미 시작한 원격 작업") || !strings.Contains(page, "기록에 실행의 시작이 없습니다") {
+		t.Errorf("after-consume: the screen should not speak of remote work that had started:\n%s", section(page, "prov-apply"))
+	}
 	if got := applyStates(page); got != "web=not-run app=not-run db=not-run" || !strings.Contains(page, "data-prov-consumed") || !strings.Contains(page, "미리 보기를 썼지만 원격 작업을 시작하지 않았습니다") ||
 		strings.Contains(page, "data-prov-apply") || !strings.Contains(page, `data-prov-grant="used"`) {
 		t.Errorf("after-consume: %q\n%s", got, section(page, "approve-run"))
