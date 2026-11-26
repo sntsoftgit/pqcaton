@@ -184,7 +184,8 @@ func TestSurveyDoesNotWaitForThePicture(t *testing.T) {
 
 	page := get(t, s, ui.ScreenSurvey+"?lang=ko")
 	body := page.Body.String()
-	for _, sub := range []string{`hx-get="` + ui.SurveyPicturePath + `?lang=ko"`, `hx-trigger="load"`, `data-picture="pending"`,
+	for _, sub := range []string{`hx-get="` + ui.SurveyPicturePath + `?lang=ko"`, `hx-trigger="load"`, `class="hint picture-progress" data-picture="pending"`,
+		`data-picture="place"`, `href="` + ui.SurveyDotPath + `"`,
 		`class="metrics"`, `table class="edges"`, `href="` + ui.ScreenReview + `"`, `data-hist-topo-link`} {
 		if !strings.Contains(body, sub) {
 			t.Errorf("04 lacks %q", sub)
@@ -208,5 +209,42 @@ func TestSurveyDoesNotWaitForThePicture(t *testing.T) {
 	answer = func(context.Context, string) ([]byte, error) { return []byte(graphvizSVG), nil }
 	if p := get(t, s, ui.SurveyPicturePath+"?lang=en").Body.String(); !strings.Contains(p, "data-survey-picture") || !strings.Contains(p, "<svg") || strings.Contains(p, "<textarea") {
 		t.Errorf("04's drawn picture: %s", p)
+	}
+}
+
+// IC-U231 — **스크립트를 끈 브라우저는 끝나지 않을 「그리고 있습니다」를 보지 않고, DOT을 받을 수 있다.**
+//
+// 그림 조각은 스크립트가 청한다. 스크립트가 없으면 요청이 시작되지 않으므로, 첫 HTML의 진행 문구는 그 자리가 요청 중일
+// 때만 보이게 숨겨 두고(스타일이 가른다), DOT으로 가는 링크는 그림 자리 밖의 첫 HTML에 둔다. 04의 DOT도 따로 받을 수 있다.
+func TestPicturePlaceWorksWithoutScripts(t *testing.T) {
+	s, _ := activationReady(t)
+	useEndpoints(t, inventory.NewMemMetaStore(), nil)
+	s.upstream, s.upstreamOrgName = wholeMem{ingestedUnder(t, s, s.scopeAssets, nil)}, s.orgName()
+	for screen, dot := range map[string]string{ui.ScreenSurvey: ui.SurveyDotPath, ui.ScreenHistTopo: ui.HistTopoDotPath} {
+		for _, lang := range []string{"ko", "en"} {
+			body := get(t, s, screen+"?lang="+lang).Body.String()
+			link := strings.Index(body, `href="`+dot+`"`)
+			place := strings.Index(body, `hx-trigger="load"`)
+			if link < 0 || place < 0 || link > place {
+				t.Errorf("%s (%s): the DOT link must be in the first HTML, before and outside the picture place (link %d, place %d)", screen, lang, link, place)
+			}
+			if strings.Count(body, `data-picture="pending"`) != 1 || !strings.Contains(body, `class="hint picture-progress" data-picture="pending"`) {
+				t.Errorf("%s (%s): the progress line is not the hidden-until-requested one", screen, lang)
+			}
+			if !strings.Contains(body, `data-picture="place"`) {
+				t.Errorf("%s (%s): the picture place does not say that the DOT can be downloaded without the picture", screen, lang)
+			}
+		}
+	}
+	css := get(t, s, "/static/app.css").Body.String()
+	for _, rule := range []string{"body.wb .picture-progress { display: none; }", "body.wb .htmx-request .picture-progress { display: block; }"} {
+		if !strings.Contains(css, rule) {
+			t.Errorf("app.css lacks %q", rule)
+		}
+	}
+	d := get(t, s, ui.SurveyDotPath)
+	if d.Code != http.StatusOK || !strings.HasPrefix(d.Body.String(), "digraph crypto_topology {") ||
+		!strings.HasPrefix(d.Header().Get("Content-Type"), "text/vnd.graphviz") || !strings.Contains(d.Header().Get("Content-Disposition"), "attachment") {
+		t.Errorf("04's DOT download: %d %v", d.Code, d.Header())
 	}
 }

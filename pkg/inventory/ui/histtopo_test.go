@@ -75,7 +75,7 @@ func TestHistoryTopologyStatesItsSourceAndReadsWithoutThePicture(t *testing.T) {
 				"IP shared by registered nodes: 2", "unregistered address", "← accepted", "→ opened", "↔ not confirmed", "Download DOT"}
 		}
 		for _, s := range append(words, `data-hist-org>demo-corp<`, `data-compare="same"`, `data-compare="differ"`, `data-compare="none"`,
-			`data-hist-only-local="1"`, `data-hist-endpoints="2"`, `href="`+ui.HistTopoDotPath+`"`, `data-picture="pending"`,
+			`data-hist-only-local="1"`, `data-hist-endpoints="2"`, `href="`+ui.HistTopoDotPath+`"`, `class="hint picture-progress" data-picture="pending"`, `data-picture="place"`,
 			`hx-get="`+ui.HistTopoPicturePath+`?lang=`+string(l)+`"`, `hx-trigger="load"`,
 			`title="`+strings.Repeat("b", 64)+`"`, "/opt/apps/&lt;script&gt;alert(1)&lt;/script&gt;") {
 			if !strings.Contains(body, s) {

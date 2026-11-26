@@ -239,7 +239,7 @@ templ histPicture(v HistTopoView) {
 		<p class="hint">{ tHistPictureNote.In(v.Page.Lang) }</p>
 		<p><a class="quiet" href={ templ.SafeURL(HistTopoDotPath) } download="pqcota-topology.dot" data-hist-dot>{ tDotDownload.In(v.Page.Lang) }</a></p>
 		<div id="hist-picture" hx-get={ HistTopoPicturePath + "?" + LangParam + "=" + string(v.Page.Lang) } hx-trigger="load" hx-swap="innerHTML">
-			<p class="hint" data-picture="pending">{ tHistPicturePending.In(v.Page.Lang) }</p>
+			@picturePlace(v.Page.Lang, tHistPicturePending.In(v.Page.Lang))
 		</div>
 	</fieldset>
 }

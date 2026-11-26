@@ -558,6 +558,7 @@ func (s *server) handler() http.Handler {
 	r.Post(ui.GeneratePath, s.approveGenerate)
 	r.Get(ui.ScreenSurvey, s.survey)
 	r.Get(ui.SurveyPicturePath, s.surveyPicture)
+	r.Get(ui.SurveyDotPath, s.surveyDOT)
 	r.Get(ui.ScreenHistTopo, s.histTopology)
 	r.Get(ui.HistTopoDotPath, s.histTopologyDOT)
 	r.Get(ui.HistTopoPicturePath, s.histTopologyPicture)
@@ -1330,6 +1331,18 @@ func (s *server) surveyPicture(w http.ResponseWriter, r *http.Request) {
 		svg, state = renderDOT(dot)
 	}
 	html(w, r, func(out io.Writer) error { return ui.RenderSurveyPicture(out, l, svg, state, dot, unreadable) })
+}
+
+// surveyDOT — 04의 대조 그림의 DOT. `dot`이 없어도, 그림 조각을 받지 않는 브라우저에서도 받을 수 있다.
+func (s *server) surveyDOT(w http.ResponseWriter, r *http.Request) {
+	wd := s.load()
+	if s.results == "" || wd.resErr != nil || wd.res == nil {
+		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, fmt.Errorf("survey topology: %w", wd.resErr))
+		return
+	}
+	w.Header().Set("Content-Type", "text/vnd.graphviz; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="pqcaton-topology.dot"`)
+	_, _ = io.WriteString(w, reconcile.RenderTopologyDOT(wd.res.Edges, wd.res.Uncovered, wd.res.UnconfirmedEdges))
 }
 
 // ── 인벤토리 조회 ──────────────────────────────────────────────────────────

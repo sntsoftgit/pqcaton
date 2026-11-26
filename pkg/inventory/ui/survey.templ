@@ -177,8 +177,9 @@ templ surveyBody(v SurveyView) {
 	<fieldset>
 		<legend>{ tTopology.In(v.Page.Lang) }</legend>
 		@tip(v.Page.Lang, tTopologyHint.In(v.Page.Lang))
+		<p><a class="quiet" href={ templ.SafeURL(SurveyDotPath) } download="pqcaton-topology.dot" data-survey-dot>{ tDotDownload.In(v.Page.Lang) }</a></p>
 		<div id="survey-picture" hx-get={ SurveyPicturePath + "?" + LangParam + "=" + string(v.Page.Lang) } hx-trigger="load" hx-swap="innerHTML">
-			<p class="hint" data-picture="pending">{ tSurveyPicturePending.In(v.Page.Lang) }</p>
+			@picturePlace(v.Page.Lang, tSurveyPicturePending.In(v.Page.Lang))
 		</div>
 		<p style="margin-top:.8rem">
 			<a class="quiet" href={ templ.SafeURL(ScreenHistTopo) } data-hist-topo-link>{ tHistTopoTitle.In(v.Page.Lang) }</a>
@@ -213,6 +214,14 @@ templ surveyPictureBody(lang Lang, svg, state, dot string, unreadable bool) {
 		@pictureMissing(lang, state)
 		<textarea readonly style="min-height:12rem" aria-label="DOT">{ dot }</textarea>
 	}
+}
+
+// picturePlace — 그림이 들어올 자리의 첫 내용. **진행 문구는 그림 요청이 실제로 나가 있는 동안에만 보인다**(끼워 넣는 쪽이
+// 요청 중인 자리에 붙이는 표시로 켠다). 스크립트를 끈 브라우저에서는 요청이 시작되지 않으므로 「그리고 있습니다」가 보이지
+// 않고, 그림 없이도 DOT을 받을 수 있다는 말만 남는다. DOT 링크는 이 자리 밖, 첫 HTML에 있다.
+templ picturePlace(lang Lang, progress string) {
+	<p class="hint" data-picture="place">{ tPicturePlace.In(lang) }</p>
+	<p class="hint picture-progress" data-picture="pending" role="status">{ progress }</p>
 }
 
 // pictureMissing — 그림이 없는 까닭. `dot`이 없는 것(선택 사항)과 그렸지만 싣지 않는 것을 가른다. 04와 이력 화면이 함께 쓴다.

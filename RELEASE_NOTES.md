@@ -74,9 +74,9 @@ Not a direction but **a boundary**, written so nobody waits for them.
 
 ---
 
-## v0.33.0: See app connections from the pqcota history on 04, with pictures drawn apart from the screen (2026-11-24)
+## v0.33.0: See app connections from the pqcota history on 04, with pictures drawn apart from the screen (2026-11-26)
 
-**Apache-2.0 conversion: 2030-11-24** (four years from the release date)
+**Apache-2.0 conversion: 2030-11-26** (four years from the release date)
 
 **Goal**: open "App connections from the history" on 04 to see, from the observations loaded into the pqcota history of the judgment
 organization, which app on each node talked to what. And keep a topology picture from holding the screen back. The pqcota to use with it,
@@ -99,7 +99,8 @@ they are.
     in the operator guide, section 6, under 04: "When a peer shows only as an address".
 - **The pictures on 04 and on the history screen are drawn after the screen appears.** 04 first shows the numbers of the
   reconciliation, the tables and the link to 05, and the picture arrives afterwards. With a slow `dot` you can still read the tables
-  and move on.
+  and move on. Both screens have "Download DOT" above the place of the picture, so without the picture the source can be downloaded
+  and drawn elsewhere. In a browser with scripts turned off the picture does not arrive; the tables and the DOT download work.
 - **Drawing has limits.** They are 10 seconds and 4 MiB. Beyond them the picture is not drawn and the reason shows. 04 keeps the DOT
   source and the history screen keeps the DOT download.
 - **A picture is checked before it is embedded.** When the SVG that `dot` wrote holds anything other than the elements, attributes and
@@ -119,7 +120,7 @@ they are.
   same picture is not drawn twice.
 - The demo end-to-end run gained a path through the history screen: opened as the screen's account, it checks the judgment
   organization, the per-node digest match, the summary table and the DOT download.
-- New cases IC-S29, IC-UI76 and IC-U227 to IC-U230.
+- New cases IC-S29, IC-UI76 and IC-U227 to IC-U231.
 
 ### What was checked
 
@@ -138,6 +139,8 @@ they are.
 - **A slow `dot`.** With a `dot` that hangs for 60 seconds, 04 showed its tables before the picture and moved on to 05. On the
   history screen the table with a node chosen and the DOT download worked at once. On both screens the time limit showed in place of
   the picture after about 10 seconds.
+- **A browser with scripts turned off.** Both screens were opened in Firefox with script execution disabled: the tables and "Download
+  DOT" showed, and "The picture is being drawn" did not. With scripts on, the picture arrived apart from the screen.
 - **A narrow screen.** At 375px a node was chosen and its apps, directions and peers were read without horizontal scrolling. The
   picture scrolls sideways only inside its box.
 - Not measured: the query time and the length of the tables for an organization with many nodes (three nodes were used).

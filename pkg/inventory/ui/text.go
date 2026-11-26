@@ -768,6 +768,9 @@ var (
 	tSVGTooLarge = T{
 		KO: "그림이 화면에 싣는 크기 상한을 넘어 그리지 않았습니다. DOT을 내려받아 따로 그리십시오.",
 		EN: "The picture is larger than this screen embeds, so it is not drawn. Download the DOT and draw it elsewhere."}
+	tPicturePlace = T{
+		KO: "그림은 이 화면과 따로 그려 이 자리에 들어옵니다. 그림이 없어도 위의 「DOT 내려받기」로 받아 다른 곳에서 그릴 수 있습니다.",
+		EN: "The picture is drawn apart from this screen and arrives in this place. Without it, “Download DOT” above gives the source to draw elsewhere."}
 	tSurveyPicturePending = T{
 		KO: "그림을 그리고 있습니다. 위의 대조 결과와 표는 그림과 관계없이 볼 수 있습니다.",
 		EN: "The picture is being drawn. The reconciliation and the tables above can be read regardless of the picture."}

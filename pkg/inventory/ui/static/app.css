@@ -274,6 +274,10 @@ body.wb table.histtopo td code { display: inline-block; min-width: 4.5rem; overf
 body.wb table.histtopo td .hint { display: block; }
 body.wb table.histtopo td.dir { white-space: nowrap; }
 body.wb .picture-scroll { overflow-x: auto; max-width: 100%; }
+/* 그림 자리의 진행 문구는 그 자리가 그림을 청하고 있는 동안에만 보인다(htmx가 요청 중인 요소에 htmx-request를 붙인다).
+   스크립트를 끈 브라우저에서는 요청이 시작되지 않으므로 보이지 않는다: 끝나지 않을 「그리고 있습니다」로 기다리게 하지 않는다. */
+body.wb .picture-progress { display: none; }
+body.wb .htmx-request .picture-progress { display: block; }
 body.wb .table-wrap > table:not(.editable) th:first-child,
 body.wb .table-wrap > table:not(.editable) td:first-child {
   position: sticky; left: 0; z-index: 1; background: var(--surface); }

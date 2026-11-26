@@ -18,6 +18,8 @@ const (
 	HistTopoDotPath = "/survey/history.dot"
 	// SurveyPicturePath — 04의 대조 그림 조각. 대조 결과와 표가 `dot`을 기다리지 않게 따로 받는다.
 	SurveyPicturePath = "/survey/picture"
+	// SurveyDotPath — 04의 대조 그림의 DOT. 그림이 없어도(스크립트를 끈 브라우저에서도) 받을 수 있다.
+	SurveyDotPath = "/survey/topology.dot"
 	// HistTopoPicturePath — 그 화면의 그림 조각. 표와 따로 그린다(조직 전체의 그림은 오래 걸릴 수 있다).
 	HistTopoPicturePath = "/survey/history/picture"
 )
