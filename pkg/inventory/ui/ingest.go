@@ -6,6 +6,7 @@ package ui
 import (
 	"context"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -71,6 +72,16 @@ func shortRef(l Lang, d string) string {
 		return d[:12]
 	}
 	return d
+}
+
+// shortPolicy — 정책 지문을 알아볼 수 있게 줄인다. 지문은 「형식 이름:해시」 꼴이라 앞에서 자르면 형식 이름만 남는다.
+// 그래서 형식 이름은 두고 해시만 앞 열두 자로 줄인다.
+func shortPolicy(l Lang, d string) string {
+	i := strings.LastIndex(d, ":")
+	if i < 0 {
+		return shortRef(l, d)
+	}
+	return d[:i+1] + shortRef(l, d[i+1:])
 }
 
 // IngestLast — 가장 최근 적재의 기록. Nodes는 **지금 이력을 다시 읽은** 상태다.

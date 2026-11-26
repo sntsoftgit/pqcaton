@@ -37,7 +37,7 @@ templ observeIngest(v ObserveView) {
 			if v.Ingest.NoPolicy {
 				{ tIngestSummaryNoPolicy.F(v.Page.Lang, v.Ingest.Files, v.Ingest.Observed) }
 			} else {
-				{ tIngestSummary.F(v.Page.Lang, v.Ingest.Files, shortRef(v.Page.Lang, v.Ingest.PolicyDigest), v.Ingest.Observed-v.Ingest.Managed, v.Ingest.Observed) }
+				{ tIngestSummary.F(v.Page.Lang, v.Ingest.Files, shortPolicy(v.Page.Lang, v.Ingest.PolicyDigest), v.Ingest.Observed-v.Ingest.Managed, v.Ingest.Observed) }
 			}
 		</p>
 		if v.Ingest.StateUnknown {

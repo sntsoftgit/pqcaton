@@ -245,9 +245,9 @@ func observeIngest(v ObserveView) templ.Component {
 				}
 			} else {
 				var templ_7745c5c3_Var15 string
-				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(tIngestSummary.F(v.Page.Lang, v.Ingest.Files, shortRef(v.Page.Lang, v.Ingest.PolicyDigest), v.Ingest.Observed-v.Ingest.Managed, v.Ingest.Observed))
+				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(tIngestSummary.F(v.Page.Lang, v.Ingest.Files, shortPolicy(v.Page.Lang, v.Ingest.PolicyDigest), v.Ingest.Observed-v.Ingest.Managed, v.Ingest.Observed))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/ingest.templ`, Line: 40, Col: 152}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/ingest.templ`, Line: 40, Col: 155}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {

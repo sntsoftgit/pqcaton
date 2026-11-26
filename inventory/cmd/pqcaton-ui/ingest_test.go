@@ -4,6 +4,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -159,6 +160,10 @@ func TestResultsAreIngestedOnlyWhenTheOperatorConfirms(t *testing.T) {
 	if got := ingestStates(page, ""); got != "db=absent web=absent" || !strings.Contains(page, "data-ingest-go") {
 		t.Fatalf("before the ingest: %q\n%s", got, section(page, "observe-ingest"))
 	}
+	// 요약 줄의 정책 지문은 형식 이름만 남게 잘리지 않는다: 형식 이름 뒤에 해시의 앞부분이 온다.
+	if !regexp.MustCompile(`활성 정책 scope-policy-v1:[0-9a-f]{12} `).MatchString(page) {
+		t.Errorf("the summary does not show a recognizable policy fingerprint\n%s", section(page, "observe-ingest"))
+	}
 	form, confirm := ingestForm(t, s)
 	for _, want := range []string{"조직: " + s.orgName(), "활성 정책의 지문: ", "서명을 확인한 결과 파일: 2개", "정책으로 제외되는 자산: ", "web: 기대하는 참조", "되돌릴 수 없습니다", ">이력에 적재<"} {
 		if !strings.Contains(confirm, want) {
@@ -211,6 +216,30 @@ func TestResultsAreIngestedOnlyWhenTheOperatorConfirms(t *testing.T) {
 	})
 }
 
+// dropSignature: 결과에서 서명 필드를 뺀다. protojson의 출력은 빌드마다 공백이 달라서 글자로 지우면 JSON이 깨질 수 있다.
+// 그래서 해독해서 뺀다.
+func dropSignature(b string) string {
+	var v any
+	if err := json.Unmarshal([]byte(b), &v); err != nil {
+		return b
+	}
+	var walk func(any)
+	walk = func(x any) {
+		if m, ok := x.(map[string]any); ok {
+			delete(m, "signature")
+			for _, c := range m {
+				walk(c)
+			}
+		}
+	}
+	walk(v)
+	out, err := json.Marshal(v)
+	if err != nil {
+		return b
+	}
+	return string(out)
+}
+
 func readOrEmpty(p string) string {
 	b, _ := os.ReadFile(p)
 	return string(b)
@@ -225,10 +254,8 @@ func TestOneBadSignatureRefusesTheWholeSet(t *testing.T) {
 		why  string
 	}{
 		"changed after signing": {func(b string) string { return strings.Replace(b, "v0.20.0", "v9.9.9", 1) }, ui.IngestWhyMismatch},
-		"not signed": {func(b string) string {
-			return regexp.MustCompile(`,?"signature":"[^"]*"`).ReplaceAllString(b, "")
-		}, ui.IngestWhyUnsigned},
-		"not a result": {func(string) string { return `{"envelope": 1` }, ui.IngestWhyNotResult},
+		"not signed":            {dropSignature, ui.IngestWhyUnsigned},
+		"not a result":          {func(string) string { return `{"envelope": 1` }, ui.IngestWhyNotResult},
 	} {
 		t.Run(name, func(t *testing.T) {
 			s, mem := ingestServer(t)
