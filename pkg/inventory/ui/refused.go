@@ -36,6 +36,11 @@ const (
 	RefusedProvBusy     = "prov-busy"
 	// RefusedProvGrant — 적용을 시작하지 않았다(409). 유효한 미리 보기가 없다(없음 · 만료 · 입력이 바뀜 · 이미 쓰임).
 	RefusedProvGrant = "prov-grant"
+	// RefusedIngestNotReady · RefusedIngestBusy · RefusedIngestReplay — 03의 이력 적재를 시작하지 않았다(409). 조건이 맞지
+	// 않거나(설정 · 서명 · 이미 적재됨 · 이력을 읽지 못함), 이미 돌고 있거나, 이 확인으로 이미 한 번 시작했다.
+	RefusedIngestNotReady = "ingest-not-ready"
+	RefusedIngestBusy     = "ingest-busy"
+	RefusedIngestReplay   = "ingest-replayed"
 	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 06 화면이 서명 · 생성을 하지 않았다(409).
 	RefusedSignNotReady      = "sign-not-ready"
 	RefusedPlanNotApprovable = "plan-not-approvable"
@@ -102,7 +107,9 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedDiagnostic: {tErrInputBrokenHead, tRefusedDiagnostic}, RefusedExists: {body: tRefusedExists},
 	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
 	RefusedProvNotReady: {tProvRefusedHead, tProvRefusedNotReady}, RefusedProvBusy: {tProvRefusedHead, tProvRefusedBusy},
-	RefusedProvGrant:    {tApplyRefusedHead, tApplyRefusedGrant},
+	RefusedProvGrant:      {tApplyRefusedHead, tApplyRefusedGrant},
+	RefusedIngestNotReady: {tIngestRefusedHead, tIngestRefusedNotReady}, RefusedIngestBusy: {tIngestRefusedHead, tIngestRefusedBusy},
+	RefusedIngestReplay: {tIngestRefusedHead, tIngestRefusedReplay},
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
 	RefusedRulesetChanged:      {body: tRefusedRulesetChanged},

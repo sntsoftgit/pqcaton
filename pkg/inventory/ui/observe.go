@@ -53,6 +53,9 @@ type ObserveView struct {
 	Problems []HostProblem
 	// Run — 관측 실행. 저장하지 않는 서버(보기 전용 · 복구)에서는 Checks가 비고 시작 단추가 없다.
 	Run ObserveRun
+	// Ingest — 이력에 적재(ingest.go). 결과 폴더가 없는 서버에서는 구역을 그리지 않는다.
+	Ingest     IngestView
+	HasResults bool
 }
 
 // ObserveRun — 관측 실행 구역.

@@ -63,6 +63,10 @@ const (
 	SignPath        = "/approve/sign"
 	SignConfirmPath = "/approve/sign/confirm"
 	GeneratePath    = "/approve/generate"
+	// IngestPath — 03의 이력 적재. GET은 도는 동안의 상태 조각, POST는 확인을 거친 적재 시작이다. IngestConfirmPath — 적재 전
+	// 확인(아무것도 쓰지 않는다).
+	IngestPath        = "/observe/ingest"
+	IngestConfirmPath = "/observe/ingest/confirm"
 	// ProvRunPath — 06의 실행 상태 조각(GET). ProvPreviewPath — 대상 노드 미리 보기를 시작한다. ProvStopPath — 멈춘다.
 	ProvRunPath     = "/approve/run"
 	ProvPreviewPath = "/approve/preview"

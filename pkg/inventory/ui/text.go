@@ -1027,10 +1027,15 @@ var (
 	tSetUpstreamOrgHow = T{
 		KO: "판정 조직과 같습니다. `pqcota-ingest`도 `PQCOTA_ORG`를 이 값으로 주고 적재해야 여기서 보입니다.",
 		EN: "It is the organization of the judgments. `pqcota-ingest` must load with `PQCOTA_ORG` set to this value for the data to show here."}
-	tSetDSN     = T{KO: "연결 정보의 출처", EN: "Where the connection comes from"}
-	tSetDSNEnv  = T{KO: "환경 변수 PQCOTA_DSN", EN: "the environment variable PQCOTA_DSN"}
-	tSetDSNFile = T{KO: "사용자 설정 폴더의 pqcaton/pqcota.env", EN: "pqcaton/pqcota.env in the user configuration folder"}
-	tSetDSNHow  = T{
+	tSetDSN       = T{KO: "연결 정보의 출처", EN: "Where the connection comes from"}
+	tSetDSNEnv    = T{KO: "환경 변수 %s", EN: "the environment variable %s"}
+	tSetDSNFile   = T{KO: "사용자 설정 폴더의 pqcaton/pqcota.env (%s)", EN: "pqcaton/pqcota.env in the user configuration folder (%s)"}
+	tSetIngest    = T{KO: "화면에서 이력 적재", EN: "Ingesting into the history from the screen"}
+	tSetIngestOff = T{KO: "하지 않음(적재용 연결 정보가 설정되지 않았습니다)", EN: "off (no connection for ingesting is set)"}
+	tSetIngestHow = T{
+		KO: "조회용 연결 정보를 PQCOTA_READONLY_DSN에, 같은 데이터베이스의 적재 계정 연결 정보를 PQCOTA_DSN에 둡니다. 둘 다 있을 때만 화면에서 적재합니다. 적재용 연결 정보를 설정한 화면 서버는 그 값을 읽을 수 있습니다.",
+		EN: "Put the read connection in PQCOTA_READONLY_DSN and the ingest account's connection to the same database in PQCOTA_DSN. The screen ingests only when both are set. A screen server with the ingest connection set can read that value."}
+	tSetDSNHow = T{
 		KO: "환경 변수 `PQCOTA_DSN`이 먼저이고, 없으면 사용자 설정 폴더의 `pqcaton/pqcota.env`를 읽습니다. 값은 화면에 보이지 않습니다.",
 		EN: "The environment variable `PQCOTA_DSN` comes first; without it the screen reads `pqcaton/pqcota.env` in the user configuration folder. The value is not shown on the screen."}
 
@@ -1925,4 +1930,122 @@ var provTaskText = map[string]T{
 	"changed-apply": {KO: "바꿈", EN: "changed"}, "failed": {KO: "실패", EN: "failed"}, "skipped": {KO: "건너뜀", EN: "skipped"},
 	"unreachable": {KO: "접속 실패", EN: "could not connect"}, "no-result": {KO: "결과 없음", EN: "no result"},
 	"not-started": {KO: "시작 안 함", EN: "not started"},
+}
+
+// 03 관측: 이력에 적재(ingest.go · ingest.templ).
+var (
+	tIngestHead = T{KO: "이력에 적재", EN: "Ingest into the history"}
+	tIngestLede = T{
+		KO: "지금 결과 폴더의 서명된 결과를 활성 정책으로 pqcota 이력에 적재합니다. 관측이 끝나도 스스로 적재하지 않습니다.",
+		EN: "Ingests the signed results in the results folder into the pqcota history under the active policy. Nothing is ingested on its own when an observation ends."}
+	tIngestNotConfigured = T{
+		KO: "화면에서 적재하도록 설정되지 않았습니다. 화면은 조회만 합니다.",
+		EN: "The screen is not set up to ingest. It only reads."}
+	tIngestTerminal = T{
+		KO: "<b>화면에서 적재하려면</b> 조회용 연결 정보를 <code>PQCOTA_READONLY_DSN</code>에, 같은 데이터베이스의 적재 계정 연결 정보를 <code>PQCOTA_DSN</code>에 두고 화면을 다시 띄웁니다.<br>" +
+			"<b>터미널에서 적재하려면</b> 운영자 안내서 6절대로 <code>pqcota-ingest -verify-keys</code>로 확인한 뒤 <code>pqcota-ingest -scope-assets</code>로 적재합니다.",
+		EN: "<b>To ingest from the screen</b>, put the read connection in <code>PQCOTA_READONLY_DSN</code> and the ingest account's connection to the same database in <code>PQCOTA_DSN</code>, then restart the screen.<br>" +
+			"<b>To ingest from a terminal</b>, follow section 6 of the operator guide: check with <code>pqcota-ingest -verify-keys</code>, then ingest with <code>pqcota-ingest -scope-assets</code>."}
+	tIngestProblemsHead = T{KO: "적재하지 않는 까닭 %d건", EN: "Reasons nothing is ingested: %d"}
+	tIngestProblemsLede = T{
+		KO: "결과 하나라도 서명이 없거나 확인되지 않으면 묶음 전체를 적재하지 않습니다.",
+		EN: "When even one result is unsigned or cannot be verified, the whole set is not ingested."}
+	tIngestSummary = T{
+		KO: "결과 파일 %d개 · 활성 정책 %s · 정책으로 제외되는 자산 %d개(관측 %d개 가운데)",
+		EN: "%d result files · active policy %s · %d assets excluded by the policy (of %d observed)"}
+	tIngestSummaryNoPolicy = T{
+		KO: "결과 파일 %d개 · 활성 정책 없음(관측한 자산 %d개가 모두 관리 대상)",
+		EN: "%d result files · no active policy (all %d observed assets are managed)"}
+	tIngestStateUnknown = T{
+		KO: "이력의 지금 상태를 읽지 못했습니다. 확인할 수 없어 적재를 시작하지 않습니다.",
+		EN: "The current state of the history could not be read. It cannot be checked, so no ingest is started."}
+	tIngestAlready = T{
+		KO: "이미 적재됨. 모든 노드의 최신 참조가 이 결과와 정책의 것입니다.",
+		EN: "Already ingested. Every node's latest reference is the one for these results and this policy."}
+	tIngestGo     = T{KO: "이력에 적재: 확인으로", EN: "Ingest into the history: go to the confirmation"}
+	tIngestGoHint = T{
+		KO: "확인 화면에서 조직 · 활성 정책 · 결과 파일 수 · 노드별 참조를 본 뒤 적재합니다. 이력은 덧붙이기만 됩니다.",
+		EN: "The confirmation shows the organization, the active policy, the number of result files and the reference per node before anything is ingested. The history is append-only."}
+	tIngestRunning     = T{KO: "이력에 적재하고 있습니다.", EN: "Ingesting into the history."}
+	tIngestLastHead    = T{KO: "마지막 적재: %s", EN: "Last ingest: %s"}
+	tIngestColBefore   = T{KO: "적재 전 최신 참조", EN: "Latest reference before"}
+	tIngestColWant     = T{KO: "기대하는 참조", EN: "Expected reference"}
+	tIngestColLatest   = T{KO: "지금 최신 참조", EN: "Latest reference now"}
+	tIngestColState    = T{KO: "이력의 상태", EN: "State in the history"}
+	tIngestUnknownCell = T{KO: "확인할 수 없음", EN: "cannot be checked"}
+	tIngestNone        = T{KO: "없음", EN: "none"}
+	tIngestNoResult    = T{
+		KO: "적재 프로세스가 결과를 남기지 못하고 끝났습니다. 아래는 이력을 다시 읽은 것입니다.",
+		EN: "The ingest process ended without leaving a result. What is below was read back from the history."}
+	tIngestCounts = T{
+		KO: "받은 결과 %d건 · 내용이 바뀐 노드 %d개 · 정책으로 제외한 자산 %d건",
+		EN: "%d results accepted · %d nodes with changed content · %d assets excluded by the policy"}
+	tIngestConfirmTitle = T{KO: "이력 적재 확인", EN: "Confirm the ingest"}
+	tIngestConfirmBody  = T{
+		KO: "아래 묶음을 pqcota 이력에 적재합니다. 이 화면을 여는 것만으로는 아무것도 적재되지 않습니다.",
+		EN: "The set below will be ingested into the pqcota history. Opening this page ingests nothing."}
+	tIngestDo           = T{KO: "이력에 적재", EN: "Ingest into the history"}
+	tIngestLineOrg      = T{KO: "조직: %s", EN: "Organization: %s"}
+	tIngestLinePolicy   = T{KO: "활성 정책의 지문: %s", EN: "Fingerprint of the active policy: %s"}
+	tIngestLineNoPolicy = T{KO: "활성 정책 없음: 관측한 자산이 모두 관리 대상으로 적재됩니다", EN: "No active policy: every observed asset is ingested as managed"}
+	tIngestLineFiles    = T{KO: "서명을 확인한 결과 파일: %d개", EN: "Result files with a verified signature: %d"}
+	tIngestLineExcluded = T{KO: "정책으로 제외되는 자산: %d개(관측 %d개 가운데)", EN: "Assets excluded by the policy: %d (of %d observed)"}
+	tIngestLineNode     = T{KO: "%s: 기대하는 참조 %s · 지금 최신 참조 %s(%s)", EN: "%s: expected reference %s · latest reference now %s (%s)"}
+	tIngestLineSameDB   = T{
+		KO: "화면이 조회하는 것과 같은 데이터베이스에만 적재합니다. 다르면 쓰기 전에 멈춥니다.",
+		EN: "The ingest only goes to the same database the screen reads. If they differ it stops before writing."}
+	tIngestLineAppendOnly = T{
+		KO: "이력은 덧붙이기만 됩니다. 적재한 것은 되돌릴 수 없습니다.",
+		EN: "The history is append-only. What is ingested cannot be undone."}
+	tIngestRefusedHead     = T{KO: "이력에 적재하지 않았습니다", EN: "Nothing was ingested into the history"}
+	tIngestRefusedNotReady = T{
+		KO: "적재할 조건이 맞지 않습니다. 03 화면의 「이력에 적재」에서 까닭을 확인하십시오(설정 · 서명 · 이미 적재됨 · 이력을 읽지 못함 · 조회와 적재의 데이터베이스가 다름).",
+		EN: "The conditions for ingesting are not met. See \"Ingest into the history\" on screen 03 for the reason (setup, signatures, already ingested, the history could not be read, or the read and ingest databases differ)."}
+	tIngestRefusedBusy   = T{KO: "이미 적재가 돌고 있습니다. 끝난 뒤 다시 하십시오.", EN: "An ingest is already running. Try again when it ends."}
+	tIngestRefusedReplay = T{
+		KO: "이 확인으로 이미 한 번 적재를 시작했습니다. 03 화면에서 지금 상태를 본 뒤 다시 확인하십시오.",
+		EN: "This confirmation was already used to start an ingest once. Look at the current state on screen 03 and confirm again."}
+)
+
+var ingestBlockText = map[string]T{
+	IngestViewOnly:    {KO: "보기 전용으로 열려 있어 적재하지 않습니다.", EN: "The screen is open view-only, so nothing is ingested."},
+	IngestNoResults:   {KO: "결과 폴더에 적재할 결과가 없습니다.", EN: "The results folder has nothing to ingest."},
+	IngestNoVerifyKey: {KO: "신뢰할 수집기 공개 키(verify.pub)를 쓸 수 없어 서명을 확인할 수 없습니다.", EN: "The trusted collector public keys (verify.pub) cannot be used, so signatures cannot be checked."},
+	IngestPolicy:      {KO: "활성 정책 파일을 읽을 수 없습니다.", EN: "The active policy file cannot be read."},
+	IngestInputs:      {KO: "선언이나 결과를 읽을 수 없어 기대하는 참조를 계산하지 못했습니다.", EN: "The declaration or the results could not be read, so the expected references could not be worked out."},
+	IngestObserving:   {KO: "관측이 돌고 있습니다. 끝난 뒤에 적재합니다.", EN: "An observation is running. Ingest after it ends."},
+}
+
+var ingestWhyText = map[string]T{
+	IngestWhyNotFile:    {KO: "일반 파일이 아닙니다.", EN: "is not a plain file."},
+	IngestWhyUnreadable: {KO: "읽을 수 없습니다.", EN: "cannot be read."},
+	IngestWhyNotResult:  {KO: "관측 결과로 해독되지 않습니다.", EN: "does not decode as a collection result."},
+	IngestWhyUnsigned:   {KO: "서명이 없습니다.", EN: "is not signed."},
+	IngestWhyNoKey:      {KO: "이 수집기 ID에 등록된 신뢰할 공개 키가 없습니다.", EN: "has no trusted public key listed for this collector ID."},
+	IngestWhyOtherKey:   {KO: "다른 수집기 ID에 등록된 키로 서명됐습니다.", EN: "is signed with a key listed for another collector ID."},
+	IngestWhyMismatch:   {KO: "서명이 등록된 키와 맞지 않습니다(서명 뒤에 바뀌었거나 등록되지 않은 키).", EN: "has a signature that does not match the listed keys (changed after signing, or an unlisted key)."},
+}
+
+var ingestStateText = map[string]T{
+	"current":   {KO: "최신 참조가 기대와 같음", EN: "latest reference is the expected one"},
+	"body-only": {KO: "본체는 있으나 최신 참조가 아님", EN: "the body exists but is not the latest reference"},
+	"absent":    {KO: "기록되지 않음", EN: "not recorded"},
+	"unknown":   {KO: "확인할 수 없음", EN: "cannot be checked"},
+}
+
+var ingestOutcomeText = map[string]T{
+	"running":  {KO: "적재가 돌고 있습니다.", EN: "The ingest is running."},
+	"recorded": {KO: "모든 노드가 기록됐습니다. 최신 참조가 기대하는 것과 같습니다.", EN: "Every node is recorded: its latest reference is the expected one."},
+	"partial":  {KO: "일부 노드만 기록됐습니다. 아래 표가 노드마다 이력의 상태를 보입니다.", EN: "Only some nodes are recorded. The table below shows the state in the history per node."},
+	"nothing":  {KO: "기록된 노드가 없습니다. 어느 노드의 최신 참조도 기대하는 것이 아닙니다.", EN: "No node is recorded: no node's latest reference is the expected one."},
+	"unknown":  {KO: "이력을 읽지 못해 어디까지 기록됐는지 확인할 수 없습니다.", EN: "The history could not be read, so how far it was recorded cannot be checked."},
+}
+
+var ingestReasonText = map[string]T{
+	"inputs-changed": {KO: "적재할 사본이 확인한 것과 달라 쓰기 전에 멈췄습니다.", EN: "The copies to ingest differed from what was confirmed, so it stopped before writing."},
+	"decode":         {KO: "해독하지 못한 결과가 있어 쓰기 전에 멈췄습니다.", EN: "A result could not be decoded, so it stopped before writing."},
+	"signature":      {KO: "서명이 없거나 맞지 않는 결과가 있어 쓰기 전에 멈췄습니다.", EN: "A result was unsigned or did not verify, so it stopped before writing."},
+	"other-db":       {KO: "적재용 연결이 화면이 조회하는 데이터베이스가 아니어서 쓰기 전에 멈췄습니다.", EN: "The ingest connection is not the database the screen reads, so it stopped before writing."},
+	"store":          {KO: "적재용으로 이력을 열지 못해 쓰기 전에 멈췄습니다.", EN: "The history could not be opened for ingesting, so it stopped before writing."},
+	"ingest-failed":  {KO: "적재하다 실패했습니다. 일부가 기록됐을 수 있습니다.", EN: "The ingest failed partway. Some of it may have been recorded."},
 }

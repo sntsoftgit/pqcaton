@@ -75,6 +75,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 3 && args[0] == superviseFlag {
 		return supervise(args[1], args[2])
 	}
+	// 이력 적재 모드(ingest.go). 화면이 자기 바이너리를 이렇게 띄운다. 적재용 연결 정보는 표준 입력으로 받는다.
+	if len(args) == 2 && args[0] == ingestRunFlag {
+		return ingestMain(args[1])
+	}
 	// 06의 실행 감독 모드(provsupervise.go). 이것도 화면이 띄운다.
 	if len(args) == 3 && args[0] == provSuperviseFlag {
 		return provSupervise(args[1], args[2])
@@ -493,6 +497,10 @@ type server struct {
 	// 연결 정보의 값은 어디에도 두지 않는다.
 	addr       string
 	dsnFromEnv bool
+	// dsnReadVar: 조회에 쓴 연결 정보의 변수 이름(PQCOTA_READONLY_DSN 또는 PQCOTA_DSN).
+	dsnReadVar string
+	// ingest: 화면에서 하는 이력 적재(ingest.go).
+	ingest ingestRunner
 	// workspace: 작업 폴더 모드면 그 폴더(아니면 빈 값). diag · diagRef: 작업 폴더 모드에서 시작할 때 읽지 못한
 	// 입력과 그 참조 번호. 있으면 진단 전용 모드다 — 모든 화면이 503이고 저장하지 않는다.
 	workspace string
@@ -569,6 +577,9 @@ func (s *server) handler() http.Handler {
 	r.Post(ui.SignPath, s.approveSign)
 	r.Post(ui.ArchivePath, s.approveArchive)
 	r.Post(ui.GeneratePath, s.approveGenerate)
+	r.Get(ui.IngestPath, s.ingestStatus)
+	r.Post(ui.IngestConfirmPath, s.ingestConfirm)
+	r.Post(ui.IngestPath, s.ingestStart)
 	r.Get(ui.ProvRunPath, s.provStatus)
 	r.Post(ui.ProvPreviewPath, s.provPreview)
 	r.Post(ui.ProvStopPath, s.provStop)

@@ -43,6 +43,8 @@ type ConfirmView struct {
 	Activate bool
 	// ApplyNodes — 0보다 크면 확정이 아니라 06의 적용을 확인한다. 대상 노드 수이고, 마지막 버튼이 그 수를 적는다.
 	ApplyNodes int
+	// Ingest — 03의 이력 적재를 확인한다.
+	Ingest bool
 }
 
 // ActivateConfirmTitle: 정책 활성화 확인 페이지의 제목.

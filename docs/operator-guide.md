@@ -233,10 +233,25 @@ address file. It only looks things up, so an account with read permission is eno
 - **The connection is `PQCOTA_DSN`.** When the environment variable is set it is used; when it is empty, the screen itself
   reads `pqcota.env` in the same user configuration folder as the approval key (Linux `~/.config/pqcaton/pqcota.env`,
   macOS `~/Library/Application Support/pqcaton/pqcota.env`). The service and the launcher use this file as it is.
+- **To ingest into the history from the screen, split the connection in two.** Put the read connection in
+  `PQCOTA_READONLY_DSN` and the ingest account's connection to the same database in `PQCOTA_DSN`. For each name the
+  environment variable comes first; when it is empty, the line of the same name in `pqcota.env` is used.
+
+  | Set | The screen reads with | Ingesting from the screen |
+  |---|---|---|
+  | only `PQCOTA_DSN` | `PQCOTA_DSN` (as before) | off |
+  | only `PQCOTA_READONLY_DSN` | `PQCOTA_READONLY_DSN` | off |
+  | both | `PQCOTA_READONLY_DSN` | the value of `PQCOTA_DSN` is handed to the ingest process |
+
+  An upgrade alone never makes `PQCOTA_DSN` an ingest connection. To turn ingesting on, move the current read account's
+  value to `PQCOTA_READONLY_DSN` and put the ingest account's value in `PQCOTA_DSN`. **The name does not restrict
+  privileges.** That the read account is read-only must be guaranteed by PostgreSQL privileges. The screen keeps reading
+  with the read-only account, but **a screen server with the ingest connection set can read that value** (it hands it to a
+  separate process when ingesting).
 - **File rules.** It must be a regular file, not a link, owned by this user, with no permission for the group or others
   (0600), with a single hard link, and outside the workspace. If any rule is broken the screen does not start and says why.
-- **The content is read only as data.** Apart from blank lines and `#` comments, only one line `PQCOTA_DSN=<connection>`
-  is accepted. Other variables, `export`, quotes, surrounding spaces and a second line are refused. It is not evaluated by
+- **The content is read only as data.** Apart from blank lines and `#` comments, only the lines `PQCOTA_DSN=<connection>`
+  and `PQCOTA_READONLY_DSN=<connection>` are accepted (each name once). Other variables, `export`, quotes, surrounding spaces and a second line are refused. It is not evaluated by
   a shell, so characters such as `$(…)` in the value stay part of the value.
 - **The value is left nowhere.** Not in the workspace, processing records, logs, error messages or the screen, and not
   passed to the observation processes the screen starts. The screen has no place to type it either.
@@ -798,6 +813,18 @@ required).
    the staging folder that may be left, with the run ID: `/tmp/pqcaton-observe-<run ID>`. On that node, also check that no process
    whose command line starts with that place is left. The network observation waits for handshakes on the node's default-route
    interface for the window you set (60 seconds by default).
+   **Ingesting into the history.** The screen never ingests on its own when an observation ends. When ingesting from the
+   screen is set up (both connections in section 4), "Ingest into the history" under 03 ingests the signed results in the
+   results folder **under the active policy**. The screen shows, per node, the expected reference and the history's latest
+   reference now; "Ingest into the history: go to the confirmation" opens a confirmation with the organization, the active
+   policy's fingerprint, the number of result files with a verified signature and the number of assets the policy excludes.
+   Nothing is ingested until "Ingest into the history" is pressed there. When even one result is unsigned or does not
+   verify, the whole set is not ingested and the file, collector ID and reason are shown. If a result file or the active
+   policy changed after the confirmation, confirm again. When every node's latest reference is already the one for these
+   results and this policy, it ends with "Already ingested". When an ingest ended partway, the screen reads the history
+   back and shows per node "latest reference is the expected one", "the body exists but is not the latest reference",
+   "not recorded" or "cannot be checked". The history is append-only: what is ingested cannot be undone. When ingesting
+   from the screen is not set up, ingest from a terminal as before (the commands in item 2).
 4. **04 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
    screen. With no results, the screen points at that folder.
 
@@ -1396,6 +1423,9 @@ screen.
 | `exists` | The file to create is already there, so it was not overwritten | Reload the screen |
 | `run-not-ready` | Something needed before an observation (access, Ansible, collectors, collector signing keys, trusted public keys) is missing, there is a Windows node, or an earlier observation needs recovery | Provide the items marked ✗ in the checklist on the 03 screen |
 | `run-busy` | An observation is already running | Start again after it finishes or is stopped |
+| `ingest-not-ready` | The conditions for the 03 ingest are not met (ingesting from the screen is not set up · a result is unsigned or does not verify · already ingested · the history could not be read · the read and ingest databases differ) | Resolve the reason shown under "Ingest into the history" on the 03 screen |
+| `ingest-busy` | An ingest is already running | Try again after it ends |
+| `ingest-replayed` | This confirmation was already used to start an ingest once | Look at the current state on the 03 screen and confirm again |
 | `prov-not-ready` | The conditions for running the 06 preview, apply or recheck from the screen are not met (approval, an L2 playbook, access details, Ansible and its version (ansible-core 2.16.3), or a kind of task the screen does not run) | Provide what "Why the screen does not run this" on the 06 screen lists |
 | `prov-busy` | A 06 run is already going | Start again after it finishes or is stopped |
 | `prov-grant` | There is no valid preview to apply from (none · ended more than 10 minutes ago · an input changed after it · already used once) | Preview again on the 06 screen, then apply |

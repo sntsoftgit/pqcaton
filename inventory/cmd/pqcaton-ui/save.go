@@ -126,7 +126,7 @@ func (s *server) inputsFor(where string) []store.Input {
 			return nil
 		}
 		return s.approveInputs()
-	case ui.ScreenObserve, ui.HostsSavePath:
+	case ui.ScreenObserve, ui.HostsSavePath, ui.IngestConfirmPath, ui.IngestPath:
 		if s.hosts == "" {
 			return nil
 		}

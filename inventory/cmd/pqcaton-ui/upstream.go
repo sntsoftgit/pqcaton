@@ -39,52 +39,140 @@ var errDSNFile = errors.New(dsnFile + " cannot be used")
 // 말고는 `PQCOTA_DSN=<값>` 한 줄만 받는다(다른 변수 · 따옴표 · 두 번 적기는 거절). 파일이 없으면 ErrNoDSN이다. 돌려주는
 // where는 값이 아니라 출처(환경 변수 또는 사용자 설정 폴더 기준의 위치)다.
 func (s *server) loadDSN() (dsn, where string, err error) {
-	if v := os.Getenv(upstream.DSNEnv); v != "" {
-		return v, "the environment (" + upstream.DSNEnv + ")", nil
+	c, err := s.loadDSNs()
+	return c.read, c.where, err
+}
+
+// readonlyDSNEnv — 화면이 이력을 **조회할 때** 쓰는 연결 정보. 이것이 있으면 화면은 이것으로 조회하고, PQCOTA_DSN은 상류
+// `pqcota-ingest`와 같은 뜻(적재용)이 된다.
+const readonlyDSNEnv = "PQCOTA_READONLY_DSN"
+
+// dsnConfig — 연결 정보 둘과 그 출처. 값은 어디에도 적지 않는다.
+type dsnConfig struct {
+	read, where string
+	// readVar: 조회에 쓴 변수의 이름(PQCOTA_READONLY_DSN 또는 PQCOTA_DSN). readFromEnv: 그 값을 환경 변수에서 읽었는가.
+	readVar     string
+	readFromEnv bool
+	// ingest: 화면에서 적재할 때 적재 프로세스에 넘길 연결 정보. 비면 화면에서 적재하지 않는다. ingestFromEnv는 그 출처다.
+	ingest        string
+	ingestFromEnv bool
+}
+
+// loadDSNs — pqcota 이력의 연결 정보. 이름마다 **환경 변수가 먼저**고, 비었으면 사용자 설정 폴더의 pqcota.env다.
+//
+//	PQCOTA_DSN만 있음            조회: PQCOTA_DSN(v0.33.0까지와 같다) · 화면에서 적재: 하지 않음
+//	PQCOTA_READONLY_DSN만 있음   조회: PQCOTA_READONLY_DSN · 화면에서 적재: 하지 않음
+//	둘 다 있음                   조회: PQCOTA_READONLY_DSN · 화면에서 적재: 적재 프로세스에 PQCOTA_DSN을 넘긴다
+//
+// **업그레이드만으로 PQCOTA_DSN이 적재용으로 읽히지 않는다.** 적재를 켜려면 운영자가 조회 계정 값을 PQCOTA_READONLY_DSN으로
+// 옮기고 PQCOTA_DSN에 같은 DB의 적재 계정 값을 넣는다. 이름이 권한을 제한하지는 않는다: 조회 계정의 읽기 전용은 PostgreSQL이
+// 보장해야 한다.
+//
+// 파일은 링크가 아닌 보통 파일이어야 하고, 이 사용자의 것이어야 하며, 그룹 · 다른 사용자에게 아무 권한이 없어야 하고(0600),
+// 하드 링크가 하나뿐이어야 하며, 작업 폴더 밖에 있어야 한다. 내용은 셸로 평가하지 않고 데이터로만 읽는다: 빈 줄과 # 주석
+// 말고는 위 두 이름의 `<이름>=<값>` 줄만 받는다(다른 변수 · 따옴표 · 두 번 적기는 거절). 조회에 쓸 값이 없으면 ErrNoDSN이다.
+func (s *server) loadDSNs() (dsnConfig, error) {
+	var c dsnConfig
+	envRO, envDSN := os.Getenv(readonlyDSNEnv), os.Getenv(upstream.DSNEnv)
+	var file map[string]string
+	fileWhere := ""
+	if envRO == "" || envDSN == "" {
+		vals, where, err := s.readEnvFile()
+		switch {
+		case err == nil:
+			file, fileWhere = vals, where
+		case errors.Is(err, upstream.ErrNoDSN):
+			if envRO == "" && envDSN == "" {
+				return c, err // 환경에도 없고 파일도 없다
+			}
+		default:
+			return c, err // 파일이 있는데 쓸 수 없다. 조용히 넘기지 않는다
+		}
 	}
+	pick := func(env, name string) (string, bool) {
+		if env != "" {
+			return env, true
+		}
+		return file[name], false
+	}
+	ro, roEnv := pick(envRO, readonlyDSNEnv)
+	dsn, dsnEnv := pick(envDSN, upstream.DSNEnv)
+	src := func(name string, fromEnv bool) string {
+		if fromEnv {
+			return "the environment (" + name + ")"
+		}
+		return fileWhere + " (" + name + ")"
+	}
+	switch {
+	case ro != "":
+		c.read, c.readVar, c.readFromEnv, c.where = ro, readonlyDSNEnv, roEnv, src(readonlyDSNEnv, roEnv)
+		c.ingest, c.ingestFromEnv = dsn, dsnEnv
+	case dsn != "":
+		c.read, c.readVar, c.readFromEnv, c.where = dsn, upstream.DSNEnv, dsnEnv, src(upstream.DSNEnv, dsnEnv)
+	default:
+		return c, fmt.Errorf("%w: %s has neither a %s nor a %s line", errDSNFile, fileWhere, readonlyDSNEnv, upstream.DSNEnv)
+	}
+	return c, nil
+}
+
+// readEnvFile — 사용자 설정 폴더의 pqcota.env를 읽는다. 파일의 조건은 loadDSN의 설명과 같다. 파일이 없으면 ErrNoDSN이다.
+func (s *server) readEnvFile() (vals map[string]string, where string, err error) {
 	dir, err := userConfigDir()
 	if err != nil {
-		return "", "", upstream.ErrNoDSN
+		return nil, "", upstream.ErrNoDSN
 	}
 	p := filepath.Join(dir, ui.KeyDefaultFolder, dsnFile)
 	where = filepath.Join(ui.KeyDefaultFolder, dsnFile) + " in the user configuration folder"
 	fi, err := os.Lstat(p)
 	switch {
 	case err != nil && errors.Is(err, fs.ErrNotExist):
-		return "", "", fmt.Errorf("%w (and there is no %s)", upstream.ErrNoDSN, where)
+		return nil, "", fmt.Errorf("%w (and there is no %s)", upstream.ErrNoDSN, where)
 	case err != nil:
-		return "", "", fmt.Errorf("%w: %s cannot be read", errDSNFile, where)
+		return nil, "", fmt.Errorf("%w: %s cannot be read", errDSNFile, where)
 	case fi.Mode()&fs.ModeSymlink != 0:
-		return "", "", fmt.Errorf("%w: %s is a symbolic link", errDSNFile, where)
+		return nil, "", fmt.Errorf("%w: %s is a symbolic link", errDSNFile, where)
 	case !fi.Mode().IsRegular():
-		return "", "", fmt.Errorf("%w: %s is not a regular file", errDSNFile, where)
+		return nil, "", fmt.Errorf("%w: %s is not a regular file", errDSNFile, where)
 	case !ownedByMe(fi):
-		return "", "", fmt.Errorf("%w: %s is not owned by this user", errDSNFile, where)
+		return nil, "", fmt.Errorf("%w: %s is not owned by this user", errDSNFile, where)
 	case fi.Mode().Perm()&0o077 != 0:
-		return "", "", fmt.Errorf("%w: %s is open to other users (%04o); chmod 600 it", errDSNFile, where, fi.Mode().Perm())
+		return nil, "", fmt.Errorf("%w: %s is open to other users (%04o); chmod 600 it", errDSNFile, where, fi.Mode().Perm())
 	case links(fi) > 1:
-		return "", "", fmt.Errorf("%w: %s has more than one hard link", errDSNFile, where)
+		return nil, "", fmt.Errorf("%w: %s has more than one hard link", errDSNFile, where)
 	}
 	if home := s.keyHome(); home != "" && inside(home, p) {
-		return "", "", fmt.Errorf("%w: %s is inside the workspace", errDSNFile, where)
+		return nil, "", fmt.Errorf("%w: %s is inside the workspace", errDSNFile, where)
 	}
 	if fi.Size() > 64<<10 {
-		return "", "", fmt.Errorf("%w: %s is too large", errDSNFile, where)
+		return nil, "", fmt.Errorf("%w: %s is too large", errDSNFile, where)
 	}
 	b, err := os.ReadFile(p)
 	if err != nil {
-		return "", "", fmt.Errorf("%w: %s cannot be read", errDSNFile, where)
+		return nil, "", fmt.Errorf("%w: %s cannot be read", errDSNFile, where)
 	}
-	v, err := parseDSNFile(b)
+	vals, err = parseEnvFile(b)
 	if err != nil {
-		return "", "", fmt.Errorf("%w: %s %v", errDSNFile, where, err)
+		return nil, "", fmt.Errorf("%w: %s %v", errDSNFile, where, err)
 	}
-	return v, where, nil
+	return vals, where, nil
 }
 
-// parseDSNFile — pqcota.env의 내용을 데이터로 읽는다. 오류에는 줄 번호만 싣고 값은 싣지 않는다.
+// parseDSNFile — pqcota.env에서 조회용 연결 정보를 읽는다. 없으면 오류다.
 func parseDSNFile(b []byte) (string, error) {
-	var dsn string
+	vals, err := parseEnvFile(b)
+	if err != nil {
+		return "", err
+	}
+	if vals[upstream.DSNEnv] == "" {
+		return "", fmt.Errorf("has no %s line", upstream.DSNEnv)
+	}
+	return vals[upstream.DSNEnv], nil
+}
+
+// parseEnvFile — pqcota.env의 내용을 데이터로 읽는다. 받는 이름은 둘뿐이다: PQCOTA_DSN과 PQCOTA_READONLY_DSN(loadDSNs).
+// 오류에는 줄 번호만 싣고 값은 싣지 않는다.
+func parseEnvFile(b []byte) (map[string]string, error) {
+	vals := map[string]string{}
 	sc := bufio.NewScanner(bytes.NewReader(b))
 	for n := 1; sc.Scan(); n++ {
 		line := strings.TrimRight(sc.Text(), "\r")
@@ -93,31 +181,29 @@ func parseDSNFile(b []byte) (string, error) {
 		}
 		key, val, ok := strings.Cut(line, "=")
 		switch {
-		case !ok || key != upstream.DSNEnv:
-			return "", fmt.Errorf("line %d: only %s=<value> is allowed", n, upstream.DSNEnv)
-		case dsn != "":
-			return "", fmt.Errorf("line %d: %s is given twice", n, upstream.DSNEnv)
+		case !ok || (key != upstream.DSNEnv && key != readonlyDSNEnv):
+			return nil, fmt.Errorf("line %d: only %s=<value> and %s=<value> are allowed", n, upstream.DSNEnv, readonlyDSNEnv)
+		case vals[key] != "":
+			return nil, fmt.Errorf("line %d: %s is given twice", n, key)
 		case val == "" || strings.TrimSpace(val) != val:
-			return "", fmt.Errorf("line %d: the value is empty or has surrounding spaces", n)
+			return nil, fmt.Errorf("line %d: the value is empty or has surrounding spaces", n)
 		case strings.ContainsAny(val[:1], `"'`) || strings.ContainsAny(val[len(val)-1:], `"'`):
-			return "", fmt.Errorf("line %d: write the value without quotes", n)
+			return nil, fmt.Errorf("line %d: write the value without quotes", n)
 		}
-		dsn = val
+		vals[key] = val
 	}
 	if err := sc.Err(); err != nil {
-		return "", fmt.Errorf("cannot be read: %v", err)
+		return nil, fmt.Errorf("cannot be read: %v", err)
 	}
-	if dsn == "" {
-		return "", fmt.Errorf("has no %s line", upstream.DSNEnv)
-	}
-	return dsn, nil
+	return vals, nil
 }
 
-// childEnv — 화면이 띄우는 자식 프로세스(관측 감독 · Ansible)의 환경. PQCOTA_DSN은 넘기지 않는다.
+// childEnv — 화면이 띄우는 자식 프로세스(관측 감독 · Ansible · 적재)의 환경. PQCOTA_DSN과 PQCOTA_READONLY_DSN은 넘기지
+// 않는다. 적재 프로세스는 적재용 연결 정보(PQCOTA_DSN의 값)를 환경이 아니라 표준 입력으로 받는다(ingest.go).
 func childEnv() []string {
 	var out []string
 	for _, e := range os.Environ() {
-		if !strings.HasPrefix(e, upstream.DSNEnv+"=") {
+		if !strings.HasPrefix(e, upstream.DSNEnv+"=") && !strings.HasPrefix(e, readonlyDSNEnv+"=") {
 			out = append(out, e)
 		}
 	}
@@ -130,10 +216,11 @@ func (s *server) connectUpstream() error {
 	if err != nil {
 		return fmt.Errorf("pqcota history: %w — the screen does not start", err)
 	}
-	dsn, where, err := s.loadDSN()
+	cfg, err := s.loadDSNs()
 	if err != nil {
 		return fmt.Errorf("pqcota history: %w — the screen does not start without it", err)
 	}
+	dsn, where := cfg.read, cfg.where
 	l, name, err := openUpstream(dsn, org)
 	if err != nil {
 		return fmt.Errorf("pqcota history (connection from %s): %w — the screen does not start without it", where, err)
@@ -143,7 +230,7 @@ func (s *server) connectUpstream() error {
 		return fmt.Errorf("pqcota history (connection from %s): %w — the screen does not start without it", where, err)
 	}
 	s.upstream, s.upstreamOrgName = l, name
-	s.dsnFromEnv = os.Getenv(upstream.DSNEnv) != ""
+	s.dsnFromEnv, s.dsnReadVar = cfg.readFromEnv, cfg.readVar
 	return nil
 }
 

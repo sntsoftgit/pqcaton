@@ -35,9 +35,12 @@ func (s *server) settingsData(mode ui.Mode) ui.SettingsData {
 	d := ui.SettingsData{
 		Version: buildVersion(), Addr: s.addr, Mode: mode,
 		Org: s.orgName(), OrgFromDecl: s.orgFromDecl, Workspace: s.workspace,
-		UpstreamOrg: s.upstreamOrgName, DSNFromEnv: s.dsnFromEnv,
+		UpstreamOrg: s.upstreamOrgName, DSNFromEnv: s.dsnFromEnv, DSNReadVar: s.dsnReadVar,
 		CollectorKeysDir: s.collectorKeys, CollectorVerify: s.collectorVerify,
 		Collectors: s.collectors, CollectorPin: s.collectorPin, AllowUnverified: s.allowUnverified,
+	}
+	if cfg, err := s.loadDSNs(); err == nil {
+		d.IngestOn, d.IngestFromEnv = cfg.ingest != "", cfg.ingestFromEnv
 	}
 	if s.st != nil {
 		d.StateDir = s.st.Dir

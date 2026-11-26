@@ -70,6 +70,9 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 	if wd.res != nil {
 		v.Run.JCAUnconfirmed = wd.res.JCAUnconfirmed
 	}
+	if s.results != "" {
+		v.HasResults, v.Ingest = true, s.ingestView()
+	}
 	html(w, r, func(out io.Writer) error { return ui.RenderObserve(out, v) })
 }
 

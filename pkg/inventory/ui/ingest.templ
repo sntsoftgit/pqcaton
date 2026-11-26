@@ -1,0 +1,115 @@
+package ui
+
+import "strconv"
+
+// observeIngest — 03의 「이력에 적재」. 관측이 끝났다고 스스로 적재하지 않는다: 운영자가 확인 화면을 거쳐 누른다.
+templ observeIngest(v ObserveView) {
+	<h3 id="observe-ingest">{ tIngestHead.In(v.Page.Lang) }</h3>
+	<p class="lede">{ tIngestLede.In(v.Page.Lang) }</p>
+	if v.Ingest.Running {
+		@ingestRunning(v.Page.Lang)
+	} else if !v.Ingest.Configured {
+		<div class="msg" data-ingest="not-configured">
+			<p>{ tIngestNotConfigured.In(v.Page.Lang) }</p>
+		</div>
+		@tip(v.Page.Lang, tIngestTerminal.In(v.Page.Lang))
+	} else if v.Ingest.Block != "" {
+		<p class="msg bad" data-ingest-block={ v.Ingest.Block }>{ v.Ingest.BlockText(v.Page.Lang) }</p>
+	} else if len(v.Ingest.Problems) > 0 {
+		<section class="problems" aria-labelledby="ingest-problems" data-ingest="refused">
+			<h3 id="ingest-problems">{ tIngestProblemsHead.F(v.Page.Lang, len(v.Ingest.Problems)) }</h3>
+			<p class="lede">{ tIngestProblemsLede.In(v.Page.Lang) }</p>
+			<ul>
+				for _, p := range v.Ingest.Problems {
+					<li data-ingest-why={ p.Why }>
+						<code>{ p.File }</code>
+						if p.Collector != "" {
+							{ " " }
+							<code>{ p.Collector }</code>
+						}
+						{ " " + p.Text(v.Page.Lang) }
+					</li>
+				}
+			</ul>
+		</section>
+	} else {
+		<p class="hint" data-ingest-summary>
+			if v.Ingest.NoPolicy {
+				{ tIngestSummaryNoPolicy.F(v.Page.Lang, v.Ingest.Files, v.Ingest.Observed) }
+			} else {
+				{ tIngestSummary.F(v.Page.Lang, v.Ingest.Files, shortRef(v.Page.Lang, v.Ingest.PolicyDigest), v.Ingest.Observed-v.Ingest.Managed, v.Ingest.Observed) }
+			}
+		</p>
+		if v.Ingest.StateUnknown {
+			<p class="msg bad" data-ingest="state-unknown">{ tIngestStateUnknown.In(v.Page.Lang) }</p>
+		} else if v.Ingest.AllCurrent {
+			<p class="msg ok" data-ingest="already">{ tIngestAlready.In(v.Page.Lang) }</p>
+		}
+		@ingestNodes(v.Page.Lang, v.Ingest.Nodes, false)
+		if v.Ingest.CanIngest() {
+			<form method="post" action={ templ.SafeURL(IngestConfirmPath) }>
+				@csrfField(v.Page)
+				<div class="actions">
+					<button class="primary" data-ingest-go>{ tIngestGo.In(v.Page.Lang) }</button>
+					@tip(v.Page.Lang, tIngestGoHint.In(v.Page.Lang))
+				</div>
+			</form>
+		}
+	}
+	if v.Ingest.Last != nil {
+		<section id="ingest-last" data-ingest-run={ v.Ingest.Last.ID } data-ingest-outcome={ v.Ingest.Last.Outcome() } data-ingest-reason={ v.Ingest.Last.Reason }>
+			<h3>{ tIngestLastHead.F(v.Page.Lang, v.Ingest.Last.Started.UTC().Format("2006-01-02 15:04:05 UTC")) }</h3>
+			<p class="hint">{ tProvRunID.F(v.Page.Lang, v.Ingest.Last.ID) }</p>
+			<p class={ "msg", templ.KV("ok", v.Ingest.Last.Outcome() == "recorded"), templ.KV("bad", v.Ingest.Last.Outcome() != "recorded" && v.Ingest.Last.Outcome() != "running") }>
+				{ v.Ingest.Last.OutcomeText(v.Page.Lang) }
+			</p>
+			if v.Ingest.Last.ReasonText(v.Page.Lang) != "" {
+				<p class="hint" data-ingest-ended>{ v.Ingest.Last.ReasonText(v.Page.Lang) }</p>
+			}
+			@ingestNodes(v.Page.Lang, v.Ingest.Last.Nodes, true)
+		</section>
+	}
+}
+
+// ingestNodes — 노드마다 기대하는 참조와 이력의 지금 상태. 적재 기록에서는 적재 전의 최신 참조도 함께 보인다.
+templ ingestNodes(l Lang, nodes []IngestNode, withBefore bool) {
+	if len(nodes) > 0 {
+		<div class="table-wrap">
+			<table class="provrun">
+				<tr>
+					<th>{ tProvColNode.In(l) }</th>
+					if withBefore {
+						<th>{ tIngestColBefore.In(l) }</th>
+					}
+					<th>{ tIngestColWant.In(l) }</th>
+					<th>{ tIngestColLatest.In(l) }</th>
+					<th>{ tIngestColState.In(l) }</th>
+				</tr>
+				for _, n := range nodes {
+					<tr data-ingest-node={ n.Node } data-ingest-state={ n.State() } data-ingest-body={ strconv.FormatBool(n.Body) }>
+						<td><code>{ n.Node }</code></td>
+						if withBefore {
+							<td><code>{ shortRef(l, n.Before) }</code></td>
+						}
+						<td><code>{ shortRef(l, n.Want) }</code></td>
+						<td>
+							if n.Unknown {
+								{ tIngestUnknownCell.In(l) }
+							} else {
+								<code>{ shortRef(l, n.Latest) }</code>
+							}
+						</td>
+						<td>{ n.StateText(l) }</td>
+					</tr>
+				}
+			</table>
+		</div>
+	}
+}
+
+// ingestRunning — 도는 동안 2초마다 다시 받는다. 끝나면 서버가 화면을 통째로 새로 받게 한다.
+templ ingestRunning(l Lang) {
+	<div id="ingest-running" hx-get={ IngestPath + "?" + LangParam + "=" + string(l) } hx-trigger="every 2s" hx-swap="outerHTML">
+		<p class="msg" role="status">{ tIngestRunning.In(l) }</p>
+	</div>
+}

@@ -49,6 +49,10 @@ type SettingsData struct {
 	// UpstreamOrg — pqcota 이력을 연 조직. DSNFromEnv — 연결 정보를 환경 변수에서 읽었는가(아니면 pqcota.env).
 	UpstreamOrg string
 	DSNFromEnv  bool
+	// DSNReadVar — 조회에 쓰는 변수의 이름. IngestOn — 화면에서 적재하도록 설정됐는가. IngestFromEnv — 적재용 값의 출처.
+	// 값(연결 문자열)은 넘기지 않는다.
+	DSNReadVar              string
+	IngestOn, IngestFromEnv bool
 	// 키와 수집기: 자리와 상태만.
 	ApprovalKey, VerifyKey                   KeyCheck
 	CollectorKeysDir, CollectorVerify        string
@@ -171,13 +175,25 @@ func NewSettingsView(d SettingsData, page Page) SettingsView {
 	}
 	work.Rows = append(work.Rows, SettingRow{ID: "state-dir", Name: tSetStateDir.In(l), Value: val(d.StateDir), How: tSetStateDirHow.In(l), Restart: true})
 
-	src := tSetDSNFile.In(l)
+	readVar := d.DSNReadVar
+	if readVar == "" {
+		readVar = "PQCOTA_DSN"
+	}
+	src := tSetDSNFile.F(l, readVar)
 	if d.DSNFromEnv {
-		src = tSetDSNEnv.In(l)
+		src = tSetDSNEnv.F(l, readVar)
+	}
+	ingestSrc := tSetIngestOff.In(l)
+	switch {
+	case d.IngestOn && d.IngestFromEnv:
+		ingestSrc = tSetDSNEnv.F(l, "PQCOTA_DSN")
+	case d.IngestOn:
+		ingestSrc = tSetDSNFile.F(l, "PQCOTA_DSN")
 	}
 	history := SettingGroup{ID: "history", Title: tSetGroupHistory.In(l), Rows: []SettingRow{
 		{ID: "upstream-org", Name: tSetUpstreamOrg.In(l), Value: val(d.UpstreamOrg), How: tSetUpstreamOrgHow.In(l), Restart: true},
 		{ID: "dsn", Name: tSetDSN.In(l), Value: src, How: tSetDSNHow.In(l), Restart: true, Plain: true},
+		{ID: "ingest-dsn", Name: tSetIngest.In(l), Value: ingestSrc, How: tSetIngestHow.In(l), Plain: true},
 	}}
 
 	keys := SettingGroup{ID: "keys", Title: tSetGroupKeys.In(l), Rows: []SettingRow{

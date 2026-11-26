@@ -20,6 +20,8 @@ func terminate(cmd *exec.Cmd) { _ = cmd.Process.Kill() }
 
 func kill(cmd *exec.Cmd) { _ = cmd.Process.Kill() }
 
+func pidAlive(int) bool { return false }
+
 func dirswap(string, string) error {
 	return errors.New("swapping directories is not supported on this platform")
 }

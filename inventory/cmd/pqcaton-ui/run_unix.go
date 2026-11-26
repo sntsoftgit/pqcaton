@@ -19,6 +19,9 @@ func terminate(cmd *exec.Cmd) { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTE
 
 func kill(cmd *exec.Cmd) { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 
+// pidAlive: 그 PID의 프로세스가 살아 있는가(신호 0). 적재 프로세스가 남긴 PID 파일을 볼 때 쓴다(ingest.go).
+func pidAlive(pid int) bool { return syscall.Kill(pid, 0) == nil }
+
 // ownedByMe · links: 승인 키 점검(approve.go). 이 사용자의 파일인가, 하드 링크가 몇 개인가.
 func ownedByMe(fi os.FileInfo) bool {
 	st, ok := fi.Sys().(*syscall.Stat_t)

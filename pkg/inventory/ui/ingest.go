@@ -1,0 +1,181 @@
+// SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
+// SPDX-License-Identifier: BUSL-1.1
+
+package ui
+
+import (
+	"context"
+	"io"
+	"time"
+)
+
+// 03의 이력 적재를 막는 것.
+const (
+	IngestViewOnly    = "view-only"
+	IngestNoResults   = "no-results"
+	IngestNoVerifyKey = "no-verify-key"
+	IngestPolicy      = "policy"
+	IngestInputs      = "inputs"
+	IngestObserving   = "observing"
+)
+
+// 결과 파일 하나가 적재되지 못하는 까닭. 하나라도 있으면 묶음 전체를 적재하지 않는다.
+const (
+	IngestWhyNotFile    = "not-file"
+	IngestWhyUnreadable = "unreadable"
+	IngestWhyNotResult  = "not-result"
+	IngestWhyUnsigned   = "unsigned"
+	IngestWhyNoKey      = "no-key"
+	IngestWhyOtherKey   = "other-key"
+	IngestWhyMismatch   = "mismatch"
+)
+
+// IngestProblem — 파일 · 수집기 ID · 판정 사유.
+type IngestProblem struct {
+	File, Collector, Why string
+}
+
+// Text — 사유의 문구.
+func (p IngestProblem) Text(l Lang) string { return ingestWhyText[p.Why].In(l) }
+
+// IngestNode — 노드 하나에 대해 이력이 말하는 것. Want는 이 결과와 정책으로 기대하는 참조, Before는 적재 전의 최신 참조,
+// Latest는 지금의 최신 참조다. Body(스냅샷 본체가 있는가)와 Current(최신 참조가 그것인가)는 따로다. Unknown이면 이력을 읽지
+// 못했다: 확인할 수 없는 것을 확인한 것처럼 보이지 않는다.
+type IngestNode struct {
+	Node, Want, Before, Latest string
+	Body, Current, Unknown     bool
+}
+
+// State — 노드 상태의 코드.
+func (n IngestNode) State() string {
+	switch {
+	case n.Unknown:
+		return "unknown"
+	case n.Current:
+		return "current"
+	case n.Body:
+		return "body-only"
+	}
+	return "absent"
+}
+
+// StateText — 노드 상태의 문구.
+func (n IngestNode) StateText(l Lang) string { return ingestStateText[n.State()].In(l) }
+
+// short — 참조를 앞 열두 자로. 없으면 「없음」이다.
+func shortRef(l Lang, d string) string {
+	switch {
+	case d == "":
+		return tIngestNone.In(l)
+	case len(d) > 12:
+		return d[:12]
+	}
+	return d
+}
+
+// IngestLast — 가장 최근 적재의 기록. Nodes는 **지금 이력을 다시 읽은** 상태다.
+type IngestLast struct {
+	ID             string
+	Started, Ended time.Time
+	Files          int
+	PolicyDigest   string
+	// Running — 적재 프로세스가 아직 돈다. HasResult — 프로세스가 결과를 남겼다. 남기지 못했으면 종료를 알 수 없다.
+	Running, HasResult bool
+	Reason, Detail     string
+	Accepted, Rejected int
+	OffScope, Changed  int
+	Excluded           int
+	Nodes              []IngestNode
+}
+
+// Outcome — 적재 하나의 판정 코드. **이력을 다시 읽은 것으로 말한다.**
+func (r IngestLast) Outcome() string {
+	all, any, unknown := len(r.Nodes) > 0, false, false
+	for _, n := range r.Nodes {
+		unknown = unknown || n.Unknown
+		all = all && n.Current
+		any = any || n.Current
+	}
+	switch {
+	case r.Running:
+		return "running"
+	case unknown:
+		return "unknown"
+	case all:
+		return "recorded"
+	case any:
+		return "partial"
+	}
+	return "nothing"
+}
+
+// OutcomeText — 판정의 문구.
+func (r IngestLast) OutcomeText(l Lang) string { return ingestOutcomeText[r.Outcome()].In(l) }
+
+// ReasonText — 적재 프로세스가 끝난 까닭의 문구. 결과를 남기지 못했으면 그 사실이다.
+func (r IngestLast) ReasonText(l Lang) string {
+	switch {
+	case r.Running:
+		return ""
+	case !r.HasResult:
+		return tIngestNoResult.In(l)
+	case r.Reason == "":
+		return tIngestCounts.F(l, r.Accepted, r.Changed, r.Excluded)
+	}
+	s := ingestReasonText[r.Reason].In(l)
+	if r.Detail != "" {
+		s += " (" + r.Detail + ")"
+	}
+	return s
+}
+
+// IngestView — 03의 적재 구역.
+type IngestView struct {
+	// Configured — 화면에서 적재하도록 설정됐다(조회용 PQCOTA_READONLY_DSN과 적재용 PQCOTA_DSN이 둘 다 있다).
+	Configured bool
+	// ReadVar — 화면이 조회에 쓰는 변수의 이름.
+	ReadVar      string
+	Block        string
+	Problems     []IngestProblem
+	Files        int
+	PolicyDigest string
+	NoPolicy     bool
+	Observed     int
+	Managed      int
+	Nodes        []IngestNode
+	// StateUnknown — 이력의 지금 상태를 읽지 못했다. AllCurrent — 모든 노드의 최신 참조가 이미 이 결과 · 정책의 것이다.
+	StateUnknown, AllCurrent, Running bool
+	Last                              *IngestLast
+}
+
+// CanIngest — 적재 확인으로 가는 버튼을 낼 수 있는가.
+func (v IngestView) CanIngest() bool {
+	return v.Configured && v.Block == "" && len(v.Problems) == 0 && len(v.Nodes) > 0 && !v.StateUnknown && !v.AllCurrent && !v.Running
+}
+
+// BlockText — 막는 것의 문구.
+func (v IngestView) BlockText(l Lang) string { return ingestBlockText[v.Block].In(l) }
+
+// IngestConfirmLines: 적재 확인 페이지에 적을 것. 조직, 활성 정책의 지문, 검증된 결과 파일 수, 정책으로 제외되는 자산 수, 노드마다
+// 기대하는 참조와 지금의 최신 참조, 그리고 되돌릴 수 없다는 것.
+func IngestConfirmLines(l Lang, org, policy string, noPolicy bool, files, observed, managed int, nodes []IngestNode) []string {
+	out := []string{tIngestLineOrg.F(l, org)}
+	if noPolicy {
+		out = append(out, tIngestLineNoPolicy.In(l))
+	} else {
+		out = append(out, tIngestLinePolicy.F(l, policy))
+	}
+	out = append(out, tIngestLineFiles.F(l, files), tIngestLineExcluded.F(l, observed-managed, observed))
+	for _, n := range nodes {
+		out = append(out, tIngestLineNode.F(l, n.Node, shortRef(l, n.Want), shortRef(l, n.Latest), n.StateText(l)))
+	}
+	return append(out, tIngestLineSameDB.In(l), tIngestLineAppendOnly.In(l))
+}
+
+// IngestConfirmTitle: 적재 확인 페이지의 제목.
+func IngestConfirmTitle(l Lang) string { return tIngestConfirmTitle.In(l) }
+
+// RenderIngestRunning — 도는 동안 다시 받는 조각.
+func RenderIngestRunning(w io.Writer, l Lang) error {
+	return ingestRunning(l).Render(context.Background(), w)
+}
