@@ -1285,12 +1285,12 @@ var (
 			"<b>SSH 키는 개인 키 파일의 경로를 적습니다.</b> 키 자체는 화면에 들어오지 않습니다. 포트를 비우면 SSH는 22, WinRM은 5985입니다.<br>" +
 			"<b>비밀번호는 이 화면에서 적지 않습니다.</b> 파일에 있으면 「있음」으로만 보이고 저장해도 그대로 남습니다. " +
 			"WinRM 노드처럼 비밀번호가 필요하면 hosts.csv의 ssh_pass 열에 직접 적습니다.<br>" +
-			"고치지 않은 행은 저장해도 파일의 글자 그대로 남습니다. 고친 행 바로 앞의 주석 줄(#)은 남지 않습니다.",
+			"고치지 않은 행은 저장해도 파일의 글자 그대로 남습니다. 행을 고치거나 옮겨도 그 앞의 주석 줄(#)은 그대로 남습니다.",
 		EN: "<b>The rows are the nodes of 01 Declaration.</b> The node ID is the declared node name and is not edited here. A row without access details is not saved, and that node is left out of the observation.<br>" +
 			"<b>For an SSH key, write the path to the private key file.</b> The key itself never enters the screen. A blank port means 22 for SSH and 5985 for WinRM.<br>" +
 			"<b>Passwords are not written on this screen.</b> If the file has one, it shows only as 「set」 and is kept as is when you save. " +
 			"When a node needs a password, as WinRM nodes do, write it in the ssh_pass column of hosts.csv directly.<br>" +
-			"A row you did not change stays in the file exactly as it was. A comment line (#) right before a changed row is not kept."}
+			"A row you did not change stays in the file exactly as it was. Comment lines (#) before a row stay when that row is changed or moved."}
 	tColNodeID = T{KO: "노드 ID", EN: "Node ID"}
 	tColUser   = T{KO: "계정", EN: "User"}
 	tColKey    = T{KO: "SSH 키 경로", EN: "SSH key path"}

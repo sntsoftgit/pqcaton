@@ -137,6 +137,53 @@ func TestAccessRowsAreTheDeclaredNodes(t *testing.T) {
 	if got := readFile(t, s.hosts); got != want {
 		t.Errorf("after changing one row:\n%q\nwant\n%q", got, want)
 	}
+	// 주석이 있는 행(web)의 주소만 고친다. 그 주석 · 머리글 · 다른 행은 바이트까지 그대로다.
+	before := readFile(t, s.hosts)
+	form = hostsForm(t, get(t, s, ui.ScreenObserve+"?lang=ko").Body.String())
+	form.Set("host.ip."+hostField(t, form, "web"), "10.0.0.22")
+	if w := postForm(t, s, ui.HostsSavePath, withRev(form, s.revFor(ui.ScreenObserve))); w.Code != http.StatusSeeOther {
+		t.Fatalf("save = %d\n%s", w.Code, w.Body.String())
+	}
+	want = strings.Replace(before, "web,\"Web, front\",10.0.0.2,22,", "web,\"Web, front\",10.0.0.22,22,", 1)
+	if got := readFile(t, s.hosts); got != want || want == before || !strings.Contains(got, "# web tier\nweb,") {
+		t.Errorf("after changing the address of a row with a comment:\n%q\nwant the comment, the header and the other rows as they were:\n%q", got, want)
+	}
+}
+
+// IC-U260 — **주석이 있는 행의 ID만 옮겨도 주석 · 머리글 · 다른 행은 바이트까지 그대로다.** 밖에서 만든 파일에서 선언에 없는
+// ID의 행 앞에 주석 줄이 둘 있고 포트 · OS · 접속 방법은 비어 있다. 그 행을 선언 노드로 옮겨 저장하면 그 행의 첫 칸만 바뀐다:
+// 주석 두 줄, 비워 둔 칸, 머리글, 앞뒤의 행이 그대로다. 그 행을 지우면 그 주석도 함께 없어지고 다른 행은 그대로다.
+func TestCommentsStayWithAMovedRow(t *testing.T) {
+	const file = "node_id,name,ip,port,ssh_user,ssh_key,ssh_pass,os,connection\n" +
+		"web,Web,10.0.0.2,22,deploy,/home/me/.ssh/id_ed25519,,linux,ssh\n" +
+		"# was renamed in the CMDB\n" +
+		"# owner: payments\n" +
+		"app-old,\"App, legacy\",10.0.0.5,,deploy,,s3cret-pw,,\n" +
+		"db,DB,10.0.0.9,,deploy,,,,"
+	for name, c := range map[string]struct{ move, want string }{
+		"moved":   {ui.HostMoveTo("app"), strings.Replace(file, "app-old,", "app,", 1)},
+		"removed": {ui.HostMoveRemove, strings.Replace(file, "# was renamed in the CMDB\n# owner: payments\napp-old,\"App, legacy\",10.0.0.5,,deploy,,s3cret-pw,,\n", "", 1)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := everyScreen(t)
+			if err := os.WriteFile(s.hosts, []byte(file), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+			// 주석 두 줄 뒤이므로 그 행은 파일의 5행이다.
+			if !strings.Contains(page, `data-orphan-row="5" data-orphan-id="app-old"`) {
+				t.Fatalf("the orphan row is not shown with its line in the file:\n%s", page)
+			}
+			form := hostsForm(t, page)
+			form.Set("host.move."+hostField(t, form, "app-old"), c.move)
+			if w := postForm(t, s, ui.HostsSavePath, withRev(form, s.revFor(ui.ScreenObserve))); w.Code != http.StatusSeeOther {
+				t.Fatalf("save = %d\n%s", w.Code, w.Body.String())
+			}
+			if got := readFile(t, s.hosts); got != c.want {
+				t.Errorf("after the row was %s:\n%q\nwant\n%q", name, got, c.want)
+			}
+		})
+	}
 }
 
 // IC-U259 — **선언에서 노드 이름을 바꾼 뒤, 옛 접속 행을 운영자가 고른 노드로 옮긴다.** 화면의 선언 저장으로 web을 web-01로

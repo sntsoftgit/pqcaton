@@ -354,8 +354,26 @@ func hostRecords(raw []byte) []hostRecord {
 	return out
 }
 
+// leadOf — 행의 원문 조각에서 그 행 앞에 붙은 주석 줄(#)과 빈 줄. 행을 다시 쓸 때 이것은 그대로 둔다.
+func leadOf(raw []byte) []byte {
+	n := 0
+	for n < len(raw) {
+		end := bytes.IndexByte(raw[n:], '\n')
+		if end < 0 {
+			break
+		}
+		line := bytes.TrimRight(raw[n:n+end], "\r")
+		if len(line) != 0 && line[0] != '#' {
+			break
+		}
+		n += end + 1
+	}
+	return raw[:n]
+}
+
 // EncodeHostsKeeping — 저장할 접근 정보를 상류 형식의 CSV로 쓰되, **값이 바뀌지 않은 행은 저장된 파일의 바이트를 그대로
-// 둔다.** 그래서 한 행의 ID만 옮기면 그 행만 다시 쓰이고, 머리글과 다른 행은 밖에서 만든 모양 그대로 남는다. from은
+// 둔다.** 그래서 한 행의 ID만 옮기면 그 행만 다시 쓰이고, 머리글과 다른 행은 밖에서 만든 모양 그대로 남는다. 고치거나
+// 옮긴 행도 **바로 앞의 주석 줄은 그대로 둔다.** 주석은 그 행을 지울 때만 함께 없어진다. from은
 // saved의 줄마다 그것이 prev의 몇째 행이었는지다(새 줄은 -1). 파일을 행 단위로 나누지 못하면 전부 새로 쓴다(EncodeHosts).
 func EncodeHostsKeeping(raw []byte, prev, saved []inventory.Host, from []int) ([]byte, error) {
 	recs := hostRecords(raw)
@@ -388,6 +406,7 @@ func EncodeHostsKeeping(raw []byte, prev, saved []inventory.Host, from []int) ([
 			if sameHost(same, h) {
 				fields := append([]string(nil), recs[j+1].fields...)
 				fields[0] = h.NodeID
+				b.Write(leadOf(recs[j+1].raw))
 				w := csv.NewWriter(&b)
 				if err := w.Write(fields); err != nil {
 					return nil, err
@@ -402,6 +421,10 @@ func EncodeHostsKeeping(raw []byte, prev, saved []inventory.Host, from []int) ([
 		one, err := encodeHostRows([]inventory.Host{h})
 		if err != nil {
 			return nil, err
+		}
+		// 값을 고친 행: 그 행만 다시 쓰고, 바로 앞에 있던 주석 줄과 빈 줄은 그대로 둔다(운영자의 메모다).
+		if j := from[i]; j >= 0 && j < len(prev) {
+			b.Write(leadOf(recs[j+1].raw))
 		}
 		b.Write(one)
 	}
