@@ -382,6 +382,9 @@ body.wb ul.run-nodes li[data-node-state="failed"] { color: var(--red); font-weig
 body.wb ul.run-nodes li[data-node-state="done"] { color: var(--green); }
 body.wb .run-log-box { margin-top: .8rem; }
 body.wb .run-log-box > summary { cursor: pointer; color: var(--muted); font-size: .9rem; width: max-content; max-width: 100%; }
+/* 03: 활성화를 기다리는 동안 접어 두는 「현재 활성 정책으로 다시 적재」. */
+body.wb .ingest-fold { margin-top: 1rem; }
+body.wb .ingest-fold > summary { cursor: pointer; font-weight: 600; width: max-content; max-width: 100%; }
 
 /* 06: 대상 노드 미리 보기와 실행 결과. 작업은 노드 줄 안에 작은 목록으로 둔다. */
 body.wb table.provrun td { vertical-align: top; }

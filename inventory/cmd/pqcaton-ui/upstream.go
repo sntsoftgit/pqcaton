@@ -257,7 +257,18 @@ func (s *server) reconcileUpstream(policyPath string) (upstream.Result, error) {
 
 // upstreamRefuse — 대조 실패를 거절 종류로. 처리했으면 true다. 표준오류에는 분류된 오류만 적는다(연결 정보가 없다).
 func (s *server) upstreamRefuse(w http.ResponseWriter, r *http.Request, back string, err error) bool {
-	kind, code := "", http.StatusConflict
+	kind, code, ok := upstreamKind(err)
+	if !ok {
+		return false
+	}
+	fmt.Fprintln(os.Stderr, "scope round:", err)
+	s.refuse(w, r, code, kind, back, nil)
+	return true
+}
+
+// upstreamKind — 대조 실패의 거절 종류와 상태 코드. 분류되지 않는 오류면 ok가 거짓이다.
+func upstreamKind(err error) (kind string, code int, ok bool) {
+	code = http.StatusConflict
 	switch {
 	case errors.Is(err, upstream.ErrOrg):
 		kind = ui.RefusedUpstreamOrg
@@ -270,11 +281,9 @@ func (s *server) upstreamRefuse(w http.ResponseWriter, r *http.Request, back str
 	case errors.Is(err, upstream.ErrUnreachable):
 		kind, code = ui.RefusedUpstreamUnreachable, http.StatusServiceUnavailable
 	default:
-		return false
+		return "", 0, false
 	}
-	fmt.Fprintln(os.Stderr, "scope round:", err)
-	s.refuse(w, r, code, kind, back, nil)
-	return true
+	return kind, code, true
 }
 
 // checkedAt — 확인 페이지에 적을 확인 시각(분까지, 서버의 시간대).

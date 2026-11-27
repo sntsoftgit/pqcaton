@@ -18,7 +18,7 @@ const (
 	IngestPolicy      = "policy"
 	IngestInputs      = "inputs"
 	IngestObserving   = "observing"
-	// IngestNoCandidate — 새 확정 정책으로 적재할 수 없다: 02에서 확정한 정책이 없거나, 확정한 뒤 바뀌었거나, 활성 정책과 같다.
+	// IngestNoCandidate — 활성화할 확정 정책으로 적재할 수 없다: 02에서 확정한 정책이 없거나, 확정한 뒤 바뀌었거나, 활성 정책과 같다.
 	IngestNoCandidate = "no-candidate"
 )
 
@@ -206,8 +206,8 @@ func IngestConfirmLines(l Lang, org, policy string, noPolicy, candidate bool, ac
 	return append(out, tIngestLineSameDB.In(l), tIngestLineAppendOnly.In(l))
 }
 
-// ObservePolicy — 03의 「새 확정 정책: 재적재와 활성화」. Offer의 From · To가 현재 활성 정책과 새 확정 정책의 지문이다.
-// Ingest는 **새 확정 정책으로** 적재한다면의 구역이다(노드별 기대 참조와 이력의 상태).
+// ObservePolicy — 03의 「활성화할 확정 정책: 재적재와 활성화」. Offer의 From · To가 현재 활성 정책과 활성화할 확정 정책의 지문이다.
+// Ingest는 **활성화할 확정 정책으로** 적재한다면의 구역이다(노드별 기대 참조와 이력의 상태).
 type ObservePolicy struct {
 	Offer                     ActivationOffer
 	ActiveFile, CandidateFile string
@@ -216,7 +216,7 @@ type ObservePolicy struct {
 	ActivateRev string
 }
 
-// Reingested — 모든 노드의 최신 참조가 새 확정 정책의 것이라고 **확인했다.** 이력을 읽지 못했거나 기대 참조를 계산하지
+// Reingested — 모든 노드의 최신 참조가 활성화할 확정 정책의 것이라고 **확인했다.** 이력을 읽지 못했거나 기대 참조를 계산하지
 // 못했으면 거짓이다.
 func (p ObservePolicy) Reingested() bool {
 	return p.Ingest.Block == "" && len(p.Ingest.Problems) == 0 && !p.Ingest.StateUnknown && p.Ingest.AllCurrent

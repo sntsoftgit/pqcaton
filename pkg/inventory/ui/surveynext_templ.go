@@ -314,7 +314,7 @@ func surveyNextMetrics(v SurveyView) templ.Component {
 
 // surveyActivationNote — 02에서 확정한 정책이 아직 활성화되지 않았을 때. **이 대조가 어느 정책으로 한 것인지 먼저
 // 밝힌다.** 확정한 정책이 이미 쓰이는 줄 알고 이 화면을 읽으면, 새 정책에서 빠질 자산을 아직 관리 대상으로 본다. 활성화는
-// 상류 재적재와 새 판정 회차를 함께 거치므로 03 관측 화면의 「새 확정 정책」 한 곳에서만 한다. 여기서는 그리로 잇는다.
+// 상류 재적재와 새 판정 회차를 함께 거치므로 03 관측 화면의 「활성화할 확정 정책」 한 곳에서만 한다. 여기서는 그리로 잇는다.
 func surveyActivationNote(v SurveyView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

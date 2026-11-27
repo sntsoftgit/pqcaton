@@ -89,6 +89,9 @@ const (
 	// RefusedUpstreamRevert — 이 정책으로 만든 결과가 pqcota 이력에 있지만 노드의 최신이 아니다(이전 정책 복귀가 이렇게 보인다).
 	// 이 정책으로 결과를 다시 적재하면 최신이 되어 풀린다(409).
 	RefusedUpstreamRevert = "upstream-revert"
+	// RefusedActivateHistoryChanged — 활성화 확인 뒤 pqcota 이력의 최신 참조가 달라져 활성화하지 않았다(409). 확인 페이지는
+	// 대조가 맞을 때만 나오므로, 실행 때의 불일치는 그 사이에 이력이 바뀌었다는 뜻이다. 현재 활성 정책은 그대로다.
+	RefusedActivateHistoryChanged = "activate-history-changed"
 	// RefusedScopeSame — 02에서 확정한 정책이 이미 활성 정책과 같아 활성화할 것이 없다. 아무것도 쓰지 않았다(409).
 	RefusedScopeSame = "scope-same"
 	// RefusedScopeNotFinalized — 02에서 확정한 정책이 없거나, 02 확정 뒤 바뀌었거나, 읽을 수 없어 활성화하지 않았다(409).
@@ -120,29 +123,30 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedIngestChangedKeys: {tIngestRefusedHead, tIngestChangedKeys}, RefusedIngestChanged: {tIngestRefusedHead, tIngestChangedInputs},
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
-	RefusedRulesetChanged:      {body: tRefusedRulesetChanged},
-	RefusedPlanRuleset:         {tSignRefusedHead, tRefusedPlanRuleset},
-	RefusedPlanScope:           {tSignRefusedHead, tRefusedPlanScope},
-	RefusedPlanText:            {tSignRefusedHead, tRefusedPlanText},
-	RefusedPlanFields:          {tSignRefusedHead, tRefusedPlanFields},
-	RefusedSessionText:         {body: tRefusedSessionText},
-	RefusedScopePolicy:         {body: tRefusedScopePolicy},
-	RefusedScopeBaseline:       {body: tRefusedScopeBaseline},
-	RefusedScopeUnactivated:    {body: tRefusedScopeUnactivated},
-	RefusedUpstreamUnreachable: {body: tRefusedUpstreamUnreachable},
-	RefusedUpstreamOrg:         {body: tRefusedUpstreamOrg},
-	RefusedUpstreamMissing:     {body: tRefusedUpstreamMissing},
-	RefusedUpstreamEmpty:       {body: tRefusedUpstreamEmpty},
-	RefusedUpstreamRevert:      {body: tRefusedUpstreamRevert},
-	RefusedScopeSame:           {body: tRefusedScopeSame},
-	RefusedScopeNotFinalized:   {body: tRefusedScopeNotFinalized},
-	ErrNotFound:                {tErrNotFoundHead, tErrNotFound},
-	ErrMethod:                  {tErrMethodHead, tErrMethod},
-	ErrBadRequest:              {tErrBadRequestHead, tErrBadRequest},
-	ErrInputMissing:            {tErrInputMissingHead, tErrInputMissing},
-	ErrInputBroken:             {tErrInputBrokenHead, tErrInputBroken},
-	ErrForbidden:               {tErrForbiddenHead, tErrForbidden},
-	ErrInternal:                {tErrInternalHead, tErrInternal},
+	RefusedRulesetChanged:         {body: tRefusedRulesetChanged},
+	RefusedPlanRuleset:            {tSignRefusedHead, tRefusedPlanRuleset},
+	RefusedPlanScope:              {tSignRefusedHead, tRefusedPlanScope},
+	RefusedPlanText:               {tSignRefusedHead, tRefusedPlanText},
+	RefusedPlanFields:             {tSignRefusedHead, tRefusedPlanFields},
+	RefusedSessionText:            {body: tRefusedSessionText},
+	RefusedScopePolicy:            {body: tRefusedScopePolicy},
+	RefusedScopeBaseline:          {body: tRefusedScopeBaseline},
+	RefusedScopeUnactivated:       {body: tRefusedScopeUnactivated},
+	RefusedUpstreamUnreachable:    {body: tRefusedUpstreamUnreachable},
+	RefusedUpstreamOrg:            {body: tRefusedUpstreamOrg},
+	RefusedUpstreamMissing:        {body: tRefusedUpstreamMissing},
+	RefusedUpstreamEmpty:          {body: tRefusedUpstreamEmpty},
+	RefusedUpstreamRevert:         {body: tRefusedUpstreamRevert},
+	RefusedActivateHistoryChanged: {tActivateRefusedHead, tActivateHistoryChanged},
+	RefusedScopeSame:              {body: tRefusedScopeSame},
+	RefusedScopeNotFinalized:      {body: tRefusedScopeNotFinalized},
+	ErrNotFound:                   {tErrNotFoundHead, tErrNotFound},
+	ErrMethod:                     {tErrMethodHead, tErrMethod},
+	ErrBadRequest:                 {tErrBadRequestHead, tErrBadRequest},
+	ErrInputMissing:               {tErrInputMissingHead, tErrInputMissing},
+	ErrInputBroken:                {tErrInputBrokenHead, tErrInputBroken},
+	ErrForbidden:                  {tErrForbiddenHead, tErrForbidden},
+	ErrInternal:                   {tErrInternalHead, tErrInternal},
 }
 
 // RefusedKinds — 알려진 종류 전부(시험이 문구 목록과 견준다).
@@ -206,6 +210,15 @@ func clip(s string) string {
 	}
 	r := []rune(s)
 	return string(r[:maxShown]) + "…"
+}
+
+// NewActivationRefused: 정책 활성화(확인 · 실행)의 거절. 문구는 종류가 고르고, 머리는 「정책을 활성화하지 않았습니다」다.
+// 같은 종류가 저장 · 기준선 채택에서도 쓰여 머리를 종류에 묶지 않는다.
+func NewActivationRefused(p Page, kind, back string, files []FileRef) RefusedView {
+	v := NewRefused(p, kind, back, files)
+	v.Head = tActivateRefusedHead.In(p.Lang)
+	v.Page.Title = v.Head
+	return v
 }
 
 // RenderRefused: 거절 페이지를 그린다.

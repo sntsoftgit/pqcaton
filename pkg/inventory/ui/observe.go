@@ -56,9 +56,13 @@ type ObserveView struct {
 	// Ingest — 이력에 적재(ingest.go). 결과 폴더가 없는 서버에서는 구역을 그리지 않는다.
 	Ingest     IngestView
 	HasResults bool
-	// Policy — 02에서 확정한 정책이 활성 정책과 다를 때의 「새 확정 정책: 재적재와 활성화」. 없으면 nil이다.
+	// Policy — 02에서 확정한 정책이 활성 정책과 다를 때의 「활성화할 확정 정책: 재적재와 활성화」. 없으면 nil이다.
 	Policy *ObservePolicy
 }
+
+// FoldIngest — 활성 정책으로 적재하는 구역을 접어 두는가. 활성화할 확정 정책으로 재적재가 확인돼 활성화를 기다릴 때다.
+// 그때 여기서 적재하면 최신 참조가 현재 활성 정책의 것으로 돌아가 활성화가 막힌다.
+func (v ObserveView) FoldIngest() bool { return v.Policy != nil && v.Policy.Reingested() }
 
 // ObserveRun — 관측 실행 구역.
 type ObserveRun struct {

@@ -22,7 +22,7 @@ package main
 //     않는다.
 //
 // **적재하는 정책은 둘 가운데 하나다.** 활성 정책(scope-assets.csv)이거나, 02에서 확정했지만 아직 활성이 아닌 정책
-// (asset-scope.csv, 「새 확정 정책」)이다. 새 확정 정책으로 다시 적재해도 **활성 정책은 바뀌지 않는다**: 적재는 활성 정책
+// (asset-scope.csv, 「활성화할 확정 정책」)이다. 활성화할 확정 정책으로 다시 적재해도 **활성 정책은 바뀌지 않는다**: 적재는 활성 정책
 // 파일을 건드리지 않고, 활성화는 그 뒤에 운영자가 따로 확인한다(scope_activate.go). 그래서 재적재가 실패하거나 도중에 끝나도,
 // 끝까지 갔어도, 활성 정책은 그대로다.
 //
@@ -99,7 +99,7 @@ type ingestManifest struct {
 	PolicySHA    string `json:"policy_sha256"`
 	PolicyDigest string `json:"policy_digest"`
 	// Role: 적재한 정책의 구실. 비면 활성 정책, "candidate"면 02에서 확정한 새 정책이다. ActiveDigest는 그때의 활성 정책
-	// 지문이다(새 확정 정책으로 적재한 실행에만 적는다).
+	// 지문이다(활성화할 확정 정책으로 적재한 실행에만 적는다).
 	Role         string `json:"policy_role,omitempty"`
 	ActiveDigest string `json:"active_policy_digest,omitempty"`
 	// Keys: 신뢰할 수집기 공개 키(수집기 ID → 키들). 03의 verify.pub에서 읽은 것이다.
@@ -169,7 +169,7 @@ func sha(b []byte) string {
 type ingestPlan struct {
 	// block: 적재를 막는 것의 코드(ui.Ingest…). 비면 막는 것이 없다.
 	block string
-	// role: 적재하는 정책의 구실. policyPath: 그 정책 파일. active: 새 확정 정책으로 적재할 때의 활성 정책 지문.
+	// role: 적재하는 정책의 구실. policyPath: 그 정책 파일. active: 활성화할 확정 정책으로 적재할 때의 활성 정책 지문.
 	role, policyPath, active string
 	problems                 []ui.IngestProblem
 	files                    []ingestFile
@@ -212,7 +212,7 @@ func (s *server) ingestPlan(role string) ingestPlan {
 	p.keysSHA = sha(kb)
 
 	if role == ingestCandidate {
-		// 새 확정 정책: 활성화와 같은 판정으로 본다(있고, 02 확정이 쓴 그대로이고, 활성 정책과 다르고, 세션이 잠기지 않았다).
+		// 활성화할 확정 정책: 활성화와 같은 판정으로 본다(있고, 02 확정이 쓴 그대로이고, 활성 정책과 다르고, 세션이 잠기지 않았다).
 		o, err := s.activationCheck()
 		if err != nil {
 			p.block = ui.IngestNoCandidate
@@ -419,9 +419,9 @@ func (s *server) ingestViewFor(role string) ui.IngestView {
 	return v
 }
 
-// policyView: 03의 「새 확정 정책」 구역. 02에서 확정한 정책이 활성 정책과 다를 때만 있다(05가 활성화를 띄우던 것과 같은
-// 판정이다). 두 지문을 나란히 보이고, 새 확정 정책으로 적재한다면의 노드별 상태와, 활성화 양식에 실을 rev를 채운다.
-// **재적재와 활성화는 따로다**: 활성화 단추는 모든 노드의 최신 참조가 새 확정 정책의 것일 때만 나오고, 눌러도 확인 페이지를
+// policyView: 03의 「활성화할 확정 정책」 구역. 02에서 확정한 정책이 활성 정책과 다를 때만 있다(05가 활성화를 띄우던 것과 같은
+// 판정이다). 두 지문을 나란히 보이고, 활성화할 확정 정책으로 적재한다면의 노드별 상태와, 활성화 양식에 실을 rev를 채운다.
+// **재적재와 활성화는 따로다**: 활성화 단추는 모든 노드의 최신 참조가 활성화할 확정 정책의 것일 때만 나오고, 눌러도 확인 페이지를
 // 거치며, 활성화 직전에 이력을 처음부터 다시 대조한다.
 func (s *server) policyView() *ui.ObservePolicy {
 	o, err := s.activationCheck()

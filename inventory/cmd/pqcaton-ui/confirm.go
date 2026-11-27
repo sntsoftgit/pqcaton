@@ -68,23 +68,28 @@ func (s *server) confirmToken(kind, session, rev, payload, exp string) string {
 
 // confirmed: 확정 요청이 들고 온 확인 토큰을 본다. 문제가 있으면 거절을 그리고 false.
 func (s *server) confirmed(w http.ResponseWriter, r *http.Request, kind, back string, id store.Identity) (payload string, ok bool) {
+	// 정책 활성화의 거절은 머리가 「정책을 활성화하지 않았습니다」다.
+	refuse := s.refuse
+	if kind == kindActivate {
+		refuse = s.refuseActivation
+	}
 	f := r.PostForm
 	tok, exp := f.Get(ui.ConfirmTokenField), f.Get(ui.ConfirmExpField)
 	payload, session := f.Get(ui.ConfirmPayloadField), f.Get(ui.ConfirmSessionField)
 	want := s.confirmToken(kind, session, f.Get(ui.RevField), payload, exp)
 	if tok == "" || !hmac.Equal([]byte(tok), []byte(want)) {
 		fmt.Fprintf(os.Stderr, "refused %s %s (403): the confirmation token is missing or does not match\n", r.Method, r.URL.Path)
-		s.refuse(w, r, http.StatusForbidden, ui.RefusedConfirm, back, nil)
+		refuse(w, r, http.StatusForbidden, ui.RefusedConfirm, back, nil)
 		return "", false
 	}
 	sec, err := strconv.ParseInt(exp, 10, 64)
 	if err != nil || s.now().Unix() > sec {
-		s.refuse(w, r, http.StatusConflict, ui.RefusedExpired, back, nil)
+		refuse(w, r, http.StatusConflict, ui.RefusedExpired, back, nil)
 		return "", false
 	}
 	// 확인한 뒤 세션이 다른 세션으로 바뀌었다(파일을 갈아 끼웠다). 확인한 것이 아니다.
 	if session != id.SessionID {
-		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
+		refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
 		return "", false
 	}
 	return payload, true

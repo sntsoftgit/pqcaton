@@ -677,8 +677,11 @@ func (s ReviewSummary) Ready() bool {
 // reviewEditAnchor — 요약에서 판정 폼으로 보내는 자리.
 const reviewEditAnchor = "review-edit"
 
-// scopeActivateAnchor — 03의 「새 확정 정책: 재적재와 활성화」. 02 · 04 · 05의 안내가 이리로 잇는다(05의 안내 상자도 같은 id다).
+// scopeActivateAnchor — 03의 「활성화할 확정 정책: 재적재와 활성화」. 02 · 04 · 05의 안내가 이리로 잇는다(05의 안내 상자도 같은 id다).
 const scopeActivateAnchor = "scope-activate"
+
+// ScopeActivateAnchor — 처리기가 거절 뒤 03의 활성화 구역으로 돌려보낼 때 쓴다.
+const ScopeActivateAnchor = scopeActivateAnchor
 
 // RenderReview — 판정 화면(`/review`).
 func RenderReview(w io.Writer, v ReviewView) error {

@@ -300,6 +300,16 @@ func (s *server) refuse(w http.ResponseWriter, r *http.Request, code int, kind, 
 	}
 }
 
+// refuseActivation: 정책 활성화의 거절. 머리가 「정책을 활성화하지 않았습니다」다.
+func (s *server) refuseActivation(w http.ResponseWriter, r *http.Request, code int, kind, back string, files []ui.FileRef) {
+	v := ui.NewActivationRefused(s.page(r, "", ""), kind, back, files)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(code)
+	if err := ui.RenderRefused(w, v); err != nil {
+		fmt.Fprintln(os.Stderr, "rendering a refusal:", err)
+	}
+}
+
 // writable: 저장할 수 있는 서버인가. 보기 전용이면 503을 내고 false.
 func (s *server) writable(w http.ResponseWriter, r *http.Request, back string) bool {
 	if s.st != nil {

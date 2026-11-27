@@ -131,7 +131,7 @@ var (
 	tScopeNextBody              = T{KO: "이 정책은 아직 대조에 반영되지 않았습니다. 먼저 04에서 현재 활성 정책으로 계산한 대조 결과를 확인하십시오.", EN: "This policy has not yet been applied to reconciliation. First review the reconciliation produced with the currently active policy in 04."}
 	tScopeNextSurvey            = T{KO: "04에서 현재 대조 보기", EN: "View current reconciliation in 04"}
 	tScopeNextSteps             = T{KO: "03에서 재적재 · 활성화 보기", EN: "View re-ingest and activation in 03"}
-	tActivateNext               = T{KO: "활성화 전 확인으로", EN: "Review before activating"}
+	tActivateNext               = T{KO: "정책 활성화 확인", EN: "Confirm policy activation"}
 	tActivateConfirmTitle       = T{KO: "정책 활성화 전 확인", EN: "Before activating the policy"}
 	tActivateConfirmBody        = T{KO: "아래 내용으로 자산 스코프 정책을 활성화합니다. 아직 아무것도 쓰지 않았습니다.", EN: "The asset-scope policy will be activated as below. Nothing has been written yet."}
 	tActivateDo                 = T{KO: "새 정책 활성화", EN: "Activate the new policy"}
@@ -1990,45 +1990,56 @@ var (
 	tIngestLineFiles       = T{KO: "서명을 확인한 결과 파일: %d개", EN: "Result files with a verified signature: %d"}
 	tIngestLineExcluded    = T{KO: "정책으로 제외되는 자산: %d개(관측 %d개 가운데)", EN: "Assets excluded by the policy: %d (of %d observed)"}
 	tIngestLineNode        = T{KO: "%s: 기대하는 참조 %s · 지금 최신 참조 %s(%s)", EN: "%s: expected reference %s · latest reference now %s (%s)"}
-	tIngestLineCandidate   = T{KO: "적재에 쓸 정책: 02에서 확정한 새 정책 %s", EN: "Policy for this ingest: the new policy finalized in 02, %s"}
+	tIngestLineCandidate   = T{KO: "적재에 쓸 정책: 활성화할 확정 정책 %s", EN: "Policy for this ingest: the finalized policy to activate, %s"}
 	tIngestLineActiveStays = T{
 		KO: "현재 활성 정책: %s. 적재가 끝나도 활성 정책은 바뀌지 않습니다. 활성화는 따로 확인합니다.",
 		EN: "Active policy now: %s. The active policy does not change when the ingest ends. Activation is confirmed separately."}
-	tIngestLastActive    = T{KO: "적재에 쓴 정책: 활성 정책 %s", EN: "Policy used: the active policy %s"}
-	tIngestLastCandidate = T{KO: "적재에 쓴 정책: 02에서 확정한 새 정책 %s(이 적재로 활성 정책은 바뀌지 않았습니다)", EN: "Policy used: the new policy finalized in 02, %s (this ingest did not change the active policy)"}
-	tPolicyHead          = T{KO: "새 확정 정책: 재적재와 활성화", EN: "Newly finalized policy: re-ingest and activate"}
+	tIngestLastActive    = T{KO: "적재에 쓴 정책: 적재할 때의 활성 정책 %s", EN: "Policy used: the active policy at the time, %s"}
+	tIngestLastCandidate = T{KO: "적재에 쓴 정책: 02에서 확정한 정책 %s. 이 실행은 이력에만 적재했습니다.", EN: "Policy used: the policy finalized in 02, %s. This run only ingested into the history."}
+	tPolicyHead          = T{KO: "활성화할 확정 정책: 재적재와 활성화", EN: "Finalized policy to activate: re-ingest and activate"}
 	tPolicyLede          = T{
-		KO: "02에서 확정한 정책이 현재 활성 정책과 다릅니다. 새 확정 정책으로 이력에 다시 적재한 뒤 활성화합니다. 재적재가 끝나도 활성 정책은 바뀌지 않습니다. 활성화는 따로 확인합니다.",
-		EN: "The policy finalized in 02 differs from the active policy. Re-ingest into the history under the newly finalized policy, then activate it. The active policy does not change when the re-ingest ends. Activation is confirmed separately."}
+		KO: "02에서 확정한 정책이 현재 활성 정책과 다릅니다. 활성화할 확정 정책으로 이력에 다시 적재한 뒤 활성화합니다. 재적재가 끝나도 활성 정책은 바뀌지 않습니다. 활성화는 따로 확인합니다.",
+		EN: "The policy finalized in 02 differs from the active policy. Re-ingest into the history under the finalized policy to activate, then activate it. The active policy does not change when the re-ingest ends. Activation is confirmed separately."}
 	tPolicyColPolicy = T{KO: "정책", EN: "Policy"}
 	tPolicyColFile   = T{KO: "파일", EN: "File"}
 	tPolicyColDigest = T{KO: "지문", EN: "Fingerprint"}
 	tPolicyActive    = T{KO: "현재 활성 정책", EN: "Active policy now"}
-	tPolicyCandidate = T{KO: "적재할 새 확정 정책", EN: "Newly finalized policy to ingest under"}
-	tPolicyStep1     = T{KO: "새 확정 정책으로 재적재", EN: "Re-ingest under the newly finalized policy"}
+	tPolicyCandidate = T{KO: "활성화할 확정 정책", EN: "Finalized policy to activate"}
+	tPolicyStep1     = T{KO: "활성화할 확정 정책으로 재적재", EN: "Re-ingest under the finalized policy to activate"}
 	tPolicyStep1Body = T{
-		KO: "지금 결과 폴더의 서명된 결과를 새 확정 정책으로 이력에 적재합니다. 활성 정책 파일은 건드리지 않습니다.",
-		EN: "Ingests the signed results in the results folder into the history under the newly finalized policy. The active policy file is not touched."}
+		KO: "지금 결과 폴더의 서명된 결과를 활성화할 확정 정책으로 이력에 적재합니다. 활성 정책 파일은 건드리지 않습니다.",
+		EN: "Ingests the signed results in the results folder into the history under the finalized policy to activate. The active policy file is not touched."}
 	tPolicySummary = T{
-		KO: "결과 파일 %d개 · 새 확정 정책으로 제외되는 자산 %d개(관측 %d개 가운데)",
-		EN: "%d result files · %d assets excluded by the newly finalized policy (of %d observed)"}
+		KO: "결과 파일 %d개 · 활성화할 확정 정책으로 제외되는 자산 %d개(관측 %d개 가운데)",
+		EN: "%d result files · %d assets excluded by the finalized policy to activate (of %d observed)"}
 	tPolicyReingested = T{
-		KO: "모든 노드의 최신 참조가 새 확정 정책의 것입니다. 다시 적재할 것이 없습니다.",
-		EN: "Every node's latest reference is the one for the newly finalized policy. There is nothing to re-ingest."}
+		KO: "모든 노드의 최신 참조가 활성화할 확정 정책의 것입니다. 다시 적재할 것이 없습니다.",
+		EN: "Every node's latest reference is the one for the finalized policy to activate. There is nothing to re-ingest."}
 	tPolicySeeBelow = T{
 		KO: "적재하지 못하는 결과가 있습니다. 아래 「이력에 적재」에 파일마다 까닭이 적혀 있습니다.",
 		EN: "Some results cannot be ingested. The reason per file is under \"Ingest into the history\" below."}
-	tPolicyGo       = T{KO: "새 확정 정책으로 재적재: 확인으로", EN: "Re-ingest under the newly finalized policy: go to the confirmation"}
+	tPolicyGo       = T{KO: "이 정책으로 재적재", EN: "Re-ingest under this policy"}
 	tPolicyTerminal = T{
 		KO: "화면에서 적재하도록 설정되지 않았습니다. 작업 폴더의 터미널에서 다음 두 명령으로 다시 적재합니다.",
 		EN: "The screen is not set up to ingest. Re-ingest with the two commands below, in a terminal in the workspace folder."}
+	tPolicyActiveNow   = T{KO: "현재 활성 정책: %s", EN: "Active policy now: %s"}
+	tPolicyActiveNone  = T{KO: "현재 활성 정책: 없음(관측한 자산이 모두 관리 대상입니다)", EN: "Active policy now: none (every observed asset is managed)"}
+	tIngestFoldSummary = T{KO: "현재 활성 정책으로 다시 적재", EN: "Ingest again under the active policy"}
+	tIngestFoldWarn    = T{
+		KO: "여기서 적재하면 이력의 최신 참조가 현재 활성 정책의 것으로 돌아갑니다. 그 뒤에 활성화할 확정 정책을 활성화하려면 그 정책으로 다시 적재해야 합니다.",
+		EN: "Ingesting here turns the latest references in the history back to the ones for the active policy. To activate the finalized policy after that, you must re-ingest under that policy again."}
+	tIngestFoldGo           = T{KO: "현재 활성 정책으로 다시 적재: 확인으로", EN: "Ingest again under the active policy: go to the confirmation"}
+	tActivateRefusedHead    = T{KO: "정책을 활성화하지 않았습니다", EN: "The policy was not activated"}
+	tActivateHistoryChanged = T{
+		KO: "확인 후 이력의 최신 참조가 달라졌습니다. 현재 활성 정책은 그대로입니다. 아래 링크로 돌아가 03의 「활성화할 확정 정책: 재적재와 활성화」에서 노드별 대조 결과를 확인하십시오.",
+		EN: "The latest references in the history changed after the confirmation. The active policy is unchanged. Follow the link below and check the per-node comparison under \"Finalized policy to activate: re-ingest and activate\" on screen 03."}
 	tPolicyStep2 = T{KO: "정책 활성화", EN: "Activate the policy"}
 	tPolicyReady = T{
 		KO: "재적재가 확인됐습니다. 현재 활성 정책은 아직 그대로입니다. 확인 페이지에서 바뀌는 파일과 되돌리기 제한을 본 뒤 활성화합니다. 활성화 직전에 이력을 처음부터 다시 대조하고, 최신 참조가 달라졌으면 활성화하지 않습니다.",
 		EN: "The re-ingest is confirmed. The active policy is still the same. Review the files that change and the rollback limit on the confirmation page, then activate. Right before activating, the history is reconciled again from the start; if a latest reference has changed, nothing is activated."}
 	tPolicyNotYet = T{
-		KO: "모든 노드의 최신 참조가 새 확정 정책의 것이 되면 활성화할 수 있습니다. 그 전에는 현재 활성 정책이 유지됩니다.",
-		EN: "Activation becomes possible once every node's latest reference is the one for the newly finalized policy. Until then the active policy stays as it is."}
+		KO: "모든 노드의 최신 참조가 활성화할 확정 정책의 것이 되면 활성화할 수 있습니다. 그 전에는 현재 활성 정책이 유지됩니다.",
+		EN: "Activation becomes possible once every node's latest reference is the one for the finalized policy to activate. Until then the active policy stays as it is."}
 	tIngestLineSameDB = T{
 		KO: "화면이 조회하는 것과 같은 데이터베이스에만 적재합니다. 다르면 쓰기 전에 멈춥니다.",
 		EN: "The ingest only goes to the same database the screen reads. If they differ it stops before writing."}
@@ -2064,7 +2075,7 @@ var ingestBlockText = map[string]T{
 	IngestPolicy:      {KO: "활성 정책 파일을 읽을 수 없습니다.", EN: "The active policy file cannot be read."},
 	IngestInputs:      {KO: "선언이나 결과를 읽을 수 없어 기대하는 참조를 계산하지 못했습니다.", EN: "The declaration or the results could not be read, so the expected references could not be worked out."},
 	IngestObserving:   {KO: "관측이 돌고 있습니다. 끝난 뒤에 적재합니다.", EN: "An observation is running. Ingest after it ends."},
-	IngestNoCandidate: {KO: "02에서 확정한 새 정책이 없거나, 확정한 뒤 바뀌었거나, 이미 활성 정책과 같습니다.", EN: "There is no new policy finalized in 02, it changed after it was finalized, or it is already the active policy."},
+	IngestNoCandidate: {KO: "활성화할 확정 정책이 없습니다. 02에서 확정한 정책이 없거나, 확정한 뒤 바뀌었거나, 이미 활성 정책과 같습니다.", EN: "There is no finalized policy to activate. No policy was finalized in 02, it changed after it was finalized, or it is already the active policy."},
 }
 
 var ingestWhyText = map[string]T{

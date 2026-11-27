@@ -15,7 +15,7 @@ import (
 
 // IC-UI60 — **02 · 04 · 05의 안내와 03의 두 단계.** 02는 두 말로 「아직 대조에 반영되지 않았다」와 두 링크(먼저 04의 현재 대조,
 // 그다음 03의 재적재 · 활성화)를 보이고, 다음 단계가 없으면 아무것도 보이지 않는다. 05의 상자는 두 지문과 03으로 가는 링크만
-// 보이고 활성화 양식이 없다. 03의 「새 확정 정책」은 두 지문을 나란히 두고, 새 확정 정책으로 재적재 · 정책 활성화를 의미 있는
+// 보이고 활성화 양식이 없다. 03의 「활성화할 확정 정책」은 두 지문을 나란히 두고, 활성화할 확정 정책으로 재적재 · 정책 활성화를 의미 있는
 // <ol> 안에 그 순서로 둔다. 화면 적재가 설정되지 않았으면 첫 단계에 작업 폴더 기준 상대 경로의 두 명령(서명 확인이 먼저)이
 // 있다. 재적재가 확인되기 전에는 둘째 단계에 단추가 없고, 확인되면 활성화 확인으로 가는 단추가 그 단계 안에 있다(운영자 확인
 // 칸은 없다).
@@ -23,8 +23,8 @@ func TestActivationStepsAndLinks(t *testing.T) {
 	survey, steps := `href="`+ui.ScreenSurvey+`"`, `href="`+ui.ScreenObserve+`#scope-activate"`
 	type texts struct{ next, s1, s2, hint, go03, wait string }
 	want := map[ui.Lang]texts{
-		ui.KO: {"이 정책은 아직 대조에 반영되지 않았습니다", "새 확정 정책으로 재적재", "정책 활성화", "작업 폴더 기준의 상대 경로입니다", "03에서 재적재 · 활성화 보기", "그 전에는 현재 활성 정책이 유지됩니다"},
-		ui.EN: {"This policy has not yet been applied to reconciliation", "Re-ingest under the newly finalized policy", "Activate the policy", "the paths are relative to it", "View re-ingest and activation in 03", "Until then the active policy stays as it is"},
+		ui.KO: {"이 정책은 아직 대조에 반영되지 않았습니다", "활성화할 확정 정책으로 재적재", "정책 활성화", "작업 폴더 기준의 상대 경로입니다", "03에서 재적재 · 활성화 보기", "그 전에는 현재 활성 정책이 유지됩니다"},
+		ui.EN: {"This policy has not yet been applied to reconciliation", "Re-ingest under the finalized policy to activate", "Activate the policy", "the paths are relative to it", "View re-ingest and activation in 03", "Until then the active policy stays as it is"},
 	}
 	render := func(t *testing.T, f func(*strings.Builder) error) string {
 		t.Helper()

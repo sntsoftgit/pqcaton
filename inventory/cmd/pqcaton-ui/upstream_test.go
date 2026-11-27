@@ -163,7 +163,7 @@ func TestScreenDoesNotStartWithoutPqcota(t *testing.T) {
 // 한다고 적는다(03의 구역은 그 구역의 시험이 본다). pqcota가
 // 옛 정책으로만 적재돼 있으면 확인 요청이 409 `upstream-missing`이고, 닿지 못하면 503 `upstream-unreachable`이다. 새 정책으로
 // 적재돼 있으면 확인 페이지가 「확인 시점에 pqcota 이력과 일치했습니다」와 노드 수를 적는다. 확인 페이지 뒤에 pqcota가 다른
-// 정책으로 다시 적재되면 실행이 409 `upstream-missing`이다(실행은 처음부터 다시 대조한다). 거절은 모두 작업 폴더를 그대로 둔다.
+// 정책으로 다시 적재되면 실행이 409 `activate-history-changed`이다(실행은 처음부터 다시 대조한다. 확인 뒤에 이력이 달라졌다는 뜻이다). 거절은 모두 작업 폴더를 그대로 둔다.
 // 운영자 진술 칸을 보내도 대조를 건너뛰지 않는다.
 func TestActivationReconcilesPqcota(t *testing.T) {
 	s, _ := activationReady(t)
@@ -201,7 +201,7 @@ func TestActivationReconcilesPqcota(t *testing.T) {
 	}
 	useUpstream(s, ingestedUnder(t, s, s.scopeAssets, nil))
 	refused("activate, pqcota re-ingested under the old policy", postForm(t, s, ui.ReviewScopeActivatePath, hiddenFields(body)),
-		http.StatusConflict, ui.RefusedUpstreamMissing)
+		http.StatusConflict, ui.RefusedActivateHistoryChanged)
 	sameDir(t, before, snapshotDir(t, dir))
 }
 

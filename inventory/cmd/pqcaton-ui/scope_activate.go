@@ -4,7 +4,7 @@
 package main
 
 // 새 정책 활성화. 02에서 확정한 정책(asset-scope.csv)이 활성 정책(scope-assets.csv)과 의미상 다르면 **03 관측 화면**이
-// 두 지문을 나란히 보이고, 새 확정 정책으로 다시 적재한 뒤(ingest.go) 확인 페이지를 거쳐 활성화한다. 05는 그 사실과 03으로
+// 두 지문을 나란히 보이고, 활성화할 확정 정책으로 다시 적재한 뒤(ingest.go) 확인 페이지를 거쳐 활성화한다. 05는 그 사실과 03으로
 // 가는 길만 보인다. 재적재와 활성화는 따로다: 재적재가 끝났다고 활성화되지 않는다. 활성화는 정책 보관본 · 활성 정책 교체 · 옛 세션 보관본 · 새 세션 · 변환 보고서 · 회차 표지 ·
 // scope-activation 형식 2 처리 기록을 한 트랜잭션으로 쓴다(rulesetround.Open).
 //
@@ -120,13 +120,30 @@ func (s *server) activationPayload(o *ui.ActivationOffer) (string, error) {
 func (s *server) activationRefuse(w http.ResponseWriter, r *http.Request, back string, err error) bool {
 	switch {
 	case errors.Is(err, errScopeSame), errors.Is(err, rulesetround.ErrSamePolicy):
-		s.refuse(w, r, http.StatusConflict, ui.RefusedScopeSame, back, nil)
+		s.refuseActivation(w, r, http.StatusConflict, ui.RefusedScopeSame, back, nil)
 	case errors.Is(err, errScopeCandidate), errors.Is(err, rulesetround.ErrNoCandidate):
 		fmt.Fprintln(os.Stderr, "activate:", err)
-		s.refuse(w, r, http.StatusConflict, ui.RefusedScopeNotFinalized, back, []ui.FileRef{file(ui.PickLang(r), "policy", s.scopeOut)})
+		s.refuseActivation(w, r, http.StatusConflict, ui.RefusedScopeNotFinalized, back, []ui.FileRef{file(ui.PickLang(r), "policy", s.scopeOut)})
 	default:
 		return false
 	}
+	return true
+}
+
+// activationUpstreamRefuse: 활성화의 이력 대조 실패를 거절로. 처리했으면 true다. confirmed면 확인을 거친 실행 요청이다:
+// 확인 페이지는 대조가 맞을 때만 나오므로, 그때의 「최신이 아니다 · 없다」는 **확인 뒤에 이력이 달라졌다**는 뜻이다. 그 거절은
+// 03의 노드별 대조 결과(활성화 구역)로 돌려보낸다.
+func (s *server) activationUpstreamRefuse(w http.ResponseWriter, r *http.Request, back string, err error, confirmed bool) bool {
+	kind, code, ok := upstreamKind(err)
+	if !ok {
+		return false
+	}
+	fmt.Fprintln(os.Stderr, "activate:", err)
+	if confirmed && (kind == ui.RefusedUpstreamRevert || kind == ui.RefusedUpstreamMissing) {
+		kind = ui.RefusedActivateHistoryChanged
+		back = ui.ScreenObserve + "?" + ui.LangParam + "=" + string(ui.PickLang(r)) + "#" + ui.ScopeActivateAnchor
+	}
+	s.refuseActivation(w, r, code, kind, back, nil)
 	return true
 }
 
@@ -186,7 +203,7 @@ func (s *server) scopeActivateConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := s.reconcileUpstream(s.scopeOut)
 	if err != nil {
-		if !s.upstreamRefuse(w, r, back, err) {
+		if !s.activationUpstreamRefuse(w, r, back, err, false) {
 			s.fail(w, r, back, err, file(ui.PickLang(r), "policy", s.scopeOut))
 		}
 		return
@@ -223,13 +240,13 @@ func (s *server) scopeActivate(w http.ResponseWriter, r *http.Request) {
 	// (1) 입력 스냅샷: 확인 페이지가 본 지문과 rev. 지금 입력이 이미 다르면 대조하지 않고 멈춘다.
 	chk := s.check(r)
 	if now, err := s.activationPayload(o); err != nil || now != payload || !s.unchanged(chk) {
-		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
+		s.refuseActivation(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
 		return
 	}
 	// (2) · (3) pqcota 이력 대조. 실패하면 아무것도 쓰지 않는다.
 	res, err := s.reconcileUpstream(s.scopeOut)
 	if err != nil {
-		if !s.upstreamRefuse(w, r, back, err) {
+		if !s.activationUpstreamRefuse(w, r, back, err, true) {
 			s.fail(w, r, back, err, file(ui.PickLang(r), "policy", s.scopeOut))
 		}
 		return
