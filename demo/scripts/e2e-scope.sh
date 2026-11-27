@@ -393,6 +393,8 @@ unchanged "$B" "$C" "hand-edited candidate"
 docker exec "$CTL" bash -c "cp /tmp/e2e-candidate.bak $WS/asset-scope.csv && rm /tmp/e2e-candidate.bak"
 
 step "5) apply-scope: re-ingest pqcota only (no activation)"
+# 재적재는 **터미널 경로**다(ui.sh apply-scope → pqcota-ingest). 데모의 화면은 조회용 연결만 받아 02 관측 화면의 적재 단추가 없다.
+echo "   re-ingest path: terminal (ui.sh apply-scope → pqcota-ingest); the screen ingest button is not used in this demo"
 # pqcota 이력(판정 조직)의 노드마다 최신 참조: 가장 최근 관측 기록이 가리키는 스냅샷. 재적재 전이 정책 A, 뒤가 B다.
 latest_refs() {
   docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select node_id||' '||snapshot_id from (select node_id, snapshot_id,
@@ -436,6 +438,16 @@ grep -q "adopted the new verified collectors in place of the earlier ones" <<<"$
 # 데모의 수집기는 0)에서 확인한 공식 릴리스 자산이다. 02는 Go 수집기와 collector.jar를 모두 「확인됨」으로 보이고, 허용
 # 상태(*-allowed)도 확인 불가 경고도 없으며, override 없이 시작 양식을 내놓아야 한다. 화면의 명령줄과 로그에도 override가 없다.
 OBSERVE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/observe?lang=en')"
+# 절차 카드는 다섯이고 자산 스코프는 카드가 아니다. 02 관측 → 「규칙 고치기」 → 자산 스코프 화면 → 「02 관측으로 돌아가기」가
+# 링크로 이어지고, 자산 스코프 화면에서는 02 카드가 지금 단계다.
+[ "$(grep -o 'class="step-num"' <<<"$OBSERVE" | wc -l)" -eq 5 ] || fail "the screen does not show five step cards"
+grep -q 'id="observe-scope"' <<<"$OBSERVE" || fail "02 has no asset scope section"
+grep -q '<a class="quiet" href="/scope?lang=en" data-scope-edit>' <<<"$OBSERVE" || fail "02 does not lead to the asset scope screen (Edit the rules)"
+SCOPE_PAGE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/scope?lang=en')"
+grep -q 'href="/observe?lang=en#observe-scope" data-scope-back' <<<"$SCOPE_PAGE" || fail "the asset scope screen has no way back to 02"
+grep -o 'aria-current="step"[^>]*>.\{0,300\}' <<<"$(tr -d '\n' <<<"$SCOPE_PAGE")" | grep -q '<span class="step-num">02</span>' || fail "on the asset scope screen the 02 card is not the current step"
+docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/observe?lang=en' | grep -q 'id="observe-scope"' || fail "back on 02 the asset scope section is gone"
+echo "   02 → Edit the rules → /scope → Back to 02 Observation: the links are there, 02 stays the current step, five step cards"
 LINES="$(grep -oE 'data-collector-state="[a-z]+"[^>]*><code>[^<]*</code>[^<]*' <<<"$OBSERVE" | sed -E 's/^data-collector-state="([a-z]+)"[^>]*><code>([^<]*)<\/code>/\1 \2/')"
 echo "$LINES" | sed 's/^/   02 collector: /'
 for f in linux-amd64/pqcota-nodescan linux-amd64/pqcota-netcap linux-amd64/pqcota-jvmscan collector.jar; do

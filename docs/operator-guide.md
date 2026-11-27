@@ -659,8 +659,10 @@ shows the finalize state (not finalized, finalized, superseded, recovery require
 **The asset scope belongs to 02 Observation.** It has no card of its own. The "Asset scope" section of the 02 screen shows
 the active policy (file, number of rules, fingerprint) and the state of the rule editing and its finalization, and "Edit the
 rules" in that section opens the asset scope screen. When the screen is started without a workspace and there is no
-observation screen, an unnumbered "Crypto asset scope" link sits at the top instead. The items below follow the order of
-work.
+observation screen, an unnumbered "Crypto asset scope" link sits at the top instead.
+
+**The numbers of the list below are the order of work, not screen numbers.** Each item names in bold the screen where it is
+done.
 
 1. **01 Declaration.** The first time, enter the organization name to create an empty declaration. Write the managed nodes
    and their IPs, the crypto assets used on each node, and the communication edges, and save. The screen points at the
@@ -668,7 +670,8 @@ work.
    reconciliation is wrong without any error. A row with its name or IP emptied, an IP that is not an address, and a port that is
    not a number are not saved; the screen points at the field and keeps what you typed. To delete a node or an asset, use
    Remove.
-2. **Asset scope (opened with "Edit the rules" on 02 Observation).** The first time, enter a layer name to create an empty layer. Write the rules, a conclusion for each
+2. **Editing the asset scope: done inside 02 Observation.** Press "Edit the rules" in the "Asset scope" section of the 02
+   screen to open the asset scope screen, and come back with "Back to 02 Observation". The first time, enter a layer name to create an empty layer. Write the rules, a conclusion for each
    changed rule, sign, and finalize. Finalizing creates `asset-scope.csv`.
 
    **The policy finalized on the asset scope screen is not used for reconciliation right away.** Reconciliation (03, 04) uses the active
@@ -1066,13 +1069,30 @@ contents.
 
 ## 9. Upgrading
 
+**The screen numbers changed after v0.33.0.** The procedure went from six steps to five, and the asset scope is opened inside
+02 Observation. Use the table below when reading earlier documents and release notes.
+
+| Screen up to v0.33.0 | Screen after it |
+|---|---|
+| 01 Declaration | 01 Declaration |
+| 02 Scope | 02 Observation → Asset scope → Edit the rules |
+| 03 Observation | 02 Observation |
+| 04 Reconciliation | 03 Reconciliation |
+| 05 Judgment | 04 Judgment |
+| 06 Approval and generation | 05 Provisioning |
+
+**The per-version sections below use the screen numbers of that version** (the left column, up to v0.33.0). The rest of this
+guide uses the current numbers. Up to v0.33.0 a new policy was also activated on 05 Judgment; it is now activated on 02
+Observation. The restriction that the preview, apply and recheck of 05 Provisioning only run with ansible-core 2.16.3 belongs
+to 06 in the old numbering.
+
 ### v0.32.0 to v0.33.0
 
-v0.33.0 adds "App connections from the history", opened from 03. The pqcota to use with it (v0.20.0), the ruleset, the state format, the
+v0.33.0 adds "App connections from the history", opened from 04. The pqcota to use with it (v0.20.0), the ruleset, the state format, the
 sessions and the plan format are the same as v0.32.0, so the workspace and the history are used as they are. Stop the screen and replace
 the binary with the `go install` of [section 2](#2-installation). The new screen opens with the read privileges the screen's account
 already has, so grant nothing more. To see peers as node names, register the endpoints for the judgment organization as "When a peer
-shows only as an address" under 03 in [section 6](#6-a-days-procedure) describes. The topology picture on 03 is now drawn after the screen
+shows only as an address" under 04 in [section 6](#6-a-days-procedure) describes. The topology picture on 04 is now drawn after the screen
 appears and embedded only after the SVG that `dot` wrote is checked, and drawing has a time limit (10 seconds) and a size limit (4 MiB).
 When it is not drawn, the reason and the DOT source show.
 
@@ -1087,12 +1107,12 @@ so the workspace opens as it is.
    load into, prune or record in the same history at the same version. The schema is the same as v0.16.0, so `pqcota-inventory -init-schema`
    does not have to be run again.
 3. Install `pqcaton-ui` and the preparation tool `pqcaton-collectors` at v0.32.0 with the `go install` of [section 2](#2-installation), and
-   fetch the v0.20.0 release assets as in "Checking the collectors you download" to replace the collector folder. 02 refuses the v0.16.0
+   fetch the v0.20.0 release assets as in "Checking the collectors you download" to replace the collector folder. 03 refuses the v0.16.0
    collectors as not matching.
 4. Keep the collector signing keys and the verification value (`PQCOTA_VERIFY_KEY` in the collector-bound form) as they are. Do not move
-   to the per-node key file of upstream v0.17.0 (`PQCOTA_VERIFY_KEY_FILE`): 02 of this version signs with one key per collector ID.
-5. Start the screen and observe again on 02. The `pqcota-netcap` of v0.20.0 also records the connections a node accepts, so nodes that
-   only accept connections can get new communication edges. 03 shows the two records of one connection as one edge, and shows the
+   to the per-node key file of upstream v0.17.0 (`PQCOTA_VERIFY_KEY_FILE`): 03 of this version signs with one key per collector ID.
+5. Start the screen and observe again on 03. The `pqcota-netcap` of v0.20.0 also records the connections a node accepts, so nodes that
+   only accept connections can get new communication edges. 04 shows the two records of one connection as one edge, and shows the
    connections whose direction was not confirmed separately under the reconciliation table. Upstream `pqcota-inventory -diff` lists the
    accepting node's records as added; the assets did not change.
 
@@ -1108,7 +1128,7 @@ row removed with Remove.
 
 v0.31.0 takes in upstream pqcota v0.16.0 (which includes v0.15.0). The ruleset (`pqcota-enrich/v4`), the contract and the history's tables
 and columns are the same as v0.14.0, and the state format and the session and plan formats are the same as v0.30.0, so the workspace opens
-as it is **without a ruleset change round**. Three things change: **a 02 observation does not start without the collector signing keys,
+as it is **without a ruleset change round**. Three things change: **a 03 observation does not start without the collector signing keys,
 does not use the operator's `ansible.cfg`, and does not observe Windows nodes.** The pqcota history gets its schema from a dedicated
 command, and the query commands no longer create tables.
 
@@ -1120,20 +1140,20 @@ command, and the query commands no longer create tables.
    run `pqcota-inventory -init-schema` once as the role that owns the tables. From v0.16.0 the query commands create no tables, so they stop
    when the tables this version adds (metadata, source evidence) are missing.
 4. Install `pqcaton-ui` and the preparation tool `pqcaton-collectors` at v0.31.0 with the `go install` of [section 2](#2-installation), and
-   fetch the v0.16.0 release assets as in "Checking the collectors you download" to replace the collector folder. 02 refuses the v0.14.0
+   fetch the v0.16.0 release assets as in "Checking the collectors you download" to replace the collector folder. 03 refuses the v0.14.0
    collectors as "does not match".
-5. **Prepare the collector signing keys** ("Preparing the collector signing keys" in section 2). **02 in v0.31.0 does not start an
+5. **Prepare the collector signing keys** ("Preparing the collector signing keys" in section 2). **03 in v0.31.0 does not start an
    observation without them.**
 6. **Get the nodes ready.** Take the Windows nodes out of the access file. For nodes reached as an ordinary account, give that account
    `NOPASSWD` sudo and turn I/O logging off ("Node check" in section 2).
-7. **Move the values of `ansible.cfg`** (the table below). 02 reads neither the operator's `ansible.cfg` nor `ANSIBLE_*` environment
+7. **Move the values of `ansible.cfg`** (the table below). 03 reads neither the operator's `ansible.cfg` nor `ANSIBLE_*` environment
    variables.
-8. Start the screen, check that every item of the 02 checklist is ✓, and observe. In the run log, look for each node passing the check
+8. Start the screen, check that every item of the 03 checklist is ✓, and observe. In the run log, look for each node passing the check
    and "signature checked" for each result.
 9. **Switch the ingest to the form bound to collector IDs.** Upstream's order is central tools → collectors → check → the new value.
    Steps 2 and 4 are the first two; check the results from step 8 with `pqcota-ingest -verify-keys`, then set the ingest's
    `PQCOTA_VERIFY_KEY` to the value of `verify.pub` (the re-ingest commands in [section 6](#6-a-days-procedure)). **Switch only after the
-   collectors you run yourself outside 02 sign with the same keys.** Switching first refuses every result of a collector that does not
+   collectors you run yourself outside 03 sign with the same keys.** Switching first refuses every result of a collector that does not
    sign. Upstream still accepts the old list (keys without IDs), with a warning.
 
 <a id="moving-an-existing-history-to-three-roles"></a>
@@ -1184,24 +1204,24 @@ Run these as an administrator.
    PQCOTA_DSN='postgres://pqcota_schema@<host>:5432/pqcota' pqcota-inventory -init-schema
    ```
 
-**Values to move from `ansible.cfg`.** 02 reads only one configuration made by the product for each run. Move the values you kept in
-`ansible.cfg` as below, or they are not used in this version. When you apply the playbooks of 05 outside 02, your own `ansible.cfg`
+**Values to move from `ansible.cfg`.** 03 reads only one configuration made by the product for each run. Move the values you kept in
+`ansible.cfg` as below, or they are not used in this version. When you apply the playbooks of 06 outside 03, your own `ansible.cfg`
 applies as before.
 
-| Value in `ansible.cfg` | In 02 |
+| Value in `ansible.cfg` | In 03 |
 |---|---|
 | `remote_user` | Write it per node as the account (`ssh_user`) of the access file (`hosts.csv`) |
 | `private_key_file` | Write it as the SSH key path (`ssh_key`) of the access file, or keep it as `IdentityFile` in `~/.ssh/config`. The ssh agent is used too |
 | `remote_port` | Write it as the port of the access file |
-| `ssh_args`, jump hosts (`ProxyJump`, `ProxyCommand`) | Move them to `~/.ssh/config`; ssh reads it as it is. 02 turns connection sharing (`ControlMaster`, `ControlPersist`) off. The port always comes from the access file, and the user follows `~/.ssh/config` only for nodes whose account is left empty in the access file |
-| `host_key_checking = False` | Not supported. 02 checks host keys, so accept each node's key into `~/.ssh/known_hosts` |
-| Privilege escalation (`become_method`, `become_user`, `become_exe`, `become_flags`, `become_ask_pass`) | Cannot be changed. 02 becomes root with the built-in sudo and never asks for a password. Reach the node as root or give sudo `NOPASSWD` |
-| `pipelining`, `keep_remote_files`, `verbosity` | 02 fixes them (pipelining on, no remote files kept, default output) |
-| `log_path`, `callbacks_enabled`, `stdout_callback` | Not supported. The run log is kept in `observations/<run>/log.txt` and on the 02 screen |
-| Plugin, collection and role paths, `library` | Not used. 02 uses built-in modules only |
+| `ssh_args`, jump hosts (`ProxyJump`, `ProxyCommand`) | Move them to `~/.ssh/config`; ssh reads it as it is. 03 turns connection sharing (`ControlMaster`, `ControlPersist`) off. The port always comes from the access file, and the user follows `~/.ssh/config` only for nodes whose account is left empty in the access file |
+| `host_key_checking = False` | Not supported. 03 checks host keys, so accept each node's key into `~/.ssh/known_hosts` |
+| Privilege escalation (`become_method`, `become_user`, `become_exe`, `become_flags`, `become_ask_pass`) | Cannot be changed. 03 becomes root with the built-in sudo and never asks for a password. Reach the node as root or give sudo `NOPASSWD` |
+| `pipelining`, `keep_remote_files`, `verbosity` | 03 fixes them (pipelining on, no remote files kept, default output) |
+| `log_path`, `callbacks_enabled`, `stdout_callback` | Not supported. The run log is kept in `observations/<run>/log.txt` and on the 03 screen |
+| Plugin, collection and role paths, `library` | Not used. 03 uses built-in modules only |
 | `interpreter_python` | Not supported. The node's Python is found automatically (the node needs Python 3) |
 | `forks`, `timeout`, `gathering` | Not supported. Ansible's defaults are used |
-| `inventory`, vault settings | Not used. 02 builds the inventory from the access file for each run, and the access secrets are in `hosts.csv` |
+| `inventory`, vault settings | Not used. 03 builds the inventory from the access file for each run, and the access secrets are in `hosts.csv` |
 
 ### v0.29.1 to v0.30.0
 
@@ -1218,10 +1238,10 @@ need to be loaded again either.
 3. Install `pqcaton-ui` and the preparation tool `pqcaton-collectors` at v0.30.0 with the `go install` of [section
    2](#2-installation).
 4. Fetch the v0.14.0 release assets with `pqcaton-collectors fetch` as in "Checking the collectors you download" (section 2), and
-   replace the three collectors on the nodes and `collector.jar` with them. 02 refuses v0.13.0 collectors as "does not match".
+   replace the three collectors on the nodes and `collector.jar` with them. 03 refuses v0.13.0 collectors as "does not match".
 5. **With the official assets in place, start without `-allow-unverified-collectors`.** Up to v0.29.x even the release assets were
-   "cannot be verified" and needed this option, but the v0.14.0 release assets are "verified" on 02. After starting the screen,
-   check on 02 that the collectors and `collector.jar` are all "verified", then observe again.
+   "cannot be verified" and needed this option, but the v0.14.0 release assets are "verified" on 03. After starting the screen,
+   check on 03 that the collectors and `collector.jar` are all "verified", then observe again.
 6. **The `collector.jar` check is stricter.** A JAR with no version, one you built yourself, or one from a modified tree is now
    "cannot be verified" and does not start without `-allow-unverified-collectors`. The usual fix is the upstream v0.14.0 release
    `collector.jar`.
@@ -1232,7 +1252,7 @@ need to be loaded again either.
 
 v0.29.1 is a patch that fixes a defect of the reap after an observation (there since v0.27.0) and one that accepted a new observation on top of one still finishing (there since v0.24.0). The state format, the session and plan
 formats, the ruleset and the pqcota used with it are the same as v0.29.0, so the workspace opens as it is. Stop the screen and replace
-the binary with the `go install` of [section 2](#2-installation). If 02's "Processes left behind" shows something left from before this
+the binary with the `go install` of [section 2](#2-installation). If 03's "Processes left behind" shows something left from before this
 version, check it as the screen says and then end it.
 
 ### v0.28.0 to v0.29.0
@@ -1250,18 +1270,18 @@ the same as v0.28.0. There is no need to pass through upstream v0.12.0; upgrade 
 3. Replace the three collectors on the nodes (`pqcota-nodescan`, `pqcota-netcap`, `pqcota-jvmscan`) and `collector.jar` with the
    v0.13.0 release assets as [section 2](#2-installation) shows. The release assets are also "cannot be verified", so
    `-allow-unverified-collectors` is still needed.
-4. Replace the binary with the `go install` of [section 2](#2-installation), start the screen and observe again on 02. **Re-ingest the
+4. Replace the binary with the `go install` of [section 2](#2-installation), start the screen and observe again on 03. **Re-ingest the
    pqcota history with v4 too.** The ruleset is part of the snapshot fingerprint, so with a history that v0.11.0 ingested under v3
-   the activation on 02 and the baseline reconciliation on 04 do not pass. Re-ingest with
+   the activation and baseline reconciliation on 05 do not pass. Re-ingest with
    `PQCOTA_ORG='<judgment org>' pqcota-ingest -scope-assets '<workspace>/scope-assets.csv' '<workspace>/results'`.
-5. When 04 shows "This session was opened under a different upstream ruleset", press "Start a new round under the current rules"
+5. When 05 shows "This session was opened under a different upstream ruleset", press "Start a new round under the current rules"
    (`pqcaton-decide new-round` on the command line). **Earlier conclusions move over only as reference values.** The evidence of Java
    assets changes to new per-deployment findings, so they show as "changed" in the report, and "removed" and "added" can include the
    effect of the identity rule change. Judge each item again or press "Adopt again". No rule links old conclusions to the new
    evidence automatically.
 6. **If an asset scope rule has a user service `user@<uid>.service` in its `app_key`, fix it.** The v0.13.0 collectors give a user
-   service the app key `user@<uid>.service/<unit>`, so the old value no longer matches. Find such rules as below, fix them on the asset scope screen,
-   finalize, and activate on 02. Replace each `<…>` with the real value before running it.
+   service the app key `user@<uid>.service/<unit>`, so the old value no longer matches. Find such rules as below, fix them on 02,
+   finalize, and activate on 05. Replace each `<…>` with the real value before running it.
 
    ```bash
    grep -n 'user@[0-9]*\.service' '<workspace>/asset-scope.csv' '<workspace>/scope-assets.csv'
@@ -1271,7 +1291,7 @@ the same as v0.28.0. There is no need to pass through upstream v0.12.0; upgrade 
    connections seen in the observation window, not handshake messages. A lower count does not mean less traffic. Edges are also
    split per application that opened the connection, which upstream's diff shows as removed and added without a ruleset warning.
    pqcaton counts an edge by source, destination, port and protocol, so its reconciliation states stay the same.
-8. The 05 screen does not sign or generate a plan of the v3 ruleset. A v3 plan already signed and its playbooks are only viewed and
+8. The 06 screen does not sign or generate a plan of the v3 ruleset. A v3 plan already signed and its playbooks are only viewed and
    archived. Sign the plan finalized in the new round.
 
 ### v0.27.1 to v0.28.0
@@ -1289,7 +1309,7 @@ goes through the pqcota history reconciliation. The state format, the session an
    Commands that gave `-upstream-org` a value other than the organization of the judgments now stop.
 3. Stop the screen and replace the binary with `go install` from [section 2](#2-installation).
 4. **Fix scripts that used `pqcaton-decide activate-scope -confirm-ingest`.** This version stops without writing anything when given that flag. Activate
-   on 02 of the screen, or run `pqcaton-decide activate-scope` without the flag while `PQCOTA_DSN` is set.
+   in 05 of the screen, or run `pqcaton-decide activate-scope` without the flag while `PQCOTA_DSN` is set.
 5. **An activation that goes back to an earlier policy cannot be done in this version** (`upstream-revert`). There is no
    operator statement to use instead as in v0.27.x, so wait until the upstream issue is resolved or finalize a new policy.
 
@@ -1304,8 +1324,8 @@ v0.27.1 takes in upstream pqcota v0.11.0. The state format, the session and plan
 2. Stop the screen and take v0.27.1 with `go install …@v0.27.1`.
 3. Take the collectors from the v0.11.0 release assets as [section 2](#2-installation) shows, checking them against
    `SHA256SUMS`. The release assets are "cannot be verified" too, so `-allow-unverified-collectors` is still needed.
-4. **05 does not sign or generate a plan that carries source evidence or an approval guide** (`plan-fields`). Plans made
-   by 04 carry no such fields, so the procedure you use stays the same. Check such a plan with `pqcota-approve --review`,
+4. **06 does not sign or generate a plan that carries source evidence or an approval guide** (`plan-fields`). Plans made
+   by 05 carry no such fields, so the procedure you use stays the same. Check such a plan with `pqcota-approve --review`,
    then approve and generate it with the upstream tools.
 
 ### v0.26.x to v0.27.0
@@ -1315,7 +1335,7 @@ workspace opens as it is. The pqcota version to use is still v0.10.7.
 
 1. Stop the screen and replace the binary with `go install` from [section 2](#2-installation). If you run v0.26.2, its
    security fix is in this version as well.
-2. **02 checks the collector versions before an observation starts.** Upstream builds today take their dependencies as
+2. **03 checks the collector versions before an observation starts.** Upstream builds today take their dependencies as
    replaces of the folders next to them, so they all show as "cannot be verified", and the observation does not start by
    default. Check that the two repositories next to them are at the same tag, then start the screen with
    `-allow-unverified-collectors` ("Collector versions" in [section 2](#2-installation)). If the screen runs as a
@@ -1325,7 +1345,7 @@ workspace opens as it is. The pqcota version to use is still v0.10.7.
    before. To move to the default location, follow "Getting the approval key ready" in [section 2](#2-installation) and
    put the verification key (`approval.pub`) there as well. When a key given explicitly cannot be used, the screen now
    does not start.
-4. When "needs reclaiming" shows, "Processes left behind" on 02 shows their state. Records left before this version have
+4. When "needs reclaiming" shows, "Processes left behind" on 03 shows their state. Records left before this version have
    no start time and show as "cannot tell whether it is the same process".
 
 ### v0.26.x to v0.26.3
@@ -1338,17 +1358,17 @@ ruleset (`pqcota-enrich/v3`) are the same as v0.26.1, so the workspace opens as 
 2. **Upgrade upstream to v0.10.7 too.** `pqcota-approve` and `pqcota-provision` in particular must be v0.10.7: an
    approval signature in v0.10.6 could also pass on a different plan when a string in the plan contains a NUL character.
    Replace `pqcota-jvmscan` on the nodes with v0.10.7 as well.
-3. A plan with a NUL character in a string is not finalized by 04 (`session-text`), and such a plan finalized earlier is
-   not signed or generated by 05 (`plan-text`). Open a new review round, correct the value, and finalize again. A plan
+3. A plan with a NUL character in a string is not finalized by 05 (`session-text`), and such a plan finalized earlier is
+   not signed or generated by 06 (`plan-text`). Open a new review round, correct the value, and finalize again. A plan
    without a NUL character has the same approval canonical form as in v0.10.6, so existing approvals stay valid.
 
 ### v0.25 to v0.26
 
 v0.26 records the asset scope policy's digest in the review session and the finalize processing record, and uses the policy
-finalized on the asset scope screen for reconciliation only through the formal steps.
+finalized in 02 for reconciliation only through the formal steps.
 
 1. Stop the screen, check that `-recover-status` prints `no unfinished transactions`, and back the workspace up as in
-   [section 7](#7-backup-and-restore). **There is a point of no return.** Finalizing 04, activating a policy or opening a
+   [section 7](#7-backup-and-restore). **There is a point of no return.** Finalizing 05, activating a policy or opening a
    baseline round in this version writes format 2 processing records into the state folder, and just before that the state document
    (`.pqcaton/state.json`) is raised to format 2. A state folder this version creates starts at format 2. From then on
    v0.25.x or earlier does not open the workspace: the screen does not start, and commands that write the state folder
@@ -1357,12 +1377,12 @@ finalized on the asset scope screen for reconciliation only through the formal s
    a plan made before an activation, so this version stops it at start through the state document. To go back to the
    older version, restore the backup.
 2. Replace the binary with `go install` from [section 2](#2-installation) and start the screen. Upstream stays at v0.10.6.
-3. **A review session made before this version records no policy, so 04 locks.** Ingest pqcota with the current
-   `scope-assets.csv`, then open the baseline round at the top of 04. Like the activation, it reconciles the pqcota history
+3. **A review session made before this version records no policy, so 05 locks.** Ingest pqcota with the current
+   `scope-assets.csv`, then open the baseline round at the top of 05. Like the activation, it reconciles the pqcota history
    against the current policy first and opens only when it matches. The old session is archived, a new round rebuilt under
    the current policy opens, and earlier conclusions are carried only as previous values. On the command line it is
    `pqcaton-decide baseline` (`PQCOTA_DSN` is needed; `pqcaton-decide baseline -confirm-ingest` is no longer supported).
-4. Plans finalized before this version can only be viewed and archived in 05. Sign the plan finalized again in the
+4. Plans finalized before this version can only be viewed and archived in 06. Sign the plan finalized again in the
    baseline round.
 5. Operators who finalize from the command line give `pqcaton-decide close` the same `-scope-assets` the session was
    opened with. If it differs from the session's policy, nothing is finalized.
@@ -1380,7 +1400,7 @@ built with v0.24.x stay as they are, and a round is opened to judge again under 
    Mixed with the history of upstream v0.10.5 or earlier, the plan's evidence cannot be found. If upstream is not
    upgraded yet, keep pqcaton on v0.24.1 too.
 3. Replace the binary with the `go install` in [section 2](#2-installation) and start the screen.
-4. When the review screen (04) says "This session was opened under a different upstream ruleset", press "Start a new round
+4. When the review screen (05) says "This session was opened under a different upstream ruleset", press "Start a new round
    under the current rules". The old session is archived byte for byte as `session.ruleset-<alias>-<session id>.json`, a
    new session under the current rules takes its place, and a change report (`session.ruleset-change-<session id>.json`)
    is written beside it. The command is `pqcaton-decide new-round`.
@@ -1389,9 +1409,9 @@ built with v0.24.x stay as they are, and a round is opened to judge again under 
 6. When there is more than one installation under an asset key (the same-named OpenSSL seen at different paths), choose
    "I confirm this action applies to all of the installations below" before finalizing. Different actions per
    installation cannot be expressed in this version.
-7. The 05 screen does not sign or generate a plan under the old ruleset. A plan already signed under it and its playbooks
+7. The 06 screen does not sign or generate a plan under the old ruleset. A plan already signed under it and its playbooks
    are left as they are, and can only be viewed and archived. Sign the plan finalized in the new round.
-8. When the 02 or 03 screen names nodes whose JCA results cannot be confirmed as v0.10.6 collection results, check the
+8. When the 03 or 04 screen names nodes whose JCA results cannot be confirmed as v0.10.6 collection results, check the
    version of the collectors and `collector.jar` on those nodes.
 
 ### v0.22 to v0.23
