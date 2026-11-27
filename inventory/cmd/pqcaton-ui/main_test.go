@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -571,8 +572,8 @@ func withScope(t *testing.T) (*server, string) {
 	return s, dir
 }
 
-// IC-U16 — **스코프는 대조 앞이다.** 무엇을 계속 볼지가 정해져야 관측이 적재되고, 그 뒤에
-// 대조한다 — 탭 순서가 그 절차를 가르친다.
+// IC-U16 — **절차 카드는 선언 → 대조 → 판정 순이고, 자산 스코프는 카드가 아니다.** 스코프는 02 관측에 속한다. 관측 화면이
+// 없는 서버(작업 폴더 없이 띄웠다)에서는 카드 뒤의 번호 없는 링크가 자산 스코프 화면으로 잇는다.
 func TestScopeTabComesBeforeSurvey(t *testing.T) {
 	s, dir := withScope(t)
 	s.decl = filepath.Join(dir, "declaration.json")
@@ -583,9 +584,12 @@ func TestScopeTabComesBeforeSurvey(t *testing.T) {
 	body := get(t, s, "/review").Body.String()
 
 	i := func(h string) int { return strings.Index(body, `href="`+h+`"`) }
-	if !(i("/decl") < i("/scope") && i("/scope") < i("/survey") && i("/survey") < i("/review")) {
-		t.Errorf("순서가 절차와 다르다: decl=%d scope=%d survey=%d review=%d",
-			i("/decl"), i("/scope"), i("/survey"), i("/review"))
+	if !(i("/decl") < i("/survey") && i("/survey") < i("/review") && i("/review") < i("/scope")) {
+		t.Errorf("순서가 절차와 다르다: decl=%d survey=%d review=%d scope=%d",
+			i("/decl"), i("/survey"), i("/review"), i("/scope"))
+	}
+	if !regexp.MustCompile(`<a class="inventory-tab[^"]*" href="/scope" data-scope-tab`).MatchString(body) || len(cards(t, body)) != 5 {
+		t.Error("with no observation screen the asset scope should be an unnumbered link after the five cards")
 	}
 }
 

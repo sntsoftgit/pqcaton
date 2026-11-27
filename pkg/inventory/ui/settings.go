@@ -86,7 +86,7 @@ type SettingsView struct {
 	Groups []SettingGroup
 }
 
-// keyStateLabel — 키 자리의 상태를 짧게. 쓸 수 없는 까닭은 그 키를 쓰는 화면(승인 키는 06, 수집기 키는 03)이 자세히 적으므로
+// keyStateLabel — 키 자리의 상태를 짧게. 쓸 수 없는 까닭은 그 키를 쓰는 화면(승인 키는 05, 수집기 키는 02)이 자세히 적으므로
 // 여기서는 쓸 수 있는지만 가른다. 키의 내용은 다루지 않는다.
 func keyStateLabel(l Lang, st KeyState) string {
 	switch st {

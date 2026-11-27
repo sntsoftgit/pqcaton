@@ -50,7 +50,7 @@ func checkOf(cs []ui.RunCheck, item ui.RunItem) *ui.RunCheck {
 	return nil
 }
 
-// IC-U210 — **03은 수집기 ID별 서명 키와 신뢰할 공개 키가 맞물려야 시작한다.** 필요한 ID(OpenSSL · 네트워크, collector.jar가 있으면
+// IC-U210 — **02는 수집기 ID별 서명 키와 신뢰할 공개 키가 맞물려야 시작한다.** 필요한 ID(OpenSSL · 네트워크, collector.jar가 있으면
 // JVM)마다 `pqcota-keygen -collector <ID>`의 출력이 소유자 전용 파일로 작업 폴더 밖 0700 폴더에 있어야 한다. 빠진 ID, 다른 ID의 키,
 // 수집기 ID가 없는 키(승인 키 꼴), 다른 사용자가 읽을 수 있는 키, 넓게 열린 폴더는 「서명 키」에서 막고 ID와 까닭을 적는다. 신뢰할
 // 공개 키는 결합 형식이어야 하고(옛 목록 꼴 · 개인 키가 든 파일은 막는다), 서명 키마다 그 공개 키가 자기 ID 아래 있어야 하며, 한
@@ -146,7 +146,7 @@ func TestCollectorKeysMustMatchTheTrustedKeys(t *testing.T) {
 	}
 }
 
-// IC-U211 — **관측할 노드에 Windows가 있으면 실행 전에 막는다.** 이번 판의 03은 Windows 노드에 서명 키를 넘기지 않는다. 03 점검에
+// IC-U211 — **관측할 노드에 Windows가 있으면 실행 전에 막는다.** 이번 판의 02는 Windows 노드에 서명 키를 넘기지 않는다. 02 점검에
 // 「Windows 노드」 줄이 그 노드 ID와 함께 막는 항목으로 나오고, 주소로 직접 시작해도 아무것도 실행하지 않은 「실패」다(점검 플레이북도
 // 돌지 않는다).
 func TestWindowsNodesAreRefusedBeforeTheRun(t *testing.T) {

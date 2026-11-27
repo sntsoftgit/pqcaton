@@ -22,7 +22,7 @@ const (
 
 // IC-P51 — **이 판은 상류 규칙 묶음 v4에 묶인다. v3 세션 · 계획은 기존 규칙 판 안전장치가 거절한다.** 결합 판은
 // `pqcota-enrich/v4+pqcaton-plan/v3`이다(계획 규칙 판은 그대로). 결론과 서명이 다 찬 v3 세션도 확정하지 않는다
-// (ErrRulesetChanged). 최상위가 v3인 계획, 최상위는 v4인데 근거 하나가 v3인 계획은 06이 사유를 갈라 거절한다.
+// (ErrRulesetChanged). 최상위가 v3인 계획, 최상위는 v4인데 근거 하나가 v3인 계획은 05가 사유를 갈라 거절한다.
 func TestV3SessionsAndPlansAreRefusedUnderV4(t *testing.T) {
 	if got := review.UpstreamRuleset(review.RulesetVersion); got != "pqcota-enrich/v4" {
 		t.Fatalf("upstream ruleset = %q, want pqcota-enrich/v4", got)

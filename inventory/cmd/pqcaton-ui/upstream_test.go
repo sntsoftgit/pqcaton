@@ -93,7 +93,7 @@ func (c *changingLookup) Latest(node string) (*history.Snapshot, error) {
 	return c.Lookup.Latest(node)
 }
 
-// activationReady — 정책 A로 판정한 세션 · 02에서 확정한 정책 B가 있는 서버. pqcota 이력은 아직 비어 있다.
+// activationReady — 정책 A로 판정한 세션 · 자산 스코프 화면에서 확정한 정책 B가 있는 서버. pqcota 이력은 아직 비어 있다.
 func activationReady(t *testing.T) (*server, review.Session) {
 	t.Helper()
 	s, _ := keyReady(t)
@@ -159,8 +159,8 @@ func TestScreenDoesNotStartWithoutPqcota(t *testing.T) {
 	})
 }
 
-// IC-U197 — **활성화는 pqcota 이력 대조를 거쳐야 한다.** 05의 안내 상자에 운영자 진술 칸이 없고 재적재와 활성화를 03에서
-// 한다고 적는다(03의 구역은 그 구역의 시험이 본다). pqcota가
+// IC-U197 — **활성화는 pqcota 이력 대조를 거쳐야 한다.** 04의 안내 상자에 운영자 진술 칸이 없고 재적재와 활성화를 02에서
+// 한다고 적는다(02의 구역은 그 구역의 시험이 본다). pqcota가
 // 옛 정책으로만 적재돼 있으면 확인 요청이 409 `upstream-missing`이고, 닿지 못하면 503 `upstream-unreachable`이다. 새 정책으로
 // 적재돼 있으면 확인 페이지가 「확인 시점에 pqcota 이력과 일치했습니다」와 노드 수를 적는다. 확인 페이지 뒤에 pqcota가 다른
 // 정책으로 다시 적재되면 실행이 409 `activate-history-changed`이다(실행은 처음부터 다시 대조한다. 확인 뒤에 이력이 달라졌다는 뜻이다). 거절은 모두 작업 폴더를 그대로 둔다.
@@ -169,8 +169,8 @@ func TestActivationReconcilesPqcota(t *testing.T) {
 	s, _ := activationReady(t)
 	dir := filepath.Dir(s.path)
 	page := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
-	if strings.Contains(page, `type="checkbox" name="reingested"`) || !strings.Contains(page, "새 정책으로 다시 적재하고 활성화하는 일은 03 관측 화면에서 합니다") {
-		t.Fatal("the 05 notice still takes a statement or does not say where the re-ingest and the activation are done")
+	if strings.Contains(page, `type="checkbox" name="reingested"`) || !strings.Contains(page, "새 정책으로 다시 적재하고 활성화하는 일은 02 관측 화면에서 합니다") {
+		t.Fatal("the 04 notice still takes a statement or does not say where the re-ingest and the activation are done")
 	}
 	before := snapshotDir(t, dir)
 	refused := func(what string, w interface {
@@ -206,7 +206,7 @@ func TestActivationReconcilesPqcota(t *testing.T) {
 }
 
 // IC-U198 — **대조가 통과하면 활성화 트랜잭션과 upstream-verified 처리 기록이 함께 쓰인다.** 새 세션의 근거와 처리 기록의
-// basis가 upstream-verified이고, 전환 보고서에 upstream_check(확인 시각 · 조직 · 노드별 지문)가 실린다. 05는 「확인 시점에
+// basis가 upstream-verified이고, 전환 보고서에 upstream_check(확인 시각 · 조직 · 노드별 지문)가 실린다. 04는 「확인 시점에
 // pqcota 이력과 일치했습니다」를 보인다. 대조 도중에 결과 폴더가 바뀌면 잠금 안에서 409 `stale`이고 아무것도 쓰지 않는다.
 func TestActivationWritesTheReconciliation(t *testing.T) {
 	t.Run("inputs changed during the reconciliation", func(t *testing.T) {
@@ -264,7 +264,7 @@ func TestActivationWritesTheReconciliation(t *testing.T) {
 			t.Fatalf("report upstream check: %+v %v", rep.UpstreamCheck, err)
 		}
 		if page := get(t, s, ui.ScreenReview+"?lang=ko").Body.String(); !strings.Contains(page, "확인 시점에 pqcota 이력과 일치했습니다") {
-			t.Error("05 does not show the reconciliation as the basis")
+			t.Error("04 does not show the reconciliation as the basis")
 		}
 	})
 }
@@ -479,7 +479,7 @@ func TestPqcotaEnvFileIsReadSafely(t *testing.T) {
 }
 
 // IC-U201 — **pqcota 이력의 조직은 판정 조직이다.** -upstream-org에 다른 조직을 주면 화면이 시작하지 않고 pqcota 이력을 열지도
-// 않는다. 같은 값은 받는다. 판정 세션의 조직이 판정 조직과 다르면(다른 조직에서 옮겨 온 세션) 05의 활성화가 pqcota 이력을
+// 않는다. 같은 값은 받는다. 판정 세션의 조직이 판정 조직과 다르면(다른 조직에서 옮겨 온 세션) 04의 활성화가 pqcota 이력을
 // 조회하지 않고 409 `upstream-org`이며 아무것도 쓰지 않는다. 연 이력의 조직이 다를 때도 같다.
 func TestPqcotaOrganizationIsTheJudgmentsOrganization(t *testing.T) {
 	oldServe, oldOpen, oldUp, oldStop := serveHTTP, openBrowser, openUpstream, stopSignal

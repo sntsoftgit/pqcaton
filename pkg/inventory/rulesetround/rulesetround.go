@@ -56,7 +56,7 @@ var ErrSamePolicy = errors.New("the candidate policy is the active policy; nothi
 // ErrNoCandidate — 활성화할 후보 정책 파일이 없거나 읽을 수 없거나 형식이 틀렸다. 활성화하지 않는다.
 var ErrNoCandidate = errors.New("the candidate policy is missing or cannot be read")
 
-// Activation — 활성화 회차의 입력. PolicyPath는 활성 정책 파일(scope-assets.csv, 없어도 된다), CandidatePath는 02에서 확정한
+// Activation — 활성화 회차의 입력. PolicyPath는 활성 정책 파일(scope-assets.csv, 없어도 된다), CandidatePath는 자산 스코프 화면에서 확정한
 // 정책(asset-scope.csv, 있어야 한다). From · To는 확인 페이지가 본 두 지문이다. 잠금 안에서 다시 재어 다르면 ErrStale이다.
 type Activation struct {
 	PolicyPath, CandidatePath string

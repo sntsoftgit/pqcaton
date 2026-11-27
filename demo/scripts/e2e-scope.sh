@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: BUSL-1.1
 #  종단 검증 — 자산 스코프 정책 활성화(IC-U152). `make e2e-demo`가 부른다.
 #
-# pqcota 데모를 처음부터 띄우고, 화면 작업 폴더에서 05를 옛 정책으로 확정한 뒤, 02에서 새 정책을 확정하고,
+# pqcota 데모를 처음부터 띄우고, 화면 작업 폴더에서 04를 옛 정책으로 확정한 뒤, 자산 스코프 화면에서 새 정책을 확정하고,
 # ui.sh apply-scope(pqcota 재적재만)를 거쳐 **두 길로** 활성화한다: 작업 폴더 복사본에서 명령(pqcaton-decide activate-scope),
-# 그리고 작업 폴더에서 화면(05의 확인 → 활성화). 둘 다 pqcota 이력 대조를 거친다. 실패 경로(재적재 전 · 손으로 고친 후보 ·
+# 그리고 작업 폴더에서 화면(04의 확인 → 활성화). 둘 다 pqcota 이력 대조를 거친다. 실패 경로(재적재 전 · 손으로 고친 후보 ·
 # -confirm-ingest)마다 정책 · 세션 · 계획 · 처리 기록의 바이트와 pqcota 스냅샷 수가 그대로인지 보고, 성공 뒤에는 세 지문(활성
-# 정책 · 새 세션 · 활성화 처리 기록)이 같은지, 근거가 upstream-verified이고 보고서에 upstream_check가 있는지, 06이 옛 계획을
-# 막는지, 05에 지난 결론이 참고값으로만 보이는지 본다. 마지막으로 v0.25.0 태그로 빌드한 옛 바이너리가 이 작업 폴더의
+# 정책 · 새 세션 · 활성화 처리 기록)이 같은지, 근거가 upstream-verified이고 보고서에 upstream_check가 있는지, 05가 옛 계획을
+# 막는지, 04에 지난 결론이 참고값으로만 보이는지 본다. 마지막으로 v0.25.0 태그로 빌드한 옛 바이너리가 이 작업 폴더의
 # 복사본에서 시작하지 않고 아무것도 바꾸지 않는지 본다. 끝나면(실패해도) 화면 · 데모 컨테이너를 내린다.
 #
 # E2E_KEEP_WS=<폴더>를 주면 정리하기 전에(실패해도) 작업 폴더를 그 폴더로, /work 전체를 <폴더>.work로 꺼내 둔다.
@@ -112,12 +112,12 @@ fi
 CTL=pqcota-ctl
 WS=/work/ui
 ORG=demo-corp
-# pqcota 이력의 세 역할(extend.sh 0/8이 나눈다). 명령의 대조 · 활성화는 화면과 같이 읽기만 하는 역할로, 03 결과의 적재는 표를
+# pqcota 이력의 세 역할(extend.sh 0/8이 나눈다). 명령의 대조 · 활성화는 화면과 같이 읽기만 하는 역할로, 02 결과의 적재는 표를
 # 소유하지 않는 적재 역할로(PQCOTA_AUTO_DDL=0) 한다. 비밀번호는 pqcota-ctl의 ~/.pgpass에만 있다. 아래 psql은 검증용 관리자 조회다.
 DSN="postgres://pqcaton_ui@pqcota-demo-pg:5432/pqcota"
 INGEST_DSN="postgres://pqcota_ingest@pqcota-demo-pg:5432/pqcota"
 UI="$DEMO_DIR/scripts/ui.sh"
-CKEYS=/work/ui-collector-keys # ui.sh 가 만드는 03 수집기 서명 키 자리
+CKEYS=/work/ui-collector-keys # ui.sh 가 만드는 02 수집기 서명 키 자리
 
 fail() { echo "❌ e2e: $*"; exit 1; }
 step() { echo; echo "■ $*"; }
@@ -255,7 +255,7 @@ if docker exec "$CTL" bash -c "ls -d $WS/.collectors.old* $WS/.collectors.incomi
 "$UI" stop
 echo "   interrupted install (renamed, the earlier copy not yet removed): ui.sh kept the current collectors and removed the earlier copy"
 
-step "2) 05 under the old policy: judge and finalize from the command line"
+step "2) 04 under the old policy: judge and finalize from the command line"
 edit_json "$WS/session.json" <<'PY'
 import json, sys
 p = sys.argv[1]; s = json.load(open(p))
@@ -265,16 +265,16 @@ s["reviewer"], s["signature"] = "e2e", "e2e-signature"
 json.dump(s, open(p, "w"), ensure_ascii=False, indent=2)
 PY
 docker exec "$CTL" pqcaton-decide close "$WS/session.json" -o "$WS/plan.json" -scope-assets "$WS/scope-assets.csv" -org "$ORG" >/dev/null
-docker exec "$CTL" test -f "$WS/plan.json" || fail "05 did not write plan.json"
+docker exec "$CTL" test -f "$WS/plan.json" || fail "04 did not write plan.json"
 
 # 새 정책은 **어느 노드에서도 처음 보는 스냅샷**을 내야 한다. 두 가지를 피한다.
 #   - 아무것도 바꾸지 못하는 규칙: 스냅샷 지문이 옛 정책과 같아, 다시 적재하지 않아도 확인이 통과한다(4c가 통과해 버린다).
 #   - 예전 상태로 되돌리는 규칙: 상류 저장소는 같은 지문의 스냅샷이 이력에 있으면 새로 만들지 않고, 노드의 최신(seq가 가장
 #     큰 것)은 옛 정책 스냅샷으로 남는다. 다시 적재해도 대조가 거절한다(이 판은 이전 정책 복귀를 막는다).
 # 그리고 **한 노드의 관리 자산을 0개로 만든다.** 관리 자산이 없는 노드도 확인 대상인지(4c)를 보려는 것이다. 옛 정책 뒤에
-# JCA 제외를 더하면 pay-app은 관리 자산 0개 · 2건 제외라는 처음 보는 상태가 되고, pay-db(05의 libssl 정책)와 web-gw는
+# JCA 제외를 더하면 pay-app은 관리 자산 0개 · 2건 제외라는 처음 보는 상태가 되고, pay-db(04의 libssl 정책)와 web-gw는
 # 그대로다.
-step "3) 02: finalize a new policy (the old rules, then drop JCA: pay-app is left with no managed assets)"
+step "3) the asset scope screen: finalize a new policy (the old rules, then drop JCA: pay-app is left with no managed assets)"
 TMPB="$(mktemp -d)"
 ( cd "$REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH="$(docker exec "$CTL" uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')" \
     go build -o "$TMPB/pqcaton-scope" ./inventory/cmd/pqcaton-scope )
@@ -294,7 +294,7 @@ OLD_ID="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -sco
 OLD_DIGEST="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv" | awk '$1=="active"{print $2}')"
 [ -n "$OLD_ID" ] && [ -n "$OLD_DIGEST" ] || fail "no session id or active digest before activation"
 
-# 05의 활성화를 화면이 보내는 그대로 보낸다. $1이 ok면 확인 페이지(「확인 시점에 일치」)를 거쳐 활성화까지 하고, 아니면 확인
+# 04의 활성화를 화면이 보내는 그대로 보낸다. $1이 ok면 확인 페이지(「확인 시점에 일치」)를 거쳐 활성화까지 하고, 아니면 확인
 # 요청이 그 거절 종류로 막히는지 본다.
 screen_activate() {
   docker exec -i "$CTL" python3 - "$1" <<'PY'
@@ -330,14 +330,14 @@ st, body = post("/review/scope-activate/confirm?lang=en", form(page, "/review/sc
 if want != "ok":
     if st < 400 or want not in body:
         sys.exit("confirm = %d, want the refusal %s" % (st, want))
-    print("   05: refused %s (%d)" % (want, st))
+    print("   04: refused %s (%d)" % (want, st))
     sys.exit(0)
 if st != 200 or "At the time of checking, the pqcota history matched" not in body:
     sys.exit("confirm = %d without the reconciliation line" % st)
 st, body = post("/review/scope-activate?lang=en", form(body, "/review/scope-activate"))
 if st != 200 or "/review/scope-activate/confirm" in body:
     sys.exit("activate = %d, or the activation is still offered" % st)
-print("   05: activated through the screen after the pqcota history reconciliation")
+print("   04: activated through the screen after the pqcota history reconciliation")
 PY
 }
 
@@ -429,27 +429,27 @@ screen_activate ok || fail "the screen did not activate after the re-ingest"
 "$UI" stop
 activated "$WS" "screen"
 
-step "6) the screen: 06 refuses the plan made under the old policy; 05 shows earlier conclusions only as references"
+step "6) the screen: 05 refuses the plan made under the old policy; 04 shows earlier conclusions only as references"
 START_OUT="$("$UI" start)"
 echo "$START_OUT"
 grep -q "adopted the new verified collectors in place of the earlier ones" <<<"$START_OUT" || fail "ui.sh did not say which collectors it adopted"
-# 데모의 수집기는 0)에서 확인한 공식 릴리스 자산이다. 03은 Go 수집기와 collector.jar를 모두 「확인됨」으로 보이고, 허용
+# 데모의 수집기는 0)에서 확인한 공식 릴리스 자산이다. 02는 Go 수집기와 collector.jar를 모두 「확인됨」으로 보이고, 허용
 # 상태(*-allowed)도 확인 불가 경고도 없으며, override 없이 시작 양식을 내놓아야 한다. 화면의 명령줄과 로그에도 override가 없다.
 OBSERVE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/observe?lang=en')"
 LINES="$(grep -oE 'data-collector-state="[a-z]+"[^>]*><code>[^<]*</code>[^<]*' <<<"$OBSERVE" | sed -E 's/^data-collector-state="([a-z]+)"[^>]*><code>([^<]*)<\/code>/\1 \2/')"
-echo "$LINES" | sed 's/^/   03 collector: /'
+echo "$LINES" | sed 's/^/   02 collector: /'
 for f in linux-amd64/pqcota-nodescan linux-amd64/pqcota-netcap linux-amd64/pqcota-jvmscan collector.jar; do
-  grep -q "^verified $f " <<<"$LINES" || fail "03 does not show $f as verified"
+  grep -q "^verified $f " <<<"$LINES" || fail "02 does not show $f as verified"
 done
-if grep -qvE '^verified ' <<<"$LINES"; then fail "a collector row on 03 is not verified"; fi
-grep -q 'data-check="collector-version"' <<<"$OBSERVE" || fail "03 does not show the collector version check as passed"
-if grep -qE 'data-check="[a-z-]*-(allowed|unverified|mismatch)"' <<<"$OBSERVE"; then fail "03 shows an allowance, an unverified or a mismatch check"; fi
-grep -q 'action="/observe/run"' <<<"$OBSERVE" || fail "03 does not offer to start with the official collectors"
+if grep -qvE '^verified ' <<<"$LINES"; then fail "a collector row on 02 is not verified"; fi
+grep -q 'data-check="collector-version"' <<<"$OBSERVE" || fail "02 does not show the collector version check as passed"
+if grep -qE 'data-check="[a-z-]*-(allowed|unverified|mismatch)"' <<<"$OBSERVE"; then fail "02 shows an allowance, an unverified or a mismatch check"; fi
+grep -q 'action="/observe/run"' <<<"$OBSERVE" || fail "02 does not offer to start with the official collectors"
 CMDLINE="$(docker exec "$CTL" sh -c 'for p in $(pgrep -x pqcaton-ui); do tr "\0" " " < /proc/$p/cmdline; echo; done')"
 [ -n "$CMDLINE" ] || fail "cannot read the command line of pqcaton-ui"
 if grep -q -- "-allow-unverified-collectors" <<<"$CMDLINE"; then fail "pqcaton-ui runs with -allow-unverified-collectors"; fi
 if docker exec "$CTL" grep -q -- "-allow-unverified-collectors" /work/ui.log; then fail "the screen log mentions -allow-unverified-collectors"; fi
-grep -o 'data-check="collector-version".\{0,300\}' <<<"$OBSERVE" | grep -q "<code>$PIN</code>" || fail "03 does not show the pinned version $PIN"
+grep -o 'data-check="collector-version".\{0,300\}' <<<"$OBSERVE" | grep -q "<code>$PIN</code>" || fail "02 does not show the pinned version $PIN"
 # 작업 폴더의 collectors: 정상 경로에는 임시 · 보관 · 격리 자리가 남지 않고, 지금 것과 그 해시 목록이 같으며, 모두 일반
 # 파일이고 수집기는 실행 권한을 지닌다.
 WSCHECK="$(docker exec "$CTL" bash -c "cd $WS
@@ -494,18 +494,18 @@ CONTAINER="$(docker exec "$CTL" uname -s | tr '[:upper:]' '[:lower:]')/$(docker 
 OVERRIDES="$( { grep -o -- '-allow-unverified-collectors' <<<"$CMDLINE"; docker exec "$CTL" grep -o -- '-allow-unverified-collectors' /work/ui.log; } | grep -c . || true)"
 [ "$OVERRIDES" = 0 ] || fail "$OVERRIDES mentions of -allow-unverified-collectors"
 ROWS="$(grep -c . <<<"$LINES")"; VERIFIED="$(grep -c '^verified ' <<<"$LINES")"
-echo "   03: prepared assets $PREPARED · container $CONTAINER · same; overrides 0; $VERIFIED of $ROWS collector rows verified (pinned $PIN)"
+echo "   02: prepared assets $PREPARED · container $CONTAINER · same; overrides 0; $VERIFIED of $ROWS collector rows verified (pinned $PIN)"
 APPROVE="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/approve?lang=en')"
-grep -q "was made under an asset-scope policy other than the active one" <<<"$APPROVE" || fail "06 does not say the plan is under another policy"
-if grep -q 'action="/approve/sign/confirm"' <<<"$APPROVE"; then fail "06 offers to sign the old plan"; fi
+grep -q "was made under an asset-scope policy other than the active one" <<<"$APPROVE" || fail "05 does not say the plan is under another policy"
+if grep -q 'action="/approve/sign/confirm"' <<<"$APPROVE"; then fail "05 offers to sign the old plan"; fi
 REVIEW="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/review?lang=en')"
-grep -q "Earlier policy conclusion (from the previous round; a reference value)" <<<"$REVIEW" || fail "05 does not show the earlier conclusions as references"
-grep -q "At the time of checking, the pqcota history matched" <<<"$REVIEW" || fail "05 does not show the pqcota history reconciliation as the basis of this round"
-# 04에서 여는 「이력에서 앱별 통신 보기」(IC-U227). 화면 계정(pqcaton_ui, SELECT만)으로 판정 조직의 이력을 읽어 조직 · 노드별
+grep -q "Earlier policy conclusion (from the previous round; a reference value)" <<<"$REVIEW" || fail "04 does not show the earlier conclusions as references"
+grep -q "At the time of checking, the pqcota history matched" <<<"$REVIEW" || fail "04 does not show the pqcota history reconciliation as the basis of this round"
+# 03에서 여는 「이력에서 앱별 통신 보기」(IC-U227). 화면 계정(pqcaton_ui, SELECT만)으로 판정 조직의 이력을 읽어 조직 · 노드별
 # 비교 · 요약 표를 보이고 DOT을 준다. 방금 이 정책으로 대조한 이력이므로 노드마다 작업 폴더와 「same」이다. 화면은 그림을
 # 기다리지 않는다. 그림을 그리는지는 여기서 재지 않는다(Graphviz는 선택 사항이고 따로 시험한다).
 SURVEY="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/survey?lang=en')"
-grep -q 'href="/survey/history"' <<<"$SURVEY" || fail "04 has no link to the history topology"
+grep -q 'href="/survey/history"' <<<"$SURVEY" || fail "03 has no link to the history topology"
 HIST="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/survey/history?lang=en')"
 grep -q "data-hist-org>$ORG<" <<<"$HIST" || fail "the history topology does not name the judgment organization $ORG"
 HNODES="$(grep -o 'data-hist-node=' <<<"$HIST" | grep -c . || true)"
@@ -519,13 +519,13 @@ HDOT="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/survey/history.dot')
 [ "$(head -1 <<<"$HDOT")" = "digraph pqcota_topology {" ] || fail "the DOT download is not the upstream topology"
 HTYPE="$(docker exec "$CTL" curl -fsS -o /dev/null -w '%{content_type}' 'http://127.0.0.1:8765/survey/history.dot')"
 case "$HTYPE" in text/vnd.graphviz*) ;; *) fail "the DOT download is served as $HTYPE" ;; esac
-echo "   04 → history: organization $ORG · $HNODES nodes, all the same as the workspace by digest · per-node table · DOT $(grep -c . <<<"$HDOT") lines (read as pqcaton_ui)"
+echo "   03 → history: organization $ORG · $HNODES nodes, all the same as the workspace by digest · per-node table · DOT $(grep -c . <<<"$HDOT") lines (read as pqcaton_ui)"
 "$UI" stop
 
-# 지금 활성 정책으로 만든 계획은 06에서 서명되고 플레이북이 만들어져야 한다. 상류 v0.10.7의 승인 정규형 검사
+# 지금 활성 정책으로 만든 계획은 05에서 서명되고 플레이북이 만들어져야 한다. 상류 v0.10.7의 승인 정규형 검사
 # (sign.CheckPlanText)를 지난 계획이 실제로 서명 · 생성까지 가는지를 화면 요청으로 잰다. 새 회차를 데모 확장과 같은 방식으로
-# 판정해 확정하고, 06 화면의 서명 양식 → 확인 페이지 → 서명, 생성 양식 → 생성을 화면이 보내는 그대로 보낸다.
-step "6b) 05 → 06 under the new policy: finalize the new round, then sign and generate through the screen"
+# 판정해 확정하고, 05 화면의 서명 양식 → 확인 페이지 → 서명, 생성 양식 → 생성을 화면이 보내는 그대로 보낸다.
+step "6b) 04 → 05 under the new policy: finalize the new round, then sign and generate through the screen"
 edit_json "$WS/session.json" <<'PY'
 import json, sys
 p = sys.argv[1]; s = json.load(open(p))
@@ -553,7 +553,7 @@ docker exec "$CTL" pqcaton-decide close "$WS/session.json" -o "$WS/plan.json" -s
 N_ACTIONS="$(docker exec "$CTL" python3 -c "import json; print(len(json.load(open('$WS/plan.json')).get('actions', [])))")"
 [ "$N_ACTIONS" -gt 0 ] || fail "the new round's plan has no actions to sign"
 "$UI" start
-docker exec -i "$CTL" python3 - <<'PY' || fail "06 did not sign and generate the plan made under the active policy"
+docker exec -i "$CTL" python3 - <<'PY' || fail "05 did not sign and generate the plan made under the active policy"
 import html, re, sys, urllib.parse, urllib.request, http.cookiejar
 base = "http://127.0.0.1:8765"
 op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
@@ -588,27 +588,27 @@ page = get("/approve?lang=en")
 g = form(page, "/approve/generate")
 g["level"] = "l2"
 st, _ = post("/approve/generate?lang=en", g)
-print("   06: signed and generated through the screen")
+print("   05: signed and generated through the screen")
 PY
 # 데모는 -approval-key 로 키를 명시한다. 명시하면 기본 위치(사용자 설정 폴더)는 읽지 않으므로 화면 로그에 기본 위치 줄이 없어야
-# 한다. 개인 키 내용은 06 화면에도, 서명한 계획에도, 화면 로그에도 없어야 한다(키 경로와 지문만 보인다).
+# 한다. 개인 키 내용은 05 화면에도, 서명한 계획에도, 화면 로그에도 없어야 한다(키 경로와 지문만 보인다).
 if docker exec "$CTL" grep -q "default location" /work/ui.log; then fail "the screen looked at the default key location although -approval-key was given"; fi
 PRIV="$(docker exec "$CTL" sed -n 's/^PQCOTA_SIGN_KEY=//p' /work/ui-approval.key)"
 [ -n "$PRIV" ] || fail "cannot read the demo approval key"
 APPROVE_SIGNED="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/approve?lang=en')"
-grep -q "The approval key given at start is used." <<<"$APPROVE_SIGNED" || fail "06 does not say the explicit approval key is used"
-if grep -qF -- "$PRIV" <<<"$APPROVE_SIGNED"; then fail "the private key is on the 06 screen"; fi
+grep -q "The approval key given at start is used." <<<"$APPROVE_SIGNED" || fail "05 does not say the explicit approval key is used"
+if grep -qF -- "$PRIV" <<<"$APPROVE_SIGNED"; then fail "the private key is on the 05 screen"; fi
 if docker exec "$CTL" grep -qF -- "$PRIV" /work/ui.log "$WS/plan.signed.json"; then fail "the private key is in the screen log or the signed plan"; fi
-echo "   06: explicit -approval-key used, no default-location lookup, the private key appears nowhere"
+echo "   05: explicit -approval-key used, no default-location lookup, the private key appears nowhere"
 "$UI" stop
 SIGNED_STATUS="$(docker exec "$CTL" python3 -c "import json; p=json.load(open('$WS/plan.signed.json')); print(p['status'], len(p.get('approvalSignatures', [])))")"
 [ "$SIGNED_STATUS" = "PLAN_STATUS_FINALIZED 1" ] || fail "the signed plan is $SIGNED_STATUS"
-docker exec "$CTL" bash -c "test -s $WS/plan.provision.yml && test -s $WS/plan.rollback.yml" || fail "06 wrote no playbooks"
+docker exec "$CTL" bash -c "test -s $WS/plan.provision.yml && test -s $WS/plan.rollback.yml" || fail "05 wrote no playbooks"
 echo "   signed plan: $SIGNED_STATUS · actions $N_ACTIONS · playbooks written"
 
 # 옛 판은 형식 2 영수증을 읽기 전까지 멈추지 않아 활성화 전 계획에 서명 양식까지 낸다. 그래서 이 판은 형식 2 영수증을 쓰기
 # 직전에 상태 문서를 형식 2로 올린다. 그것이 실제로 옛 바이너리를 막는지, 이 저장소의 v0.25.0 태그로 빌드한 바이너리를
-# 성공한 작업 폴더의 복사본에 돌려 본다: 화면은 시작하지 않고(듣는 포트가 없으니 05 · 06의 어떤 양식도 없다), 상태를 쓰는
+# 성공한 작업 폴더의 복사본에 돌려 본다: 화면은 시작하지 않고(듣는 포트가 없으니 04 · 05의 어떤 양식도 없다), 상태를 쓰는
 # 명령도 멈추며, 파일 · 영수증 · 트랜잭션 기록 · 준비 파일이 하나도 바뀌거나 늘지 않는다.
 step "6c) A → B → A: back to policy A — refused before the re-ingest, activated after it with no new snapshot bodies, and B is then refused"
 # 판정 조직 하나(demo-corp)로만 적재 · 대조한다. 이 단계에서 다른 조직의 관측 기록이 생기면 실패다. 이 검사는 이 DB가 데모
@@ -617,7 +617,7 @@ step "6c) A → B → A: back to policy A — refused before the re-ingest, acti
 T0="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc 'select now()' | tr -d '\n')"
 B_DIGEST="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv" | awk '$1=="active"{print $2}')"
 [ "$B_DIGEST" != "$A_DIGEST" ] || fail "policy B is not the active policy before going back"
-# finalize_policy <정책 파일>: 02에서 그 정책을 확정한다(기준은 지금 활성 정책). 확정 후보는 asset-scope.csv다.
+# finalize_policy <정책 파일>: 자산 스코프 화면에서 그 정책을 확정한다(기준은 지금 활성 정책). 확정 후보는 asset-scope.csv다.
 finalize_policy() {
   docker exec "$CTL" bash -c "cp $1 $WS/layers/demo.csv && pqcaton-scope open $WS/layers/demo.csv -base $WS/scope-assets.csv -org $ORG > $WS/scope-session.json"
   edit_json "$WS/scope-session.json" <<'PY'
@@ -717,14 +717,14 @@ A="$(old_measure)"
 echo "   unchanged (v0.25.0): $A"
 docker exec "$CTL" rm -rf "$OLDWS" /usr/local/bin/pqcaton-ui-v025 /usr/local/bin/pqcaton-decide-v025
 
-# 8) 03에서 실제 관측을 화면이 보내는 그대로 돌린다: 노드 하나를 멈춰 실패하는 관측, 그 노드를 되살려 성공하는 관측.
+# 8) 02에서 실제 관측을 화면이 보내는 그대로 돌린다: 노드 하나를 멈춰 실패하는 관측, 그 노드를 되살려 성공하는 관측.
 # 둘 다 끝난 뒤 이 실행의 표지(PQCATON_RUN=)를 가진 프로세스가 컨트롤러에 하나도 남지 않아야 하고, 「회수 필요」로 닫히지도
 # 않아야 한다(v0.29.1, IC-U202: 한 번 비었다고 회수를 끝내지 않는다). 성공한 관측은 결과 폴더를 바꾸므로 맨 끝에 둔다.
-step "8) real observations from 03: a failing one and a successful one leave no process of the run behind"
+step "8) real observations from 02: a failing one and a successful one leave no process of the run behind"
 marked() {
   docker exec "$CTL" sh -c 'for e in /proc/[0-9]*/environ; do tr "\000" "\n" < "$e" 2>/dev/null | grep -q "^PQCATON_RUN=" && echo "${e%/environ}"; done' || true
 }
-observe_run() {  # observe_run <want state> — 03의 시작 양식을 보내고, 그 실행이 끝날 때까지 기다려 상태를 견준다.
+observe_run() {  # observe_run <want state> — 02의 시작 양식을 보내고, 그 실행이 끝날 때까지 기다려 상태를 견준다.
   docker exec -i "$CTL" python3 - "$1" "$WS" <<'PY'
 import html, json, os, re, sys, time, urllib.parse, urllib.request, http.cookiejar
 want, ws = sys.argv[1], sys.argv[2]
@@ -733,7 +733,7 @@ op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiej
 page = op.open(base + "/observe?lang=en").read().decode()
 m = re.search(r'<form[^>]*action="/observe/run"[^>]*>(.*?)</form>', page, re.S)
 if not m:
-    sys.exit("03 offers no observation to start")
+    sys.exit("02 offers no observation to start")
 fields = {}
 for tag in re.findall(r"<input[^>]*>", m.group(1)):
     name, value = re.search(r'name="([^"]*)"', tag), re.search(r'value="([^"]*)"', tag)
@@ -760,7 +760,7 @@ while time.time() < deadline:
         continue
     if st != want:
         sys.exit("observation %s ended %s, want %s" % (new[-1], st, want))
-    print("   03: observation %s ended %s" % (new[-1], st))
+    print("   02: observation %s ended %s" % (new[-1], st))
     sys.exit(0)
 sys.exit("the observation did not end in 10 minutes")
 PY
@@ -800,19 +800,19 @@ for n in $CTL $NODES; do docker exec "$n" touch /tmp/pqcaton-e2e-stop; done; sle
 LEFT="$(marked)"; [ -z "$LEFT" ] || fail "processes of the successful observation were left: $LEFT"
 echo "   after the successful observation: no process with the run marker"
 
-# 03의 실제 경로(v0.31.0): 노드 점검 → 작업 폴더 밖 임시 키 → 노드 표준 입력 → 서명 검증 → 결과 교체 → 임시 키 회수.
+# 02의 실제 경로(v0.31.0): 노드 점검 → 작업 폴더 밖 임시 키 → 노드 표준 입력 → 서명 검증 → 결과 교체 → 임시 키 회수.
 RUN="$(docker exec "$CTL" sh -c "ls -t $WS/observations | head -1")"
 RLOG="$(docker exec "$CTL" cat "$WS/observations/$RUN/log.txt")"
-grep -q "sudo check passed\|passed: the node is reached as root" <<<"$RLOG" || fail "03 did not check the nodes before making keys"
+grep -q "sudo check passed\|passed: the node is reached as root" <<<"$RLOG" || fail "02 did not check the nodes before making keys"
 KDIR="$(sed -n 's/.*temporary signing keys for this run are in \([^ ]*\) (outside the workspace.*/\1/p' <<<"$RLOG")"
-[ -n "$KDIR" ] || fail "03 did not say where the temporary signing keys were"
+[ -n "$KDIR" ] || fail "02 did not say where the temporary signing keys were"
 case "$KDIR" in "$WS"/*) fail "the temporary signing keys were inside the workspace: $KDIR" ;; esac
 docker exec "$CTL" test ! -e "$KDIR" || fail "the temporary signing keys are still in $KDIR after the run"
 docker exec "$CTL" test ! -e "$WS/observations/$RUN/run-keys.json" || fail "the key record is still in the run directory"
 SIGNED="$(grep -c "signature checked (key " <<<"$RLOG")"
 FILES="$(docker exec "$CTL" sh -c "ls $WS/results | grep -c '\.json'")"
 [ "$SIGNED" -ge 1 ] && [ "$SIGNED" = "$FILES" ] || fail "signatures checked for $SIGNED files, $FILES results are current"
-echo "   03: every node checked, keys made in $KDIR (outside the workspace) and removed, $SIGNED results signature-checked and current"
+echo "   02: every node checked, keys made in $KDIR (outside the workspace) and removed, $SIGNED results signature-checked and current"
 # 키 값이 어디에도 없어야 한다: 모은 명령줄(컨트롤러 · 노드), 노드의 임시 폴더 · Ansible 자리, 작업 폴더 전체, 화면 로그.
 PRIVS="$(docker exec "$CTL" sh -c "sed -n 's/^PQCOTA_SIGN_KEY=//p' $CKEYS/*.key")"
 [ "$(wc -l <<<"$PRIVS")" -ge 3 ] || fail "cannot read the demo collector keys"
@@ -826,9 +826,9 @@ for n in $NODES; do
 done
 docker exec "$CTL" rm -f /tmp/pqcaton-e2e-privs /tmp/pqcaton-e2e-cmdlines /tmp/pqcaton-e2e-stop
 echo "   no collector signing key in the command lines collected during the run (controller, $(wc -w <<<"$NODES") nodes), node /tmp or ~/.ansible, the workspace or the screen log"
-# 상류 적재도 같은 판정: 03 결과는 결합 형식으로 통과하고, 서명 뒤 바꾼 사본은 거절한다(저장하지 않는 -verify-keys).
+# 상류 적재도 같은 판정: 02 결과는 결합 형식으로 통과하고, 서명 뒤 바꾼 사본은 거절한다(저장하지 않는 -verify-keys).
 VK="$(docker exec "$CTL" sed -n 's/^PQCOTA_VERIFY_KEY=//p' "$CKEYS/verify.pub")"
-docker exec -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -verify-keys "$WS/results" >/dev/null || fail "pqcota-ingest -verify-keys refused the results 03 made"
+docker exec -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -verify-keys "$WS/results" >/dev/null || fail "pqcota-ingest -verify-keys refused the results 02 made"
 docker exec "$CTL" sh -c "rm -rf /tmp/pqcaton-e2e-tamper && cp -r $WS/results /tmp/pqcaton-e2e-tamper"
 docker exec -i "$CTL" python3 - <<'PY' || fail "could not make the changed copy"
 import glob, json
@@ -841,21 +841,21 @@ json.dump(d, open(p, "w"))
 PY
 if docker exec -e PQCOTA_VERIFY_KEY="$VK" "$CTL" pqcota-ingest -verify-keys /tmp/pqcaton-e2e-tamper >/dev/null 2>&1; then fail "pqcota-ingest -verify-keys passed a result changed after signing"; fi
 docker exec "$CTL" rm -rf /tmp/pqcaton-e2e-tamper
-echo "   pqcota-ingest -verify-keys (bound to collector IDs) passes the results 03 made and refuses a copy changed after signing"
+echo "   pqcota-ingest -verify-keys (bound to collector IDs) passes the results 02 made and refuses a copy changed after signing"
 # 확인을 통과한 그 결과를 실제로 적재한다: 적재 역할 · PQCOTA_AUTO_DDL=0 · 같은 공개 키 · 판정 조직 · 활성 정책. 결과는 모두
 # 받아들여지고(서명 거절 0), 관측한 노드마다 판정 조직에 관측 기록이 하나씩 늘며, 다른 조직에는 늘지 않아야 한다.
 T8="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc 'select now()' | tr -d '\n')"
 ING8="$(docker exec -e PQCOTA_DSN="$INGEST_DSN" -e PQCOTA_AUTO_DDL=0 -e PQCOTA_ORG="$ORG" -e PQCOTA_VERIFY_KEY="$VK" "$CTL" \
-  pqcota-ingest -scope-assets "$WS/scope-assets.csv" "$WS/results")" || { echo "$ING8" | tail -5; fail "the results 03 made were not ingested"; }
+  pqcota-ingest -scope-assets "$WS/scope-assets.csv" "$WS/results")" || { echo "$ING8" | tail -5; fail "the results 02 made were not ingested"; }
 SUM8="$(grep -o 'ingest result: .*' <<<"$ING8")"
 echo "   $SUM8"
 ACC8="$(sed -n 's/^ingest result: accepted \([0-9]*\) .*/\1/p' <<<"$SUM8")"
 REJ8="$(sed -n 's/.* signature-rejected \([0-9]*\) .*/\1/p' <<<"$SUM8")"
 NODES8="$(sed -n 's/.* → \([0-9]*\) nodes observed.*/\1/p' <<<"$SUM8")"
-[ "$ACC8" = "$FILES" ] && [ "$REJ8" = 0 ] && [ -n "$NODES8" ] || fail "ingest of the results 03 made: accepted ${ACC8:-?} of $FILES, signature-rejected ${REJ8:-?}"
+[ "$ACC8" = "$FILES" ] && [ "$REJ8" = 0 ] && [ -n "$NODES8" ] || fail "ingest of the results 02 made: accepted ${ACC8:-?} of $FILES, signature-rejected ${REJ8:-?}"
 OWN8="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count(*) from pqcota_observations where observed_at >= '$T8' and org = '$ORG'" | tr -d '[:space:]')"
 OTHER8="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count(*) from pqcota_observations where observed_at >= '$T8' and org <> '$ORG'" | tr -d '[:space:]')"
-[ "$OWN8" = "$NODES8" ] && [ "$OTHER8" = 0 ] || fail "ingesting the results 03 made added $OWN8 observation records to $ORG (want $NODES8, one per node) and $OTHER8 elsewhere"
+[ "$OWN8" = "$NODES8" ] && [ "$OTHER8" = 0 ] || fail "ingesting the results 02 made added $OWN8 observation records to $ORG (want $NODES8, one per node) and $OTHER8 elsewhere"
 echo "   ingested as pqcota_ingest (PQCOTA_AUTO_DDL=0, the same trusted keys): $ACC8 results accepted, $OWN8 observation records in $ORG (one per node), none elsewhere"
 "$UI" stop >/dev/null
 

@@ -27,14 +27,30 @@ func cards(t *testing.T, body string) map[string]string {
 			out[m[1]] += " | " + m[3]
 		}
 	}
-	if len(out) != 6 {
-		t.Fatalf("found %d step cards, want 6:\n%s", len(out), body)
+	if len(out) != 5 {
+		t.Fatalf("found %d step cards, want 5:\n%s", len(out), body)
 	}
 	return out
 }
 
-// IC-U82 — **네 카드를 모두 채우고, 어느 화면에서 보든 같다.** 본문과 카드가 같은 입력을 쓰므로
-// 판정 화면의 「04」와 선언 화면의 「04」가 같다. 「확인할 수 없음」은 읽지 못했을 때만이다.
+var (
+	scopeStateLine = regexp.MustCompile(`(?s)data-scope-state>(.*?)</p>`)
+	anyTag         = regexp.MustCompile(`<[^>]+>`)
+)
+
+// scopeLine: 02 관측 화면의 「자산 스코프」 구역이 적는 줄(「규칙 편집: … · 확정 상태: …」). 자산 스코프에는 카드가 없어 이
+// 구역이 그 상태를 보이는 자리다. 구역이 없으면 빈 문자열이다.
+func scopeLine(observe string) string {
+	m := scopeStateLine.FindStringSubmatch(observe)
+	if m == nil {
+		return ""
+	}
+	return strings.Join(strings.Fields(anyTag.ReplaceAllString(m[1], " ")), " ")
+}
+
+// IC-U82 — **카드 다섯을 모두 채우고, 어느 화면에서 보든 같다.** 본문과 카드가 같은 입력을 쓰므로
+// 판정 화면의 「03」와 선언 화면의 「03」가 같다. 「확인할 수 없음」은 읽지 못했을 때만이다. 자산 스코프에는 카드가 없고,
+// 자산 스코프 화면에 있을 때는 02 관측 카드가 「지금 여기」다. 그 상태와 확정 상태는 02 관측 화면의 「자산 스코프」 구역이 보인다.
 func TestEveryCardIsFilledTheSameWay(t *testing.T) {
 	s := everyScreen(t)
 	var first map[string]string
@@ -55,8 +71,19 @@ func TestEveryCardIsFilledTheSameWay(t *testing.T) {
 			}
 		}
 	}
-	if !strings.HasSuffix(first["02"], " | 미확정") || !strings.HasSuffix(first["05"], " | 미확정") {
-		t.Errorf("the finalizing steps do not show their state: 02 %q, 05 %q", first["02"], first["05"])
+	if !strings.HasSuffix(first["04"], " | 미확정") {
+		t.Errorf("the finalizing step does not show its state: 04 %q", first["04"])
+	}
+	observe := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	if got := scopeLine(observe); !strings.HasPrefix(got, "규칙 편집: ") || !strings.HasSuffix(got, "확정 상태: 미확정") || strings.Contains(got, "확인할 수 없음") {
+		t.Errorf("the asset scope section of 02 = %q, want the editing state and the finalization", got)
+	}
+	if !strings.Contains(observe, `data-scope-edit`) || !strings.Contains(observe, `href="`+ui.ScreenScope+`?lang=ko"`) || strings.Contains(observe, "data-scope-tab") {
+		t.Error("02 does not lead to the asset scope screen with its own link, or also shows the unnumbered tab")
+	}
+	scopePage := get(t, s, ui.ScreenScope+"?lang=ko").Body.String()
+	if !regexp.MustCompile(`aria-current="step"[^>]*>(?s:.{0,300}?)<span class="step-num">02</span>`).MatchString(scopePage) || !strings.Contains(scopePage, "data-scope-back") {
+		t.Error("on the asset scope screen the 02 card is not the current step, or there is no way back to 02")
 	}
 }
 
@@ -70,7 +97,7 @@ func TestReviewCardShowsTheVerifiedState(t *testing.T) {
 		if w.Code != http.StatusOK {
 			t.Fatalf("GET /review = %d", w.Code)
 		}
-		line := cards(t, w.Body.String())["05"]
+		line := cards(t, w.Body.String())["04"]
 		return line[strings.LastIndex(line, " | ")+3:]
 	}
 	if got := final(); got != "미확정" {
@@ -111,13 +138,13 @@ func TestOneBrokenInputDimsOneCard(t *testing.T) {
 		t.Fatalf("GET /review with a broken scope session = %d", w.Code)
 	}
 	got := cards(t, w.Body.String())
-	if !strings.HasPrefix(got["02"], "확인할 수 없음") {
-		t.Errorf("scope card = %q, want unavailable", got["02"])
-	}
-	for _, num := range []string{"01", "03", "04", "05", "06"} {
+	for _, num := range []string{"01", "02", "03", "04", "05"} {
 		if strings.HasPrefix(got[num], "확인할 수 없음") {
 			t.Errorf("card %s went unavailable with the scope session", num)
 		}
+	}
+	if line := scopeLine(get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()); !strings.HasPrefix(line, "규칙 편집: 확인할 수 없음") {
+		t.Errorf("the asset scope section of 02 = %q, want unavailable", line)
 	}
 }
 
@@ -196,7 +223,7 @@ func TestSnapshotCoversTheReceipt(t *testing.T) {
 	if calls != 2 {
 		t.Errorf("the model was built %d times, want 2 (the receipt went away under the first)", calls)
 	}
-	line := cards(t, body)["05"]
+	line := cards(t, body)["04"]
 	if got := line[strings.LastIndex(line, " | ")+3:]; got != "미확정" {
 		t.Errorf("review card = %q, want the state after the receipt went away (미확정)", got)
 	}

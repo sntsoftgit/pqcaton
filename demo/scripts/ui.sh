@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BUSL-1.1
 #  화면 — 실행 중인 pqcota 데모의 pqcota-ctl 안에서 pqcaton-ui를 띄우고, 이 기계의 브라우저로 본다.
 #
-# **실제 배치와 같은 모양으로 띄운다.** 화면은 Ansible이 노드에 닿는 기계에서 돈다. 03 관측이
+# **실제 배치와 같은 모양으로 띄운다.** 화면은 Ansible이 노드에 닿는 기계에서 돈다. 02 관측이
 # ansible-playbook을 그 기계에서 부르기 때문이다. 데모에서 그 기계는 pqcota-ctl이다. 운영자는 자기
 # 기계에서 SSH 터널(ssh -L)로 본다(운영자 안내서 5절). 데모의 pqcota-ctl에는 sshd가 없으므로 그 터널
 # 자리를 docker exec 중계가 맡는다.
@@ -30,7 +30,7 @@
 #   ./demo/scripts/ui.sh stop    컨테이너 안의 화면을 끝낸다. 다시 빌드한 화면을 띄우려면 stop 뒤에 다시 연다.
 #   ./demo/scripts/ui.sh start   화면만 띄우고 중계는 열지 않는다(종단 검증이 쓴다).
 #   ./demo/scripts/ui.sh apply-scope
-#                                02에서 확정한 정책으로 pqcota를 다시 적재한다. **활성화는 하지 않는다.** 활성화는 화면(05)이
+#                                자산 스코프 화면에서 확정한 정책으로 pqcota를 다시 적재한다. **활성화는 하지 않는다.** 활성화는 화면(04)이
 #                                pqcota 이력 대조를 거쳐 한다. 화면이 떠 있어도 된다(적재는 작업 폴더를 건드리지 않는다).
 #   PQCATON_UI_PORT=8766 ...     이 기계에서 받을 포트(기본 8765). 이 기계에서 다른 화면을 이미 띄웠을 때 바꾼다.
 set -euo pipefail
@@ -40,9 +40,9 @@ REPO_DIR="$(cd "$DEMO_DIR/.." && pwd)"                        # pqcaton
 CTL=pqcota-ctl
 # 작업 폴더(컨테이너 안). 처음 한 번만 채우고, 그 뒤로는 손대지 않는다. 화면에서 한 일이 거기 남는다.
 WS=/work/ui
-# 06의 승인 서명 키. 작업 폴더 밖에 0600으로 둔다(운영자 안내서 2절과 같은 자리 규칙).
+# 05의 승인 서명 키. 작업 폴더 밖에 0600으로 둔다(운영자 안내서 2절과 같은 자리 규칙).
 KEY=/work/ui-approval.key
-# 03의 수집기 서명 키(수집기 ID마다 pqcota-keygen -collector <ID>)와 신뢰할 공개 키(verify.pub). 작업 폴더 밖, 폴더 0700 · 키 0600.
+# 02의 수집기 서명 키(수집기 ID마다 pqcota-keygen -collector <ID>)와 신뢰할 공개 키(verify.pub). 작업 폴더 밖, 폴더 0700 · 키 0600.
 # 승인 키와 자리를 나눈다(운영자 안내서 2절과 같은 규칙). 재적재도 이 verify.pub의 값을 PQCOTA_VERIFY_KEY로 쓴다.
 CKEYS=/work/ui-collector-keys
 # pqcota 이력(데모 DB). 화면은 이것 없이 시작하지 않는다. pqcota 이력의 조직은 판정 조직(demo-corp)과 같아야 하므로, 재적재도
@@ -185,14 +185,14 @@ if [ "$MODE" = "apply-scope" ]; then
   docker exec "$CTL" bash -c "
     set -e
     for f in $WS/asset-scope.csv $WS/declaration.json; do
-      [ -f \$f ] || { echo \"❌ missing \$f — finalize the policy in 02 first\"; exit 1; }
+      [ -f \$f ] || { echo \"❌ missing \$f — finalize the policy on the asset scope screen first\"; exit 1; }
     done
     ls $WS/results/*.json* >/dev/null 2>&1 || { echo '❌ no results in $WS/results'; exit 1; }
     command -v pqcota-ingest >/dev/null || { echo '❌ pqcota-ingest not found in $CTL'; exit 1; }
   "
   docker exec pqcota-demo-pg pg_isready -q || { echo "❌ the pqcota DB (pqcota-demo-pg) is not ready"; exit 1; }
-  # 2) pqcota 적재. 화면이 실제로 쓰는 결과 폴더와 02에서 확정한 정책으로 한다. 결과가 03 관측의 것이면(results/의
-  # 실행 표지) 수집기 서명이 있으므로, 03이 신뢰하는 것과 같은 공개 키(verify.pub)로 먼저 확인(-verify-keys, 저장하지 않음)하고
+  # 2) pqcota 적재. 화면이 실제로 쓰는 결과 폴더와 자산 스코프 화면에서 확정한 정책으로 한다. 결과가 02 관측의 것이면(results/의
+  # 실행 표지) 수집기 서명이 있으므로, 02가 신뢰하는 것과 같은 공개 키(verify.pub)로 먼저 확인(-verify-keys, 저장하지 않음)하고
   # 같은 값을 결합 형식의 PQCOTA_VERIFY_KEY로 주어 적재한다. 상류 데모가 만든 처음 결과는 서명이 없어 이 확인 없이 적재한다.
   echo "▶ 2/2 re-ingest pqcota with the finalized policy ($WS/asset-scope.csv, $WS/results)…"
   if docker exec "$CTL" test -f "$WS/results/.pqcaton-run"; then
@@ -203,7 +203,7 @@ if [ "$MODE" = "apply-scope" ]; then
     echo "   (results from the upstream demo carry no collector signature; ingesting them without -verify-keys)"
     docker exec -e PQCOTA_DSN="$INGEST_DSN" -e PQCOTA_AUTO_DDL=0 -e PQCOTA_ORG="$ORG" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
   fi
-  echo "✅ re-ingested. Activate it in 05 (the screen reconciles the pqcota history first): ./demo/scripts/ui.sh"
+  echo "✅ re-ingested. Activate it in 04 (the screen reconciles the pqcota history first): ./demo/scripts/ui.sh"
   exit 0
 fi
 
@@ -227,8 +227,8 @@ else
 
   echo "▶ 2/3 workspace ${WS}…"
   # **처음 한 번만 채운다.** 데모가 이미 가진 것을 실제 운영자가 화면에 넣는 자리에 둔다. 선언(01) ·
-  # 자산 스코프 정책(상류 적재와 같은 파일이어야 스냅샷 지문이 상류 이력과 맞는다) · 접근 정보(03) ·
-  # 지금까지의 관측 결과(04). 03에서 다시 관측하면 결과는 화면이 바꿔 넣는다. 수집기(03)는 띄울 때마다 위에서 확인한
+  # 자산 스코프 정책(상류 적재와 같은 파일이어야 스냅샷 지문이 상류 이력과 맞는다) · 접근 정보(02) ·
+  # 지금까지의 관측 결과(03). 02에서 다시 관측하면 결과는 화면이 바꿔 넣는다. 수집기(02)는 띄울 때마다 위에서 확인한
   # 공식 릴리스 자산으로 바꿔 넣는다(상류 데모가 소스로 빌드한 것은 쓰지 않는다).
   docker exec "$CTL" bash -c "
     set -e
@@ -239,21 +239,21 @@ else
       cp -r /work/results $WS/results
       echo '   created: declaration · asset-scope policy · hosts · results'
     fi
-    if [ ! -f $KEY ]; then umask 077; pqcota-keygen > $KEY; echo '   approval key for 06: $KEY'; fi
+    if [ ! -f $KEY ]; then umask 077; pqcota-keygen > $KEY; echo '   approval key for 05: $KEY'; fi
     if [ ! -d $CKEYS ]; then
       mkdir -m 700 $CKEYS
       for id in openssl-collector network-collector jvm-collector; do (umask 077; pqcota-keygen -collector \$id > $CKEYS/\$id.key); done
       (umask 077; for id in openssl-collector network-collector jvm-collector; do sed -n 's/^PQCOTA_VERIFY_KEY=//p' $CKEYS/\$id.key; done \
         | paste -sd, - | sed 's/^/PQCOTA_VERIFY_KEY=/' > $CKEYS/verify.pub)
       chmod 644 $CKEYS/verify.pub
-      echo '   collector signing keys for 03: $CKEYS (trusted public keys: $CKEYS/verify.pub)'
+      echo '   collector signing keys for 02: $CKEYS (trusted public keys: $CKEYS/verify.pub)'
     fi
   "
   sync_collectors
   # **노드의 호스트 키를 미리 받아 둔다.** 운영자 안내서 2절의 준비(처음 접속하는 노드는 ssh로 한 번
   # 접속해 호스트 키를 받아 둔다)를 데모에서 대신한다. 화면은 운영 환경처럼 호스트 키를 검사하므로, 이것이
-  # 없으면 03 관측이 「Host key verification failed」로 멈춘다(상류 데모의 Ansible 설정은 검사를 끈다).
-  # 접근 정보는 03에서 바뀔 수 있으므로 띄울 때마다 작업 폴더의 hosts.csv를 읽고, 이미 있는 키는 두고 없는 것만 더한다.
+  # 없으면 02 관측이 「Host key verification failed」로 멈춘다(상류 데모의 Ansible 설정은 검사를 끈다).
+  # 접근 정보는 02에서 바뀔 수 있으므로 띄울 때마다 작업 폴더의 hosts.csv를 읽고, 이미 있는 키는 두고 없는 것만 더한다.
   docker exec "$CTL" bash -c '
     mkdir -p -m 700 ~/.ssh; touch ~/.ssh/known_hosts
     tail -n +2 '"$WS"'/hosts.csv | while IFS=, read -r _ _ ip port _; do
@@ -264,7 +264,7 @@ else
   '
 
   echo "▶ 3/3 start pqcaton-ui in $CTL (127.0.0.1:8765 inside the container)…"
-  # 수집기는 확인한 공식 자산이므로 03에서 「확인됨」이고, -allow-unverified-collectors 없이 띄운다.
+  # 수집기는 확인한 공식 자산이므로 02에서 「확인됨」이고, -allow-unverified-collectors 없이 띄운다.
   # 화면은 pqcota 이력 없이 시작하지 않는다. 연결 정보는 환경 변수로만 넘긴다(명령줄 인자가 아니다).
   docker exec -d -e PQCOTA_DSN="$UI_DSN" "$CTL" bash -c "exec pqcaton-ui -workspace $WS -no-browser -org $ORG -approval-key $KEY -collector-keys $CKEYS >>$LOG 2>&1"
   for _ in $(seq 1 40); do answers && break; sleep 0.5; done

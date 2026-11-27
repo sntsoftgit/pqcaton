@@ -1210,7 +1210,7 @@ func surveyBody(v SurveyView) templ.Component {
 	})
 }
 
-// jcaUnconfirmed — JCA 결과는 있는데 PQC 서비스 목록을 확인할 수 없는 노드. 판을 단정하지 않고 확인을 권한다. 03 · 04가 함께 쓴다.
+// jcaUnconfirmed — JCA 결과는 있는데 PQC 서비스 목록을 확인할 수 없는 노드. 판을 단정하지 않고 확인을 권한다. 02 · 03이 함께 쓴다.
 func jcaUnconfirmed(lang Lang, nodes []string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -1278,7 +1278,7 @@ func jcaUnconfirmed(lang Lang, nodes []string) templ.Component {
 	})
 }
 
-// surveyPictureBody — 04의 그림 조각. 그리지 못했으면 까닭과 DOT 원문을 보인다(다른 기계에서 그릴 수 있게).
+// surveyPictureBody — 03의 그림 조각. 그리지 못했으면 까닭과 DOT 원문을 보인다(다른 기계에서 그릴 수 있게).
 func surveyPictureBody(lang Lang, svg, state, dot string, unreadable bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -1416,7 +1416,7 @@ func picturePlace(lang Lang, progress string) templ.Component {
 	})
 }
 
-// pictureMissing — 그림이 없는 까닭. `dot`이 없는 것(선택 사항)과 그렸지만 싣지 않는 것을 가른다. 04와 이력 화면이 함께 쓴다.
+// pictureMissing — 그림이 없는 까닭. `dot`이 없는 것(선택 사항)과 그렸지만 싣지 않는 것을 가른다. 03과 이력 화면이 함께 쓴다.
 func pictureMissing(lang Lang, state string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

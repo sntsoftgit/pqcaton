@@ -12,7 +12,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// IC-UI75 — **04는 받은 노드에서만 본 엣지와 방향을 확인하지 못한 연결을 가려 보인다.**
+// IC-UI75 — **03은 받은 노드에서만 본 엣지와 방향을 확인하지 못한 연결을 가려 보인다.**
 //
 // 받은 쪽 기록(상류 v0.18.0부터)으로만 본 엣지는 보내는 쪽 노드를 관측하지 못했어도 대조 표에 오른다. 그 사정을 적지 않으면
 // 「관측 안 된 노드」에서 나간 연결을 어떻게 보았는지 읽는 사람이 알 수 없다. 방향을 모르는 기록은 표에 넣지 않고 따로 적는다.
@@ -60,7 +60,7 @@ func TestSurveyShowsServerSideAndUnconfirmedEdges(t *testing.T) {
 		}
 		for _, s := range []string{only, title, `data-edges-unconfirmed="2"`, "198.51.100.7"} {
 			if !strings.Contains(body, s) {
-				t.Errorf("%s: 04 does not show %q", l, s)
+				t.Errorf("%s: 03 does not show %q", l, s)
 			}
 		}
 	}
@@ -72,6 +72,6 @@ func TestSurveyShowsServerSideAndUnconfirmedEdges(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.Contains(b.String(), "data-edges-unconfirmed") {
-		t.Error("04 draws the unconfirmed section although there is no such record")
+		t.Error("03 draws the unconfirmed section although there is no such record")
 	}
 }

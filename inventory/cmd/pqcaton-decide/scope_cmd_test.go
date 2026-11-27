@@ -32,7 +32,7 @@ const (
 	cmdPolicyB = "action,runtime,lib,app_key,note\nexclude,openssl,libcrypto*,*,not managed\n"
 )
 
-// scopeWorld: 선언 · 관측 결과(web 노드, libssl과 libcrypto) · 정책 A로 연 세션 · 활성 정책 A · 02에서 확정한 정책 B(그
+// scopeWorld: 선언 · 관측 결과(web 노드, libssl과 libcrypto) · 정책 A로 연 세션 · 활성 정책 A · 자산 스코프 화면에서 확정한 정책 B(그
 // 출력을 적은 scope 영수증과 함께)가 있는 폴더.
 type scopeWorld struct {
 	dir, sess, decl, results, active, candidate, scopeSess string
@@ -169,7 +169,7 @@ func reportOf(t *testing.T, w scopeWorld) review.RulesetChangeReport {
 }
 
 // IC-D33 — **activate-scope는 pqcota 이력 대조를 언제나 한다.** -confirm-ingest를 주면 지원 종료 오류이고 아무것도 쓰지
-// 않는다(운영자 진술로 우회하지 못한다). PQCOTA_DSN이 없으면 거절하고 아무것도 쓰지 않는다. 02 확정이 쓴 그대로가 아닌 후보는
+// 않는다(운영자 진술로 우회하지 못한다). PQCOTA_DSN이 없으면 거절하고 아무것도 쓰지 않는다. 자산 스코프 화면의 확정이 쓴 그대로가 아닌 후보는
 // pqcota가 그 정책으로 적재돼 있어도 거절한다. 대조가 통과하면 정책이 바뀌고 새 세션이 새 지문을 들며 처리 기록의 basis가
 // upstream-verified, 보고서에 upstream_check가 실린다. 두 정책이 같으면 아무것도 쓰지 않는다.
 func TestActivateScopeCommand(t *testing.T) {

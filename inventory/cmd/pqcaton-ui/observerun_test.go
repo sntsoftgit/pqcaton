@@ -247,7 +247,7 @@ func TestObservationRunsAndHandsOverResults(t *testing.T) {
 	}
 }
 
-// IC-U117 — **갖출 것이 빠졌으면 시작하지 않는다.** ansible-playbook을 찾지 못하거나 수집기 폴더가 없으면 03 화면의
+// IC-U117 — **갖출 것이 빠졌으면 시작하지 않는다.** ansible-playbook을 찾지 못하거나 수집기 폴더가 없으면 02 화면의
 // 점검 목록이 무엇이 빠졌고 무엇을 하면 되는지 두 말로 적고 시작 양식을 내지 않는다. 주소로 직접 보내도 409
 // (`run-not-ready`)이고 아무것도 실행하지 않는다.
 func TestObservationNeedsItsTools(t *testing.T) {
@@ -415,7 +415,7 @@ func TestHostValuesStayValues(t *testing.T) {
 
 // IC-U124 — **화면이 끝나면 관측도 끝나고, 비밀이 남지 않는다.** 서버가 끝날 때 돌던 관측을 멈추고 정리가 끝나기를
 // 기다린다(인벤토리가 지워진 뒤에 돌아온다). 서버가 비정상으로 끝나 실행 자리가 남았으면, 다음 시작이 인벤토리를
-// 지우고 받던 것을 partial/로 옮기고 「중단됨」으로 적으며, 03 화면이 그것을 보인다.
+// 지우고 받던 것을 partial/로 옮기고 「중단됨」으로 적으며, 02 화면이 그것을 보인다.
 func TestShutdownAndRestartCleanUp(t *testing.T) {
 	s := runReady(t, "hang")
 	if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusSeeOther {
@@ -584,7 +584,7 @@ func TestSwapIsTheCommitPoint(t *testing.T) {
 // IC-U129 — **화면이 비정상으로 끝나도 다음 시작이 남은 실행을 끝낸다.** 감독이 살아 있으면(기록의 PID와 시작 시각이
 // 같으면) 마무리하기를 기다리고, 너무 오래 걸리면 끝낸다. 시작 시각이 다르면(PID가 다른 프로세스에 다시 쓰였으면)
 // 건드리지 않는다. 그 뒤 이 실행의 표지를 가진 프로세스(감독이 죽어 남은 Ansible과 그 자식)를 모두 끝내고, 남은
-// 인벤토리로 노드 정리를 돌리고, 인벤토리를 지우고, partial/로 옮기고, 「중단됨」으로 적는다. 노드에 닿지 못했으면 03
+// 인벤토리로 노드 정리를 돌리고, 인벤토리를 지우고, partial/로 옮기고, 「중단됨」으로 적는다. 노드에 닿지 못했으면 02
 // 화면이 남았을 스테이징 폴더를 실행 ID와 함께 적는다.
 func TestRestartReapsAnOrphanedRun(t *testing.T) {
 	s := runReady(t, "ok")
@@ -712,7 +712,7 @@ func TestSupervisorFinishesWhenTheScreenGoes(t *testing.T) {
 }
 
 // IC-U132 — **끝내지 못한 프로세스가 있으면 아무것도 지우거나 옮기지 않는다.** 회수가 이 실행의 프로세스를 끝내지 못하면
-// 노드 정리를 겹쳐 돌리지 않고, 인벤토리를 지우지 않고, 받던 것을 옮기지 않고, 「회수 필요」로 적는다. 03 화면은 그 PID와
+// 노드 정리를 겹쳐 돌리지 않고, 인벤토리를 지우지 않고, 받던 것을 옮기지 않고, 「회수 필요」로 적는다. 02 화면은 그 PID와
 // 스테이징 폴더를 보이고, 새 관측은 409(`run-not-ready`)로 시작하지 않는다. 프로세스가 사라진 뒤 다시 시작하면 남은 것을 회수한다.
 func TestStuckRunIsLeftAlone(t *testing.T) {
 	s := runReady(t, "ok")

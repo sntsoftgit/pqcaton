@@ -3,7 +3,7 @@
 
 package main
 
-// 03 관측 화면의 관측 실행.
+// 02 관측 화면의 관측 실행.
 //
 // **화면은 Ansible을 부를 뿐이다.** 노드에 붙고 수집기를 돌리는 일은 운영자가 설치한 `ansible-playbook`이
 // 하고, 화면은 그 전에 빠진 것이 없는지 보고(preflight), 실행을 하나만 띄우고, 로그를 보이고, 끝나면 결과를
@@ -318,7 +318,7 @@ func renderTargets(hosts []inventory.Host) ([]runSlot, []byte, error) {
 	return slots, b.Bytes(), nil
 }
 
-// windowsNodes: 접근 정보의 Windows 노드(노드 ID). 이번 판의 03은 Windows 노드에 서명 키를 넘기지 않으므로 실행 전에 막는다.
+// windowsNodes: 접근 정보의 Windows 노드(노드 ID). 이번 판의 02는 Windows 노드에 서명 키를 넘기지 않으므로 실행 전에 막는다.
 func windowsNodes(hosts []inventory.Host) []string {
 	var out []string
 	for _, h := range hosts {

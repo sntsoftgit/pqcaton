@@ -6,7 +6,7 @@ package main
 // 정책 회차의 명령 길. 화면과 같은 절차(rulesetround.Open)와 **같은 대조 함수**(upstream.Reconcile)를 쓴다.
 //
 //   - baseline: 정책 기록이 없는 옛 세션에서, 지금 정책을 기준선으로 채택하는 회차를 연다.
-//   - activate-scope: 02에서 확정한 정책을 활성화하며 회차를 연다.
+//   - activate-scope: 자산 스코프 화면에서 확정한 정책을 활성화하며 회차를 연다.
 //
 // **pqcota 이력 대조는 언제나 한다.** pqcaton은 pqcota가 연결되어 동작하는 환경에서만 실행하며(PQCOTA_DSN), 운영자 진술은
 // 대조를 대신하지 못한다. -verify-upstream은 호환을 위해 받지만 동작을 고르지 않는다. -confirm-ingest는 지원을 끝냈고 주면
@@ -103,23 +103,23 @@ func openScopeRound(req rulesetround.Request, declPath, resultsDir, scopeAssets,
 	return rulesetround.Open(st, req, chk, store.CommandWait)
 }
 
-// scopeSessionPath — 후보 정책을 확정한 02 세션 파일. candidateFinalized가 쓴다.
+// scopeSessionPath — 후보 정책을 확정한 자산 스코프 세션 파일. candidateFinalized가 쓴다.
 var scopeSessionPath string
 
-// candidateFinalized — 후보 정책이 02 확정이 쓴 그대로인가(그 출력을 적은 scope 영수증이 있다).
+// candidateFinalized — 후보 정책이 자산 스코프 화면의 확정이 쓴 그대로인가(그 출력을 적은 scope 영수증이 있다).
 func candidateFinalized(st *store.State, candidate, org string) error {
 	if scopeSessionPath == "" {
-		return errors.New("activate-scope needs -scope-session (the 02 scope session that finalized the candidate policy)")
+		return errors.New("activate-scope needs -scope-session (the asset scope session that finalized the candidate policy)")
 	}
 	sf, err := invscope.LoadSession(scopeSessionPath)
 	if err != nil {
 		return err
 	}
 	if sf.SessionID == "" {
-		return errors.New("the scope session records no session_id; finalize the policy again in 02")
+		return errors.New("the scope session records no session_id; finalize the policy again on the asset scope screen")
 	}
 	if _, err := st.OutputReceipt(store.Identity{Kind: "scope", Org: org, SessionID: sf.SessionID}, candidate); err != nil {
-		return fmt.Errorf("%w: %v — finalize the policy in 02; a hand-edited file is not activated", rulesetround.ErrNoCandidate, err)
+		return fmt.Errorf("%w: %v — finalize the policy on the asset scope screen; a hand-edited file is not activated", rulesetround.ErrNoCandidate, err)
 	}
 	return nil
 }
@@ -157,7 +157,7 @@ func activateScope(oldPath, declPath, resultsDir, scopeAssets, candidate, orgNam
 		return errConfirmIngest
 	}
 	if declPath == "" || resultsDir == "" || scopeAssets == "" || candidate == "" {
-		return errors.New("activate-scope needs -decl, -results, -scope-assets (the active policy file, may not exist yet) and -candidate (asset-scope.csv finalized in 02)")
+		return errors.New("activate-scope needs -decl, -results, -scope-assets (the active policy file, may not exist yet) and -candidate (asset-scope.csv finalized on the asset scope screen)")
 	}
 	if _, err := os.Stat(candidate); err != nil {
 		return fmt.Errorf("%w: %v", rulesetround.ErrNoCandidate, err)
@@ -195,7 +195,7 @@ func activateScope(oldPath, declPath, resultsDir, scopeAssets, candidate, orgNam
 	return nil
 }
 
-// activationPreflight — 활성화의 지역 전제: 판정 세션이 지금 활성 정책으로 판정됐고(잠금 없음), 후보가 02 확정이 쓴 그대로다.
+// activationPreflight — 활성화의 지역 전제: 판정 세션이 지금 활성 정책으로 판정됐고(잠금 없음), 후보가 자산 스코프 화면의 확정이 쓴 그대로다.
 // 상태 폴더를 읽기만 한다.
 func activationPreflight(oldPath, candidate, orgName, stateDir, from string) error {
 	sf, err := review.Load(oldPath)

@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "strings"
 
-// approvePage — 06 프로비저닝. **무엇에 서명하는지 먼저 보인다** — 승인자는 계획의 이름이 아니라 조치의
+// approvePage — 05 프로비저닝. **무엇에 서명하는지 먼저 보인다** — 승인자는 계획의 이름이 아니라 조치의
 // 내용에 책임을 진다.
 func approvePage(v ApproveView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -431,7 +431,7 @@ func planTable(l Lang, p PlanSummary) templ.Component {
 	})
 }
 
-// planFiles — 계획 파일 둘의 상태. 원본(plan.json)은 05가 쓴 그대로 IN_REVIEW이고 서명해도 바뀌지 않는다. 서명은
+// planFiles — 계획 파일 둘의 상태. 원본(plan.json)은 04가 쓴 그대로 IN_REVIEW이고 서명해도 바뀌지 않는다. 서명은
 // plan.signed.json을 따로 만든다. 그 서명이 지금 계획과 같고 이 키로 확인될 때만 「승인된 계획」이라 부른다.
 func planFiles(v ApproveView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

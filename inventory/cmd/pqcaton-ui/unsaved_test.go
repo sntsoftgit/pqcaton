@@ -21,10 +21,10 @@ var (
 	stickyRow   = regexp.MustCompile(`(?s)<div class="actions sticky">.*?</div>`)
 )
 
-// IC-U222 — **편집 양식 넷은 저장하지 않은 입력을 지키는 표시를 달고 나간다.** 01 선언 · 02 스코프 · 03 접근 정보 ·
-// 05 판정의 양식마다 `data-guard`가 하나씩 있고, 화면 아래에 붙는 버튼 줄이 하나씩 있으며, 그 줄에 저장 버튼과 「저장하지
+// IC-U222 — **편집 양식 넷은 저장하지 않은 입력을 지키는 표시를 달고 나간다.** 01 선언 · 자산 스코프 화면 · 02 접근 정보 ·
+// 04 판정의 양식마다 `data-guard`가 하나씩 있고, 화면 아래에 붙는 버튼 줄이 하나씩 있으며, 그 줄에 저장 버튼과 「저장하지
 // 않은 변경」 표시가 설 자리가 그 말로 있다. 처음 그린 양식은 깨끗한 상태(`data-guard=""`)이고, 저장을 거절한 01 화면만
-// 처음부터 저장하지 않은 입력이 있는 상태(`dirty`)다. 편집 양식이 아닌 화면(04 · 06 · 조회)에는 없다.
+// 처음부터 저장하지 않은 입력이 있는 상태(`dirty`)다. 편집 양식이 아닌 화면(03 · 05 · 조회)에는 없다.
 func TestEditFormsGuardUnsavedInput(t *testing.T) {
 	s, _ := fullServer(t)
 	for _, c := range []struct{ lang, note string }{
@@ -88,7 +88,7 @@ func TestUnsavedGuardShips(t *testing.T) {
 	}
 }
 
-// IC-U223 — **02에서 규칙을 고친 채 「저장만」이나 「확정」을 누르면 쓰지 않고 「규칙 저장」을 먼저 누르라고 안내한다(422).**
+// IC-U223 — **자산 스코프 화면에서 규칙을 고친 채 「저장만」이나 「확정」을 누르면 쓰지 않고 「규칙 저장」을 먼저 누르라고 안내한다(422).**
 // 그 버튼들은 세션만 쓰고 화면을 파일에서 다시 그리므로, 예전에는 고친 규칙이 알림 없이 사라졌다. 계층 파일과 세션 파일은
 // 바이트까지 그대로이고, 화면은 고친 규칙과 적은 승인자를 그대로 돌려주며 처음부터 저장하지 않은 상태(`dirty`)다. 그
 // 화면의 양식으로 「규칙 저장」을 누르면 규칙과 승인자가 함께 저장된다. 규칙을 고치지 않은 양식의 「저장만」은 전처럼 된다.
@@ -150,7 +150,7 @@ func TestScopeSaveDoesNotDropEditedRules(t *testing.T) {
 	}
 }
 
-// IC-U224 — **02의 규칙은 「제거」로 표시한 것만 지워지고, 조건을 비운 규칙은 저장을 거절한다.** 세 규칙의 가운데 줄을
+// IC-U224 — **자산 스코프 화면의 규칙은 「제거」로 표시한 것만 지워지고, 조건을 비운 규칙은 저장을 거절한다.** 세 규칙의 가운데 줄을
 // 「제거」하면 서버는 그 줄을 「삭제 예정」으로 다시 그릴 뿐 아무것도 쓰지 않고, 「되돌리기」는 원래 줄을 돌려준다.
 // 표시한 양식으로 「규칙 저장」을 누르면 앞뒤 두 규칙이 그 순서로 남고, 다시 연 화면에 두 줄이 있다. 기존 규칙의 조건
 // 세 칸을 비워 「규칙 저장」을 누르면 422이고 계층 파일과 세션 파일은 바이트까지 그대로이며, 화면은 그 줄로 가는 링크와
@@ -248,14 +248,14 @@ func TestScopeRulesAreRemovedOnlyByRemove(t *testing.T) {
 	}
 }
 
-// IC-UI68 — **절차 카드 여섯이 한 줄에 서는 격자와, 03의 SSH 키 경로 칸의 최소 폭이 실려 나간다.** 격자는 카드 여섯에
-// 조회 탭 하나(`repeat(6, …) auto`)이고, 좁아지면 세 칸, 더 좁아지면 한 칸이다. 예전의 네 칸 격자는 남아 있지 않다.
+// IC-UI68 — **절차 카드 다섯이 한 줄에 서는 격자와, 02의 SSH 키 경로 칸의 최소 폭이 실려 나간다.** 격자는 카드 다섯에
+// 번호 없는 링크 둘까지(`repeat(5, …) auto auto`: 조회, 그리고 관측 화면이 없을 때의 자산 스코프)이고, 좁아지면 세 칸, 더 좁아지면 한 칸이다. 예전의 네 칸 격자는 남아 있지 않다.
 // 키 경로 칸은 `wide`이고(포커스가 가면 더 넓어진다) 전체 경로를 title로도 든다. 실제 배치는 브라우저에서 1280px · 375px로 확인한다.
 func TestStepGridAndKeyPathWidthShip(t *testing.T) {
 	s, _ := fullServer(t)
 	css := get(t, s, ui.StaticPath+"app.css").Body.String()
-	if !regexp.MustCompile(`body\.wb \.steps\s*\{[^}]*grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) auto`).MatchString(css) {
-		t.Error("app.css does not lay the six step cards and the inventory tab on one row")
+	if !regexp.MustCompile(`body\.wb \.steps\s*\{[^}]*grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\) auto auto`).MatchString(css) {
+		t.Error("app.css does not lay the five step cards and the unnumbered tabs on one row")
 	}
 	if strings.Contains(css, "repeat(4, minmax(0, 1fr))") || strings.Contains(css, "repeat(2, 1fr)") {
 		t.Error("app.css still has the grid made for four step cards")
@@ -270,12 +270,12 @@ func TestStepGridAndKeyPathWidthShip(t *testing.T) {
 	if !strings.Contains(key, `class="wide"`) || !strings.Contains(key, `title="/home/me/.ssh/id_ed25519"`) {
 		t.Errorf("the key path field is not wide or does not carry the full path as its title:\n%s", key)
 	}
-	if n := len(cards(t, body)); n != 6 {
-		t.Errorf("%d step cards, want 6", n)
+	if n := len(cards(t, body)); n != 5 {
+		t.Errorf("%d step cards, want 5", n)
 	}
 }
 
-// IC-U225 — **05에서 고른 조치 종류와 위임 수준, L3의 훅이 저장되고 다시 열었을 때 그대로 골라져 있다.** 화면의 이름으로
+// IC-U225 — **04에서 고른 조치 종류와 위임 수준, L3의 훅이 저장되고 다시 열었을 때 그대로 골라져 있다.** 화면의 이름으로
 // 고른 조치 종류는 계약 어휘(`REMEDIATION_KIND_PROVIDER_INJECT`)로 세션에 남는다. L3로 저장하면 훅 줄이 펼쳐진 채로
 // 다시 그려지고, L2로 바꿔 저장하면 훅 줄은 접히되 적은 값은 세션과 양식에 남아 있고 그 사실을 알리는 줄이 보인다.
 // 좁은 화면의 카드 배치와 접힌 줄을 접어 두는 스타일이 실려 나간다.
@@ -343,9 +343,9 @@ func TestJudgmentChoicesSurviveASave(t *testing.T) {
 	}
 }
 
-// IC-U226 — **플레이북 셋의 모든 단계가 진행 표시의 단계로 읽히고, 도는 동안 03 카드가 「관측 중」이다.** 임베드된
+// IC-U226 — **플레이북 셋의 모든 단계가 진행 표시의 단계로 읽히고, 도는 동안 02 카드가 「관측 중」이다.** 임베드된
 // 점검 · 관측 · 정리 플레이북의 단계 이름 하나하나가 여섯 단계 가운데 하나로 읽힌다(이름을 바꾸고 화면을 안 고치면
-// 진행 표시가 그 단계에서 멈춘다). 실행이 도는 동안에는 어느 화면에서든 03 카드에 「관측 중」이 적히고, 03을 다시 열면
+// 진행 표시가 그 단계에서 멈춘다). 실행이 도는 동안에는 어느 화면에서든 02 카드에 「관측 중」이 적히고, 02를 다시 열면
 // 같은 실행의 상태 · 시작 시각(시간대 포함) · 지금 단계가 그대로 보인다. 실행이 없으면 카드는 노드 수를 적는다.
 func TestObservationProgressFollowsThePlaybooks(t *testing.T) {
 	task := regexp.MustCompile(`(?m)^\s+- name: (.+)\n(\s+)(\S+)`)
@@ -372,8 +372,8 @@ func TestObservationProgressFollowsThePlaybooks(t *testing.T) {
 	}
 
 	s, _ := fullServer(t)
-	if got := cards(t, get(t, s, ui.ScreenDecl+"?lang=ko").Body.String())["03"]; !strings.Contains(got, "관측할 노드 2대") {
-		t.Fatalf("with no run the 03 card says %q", got)
+	if got := cards(t, get(t, s, ui.ScreenDecl+"?lang=ko").Body.String())["02"]; !strings.Contains(got, "관측할 노드 2대") {
+		t.Fatalf("with no run the 02 card says %q", got)
 	}
 	started := time.Date(2026, 11, 23, 7, 8, 4, 0, time.UTC)
 	s.run.job = &runJob{done: make(chan struct{}),
@@ -386,8 +386,8 @@ func TestObservationProgressFollowsThePlaybooks(t *testing.T) {
 		{"en", "observing now", "Observing (started at 2026-11-23 07:08:04 UTC)", "Step 5 of 6 now"},
 	} {
 		for _, sc := range []string{ui.ScreenDecl, ui.ScreenReview, ui.ScreenObserve} {
-			if got := cards(t, get(t, s, sc+"?lang="+c.lang).Body.String())["03"]; !strings.Contains(got, c.card) {
-				t.Errorf("%s (%s): while a run is going the 03 card says %q", sc, c.lang, got)
+			if got := cards(t, get(t, s, sc+"?lang="+c.lang).Body.String())["02"]; !strings.Contains(got, c.card) {
+				t.Errorf("%s (%s): while a run is going the 02 card says %q", sc, c.lang, got)
 			}
 		}
 		// 다시 열어도(새로고침) 같은 실행이 이어진다.
@@ -395,7 +395,7 @@ func TestObservationProgressFollowsThePlaybooks(t *testing.T) {
 			body := get(t, s, ui.ScreenObserve+"?lang="+c.lang).Body.String()
 			for _, want := range []string{c.running, c.phase, "web: ", `action="` + ui.RunStopPath + `"`} {
 				if !strings.Contains(body, want) {
-					t.Errorf("%s: the reopened 03 screen has no %s", c.lang, want)
+					t.Errorf("%s: the reopened 02 screen has no %s", c.lang, want)
 				}
 			}
 			if strings.Contains(body, "db: ") {
@@ -434,8 +434,8 @@ func TestObservationProgressFollowsThePlaybooks(t *testing.T) {
 	if w := part(ui.RunPartLive, "running"); w.Header().Get("HX-Refresh") != "true" || w.Header().Get("HX-Retarget") != "" {
 		t.Errorf("a summary part asked for after the run ended does not refresh the screen: %v", w.Header())
 	}
-	if got := cards(t, get(t, s, ui.ScreenObserve+"?lang=ko").Body.String())["03"]; strings.Contains(got, "관측 중") {
-		t.Errorf("after the run ended the 03 card still says %q", got)
+	if got := cards(t, get(t, s, ui.ScreenObserve+"?lang=ko").Body.String())["02"]; strings.Contains(got, "관측 중") {
+		t.Errorf("after the run ended the 02 card still says %q", got)
 	}
 	js := get(t, s, ui.StaticPath+"app.js").Body.String()
 	if !strings.Contains(js, "details[data-keep-open]") {

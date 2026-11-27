@@ -38,7 +38,7 @@ func savedSession(t *testing.T, s *server) review.Session {
 
 func hasForm(page, action string) bool { return strings.Contains(page, `action="`+action+`"`) }
 
-// IC-U154 — **정책 기록이 없는 옛 세션은 05가 잠기고, pqcota 이력 대조를 거친 기준선 회차로만 넘어간다.** 화면에 기준선
+// IC-U154 — **정책 기록이 없는 옛 세션은 04가 잠기고, pqcota 이력 대조를 거친 기준선 회차로만 넘어간다.** 화면에 기준선
 // 상자가 있고 운영자 확인 칸은 없다. 저장은 409 `scope-baseline`이며 파일은 그대로다. pqcota가 지금 정책으로 적재돼 있지
 // 않으면 409 `upstream-missing`이고 아무것도 쓰지 않는다(확인 칸을 보내도 같다). 적재돼 있으면 새 세션(새 ID, 지금 정책의
 // 지문, 현재 결론은 빔)이 생기고 옛 세션은 바이트 그대로 보관되며 근거가 upstream-verified인 scope-baseline 형식 2 처리
@@ -61,8 +61,8 @@ func TestLegacySessionNeedsAConfirmedBaseline(t *testing.T) {
 		!strings.Contains(page, "pqcota 이력이 이 정책으로 적재돼 있는지 대조하고") || hasForm(page, ui.ReviewRulesetRoundPath) {
 		t.Fatalf("the review screen does not offer the reconciled baseline round")
 	}
-	if got := cards(t, page)["05"]; !strings.HasPrefix(got, "정책 기준선을 채택해야 합니다") {
-		t.Errorf("card 05 = %q", got)
+	if got := cards(t, page)["04"]; !strings.HasPrefix(got, "정책 기준선을 채택해야 합니다") {
+		t.Errorf("card 04 = %q", got)
 	}
 	w := postForm(t, s, "/save", url.Values{"reviewer": {"보안팀"}})
 	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedScopeBaseline) || readFile(t, s.path) != legacy {
@@ -108,7 +108,7 @@ func TestLegacySessionNeedsAConfirmedBaseline(t *testing.T) {
 	sameDir(t, after, snapshotDir(t, dir))
 }
 
-// IC-U155 — **활성화 기록 없이 scope-assets.csv를 바꾸면 05가 잠기고 회차 단추가 없다.** 화면은 이전 정책 복원과 정식
+// IC-U155 — **활성화 기록 없이 scope-assets.csv를 바꾸면 04가 잠기고 회차 단추가 없다.** 화면은 이전 정책 복원과 정식
 // 활성화만 안내하고, 저장은 409 `scope-unactivated`이며 파일은 그대로다. 이전 정책을 복원하면 다시 저장된다.
 func TestHandEditedPolicyLocksTheReview(t *testing.T) {
 	s := observedServer(t)

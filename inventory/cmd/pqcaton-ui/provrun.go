@@ -3,7 +3,7 @@
 
 package main
 
-// 06 프로비저닝의 미리 보기(`--check`)와 결과 화면.
+// 05 프로비저닝의 미리 보기(`--check`)와 결과 화면.
 //
 // **이 판은 미리 보기까지만 돌린다.** 적용을 시작하는 처리기는 없다. 미리 보기가 「바뀔 것이 있고 모두 확인했다」로 끝나면
 // 적용 권한(provrun.Grant)을 실행 자리에 남기고 화면은 그 상태(유효 · 만료 · 입력이 바뀜)를 보이기만 한다.
@@ -218,7 +218,7 @@ func provBinding(signed, book, inv, vars, cfg, callback []byte, ansible string, 
 	}
 }
 
-// provCore: 그 실행 파일의 core 판. 같은 파일(경로 · 크기 · 고친 시각)이면 다시 묻지 않는다: 06 화면을 그릴 때마다 Ansible을
+// provCore: 그 실행 파일의 core 판. 같은 파일(경로 · 크기 · 고친 시각)이면 다시 묻지 않는다: 05 화면을 그릴 때마다 Ansible을
 // 띄우지 않으려는 것이다. 파일이 바뀌면 다시 묻는다. **감독은 이 기억을 쓰지 않고 띄우기 직전에 직접 묻는다.**
 func (s *server) provCore(ansible string, fi os.FileInfo) string {
 	key := fmt.Sprintf("%s|%d|%d", ansible, fi.Size(), fi.ModTime().UnixNano())
@@ -250,7 +250,7 @@ func provBindingOf(dir, ansible, core string, stall int) (provrun.Binding, error
 	return provBinding(parts[0], parts[1], parts[2], parts[3], cfg, parts[5], ansible, fi, core, stall), nil
 }
 
-// renderProvTargets: 06 실행의 인벤토리. 플레이북이 노드 ID로 겨누므로 호스트 이름이 노드 ID다(03은 별칭을 쓴다). 이름은
+// renderProvTargets: 05 실행의 인벤토리. 플레이북이 노드 ID로 겨누므로 호스트 이름이 노드 ID다(02는 별칭을 쓴다). 이름은
 // provrun.NodeNameOK를 지난 것뿐이고 값은 모두 !unsafe다. 플레이북이 겨누는 노드만 싣는다.
 func renderProvTargets(hosts []inventory.Host) ([]byte, error) {
 	if err := hostValuesOK(hosts); err != nil {
@@ -546,7 +546,7 @@ func recheckOf(n provrun.NodeVerdict) string {
 	return ui.RecheckMatch
 }
 
-// provModel: 06의 실행 구역. 조건, 도는 실행, 마지막 적용 실행과 그 재확인, 마지막 미리 보기와 적용 권한의 상태.
+// provModel: 05의 실행 구역. 조건, 도는 실행, 마지막 적용 실행과 그 재확인, 마지막 미리 보기와 적용 권한의 상태.
 func (s *server) provModel(v ui.ApproveView) ui.ProvRun {
 	out := ui.ProvRun{}
 	rd, blocks := s.provCheck(v)

@@ -25,7 +25,7 @@ const (
 	policyBText = "action,runtime,lib,app_key,note\nexclude,*,*,/usr/sbin/sshd*,os patching\nexclude,*,*,/usr/bin/python*,runtime\n"
 )
 
-// activationWorld: 정책 A로 판정한 세션, 활성 정책 A(scope-assets.csv), 02에서 확정한 정책 B(asset-scope.csv). active가
+// activationWorld: 정책 A로 판정한 세션, 활성 정책 A(scope-assets.csv), 자산 스코프 화면에서 확정한 정책 B(asset-scope.csv). active가
 // false면 활성 정책 파일이 없다(규칙 0개 정책으로 판정한 세션).
 func activationWorld(t *testing.T, active bool, fault func(point, path string) error) (path string, st *store.State, req rulesetround.Request, raw []byte) {
 	t.Helper()

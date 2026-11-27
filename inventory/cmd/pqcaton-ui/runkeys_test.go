@@ -179,7 +179,7 @@ func TestUnverifiedResultsDoNotBecomeCurrent(t *testing.T) {
 }
 
 // IC-U215 — **임시 키를 지우지 못하면 「회수 필요」로 남고 새 관측을 막는다. 재시작 복구가 다시 지운다.** 키 폴더를 지울 수 없게 해 두면
-// 감독도 화면도 지우지 못하고, 실행 상태(끝남)와 따로 KeysLeft가 기록된다. 03은 「회수 필요」와 그 자리를 보이고 시작을 받지 않는다.
+// 감독도 화면도 지우지 못하고, 실행 상태(끝남)와 따로 KeysLeft가 기록된다. 02는 「회수 필요」와 그 자리를 보이고 시작을 받지 않는다.
 // 지울 수 있게 되면 다시 시작한 화면의 복구가 지우고 KeysLeft를 비우며, 실행 상태는 끝남 그대로다.
 func TestKeysLeftBehindBlockUntilRecovered(t *testing.T) {
 	s := runReady(t, "ok")
@@ -194,7 +194,7 @@ func TestKeysLeftBehindBlockUntilRecovered(t *testing.T) {
 		t.Fatalf("state %s, why %q\n%s", st.State, st.StuckWhy, st.Log)
 	}
 	if c := checkOf(s.preflight(), ui.RunStuckItem); c == nil || c.OK {
-		t.Errorf("03 does not show the run that needs reclaiming: %+v", c)
+		t.Errorf("02 does not show the run that needs reclaiming: %+v", c)
 	}
 	if err := s.startRun(5); !errors.Is(err, errRunStuck) {
 		t.Errorf("a new observation = %v, want errRunStuck", err)
@@ -217,7 +217,7 @@ func TestKeysLeftBehindBlockUntilRecovered(t *testing.T) {
 		t.Errorf("the key folder is still there after recovery: %v", ents)
 	}
 	if c := checkOf(s.preflight(), ui.RunStuckItem); c != nil {
-		t.Errorf("03 still blocks after recovery: %+v", c)
+		t.Errorf("02 still blocks after recovery: %+v", c)
 	}
 }
 
@@ -267,7 +267,7 @@ func TestStoppedAndRecoveredRunsRemoveTheKeys(t *testing.T) {
 	}
 }
 
-// IC-U217 — **03의 플레이북과 설정은 검증한 실행 조건만 쓴다.** 플레이북은 내장 모듈(ansible.builtin.*)만 쓰고, 플레이마다 연결은
+// IC-U217 — **02의 플레이북과 설정은 검증한 실행 조건만 쓴다.** 플레이북은 내장 모듈(ansible.builtin.*)만 쓰고, 플레이마다 연결은
 // ansible.builtin.ssh, 권한 상승은 ansible.builtin.sudo다. 서명 키는 `stdin`에 내장 file 조회로만 들어가고 그 작업은 no_log이며,
 // environment:로도 env 조회로도 넘기지 않는다. 서명 작업의 결과는 stdout · stderr · rc(와 skipped 여부)로만 쓰고, 결과 전체를
 // 출력 · 저장하지 않는다(debug · to_json 없음). Windows 작업은 없다. 설정은 모든 플러그인 · 컬렉션 경로를 빈 폴더로 두고, pipelining을

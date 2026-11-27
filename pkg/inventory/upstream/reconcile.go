@@ -3,7 +3,7 @@
 
 package upstream
 
-// pqcota 이력 대조. 화면(05)과 명령(pqcaton-decide baseline · activate-scope)이 **같은 이 함수**를 쓴다.
+// pqcota 이력 대조. 화면(04)과 명령(pqcaton-decide baseline · activate-scope)이 **같은 이 함수**를 쓴다.
 //
 // 순서는 부르는 쪽이 지킨다: (1) 작업 폴더 입력의 스냅샷을 뜨고, (2) 그 입력과 정책으로 여기서 대조하고, (3) 실패하면 쓰지
 // 않고, (4) 성공하면 곧바로 실행 잠금을 잡고, (5) 1의 스냅샷이 그대로인지 다시 재고, (6) 그대로일 때만 한 트랜잭션으로 쓴다.

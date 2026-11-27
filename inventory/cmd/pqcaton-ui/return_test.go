@@ -43,7 +43,7 @@ func TestSavingReturnsToTheScreen(t *testing.T) {
 		}
 		form.Del(ui.CSRFField) // 화면이 받은 쿠키가 아니라 테스트 쿠키의 토큰을 싣는다
 		if c.screen == ui.ScreenScope {
-			// 02는 브라우저가 보내는 그대로 보낸다. 숨은 칸만 보내면 규칙 편집기의 칸이 빠져 규칙을 고친 것으로 읽힌다.
+			// 자산 스코프 화면은 브라우저가 보내는 그대로 보낸다. 숨은 칸만 보내면 규칙 편집기의 칸이 빠져 규칙을 고친 것으로 읽힌다.
 			form = formOf(body)
 		}
 		if got := landed(t, postForm(t, s, c.save, form)); got != c.screen {

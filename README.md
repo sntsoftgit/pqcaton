@@ -37,7 +37,7 @@ You do not need to read code. The screen (`pqcaton-ui`) walks through the steps,
 2. **Reconcile and review.** pqcaton matches observation with declaration in three states and puts what needs a decision in the review
    queue. People judge per policy or per item.
 3. **Finalize and hand over.** Finalizing passes a gate only with every mandatory judgment and a signature. The plan then goes to pqcota
-   for approval and generation (`pqcota-approve`, `pqcota-provision`), or through the 06 screen on the same machine.
+   for approval and generation (`pqcota-approve`, `pqcota-provision`), or through the 05 screen on the same machine.
 
 ### How it fits together
 
@@ -49,7 +49,7 @@ flowchart LR
   end
   ing -- "results/" --> rec["reconcile<br/>CONFIRMED · UNDECLARED · UNOBSERVED"]
   rec --> rq["review queue"] --> fin["finalize<br/>plan.json (IN_REVIEW)"]
-  fin --> appr["pqcota-approve · 06"] --> gen["pqcota-provision · 06<br/>provision.yml · rollback.yml"]
+  fin --> appr["pqcota-approve · 05"] --> gen["pqcota-provision · 05<br/>provision.yml · rollback.yml"]
 ```
 
 The dependency goes **one way**: pqcaton uses pqcota's public modules, and pqcota does not depend on pqcaton. pqcota is complete on its
@@ -64,7 +64,7 @@ is your first time, follow the [demo steps](#try-it-on-the-demo) below or start 
 
 | Path | When | At the end |
 |---|---|---|
-| [Try it on the demo](#try-it-on-the-demo) | You have no pqcota yet and want to go round once first | You go once through the 01 to 06 screens with three nodes and a pqcota history brought up in Docker |
+| [Try it on the demo](#try-it-on-the-demo) | You have no pqcota yet and want to go round once first | You go once through the 01 to 05 screens with three nodes and a pqcota history brought up in Docker |
 | [Build this repository](#build-this-repository) | You observe and judge your own nodes | The screen starts, connected to your pqcota history |
 
 <a id="써보기"></a>
@@ -109,13 +109,13 @@ to a folder on your `PATH`).
 
 **Starting the screen.** After steps 1 to 5 of [section 2, "Preparing pqcota"](docs/operator-guide.md#preparing-pqcota) in the
 operator guide, run `./bin/pqcaton-ui -no-browser`. The line `screen: http://127.0.0.1:8765/  (workspace …)` means the screen is up.
-What 03 Observation and 06 approval signatures need is in [the same section 2](docs/operator-guide.md#2-installation) too.
+What 02 Observation and 05 approval signatures need is in [the same section 2](docs/operator-guide.md#2-installation) too.
 
 **The commands you built.**
 
 | Command | What it does |
 |---|---|
-| `pqcaton-ui` | The screen (01 Declaration to 06 Provisioning) |
+| `pqcaton-ui` | The screen (01 Declaration to 05 Provisioning) |
 | `pqcaton-decide` | The same judgment steps as commands (`open`, `close`, `delta`) |
 | `pqcaton-report` | The reconciliation report and the governance topology from collected results |
 | `pqcaton-scope` | The asset-scope policy (layers, finalize, activate) as commands |

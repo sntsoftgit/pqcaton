@@ -3,7 +3,7 @@
 
 package ui
 
-// 03 관측 화면의 접근 정보(`hosts.csv`).
+// 02 관측 화면의 접근 정보(`hosts.csv`).
 //
 // **파일 형식은 상류의 것이다.** 해석과 Ansible 인벤토리 생성은 `pqcota-inventory`의 ParseHosts ·
 // RenderAnsibleInventory가 하고, 여기서는 화면의 칸과 그 형식을 오간다. 형식을 따로 정하면 같은 파일을
@@ -45,7 +45,7 @@ type HostProblem struct {
 	What T
 }
 
-// ObserveView — 03 관측 화면.
+// ObserveView — 02 관측 화면.
 type ObserveView struct {
 	Page
 	Hosts []HostRow
@@ -56,8 +56,23 @@ type ObserveView struct {
 	// Ingest — 이력에 적재(ingest.go). 결과 폴더가 없는 서버에서는 구역을 그리지 않는다.
 	Ingest     IngestView
 	HasResults bool
-	// Policy — 02에서 확정한 정책이 활성 정책과 다를 때의 「활성화할 확정 정책: 재적재와 활성화」. 없으면 nil이다.
+	// Policy — 자산 스코프 화면에서 확정한 정책이 활성 정책과 다를 때의 「활성화할 확정 정책: 재적재와 활성화」. 없으면 nil이다.
 	Policy *ObservePolicy
+	// Scope — 「자산 스코프」 구역. 없으면 nil이다.
+	Scope *ObserveScope
+}
+
+// ObserveScope — 관측 화면의 「자산 스코프」 구역. 현재 활성 정책(파일 · 규칙 수 · 지문)과, 규칙 편집의 상태 · 확정 상태를
+// 보이고 자산 스코프 화면으로 잇는다. 상단 카드에 스코프가 없으므로 이 구역이 그 상태를 보이는 유일한 자리다.
+type ObserveScope struct {
+	// ActiveFile · ActiveDigest · Rules — 현재 활성 정책. 파일이 없으면 규칙 0개의 정책이다.
+	ActiveFile, ActiveDigest string
+	Rules                    int
+	// PolicyUnknown — 활성 정책 파일을 읽지 못했다. 지문과 규칙 수를 적지 않는다.
+	PolicyUnknown bool
+	// Href — 자산 스코프 화면. 열리지 않으면 비어 있고 State · Dot · Final도 비어 있다.
+	Href              string
+	State, Dot, Final string
 }
 
 // FoldIngest — 활성 정책으로 적재하는 구역을 접어 두는가. 활성화할 확정 정책으로 재적재가 확인돼 활성화를 기다릴 때다.
@@ -125,7 +140,7 @@ const (
 	// 확인 불가처럼 막고, -allow-unverified-collectors 로 허용하면 RunJarAllowed(경고)다. v0.30.0 전에는 판 정보가 없으면 경고만 했다.
 	RunJarUnverified RunItem = "jar-unverified"
 	RunJarAllowed    RunItem = "jar-allowed"
-	// RunWindowsUnsupported — 관측할 노드에 Windows가 있다. 이번 판의 03은 Windows 노드에 서명 키를 넘기지 않아 결과가 반영되지
+	// RunWindowsUnsupported — 관측할 노드에 Windows가 있다. 이번 판의 02는 Windows 노드에 서명 키를 넘기지 않아 결과가 반영되지
 	// 않으므로, Linux 관측을 다 돌린 뒤 거절되는 대신 실행 전에 막는다.
 	RunWindowsUnsupported RunItem = "windows-unsupported"
 	// RunCollectorKeys · RunCollectorVerify — 수집기 ID별 서명 키와 신뢰할 공개 키(collectorkeys.go). 없으면 시작하지 않는다.
@@ -462,7 +477,7 @@ func RenderRunPart(w io.Writer, l Lang, part string, st *RunStatus) error {
 	return runLive(l, st).Render(context.Background(), w)
 }
 
-// RenderObserve — 03 관측 화면.
+// RenderObserve — 02 관측 화면.
 func RenderObserve(w io.Writer, v ObserveView) error {
 	return observePage(v).Render(context.Background(), w)
 }

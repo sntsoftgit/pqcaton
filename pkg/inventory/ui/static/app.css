@@ -102,9 +102,9 @@ tr.htmx-added td { animation: settle .5s ease-out; }
 .ui-next .next strong, .ui-next .next span { display: block; }
 .ui-next .next span { color: #76511a; font-size: .9rem; }
 .ui-next .next.done span { color: var(--green); }
-/* 링크 둘을 셋째 칸에 나란히(02 확정 뒤 다음 단계). */
+/* 링크 둘을 셋째 칸에 나란히(자산 스코프 화면에서 확정한 뒤 다음 단계). */
 .ui-next .next-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-/* 05의 활성화 상자: 단계 목록이 글 칸 전체를 쓴다. 번호는 <ol>이 붙인다. */
+/* 04의 활성화 상자: 단계 목록이 글 칸 전체를 쓴다. 번호는 <ol>이 붙인다. */
 .ui-next .next.activation > div:nth-child(2) { grid-column: 2 / -1; }
 .ui-next .activation-steps { display: block; margin: .7rem 0 0; padding-left: 1.4rem; }
 .ui-next .activation-steps li { margin: .7rem 0; }
@@ -200,10 +200,10 @@ body.wb .langbtn { font-size: .85rem; color: var(--muted); border: 1px solid var
                    text-decoration: none; white-space: nowrap; }
 /* 상단 바로 아래에 절차 카드가 온다. 설명 상자는 두지 않는다(화면을 쓰면서 익힌다). */
 body.wb .steps { margin-top: 6px; }
-/* 절차 카드 여섯과 조회 탭. **넓은 화면에서는 01~06이 한 줄에 차례대로 서고 조회 탭이 그 끝에 붙는다.** 예전 격자는
-   카드 넷을 기준으로 잡혀 있어서, 단계가 여섯이 된 뒤로 05가 좁은 끝 칸에 끼고 06과 조회 탭이 둘째 줄로 밀렸다.
-   1100px 이하에서는 세 칸 두 줄(01~03 · 04~06)이고 조회 탭이 그 아래 한 줄을 다 쓴다. 650px 이하는 한 칸이다. */
-body.wb .steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+/* 절차 카드 다섯과 번호 없는 링크(조회, 그리고 관측 화면이 없을 때의 자산 스코프). **넓은 화면에서는 01~05가 한 줄에
+   차례대로 서고 링크가 그 끝에 붙는다.** 1100px 이하에서는 세 칸 두 줄(01~03 · 04~05)이고 링크가 그 아래에 온다.
+   650px 이하는 한 칸이다. */
+body.wb .steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto auto;
                  gap: 8px; margin: 0 0 24px; }
 body.wb .step { min-height: 68px; display: flex; align-items: center; gap: 10px;
                 text-align: left; border: 1px solid var(--line); border-radius: 11px;
@@ -314,7 +314,7 @@ body.wb .mode-view-only, body.wb .mode-recovery { border-color: var(--amber); ba
 /* 확정된 세션의 양식 전체를 잠그는 fieldset. 틀은 그리지 않는다. */
 body.wb fieldset.locked { border: 0; padding: 0; margin: 0; min-width: 0; }
 
-/* 03 관측 · 06 승인(v0.24.0). 점검 목록은 글머리 점 없이 ✓ · ✗로 읽고, 실행 로그와 확인 키 줄은 상자 안에서
+/* 02 관측 · 05 승인(v0.24.0). 점검 목록은 글머리 점 없이 ✓ · ✗로 읽고, 실행 로그와 확인 키 줄은 상자 안에서
    줄을 바꾼다. 끊을 자리가 없는 경로나 base64 한 줄이 320px에서 페이지를 옆으로 밀었다. */
 body.wb ul.checks { list-style: none; padding-left: 0; }
 body.wb ul.checks li { margin: .35rem 0; overflow-wrap: anywhere; }
@@ -342,11 +342,11 @@ body.wb .actions.sticky { position: sticky; bottom: 0; z-index: 2; align-items: 
 body.wb .actions .unsaved { color: var(--amber); font-size: .9rem; font-weight: 600; }
 body.wb .actions .unsaved:empty { display: none; }
 
-/* 02 규칙 줄의 「삭제 예정」. 줄은 남기고 흐리게 긋는다. 색만으로 알리지 않는다: 줄 끝에 「삭제 예정」이라고 적는다. */
+/* 자산 스코프 화면 규칙 줄의 「삭제 예정」. 줄은 남기고 흐리게 긋는다. 색만으로 알리지 않는다: 줄 끝에 「삭제 예정」이라고 적는다. */
 body.wb tr.removing input[type=text], body.wb tr.removing select { text-decoration: line-through; opacity: .55; }
 body.wb .removing-note { color: var(--amber); font-size: .85rem; font-weight: 600; margin-right: .4rem; }
 
-/* 03 접근 정보 표의 SSH 키 경로 칸. 다른 열이 폭을 다 가져가 1280px에서 29px로 눌려 경로가 두 글자만 보였다. 이 칸에
+/* 02 접근 정보 표의 SSH 키 경로 칸. 다른 열이 폭을 다 가져가 1280px에서 29px로 눌려 경로가 두 글자만 보였다. 이 칸에
    최소 폭을 주고(모자라면 표가 상자 안에서 옆으로 스크롤된다) 다른 열을 줄였다. 좁은 화면의 카드 모양에서는 한 줄을 다
    쓴다. */
 body.wb table.editable input.wide { min-width: 14rem; }
@@ -361,7 +361,7 @@ body.wb table.editable:has(input.wide:focus) { min-width: calc(100% + 18rem); }
   body.wb table.editable:has(input.wide:focus) { min-width: 0; }
 }
 
-/* 05 판정 표(table.judge). 항목 하나가 tbody 하나다.
+/* 04 판정 표(table.judge). 항목 하나가 tbody 하나다.
    - hidden으로 접은 줄(L3가 아닐 때의 활성화 훅)은 좁은 화면의 display: block에도 접힌 채로 둔다.
    - 훅과 되돌림 메모의 칸은 이름표 아래 한 줄을 다 쓴다.
    - 650px 이하에서는 항목 하나가 카드 하나다. 읽고 판정하고 저장하기까지 표를 옆으로 밀 일이 없다. 줄마다 그리던
@@ -375,18 +375,18 @@ body.wb table.judge tbody.item > tr:not(:first-child) > td { border-top: 0; padd
   body.wb table.judge select { max-width: 100%; }
 }
 
-/* 03 관측 실행의 진행. 상태 · 단계 · 노드가 위에 있고 중지 버튼이 그 아래, 상세 로그는 접혀 있다. */
+/* 02 관측 실행의 진행. 상태 · 단계 · 노드가 위에 있고 중지 버튼이 그 아래, 상세 로그는 접혀 있다. */
 body.wb .run-summary .run-phase { font-weight: 600; margin: .3rem 0; }
 body.wb ul.run-nodes { list-style: none; padding-left: 0; margin: .2rem 0 .6rem; display: flex; flex-wrap: wrap; gap: .3rem .9rem; }
 body.wb ul.run-nodes li[data-node-state="failed"] { color: var(--red); font-weight: 600; }
 body.wb ul.run-nodes li[data-node-state="done"] { color: var(--green); }
 body.wb .run-log-box { margin-top: .8rem; }
 body.wb .run-log-box > summary { cursor: pointer; color: var(--muted); font-size: .9rem; width: max-content; max-width: 100%; }
-/* 03: 활성화를 기다리는 동안 접어 두는 「현재 활성 정책으로 다시 적재」. */
+/* 02: 활성화를 기다리는 동안 접어 두는 「현재 활성 정책으로 다시 적재」. */
 body.wb .ingest-fold { margin-top: 1rem; }
 body.wb .ingest-fold > summary { cursor: pointer; font-weight: 600; width: max-content; max-width: 100%; }
 
-/* 06: 대상 노드 미리 보기와 실행 결과. 작업은 노드 줄 안에 작은 목록으로 둔다. */
+/* 05: 대상 노드 미리 보기와 실행 결과. 작업은 노드 줄 안에 작은 목록으로 둔다. */
 body.wb table.provrun td { vertical-align: top; }
 body.wb table.provrun ul { margin: 0; padding-left: 1.1rem; }
 body.wb table.provrun .why { display: block; color: var(--muted, inherit); font-size: .9em; }

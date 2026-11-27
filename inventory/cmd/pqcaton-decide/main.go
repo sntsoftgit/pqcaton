@@ -89,16 +89,16 @@ const usage = `usage:
   pqcaton-decide activate-scope <session.json> -decl <declaration.json> -results <results-dir>
         -scope-assets <active.csv> -candidate <asset-scope.csv> -scope-session <scope-session.json>
         [-org <name>] [-upstream-org <name>] [-state-dir <dir>]
-        Activate the policy finalized in 02: the active policy file is replaced (the old one archived), the
+        Activate the policy finalized on the asset scope screen: the active policy file is replaced (the old one archived), the
         review session is archived and a new round rebuilt under the new policy opens, all in one transaction
         with a scope-activation record, after the pqcota history (PQCOTA_DSN) matched the candidate policy
         for every node (10 seconds in all). If the two policies mean the same, nothing is written. A candidate
-        that is not exactly what 02 finalized is refused. -verify-upstream is accepted and changes nothing;
+        that is not exactly what the asset scope screen finalized is refused. -verify-upstream is accepted and changes nothing;
         -confirm-ingest is no longer supported
 
   pqcaton-decide activate-scope ... -dry-run
         Check only the local preconditions (the session is under the active policy, the candidate is what
-        02 finalized). Nothing is written and upstream is not looked at
+        the asset scope screen finalized). Nothing is written and upstream is not looked at
 
   pqcaton-decide scope-status <session.json> [-scope-assets <csv>]
         Print the active policy digest, the session's digest and id, and the policy lock (none,
@@ -129,8 +129,8 @@ func main() {
 	stateDir := fs.String("state-dir", "", "close -o, new-round: state directory (default: .pqcaton next to the session file). Use the one pqcaton-ui uses")
 	declPath := fs.String("decl", "", "new-round: declaration (declaration.json) to reconcile the results against")
 	reportPath := fs.String("report", "", "new-round: where to write the change report (default: beside the new session)")
-	candidate := fs.String("candidate", "", "activate-scope: the policy finalized in 02 (asset-scope.csv)")
-	scopeSession := fs.String("scope-session", "", "activate-scope: the 02 scope session that finalized -candidate")
+	candidate := fs.String("candidate", "", "activate-scope: the policy finalized on the asset scope screen (asset-scope.csv)")
+	scopeSession := fs.String("scope-session", "", "activate-scope: the asset scope session that finalized -candidate")
 	_ = fs.Bool("verify-upstream", false, "baseline, activate-scope: accepted for compatibility; the pqcota history reconciliation always runs (PQCOTA_DSN)")
 	confirmIngest := fs.Bool("confirm-ingest", false, "baseline, activate-scope: no longer supported (an operator statement does not replace the pqcota history reconciliation)")
 	upstreamOrg := fs.String("upstream-org", "", "baseline, activate-scope: organization in the pqcota history; must be -org (the default), any other value is refused before the lookup")

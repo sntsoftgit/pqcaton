@@ -12,24 +12,24 @@ the workspace, processing records, logs, error messages or the screen.
 | Variable | Read by | Meaning |
 |---|---|---|
 | `PQCOTA_DSN` | `pqcaton-ui`, `pqcaton-decide baseline` · `activate-scope` | The connection of the pqcota history. **The screen does not start without it.** When it is empty, `pqcaton-ui` reads `pqcota.env` next to the default approval key (owner-only, one line `PQCOTA_DSN=<value>`; [operator guide section 2](operator-guide.md#2-installation)). Not passed to the observation processes the screen starts |
-| `PQCOTA_ORG` | `pqcota-ingest` (upstream) | The organization pqcota ingests under. It must be the organization of the judgments, or the reconciliation in 05 does not find the ingest |
-| `PQCOTA_VERIFY_KEY` | `pqcota-ingest` (upstream) | The public keys that check collector results: `<collector-id>:<public key>` entries, comma-separated, the same value as `verify.pub`, which 03 trusts. Check with `-verify-keys` first, then ingest with the same value ([operator guide section 6](operator-guide.md#6-a-days-procedure)). pqcaton does not read this variable; it reads the `verify.pub` file |
+| `PQCOTA_ORG` | `pqcota-ingest` (upstream) | The organization pqcota ingests under. It must be the organization of the judgments, or the reconciliation in 04 does not find the ingest |
+| `PQCOTA_VERIFY_KEY` | `pqcota-ingest` (upstream) | The public keys that check collector results: `<collector-id>:<public key>` entries, comma-separated, the same value as `verify.pub`, which 02 trusts. Check with `-verify-keys` first, then ingest with the same value ([operator guide section 6](operator-guide.md#6-a-days-procedure)). pqcaton does not read this variable; it reads the `verify.pub` file |
 | `PQCOTA_AUTO_DDL` | upstream writing commands | Set it to `0` for the loading account. An account that does not own the tables fails without it, trying to run schema statements. The schema is created with `pqcota-inventory -init-schema` ([operator guide section 2](operator-guide.md#preparing-pqcota)) |
 | `PQCATON_SCOPE_ASSETS` | `pqcaton-report` | The asset-scope policy file, the same one given to `pqcota-ingest -scope-assets` |
 | `PQCATON_REQUIRE_RLS` | judgment ledger on Postgres | With `1`, the ledger does not open when row-level security is not in force (a superuser or `BYPASSRLS` role) ([design §2.2](developers.md#22-row-level-security-one-layer-the-db-enforces)) |
 | `PQCATON_RUN` | set by `pqcaton-ui` | The marker the screen puts on the observation processes it starts, so it ends only processes proven to be its own. Not set by hand |
-| `XDG_RUNTIME_DIR` | `pqcaton-ui` (03 observation) | When it is a folder only this user can open, the temporary signing keys of each observation (`pqcaton-keys-<run ID>`) go under it; otherwise under the system temporary folder (`TMPDIR`) |
+| `XDG_RUNTIME_DIR` | `pqcaton-ui` (02 observation) | When it is a folder only this user can open, the temporary signing keys of each observation (`pqcaton-keys-<run ID>`) go under it; otherwise under the system temporary folder (`TMPDIR`) |
 
-**A 03 observation does not pass `ANSIBLE_*` environment variables on.** Ansible gets the configuration file made for the run (`ANSIBLE_CONFIG`)
+**A 02 observation does not pass `ANSIBLE_*` environment variables on.** Ansible gets the configuration file made for the run (`ANSIBLE_CONFIG`)
 and the allowed variables only (`PATH` · `HOME` · `USER` · `LOGNAME` · `LANG` · `LANGUAGE` · `LC_*` · `TZ` · `TMPDIR` · `SSH_AUTH_SOCK`, and
-`OBJC_DISABLE_INITIALIZE_FORK_SAFETY` on macOS) ([operator guide section 2](operator-guide.md#the-ansible-configuration-03-uses)). The
+`OBJC_DISABLE_INITIALIZE_FORK_SAFETY` on macOS) ([operator guide section 2](operator-guide.md#the-ansible-configuration-02-uses)). The
 signing keys are not passed as environment variables.
 
-The collector signing keys of 03 are files too, not environment variables (`collector-keys/<ID>.key` · `verify.pub`, or `-collector-keys` ·
-`-collector-verify-keys`). Their content is the output of `pqcota-keygen -collector <ID>`. The collectors read `PQCOTA_SIGN_KEY`, but 03
+The collector signing keys of 02 are files too, not environment variables (`collector-keys/<ID>.key` · `verify.pub`, or `-collector-keys` ·
+`-collector-verify-keys`). Their content is the output of `pqcota-keygen -collector <ID>`. The collectors read `PQCOTA_SIGN_KEY`, but 02
 passes that value on the standard input of the collector on the node and keeps it out of the environment on the screen's side.
 
-The approval keys of 06 are files, not environment variables (`approval.key` · `approval.pub`, or `-approval-key` ·
+The approval keys of 05 are files, not environment variables (`approval.key` · `approval.pub`, or `-approval-key` ·
 `-approval-verify-key`). Their content is the output of `pqcota-keygen` (`PQCOTA_SIGN_KEY` · `PQCOTA_VERIFY_KEY` lines). The upstream
 commands `pqcota-approve` and `pqcota-provision` read `PQCOTA_APPROVAL_KEY` and `PQCOTA_APPROVAL_KEYS` themselves.
 

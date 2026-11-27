@@ -59,6 +59,9 @@ templ nextShell(p Page) {
 					for _, st := range p.Steps {
 						@stepCard(st)
 					}
+					if p.ScopeHref != "" {
+						<a class={ "inventory-tab", templ.KV("active", p.Title == tTitleScope.In(p.Lang)) } href={ templ.SafeURL(p.ScopeHref) } data-scope-tab { ariaCurrent(p.Title == tTitleScope.In(p.Lang), "page")... }>{ p.ScopeText }</a>
+					}
 					if p.InventoryHref != "" {
 						<a class={ "inventory-tab", templ.KV("active", p.InventoryHref == ScreenInventory && p.Title == tTitleInventory.In(p.Lang)) } href={ templ.SafeURL(p.InventoryHref) } { ariaCurrent(p.InventoryHref == ScreenInventory && p.Title == tTitleInventory.In(p.Lang), "page")... }>{ p.InventoryText }</a>
 					}

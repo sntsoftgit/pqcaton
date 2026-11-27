@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 // SPDX-License-Identifier: BUSL-1.1
 
-// Package provrun — 06이 플레이북을 노드에 돌릴 때 쓰는 판정. 화면도 Ansible도 모른다: 생성된 플레이북에서 기대하는 작업을
+// Package provrun — 05가 플레이북을 노드에 돌릴 때 쓰는 판정. 화면도 Ansible도 모른다: 생성된 플레이북에서 기대하는 작업을
 // 읽고, 실행 기록에서 노드별 상태를 정하고, 미리 보기가 낸 적용 권한의 유효 여부를 가린다.
 package provrun
 

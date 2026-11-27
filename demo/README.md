@@ -41,7 +41,7 @@ Observation grades (pqcota)      →   + reconciliation against the declaration 
 
 ## Running it
 
-When this section is done, the demo screen opens at `http://127.0.0.1:8765`, and you can go once through 01 to 06 as in
+When this section is done, the demo screen opens at `http://127.0.0.1:8765`, and you can go once through 01 to 05 as in
 [Going through the screens](#going-through-the-screens) below.
 
 **Where to run it.** Put this repository and the five upstream pqcota repositories side by side in one folder, and run the
@@ -82,15 +82,15 @@ The order below starts from the screen `ui.sh` opens for the first time. The top
 | Screen | Starting state | What to check or enter | When to move on |
 |---|---|---|---|
 | 01 Declaration | 3 managed nodes, "There is no observed name left to link" | Nothing to enter. Each node shows its linked observed name | Right away |
-| 02 Asset scope | "There is no layer yet" | Skip it on the first round. 04 and 05 use the policy given to the upstream ingest | Right away. Changing the policy is in [Activating a new policy](#activating-a-new-policy) |
-| 03 Observation | The access table holds the 3 nodes, and every collector and `collector.jar` row is ✓ "verified" | Press **Start the observation**. It takes about a minute (the network window is 60 seconds) | "The observation finished, and what it received is now the current results"; then **See them in 04 Reconciliation** |
-| 04 Reconciliation | 2 items to judge, 1 asset to observe again | Read the counts (CONFIRMED · UNDECLARED · UNOBSERVED) and which rows they come from. An edge with no traffic during the observation window shows as UNOBSERVED | **Open the review queue** |
-| 05 Review | 1 policy (`openssl/libssl`) without a conclusion | Write a **Conclusion for this policy**. For 06 to have something to generate, tick **In plan** on one machine-answered row (for example `pay-db/openssl/libssl`) and choose a **Remediation kind**, a **Target algorithm** and a **Delegation level**. Fill in **Approver** and **Signature**, press **Finalize and emit the plan**, check the page that follows and press **Finalize** | "This review session is finalized"; go to 06 |
-| 06 Provisioning | The finalized plan with its actions, the approval key ✓ | Fill in **Approver**, tick "I have reviewed the actions above and approve them", press **Sign the approval** and then **Sign this** on the check page. Then press **Generate the playbooks** | `plan.provision.yml` and `plan.rollback.yml` are listed. Applying them to the nodes is the operator's job with Ansible |
+| Crypto asset scope (opened with "Edit the rules" on 02 Observation) | "There is no layer yet" | Skip it on the first round. 03 and 04 use the policy given to the upstream ingest | Right away. Changing the policy is in [Activating a new policy](#activating-a-new-policy) |
+| 02 Observation | The access table holds the 3 nodes, and every collector and `collector.jar` row is ✓ "verified" | Press **Start the observation**. It takes about a minute (the network window is 60 seconds) | "The observation finished, and what it received is now the current results"; then **See them in 03 Reconciliation** |
+| 03 Reconciliation | 2 items to judge, 1 asset to observe again | Read the counts (CONFIRMED · UNDECLARED · UNOBSERVED) and which rows they come from. An edge with no traffic during the observation window shows as UNOBSERVED | **Open the review queue** |
+| 04 Review | 1 policy (`openssl/libssl`) without a conclusion | Write a **Conclusion for this policy**. For 05 to have something to generate, tick **In plan** on one machine-answered row (for example `pay-db/openssl/libssl`) and choose a **Remediation kind**, a **Target algorithm** and a **Delegation level**. Fill in **Approver** and **Signature**, press **Finalize and emit the plan**, check the page that follows and press **Finalize** | "This review session is finalized"; go to 05 |
+| 05 Provisioning | The finalized plan with its actions, the approval key ✓ | Fill in **Approver**, tick "I have reviewed the actions above and approve them", press **Sign the approval** and then **Sign this** on the check page. Then press **Generate the playbooks** | `plan.provision.yml` and `plan.rollback.yml` are listed. Applying them to the nodes is the operator's job with Ansible |
 
 ### Seeing it on the screen
 
-`ui.sh` starts the screen **where a real deployment would put it**. 03 Observation calls Ansible on the machine the screen runs on, so the
+`ui.sh` starts the screen **where a real deployment would put it**. 02 Observation calls Ansible on the machine the screen runs on, so the
 screen must run on a machine that reaches the nodes. In the demo that machine is `pqcota-ctl`. The operator sees the screen from their
 own machine through an SSH tunnel ([operator guide section 5](../docs/operator-guide.md#5-viewing-from-another-machine)). The demo's
 `pqcota-ctl` has no SSH server, so a `docker exec` relay stands in for that tunnel.
@@ -105,14 +105,14 @@ would put it.
 | What it puts | The screen that uses it |
 |---|---|
 | The declaration `extend.sh` made | 01 Declaration |
-| The asset-scope policy given to the upstream ingest (`scope-assets.csv`) | 04 · 05. It must be the same policy, or the snapshot fingerprints do not match the upstream history |
-| Node access information (`hosts.csv`) and the official upstream collectors fetched and verified by the preparation tool | 03 Observation runs |
-| The observation results so far | 04 Reconciliation. Observing again in 03 replaces them with the new results |
-| The approval signing key (outside the workspace, `/work/ui-approval.key`) | 06 Provisioning |
+| The asset-scope policy given to the upstream ingest (`scope-assets.csv`) | 03 · 04. It must be the same policy, or the snapshot fingerprints do not match the upstream history |
+| Node access information (`hosts.csv`) and the official upstream collectors fetched and verified by the preparation tool | 02 Observation runs |
+| The observation results so far | 03 Reconciliation. Observing again in 02 replaces them with the new results |
+| The approval signing key (outside the workspace, `/work/ui-approval.key`) | 05 Provisioning |
 
-02 opens with "No layers yet." The layers to edit are empty, but the asset-scope policy that 04 and 05 use (`scope-assets.csv`) is the
-one given to the upstream ingest. When you create and finalize layers in 02, the new policy goes out as `asset-scope.csv`, and the
-`scope-assets.csv` the demo already uses is not replaced automatically. Restarting the screen, 04 and 05 still use `scope-assets.csv`.
+The asset scope screen opens with "No layers yet." The layers to edit are empty, but the asset-scope policy that 03 and 04 use (`scope-assets.csv`) is the
+one given to the upstream ingest. When you create and finalize layers on the asset scope screen, the new policy goes out as `asset-scope.csv`, and the
+`scope-assets.csv` the demo already uses is not replaced automatically. Restarting the screen, 03 and 04 still use `scope-assets.csv`.
 To use the finalized policy for reconciliation, follow "Activating a new policy" below.
 
 **The demo's collectors are the official upstream release assets only.** The preparation tool (`go run ./inventory/cmd/pqcaton-collectors fetch`)
@@ -122,7 +122,7 @@ unpacked programs and that only the expected files are there, then moves the fol
 overwritten. `ui.sh` downloads nothing; every time it starts the screen it checks that folder again and only then puts it in as the
 workspace's `collectors`. If the check fails, nothing is changed and it stops. A prepared folder whose target (OS and architecture)
 differs from the `pqcota-ctl` container is refused before the check. Putting it in copies it to a temporary place inside the
-workspace, checks the hashes again and brings it in with `rename`; on failure the existing `collectors` is restored. 03 shows every collector and `collector.jar` as
+workspace, checks the hashes again and brings it in with `rename`; on failure the existing `collectors` is restored. 02 shows every collector and `collector.jar` as
 "verified", and the screen starts without `-allow-unverified-collectors` ("Collector versions" in
 [operator guide section 2](../docs/operator-guide.md#2-installation)). There is no way to run the demo with collectors built from
 upstream source. `PQCATON_COLLECTORS` changes the folder.
@@ -158,24 +158,24 @@ default run keeps the realistic declaration and shows that no action is made for
 
 ### Activating a new policy
 
-To use the policy finalized in 02 for reconciliation, re-ingest pqcota with that policy and activate it in 05. The demo re-ingests with one
+To use the policy finalized on the asset scope screen for reconciliation, re-ingest pqcota with that policy and activate it in 04. The demo re-ingests with one
 command. The screen may stay up (re-ingesting does not touch the workspace).
 
 ```bash
 ./demo/scripts/ui.sh apply-scope
 ```
 
-`apply-scope` checks the workspace files (the policy finalized in 02, the declaration, the results), `pqcota-ingest` and the pqcota DB,
-then re-ingests pqcota with the `/work/ui/results` the screen uses and the policy finalized in 02. **It does not activate.**
+`apply-scope` checks the workspace files (the policy finalized on the asset scope screen, the declaration, the results), `pqcota-ingest` and the pqcota DB,
+then re-ingests pqcota with the `/work/ui/results` the screen uses and the policy finalized on the asset scope screen. **It does not activate.**
 
-Activation is done in 05 on the screen. Pressing "Review before activating" makes the screen reconcile, for every node, that the latest
+Activation is done in 04 on the screen. Pressing "Review before activating" makes the screen reconcile, for every node, that the latest
 ingest in the pqcota history matches the results under the new policy, and when they match the confirmation page shows "At the time of
 checking, the pqcota history matched." Pressing activate reconciles again from the start, then activates. If any is missing, differs or
 cannot be looked up, nothing is written. The same fingerprint in a past run is not enough to pass. `ui.sh` starts the demo screen with the
 `PQCOTA_DSN` of a read-only role (`pqcaton_ui`). The screen does not start without the pqcota history.
 
-After activation, 05 opens a new round rebuilt under the new policy, and earlier conclusions show only as "previous policy conclusions."
-Plans finalized before the activation are not signed or generated in 06.
+After activation, 04 opens a new round rebuilt under the new policy, and earlier conclusions show only as "previous policy conclusions."
+Plans finalized before the activation are not signed or generated in 05.
 
 **The history is split into three roles.** The upstream demo loads as the administrator account (`postgres`), so that account owns the
 tables. At its very start (0/8), `extend.sh` treats this history as an existing install and follows "Moving an existing history to

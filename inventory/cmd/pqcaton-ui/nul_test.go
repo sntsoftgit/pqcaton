@@ -144,7 +144,7 @@ func signConfirmFormFor(t *testing.T, s *server, planID string) url.Values {
 	return f
 }
 
-// IC-U162 — **옛 판에서 확정된 NUL 계획은 06의 네 자리에서 모두 `plan-text`다.** 화면은 서명 · 생성 양식을 내지 않고
+// IC-U162 — **옛 판에서 확정된 NUL 계획은 05의 네 자리에서 모두 `plan-text`다.** 화면은 서명 · 생성 양식을 내지 않고
 // 까닭(새 판정 회차로 고친다)을 보인다. 서명 확인은 409 `plan-text`다. 서명 처리기는 확인 양식을 갖춰 보내도 잠금 안에서
 // 409 `plan-text`다. 생성도 409 `plan-text`다. 작업 폴더(계획 · 서명한 계획 · 플레이북 · 영수증)는 바이트 그대로다.
 func TestNULPlanIsRefusedInApproval(t *testing.T) {
@@ -216,7 +216,7 @@ func TestNULSignedPlanIsRefused(t *testing.T) {
 	sameDir(t, before, snapshotDir(t, dir))
 }
 
-// IC-U164 — **05는 NUL 계획을 확정하지 않는다.** 되돌림 메모에 NUL을 넣어 확정을 요청하면 확인 페이지부터 409
+// IC-U164 — **04는 NUL 계획을 확정하지 않는다.** 되돌림 메모에 NUL을 넣어 확정을 요청하면 확인 페이지부터 409
 // `session-text`이다. 세션 · 계획 · 영수증(작업 폴더 전체)은 바이트 그대로다. 거절문은 확정 전이라 그 자리에서 고치라고
 // 말한다. 확정 처리기는 같은 계약 생성(review.ToContract)을 거치므로 같은 오류로 막힌다(그 함수의 시험이 잰다).
 func TestReviewDoesNotFinalizeANULPlan(t *testing.T) {

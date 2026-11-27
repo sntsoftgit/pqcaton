@@ -2,7 +2,7 @@ package ui
 
 import "strconv"
 
-// observeIngest — 03의 「이력에 적재」. 관측이 끝났다고 스스로 적재하지 않는다: 운영자가 확인 화면을 거쳐 누른다.
+// observeIngest — 02의 「이력에 적재」. 관측이 끝났다고 스스로 적재하지 않는다: 운영자가 확인 화면을 거쳐 누른다.
 //
 // 활성화할 확정 정책으로 재적재가 끝나 활성화를 기다리는 동안에는(v.FoldIngest) 이 구역을 접어 둔다. 그때의 주 동작은 정책
 // 활성화 확인이고, 여기서 적재하면 최신 참조가 현재 활성 정책의 것으로 돌아가기 때문이다. 마지막 적재의 기록은 접지 않는다.
@@ -16,15 +16,6 @@ templ observeIngest(v ObserveView) {
 	} else {
 		<h3 id="observe-ingest">{ tIngestHead.In(v.Page.Lang) }</h3>
 		<p class="lede">{ tIngestLede.In(v.Page.Lang) }</p>
-		if v.Policy == nil && (v.Ingest.PolicyDigest != "" || v.Ingest.NoPolicy) {
-			<p class="hint" data-active-policy>
-				if v.Ingest.NoPolicy {
-					{ tPolicyActiveNone.In(v.Page.Lang) }
-				} else {
-					{ tPolicyActiveNow.F(v.Page.Lang, v.Ingest.PolicyDigest) }
-				}
-			</p>
-		}
 		@observeIngestBody(v, false)
 	}
 	@observeIngestLast(v)
@@ -118,7 +109,7 @@ templ observeIngestLast(v ObserveView) {
 	}
 }
 
-// observePolicy — 03의 「활성화할 확정 정책: 재적재와 활성화」. 두 지문을 나란히 보이고, 두 일을 순서 있는 목록으로 둔다:
+// observePolicy — 02의 「활성화할 확정 정책: 재적재와 활성화」. 두 지문을 나란히 보이고, 두 일을 순서 있는 목록으로 둔다:
 // 활성화할 확정 정책으로 재적재 → 정책 활성화. **둘은 따로다.** 재적재가 끝나도 활성 정책은 그대로이고, 활성화 단추는 모든 노드의
 // 최신 참조가 활성화할 확정 정책의 것일 때만 나오며 확인 페이지를 거친다.
 templ observePolicy(p Page, v ObservePolicy) {

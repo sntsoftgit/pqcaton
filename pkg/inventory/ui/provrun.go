@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// 06의 미리 보기를 막는 것의 종류. ProvUnsupported 뒤에는 까닭(provider · l3 · manual · unknown)이 붙는다.
+// 05의 미리 보기를 막는 것의 종류. ProvUnsupported 뒤에는 까닭(provider · l3 · manual · unknown)이 붙는다.
 const (
 	ProvViewOnly     = "view-only"
 	ProvNotApproved  = "not-approved"
@@ -21,7 +21,7 @@ const (
 	ProvNoHosts      = "no-hosts"
 	ProvWindows      = "windows"
 	ProvNoAnsible    = "no-ansible"
-	// ProvAnsibleVersion — 부를 ansible-playbook의 core 판이 06이 지원하는 판이 아니거나 읽을 수 없다.
+	// ProvAnsibleVersion — 부를 ansible-playbook의 core 판이 05가 지원하는 판이 아니거나 읽을 수 없다.
 	ProvAnsibleVersion = "ansible-version"
 )
 
@@ -85,7 +85,7 @@ func (r ProvResult) RecheckText(l Lang, n ProvNode) string {
 	return ""
 }
 
-// ProvRun — 06의 실행 구역.
+// ProvRun — 05의 실행 구역.
 type ProvRun struct {
 	Blocks    []ProvBlock
 	Targets   []string

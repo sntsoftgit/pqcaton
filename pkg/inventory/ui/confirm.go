@@ -37,13 +37,13 @@ type ConfirmView struct {
 	// Hidden: 다시 실을 폼 값. 확인 토큰과 CSRF · rev는 따로 싣는다.
 	Hidden                         []Field
 	Token, Exp, Payload, SessionID string
-	// Sign — 확정이 아니라 06의 승인 서명을 확인한다. 제목 · 안내 · 단추 · 돌아가기의 말이 서명의 것이 된다.
+	// Sign — 확정이 아니라 05의 승인 서명을 확인한다. 제목 · 안내 · 단추 · 돌아가기의 말이 서명의 것이 된다.
 	Sign bool
 	// Activate — 확정이 아니라 자산 스코프 정책 활성화를 확인한다. 말이 활성화의 것이 된다.
 	Activate bool
-	// ApplyNodes — 0보다 크면 확정이 아니라 06의 적용을 확인한다. 대상 노드 수이고, 마지막 버튼이 그 수를 적는다.
+	// ApplyNodes — 0보다 크면 확정이 아니라 05의 적용을 확인한다. 대상 노드 수이고, 마지막 버튼이 그 수를 적는다.
 	ApplyNodes int
-	// Ingest — 03의 이력 적재를 확인한다.
+	// Ingest — 02의 이력 적재를 확인한다.
 	Ingest bool
 }
 
@@ -104,7 +104,7 @@ func LineJudgments(l Lang, n int) string { return tLineJudgments.F(l, n) }
 
 func LinePolicyRules(l Lang, n int) string { return tLinePolicyRules.F(l, n) }
 
-// ApplyConfirmTitle: 06 적용 확인 페이지의 제목.
+// ApplyConfirmTitle: 05 적용 확인 페이지의 제목.
 func ApplyConfirmTitle(l Lang) string { return tApplyConfirmTitle.In(l) }
 
 // ApplyChange — 미리 보기가 한 노드에 대해 「바뀜 예정」으로 낸 작업들.

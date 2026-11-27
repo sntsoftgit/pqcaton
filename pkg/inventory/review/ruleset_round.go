@@ -100,7 +100,7 @@ type ScopeChangeRef struct {
 	Report        string `json:"report"`
 	Archive       string `json:"archive,omitempty"`
 	// Basis — 이 회차를 연 근거(ScopeBasis*). 처리 기록의 round.basis와 같은 값이다. v0.28.0부터 새 회차는 언제나
-	// ScopeBasisUpstream이다. 비어 있거나 ScopeBasisOperator인 것은 그 이전 판이 운영자 진술로 연 과거 기록이고, 05가 그
+	// ScopeBasisUpstream이다. 비어 있거나 ScopeBasisOperator인 것은 그 이전 판이 운영자 진술로 연 과거 기록이고, 04가 그
 	// 한계를 그대로 보인다.
 	Basis string `json:"basis,omitempty"`
 }
@@ -118,7 +118,7 @@ const (
 // 정책 회차의 종류.
 const (
 	ScopeRoundBaseline = "scope-baseline"
-	// ScopeRoundActivation — 02에서 확정한 정책을 활성화하며 연 회차.
+	// ScopeRoundActivation — 자산 스코프 화면에서 확정한 정책을 활성화하며 연 회차.
 	ScopeRoundActivation = "scope-activation"
 )
 

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 SNT Soft Co., Ltd.
 # SPDX-License-Identifier: BUSL-1.1
 #
-# pqcaton: the stdout callback for a provisioning run started from screen 06.
+# pqcaton: the stdout callback for a provisioning run started from screen 05.
 #
 # It records identifiers and outcomes only: which host, which task, started, and how it ended. It never reads variables,
 # file contents, diffs or module messages out of a result. One JSON line per event, each written to disk before the

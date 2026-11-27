@@ -21,7 +21,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// fakeProvAnsible: 06 실행에서 ansible-playbook 대신 부를 스크립트. 전용 callback이 하는 일을 흉내 낸다: 감독이 만든 기록에
+// fakeProvAnsible: 05 실행에서 ansible-playbook 대신 부를 스크립트. 전용 callback이 하는 일을 흉내 낸다: 감독이 만든 기록에
 // 「준비됨」을 덧붙이고, 허용 파일을 기다리고, 넘겨받은 플레이북의 play와 작업 이름대로 사건을 쓴다. FAKE_PROV가 가른다.
 //
 //	(없음) 모든 작업이 changed · nochange 모두 ok · skip 첫 노드의 둘째 작업을 건너뜀 · fail2 둘째 노드의 둘째 작업이 실패
@@ -125,7 +125,7 @@ func provServer(t *testing.T, mode, plan string) *server {
 	return s
 }
 
-// preview: 화면이 하는 그대로 미리 보기를 시작하고 끝나기를 기다린 뒤 06 화면을 돌려준다.
+// preview: 화면이 하는 그대로 미리 보기를 시작하고 끝나기를 기다린 뒤 05 화면을 돌려준다.
 func preview(t *testing.T, s *server) string {
 	t.Helper()
 	if w := postForm(t, s, ui.ProvPreviewPath, url.Values{}); w.Code != http.StatusSeeOther {
@@ -184,7 +184,7 @@ func statesIn(page, id string) string {
 
 var threeNodes = planOn("", "web", "app", "db")
 
-// IC-U234 — **06은 승인된 L2 설정 배치 플레이북을 대상 노드에 미리 본다.** 미리 보기 버튼은 대상 노드 수를 적는다. 실행은
+// IC-U234 — **05는 승인된 L2 설정 배치 플레이북을 대상 노드에 미리 본다.** 미리 보기 버튼은 대상 노드 수를 적는다. 실행은
 // `--check`로 돌고, 운영자의 ANSIBLE_* 환경은 설정 파일 하나를 가리키는 것 말고 넘어가지 않는다. 감독은 callback의 준비 신호를
 // 본 뒤에만 허용 파일을 둔다(시작할 때는 없다). 끝나면 화면은 「바뀔 것이 있다」와 노드마다 「확인함」을 보이고, 미리 본 내용이
 // 언제까지 유효한지 적고, 적용 확인으로 가는 버튼을 낸다(대상 수를 적는다). 접속 정보가 실린 인벤토리와 변수는 실행 자리에
@@ -507,7 +507,7 @@ func TestRestartSaysOnlyWhatTheRecordSays(t *testing.T) {
 	}
 }
 
-// IC-U240 — **적용 실행의 고정 사례: 첫째 노드 완료 → 둘째 노드 실패 → 셋째 노드 미시작.** 06의 적용 확인을 거쳐 시작한다.
+// IC-U240 — **적용 실행의 고정 사례: 첫째 노드 완료 → 둘째 노드 실패 → 셋째 노드 미시작.** 05의 적용 확인을 거쳐 시작한다.
 // 화면은 첫째 「L2 배치 완료」(서비스 활성화와 운영 상태: 확인하지 않음), 둘째 「일부 작업만 끝남」
 // (작업 실패), 셋째 「실행하지 않음」을 보인다. 실패의 까닭은 「작업 실패」뿐이고, 적용 실행은 적용 권한을 남기지 않는다.
 func TestApplyFixedCaseFirstDoneSecondFailedThirdNotStarted(t *testing.T) {
@@ -545,7 +545,7 @@ func applyRuns(s *server) []provRun {
 }
 
 // applyVia: 화면이 하는 그대로 적용한다. 미리 보기(모든 작업이 바뀜 예정)로 권한을 받고, 적용 확인 페이지를 거쳐 그 양식을 보낸다.
-// 적용 실행의 가짜 Ansible은 mode로 돈다. 끝난 뒤의 06 화면을 돌려준다.
+// 적용 실행의 가짜 Ansible은 mode로 돈다. 끝난 뒤의 05 화면을 돌려준다.
 func applyVia(t *testing.T, s *server, mode string) string {
 	t.Helper()
 	t.Setenv("FAKE_PROV", "")
@@ -875,9 +875,9 @@ func TestGrantIsConsumedJustBeforeRemoteWorkIsAllowed(t *testing.T) {
 	}
 }
 
-// IC-U245 — **06의 원격 실행은 ansible-core 2.16.3에서만 한다.** 실제로 부를 `ansible-playbook`이 스스로 밝히는 core 판을 본다.
+// IC-U245 — **05의 원격 실행은 ansible-core 2.16.3에서만 한다.** 실제로 부를 `ansible-playbook`이 스스로 밝히는 core 판을 본다.
 //   - 2.16.3이면 미리 보기가 돈다.
-//   - 실행 파일이 다른 패치 판(2.16.4)으로 바뀌면 06은 감지한 판 · 지원하는 판 · 할 일을 보이고 미리 보기 · 적용 버튼을 내지
+//   - 실행 파일이 다른 패치 판(2.16.4)으로 바뀌면 05는 감지한 판 · 지원하는 판 · 할 일을 보이고 미리 보기 · 적용 버튼을 내지
 //     않는다. 미리 보기 뒤에 바뀌었으면 이미 받아 둔 확인 양식으로 보낸 적용도 409이고, 적용 실행이 생기지 않으며 권한은
 //     미사용이다. 판을 읽을 수 없어도 같다(「판독할 수 없음」). 그동안에도 지난 실행 기록은 보이고 플레이북 생성 양식은 그대로 있다.
 //   - **화면이 모르는 사이에 바뀌어도 감독이 막는다.** 화면이 적용을 받아들인 뒤라도, 감독이 띄우기 직전에 직접 물어 판이 다르면

@@ -15,7 +15,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// everyScreen: 화면 일곱이 모두 열리는 서버. 06에 보일 계획(검토 중)을 하나 둔다.
+// everyScreen: 화면 일곱이 모두 열리는 서버. 05에 보일 계획(검토 중)을 하나 둔다.
 func everyScreen(t *testing.T) *server {
 	t.Helper()
 	s, dir := fullServer(t)
@@ -29,7 +29,7 @@ func everyScreen(t *testing.T) *server {
 	return s
 }
 
-// planJSON: 05 확정이 쓰는 것과 같은 모양의 계획(검토 중, 조치 하나). 규칙 판과 근거(스냅샷 내용 지문)도 05가 싣는 그대로다.
+// planJSON: 04 확정이 쓰는 것과 같은 모양의 계획(검토 중, 조치 하나). 규칙 판과 근거(스냅샷 내용 지문)도 04가 싣는 그대로다.
 const planJSON = `{"id":"plan-1","status":"PLAN_STATUS_IN_REVIEW","scope":"acme","rulesetVersion":"` + review.RulesetVersion + `",` +
 	`"actions":[{"id":"a1","targetNodeId":"web","findingId":"f1","kind":"REMEDIATION_KIND_CONFIG_ONLY",` +
 	`"automationLevel":"DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL","targetAlgorithm":"ML-KEM (FIPS 203)",` +

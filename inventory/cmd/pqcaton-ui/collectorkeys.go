@@ -3,7 +3,7 @@
 
 package main
 
-// 03 관측의 수집기 서명 키(pqcota v0.15.0의 수집기 ID 결합).
+// 02 관측의 수집기 서명 키(pqcota v0.15.0의 수집기 ID 결합).
 //
 // **키는 수집기 ID마다 하나다.** 결과에 적히는 ID는 명령마다 정해져 있다(pqcota-nodescan → openssl-collector,
 // pqcota-netcap → network-collector, pqcota-jvmscan → jvm-collector). 같은 ID의 수집기를 여러 노드에서 돌리면 모든 노드가 그 키를
@@ -34,7 +34,7 @@ const (
 	collectorKeyExt     = ".key"
 )
 
-// 03이 돌리는 수집기의 ID. 결과 파일의 종류(collectorOf)와 같은 이름이다.
+// 02가 돌리는 수집기의 ID. 결과 파일의 종류(collectorOf)와 같은 이름이다.
 const (
 	idOpenSSL = "openssl-collector"
 	idNetwork = "network-collector"
@@ -189,7 +189,7 @@ func readCollectorVerify(home, p string) collectorVerify {
 	return v
 }
 
-// collectorKeyChecks: 03 시작 전 점검의 서명 키 두 줄. 서명 키(ID마다)와 신뢰할 공개 키가 맞물리는지 본다.
+// collectorKeyChecks: 02 시작 전 점검의 서명 키 두 줄. 서명 키(ID마다)와 신뢰할 공개 키가 맞물리는지 본다.
 //
 //   - 서명 키: 필요한 ID마다 키가 있고 쓸 수 있어야 한다. 빠진 ID와 까닭을 적는다.
 //   - 신뢰할 공개 키: 결합 형식이고, 서명 키마다 그 공개 키가 **자기 ID 아래** 있어야 한다. 한 공개 키가 두 ID에 있으면 상류가

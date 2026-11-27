@@ -71,6 +71,11 @@ type Page struct {
 	InventoryHref string
 	InventoryText string
 
+	// ScopeHref — 자산 스코프 화면으로 가는 번호 없는 링크. **관측 화면이 열리지 않을 때만** 채운다(작업 폴더 없이 띄웠다).
+	// 관측 화면이 있으면 그 화면의 「규칙 고치기」가 유일한 길이라 비워 둔다.
+	ScopeHref string
+	ScopeText string
+
 	// Self — 이 화면의 주소. 「다시 불러오기」처럼 자기 화면을 다시 받는 조각이 쓴다.
 	Self string
 
@@ -120,12 +125,12 @@ type ReviewView struct {
 	// ScopeLock — 저장된 세션을 지금 자산 스코프 정책으로 이어 쓸 수 없는 까닭(review.ScopeLock*). 비면 이어 쓴다. 칸을
 	// 잠그고, 기준선이면 운영자 확인과 기준선 회차 단추를, 승인되지 않은 변경이면 두 가지 할 일만 보인다.
 	ScopeLock string
-	// Activation — 02에서 확정한 정책이 활성 정책과 달라 활성화할 수 있으면 그 내용. 없으면 nil이다.
+	// Activation — 자산 스코프 화면에서 확정한 정책이 활성 정책과 달라 활성화할 수 있으면 그 내용. 없으면 nil이다.
 	Activation *ActivationOffer
 	// RulesetChange · Report — 이 세션이 규칙 전환 회차로 열렸으면 그 기록과 변환 보고서(서버가 읽어 넣는다. 없으면 nil).
 	RulesetChange *review.RulesetChangeRef
 	Report        *review.RulesetChangeReport
-	// ScopeChange — 이 세션이 정책 회차(기준선 · 활성화)로 열렸으면 그 기록. 05가 정책과 근거를 보인다. 근거가 운영자
+	// ScopeChange — 이 세션이 정책 회차(기준선 · 활성화)로 열렸으면 그 기록. 04가 정책과 근거를 보인다. 근거가 운영자
 	// 진술이면 상류 이력으로 증명하지 않았다고 적는다.
 	ScopeChange *review.ScopeChangeRef
 }
@@ -677,10 +682,20 @@ func (s ReviewSummary) Ready() bool {
 // reviewEditAnchor — 요약에서 판정 폼으로 보내는 자리.
 const reviewEditAnchor = "review-edit"
 
-// scopeActivateAnchor — 03의 「활성화할 확정 정책: 재적재와 활성화」. 02 · 04 · 05의 안내가 이리로 잇는다(05의 안내 상자도 같은 id다).
+// ObserveOpen — 관측 화면이 열려 있는가(절차 카드로 안다). 자산 스코프 화면이 돌아갈 곳을 낼 때 쓴다.
+func (p Page) ObserveOpen() bool {
+	for _, st := range p.Steps {
+		if st.Href == ScreenObserve {
+			return st.Open
+		}
+	}
+	return false
+}
+
+// scopeActivateAnchor — 02의 「활성화할 확정 정책: 재적재와 활성화」. 자산 스코프 화면 · 03 · 04의 안내가 이리로 잇는다(04의 안내 상자도 같은 id다).
 const scopeActivateAnchor = "scope-activate"
 
-// ScopeActivateAnchor — 처리기가 거절 뒤 03의 활성화 구역으로 돌려보낼 때 쓴다.
+// ScopeActivateAnchor — 처리기가 거절 뒤 02의 활성화 구역으로 돌려보낼 때 쓴다.
 const ScopeActivateAnchor = scopeActivateAnchor
 
 // RenderReview — 판정 화면(`/review`).
@@ -752,18 +767,18 @@ func RenderDeclCreate(w io.Writer, v DeclCreateView) error {
 	return declCreatePage(v).Render(context.Background(), w)
 }
 
-// ActivationOffer — 02에서 확정한 정책이 활성 정책과 달라 활성화를 기다린다. 03이 재적재와 활성화를 띄우고 04 · 05가 알린다. From · To는 활성 정책과 02 확정 정책의 지문이다.
+// ActivationOffer — 자산 스코프 화면에서 확정한 정책이 활성 정책과 달라 활성화를 기다린다. 02가 재적재와 활성화를 띄우고 03 · 04가 알린다. From · To는 활성 정책과 자산 스코프 화면에서 확정한 정책의 지문이다.
 type ActivationOffer struct {
 	From, To string
-	// Candidate · Results — 화면 적재가 설정되지 않았을 때 03에 보일 터미널 명령의 두 경로. 작업 폴더(세션 파일이 있는 폴더) 기준의
+	// Candidate · Results — 화면 적재가 설정되지 않았을 때 02에 보일 터미널 명령의 두 경로. 작업 폴더(세션 파일이 있는 폴더) 기준의
 	// 상대 경로다. 비면 기본 이름(asset-scope.csv · results)을 보인다.
 	Candidate, Results string
 	// Org — 판정 조직. pqcota 재적재도 이 조직으로 한다(PQCOTA_ORG). 비면 명령에 싣지 않는다.
 	Org string
 }
 
-// VerifyCommand — 03의 터미널 안내에서 적재 전에 보일 확인 명령. 03이 받은 결과의 수집기 서명을 상류 적재와 같은
-// 판정으로 확인하고 저장하지 않는다(pqcota v0.15.0). PQCOTA_VERIFY_KEY는 싣지 않는다(03이 신뢰하는 verify.pub과 같은 값을 준다).
+// VerifyCommand — 02의 터미널 안내에서 적재 전에 보일 확인 명령. 02가 받은 결과의 수집기 서명을 상류 적재와 같은
+// 판정으로 확인하고 저장하지 않는다(pqcota v0.15.0). PQCOTA_VERIFY_KEY는 싣지 않는다(02가 신뢰하는 verify.pub과 같은 값을 준다).
 func (o ActivationOffer) VerifyCommand() string {
 	r := o.Results
 	if r == "" {
@@ -772,7 +787,7 @@ func (o ActivationOffer) VerifyCommand() string {
 	return "pqcota-ingest -verify-keys " + r
 }
 
-// IngestCommand — 03의 터미널 안내에 보일 적재 명령. 작업 폴더에서 실행하는 상대 경로다. 연결 정보(PQCOTA_DSN)는
+// IngestCommand — 02의 터미널 안내에 보일 적재 명령. 작업 폴더에서 실행하는 상대 경로다. 연결 정보(PQCOTA_DSN)는
 // 싣지 않는다.
 func (o ActivationOffer) IngestCommand() string {
 	c, r := o.Candidate, o.Results
@@ -784,7 +799,7 @@ func (o ActivationOffer) IngestCommand() string {
 	}
 	cmd := "pqcota-ingest -scope-assets " + c + " " + r
 	if o.Org != "" {
-		// pqcota 이력의 조직은 판정 조직이다. 적재도 그 조직으로 해야 05의 대조가 찾는다.
+		// pqcota 이력의 조직은 판정 조직이다. 적재도 그 조직으로 해야 04의 대조가 찾는다.
 		cmd = "PQCOTA_ORG=" + o.Org + " " + cmd
 	}
 	return cmd

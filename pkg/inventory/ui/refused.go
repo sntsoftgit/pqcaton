@@ -31,12 +31,12 @@ const (
 	// RefusedRunNotReady · RefusedRunBusy — 관측을 시작하지 않았다(409). 빠진 것이 있거나 이미 돌고 있다.
 	RefusedRunNotReady = "run-not-ready"
 	RefusedRunBusy     = "run-busy"
-	// RefusedProvNotReady · RefusedProvBusy — 06의 미리 보기를 시작하지 않았다(409).
+	// RefusedProvNotReady · RefusedProvBusy — 05의 미리 보기를 시작하지 않았다(409).
 	RefusedProvNotReady = "prov-not-ready"
 	RefusedProvBusy     = "prov-busy"
 	// RefusedProvGrant — 적용을 시작하지 않았다(409). 유효한 미리 보기가 없다(없음 · 만료 · 입력이 바뀜 · 이미 쓰임).
 	RefusedProvGrant = "prov-grant"
-	// RefusedIngestNotReady · RefusedIngestBusy · RefusedIngestReplay — 03의 이력 적재를 시작하지 않았다(409). 조건이 맞지
+	// RefusedIngestNotReady · RefusedIngestBusy · RefusedIngestReplay — 02의 이력 적재를 시작하지 않았다(409). 조건이 맞지
 	// 않거나(설정 · 서명 · 이미 적재됨 · 이력을 읽지 못함), 이미 돌고 있거나, 이 확인으로 이미 한 번 시작했다.
 	RefusedIngestNotReady = "ingest-not-ready"
 	RefusedIngestBusy     = "ingest-busy"
@@ -47,7 +47,7 @@ const (
 	RefusedIngestChangedPolicy  = "ingest-policy-changed"
 	RefusedIngestChangedKeys    = "ingest-keys-changed"
 	RefusedIngestChanged        = "ingest-inputs-changed"
-	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 06 화면이 서명 · 생성을 하지 않았다(409).
+	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 05 화면이 서명 · 생성을 하지 않았다(409).
 	RefusedSignNotReady      = "sign-not-ready"
 	RefusedPlanNotApprovable = "plan-not-approvable"
 	RefusedGenNotReady       = "generate-not-ready"
@@ -64,7 +64,7 @@ const (
 	// 정규형이 모호해 한 계획의 승인이 다른 계획에서 통과할 수 있다(상류 sign.CheckPlanText). 확정된 계획이라 새 회차로 고친다.
 	RefusedPlanText = "plan-text"
 	// RefusedPlanFields — 계획(또는 서명한 계획)에 소스 근거나 가이드(상류 v0.11.0)가 있어 서명 · 생성하지 않았다(409).
-	// 계획이 손상된 것이 아니라 06 이 아직 그 내용을 검토 · 생성하지 않는다. 상류 pqcota-approve · pqcota-provision 으로 다룬다.
+	// 계획이 손상된 것이 아니라 05 이 아직 그 내용을 검토 · 생성하지 않는다. 상류 pqcota-approve · pqcota-provision 으로 다룬다.
 	RefusedPlanFields = "plan-fields"
 	// RefusedSessionText — 확정하면 만들어질 계획의 문자열에 NUL 문자가 있어 확정하지 않았다(409). 세션 · 계획 · 영수증은
 	// 그대로이고, 아직 확정 전이라 그 자리에서 값을 고친다.
@@ -92,9 +92,9 @@ const (
 	// RefusedActivateHistoryChanged — 활성화 확인 뒤 pqcota 이력의 최신 참조가 달라져 활성화하지 않았다(409). 확인 페이지는
 	// 대조가 맞을 때만 나오므로, 실행 때의 불일치는 그 사이에 이력이 바뀌었다는 뜻이다. 현재 활성 정책은 그대로다.
 	RefusedActivateHistoryChanged = "activate-history-changed"
-	// RefusedScopeSame — 02에서 확정한 정책이 이미 활성 정책과 같아 활성화할 것이 없다. 아무것도 쓰지 않았다(409).
+	// RefusedScopeSame — 자산 스코프 화면에서 확정한 정책이 이미 활성 정책과 같아 활성화할 것이 없다. 아무것도 쓰지 않았다(409).
 	RefusedScopeSame = "scope-same"
-	// RefusedScopeNotFinalized — 02에서 확정한 정책이 없거나, 02 확정 뒤 바뀌었거나, 읽을 수 없어 활성화하지 않았다(409).
+	// RefusedScopeNotFinalized — 자산 스코프 화면에서 확정한 정책이 없거나, 자산 스코프 화면에서 확정한 뒤 바뀌었거나, 읽을 수 없어 활성화하지 않았다(409).
 	RefusedScopeNotFinalized = "scope-not-finalized"
 
 	// 저장과 무관한 오류. 같은 틀(새 껍데기 · 역할과 파일 이름만 · 참조 번호)로 그린다.

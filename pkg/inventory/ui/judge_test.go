@@ -35,7 +35,7 @@ func rowOf(t *testing.T, body, attr, id string) string {
 	return m
 }
 
-// IC-UI69 — **05의 활성화 훅은 위임 수준이 L3인 항목에서만 펼쳐진다.** 훅 넷의 줄은 L3가 아니면 `hidden`으로 접히되
+// IC-UI69 — **04의 활성화 훅은 위임 수준이 L3인 항목에서만 펼쳐진다.** 훅 넷의 줄은 L3가 아니면 `hidden`으로 접히되
 // 칸과 값은 양식에 그대로 있다(L3로 돌아오면 다시 보인다). 접힌 채로 값이 있는 항목은 그 사실을 알리는 줄이 보이고,
 // 값이 없는 항목과 L3인 항목은 그 줄이 접혀 있다. 되돌림 메모는 L3 전용이 아니라 어느 수준에서든 보인다.
 func TestHooksUnfoldOnlyAtL3(t *testing.T) {
@@ -124,7 +124,7 @@ func TestRemediationKindsAreNamed(t *testing.T) {
 	}
 }
 
-// IC-UI71 — **05의 판정 표는 항목 하나가 tbody 하나이고 칸마다 이름표가 있다.** 좁은 화면에서 항목이 카드 하나로 접히는
+// IC-UI71 — **04의 판정 표는 항목 하나가 tbody 하나이고 칸마다 이름표가 있다.** 좁은 화면에서 항목이 카드 하나로 접히는
 // 자리다(읽고 판정하고 저장하기까지 표를 옆으로 밀지 않는다). 표는 `editable judge`이고, 항목 수만큼 `tbody.item`이
 // 있으며, 값이 든 칸은 모두 `data-label`로 그 칸의 이름을 든다.
 func TestJudgeTableFoldsIntoOneCardPerItem(t *testing.T) {

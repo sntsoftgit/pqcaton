@@ -1041,8 +1041,8 @@ func scopeBaselineBox(p Page) templ.Component {
 	})
 }
 
-// scopeActivateBox — 02에서 확정한 정책이 활성 정책과 다를 때 05 위쪽. **05는 그 사실과 03으로 가는 길만 보인다.** 새 확정
-// 정책으로 다시 적재하고 활성화하는 일은 03 관측 화면에서 한다(ingest.templ의 observePolicy). 활성화 양식은 여기 없다.
+// scopeActivateBox — 자산 스코프 화면에서 확정한 정책이 활성 정책과 다를 때 04 위쪽. **04는 그 사실과 02로 가는 길만 보인다.** 새 확정
+// 정책으로 다시 적재하고 활성화하는 일은 02 관측 화면에서 한다(ingest.templ의 observePolicy). 활성화 양식은 여기 없다.
 func scopeActivateBox(p Page, o ActivationOffer) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

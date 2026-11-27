@@ -15,12 +15,12 @@ const (
 	ScreenInventory = "/inventory"
 	// ScreenSettings — 설정. 절차의 단계가 아니고 아무 때나 여는 자리다.
 	ScreenSettings = "/settings"
-	// ScreenHistTopo — 04에서 여는 조회 화면. 절차의 단계가 아니다. HistTopoDotPath는 그 그림의 DOT 내려받기다.
+	// ScreenHistTopo — 03에서 여는 조회 화면. 절차의 단계가 아니다. HistTopoDotPath는 그 그림의 DOT 내려받기다.
 	ScreenHistTopo  = "/survey/history"
 	HistTopoDotPath = "/survey/history.dot"
-	// SurveyPicturePath — 04의 대조 그림 조각. 대조 결과와 표가 `dot`을 기다리지 않게 따로 받는다.
+	// SurveyPicturePath — 03의 대조 그림 조각. 대조 결과와 표가 `dot`을 기다리지 않게 따로 받는다.
 	SurveyPicturePath = "/survey/picture"
-	// SurveyDotPath — 04의 대조 그림의 DOT. 그림이 없어도(스크립트를 끈 브라우저에서도) 받을 수 있다.
+	// SurveyDotPath — 03의 대조 그림의 DOT. 그림이 없어도(스크립트를 끈 브라우저에서도) 받을 수 있다.
 	SurveyDotPath = "/survey/topology.dot"
 	// HistTopoPicturePath — 그 화면의 그림 조각. 표와 따로 그린다(조직 전체의 그림은 오래 걸릴 수 있다).
 	HistTopoPicturePath = "/survey/history/picture"
@@ -97,7 +97,7 @@ type Step struct {
 	Here bool
 	// Open — 입력이 있어 열리는 화면인가. 닫힌 카드는 누를 수 없다.
 	Open bool
-	// Final — 확정하는 단계(스코프 · 판정)의 확정 상태. 다른 카드는 비어 있다.
+	// Final — 확정하는 단계(판정)의 확정 상태. 다른 카드는 비어 있다.
 	Final string
 }
 
@@ -130,7 +130,10 @@ func (f Final) text(l Lang) string {
 	return tStepUnknown.In(l)
 }
 
-// StepsFor — 절차 카드 여섯과 조회 하나.
+// StepsFor — 절차 카드 다섯: 선언 → 관측 → 대조 → 판정 → 프로비저닝.
+//
+// **자산 스코프는 카드가 아니다.** 관측 단계에 속하고, 규칙 편집 · 서명 · 확정은 관측 화면에서 여는 화면(ScreenScope)에서
+// 한다. 그 화면에 있을 때는 관측 카드가 「지금 여기」다. 스코프의 상태와 확정 상태는 관측 화면의 구역이 보인다(ScopeState).
 //
 // **모든 카드를 채운다**(v0.22.0). 서버가 요청 하나에서 입력을 한 번 읽어 본문과 카드가 같은
 // 값을 쓴다. 한 화면의 입력을 읽지 못하면 그 카드만 「확인할 수 없음」이고 다른 카드와 본문은
@@ -138,7 +141,6 @@ func (f Final) text(l Lang) string {
 func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 	const (
 		stepDecl = iota
-		stepScope
 		stepObserve
 		stepSurvey
 		stepReview
@@ -146,25 +148,20 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 	)
 	steps := []Step{
 		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDecl, Open: s.Decl},
-		{Num: "02", Title: tTitleScope.In(l), Href: ScreenScope, Open: s.Scope},
-		{Num: "03", Title: tTitleObserve.In(l), Href: ScreenObserve, Open: s.Observe},
-		{Num: "04", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
-		{Num: "05", Title: tTitleReview.In(l), Href: ScreenReview, Open: !s.NoReview},
-		{Num: "06", Title: tTitleApprove.In(l), Href: ScreenApprove, Open: s.Approve},
+		{Num: "02", Title: tTitleObserve.In(l), Href: ScreenObserve, Open: s.Observe},
+		{Num: "03", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
+		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReview, Open: !s.NoReview},
+		{Num: "05", Title: tTitleApprove.In(l), Href: ScreenApprove, Open: s.Approve},
 	}
 	for i := range steps {
-		steps[i].Here = here == steps[i].Href
+		steps[i].Here = here == steps[i].Href || (i == stepObserve && here == ScreenScope && s.Observe)
 		switch {
 		case !steps[i].Open:
 			steps[i].State = tStepClosed.In(l)
 		case i == stepDecl && st.DeclMissing:
 			steps[i].State, steps[i].Dot = tStepDeclMissing.In(l), "warn"
-		case i == stepScope && st.LayersMissing:
-			steps[i].State, steps[i].Dot = tStepLayersMissing.In(l), "warn"
 		case i == stepDecl && st.Decl != nil:
 			steps[i].State, steps[i].Dot = declState(l, *st.Decl)
-		case i == stepScope && st.Scope != nil:
-			steps[i].State, steps[i].Dot = scopeState(l, *st.Scope)
 		case i == stepObserve && st.Observe != nil:
 			steps[i].State, steps[i].Dot = observeState(l, *st.Observe)
 		case i == stepSurvey && st.Survey != nil:
@@ -177,15 +174,29 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 			// 그 화면의 입력을 읽지 못했다. 원인은 서버가 표준오류에 남긴다.
 			steps[i].State = tStepUnknown.In(l)
 		}
-		switch {
-		case !steps[i].Open:
-		case i == stepScope:
-			steps[i].Final = st.ScopeFinal.text(l)
-		case i == stepReview:
+		if steps[i].Open && i == stepReview {
 			steps[i].Final = st.ReviewFinal.text(l)
 		}
 	}
 	return steps
+}
+
+// ScopeState — 자산 스코프의 한 줄 상태 · 점 색 · 확정 상태. 관측 화면의 「자산 스코프」 구역이 보인다(카드가 보이던 것과 같은
+// 판정이다). 스코프 화면이 열리지 않으면 셋 다 비어 있다.
+func ScopeState(l Lang, s Screens, st StepState) (state, dot, final string) {
+	if !s.Scope {
+		return "", "", ""
+	}
+	final = st.ScopeFinal.text(l)
+	switch {
+	case st.LayersMissing:
+		return tStepLayersMissing.In(l), "warn", final
+	case st.Scope != nil:
+		state, dot = scopeState(l, *st.Scope)
+		return state, dot, final
+	}
+	// 스코프 세션을 읽지 못했다. 원인은 서버가 표준오류에 남긴다.
+	return tStepUnknown.In(l), "", final
 }
 
 // observeState — 관측 카드의 한 줄. 접근 정보가 없으면 관측을 시작할 수 없다.

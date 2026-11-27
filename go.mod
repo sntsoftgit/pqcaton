@@ -3,7 +3,7 @@ module github.com/sntsoftgit/pqcaton
 go 1.26.11
 
 // pqcota — 관측·정규화·전환물 생성. 이 리포는 그 가운데 네 모듈을 소비한다: 계약과 공통
-// 코드(common), 인벤토리 단계(inventory), 로컬 스캔이 부르는 수집기(discovery), 06 화면의 승인과
+// 코드(common), 인벤토리 단계(inventory), 로컬 스캔이 부르는 수집기(discovery), 05 화면의 승인과
 // 플레이북 생성(provisioning).
 //
 // **넷은 같은 태그로 함께 올린다.** 단계 모듈은 따로 릴리스하지 않아서, 하나만 올리면

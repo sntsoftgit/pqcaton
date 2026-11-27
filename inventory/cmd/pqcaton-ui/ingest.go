@@ -3,7 +3,7 @@
 
 package main
 
-// 03에서 하는 이력 적재. 지금 `results/`의 서명된 결과를 **활성 정책으로** pqcota 이력에 적재한다. 관측이 끝났다고 스스로
+// 02에서 하는 이력 적재. 지금 `results/`의 서명된 결과를 **활성 정책으로** pqcota 이력에 적재한다. 관측이 끝났다고 스스로
 // 적재하지 않는다: 운영자가 확인 화면을 거쳐 누른다.
 //
 // **적재는 상류 함수다**(ingest.IngestWith). `pqcota-ingest`가 하는 것과 같은 적재다. 다른 점은 하나다: 상류 명령은 서명이
@@ -21,7 +21,7 @@ package main
 //   - 확인 토큰은 한 번만 쓴다(쓴 표시를 디스크에 새로 만든다). 더블클릭이나 같은 요청의 재전송으로 두 번째 적재가 시작되지
 //     않는다.
 //
-// **적재하는 정책은 둘 가운데 하나다.** 활성 정책(scope-assets.csv)이거나, 02에서 확정했지만 아직 활성이 아닌 정책
+// **적재하는 정책은 둘 가운데 하나다.** 활성 정책(scope-assets.csv)이거나, 자산 스코프 화면에서 확정했지만 아직 활성이 아닌 정책
 // (asset-scope.csv, 「활성화할 확정 정책」)이다. 활성화할 확정 정책으로 다시 적재해도 **활성 정책은 바뀌지 않는다**: 적재는 활성 정책
 // 파일을 건드리지 않고, 활성화는 그 뒤에 운영자가 따로 확인한다(scope_activate.go). 그래서 재적재가 실패하거나 도중에 끝나도,
 // 끝까지 갔어도, 활성 정책은 그대로다.
@@ -98,11 +98,11 @@ type ingestManifest struct {
 	NoPolicy     bool   `json:"no_policy,omitempty"`
 	PolicySHA    string `json:"policy_sha256"`
 	PolicyDigest string `json:"policy_digest"`
-	// Role: 적재한 정책의 구실. 비면 활성 정책, "candidate"면 02에서 확정한 새 정책이다. ActiveDigest는 그때의 활성 정책
+	// Role: 적재한 정책의 구실. 비면 활성 정책, "candidate"면 자산 스코프 화면에서 확정한 새 정책이다. ActiveDigest는 그때의 활성 정책
 	// 지문이다(활성화할 확정 정책으로 적재한 실행에만 적는다).
 	Role         string `json:"policy_role,omitempty"`
 	ActiveDigest string `json:"active_policy_digest,omitempty"`
-	// Keys: 신뢰할 수집기 공개 키(수집기 ID → 키들). 03의 verify.pub에서 읽은 것이다.
+	// Keys: 신뢰할 수집기 공개 키(수집기 ID → 키들). 02의 verify.pub에서 읽은 것이다.
 	Keys    map[string][]string `json:"keys"`
 	Binding string              `json:"binding"`
 	// Refs: 이 결과와 정책으로 기대하는 노드별 참조. Before: 적재 전의 이력 상태.
@@ -212,7 +212,7 @@ func (s *server) ingestPlan(role string) ingestPlan {
 	p.keysSHA = sha(kb)
 
 	if role == ingestCandidate {
-		// 활성화할 확정 정책: 활성화와 같은 판정으로 본다(있고, 02 확정이 쓴 그대로이고, 활성 정책과 다르고, 세션이 잠기지 않았다).
+		// 활성화할 확정 정책: 활성화와 같은 판정으로 본다(있고, 자산 스코프 화면의 확정이 쓴 그대로이고, 활성 정책과 다르고, 세션이 잠기지 않았다).
 		o, err := s.activationCheck()
 		if err != nil {
 			p.block = ui.IngestNoCandidate
@@ -379,7 +379,7 @@ func policyPathOf(p ingestPlan) string {
 	return p.policyPath
 }
 
-// ingestView: 03의 적재 구역.
+// ingestView: 02의 적재 구역.
 func (s *server) ingestView(runID string) ui.IngestView {
 	v := s.ingestViewFor(ingestActive)
 	v.Last = s.ingestLast(runID)
@@ -419,7 +419,7 @@ func (s *server) ingestViewFor(role string) ui.IngestView {
 	return v
 }
 
-// policyView: 03의 「활성화할 확정 정책」 구역. 02에서 확정한 정책이 활성 정책과 다를 때만 있다(05가 활성화를 띄우던 것과 같은
+// policyView: 02의 「활성화할 확정 정책」 구역. 자산 스코프 화면에서 확정한 정책이 활성 정책과 다를 때만 있다(04가 활성화를 띄우던 것과 같은
 // 판정이다). 두 지문을 나란히 보이고, 활성화할 확정 정책으로 적재한다면의 노드별 상태와, 활성화 양식에 실을 rev를 채운다.
 // **재적재와 활성화는 따로다**: 활성화 단추는 모든 노드의 최신 참조가 활성화할 확정 정책의 것일 때만 나오고, 눌러도 확인 페이지를
 // 거치며, 활성화 직전에 이력을 처음부터 다시 대조한다.

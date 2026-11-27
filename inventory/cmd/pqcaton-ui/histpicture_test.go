@@ -41,7 +41,7 @@ func forgetPicture() {
 // IC-U229 — **그림이 오래 걸리거나 상한을 넘어도 표에서 노드를 고르고 DOT을 받을 수 있다.**
 //
 // 이력 화면은 `dot`을 돌리지 않고 뜬다. 그림은 따로 받는 조각이고, 그리는 데 시간과 크기 상한이 있다. 상한을 넘거나 검사에서
-// 걸러지면 까닭을 적고, 표 · 노드 고르기 · DOT 내려받기와 04의 DOT 원문은 그대로 된다. 같은 그림은 다시 그리지 않는다.
+// 걸러지면 까닭을 적고, 표 · 노드 고르기 · DOT 내려받기와 03의 DOT 원문은 그대로 된다. 같은 그림은 다시 그리지 않는다.
 func TestPictureNeverHoldsTheTable(t *testing.T) {
 	s, _ := activationReady(t)
 	useEndpoints(t, inventory.NewMemMetaStore(), nil)
@@ -99,7 +99,7 @@ func TestPictureNeverHoldsTheTable(t *testing.T) {
 	}
 	works("after a drawing over the limit")
 
-	// 검사에서 걸러진 그림: 이력 화면은 까닭을 적고, 04는 까닭과 DOT 원문을 보인다.
+	// 검사에서 걸러진 그림: 이력 화면은 까닭을 적고, 03은 까닭과 DOT 원문을 보인다.
 	forgetPicture()
 	answer = func(context.Context, string) ([]byte, error) {
 		return []byte(`<svg xmlns="http://www.w3.org/2000/svg"><path fill="url(https://example.invalid/#a)" d="M0,0"/></svg>`), nil
@@ -110,7 +110,7 @@ func TestPictureNeverHoldsTheTable(t *testing.T) {
 	works("after a refused drawing")
 	if body := get(t, s, ui.SurveyPicturePath+"?lang=ko").Body.String(); !strings.Contains(body, `data-picture="refused"`) ||
 		!strings.Contains(body, "digraph crypto_topology") || strings.Contains(body, "example.invalid") || strings.Contains(body, "<svg") {
-		t.Error("04's picture with a refused drawing does not show the reason and the DOT source")
+		t.Error("03's picture with a refused drawing does not show the reason and the DOT source")
 	}
 
 	// 그려진 그림은 조각으로 온다. 관측에서 온 글자는 이스케이프된 채다.
@@ -168,9 +168,9 @@ func TestDotRunIsBounded(t *testing.T) {
 	}
 }
 
-// IC-U230 — **04는 그림을 기다리지 않는다.** 먼저 읽을 것은 대조 결과와 판정할 항목 수다.
+// IC-U230 — **03은 그림을 기다리지 않는다.** 먼저 읽을 것은 대조 결과와 판정할 항목 수다.
 //
-// 04 화면은 `dot`을 돌리지 않고 뜨고, 그림은 따로 받는 조각이다. `dot`이 끝나지 않아도 04의 수 · 엣지 표 · 05로 가는 링크는
+// 03 화면은 `dot`을 돌리지 않고 뜨고, 그림은 따로 받는 조각이다. `dot`이 끝나지 않아도 03의 수 · 엣지 표 · 04로 가는 링크는
 // 바로 나가고, 그림 조각은 상한에서 끊겨 까닭과 DOT 원문을 준다. 그려지면 검사를 지난 SVG가 조각으로 온다.
 func TestSurveyDoesNotWaitForThePicture(t *testing.T) {
 	s, _ := activationReady(t)
@@ -188,34 +188,34 @@ func TestSurveyDoesNotWaitForThePicture(t *testing.T) {
 		`data-picture="place"`, `href="` + ui.SurveyDotPath + `"`,
 		`class="metrics"`, `table class="edges"`, `href="` + ui.ScreenReview + `"`, `data-hist-topo-link`} {
 		if !strings.Contains(body, sub) {
-			t.Errorf("04 lacks %q", sub)
+			t.Errorf("03 lacks %q", sub)
 		}
 	}
 	if page.Code != http.StatusOK || calls != 0 || strings.Contains(body, "<svg") || strings.Contains(body, "digraph crypto_topology") {
-		t.Fatalf("04 answered %d after running dot %d times; it must not draw or carry the picture itself", page.Code, calls)
+		t.Fatalf("03 answered %d after running dot %d times; it must not draw or carry the picture itself", page.Code, calls)
 	}
-	// 그림 조각: 상한에서 끊기고 까닭과 DOT 원문을 준다. 그 뒤에도 04는 그대로 뜨고 05로 갈 수 있다.
+	// 그림 조각: 상한에서 끊기고 까닭과 DOT 원문을 준다. 그 뒤에도 03은 그대로 뜨고 04로 갈 수 있다.
 	if p := get(t, s, ui.SurveyPicturePath+"?lang=ko").Body.String(); !strings.Contains(p, `data-picture="timeout"`) || !strings.Contains(p, "digraph crypto_topology") {
-		t.Errorf("04's picture with a dot that never ends: %s", p)
+		t.Errorf("03's picture with a dot that never ends: %s", p)
 	}
 	if w := get(t, s, ui.ScreenSurvey+"?lang=ko"); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `class="metrics"`) {
-		t.Errorf("04 after a picture timeout: %d", w.Code)
+		t.Errorf("03 after a picture timeout: %d", w.Code)
 	}
 	if w := get(t, s, ui.ScreenReview+"?lang=ko"); w.Code != http.StatusOK {
-		t.Errorf("05 after a picture timeout: %d", w.Code)
+		t.Errorf("04 after a picture timeout: %d", w.Code)
 	}
 	// 그려지면 검사를 지난 그림이 조각으로 온다.
 	forgetPicture()
 	answer = func(context.Context, string) ([]byte, error) { return []byte(graphvizSVG), nil }
 	if p := get(t, s, ui.SurveyPicturePath+"?lang=en").Body.String(); !strings.Contains(p, "data-survey-picture") || !strings.Contains(p, "<svg") || strings.Contains(p, "<textarea") {
-		t.Errorf("04's drawn picture: %s", p)
+		t.Errorf("03's drawn picture: %s", p)
 	}
 }
 
 // IC-U231 — **스크립트를 끈 브라우저는 끝나지 않을 「그리고 있습니다」를 보지 않고, DOT을 받을 수 있다.**
 //
 // 그림 조각은 스크립트가 청한다. 스크립트가 없으면 요청이 시작되지 않으므로, 첫 HTML의 진행 문구는 그 자리가 요청 중일
-// 때만 보이게 숨겨 두고(스타일이 가른다), DOT으로 가는 링크는 그림 자리 밖의 첫 HTML에 둔다. 04의 DOT도 따로 받을 수 있다.
+// 때만 보이게 숨겨 두고(스타일이 가른다), DOT으로 가는 링크는 그림 자리 밖의 첫 HTML에 둔다. 03의 DOT도 따로 받을 수 있다.
 func TestPicturePlaceWorksWithoutScripts(t *testing.T) {
 	s, _ := activationReady(t)
 	useEndpoints(t, inventory.NewMemMetaStore(), nil)
@@ -245,6 +245,6 @@ func TestPicturePlaceWorksWithoutScripts(t *testing.T) {
 	d := get(t, s, ui.SurveyDotPath)
 	if d.Code != http.StatusOK || !strings.HasPrefix(d.Body.String(), "digraph crypto_topology {") ||
 		!strings.HasPrefix(d.Header().Get("Content-Type"), "text/vnd.graphviz") || !strings.Contains(d.Header().Get("Content-Disposition"), "attachment") {
-		t.Errorf("04's DOT download: %d %v", d.Code, d.Header())
+		t.Errorf("03's DOT download: %d %v", d.Code, d.Header())
 	}
 }

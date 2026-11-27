@@ -3,7 +3,7 @@
 
 package main
 
-// 03 관측 화면. 작업 폴더 모드에서만 열린다 — 접근 정보(`hosts.csv`)의 자리가 그 폴더 안에 정해져 있다.
+// 02 관측 화면. 작업 폴더 모드에서만 열린다 — 접근 정보(`hosts.csv`)의 자리가 그 폴더 안에 정해져 있다.
 //
 // **접근 정보는 비밀을 담을 수 있다**(`ssh_pass`). 그래서 화면은 비밀번호를 보이지도 받지도 않고, 파일은
 // 저장 경로가 소유자 전용(0600)으로 쓴다.
@@ -11,15 +11,19 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory"
 
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/review"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/store"
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
@@ -63,9 +67,11 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	wd := s.load()
-	page := s.nextPage(r, ui.ScreenObserve, s.hosts, s.steps(wd))
+	st := s.steps(wd)
+	page := s.nextPage(r, ui.ScreenObserve, s.hosts, st)
 	page.Rev = rev
 	v := ui.NewObserveView(hosts, page)
+	v.Scope = s.observeScope(page.Lang, st)
 	v.Run = s.runView()
 	if wd.res != nil {
 		v.Run.JCAUnconfirmed = wd.res.JCAUnconfirmed
@@ -75,6 +81,32 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 		v.Policy = s.policyView()
 	}
 	html(w, r, func(out io.Writer) error { return ui.RenderObserve(out, v) })
+}
+
+// observeScope: 관측 화면의 「자산 스코프」 구역. 현재 활성 정책의 파일 · 규칙 수 · 지문과, 규칙 편집의 상태 · 확정 상태다.
+// 활성 정책 파일이 없으면 규칙 0개의 정책이다. 읽지 못하면 그렇다고 적는다(없는 것으로 치지 않는다).
+func (s *server) observeScope(l ui.Lang, st ui.StepState) *ui.ObserveScope {
+	o := &ui.ObserveScope{ActiveFile: filepath.Base(s.scopeAssets)}
+	digest, err := scope.PolicyFileDigest(s.scopeAssets)
+	if err == nil && s.scopeAssets != "" {
+		if _, serr := os.Stat(s.scopeAssets); serr == nil {
+			p, perr := review.LoadAssetPolicy(s.scopeAssets)
+			if err = perr; err == nil && p != nil {
+				o.Rules = len(p.Rules)
+			}
+		}
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "observe: the active asset scope policy:", err)
+		o.PolicyUnknown = true
+	} else {
+		o.ActiveDigest = digest
+	}
+	if sc := s.screens(); sc.Scope {
+		o.Href = ui.ScreenScope
+		o.State, o.Dot, o.Final = ui.ScopeState(l, sc, st)
+	}
+	return o
 }
 
 // runView: 관측 실행 구역. 저장하지 않는 서버는 점검을 하지 않는다(시작할 수 없다).
@@ -112,7 +144,7 @@ func (s *server) runStatusFragment(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		// 실행이 끝났으면 화면을 통째로 새로 받게 한다. 이 상자 밖에도 달라지는 것이 있다: 03 카드의 「관측 중」이 걷히고
+		// 실행이 끝났으면 화면을 통째로 새로 받게 한다. 이 상자 밖에도 달라지는 것이 있다: 02 카드의 「관측 중」이 걷히고
 		// 「관측 시작」 양식이 다시 나온다. 조각만 갈면 새로 고칠 때까지 카드는 「관측 중」으로 남는다.
 		if st == nil || st.Over() {
 			w.Header().Set("HX-Refresh", "true")

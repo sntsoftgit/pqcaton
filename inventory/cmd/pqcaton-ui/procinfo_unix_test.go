@@ -179,7 +179,7 @@ func treeSum(t *testing.T, root string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(strings.Join(lines, "\n"))))
 }
 
-// IC-U189 — **03 화면은 남긴 프로세스의 지금 상태를 보이되, 가린 인자만 HTML 에 싣고 끝내는 단추는 두지 않는다.** 「다시
+// IC-U189 — **02 화면은 남긴 프로세스의 지금 상태를 보이되, 가린 인자만 HTML 에 싣고 끝내는 단추는 두지 않는다.** 「다시
 // 확인」은 다시 읽기만 해서, 두 번 불러도 작업 폴더(실행 기록 · 영수증 · 상태 폴더)가 한 바이트도 바뀌지 않는다.
 func TestStuckProcessesOnTheObserveScreen(t *testing.T) {
 	s := runReady(t, "ok")

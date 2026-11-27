@@ -35,7 +35,7 @@ pqcota가 승인하고 실행할 수 있는 계획으로 만듭니다. 이 판�
 2. **대조와 리뷰.** pqcaton이 관측과 선언을 3-상태로 맞대고, 결정이 필요한 것을 리뷰 큐에 올립니다. 사람이 정책 단위나 항목
    단위로 판정합니다.
 3. **확정과 넘김.** 필수 판정과 서명이 모두 있어야 확정 관문을 지납니다. 계획은 pqcota의 승인 · 생성(`pqcota-approve` ·
-   `pqcota-provision`)으로 넘어가거나, 같은 기계에서 06 화면을 거칩니다.
+   `pqcota-provision`)으로 넘어가거나, 같은 기계에서 05 화면을 거칩니다.
 
 ### 한 그림으로
 
@@ -47,7 +47,7 @@ flowchart LR
   end
   ing -- "results/" --> rec["reconcile<br/>CONFIRMED · UNDECLARED · UNOBSERVED"]
   rec --> rq["review queue"] --> fin["finalize<br/>plan.json (IN_REVIEW)"]
-  fin --> appr["pqcota-approve · 06"] --> gen["pqcota-provision · 06<br/>provision.yml · rollback.yml"]
+  fin --> appr["pqcota-approve · 05"] --> gen["pqcota-provision · 05<br/>provision.yml · rollback.yml"]
 ```
 
 의존은 **한 방향**입니다. pqcaton은 pqcota의 공개 모듈을 가져다 쓰고, pqcota는 pqcaton에 의존하지 않습니다. pqcota는 그 자체로
@@ -61,7 +61,7 @@ pqcaton 화면을 사용하려면 먼저 pqcota 이력용 PostgreSQL에 스키�
 
 | 길 | 이럴 때 | 끝나면 |
 |---|---|---|
-| [데모로 써 보기](#데모로-써-보기) | pqcota가 아직 없고, 먼저 한 바퀴 돌려 볼 때 | Docker로 띄운 노드 세 대와 pqcota 이력으로 01~06 화면을 한 바퀴 돕니다 |
+| [데모로 써 보기](#데모로-써-보기) | pqcota가 아직 없고, 먼저 한 바퀴 돌려 볼 때 | Docker로 띄운 노드 세 대와 pqcota 이력으로 01~05 화면을 한 바퀴 돕니다 |
 | [이 리포 빌드하기](#이-리포-빌드하기) | 내 노드를 관측하고 판정할 때 | 내 pqcota 이력에 연결된 화면이 뜹니다 |
 
 <a id="써보기"></a>
@@ -105,13 +105,13 @@ go build -o bin/ ./inventory/cmd/...
 
 **화면 띄우기.** 운영자 안내서 [2절 「pqcota 준비」](docs/operator-guide.ko.md#pqcota-준비)의 1~5단계를 마친 뒤
 `./bin/pqcaton-ui -no-browser`를 실행합니다. `screen: http://127.0.0.1:8765/  (workspace …)` 줄이 나오면 화면이 뜬 것입니다.
-03 관측과 06 승인 서명에 필요한 준비도 [같은 2절](docs/operator-guide.ko.md#2-설치)에 있습니다.
+02 관측과 05 승인 서명에 필요한 준비도 [같은 2절](docs/operator-guide.ko.md#2-설치)에 있습니다.
 
 **빌드한 명령.**
 
 | 명령 | 하는 일 |
 |---|---|
-| `pqcaton-ui` | 화면(01 선언부터 06 프로비저닝까지) |
+| `pqcaton-ui` | 화면(01 선언부터 05 프로비저닝까지) |
 | `pqcaton-decide` | 같은 판정 단계를 명령으로(`open` · `close` · `delta`) |
 | `pqcaton-report` | 모은 결과로 대조 보고서와 거버넌스 토폴로지를 만듭니다 |
 | `pqcaton-scope` | 자산 스코프 정책(계층 · 확정 · 활성화)을 명령으로 |

@@ -318,7 +318,7 @@ func TestBrokenWorkspaceOpensForDiagnostics(t *testing.T) {
 }
 
 // IC-U98 — **선언이 없는 작업 폴더에서 화면으로 선언을 만든다.** GET은 만들기 폼만 보이고 아무것도 만들지 않는다.
-// 대조 · 판정 · 조회는 닫혀 있고, 02 카드는 「아직 계층이 없습니다」다. POST가 빈 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다.
+// 대조 · 판정 · 조회는 닫혀 있고, 02 관측 화면의 「자산 스코프」 구역은 「아직 계층이 없습니다」다. POST가 빈 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다.
 func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 	ws := t.TempDir()
 	h, code, _, stderr := started(t, "-workspace", ws, "-no-browser")
@@ -337,11 +337,11 @@ func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 		t.Errorf("review before a declaration: %d, want 404", w.Code)
 	}
 	got := cards(t, body)
-	if !strings.HasPrefix(got["04"], "입력 파일을 주지 않았습니다") || !strings.HasPrefix(got["05"], "입력 파일을 주지 않았습니다") {
+	if !strings.HasPrefix(got["03"], "입력 파일을 주지 않았습니다") || !strings.HasPrefix(got["04"], "입력 파일을 주지 않았습니다") {
 		t.Errorf("survey and review are not closed: %v", got)
 	}
-	if !strings.HasPrefix(got["02"], "아직 계층이 없습니다") {
-		t.Errorf("the scope card on the create page is %q, want it to say there is no layer yet", got["02"])
+	if line := scopeLine(do(h, newReq(http.MethodGet, "/observe?lang=ko", nil)).Body.String()); !strings.HasPrefix(line, "규칙 편집: 아직 계층이 없습니다") {
+		t.Errorf("the asset scope section of 02 is %q, want it to say there is no layer yet", line)
 	}
 
 	w := do(h, posted(ui.DeclCreatePath+"?lang=ko", url.Values{"org": {"acme"}}))
@@ -444,7 +444,7 @@ func TestEmptyResultsPointAtTheFolder(t *testing.T) {
 }
 
 // IC-U101 — **계층이 없는 작업 폴더에서 화면으로 계층을 만든다.** GET은 만들기 폼만 보이고 아무것도 만들지 않는다.
-// 02 카드는 「아직 계층이 없습니다」다. POST가 `layers/<이름>.csv`와 스코프 세션을 만들고 화면은 규칙 편집이
+// 02 관측 화면의 「자산 스코프」 구역은 「아직 계층이 없습니다」다. POST가 `layers/<이름>.csv`와 스코프 세션을 만들고 화면은 규칙 편집이
 // 된다. 같은 이름을 다시 보내면 덮어쓰지 않고 409, 틀린 이름은 400이다. 계층이 생기기 전의 스코프 저장 · 확정은
 // 404다. 명시 모드에는 이 주소가 없다.
 func TestLayerIsCreatedFromTheScreen(t *testing.T) {
@@ -454,8 +454,8 @@ func TestLayerIsCreatedFromTheScreen(t *testing.T) {
 	if !strings.Contains(body, `action="`+ui.LayerCreatePath+`"`) {
 		t.Fatalf("no create form:\n%s", body)
 	}
-	if got := cards(t, body)["02"]; !strings.HasPrefix(got, "아직 계층이 없습니다") {
-		t.Errorf("02 card %q", got)
+	if line := scopeLine(do(h, newReq(http.MethodGet, "/observe?lang=ko", nil)).Body.String()); !strings.HasPrefix(line, "규칙 편집: 아직 계층이 없습니다") {
+		t.Errorf("the asset scope section of 02 = %q", line)
 	}
 	if ents, _ := os.ReadDir(filepath.Join(ws, "layers")); len(ents) != 0 {
 		t.Fatal("GET created a layer")

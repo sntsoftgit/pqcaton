@@ -49,7 +49,7 @@ func TestPlanWithoutNewFieldsStillApproves(t *testing.T) {
 	}
 }
 
-// IC-U194 — **소스 근거나 가이드가 든 계획은 06 의 네 자리에서 모두 `plan-fields` 이고, 승인 서명이 붙지 않는다.** 화면은 서명 ·
+// IC-U194 — **소스 근거나 가이드가 든 계획은 05 의 네 자리에서 모두 `plan-fields` 이고, 승인 서명이 붙지 않는다.** 화면은 서명 ·
 // 생성 양식을 내지 않고 「계획이 손상된 것은 아니며 pqcaton 이 아직 그 내용을 검토 · 생성하지 않는다」는 한계를 보인다. 서명
 // 확인은 409, 서명 처리기는 확인 양식을 갖춰 보내도 잠금 안에서 409, 생성도 409 다. 작업 폴더는 바이트 그대로다. 이 작업
 // 폴더에서 확정한 계획이라(영수증과 해시가 맞음) 정책 쪽 거부가 아니라 이 판정이 막는다.
@@ -69,7 +69,7 @@ func TestPlanWithNewFieldsIsRefusedInApproval(t *testing.T) {
 					v.FieldsProblem, v.FieldsSigned, v.ScopeProblem, v.CanSign(), v.CanGenerate())
 			}
 			for lang, want := range map[string][]string{
-				"ko": {"계획이 손상된 것은 아닙니다", "pqcaton은 아직 그 내용을 06에서 검토하거나 플레이북에 싣지 않으므로"},
+				"ko": {"계획이 손상된 것은 아닙니다", "pqcaton은 아직 그 내용을 05에서 검토하거나 플레이북에 싣지 않으므로"},
 				"en": {"The plan is not damaged", "pqcaton does not yet review that content"},
 			} {
 				page := get(t, s, ui.ScreenApprove+"?lang="+lang).Body.String()

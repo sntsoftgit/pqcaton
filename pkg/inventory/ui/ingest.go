@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// 03의 이력 적재를 막는 것.
+// 02의 이력 적재를 막는 것.
 const (
 	IngestViewOnly    = "view-only"
 	IngestNoResults   = "no-results"
@@ -18,7 +18,7 @@ const (
 	IngestPolicy      = "policy"
 	IngestInputs      = "inputs"
 	IngestObserving   = "observing"
-	// IngestNoCandidate — 활성화할 확정 정책으로 적재할 수 없다: 02에서 확정한 정책이 없거나, 확정한 뒤 바뀌었거나, 활성 정책과 같다.
+	// IngestNoCandidate — 활성화할 확정 정책으로 적재할 수 없다: 자산 스코프 화면에서 확정한 정책이 없거나, 확정한 뒤 바뀌었거나, 활성 정책과 같다.
 	IngestNoCandidate = "no-candidate"
 )
 
@@ -92,7 +92,7 @@ type IngestLast struct {
 	Started, Ended time.Time
 	Files          int
 	PolicyDigest   string
-	// Candidate — 02에서 확정한 새 정책으로 적재한 실행이다(그때 활성 정책이 아니었다). 거짓이면 활성 정책으로 적재했다.
+	// Candidate — 자산 스코프 화면에서 확정한 새 정책으로 적재한 실행이다(그때 활성 정책이 아니었다). 거짓이면 활성 정책으로 적재했다.
 	Candidate bool
 	// Running — 적재 프로세스가 아직 돈다. HasResult — 프로세스가 결과를 남겼다. 남기지 못했으면 종료를 알 수 없다.
 	Running, HasResult bool
@@ -157,7 +157,7 @@ func (r IngestLast) ReasonText(l Lang) string {
 	return s
 }
 
-// IngestView — 03의 적재 구역.
+// IngestView — 02의 적재 구역.
 type IngestView struct {
 	// Configured — 화면에서 적재하도록 설정됐다(조회용 PQCOTA_READONLY_DSN과 적재용 PQCOTA_DSN이 둘 다 있다).
 	Configured bool
@@ -187,7 +187,7 @@ func (v IngestView) BlockText(l Lang) string { return ingestBlockText[v.Block].I
 // IngestConfirmLines: 적재 확인 페이지에 적을 것. 조직, 활성 정책의 지문, 검증된 결과 파일 수, 정책으로 제외되는 자산 수, 노드마다
 // 기대하는 참조와 지금의 최신 참조, 그리고 되돌릴 수 없다는 것.
 //
-// candidate면 02에서 확정한 새 정책으로 적재한다. 그때는 적재에 쓸 정책과 현재 활성 정책(active)의 지문을 나란히 적고, 적재가
+// candidate면 자산 스코프 화면에서 확정한 새 정책으로 적재한다. 그때는 적재에 쓸 정책과 현재 활성 정책(active)의 지문을 나란히 적고, 적재가
 // 끝나도 활성 정책이 바뀌지 않는다는 것을 밝힌다.
 func IngestConfirmLines(l Lang, org, policy string, noPolicy, candidate bool, active string, files, observed, managed int, nodes []IngestNode) []string {
 	out := []string{tIngestLineOrg.F(l, org)}
@@ -206,13 +206,13 @@ func IngestConfirmLines(l Lang, org, policy string, noPolicy, candidate bool, ac
 	return append(out, tIngestLineSameDB.In(l), tIngestLineAppendOnly.In(l))
 }
 
-// ObservePolicy — 03의 「활성화할 확정 정책: 재적재와 활성화」. Offer의 From · To가 현재 활성 정책과 활성화할 확정 정책의 지문이다.
+// ObservePolicy — 02의 「활성화할 확정 정책: 재적재와 활성화」. Offer의 From · To가 현재 활성 정책과 활성화할 확정 정책의 지문이다.
 // Ingest는 **활성화할 확정 정책으로** 적재한다면의 구역이다(노드별 기대 참조와 이력의 상태).
 type ObservePolicy struct {
 	Offer                     ActivationOffer
 	ActiveFile, CandidateFile string
 	Ingest                    IngestView
-	// ActivateRev — 활성화 양식에 실을 rev. 활성화는 판정 세션 · 두 정책 파일 · 결과 폴더를 함께 재므로 03의 rev와 다르다.
+	// ActivateRev — 활성화 양식에 실을 rev. 활성화는 판정 세션 · 두 정책 파일 · 결과 폴더를 함께 재므로 02의 rev와 다르다.
 	ActivateRev string
 }
 

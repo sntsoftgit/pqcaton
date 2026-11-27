@@ -79,7 +79,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 2 && args[0] == ingestRunFlag {
 		return ingestMain(args[1])
 	}
-	// 06의 실행 감독 모드(provsupervise.go). 이것도 화면이 띄운다.
+	// 05의 실행 감독 모드(provsupervise.go). 이것도 화면이 띄운다.
 	if len(args) == 3 && args[0] == provSuperviseFlag {
 		return provSupervise(args[1], args[2])
 	}
@@ -935,7 +935,7 @@ func (s *server) finalize(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return store.Parts{}, err
 		}
-		// 이 계획을 만든 활성 정책의 지문. 영수증(형식 2)에 계획과 한 트랜잭션으로 적고, 06이 지금 활성 정책과 견준다.
+		// 이 계획을 만든 활성 정책의 지문. 영수증(형식 2)에 계획과 한 트랜잭션으로 적고, 05가 지금 활성 정책과 견준다.
 		// 세션과 같은 잠금 안에서 같은 파일을 읽는다. 그 사이 파일이 바뀌면 rev 재확인이 쓰기를 막는다.
 		pd, err := scope.PolicyFileDigest(s.scopeAssets)
 		if err != nil {
@@ -1030,7 +1030,7 @@ func (s *server) scopeEdit(w http.ResponseWriter, r *http.Request) {
 		v = v.Editable(files)
 	}
 	v.Finalized = wd.scopeFinal.Locked()
-	// 02를 방금 확정했고(확정 알림) 그 정책이 05와 같은 판정으로 활성화를 기다리면 다음 단계를 잇는다.
+	// 자산 스코프를 방금 확정했고(확정 알림) 그 정책이 04와 같은 판정으로 활성화를 기다리면 다음 단계를 잇는다.
 	if ui.HasNotice(r.URL.Query().Get(ui.MsgParam), ui.NoticeFinalizedPolicy) {
 		if o, err := s.activationOffer(); err == nil && o != nil {
 			v.ActivationNext = true
@@ -1343,15 +1343,15 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	page := s.nextPage(r, ui.ScreenSurvey, s.results, s.steps(wd))
 	page.Org = res.Org
 	v := ui.NewSurveyView(res, page)
-	// 05와 같은 판정이다. 할 수 없으면(같은 정책 · 확정하지 않은 후보 · 잠긴 세션) 알리지 않는다.
+	// 04와 같은 판정이다. 할 수 없으면(같은 정책 · 확정하지 않은 후보 · 잠긴 세션) 알리지 않는다.
 	if o, err := s.activationOffer(); err == nil {
 		v.Activation = o
 	}
 	html(w, r, func(out io.Writer) error { return ui.RenderSurvey(out, v) })
 }
 
-// surveyPicture — 04의 대조 그림 조각. **04 화면은 `dot`을 돌리지 않고 뜬다**: 먼저 읽을 것은 대조 결과와 판정할 항목 수이고,
-// 그림이 느려도 표와 05로 가는 길은 바로 쓸 수 있어야 한다. 이력 화면과 같은 renderDOT(검사 · 시간 · 크기 상한)을 지난다.
+// surveyPicture — 03의 대조 그림 조각. **03 화면은 `dot`을 돌리지 않고 뜬다**: 먼저 읽을 것은 대조 결과와 판정할 항목 수이고,
+// 그림이 느려도 표와 04로 가는 길은 바로 쓸 수 있어야 한다. 이력 화면과 같은 renderDOT(검사 · 시간 · 크기 상한)을 지난다.
 // 그리지 못하면 까닭과 DOT 원문을 준다. 끼워 넣는 쪽이 오류 응답을 싣지 않으므로 그때도 200이다.
 func (s *server) surveyPicture(w http.ResponseWriter, r *http.Request) {
 	l := ui.PickLang(r)
@@ -1365,7 +1365,7 @@ func (s *server) surveyPicture(w http.ResponseWriter, r *http.Request) {
 	html(w, r, func(out io.Writer) error { return ui.RenderSurveyPicture(out, l, svg, state, dot, unreadable) })
 }
 
-// surveyDOT — 04의 대조 그림의 DOT. `dot`이 없어도, 그림 조각을 받지 않는 브라우저에서도 받을 수 있다.
+// surveyDOT — 03의 대조 그림의 DOT. `dot`이 없어도, 그림 조각을 받지 않는 브라우저에서도 받을 수 있다.
 func (s *server) surveyDOT(w http.ResponseWriter, r *http.Request) {
 	wd := s.load()
 	if s.results == "" || wd.resErr != nil || wd.res == nil {
@@ -1514,6 +1514,10 @@ func (s *server) nextPage(r *http.Request, here, subtitle string, st ui.StepStat
 	p.Org = s.orgName()
 	p.Results = s.results
 	p.Steps = ui.StepsFor(p.Lang, here, s.screens(), st)
+	// 관측 화면이 없으면(작업 폴더 없이 띄웠다) 자산 스코프 화면으로 가는 길을 번호 없는 링크로 둔다.
+	if sc := s.screens(); sc.Scope && !sc.Observe {
+		p.ScopeHref, p.ScopeText = ui.ScreenScope, ui.ScreenTitle(ui.ScreenScope, p.Lang)
+	}
 	if s.screens().Inventory {
 		p.InventoryHref = ui.ScreenInventory
 		p.InventoryText = ui.InventoryLabel(p.Lang)
