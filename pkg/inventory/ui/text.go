@@ -1267,11 +1267,11 @@ var (
 var (
 	tObserveEyebrow = T{KO: "01 · 관측", EN: "01 · Observation"}
 	tObserveHead    = T{
-		KO: "관측할 노드와 접속 방법을 적습니다",
-		EN: "Write down the nodes to observe and how to reach them"}
+		KO: "대상 노드와 기대 상태를 정하고 관측을 실행합니다.",
+		EN: "Set the target nodes and expected state, then run the observation."}
 	tObserveLede = T{
-		KO: "관측은 이 표에 적힌 노드에 SSH나 WinRM으로 접속해 수집기를 실행합니다. 결과는 작업 폴더의 results에 들어오고 02 대조로 이어집니다.",
-		EN: "Observation reaches each node in this table over SSH or WinRM and runs the collectors there. " +
+		KO: "관측은 접속 정보가 있는 대상 노드에 SSH나 WinRM으로 접속해 수집기를 실행합니다. 결과는 작업 폴더의 results에 들어오고 02 대조로 이어집니다.",
+		EN: "Observation reaches each target node that has access details over SSH or WinRM and runs the collectors there. " +
 			"The results land in the workspace's results folder and go on to 02 Reconciliation."}
 	tObserveMetricHosts = T{KO: "관측할 노드", EN: "nodes to observe"}
 
@@ -1321,7 +1321,7 @@ var (
 	tHostControl      = T{KO: "줄바꿈 · 탭 · 줄 구분자 같은 인쇄할 수 없는 문자가 들어 있습니다", EN: "it holds a character that cannot be printed, such as a line break, a tab or a line separator"}
 
 	tStepObserveNoHosts  = T{KO: "아직 접근 정보가 없습니다", EN: "no access written yet"}
-	tStepObserveNoRemote = T{KO: "대상 노드와 기대 상태만(작업 폴더 없이 열림)", EN: "target nodes and expected state only (opened without a workspace)"}
+	tStepObserveNoRemote = T{KO: "작업 폴더 없이 열림", EN: "opened without a workspace"}
 	tObsPartDecl         = T{KO: "1. 대상 노드와 기대 상태", EN: "1. Target nodes and expected state"}
 	tObsPartAccess       = T{KO: "2. 접속 준비와 관측", EN: "2. Access and observation"}
 	tObsPartScope        = T{KO: "3. 자산 스코프와 이력 적재", EN: "3. Asset scope and ingest into the history"}
@@ -1331,8 +1331,8 @@ var (
 	tObsDeclCounts = T{KO: "대상 노드 %d곳 · 기대 자산 %d개 · 기대 통신 %d개", EN: "%d target nodes · %d expected assets · %d expected communications"}
 	tObsDeclEdit   = T{KO: "대상 노드와 기대 상태 고치기", EN: "Edit the target nodes and expected state"}
 	tObsNoRemote   = T{
-		KO: "접속 준비와 원격 관측을 쓰려면 작업 폴더로 시작하십시오(pqcaton-ui -workspace <폴더>). 지금은 대상 노드와 기대 상태만 볼 수 있습니다.",
-		EN: "To prepare access and observe remotely, start with a workspace (pqcaton-ui -workspace <folder>). Right now only the target nodes and expected state can be viewed."}
+		KO: "접속 정보를 입력하고 관측하려면 작업 폴더로 시작하십시오(pqcaton-ui -workspace <폴더>).",
+		EN: "To enter access details and observe, start with a workspace (pqcaton-ui -workspace <folder>)."}
 	tStepObserveHosts   = T{KO: "관측할 노드 %d대", EN: "%d nodes to observe"}
 	tStepObserveRunning = T{KO: "관측 중", EN: "observing now"}
 )

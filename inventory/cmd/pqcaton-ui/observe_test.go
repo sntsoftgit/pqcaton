@@ -121,7 +121,7 @@ func TestObserveOpensOnlyInAWorkspace(t *testing.T) {
 		t.Fatalf("a declaration without a workspace: /observe = %d, want 200", w0.Code)
 	}
 	page := w0.Body.String()
-	for _, want := range []string{`data-observe="no-remote"`, "작업 폴더로 시작하십시오", `href="/decl?lang=ko" data-decl-edit`, "기대 자산 1개 · 기대 통신 1개", "data-decl-counts"} {
+	for _, want := range []string{`data-observe="no-remote"`, "접속 정보를 입력하고 관측하려면 작업 폴더로 시작하십시오", "대상 노드와 기대 상태를 정하고 관측을 실행합니다.", `href="/decl?lang=ko" data-decl-edit`, "기대 자산 1개 · 기대 통신 1개", "data-decl-counts"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("a declaration without a workspace: 01 lacks %q", want)
 		}
@@ -129,7 +129,7 @@ func TestObserveOpensOnlyInAWorkspace(t *testing.T) {
 	if strings.Contains(page, `action="`+ui.HostsSavePath+`"`) || strings.Contains(page, `action="`+ui.RunPath+`"`) {
 		t.Error("a declaration without a workspace: 01 shows the access form or offers to start")
 	}
-	if got := cards(t, page)["01"]; !strings.HasPrefix(got, "대상 노드와 기대 상태만") {
+	if got := cards(t, page)["01"]; got != "작업 폴더 없이 열림" {
 		t.Errorf("a declaration without a workspace: card 01 = %q", got)
 	}
 	decl := get(t, s, ui.ScreenDecl+"?lang=ko").Body.String()
