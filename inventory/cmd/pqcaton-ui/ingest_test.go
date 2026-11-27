@@ -820,3 +820,52 @@ func TestTheCandidateIngestIsBoundToItsPolicy(t *testing.T) {
 		t.Errorf("candidate ingest confirm with nothing pending = %d, want 409", w.Code)
 	}
 }
+
+// IC-U255 — **화면이 서명을 확인하지 못하는 결과를 터미널에서 다시 적재했어도, 이력이 맞으면 활성화할 수 있다.** 활성화의 조건은
+// 이력 대조뿐이고, 화면이 적재할 수 있는가(서명 · 검증 키)와는 따로다. 서명이 없는 결과가 섞였거나 검증 키가 없으면 02의
+// 「이 정책으로 재적재」 단추는 나오지 않고 까닭이 보인다. 그 상태에서 이력이 아직 활성 정책의 것이면 활성화 단추도 없다.
+// 같은 결과를 확정 정책으로 (화면 밖에서) 적재하면 02가 노드별 상태로 그것을 확인하고 「정책 활성화 확인」을 내며, 확인을 거쳐
+// 활성화된다. 막힌 까닭은 재적재가 더 필요 없으므로 사라진다.
+func TestActivationFollowsTheHistoryNotTheScreenIngest(t *testing.T) {
+	for name, blind := range map[string]func(t *testing.T, s *server) string{
+		"an unsigned result": func(t *testing.T, s *server) string {
+			path := filepath.Join(s.results, "web-openssl.json")
+			if err := os.WriteFile(path, []byte(dropSignature(readFile(t, path))), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			return `data-policy-block="problems"`
+		},
+		"no verification key": func(t *testing.T, s *server) string {
+			s.collectorVerify = filepath.Join(t.TempDir(), "missing.pub")
+			return `data-policy-block="` + ui.IngestNoVerifyKey + `"`
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s, mem := candidateServer(t)
+			block := blind(t, s)
+			ingestedUnder(t, s, s.scopeAssets, mem)
+			sec := policySection(observePage(t, s))
+			if !strings.Contains(sec, block) || strings.Contains(sec, "data-policy-go") || strings.Contains(sec, "data-policy-activate>") {
+				t.Fatalf("before the re-ingest: want the reason, no re-ingest button and no activation button:\n%s", sec)
+			}
+			if !strings.Contains(sec, `data-ingest-state="body-only"`) && !strings.Contains(sec, `data-ingest-state="absent"`) {
+				t.Errorf("the per-node state of the history is not shown although the screen cannot ingest:\n%s", sec)
+			}
+			ingestedUnder(t, s, s.scopeOut, mem) // 화면 밖에서(터미널) 확정 정책으로 다시 적재했다.
+			sec = policySection(observePage(t, s))
+			if !strings.Contains(sec, `data-policy-state="reingested"`) || !strings.Contains(sec, "data-policy-activate>") || strings.Contains(sec, block) {
+				t.Fatalf("after a re-ingest outside the screen: want the activation button and no reason left:\n%s", sec)
+			}
+			w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{ui.ActivateFromField: {ui.ActivateFromObserve}})
+			if w.Code != http.StatusOK {
+				t.Fatalf("activation confirm = %d\n%s", w.Code, w.Body.String())
+			}
+			if w = postForm(t, s, ui.ReviewScopeActivatePath, hiddenFields(w.Body.String())); w.Code != http.StatusSeeOther {
+				t.Fatalf("activate = %d\n%s", w.Code, w.Body.String())
+			}
+			if readFile(t, s.scopeAssets) != policyAll {
+				t.Error("the active policy was not replaced")
+			}
+		})
+	}
+}

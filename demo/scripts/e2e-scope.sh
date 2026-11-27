@@ -325,13 +325,25 @@ def form(page, action):
         elif name and 'type="checkbox"' in tag:
             sys.exit("the activation takes an operator statement: " + name.group(1))
     return fields
-page = get("/review?lang=en")
-st, body = post("/review/scope-activate/confirm?lang=en", form(page, "/review/scope-activate/confirm"))
+# 활성화 양식은 02 관측 화면에 있고, 모든 노드의 최신 참조가 확정 정책의 것일 때만 나온다. 04 판정 화면에는 양식이 없다.
+if "/review/scope-activate/confirm" in get("/review?lang=en"):
+    sys.exit("04 still carries the activation form; it belongs to 02")
+page = get("/observe?lang=en")
+if 'id="scope-activate"' not in page:
+    sys.exit("02 does not show the finalized policy that waits for activation")
 if want != "ok":
-    if st < 400 or want not in body:
-        sys.exit("confirm = %d, want the refusal %s" % (st, want))
-    print("   02: refused %s (%d)" % (want, st))
+    # 재적재 전이라 단추가 없어야 한다. 단추 없이 직접 보낸 요청도 그 거절 종류로 막혀야 한다.
+    if "/review/scope-activate/confirm" in page:
+        sys.exit("02 offers the activation although the history does not match")
+    def hidden(name):
+        m = re.search(r'name="' + name + r'" value="([^"]*)"', page)
+        return html.unescape(m.group(1)) if m else ""
+    st, body = post("/review/scope-activate/confirm?lang=en", {"csrf_token": hidden("csrf_token"), "rev": hidden("rev"), "from": "observe"})
+    if st < 400 or want not in body or "The policy was not activated" not in body:
+        sys.exit("confirm = %d, want the refusal %s headed as an activation refusal" % (st, want))
+    print("   02: no activation button; a direct request is refused %s (%d)" % (want, st))
     sys.exit(0)
+st, body = post("/review/scope-activate/confirm?lang=en", form(page, "/review/scope-activate/confirm"))
 if st != 200 or "At the time of checking, the pqcota history matched" not in body:
     sys.exit("confirm = %d without the reconciliation line" % st)
 st, body = post("/review/scope-activate?lang=en", form(body, "/review/scope-activate"))

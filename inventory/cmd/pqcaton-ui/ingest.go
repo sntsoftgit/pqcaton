@@ -429,10 +429,40 @@ func (s *server) policyView() *ui.ObservePolicy {
 		return nil
 	}
 	v := &ui.ObservePolicy{Offer: *o, ActiveFile: filepath.Base(s.scopeAssets), CandidateFile: filepath.Base(s.scopeOut), Ingest: s.ingestViewFor(ingestCandidate)}
+	s.candidateState(&v.Ingest)
 	if rev, err := store.Rev(s.inputsFor(ui.ReviewScopeActivateConfirmPath)); err == nil {
 		v.ActivateRev = rev
 	}
 	return v
+}
+
+// candidateState: 확정 정책으로 기대하는 참조와 이력의 지금 상태를, **화면이 적재할 수 있는가와 따로** 채운다.
+//
+// 화면의 적재는 서명을 확인한 결과만 받는다. 그래서 서명이 없는 결과(화면 밖에서 수집한 것)나 검증 키가 없는 설치에서는
+// 적재 구역이 막히고 상태를 계산하지 않는다. 그러나 **활성화의 조건은 이력 대조뿐이다**: 그런 결과를 터미널에서 확정 정책으로
+// 다시 적재했으면 활성화할 수 있어야 한다. 활성화 처리기가 하는 것과 같은 대조(결과 · 선언 · 확정 정책으로 기대 참조를 만들어
+// 노드의 최신 참조와 견준다)로 상태를 채운다. 막힌 까닭(Block · Problems)은 그대로 둔다: 「이 정책으로 재적재」 단추는 여전히
+// 나오지 않는다.
+func (s *server) candidateState(v *ui.IngestView) {
+	if len(v.Nodes) > 0 || v.StateUnknown || s.results == "" || s.scopeOut == "" {
+		return
+	}
+	var p ingestPlan
+	if err := s.ingestExpected(&p, s.results, s.scopeOut); err != nil || len(p.refs) == 0 {
+		return
+	}
+	states, err := upstream.States(s.upstream, p.refs)
+	if err != nil {
+		v.StateUnknown = true
+		for _, r := range p.refs {
+			v.Nodes = append(v.Nodes, ui.IngestNode{Node: r.Node, Want: r.Digest, Unknown: true})
+		}
+		return
+	}
+	v.AllCurrent = upstream.AllCurrent(states)
+	for _, st := range states {
+		v.Nodes = append(v.Nodes, ui.IngestNode{Node: st.Node, Want: st.Want, Latest: st.Latest, Body: st.Body, Current: st.Current})
+	}
 }
 
 // ingestLast: 가장 최근 적재의 기록과, **지금 이력을 다시 읽은** 노드별 상태.

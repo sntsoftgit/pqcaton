@@ -140,12 +140,20 @@ templ observePolicy(p Page, v ObservePolicy) {
 			<span>{ tPolicyStep1Body.In(p.Lang) }</span>
 			if v.Ingest.Running {
 				<p class="msg" role="status">{ tIngestRunning.In(p.Lang) }</p>
-			} else if v.Ingest.Block != "" {
-				<p class="msg bad" data-policy-block={ v.Ingest.Block }>{ v.Ingest.BlockText(p.Lang) }</p>
-			} else if len(v.Ingest.Problems) > 0 {
-				<p class="msg bad" data-policy-block="problems">{ tPolicySeeBelow.In(p.Lang) }</p>
 			} else {
-				<p class="hint" data-policy-summary>{ tPolicySummary.F(p.Lang, v.Ingest.Files, v.Ingest.Observed-v.Ingest.Managed, v.Ingest.Observed) }</p>
+				// 화면이 적재하지 못하는 까닭은 재적재가 아직 필요할 때만 알린다. 이력의 상태는 그와 따로 보인다(터미널에서
+				// 다시 적재했으면 여기서 확인된다).
+				if v.Ingest.Block != "" {
+					if !v.Reingested() {
+						<p class="msg bad" data-policy-block={ v.Ingest.Block }>{ v.Ingest.BlockText(p.Lang) }</p>
+					}
+				} else if len(v.Ingest.Problems) > 0 {
+					if !v.Reingested() {
+						<p class="msg bad" data-policy-block="problems">{ tPolicySeeBelow.In(p.Lang) }</p>
+					}
+				} else {
+					<p class="hint" data-policy-summary>{ tPolicySummary.F(p.Lang, v.Ingest.Files, v.Ingest.Observed-v.Ingest.Managed, v.Ingest.Observed) }</p>
+				}
 				if v.Ingest.StateUnknown {
 					<p class="msg bad" data-policy-state="unknown">{ tIngestStateUnknown.In(p.Lang) }</p>
 				} else if v.Ingest.AllCurrent {

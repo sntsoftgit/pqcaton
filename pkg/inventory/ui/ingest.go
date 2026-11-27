@@ -217,9 +217,10 @@ type ObservePolicy struct {
 }
 
 // Reingested — 모든 노드의 최신 참조가 활성화할 확정 정책의 것이라고 **확인했다.** 이력을 읽지 못했거나 기대 참조를 계산하지
-// 못했으면 거짓이다.
+// 못했으면 거짓이다. **화면이 적재할 수 있는가(Block · Problems)와는 따로다**: 화면이 서명을 확인하지 못하는 결과를 터미널에서
+// 다시 적재했어도, 이력이 맞으면 활성화할 수 있다.
 func (p ObservePolicy) Reingested() bool {
-	return p.Ingest.Block == "" && len(p.Ingest.Problems) == 0 && !p.Ingest.StateUnknown && p.Ingest.AllCurrent
+	return len(p.Ingest.Nodes) > 0 && !p.Ingest.StateUnknown && p.Ingest.AllCurrent
 }
 
 // CanActivate — 활성화 확인으로 가는 단추를 낼 수 있는가. 재적재가 확인됐고 적재가 돌고 있지 않을 때다. 단추를 눌러도 확인
