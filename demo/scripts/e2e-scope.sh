@@ -790,6 +790,10 @@ sys.exit("the observation did not end in 10 minutes")
 PY
 }
 "$UI" start >/dev/null
+# 접근 정보(hosts.csv)는 ui.sh가 쓴 것이고 화면에서 저장한 적이 없다(밖에서 만든 파일). 아래 관측은 그 파일을 다시 저장하지
+# 않고 돈다. 끝까지 바이트가 그대로인지 본다.
+hosts_sha() { docker exec "$CTL" sha256sum "$WS/hosts.csv" | cut -d' ' -f1; }
+HOSTS_SHA="$(hosts_sha)"
 docker stop -t 2 pay-db >/dev/null
 observe_run failed || fail "the observation with a stopped node did not end as failed"
 LEFT="$(marked)"; [ -z "$LEFT" ] || fail "processes of the failed observation were left: $LEFT"
@@ -881,6 +885,70 @@ OWN8="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count
 OTHER8="$(docker exec pqcota-demo-pg psql -U postgres -d pqcota -tAc "select count(*) from pqcota_observations where observed_at >= '$T8' and org <> '$ORG'" | tr -d '[:space:]')"
 [ "$OWN8" = "$NODES8" ] && [ "$OTHER8" = 0 ] || fail "ingesting the results 02 made added $OWN8 observation records to $ORG (want $NODES8, one per node) and $OTHER8 elsewhere"
 echo "   ingested as pqcota_ingest (PQCOTA_AUTO_DDL=0, the same trusted keys): $ACC8 results accepted, $OWN8 observation records in $ORG (one per node), none elsewhere"
+# 8b) 접근 정보의 노드 ID는 지금 선언에 있어야 한다.
+#   - 위의 두 관측은 밖에서 만든 hosts.csv를 다시 저장하지 않고 돌았고, 파일은 바이트까지 그대로다.
+#   - 화면을 연 뒤 선언에서 노드 이름을 바꾸면, 예전 화면이 보낸 시작 요청은 지금 선언으로 다시 검사돼 409로 막힌다. 실행 자리가
+#     생기지 않고(노드에 접속하지 않았다) 이 실행의 프로세스도 없으며, hosts.csv는 그대로다. 시험이 끝나면 선언을 되돌린다.
+[ "$(hosts_sha)" = "$HOSTS_SHA" ] || fail "hosts.csv changed during the observations although nothing was saved"
+OBSERVE8="$(docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/observe?lang=en')"
+if grep -q 'data-targets="orphans"' <<<"$OBSERVE8"; then fail "02 shows a row outside the declaration for the demo hosts.csv"; fi
+READY8="$(grep -o 'data-target-access="true"' <<<"$OBSERVE8" | wc -l | tr -d ' ')"
+[ "$READY8" = "$(wc -w <<<"$NODES" | tr -d ' ')" ] || fail "02 shows $READY8 declared nodes with access details, hosts.csv has $(wc -w <<<"$NODES")"
+echo "   02: the external hosts.csv was used as it is ($READY8 declared nodes ready, no save) and is byte-identical after a failed and a successful observation"
+docker exec -i "$CTL" python3 - "$WS" <<'PY' || fail "a start request sent after a declared node was renamed was not refused before any remote work"
+import html, json, os, re, sys, urllib.error, urllib.parse, urllib.request, http.cookiejar
+ws = sys.argv[1]
+base = "http://127.0.0.1:8765"
+op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+# 예전 화면: 이름을 바꾸기 전에 받은 시작 양식.
+page = op.open(base + "/observe?lang=en").read().decode()
+m = re.search(r'<form[^>]*action="/observe/run"[^>]*>(.*?)</form>', page, re.S)
+if not m:
+    sys.exit("02 offers no observation to start before the rename")
+fields = {}
+for tag in re.findall(r"<input[^>]*>", m.group(1)):
+    name, value = re.search(r'name="([^"]*)"', tag), re.search(r'value="([^"]*)"', tag)
+    if name:
+        fields[name.group(1)] = html.unescape(value.group(1)) if value else ""
+fields["window"] = "5"
+node = open(os.path.join(ws, "hosts.csv")).read().splitlines()[1].split(",")[0]
+dpath = os.path.join(ws, "declaration.json")
+original = open(dpath, "rb").read()
+runs = os.path.join(ws, "observations")
+before = set(os.listdir(runs))
+d = json.loads(original)
+if not any(n.get("name") == node for n in d["nodes"]):
+    sys.exit("the declaration has no node named " + node)
+for n in d["nodes"]:
+    if n.get("name") == node:
+        n["name"] = node + "-renamed"
+try:
+    with open(dpath, "w") as f:
+        json.dump(d, f)
+    req = urllib.request.Request(base + "/observe/run?lang=en", data=urllib.parse.urlencode(fields).encode(),
+        headers={"Origin": base, "Content-Type": "application/x-www-form-urlencoded"})
+    try:
+        r = op.open(req)
+        sys.exit("the start request was accepted (%d) although %s is no longer declared" % (r.status, node))
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        if e.code != 409 or "run-hosts-undeclared" not in body:
+            sys.exit("start = %d without run-hosts-undeclared" % e.code)
+    after = set(os.listdir(runs))
+    if after != before:
+        sys.exit("a run directory was created: %s" % sorted(after - before))
+    page = op.open(base + "/observe?lang=en").read().decode()
+    if 'data-orphan-id="%s"' % node not in page or 'action="/observe/run"' in page:
+        sys.exit("02 does not show the old row as outside the declaration, or still offers to start")
+    print("   02: after renaming %s in the declaration, the start request from the earlier screen is refused run-hosts-undeclared (409); no run directory was created" % node)
+finally:
+    with open(dpath, "wb") as f:
+        f.write(original)
+PY
+LEFT="$(marked)"; [ -z "$LEFT" ] || fail "processes were started by the refused observation: $LEFT"
+[ "$(hosts_sha)" = "$HOSTS_SHA" ] || fail "hosts.csv changed after the refused start"
+docker exec "$CTL" curl -fsS 'http://127.0.0.1:8765/observe?lang=en' | grep -q 'action="/observe/run"' || fail "02 does not offer to start again after the declaration was restored"
+echo "   hosts.csv is byte-identical after the refused start ($HOSTS_SHA); the declaration was restored"
 "$UI" stop >/dev/null
 
 echo

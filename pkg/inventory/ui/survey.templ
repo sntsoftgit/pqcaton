@@ -86,6 +86,9 @@ templ surveyBody(v SurveyView) {
 							if a.Excluded {
 								<span class="hint">{ tSurveyExcluded.In(v.Page.Lang) }</span>
 							}
+							if a.NodeAbsent {
+								<span class="hint" data-node-absent>{ tSurveyAbsentNode.In(v.Page.Lang) }</span>
+							}
 						</td>
 					</tr>
 				}

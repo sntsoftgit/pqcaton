@@ -303,10 +303,10 @@ var (
 	tSaveTarget = T{KO: "저장하는 파일:", EN: "Saves to:"}
 
 	// 관측 결과 폴더가 비어 있을 때. 결과를 넣으면 화면을 다시 불러오는 것만으로 대조에 들어간다(세션은 읽을 때마다 다시 세운다).
-	tEmptyResultsHead = T{KO: "아직 관측 결과가 없습니다", EN: "No observed results yet"}
+	tEmptyResultsHead = T{KO: "대조할 성공 관측 결과가 아직 없습니다", EN: "No successful observation result to reconcile with yet"}
 	tEmptyResultsBody = T{
-		KO: "pqcota 수집이 이 폴더에 결과를 씁니다. 결과 파일을 넣은 뒤 이 화면을 다시 불러오면 대조와 판정에 들어갑니다.",
-		EN: "pqcota collection writes its results to this folder. Put the result files there and reload this screen: they go into reconciliation and review."}
+		KO: "02 관측이 성공으로 끝나거나 pqcota 수집이 이 폴더에 결과를 쓰면, 이 화면을 다시 불러왔을 때 대조와 판정에 들어갑니다.",
+		EN: "Once an observation on 02 finishes successfully, or pqcota collection writes its results to this folder, reloading this screen takes them into reconciliation and review."}
 
 	// 선언 문제 목록(decl.Check). 막지 않고 짚는다.
 	tDeclProblemsHead = T{KO: "앞뒤가 맞지 않는 자리", EN: "Places that do not add up"}
@@ -1358,7 +1358,41 @@ var (
 	tRunRefusedNotReady = T{
 		KO: "시작하기 전에 갖출 것이 빠졌습니다. 02 관측 화면의 점검 목록에서 ✗ 표시된 것을 갖추십시오.",
 		EN: "Something needed before starting is missing. Provide the items marked ✗ in the checklist on the 02 Observation screen."}
-	tRunRefusedBusy = T{
+	tRunRefusedHostsUndeclared = T{
+		KO: "접근 정보(hosts.csv)에 지금 선언에 없는 노드 ID가 있어 관측을 시작하지 않았습니다. 노드에는 접속하지 않았고 파일은 그대로입니다. 02 관측 화면의 「선언에 없는 행」에서 그 행과 ID를 확인하십시오.",
+		EN: "The access details (hosts.csv) hold a node ID that is not in the current declaration, so no observation was started. No node was contacted and the files are unchanged. See the row and the ID under \"Rows not in the declaration\" on the 02 Observation screen."}
+	tTargetsHead = T{KO: "대상 노드의 접속 준비", EN: "Access readiness of the target nodes"}
+	tTargetsLede = T{
+		KO: "줄은 01 선언의 노드입니다. 접근 정보의 노드 ID가 선언의 노드 이름과 대소문자까지 같으면 그 노드의 접속 정보입니다. 접속 정보가 없는 노드는 이번 관측에서 빠질 뿐이고, 대조에는 선언의 모든 노드가 남습니다.",
+		EN: "The rows are the nodes of 01 Declaration. Access details belong to a node when their node ID equals the declared node name, including case. A node without access details is only left out of this observation; reconciliation keeps every declared node."}
+	tTargetsDeclUnknown = T{
+		KO: "선언이 아직 없거나 읽을 수 없어 접근 정보의 노드 ID를 견줄 수 없습니다. 01 선언에서 대상 노드를 먼저 등록하십시오.",
+		EN: "There is no declaration yet, or it cannot be read, so the node IDs of the access details cannot be checked. Register the target nodes in 01 Declaration first."}
+	tTargetsColState       = T{KO: "접속 준비와 관측", EN: "Access and observation"}
+	tTargetUnready         = T{KO: "접속 정보 미입력(아직 관측하지 않는 노드)", EN: "no access details (not observed yet)"}
+	tTargetReady           = T{KO: "준비됨", EN: "ready"}
+	tTargetObserved        = T{KO: "관측됨: 지금 결과는 %s에 끝난 관측의 것", EN: "observed: the current results come from the observation that finished at %s"}
+	tTargetObservedOutside = T{KO: "지금 결과에 있음(화면 밖에서 받은 결과)", EN: "in the current results (received outside the screen)"}
+	tTargetFailed          = T{KO: "관측 실패: %s에 끝난 가장 최근 실행이 이 노드에 접속하지 못했거나 이 노드의 단계가 실패함", EN: "observation failed: the most recent run, which ended at %s, could not reach this node or a step failed on it"}
+	tOrphansHead           = T{KO: "선언에 없는 행 %d개", EN: "Rows not in the declaration: %d"}
+	tOrphansLede           = T{
+		KO: "접근 정보(hosts.csv)에는 있고 지금 선언에는 없는 노드 ID입니다. 이 행이 있는 동안에는 관측과 05의 원격 실행을 시작하지 않습니다. 화면은 파일을 고치지 않습니다.",
+		EN: "These node IDs are in the access details (hosts.csv) but not in the current declaration. While such a row exists, no observation and no remote run of 05 is started. The screen does not change the file."}
+	tOrphanRow        = T{KO: "행 %d", EN: "row %d"}
+	tRunTargets       = T{KO: "이번 관측의 대상 %d곳: %s", EN: "Targets of this observation (%d): %s"}
+	tRunOmitted       = T{KO: "접속 정보가 없어 이번에 빠지는 노드 %d곳: %s. 대조에는 그대로 남습니다.", EN: "Left out this time for lack of access details (%d): %s. They stay in reconciliation."}
+	tSurveySrcAt      = T{KO: "이 대조는 %s에 끝난 관측의 결과로 했습니다(노드 %d곳).", EN: "This reconciliation used the results of the observation that finished at %s (%d nodes)."}
+	tSurveySrcOutside = T{KO: "이 대조는 화면 밖에서 받은 결과로 했습니다(노드 %d곳). 그 결과의 관측 시각은 화면이 알지 못합니다.", EN: "This reconciliation used results received outside the screen (%d nodes). The screen does not know when they were observed."}
+	tSurveySrcEmpty   = T{KO: "아래의 선언 자산은 관측과 견준 것이 아닙니다. 성공한 관측에서 찾지 못했다는 뜻이 아닙니다.", EN: "The declared assets below were not compared with an observation. This does not mean that a successful observation failed to find them."}
+	tSurveySrcFailed  = T{KO: "가장 최근 실행은 %s에 「%s」로 끝나 결과를 바꾸지 않았습니다.", EN: "The most recent run ended at %s as \"%s\" and did not replace the results."}
+	tSurveySrcAbsent  = T{KO: "대조에 쓴 결과에 없는 선언 노드 %d곳: %s. 이 노드들의 미관측은 그 노드를 관측하지 않았다는 뜻입니다.", EN: "Declared nodes that are not in the results used (%d): %s. Their unobserved assets mean the node itself was not observed."}
+	tRunStateShort    = map[RunState]T{
+		RunFailed: {KO: "실패", EN: "failed"}, RunStopped: {KO: "중지됨", EN: "stopped"},
+		RunIncomplete: {KO: "결과가 빠짐", EN: "incomplete"}, RunInterrupted: {KO: "중단됨", EN: "interrupted"},
+		RunStuck: {KO: "회수 필요", EN: "needs reclaiming"},
+	}
+	tSurveyAbsentNode = T{KO: "대조에 쓴 결과에 없는 노드", EN: "node not in the results used"}
+	tRunRefusedBusy   = T{
 		KO: "이미 관측이 돌고 있습니다. 끝나거나 멈춘 뒤에 다시 시작하십시오.",
 		EN: "An observation is already running. Start again after it finishes or is stopped."}
 	tRunRunning = T{KO: "관측 중입니다(%s 시작)", EN: "Observing (started at %s)"}
@@ -1411,6 +1445,7 @@ var (
 
 var runItemText = map[RunItem]T{
 	RunHosts:               {KO: "관측할 노드", EN: "Nodes to observe"},
+	RunHostsDeclared:       {KO: "접근 정보의 노드 ID가 모두 선언에 있음", EN: "Every node ID in the access details is in the declaration"},
 	RunAnsible:             {KO: "ansible-playbook", EN: "ansible-playbook"},
 	RunCollectors:          {KO: "수집기 폴더", EN: "Collector folder"},
 	RunLinuxBins:           {KO: "Linux 수집기", EN: "Linux collectors"},
@@ -1431,6 +1466,9 @@ var runItemText = map[RunItem]T{
 
 var runItemMissing = map[RunItem]T{
 	RunHosts: {KO: "위 표에 노드를 적고 저장하십시오", EN: "Write the nodes in the table above and save"},
+	RunHostsDeclared: {
+		KO: "선언에 없는 행을 지워 저장하거나, 그 노드를 01 선언에 등록하십시오. 노드 ID는 선언의 노드 이름과 대소문자까지 같아야 합니다",
+		EN: "Remove the rows that are not in the declaration and save, or register those nodes in 01 Declaration. A node ID must equal the declared node name, including case"},
 	RunAnsible: {
 		KO: "이 기계에 Ansible을 설치하십시오. PATH에서 ansible-playbook을 찾습니다",
 		EN: "Install Ansible on this machine: ansible-playbook is looked up on the PATH"},
@@ -1848,15 +1886,16 @@ var (
 )
 
 var provBlockText = map[string]T{
-	ProvViewOnly:     {KO: "보기 전용으로 열려 있어 실행하지 않습니다.", EN: "The screen is open view-only, so nothing is run."},
-	ProvNotApproved:  {KO: "지금 계획에 대한, 이 키로 확인되는 승인이 있어야 합니다.", EN: "The current plan needs an approval this key can check."},
-	ProvNoPlaybook:   {KO: "플레이북을 먼저 생성하십시오.", EN: "Generate the playbooks first."},
-	ProvLevel:        {KO: "화면은 L2로 생성한 플레이북만 실행합니다. L2로 다시 생성하십시오.", EN: "The screen only runs a playbook generated at L2. Generate it again at L2."},
-	ProvNotGenerated: {KO: "플레이북 파일이 승인된 계획에서 생성한 것과 다릅니다. 다시 생성하십시오.", EN: "The playbook file differs from what the approved plan generates. Generate it again."},
-	ProvUnknownForm:  {KO: "플레이북에 이 판이 알지 못하는 형식의 줄이 있습니다.", EN: "The playbook has a line in a form this version does not know."},
-	ProvNoHosts:      {KO: "접근 정보(hosts.csv)에서 이 노드를 읽지 못했습니다.", EN: "This node could not be read from the access details (hosts.csv)."},
-	ProvWindows:      {KO: "Windows 노드는 화면에서 실행하지 않습니다.", EN: "Windows nodes are not run from the screen."},
-	ProvNoAnsible:    {KO: "ansible-playbook을 찾지 못했습니다.", EN: "ansible-playbook was not found."},
+	ProvViewOnly:        {KO: "보기 전용으로 열려 있어 실행하지 않습니다.", EN: "The screen is open view-only, so nothing is run."},
+	ProvNotApproved:     {KO: "지금 계획에 대한, 이 키로 확인되는 승인이 있어야 합니다.", EN: "The current plan needs an approval this key can check."},
+	ProvNoPlaybook:      {KO: "플레이북을 먼저 생성하십시오.", EN: "Generate the playbooks first."},
+	ProvLevel:           {KO: "화면은 L2로 생성한 플레이북만 실행합니다. L2로 다시 생성하십시오.", EN: "The screen only runs a playbook generated at L2. Generate it again at L2."},
+	ProvNotGenerated:    {KO: "플레이북 파일이 승인된 계획에서 생성한 것과 다릅니다. 다시 생성하십시오.", EN: "The playbook file differs from what the approved plan generates. Generate it again."},
+	ProvUnknownForm:     {KO: "플레이북에 이 판이 알지 못하는 형식의 줄이 있습니다.", EN: "The playbook has a line in a form this version does not know."},
+	ProvNoHosts:         {KO: "접근 정보(hosts.csv)에서 이 노드를 읽지 못했습니다.", EN: "This node could not be read from the access details (hosts.csv)."},
+	ProvHostsUndeclared: {KO: "접근 정보(hosts.csv)에 선언에 없는 노드 ID가 있습니다. 02 관측에서 그 행을 지우거나 그 노드를 선언에 등록하십시오.", EN: "The access details (hosts.csv) hold a node ID that is not in the declaration. On 02 Observation, remove that row or register the node in the declaration."},
+	ProvWindows:         {KO: "Windows 노드는 화면에서 실행하지 않습니다.", EN: "Windows nodes are not run from the screen."},
+	ProvNoAnsible:       {KO: "ansible-playbook을 찾지 못했습니다.", EN: "ansible-playbook was not found."},
 	ProvUnsupported + "-provider": {
 		KO: "provider 모듈을 놓거나 확인하는 작업입니다. 미리 보기로 확인할 수 없어 화면에서 실행하지 않습니다.",
 		EN: "This task stages or verifies a provider module. A preview cannot check it, so the screen does not run it."},

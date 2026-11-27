@@ -21,6 +21,7 @@ templ observePage(v ObserveView) {
 			<h3>{ tHostsHead.In(v.Page.Lang) }</h3>
 			<p class="lede">{ tHostsLede.In(v.Page.Lang) }</p>
 			@hostsForm(v)
+			@observeTargets(v.Page.Lang, v.Targets)
 			<h3 id="observe-run">{ tRunHead.In(v.Page.Lang) }</h3>
 			<p class="lede">{ tRunLede.In(v.Page.Lang) }</p>
 			// 실행 상태가 시작 전 점검보다 위다. 시작하면 이 자리(#observe-run)로 오는데, 점검 목록이 길어 좁은 화면에서는
@@ -34,6 +35,10 @@ templ observePage(v ObserveView) {
 						{ tRunWindow.In(v.Page.Lang) }
 						<input type="number" name="window" min="5" max="3600" value={ strconv.Itoa(v.Run.Window) }/>
 					</label>
+					<p class="hint" data-run-targets>{ tRunTargets.F(v.Page.Lang, len(v.Targets.Ready()), nodeNames(v.Targets.Ready())) }</p>
+					if len(v.Targets.Unready()) > 0 {
+						<p class="msg" data-run-omitted>{ tRunOmitted.F(v.Page.Lang, len(v.Targets.Unready()), nodeNames(v.Targets.Unready())) }</p>
+					}
 					<div class="actions">
 						<button class="primary">{ tRunStart.In(v.Page.Lang) }</button>
 						@tip(v.Page.Lang, tRunStartHint.In(v.Page.Lang))
@@ -362,3 +367,40 @@ templ observeScope(p Page, v ObserveScope) {
 		</div>
 	}
 }
+
+// observeTargets — 선언의 노드별 접속 준비와 관측 상태, 그리고 선언에 없는 접근 정보 행. **줄은 선언의 노드다**: 접속 정보가
+// 없는 노드도 줄로 남고(아직 관측하지 않는 노드), 접근 정보에만 있는 ID는 따로 보이며 그것이 있는 동안 관측을 시작하지 않는다.
+templ observeTargets(l Lang, t ObserveTargets) {
+	<h3 id="observe-targets">{ tTargetsHead.In(l) }</h3>
+	<p class="lede">{ tTargetsLede.In(l) }</p>
+	if t.DeclUnknown {
+		<p class="msg bad" data-targets="decl-unknown">{ tTargetsDeclUnknown.In(l) }</p>
+	} else if len(t.Rows) > 0 {
+		<div class="table-wrap">
+			<table class="provrun" data-targets="rows">
+				<tr>
+					<th>{ tProvColNode.In(l) }</th>
+					<th>{ tTargetsColState.In(l) }</th>
+				</tr>
+				for _, r := range t.Rows {
+					<tr data-target-node={ r.Node } data-target-state={ r.State } data-target-access={ strconv.FormatBool(r.HasAccess) }>
+						<td><code>{ r.Node }</code></td>
+						<td>{ r.StateText(l) }</td>
+					</tr>
+				}
+			</table>
+		</div>
+	}
+	if len(t.Orphans) > 0 {
+		<section class="problems" data-targets="orphans">
+			<h3>{ tOrphansHead.F(l, len(t.Orphans)) }</h3>
+			<p class="lede">{ tOrphansLede.In(l) }</p>
+			<ul>
+				for _, o := range t.Orphans {
+					<li data-orphan-row={ strconv.Itoa(o.Row) } data-orphan-id={ o.ID }>{ tOrphanRow.F(l, o.Row) }: <code>{ o.ID }</code></li>
+				}
+			</ul>
+		</section>
+	}
+}
+

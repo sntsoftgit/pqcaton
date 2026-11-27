@@ -72,6 +72,7 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 	page.Rev = rev
 	v := ui.NewObserveView(hosts, page)
 	v.Scope = s.observeScope(page.Lang, st)
+	v.Targets = s.observeTargets(hosts, wd)
 	v.Run = s.runView()
 	if wd.res != nil {
 		v.Run.JCAUnconfirmed = wd.res.JCAUnconfirmed
@@ -177,6 +178,15 @@ func (s *server) runStart(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		window = n
+	}
+	// 접근 정보를 **지금** 다시 읽어 **지금의** 선언과 견준다. 화면을 연 뒤 선언에서 노드 이름을 바꿨으면 여기서 막힌다
+	// (노드에 접속하기 전이고, 파일은 건드리지 않는다).
+	if hosts, err := s.loadHosts(); err == nil && len(hosts) > 0 {
+		if orphans, derr := s.hostsDeclared(hosts); derr != nil {
+			fmt.Fprintf(os.Stderr, "refused %s %s (409): %v (%s)\n", r.Method, r.URL.Path, derr, ui.OrphanDetail(orphans))
+			s.refuse(w, r, http.StatusConflict, ui.RefusedRunHostsUndeclared, back+"?"+ui.LangParam+"="+string(ui.PickLang(r))+"#observe-targets", []ui.FileRef{file(ui.PickLang(r), "hosts", s.hosts)})
+			return
+		}
 	}
 	if !(ui.ObserveRun{Writable: true, Checks: s.preflight()}).CanStart() {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedRunNotReady, back, nil)

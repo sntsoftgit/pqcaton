@@ -30,7 +30,10 @@ const (
 	RefusedExists = "exists"
 	// RefusedRunNotReady · RefusedRunBusy — 관측을 시작하지 않았다(409). 빠진 것이 있거나 이미 돌고 있다.
 	RefusedRunNotReady = "run-not-ready"
-	RefusedRunBusy     = "run-busy"
+	// RefusedRunHostsUndeclared — 접근 정보(hosts.csv)에 선언에 없는 노드 ID가 있어(또는 선언을 읽지 못해) 관측을 시작하지
+	// 않았다(409). 노드에 접속하기 전이고 파일은 그대로다. 시작 요청을 처리할 때 현재 선언으로 다시 견준다.
+	RefusedRunHostsUndeclared = "run-hosts-undeclared"
+	RefusedRunBusy            = "run-busy"
 	// RefusedProvNotReady · RefusedProvBusy — 05의 미리 보기를 시작하지 않았다(409).
 	RefusedProvNotReady = "prov-not-ready"
 	RefusedProvBusy     = "prov-busy"
@@ -114,7 +117,8 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedExpired: {body: tRefusedExpired}, RefusedConfirm: {body: tRefusedConfirmBad},
 	RefusedUnsafe: {body: tRefusedUnsafe}, RefusedMismatch: {body: tRefusedMismatch}, RefusedDamaged: {body: tRefusedDamaged},
 	RefusedDiagnostic: {tErrInputBrokenHead, tRefusedDiagnostic}, RefusedExists: {body: tRefusedExists},
-	RefusedRunNotReady: {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
+	RefusedRunHostsUndeclared: {tRunRefusedHead, tRunRefusedHostsUndeclared},
+	RefusedRunNotReady:        {tRunRefusedHead, tRunRefusedNotReady}, RefusedRunBusy: {tRunRefusedHead, tRunRefusedBusy},
 	RefusedProvNotReady: {tProvRefusedHead, tProvRefusedNotReady}, RefusedProvBusy: {tProvRefusedHead, tProvRefusedBusy},
 	RefusedProvGrant:      {tApplyRefusedHead, tApplyRefusedGrant},
 	RefusedIngestNotReady: {tIngestRefusedHead, tIngestRefusedNotReady}, RefusedIngestBusy: {tIngestRefusedHead, tIngestRefusedBusy},

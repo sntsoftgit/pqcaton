@@ -345,6 +345,11 @@ func (s *server) preflight() []ui.RunCheck {
 		err = hostValuesOK(hosts)
 	}
 	add(ui.RunHosts, err == nil && len(hosts) > 0, true, fmt.Sprint(len(hosts)))
+	// 접근 정보의 노드 ID는 지금 선언에 있어야 한다(targets.go). 선언에 없는 행이 있으면 준비된 다른 노드가 있어도 시작하지 않는다.
+	if err == nil && len(hosts) > 0 {
+		orphans, derr := s.hostsDeclared(hosts)
+		add(ui.RunHostsDeclared, derr == nil, true, ui.OrphanDetail(orphans))
+	}
 	path, err := exec.LookPath(ansibleCommand)
 	add(ui.RunAnsible, err == nil, true, path)
 	if stuck, procs := s.stuckRuns(); len(stuck) > 0 {
@@ -509,6 +514,12 @@ func (s *server) startRun(window int) error {
 	}
 	if j.logFile, err = os.OpenFile(filepath.Join(j.dir, runLog), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600); err != nil {
 		return fail(err)
+	}
+	// 인벤토리를 쓰기 전에, **인벤토리에 실을 바로 그 접근 정보**를 지금 선언과 한 번 더 견준다(targets.go). 시작 요청의
+	// 검사와 이 자리 사이에 파일이 바뀌었어도 선언에 없는 노드에는 접속하지 않는다. 실행 자리와 로그를 만든 뒤에 본다:
+	// 그래야 이 실행이 「실패」로 기록되고 까닭이 로그에 남는다.
+	if orphans, derr := s.hostsDeclared(hosts); derr != nil {
+		return fail(fmt.Errorf("%w (%s); nothing was started", derr, ui.OrphanDetail(orphans)))
 	}
 	if win := windowsNodes(hosts); len(win) > 0 {
 		return fail(fmt.Errorf("Windows nodes are not observed from the screen in this version (%s); nothing was started", strings.Join(win, ", ")))

@@ -170,7 +170,7 @@ var fieldName = regexp.MustCompile(`name="((?:policy|plan|kind|target|level):[^"
 // 「확정됨」이 되고, 계획 파일은 pqcota가 읽는 계약 형식(FinalizedPlan, IN_REVIEW)이다. 판정 원장도 남는다.
 func TestEmptyWorkspaceToFinalizedPlan(t *testing.T) {
 	for _, c := range []struct{ lang, empty, finalized string }{
-		{"ko", "아직 관측 결과가 없습니다", "확정됨"}, {"en", "No observed results yet", "Finalized"},
+		{"ko", "대조할 성공 관측 결과가 아직 없습니다", "확정됨"}, {"en", "No successful observation result to reconcile with yet", "Finalized"},
 	} {
 		t.Run(c.lang, func(t *testing.T) {
 			ws := t.TempDir()

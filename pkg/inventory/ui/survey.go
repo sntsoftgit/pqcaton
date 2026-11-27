@@ -36,6 +36,21 @@ type SurveyView struct {
 	// Activation — 자산 스코프 화면에서 확정한 정책이 활성 정책과 달라 활성화할 수 있으면 그 두 지문(02의 활성화 구역과 같은 판정). 03은
 	// 이 대조가 활성 정책으로 한 것이라고 알리고 02의 활성화 구역으로 잇기만 한다. 활성화 양식은 02에만 둔다. 없으면 nil이다.
 	Activation *ActivationOffer
+	// Source — 어느 결과로 대조했는가(시각 · 가장 최근 실패 · 결과에 없는 선언 노드). 서버가 채운다. 없으면 nil이다.
+	Source *SurveySource
+}
+
+// WithSource — 대조에 쓴 결과의 출처를 싣고, 결과에 없는 노드의 미관측 자산에 그 표시를 단다.
+func (v SurveyView) WithSource(src SurveySource) SurveyView {
+	v.Source = &src
+	absent := map[string]bool{}
+	for _, n := range src.Absent {
+		absent[n] = true
+	}
+	for i := range v.Assets {
+		v.Assets[i].NodeAbsent = v.Assets[i].State == string(reconcile.Unobserved) && absent[v.Assets[i].Node]
+	}
+	return v
 }
 
 // AssetRow — 자산 한 줄.
@@ -45,6 +60,8 @@ type AssetRow struct {
 	Rescan                          bool
 	// Excluded — 자산 스코프 정책이 관리 대상에서 뺐다(EXCLUDED_BY_POLICY). 판정 큐에 오르지 않는다.
 	Excluded bool
+	// NodeAbsent — 미관측인데, 대조에 쓴 결과에 이 노드 자체가 없다(접속 정보 미입력 · 관측 실패 · 성공한 관측 없음).
+	NodeAbsent bool
 }
 
 // EdgeRow — 엣지 한 줄.

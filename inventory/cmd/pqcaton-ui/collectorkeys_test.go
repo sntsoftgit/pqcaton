@@ -155,11 +155,11 @@ func TestWindowsNodesAreRefusedBeforeTheRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(s.hosts, append(b, []byte("win-1,win,10.0.0.9,22,admin,,,"+inventory.OSWindows+",ssh\n")...), 0o600); err != nil {
+	if err := os.WriteFile(s.hosts, append(b, []byte("app,win,10.0.0.5,22,admin,,,"+inventory.OSWindows+",ssh\n")...), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	c := checkOf(s.preflight(), ui.RunWindowsUnsupported)
-	if c == nil || c.OK || !c.Blocking || !strings.Contains(c.Detail, "win-1") {
+	if c == nil || c.OK || !c.Blocking || !strings.Contains(c.Detail, "app") {
 		t.Fatalf("the Windows check = %+v", c)
 	}
 	if w := postForm(t, s, ui.RunPath, url.Values{}); w.Code != http.StatusConflict {

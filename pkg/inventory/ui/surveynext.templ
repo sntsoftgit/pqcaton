@@ -18,6 +18,7 @@ templ surveyNextPage(v SurveyView) {
 				<h2>{ tNextSurveyHeadDone.In(v.Page.Lang) }</h2>
 			}
 			<p class="lede">{ tNextSurveyLede.In(v.Page.Lang) }</p>
+			@surveySource(v)
 			@surveyNextMetrics(v)
 			@surveyActivationNote(v)
 			@surveyNextTodo(v)
@@ -105,3 +106,27 @@ templ surveyNextTodo(v SurveyView) {
 		<p class="hint" data-survey-excluded={ strconv.Itoa(s.Excluded) }>{ tNextSurveyExcluded.F(v.Page.Lang, s.Excluded) }</p>
 	}
 }
+
+// surveySource — 이 대조가 **어느 결과로** 한 것인가. 대조의 범위는 선언 전체이고, 결과는 관측이 성공으로 끝났을 때만 한
+// 세대로 바뀐다. 그래서 가장 최근 실행이 실패했으면 그 앞의 성공 결과로 대조하고 있다: 대조에 쓴 결과의 시각과 실패한 실행의
+// 시각을 따로 적는다. 성공 결과가 한 번도 없으면 그것을 먼저 말한다(선언 자산의 미관측이 「찾지 못했다」로 읽히지 않게).
+templ surveySource(v SurveyView) {
+	if v.Source != nil {
+		<div class="msg" data-survey-source={ surveySourceKind(*v.Source) }>
+			if v.Source.Empty {
+				<p><strong>{ tSurveySrcEmpty.In(v.Page.Lang) }</strong></p>
+			} else if v.Source.Outside {
+				<p>{ tSurveySrcOutside.F(v.Page.Lang, v.Source.Nodes) }</p>
+			} else {
+				<p data-survey-source-at>{ tSurveySrcAt.F(v.Page.Lang, v.Source.At.Local().Format("2006-01-02 15:04 MST"), v.Source.Nodes) }</p>
+			}
+			if !v.Source.LastFailedAt.IsZero() {
+				<p data-survey-last-failed>{ tSurveySrcFailed.F(v.Page.Lang, v.Source.LastFailedAt.Local().Format("2006-01-02 15:04 MST"), v.Source.LastFailedState.Short(v.Page.Lang)) }</p>
+			}
+			if len(v.Source.Absent) > 0 && !v.Source.Empty {
+				<p data-survey-absent>{ tSurveySrcAbsent.F(v.Page.Lang, len(v.Source.Absent), nodeNames(v.Source.Absent)) }</p>
+			}
+		</div>
+	}
+}
+

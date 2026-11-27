@@ -422,7 +422,7 @@ func TestEmptyResultsPointAtTheFolder(t *testing.T) {
 	}
 	results := filepath.Join(ws, "results")
 	for _, path := range []string{"/survey", "/review"} {
-		for _, c := range []struct{ lang, want string }{{"ko", "아직 관측 결과가 없습니다"}, {"en", "No observed results yet"}} {
+		for _, c := range []struct{ lang, want string }{{"ko", "대조할 성공 관측 결과가 아직 없습니다"}, {"en", "No successful observation result to reconcile with yet"}} {
 			body := do(h, newReq(http.MethodGet, path+"?lang="+c.lang, nil)).Body.String()
 			if !strings.Contains(body, c.want) || !strings.Contains(body, "<code>"+results+"</code>") {
 				t.Errorf("%s (%s): no guidance to the results folder", path, c.lang)
@@ -434,7 +434,7 @@ func TestEmptyResultsPointAtTheFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"/survey", "/review"} {
-		if body := do(h, newReq(http.MethodGet, path+"?lang=ko", nil)).Body.String(); strings.Contains(body, "아직 관측 결과가 없습니다") {
+		if body := do(h, newReq(http.MethodGet, path+"?lang=ko", nil)).Body.String(); strings.Contains(body, "대조할 성공 관측 결과가 아직 없습니다") {
 			t.Errorf("%s: the guidance stays after a result arrived", path)
 		}
 	}

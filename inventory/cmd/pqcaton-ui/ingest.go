@@ -402,7 +402,12 @@ func (s *server) ingestViewFor(role string) ui.IngestView {
 			v.Block = ui.IngestInputs
 		} else {
 			v.Observed, v.Managed = p.observed, p.managed
-			states, err := upstream.States(s.upstream, p.refs)
+			// 이력에 연결하지 않은 서버(시험)는 상태를 읽지 못한 것으로 둔다. 화면은 이력 없이 시작하지 않는다.
+			var states []upstream.NodeState
+			err := error(upstream.ErrUnreachable)
+			if s.upstream != nil {
+				states, err = upstream.States(s.upstream, p.refs)
+			}
 			if err != nil {
 				v.StateUnknown = true
 				for _, r := range p.refs {
@@ -444,7 +449,7 @@ func (s *server) policyView() *ui.ObservePolicy {
 // 노드의 최신 참조와 견준다)로 상태를 채운다. 막힌 까닭(Block · Problems)은 그대로 둔다: 「이 정책으로 재적재」 단추는 여전히
 // 나오지 않는다.
 func (s *server) candidateState(v *ui.IngestView) {
-	if len(v.Nodes) > 0 || v.StateUnknown || s.results == "" || s.scopeOut == "" {
+	if len(v.Nodes) > 0 || v.StateUnknown || s.results == "" || s.scopeOut == "" || s.upstream == nil {
 		return
 	}
 	var p ingestPlan

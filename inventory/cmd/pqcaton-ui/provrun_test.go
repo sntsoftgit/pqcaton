@@ -288,10 +288,23 @@ func TestUnsupportedRunsAreNamedAndNotStarted(t *testing.T) {
 	})
 	t.Run("a node missing from the access details", func(t *testing.T) {
 		s := provServer(t, "", threeNodes)
-		if err := os.WriteFile(s.hosts, []byte(strings.Replace(provHosts, "app,App", "other,App", 1)), 0o600); err != nil {
+		// 선언에는 있고 접근 정보에 없는 노드가 이번 플레이북의 대상이다: 그 노드를 밝히고 시작하지 않는다.
+		if err := os.WriteFile(s.hosts, []byte(strings.Replace(provHosts, "app,App,10.0.0.5,22,deploy,/home/me/.ssh/id_ed25519,,linux,ssh\n", "", 1)), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		blocked(t, s, ui.ProvNoHosts, "<code>app</code>")
+	})
+	// 관측 쪽의 같은 규칙(targets_test.go)의 05 쪽: 접근 정보에 선언에 없는 행이 있으면, 그 행이 플레이북의 대상이 아니어도 원격 실행을 시작하지 않는다.
+	t.Run("an access row that is not in the declaration", func(t *testing.T) {
+		s := provServer(t, "", threeNodes)
+		before := provHosts + "db-old,Old,10.0.0.77,22,deploy,,,linux,ssh\n"
+		if err := os.WriteFile(s.hosts, []byte(before), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		blocked(t, s, ui.ProvHostsUndeclared, "<code>db-old</code>")
+		if readFile(t, s.hosts) != before {
+			t.Error("the screen changed the access details")
+		}
 	})
 	t.Run("an action the plan finalized at L3", func(t *testing.T) {
 		s := provServer(t, "", strings.Replace(threeNodes, `"targetNodeId":"db","findingId":"f3","kind":"REMEDIATION_KIND_CONFIG_ONLY","cryptoRuntime":"CRYPTO_RUNTIME_OPENSSL","automationLevel":"DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL"`,

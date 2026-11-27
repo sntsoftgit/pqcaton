@@ -163,6 +163,17 @@ func (s *server) provCheck(v ui.ApproveView) (provReady, []ui.ProvBlock) {
 	if err != nil {
 		return rd, block(ui.ProvNoHosts, "", "")
 	}
+	// 접근 정보에 선언에 없는 행이 있으면, 그 행이 이번 플레이북의 대상이 아니어도 원격 실행을 시작하지 않는다(관측과 같은
+	// 규칙, targets.go). 선언에 접속 정보가 없는 노드가 있는 것은 막지 않는다: 아래에서 **플레이북의 대상**만 본다.
+	if orphans, derr := s.hostsDeclared(hosts); derr != nil {
+		for _, o := range orphans {
+			blocks = append(blocks, ui.ProvBlock{Code: ui.ProvHostsUndeclared, Node: o.ID})
+		}
+		if len(blocks) == 0 {
+			blocks = block(ui.ProvHostsUndeclared, "", "")
+		}
+		return rd, blocks
+	}
 	byNode := map[string]inventory.Host{}
 	for _, h := range hosts {
 		byNode[h.NodeID] = h

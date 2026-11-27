@@ -775,6 +775,18 @@ done.
    on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation" runs in
    this order. While it runs, the log is shown and "Stop" stops it.
 
+   **The nodes to observe are the nodes of 01 Declaration.** Access details belong to a node when their node ID equals the
+   declared node name, including case (they are not tied through `observed_as` or the IP). "Access readiness of the target
+   nodes" shows a state per declared node: "no access details" (not observed yet), "ready", "observed" (with the time of the
+   observation that produced the current results) and "observation failed" (with the time of the failed run). A node
+   without access details is only left out of this observation; **reconciliation keeps every declared node.** The start
+   form lists the targets of this observation and the nodes left out. A `hosts.csv` made elsewhere is used as it is, without
+   saving it again, when all its IDs are in the declaration. **When an ID is not in the declaration**, the row and the ID are
+   shown under "Rows not in the declaration" and no observation is started even if other nodes are ready
+   (`run-hosts-undeclared`). The same holds when a node was renamed in the declaration and the old ID is left behind. The
+   check is made again against the current declaration when the start request is handled. The screen does not change
+   `hosts.csv` by itself. The preview, apply and recheck of 05 are not started either while such a row exists.
+
    1. **Node check.** Every node is checked without any key ("Node check" in section 2). If one does not pass, it ends here, no node
       is observed, and the node cleanup is "not needed".
    2. **Temporary signing keys.** The signing keys (`collector-keys/`) are checked again, and temporary keys for this run only are made
@@ -853,6 +865,13 @@ done.
    (item 2).
 4. **03 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
    screen. With no results, the screen points at that folder.
+
+   **Reconciliation covers the whole declaration, and the screen states which results it used.** The top shows the time of
+   the results used and the number of nodes. When the most recent run ended as failed or stopped and did not replace the
+   results, the time of that run is stated separately (reconciliation uses the last successful results). Declared nodes that
+   are not in those results are named, and their unobserved assets carry "node not in the results used". When no observation
+   has ever succeeded, "No successful observation result to reconcile with yet" comes first; unobserved then does not mean
+   that a successful observation failed to find the asset.
 
    **To see which app talked to what**, open "App connections from the history" under the topology on 03. The picture on 03 is the
    workspace results reconciled with the declaration; this screen shows the observations loaded into the pqcota history as they are.
@@ -1465,6 +1484,7 @@ screen.
 | `damaged` | A save record or lock file is damaged | Stop the screen, get the diagnostics file and ask for support |
 | `diagnostic` | An input file could not be read, so the screen opened for diagnostics only | Fix the file the screen shows and start it again |
 | `exists` | The file to create is already there, so it was not overwritten | Reload the screen |
+| `run-hosts-undeclared` | The access details (`hosts.csv`) hold a node ID that is not in the current declaration (or the declaration cannot be read), so no observation was started. No node was contacted and the files are unchanged | See the row and the ID under "Rows not in the declaration" on the 02 Observation screen. Remove that row and save, or register the node in 01 Declaration. A node ID must equal the declared node name, including case |
 | `run-not-ready` | Something needed before an observation (access, Ansible, collectors, collector signing keys, trusted public keys) is missing, there is a Windows node, or an earlier observation needs recovery | Provide the items marked ✗ in the checklist on the 02 screen |
 | `run-busy` | An observation is already running | Start again after it finishes or is stopped |
 | `ingest-not-ready` | The conditions for the 02 ingest are not met (ingesting from the screen is not set up · a result is unsigned or does not verify · already ingested · the history could not be read · the read and ingest databases differ) | Resolve the reason shown under "Ingest into the history" on the 02 screen |

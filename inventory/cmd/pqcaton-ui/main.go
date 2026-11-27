@@ -1342,7 +1342,7 @@ func (s *server) survey(w http.ResponseWriter, r *http.Request) {
 	res := wd.res
 	page := s.nextPage(r, ui.ScreenSurvey, s.results, s.steps(wd))
 	page.Org = res.Org
-	v := ui.NewSurveyView(res, page)
+	v := ui.NewSurveyView(res, page).WithSource(s.surveySource(wd))
 	// 04와 같은 판정이다. 할 수 없으면(같은 정책 · 확정하지 않은 후보 · 잠긴 세션) 알리지 않는다.
 	if o, err := s.activationOffer(); err == nil {
 		v.Activation = o

@@ -19,8 +19,11 @@ const (
 	ProvUnknownForm  = "unknown-form"
 	ProvUnsupported  = "unsupported"
 	ProvNoHosts      = "no-hosts"
-	ProvWindows      = "windows"
-	ProvNoAnsible    = "no-ansible"
+	// ProvHostsUndeclared — 접근 정보(hosts.csv)에 선언에 없는 노드 ID가 있다. 그 행이 이번 플레이북의 대상이 아니어도 원격
+	// 실행을 시작하지 않는다(관측과 같은 규칙). Node가 그 ID다.
+	ProvHostsUndeclared = "hosts-undeclared"
+	ProvWindows         = "windows"
+	ProvNoAnsible       = "no-ansible"
 	// ProvAnsibleVersion — 부를 ansible-playbook의 core 판이 05가 지원하는 판이 아니거나 읽을 수 없다.
 	ProvAnsibleVersion = "ansible-version"
 )

@@ -60,6 +60,8 @@ type ObserveView struct {
 	Policy *ObservePolicy
 	// Scope — 「자산 스코프」 구역. 없으면 nil이다.
 	Scope *ObserveScope
+	// Targets — 선언의 노드별 접속 준비와 관측 상태, 그리고 선언에 없는 접근 정보 행.
+	Targets ObserveTargets
 }
 
 // ObserveScope — 관측 화면의 「자산 스코프」 구역. 현재 활성 정책(파일 · 규칙 수 · 지문)과, 규칙 편집의 상태 · 확정 상태를
@@ -146,6 +148,8 @@ const (
 	// RunCollectorKeys · RunCollectorVerify — 수집기 ID별 서명 키와 신뢰할 공개 키(collectorkeys.go). 없으면 시작하지 않는다.
 	RunCollectorKeys   RunItem = "collector-keys"
 	RunCollectorVerify RunItem = "collector-verify"
+	// RunHostsDeclared — 접근 정보의 노드 ID가 모두 선언에 있는가. 선언에 없는 행이 있거나 선언을 읽지 못하면 막는다.
+	RunHostsDeclared RunItem = "hosts-declared"
 )
 
 // CollectorFile — 수집기 파일 하나의 판 판정(collectorver.File 을 화면에 옮긴 것).
