@@ -71,6 +71,9 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 	page := s.nextPage(r, ui.ScreenObserve, s.hosts, st)
 	page.Rev = rev
 	v := ui.NewObserveView(hosts, page)
+	// 양식의 줄은 선언의 노드가 정한다(ui/hostsform.go). 선언에 없는 행은 파일의 줄 번호와 함께 따로 온다.
+	names, declKnown := s.declaredNodes()
+	v.Hosts = ui.HostFormRows(names, declKnown, hosts, s.hostLines(len(hosts)))
 	v.Scope = s.observeScope(page.Lang, st)
 	v.Targets = s.observeTargets(hosts, wd)
 	v.Run = s.runView()
@@ -233,6 +236,8 @@ func (s *server) hostsSave(w http.ResponseWriter, r *http.Request) {
 		problems []ui.HostProblem
 		prev     []inventory.Host
 	)
+	// 저장 직전에(잠금 안에서) 파일과 **지금의 선언**을 다시 읽어 판정한다. 양식을 연 뒤 선언이 바뀌었으면 여기서 막히고
+	// 파일은 그대로다. 고치지 않은 행은 파일의 바이트를 그대로 둔다(EncodeHostsKeeping).
 	errProblems := errors.New("hosts: problems")
 	id := store.Identity{Kind: kindHosts, Org: s.orgName(), SessionID: "hosts"}
 	err := s.st.SaveChecked(id, []string{s.hosts}, s.check(r), s.waitTime(), func() ([]store.Change, error) {
@@ -240,16 +245,24 @@ func (s *server) hostsSave(w http.ResponseWriter, r *http.Request) {
 		if prev, err = s.loadHosts(); err != nil {
 			return nil, err
 		}
-		if saved, problems = ui.ApplyHosts(prev, r.PostForm); len(problems) > 0 {
+		raw, rerr := os.ReadFile(s.hosts)
+		if rerr != nil && !errors.Is(rerr, fs.ErrNotExist) {
+			return nil, rerr
+		}
+		names, declKnown := s.declaredNodes()
+		var from []int
+		if saved, from, problems = ui.ApplyHosts(prev, r.PostForm, names, declKnown); len(problems) > 0 {
 			return nil, errProblems
 		}
-		b, err := ui.EncodeHosts(saved)
+		b, err := ui.EncodeHostsKeeping(raw, prev, saved, from)
 		return []store.Change{{Path: s.hosts, Content: b}}, err
 	})
 	if errors.Is(err, errProblems) {
 		page := s.nextPage(r, back, s.hosts, s.steps(s.load()))
 		page.Rev = r.PostForm.Get(ui.RevField)
+		// 받은 값 그대로 다시 그린다. 비밀번호는 양식에 없고(「있음」 표시뿐), 응답에도 싣지 않는다.
 		v := ui.ObserveView{Page: page, Hosts: ui.HostRowsFrom(prev, r.PostForm), Problems: problems, Run: s.runView()}
+		v.Targets = s.observeTargets(prev, nil)
 		writePage(w, http.StatusUnprocessableEntity, func(out io.Writer) error { return ui.RenderObserve(out, v) })
 		return
 	}

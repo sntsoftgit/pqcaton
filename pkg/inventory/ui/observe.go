@@ -18,7 +18,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -37,6 +36,11 @@ type HostRow struct {
 	// Was — 이 줄이 저장된 파일에서 어느 노드였나. 새 줄은 비어 있다.
 	Was     string
 	HasPass bool
+	// Declared — 선언의 노드가 정한 줄이다(노드 ID는 선언의 이름이고 고칠 수 없다). Orphan — 접근 정보에는 있고 선언에는 없는
+	// 행이다. Line은 그 행이 시작하는 파일의 줄 번호(모르면 0), Move는 운영자가 고른 처리다(HostMove…).
+	Declared, Orphan bool
+	Line             int
+	Move             string
 }
 
 // HostProblem — 저장을 막은 자리 하나. 그 줄의 노드 ID와 무엇이 틀렸는지.
@@ -337,8 +341,32 @@ type ObserveSummary struct {
 	Running bool
 }
 
-// Summary — 카드의 숫자.
-func (v ObserveView) Summary() ObserveSummary { return ObserveSummary{Hosts: len(v.Hosts)} }
+// Summary — 카드의 숫자. 접속 정보가 있는 줄만 센다(선언 노드의 빈 줄은 관측할 노드가 아니다).
+func (v ObserveView) Summary() ObserveSummary { return ObserveSummary{Hosts: v.WithAccess()} }
+
+// WithAccess — 접속 정보가 있는 줄의 수(선언에 없는 행도 파일에 있으므로 센다).
+func (v ObserveView) WithAccess() int {
+	n := 0
+	for _, h := range v.Hosts {
+		if h.Was != "" || !h.Blank() {
+			n++
+		}
+	}
+	return n
+}
+
+// Orphans — 선언에 없는 행의 수. MoveTargets — 그 행을 옮길 수 있는 선언 노드(아직 접속 정보가 없는 노드).
+func (v ObserveView) Orphans() int {
+	n := 0
+	for _, h := range v.Hosts {
+		if h.Orphan {
+			n++
+		}
+	}
+	return n
+}
+
+func (v ObserveView) MoveTargets() []string { return MoveTargets(v.Hosts) }
 
 // NewObserveView — 파일에서 읽은 접근 정보로 화면을 만든다.
 func NewObserveView(hosts []inventory.Host, p Page) ObserveView {
@@ -350,96 +378,6 @@ func NewObserveView(hosts []inventory.Host, p Page) ObserveView {
 	return v
 }
 
-// HostRowsFrom — 폼의 줄을 그대로 읽는다(검증하지 않는다). 저장이 막혔을 때 다시 그릴 값이다.
-func HostRowsFrom(prev []inventory.Host, f url.Values) []HostRow {
-	pass := map[string]bool{}
-	for _, h := range prev {
-		pass[h.NodeID] = h.SSHPass != ""
-	}
-	var out []HostRow
-	for _, i := range formRows(f, "host.id.", "") {
-		get := func(field string) string { return strings.TrimSpace(f.Get("host." + field + "." + strconv.Itoa(i))) }
-		r := HostRow{NodeID: get("id"), Name: get("name"), IP: get("ip"), Port: get("port"), User: get("user"),
-			Key: get("key"), OS: get("os"), Conn: get("conn"), Was: get("was")}
-		if r.NodeID == "" {
-			continue // 노드 ID를 비우면 지운 줄이다
-		}
-		r.HasPass = r.Was != "" && pass[r.Was]
-		out = append(out, r)
-	}
-	return out
-}
-
-// ApplyHosts — 폼에서 온 값으로 접근 정보를 다시 만든다. 막는 자리가 있으면 그 목록을 돌려주고 아무것도
-// 만들지 않는다.
-//
-// **고르는 칸은 상류 값만 받는다.** OS · 접속 방법은 화면에서 목록으로 고르지만 주소는 밖에서 오는
-// 값이라 여기서 다시 본다. WinRM의 두 조건(Windows 노드 · 키 없음)은 상류 ParseHosts가 거절하는 것과
-// 같고, 저장한 뒤에야 관측이 실패하지 않게 저장에서 막는다.
-func ApplyHosts(prev []inventory.Host, f url.Values) ([]inventory.Host, []HostProblem) {
-	pass := map[string]string{}
-	for _, h := range prev {
-		pass[h.NodeID] = h.SSHPass
-	}
-	var (
-		out      []inventory.Host
-		problems []HostProblem
-		seen     = map[string]bool{}
-	)
-	for _, r := range HostRowsFrom(prev, f) {
-		bad := func(t T) { problems = append(problems, HostProblem{Node: r.NodeID, What: t}) }
-		if seen[r.NodeID] {
-			bad(tHostDup)
-			continue
-		}
-		if hasControl(r.NodeID, r.Name, r.IP, r.Port, r.User, r.Key) {
-			bad(tHostControl)
-			continue
-		}
-		seen[r.NodeID] = true
-		osName, conn := strings.ToLower(r.OS), strings.ToLower(r.Conn)
-		if osName == "" {
-			osName = inventory.OSLinux
-		}
-		if conn == "" {
-			conn = inventory.ConnSSH
-		}
-		switch {
-		case osName != inventory.OSLinux && osName != inventory.OSWindows:
-			bad(tHostOS)
-			continue
-		case conn != inventory.ConnSSH && conn != inventory.ConnWinRM:
-			bad(tHostConn)
-			continue
-		case conn == inventory.ConnWinRM && osName != inventory.OSWindows:
-			bad(tHostWinRMOS)
-			continue
-		case conn == inventory.ConnWinRM && r.Key != "":
-			bad(tHostWinRMKey)
-			continue
-		}
-		port := 0
-		if r.Port != "" {
-			p, err := strconv.Atoi(r.Port)
-			if err != nil || p < 1 || p > 65535 {
-				bad(tHostPort)
-				continue
-			}
-			port = p
-		}
-		if r.IP == "" {
-			bad(tHostNoIP)
-			continue
-		}
-		out = append(out, inventory.Host{NodeID: r.NodeID, Name: r.Name, IP: r.IP, Port: port, SSHUser: r.User,
-			SSHKey: r.Key, SSHPass: pass[r.Was], OS: osName, Conn: conn})
-	}
-	if len(problems) > 0 {
-		return nil, problems
-	}
-	return out, nil
-}
-
 // EncodeHosts — 접근 정보를 상류 형식의 CSV로. 포트가 0이면 비워 둔다(상류가 접속 방법의 기본값을 쓴다).
 func EncodeHosts(hosts []inventory.Host) ([]byte, error) {
 	var b bytes.Buffer
@@ -447,6 +385,19 @@ func EncodeHosts(hosts []inventory.Host) ([]byte, error) {
 	if err := w.Write(HostsHeader); err != nil {
 		return nil, err
 	}
+	w.Flush()
+	rows, err := encodeHostRows(hosts)
+	if err != nil {
+		return nil, err
+	}
+	b.Write(rows)
+	return b.Bytes(), w.Error()
+}
+
+// encodeHostRows — 머리글 없이 행만.
+func encodeHostRows(hosts []inventory.Host) ([]byte, error) {
+	var b bytes.Buffer
+	w := csv.NewWriter(&b)
 	for _, h := range hosts {
 		port := ""
 		if h.Port > 0 {

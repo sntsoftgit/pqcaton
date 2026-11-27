@@ -1281,16 +1281,16 @@ var (
 		EN: "This is saved to hosts.csv in the workspace, in the same format pqcota-hosts reads."}
 	tHostsLegend = T{KO: "노드", EN: "Nodes"}
 	tHostsHint   = T{
-		KO: "<b>노드 ID는 관측 결과에 찍히는 이름입니다.</b> 01 선언의 「관측 이름」과 같게 적으면 대조가 저절로 이어집니다.<br>" +
+		KO: "<b>줄은 01 선언의 노드입니다.</b> 노드 ID는 선언의 노드 이름이고 여기서 고치지 않습니다. 접속 정보를 적지 않은 줄은 저장되지 않고, 그 노드는 관측에서 빠집니다.<br>" +
 			"<b>SSH 키는 개인 키 파일의 경로를 적습니다.</b> 키 자체는 화면에 들어오지 않습니다. 포트를 비우면 SSH는 22, WinRM은 5985입니다.<br>" +
 			"<b>비밀번호는 이 화면에서 적지 않습니다.</b> 파일에 있으면 「있음」으로만 보이고 저장해도 그대로 남습니다. " +
 			"WinRM 노드처럼 비밀번호가 필요하면 hosts.csv의 ssh_pass 열에 직접 적습니다.<br>" +
-			"파일에 있던 주석 줄(#)은 저장하면 남지 않습니다.",
-		EN: "<b>The node ID is the name the observed results carry.</b> Write it the same as the 「Observed as」 field in 01 Declaration and reconciliation links them by itself.<br>" +
+			"고치지 않은 행은 저장해도 파일의 글자 그대로 남습니다. 고친 행 바로 앞의 주석 줄(#)은 남지 않습니다.",
+		EN: "<b>The rows are the nodes of 01 Declaration.</b> The node ID is the declared node name and is not edited here. A row without access details is not saved, and that node is left out of the observation.<br>" +
 			"<b>For an SSH key, write the path to the private key file.</b> The key itself never enters the screen. A blank port means 22 for SSH and 5985 for WinRM.<br>" +
 			"<b>Passwords are not written on this screen.</b> If the file has one, it shows only as 「set」 and is kept as is when you save. " +
 			"When a node needs a password, as WinRM nodes do, write it in the ssh_pass column of hosts.csv directly.<br>" +
-			"Comment lines (#) in the file are not kept when you save."}
+			"A row you did not change stays in the file exactly as it was. A comment line (#) right before a changed row is not kept."}
 	tColNodeID = T{KO: "노드 ID", EN: "Node ID"}
 	tColUser   = T{KO: "계정", EN: "User"}
 	tColKey    = T{KO: "SSH 키 경로", EN: "SSH key path"}
@@ -1376,17 +1376,29 @@ var (
 	tTargetFailed          = T{KO: "관측 실패: %s에 끝난 가장 최근 실행이 이 노드에 접속하지 못했거나 이 노드의 단계가 실패함", EN: "observation failed: the most recent run, which ended at %s, could not reach this node or a step failed on it"}
 	tOrphansHead           = T{KO: "선언에 없는 행 %d개", EN: "Rows not in the declaration: %d"}
 	tOrphansLede           = T{
-		KO: "접근 정보(hosts.csv)에는 있고 지금 선언에는 없는 노드 ID입니다. 이 행이 있는 동안에는 관측과 05의 원격 실행을 시작하지 않습니다. 화면은 파일을 고치지 않습니다.",
-		EN: "These node IDs are in the access details (hosts.csv) but not in the current declaration. While such a row exists, no observation and no remote run of 05 is started. The screen does not change the file."}
-	tOrphanRow        = T{KO: "행 %d", EN: "row %d"}
-	tRunTargets       = T{KO: "이번 관측의 대상 %d곳: %s", EN: "Targets of this observation (%d): %s"}
-	tRunOmitted       = T{KO: "접속 정보가 없어 이번에 빠지는 노드 %d곳: %s. 대조에는 그대로 남습니다.", EN: "Left out this time for lack of access details (%d): %s. They stay in reconciliation."}
-	tSurveySrcAt      = T{KO: "이 대조는 %s에 끝난 관측의 결과로 했습니다(노드 %d곳).", EN: "This reconciliation used the results of the observation that finished at %s (%d nodes)."}
-	tSurveySrcOutside = T{KO: "이 대조는 화면 밖에서 받은 결과로 했습니다(노드 %d곳). 그 결과의 관측 시각은 화면이 알지 못합니다.", EN: "This reconciliation used results received outside the screen (%d nodes). The screen does not know when they were observed."}
-	tSurveySrcEmpty   = T{KO: "아래의 선언 자산은 관측과 견준 것이 아닙니다. 성공한 관측에서 찾지 못했다는 뜻이 아닙니다.", EN: "The declared assets below were not compared with an observation. This does not mean that a successful observation failed to find them."}
-	tSurveySrcFailed  = T{KO: "가장 최근 실행은 %s에 「%s」로 끝나 결과를 바꾸지 않았습니다.", EN: "The most recent run ended at %s as \"%s\" and did not replace the results."}
-	tSurveySrcAbsent  = T{KO: "대조에 쓴 결과에 없는 선언 노드 %d곳: %s. 이 노드들의 미관측은 그 노드를 관측하지 않았다는 뜻입니다.", EN: "Declared nodes that are not in the results used (%d): %s. Their unobserved assets mean the node itself was not observed."}
-	tRunStateShort    = map[RunState]T{
+		KO: "접근 정보(hosts.csv)에는 있고 지금 선언에는 없는 노드 ID입니다. 이 행이 있는 동안에는 관측과 05의 원격 실행을 시작하지 않습니다. 선언에서 노드 이름을 바꿨다면 옛 ID의 행을 새 이름의 노드로 옮길 수 있습니다. 옮길 대상은 직접 고르고, 「저장」을 눌러야 파일이 바뀝니다.",
+		EN: "These node IDs are in the access details (hosts.csv) but not in the current declaration. While such a row exists, no observation and no remote run of 05 is started. If you renamed a node in the declaration, you can move the row with the old ID to the node with the new name. You choose the target yourself, and the file changes only when you press Save."}
+	tOrphanLine          = T{KO: "접속 정보 %d행: 선언에 없는 노드", EN: "Access details, line %d: a node that is not in the declaration,"}
+	tOrphanNoLine        = T{KO: "접속 정보: 선언에 없는 노드", EN: "Access details: a node that is not in the declaration,"}
+	tOrphanWhat          = T{KO: "주소 %s · 계정 %s", EN: "address %s · account %s"}
+	tOrphanChoose        = T{KO: "이 행을 어떻게 할지 고르십시오", EN: "Choose what to do with this row"}
+	tOrphanKeep          = T{KO: "그대로 둠(이 행이 있는 동안 관측을 시작할 수 없습니다)", EN: "Leave it (no observation can start while this row exists)"}
+	tOrphanRemove        = T{KO: "이 행을 지움", EN: "Remove this row"}
+	tOrphanMoveTo        = T{KO: "선언 노드 %s로 옮김(옛 ID %s → 새 ID %s. 주소 · 계정 · 인증 정보는 그대로)", EN: "Move to the declared node %s (old ID %s → new ID %s; address, account and credentials are kept)"}
+	tHostEmpty           = T{KO: "접속 정보 미입력", EN: "no access details"}
+	tHostNotDeclared     = T{KO: "지금 선언에 없는 노드입니다. 저장하지 않았고 파일은 그대로입니다. 01 선언에서 노드 이름을 확인하십시오(이 화면을 연 뒤 선언이 바뀌었을 수 있습니다)", EN: "is not a node of the current declaration. Nothing was saved and the file is unchanged. Check the node name in 01 Declaration (the declaration may have changed after this screen was opened)"}
+	tHostDeclUnknown     = T{KO: "선언이 없거나 읽을 수 없어 이 노드가 선언에 있는지 확인하지 못했습니다. 저장하지 않았습니다", EN: "the declaration is missing or cannot be read, so this node could not be checked against it. Nothing was saved"}
+	tHostMoveNotDeclared = T{KO: "옮길 대상이 지금 선언에 없습니다. 저장하지 않았고 파일은 그대로입니다", EN: "the target is not in the current declaration. Nothing was saved and the file is unchanged"}
+	tHostMoveTaken       = T{KO: "옮길 대상 노드에 이미 접속 정보가 있습니다. 덮어쓰지 않았고 파일은 그대로입니다", EN: "the target node already has access details. Nothing was overwritten and the file is unchanged"}
+	tHostOrphanEdit      = T{KO: "선언에 없는 노드의 접속 정보는 고칠 수 없습니다. 그대로 두거나, 지우거나, 선언의 노드로 옮기십시오", EN: "the access details of a node that is not in the declaration cannot be edited. Leave them, remove them or move them to a declared node"}
+	tRunTargets          = T{KO: "이번 관측의 대상 %d곳: %s", EN: "Targets of this observation (%d): %s"}
+	tRunOmitted          = T{KO: "접속 정보가 없어 이번에 빠지는 노드 %d곳: %s. 대조에는 그대로 남습니다.", EN: "Left out this time for lack of access details (%d): %s. They stay in reconciliation."}
+	tSurveySrcAt         = T{KO: "이 대조는 %s에 끝난 관측의 결과로 했습니다(노드 %d곳).", EN: "This reconciliation used the results of the observation that finished at %s (%d nodes)."}
+	tSurveySrcOutside    = T{KO: "이 대조는 화면 밖에서 받은 결과로 했습니다(노드 %d곳). 그 결과의 관측 시각은 화면이 알지 못합니다.", EN: "This reconciliation used results received outside the screen (%d nodes). The screen does not know when they were observed."}
+	tSurveySrcEmpty      = T{KO: "아래의 선언 자산은 관측과 견준 것이 아닙니다. 성공한 관측에서 찾지 못했다는 뜻이 아닙니다.", EN: "The declared assets below were not compared with an observation. This does not mean that a successful observation failed to find them."}
+	tSurveySrcFailed     = T{KO: "가장 최근 실행은 %s에 「%s」로 끝나 결과를 바꾸지 않았습니다.", EN: "The most recent run ended at %s as \"%s\" and did not replace the results."}
+	tSurveySrcAbsent     = T{KO: "대조에 쓴 결과에 없는 선언 노드 %d곳: %s. 이 노드들의 미관측은 그 노드를 관측하지 않았다는 뜻입니다.", EN: "Declared nodes that are not in the results used (%d): %s. Their unobserved assets mean the node itself was not observed."}
+	tRunStateShort       = map[RunState]T{
 		RunFailed: {KO: "실패", EN: "failed"}, RunStopped: {KO: "중지됨", EN: "stopped"},
 		RunIncomplete: {KO: "결과가 빠짐", EN: "incomplete"}, RunInterrupted: {KO: "중단됨", EN: "interrupted"},
 		RunStuck: {KO: "회수 필요", EN: "needs reclaiming"},

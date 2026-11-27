@@ -88,11 +88,13 @@ func TestObservationTargetsAreTheDeclaredNodes(t *testing.T) {
 			}
 			id := row[:strings.Index(row, ",")]
 			page := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
-			if !strings.Contains(page, `data-orphan-row="3" data-orphan-id="`+id+`"`) || strings.Contains(page, `action="`+ui.RunPath+`"`) ||
+			// 줄 번호는 파일의 줄이다(머리글이 1행, 그 뒤 두 행, 넷째 줄이 이 행).
+			if !strings.Contains(page, `data-orphan-row="4" data-orphan-id="`+id+`"`) || strings.Contains(page, `action="`+ui.RunPath+`"`) ||
+				!strings.Contains(page, "접속 정보 4행: 선언에 없는 노드 <code>"+id+"</code>") ||
 				!strings.Contains(page, "선언에 없는 행 1개") {
 				t.Fatalf("the row is not shown as outside the declaration, or the start form is still there:\n%s", section(page, "observe-targets"))
 			}
-			if c := checkOf(s.preflight(), ui.RunHostsDeclared); c == nil || c.OK || !c.Blocking || !strings.Contains(c.Detail, "row 3: "+id) {
+			if c := checkOf(s.preflight(), ui.RunHostsDeclared); c == nil || c.OK || !c.Blocking || !strings.Contains(c.Detail, "line 4: "+id) {
 				t.Errorf("the declared check = %+v", c)
 			}
 			w := postFormLang(t, s, ui.RunPath, "ko", url.Values{})

@@ -266,7 +266,7 @@ func TestStepGridAndKeyPathWidthShip(t *testing.T) {
 		t.Error("app.css has no three-column step grid for narrower screens, or no minimum width for the key path field")
 	}
 	body := get(t, s, ui.ScreenObserve+"?lang=en").Body.String()
-	key := regexp.MustCompile(`<input[^>]*name="host\.key\.0"[^>]*>`).FindString(body)
+	key := regexp.MustCompile(`<input[^>]*name="host\.key\.1"[^>]*>`).FindString(body)
 	if !strings.Contains(key, `class="wide"`) || !strings.Contains(key, `title="/home/me/.ssh/id_ed25519"`) {
 		t.Errorf("the key path field is not wide or does not carry the full path as its title:\n%s", key)
 	}

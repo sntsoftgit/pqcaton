@@ -106,7 +106,8 @@ const (
 // ValidKind — 모르는 종류는 받지 않는다. 주소는 밖에서 오는 값이다.
 func ValidKind(kind string) bool {
 	switch kind {
-	case KindNode, KindAsset, KindEdge, KindHost:
+	// 접근 정보의 줄은 선언의 노드가 정한다. 화면에서 줄을 더하지 않는다(KindHost는 그 표의 이름으로만 쓴다).
+	case KindNode, KindAsset, KindEdge:
 		return true
 	}
 	return false

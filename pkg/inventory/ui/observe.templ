@@ -13,8 +13,8 @@ templ observePage(v ObserveView) {
 			<p class="lede">{ tObserveLede.In(v.Page.Lang) }</p>
 			@hostProblemList(v)
 			<div class="metrics">
-				<div class={ "metric", templ.KV("warn", len(v.Hosts) == 0) }>
-					<b>{ strconv.Itoa(len(v.Hosts)) }</b>
+				<div class={ "metric", templ.KV("warn", v.WithAccess() == 0) }>
+					<b>{ strconv.Itoa(v.WithAccess()) }</b>
 					<span>{ tObserveMetricHosts.In(v.Page.Lang) }</span>
 				</div>
 			</div>
@@ -255,13 +255,17 @@ templ hostsForm(v ObserveView) {
 					</thead>
 					<tbody role="rowgroup" id={ rowsID(KindHost) }>
 						for i, h := range v.Hosts {
-							@hostRow(v.Page.Lang, i, h)
+							if !h.Orphan {
+								@hostRow(v.Page.Lang, i, h)
+							}
 						}
 					</tbody>
 				</table>
 			</div>
-			@addRow(v.Page.Lang, KindHost, 0, len(v.Hosts), false)
 		</fieldset>
+		if v.Orphans() > 0 {
+			@hostOrphans(v)
+		}
 		<div class="actions sticky">
 			<button class="primary">{ tHostsSave.In(v.Page.Lang) }</button>
 			@reloadButton(v.Page.Lang, v.Page.Self)
@@ -274,9 +278,12 @@ templ hostsForm(v ObserveView) {
 templ hostRow(l Lang, i int, h HostRow) {
 	{{ n := strconv.Itoa(i) }}
 	<tr role="row">
-		<td role="cell" data-label={ tColNodeID.In(l) }>
+		// 노드 ID는 선언의 이름이다. 입력 칸이 아니다.
+		<td role="cell" data-label={ tColNodeID.In(l) } data-host-node={ h.NodeID } data-host-access={ strconv.FormatBool(h.Was != "") }>
 			<input type="hidden" name={ "host.was." + n } value={ h.Was }/>
-			<input type="text" name={ "host.id." + n } value={ h.NodeID } aria-label={ rowLabel(l, tRowHost, i+1, tColNodeID.In(l)) }/>
+			<input type="hidden" name={ "host.id." + n } value={ h.NodeID }/>
+			<input type="hidden" name={ "host.row." + n } value={ hostRowDeclared }/>
+			<code>{ h.NodeID }</code>
 		</td>
 		<td role="cell" data-label={ tColName.In(l) }><input type="text" name={ "host.name." + n } value={ h.Name } aria-label={ rowLabel(l, tRowHost, i+1, tColName.In(l)) }/></td>
 		<td role="cell" data-label={ tColIP.In(l) }><input type="text" name={ "host.ip." + n } value={ h.IP } aria-label={ rowLabel(l, tRowHost, i+1, tColIP.In(l)) }/></td>
@@ -302,8 +309,61 @@ templ hostRow(l Lang, i int, h HostRow) {
 				{ "–" }
 			}
 		</td>
-		<td role="cell" data-label="">@removeButton(l, "tr", tRemoveHostAsk.In(l))</td>
+		<td role="cell" data-label="">
+			if h.Was == "" && h.Blank() {
+				<span class="hint">{ tHostEmpty.In(l) }</span>
+			}
+		</td>
 	</tr>
+}
+
+// hostOrphans — 접근 정보에는 있고 지금 선언에는 없는 행. 행마다 파일의 줄 번호와 ID를 보이고, 운영자가 어떻게 할지 고른다.
+// **옮길 대상은 운영자가 고른다**: 화면이 IP나 관측 이름으로 골라 주지 않는다. 고른 것은 「저장」을 눌러야 파일에 반영된다.
+// 그 행의 값은 숨은 칸으로 다시 보낸다(비밀번호는 싣지 않는다. 저장할 때 서버가 저장된 파일에서 가져온다).
+templ hostOrphans(v ObserveView) {
+	<section class="problems" data-targets="orphans">
+		<h3>{ tOrphansHead.F(v.Page.Lang, v.Orphans()) }</h3>
+		<p class="lede">{ tOrphansLede.In(v.Page.Lang) }</p>
+		for i, h := range v.Hosts {
+			if h.Orphan {
+				{{ n := strconv.Itoa(i) }}
+				<div class="orphan-row" data-orphan-row={ strconv.Itoa(h.Line) } data-orphan-id={ h.Was }>
+					<p>
+						<strong>
+							if h.Line > 0 {
+								{ tOrphanLine.F(v.Page.Lang, h.Line) }
+							} else {
+								{ tOrphanNoLine.In(v.Page.Lang) }
+							}
+							<code>{ h.Was }</code>
+						</strong>
+						<span class="hint">{ tOrphanWhat.F(v.Page.Lang, h.IP, h.User) }</span>
+					</p>
+					<input type="hidden" name={ "host.was." + n } value={ h.Was }/>
+					<input type="hidden" name={ "host.id." + n } value={ h.Was }/>
+					<input type="hidden" name={ "host.row." + n } value={ hostRowOrphan }/>
+					<input type="hidden" name={ "host.line." + n } value={ strconv.Itoa(h.Line) }/>
+					<input type="hidden" name={ "host.name." + n } value={ h.Name }/>
+					<input type="hidden" name={ "host.ip." + n } value={ h.IP }/>
+					<input type="hidden" name={ "host.port." + n } value={ h.Port }/>
+					<input type="hidden" name={ "host.user." + n } value={ h.User }/>
+					<input type="hidden" name={ "host.key." + n } value={ h.Key }/>
+					<input type="hidden" name={ "host.os." + n } value={ h.OS }/>
+					<input type="hidden" name={ "host.conn." + n } value={ h.Conn }/>
+					<label>
+						{ tOrphanChoose.In(v.Page.Lang) }
+						<select name={ "host.move." + n } data-orphan-move>
+							<option value={ HostMoveKeep } selected?={ h.Move == HostMoveKeep }>{ tOrphanKeep.In(v.Page.Lang) }</option>
+							for _, t := range v.MoveTargets() {
+								<option value={ HostMoveTo(t) } selected?={ h.Move == HostMoveTo(t) }>{ tOrphanMoveTo.F(v.Page.Lang, t, h.Was, t) }</option>
+							}
+							<option value={ HostMoveRemove } selected?={ h.Move == HostMoveRemove }>{ tOrphanRemove.In(v.Page.Lang) }</option>
+						</select>
+					</label>
+				</div>
+			}
+		}
+	</section>
 }
 
 // runProcs — 「회수 필요」로 남긴 프로세스의 지금 상태. **끝내는 단추는 두지 않는다.** 끝내는 일은 운영자가 확인한 뒤 한다.
@@ -390,17 +450,6 @@ templ observeTargets(l Lang, t ObserveTargets) {
 				}
 			</table>
 		</div>
-	}
-	if len(t.Orphans) > 0 {
-		<section class="problems" data-targets="orphans">
-			<h3>{ tOrphansHead.F(l, len(t.Orphans)) }</h3>
-			<p class="lede">{ tOrphansLede.In(l) }</p>
-			<ul>
-				for _, o := range t.Orphans {
-					<li data-orphan-row={ strconv.Itoa(o.Row) } data-orphan-id={ o.ID }>{ tOrphanRow.F(l, o.Row) }: <code>{ o.ID }</code></li>
-				}
-			</ul>
-		</section>
 	}
 }
 

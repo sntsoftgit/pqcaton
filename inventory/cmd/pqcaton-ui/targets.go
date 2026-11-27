@@ -32,10 +32,17 @@ var errHostsUndeclared = errors.New("the access details hold a node ID that is n
 func (s *server) hostTargets(hosts []inventory.Host) ui.ObserveTargets {
 	var t ui.ObserveTargets
 	names, ok := s.declaredNodes()
+	lines := s.hostLines(len(hosts))
+	line := func(i int) int {
+		if i < len(lines) {
+			return lines[i]
+		}
+		return i + 2 // 줄 번호를 읽지 못했으면 머리글 한 줄 뒤의 차례로 어림한다
+	}
 	if !ok {
 		t.DeclUnknown = true
 		for i, h := range hosts {
-			t.Orphans = append(t.Orphans, ui.OrphanHost{Row: i + 1, ID: h.NodeID})
+			t.Orphans = append(t.Orphans, ui.OrphanHost{Row: line(i), ID: h.NodeID})
 		}
 		return t
 	}
@@ -47,7 +54,7 @@ func (s *server) hostTargets(hosts []inventory.Host) ui.ObserveTargets {
 		if declared[h.NodeID] {
 			access[h.NodeID] = true
 		} else {
-			t.Orphans = append(t.Orphans, ui.OrphanHost{Row: i + 1, ID: h.NodeID})
+			t.Orphans = append(t.Orphans, ui.OrphanHost{Row: line(i), ID: h.NodeID})
 		}
 	}
 	for _, n := range names {
@@ -58,6 +65,15 @@ func (s *server) hostTargets(hosts []inventory.Host) ui.ObserveTargets {
 		t.Rows = append(t.Rows, row)
 	}
 	return t
+}
+
+// hostLines: 접근 정보 파일의 행마다 그 행이 시작하는 파일의 줄 번호. 읽지 못하거나 행의 수가 맞지 않으면 nil이다.
+func (s *server) hostLines(want int) []int {
+	raw, err := os.ReadFile(s.hosts)
+	if err != nil {
+		return nil
+	}
+	return ui.HostLines(raw, want)
 }
 
 // declaredNodes: 지금 선언의 노드 이름(적힌 순서, 겹친 이름은 한 번). 선언이 없거나 읽지 못하면 ok가 거짓이다.

@@ -32,9 +32,11 @@ func TestHostsAreSavedKeepingPasswords(t *testing.T) {
 	form := url.Values{
 		"host.was.0": {"web"}, "host.id.0": {"web"}, "host.ip.0": {"10.0.0.20"}, "host.user.0": {"ops"},
 		"host.key.0": {"/home/me/.ssh/id_ed25519"}, "host.os.0": {"linux"}, "host.conn.0": {"ssh"},
-		"host.was.1": {"db"}, "host.id.1": {"db-main"}, "host.ip.1": {"10.0.0.9"}, "host.port.1": {"2222"},
+		"host.was.1": {"db"}, "host.id.1": {"db"}, "host.ip.1": {"10.0.0.9"}, "host.port.1": {"2222"},
 		"host.os.1": {"linux"}, "host.conn.1": {"ssh"},
-		"host.was.3": {""}, "host.id.3": {"win"}, "host.ip.3": {"10.0.0.11"}, "host.os.3": {"windows"}, "host.conn.3": {"winrm"},
+		// 선언에만 있던 노드(app)에 접속 정보를 처음 적는다. 선언의 다른 노드(web-gw)는 빈 줄로 온다: 저장되지 않는다.
+		"host.was.3": {""}, "host.id.3": {"app"}, "host.ip.3": {"10.0.0.11"}, "host.os.3": {"windows"}, "host.conn.3": {"winrm"},
+		"host.was.4": {""}, "host.id.4": {"web-gw"}, "host.os.4": {"linux"}, "host.conn.4": {"ssh"},
 	}
 	w := postForm(t, s, ui.HostsSavePath, withRev(form, s.revFor(ui.ScreenObserve)))
 	if w.Code != http.StatusSeeOther {
@@ -58,11 +60,14 @@ func TestHostsAreSavedKeepingPasswords(t *testing.T) {
 	if len(hosts) != 3 || got["web"].IP != "10.0.0.20" || got["web"].SSHUser != "ops" {
 		t.Errorf("saved hosts = %+v", hosts)
 	}
-	if got["db-main"].SSHPass != "s3cret-pw" || got["db-main"].Port != 2222 {
-		t.Errorf("the password did not follow the renamed node: %+v", got["db-main"])
+	if got["db"].SSHPass != "s3cret-pw" || got["db"].Port != 2222 {
+		t.Errorf("the password was not kept with its node: %+v", got["db"])
 	}
-	if got["win"].SSHPass != "" || got["win"].Conn != inventory.ConnWinRM || got["win"].Port != 5985 {
-		t.Errorf("the new WinRM node = %+v", got["win"])
+	if got["app"].SSHPass != "" || got["app"].Conn != inventory.ConnWinRM || got["app"].Port != 5985 {
+		t.Errorf("the new WinRM node = %+v", got["app"])
+	}
+	if _, blank := got["web-gw"]; blank {
+		t.Error("the blank row of a declared node was written to hosts.csv")
 	}
 	if fi, err := os.Stat(s.hosts); err != nil || fi.Mode().Perm() != 0o600 {
 		t.Errorf("hosts.csv mode = %v (%v), want 0600", fi.Mode().Perm(), err)
@@ -81,8 +86,8 @@ func TestBadHostsAreShownBackUnsaved(t *testing.T) {
 		before := readFile(t, s.hosts)
 		form := url.Values{
 			"host.was.0": {"web"}, "host.id.0": {"web"}, "host.ip.0": {"10.0.0.2"}, "host.os.0": {"linux"}, "host.conn.0": {"winrm"},
-			"host.was.1": {"db"}, "host.id.1": {"typed-node"}, "host.ip.1": {"10.0.0.9"}, "host.os.1": {"linux"}, "host.conn.1": {"ssh"},
-			"host.id.2": {"typed-node"}, "host.ip.2": {"10.0.0.10"}, "host.os.2": {"linux"}, "host.conn.2": {"ssh"},
+			"host.was.1": {"db"}, "host.id.1": {"db"}, "host.ip.1": {"10.0.0.9"}, "host.os.1": {"linux"}, "host.conn.1": {"ssh"},
+			"host.id.2": {"db"}, "host.row.2": {"declared"}, "host.ip.2": {"10.0.0.10"}, "host.os.2": {"linux"}, "host.conn.2": {"ssh"},
 		}
 		w := postFormLang(t, s, ui.HostsSavePath, c.lang, withRev(form, s.revFor(ui.ScreenObserve)))
 		if w.Code != http.StatusUnprocessableEntity {
@@ -92,7 +97,7 @@ func TestBadHostsAreShownBackUnsaved(t *testing.T) {
 			t.Errorf("%s: a refused save was written", c.lang)
 		}
 		body := w.Body.String()
-		for _, want := range []string{c.winrm, c.dup, `value="typed-node"`, `value="10.0.0.10"`} {
+		for _, want := range []string{c.winrm, c.dup, `value="10.0.0.10"`} {
 			if !strings.Contains(body, want) {
 				t.Errorf("%s: the page does not show %q", c.lang, want)
 			}

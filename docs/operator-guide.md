@@ -770,7 +770,9 @@ done.
    state loaded last the node's latest, and the activation can be done (pqcota v0.13.1 or later). Rounds that v0.27.x or earlier opened on an operator statement (`operator-statement`)
    are still read as past records, and 04 shows "It was not reconciled with the pqcota history" under "The policy change
    that opened this round".
-3. **02 Observation.** Write the nodes to observe and how to reach them (IP, port, user, SSH key path, OS), and save. With a
+3. **02 Observation.** The rows of the access details table are the nodes of 01 Declaration. For each node write how to
+   reach it (IP, port, user, SSH key path, OS), and save. The node ID is the declared name and is not edited here, and a row
+   without access details is not saved. With a
    Windows node the observation does not start ("Getting ready to run observations" in section 2). They are saved to `hosts.csv` in the workspace, in the format `pqcota-hosts` reads. Passwords are not written
    on the screen: if the file has one, it shows only as "set" and is kept as is when you save. "Start the observation" runs in
    this order. While it runs, the log is shown and "Stop" stops it.
@@ -784,8 +786,18 @@ done.
    saving it again, when all its IDs are in the declaration. **When an ID is not in the declaration**, the row and the ID are
    shown under "Rows not in the declaration" and no observation is started even if other nodes are ready
    (`run-hosts-undeclared`). The same holds when a node was renamed in the declaration and the old ID is left behind. The
-   check is made again against the current declaration when the start request is handled. The screen does not change
-   `hosts.csv` by itself. The preview, apply and recheck of 05 are not started either while such a row exists.
+   check is made again against the current declaration when the start request is handled. The preview, apply and recheck of
+   05 are not started either while such a row exists.
+
+   **The operator sorts out the rows that are not in the declaration.** The screen does not change `hosts.csv` by itself, and
+   opening the screen does not change the file. A row shows as "Access details, line 4: a node that is not in the
+   declaration, `db-old`", with the line in the file and the ID, and for each row you choose "Leave it", "Remove this row" or
+   "Move to the declared node …". If you renamed a node in the declaration, move the row with the old ID to the node with the
+   new name. You choose the target yourself (the screen does not pick one by IP or observed name), and the file changes only
+   when you press Save. A move changes only the node ID of that row; the address, account, key path, password and the other
+   rows are kept. When the target node already has access details, nothing is overwritten and the save is refused. The save
+   is judged again against the declaration as it is then, so if the declaration changed after the form was opened the save
+   is refused and the file is unchanged. Rows you did not change stay in the file exactly as they were.
 
    1. **Node check.** Every node is checked without any key ("Node check" in section 2). If one does not pass, it ends here, no node
       is observed, and the node cleanup is "not needed".

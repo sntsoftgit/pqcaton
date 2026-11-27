@@ -61,7 +61,8 @@ func (r TargetRow) StateText(l Lang) string {
 	return tTargetReady.In(l)
 }
 
-// OrphanHost — 접근 정보에는 있고 선언에는 없는 행. Row는 머리글 다음부터 센 행의 차례(1부터)다.
+// OrphanHost — 접근 정보에는 있고 선언에는 없는 행. Row는 그 행이 시작하는 파일의 줄 번호다(머리글이 1행이다). 운영자가
+// 편집기에서 찾을 자리다.
 type OrphanHost struct {
 	Row int
 	ID  string
@@ -90,11 +91,11 @@ func (t ObserveTargets) pick(access bool) []string {
 	return out
 }
 
-// OrphanDetail — 「행 3: db-old」를 이은 것. 점검 줄과 거절 기록에 적는다.
+// OrphanDetail — 「line 4: db-old」를 이은 것. 점검 줄과 거절 기록에 적는다.
 func OrphanDetail(orphans []OrphanHost) string {
 	parts := make([]string, 0, len(orphans))
 	for _, o := range orphans {
-		parts = append(parts, "row "+strconv.Itoa(o.Row)+": "+o.ID)
+		parts = append(parts, "line "+strconv.Itoa(o.Row)+": "+o.ID)
 	}
 	return strings.Join(parts, " · ")
 }
