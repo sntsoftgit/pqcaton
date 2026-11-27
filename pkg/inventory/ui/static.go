@@ -67,6 +67,8 @@ const (
 	// 확인(아무것도 쓰지 않는다).
 	IngestPath        = "/observe/ingest"
 	IngestConfirmPath = "/observe/ingest/confirm"
+	// IngestRunParam — 03에서 보일 적재 실행의 ID. 없으면 가장 최근 것이다.
+	IngestRunParam = "ingest_run"
 	// ProvRunPath — 06의 실행 상태 조각(GET). ProvPreviewPath — 대상 노드 미리 보기를 시작한다. ProvStopPath — 멈춘다.
 	ProvRunPath     = "/approve/run"
 	ProvPreviewPath = "/approve/preview"

@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"github.com/jackc/pgx/v5/pgconn"
 	"net/http"
 	"net/url"
 	"os"
@@ -286,7 +287,9 @@ func TestOneBadSignatureRefusesTheWholeSet(t *testing.T) {
 }
 
 // IC-U248 — **확인한 묶음과 적재하는 묶음이 같아야 하고, 확인 하나로 적재는 한 번만 시작된다.** 확인 페이지를 연 뒤 활성 정책이
-// 바뀌거나 결과 파일이 바뀌면 그 양식으로 보낸 적재는 409이고 아무것도 쓰이지 않는다. 같은 양식을 동시에 둘 보내면 하나만
+// 바뀌거나 결과 파일이 바뀌거나 검증 키가 바뀌면 그 양식으로 보낸 적재는 409이고 아무것도 쓰이지 않는다. 거절은 「적재를
+// 시작하지 않았습니다」와 함께 **무엇이 바뀌었는지**를 짚는다(활성 정책 · 결과 파일 · 검증 키). 이미 쓴 확인은 그사이 조건이
+// 달라졌어도 「이미 사용한 적재 확인」으로 거절되고, 돌아가는 주소가 그 확인이 시작한 실행이다. 같은 양식을 동시에 둘 보내면 하나만
 // 시작된다. 쓰기 전에 멈춘 적재(조회와 적재의 데이터베이스가 다름) 뒤에 같은 양식을 다시 보내도 409이고 두 번째 실행 자리가
 // 생기지 않는다.
 func TestTheConfirmedSetIsWhatIsIngestedAndOnlyOnce(t *testing.T) {
@@ -295,8 +298,9 @@ func TestTheConfirmedSetIsWhatIsIngestedAndOnlyOnce(t *testing.T) {
 	if err := os.WriteFile(s.scopeAssets, []byte(policyAll), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusConflict {
-		t.Errorf("ingest after the active policy changed = %d, want 409", w.Code)
+	if w := postFormLang(t, s, ui.IngestPath, "ko", form); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedIngestChangedPolicy) ||
+		!strings.Contains(w.Body.String(), "적재를 시작하지 않았습니다") || !strings.Contains(w.Body.String(), "확인한 뒤 활성 정책이 바뀌었습니다") {
+		t.Errorf("ingest after the active policy changed = %d, want 409 %s\n%s", w.Code, ui.RefusedIngestChangedPolicy, w.Body.String())
 	}
 	if err := os.WriteFile(s.scopeAssets, []byte(policyExcludeSSHD), 0o600); err != nil {
 		t.Fatal(err)
@@ -306,10 +310,34 @@ func TestTheConfirmedSetIsWhatIsIngestedAndOnlyOnce(t *testing.T) {
 	if err := os.WriteFile(extra, signedResult(t, s, "app"), 0o600); err != nil { // 확인한 뒤에 결과가 하나 더 들어왔다
 		t.Fatal(err)
 	}
-	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusConflict {
-		t.Errorf("ingest after the result files changed = %d, want 409", w.Code)
+	if w := postFormLang(t, s, ui.IngestPath, "ko", form); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedIngestChangedResults) ||
+		!strings.Contains(w.Body.String(), "확인한 뒤 결과 파일이 바뀌었습니다") {
+		t.Errorf("ingest after the result files changed = %d, want 409 %s", w.Code, ui.RefusedIngestChangedResults)
+	}
+	// 결과와 정책이 함께 바뀌면 하나를 짚지 않는다.
+	if err := os.WriteFile(s.scopeAssets, []byte(policyAll), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if w := postFormLang(t, s, ui.IngestPath, "ko", form); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedIngestChanged+"<") {
+		t.Errorf("ingest after two inputs changed = %d, want 409 %s", w.Code, ui.RefusedIngestChanged)
+	}
+	if err := os.WriteFile(s.scopeAssets, []byte(policyExcludeSSHD), 0o600); err != nil {
+		t.Fatal(err)
 	}
 	if err := os.Remove(extra); err != nil {
+		t.Fatal(err)
+	}
+	// 검증 키: 쓰지 않는 수집기 ID의 공개 키 하나를 뺀다(결과의 서명은 그대로 맞는다).
+	form, _ = ingestForm(t, s)
+	keys := readOrEmpty(s.collectorVerify)
+	if err := os.WriteFile(s.collectorVerify, []byte(keys[:strings.LastIndex(keys, ",")]+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if w := postFormLang(t, s, ui.IngestPath, "ko", form); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedIngestChangedKeys) ||
+		!strings.Contains(w.Body.String(), "확인한 뒤 검증 키") {
+		t.Errorf("ingest after the verification keys changed = %d, want 409 %s\n%s", w.Code, ui.RefusedIngestChangedKeys, w.Body.String())
+	}
+	if err := os.WriteFile(s.collectorVerify, []byte(keys), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if latestDigest(t, mem, "web") != "" || ingestRunCount(s) != 0 {
@@ -333,8 +361,24 @@ func TestTheConfirmedSetIsWhatIsIngestedAndOnlyOnce(t *testing.T) {
 		ingestStates(page, "ingest-last") != "db=absent web=absent" || latestDigest(t, mem, "web") != "" {
 		t.Errorf("another database: %s\n%s", ingestStates(page, "ingest-last"), section(page, "ingest-last"))
 	}
-	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedIngestReplay) || ingestRunCount(s) != 1 {
-		t.Errorf("the same confirmation again = %d (runs %d), want 409 %s and one run", w.Code, ingestRunCount(s), ui.RefusedIngestReplay)
+	// 쓰기 전에 멈춘 적재는 「적재에 실패했습니다」와 「이력 변화가 없습니다」(본체 · 최신 참조 · 관측 기록 수가 그대로라고 확인됨)다.
+	if !strings.Contains(page, "적재에 실패했습니다") || !strings.Contains(page, `data-ingest-outcome="unchanged"`) || !strings.Contains(page, "이력 변화가 없습니다") {
+		t.Errorf("an ingest stopped before writing should say the history did not change:\n%s", section(page, "ingest-last"))
+	}
+	runs := s.ingestRuns()
+	first, _ := readIngestManifest(runs[len(runs)-1])
+	// 이미 쓴 확인: 그사이 입력이 바뀌었어도 까닭은 「이미 사용한 적재 확인」이고, 돌아가는 주소가 그 실행이다.
+	if err := os.WriteFile(s.scopeAssets, []byte(policyAll), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	w := postFormLang(t, s, ui.IngestPath, "ko", form)
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedIngestReplay) || ingestRunCount(s) != 1 ||
+		!strings.Contains(w.Body.String(), "이미 사용한 적재 확인입니다. 새 적재를 시작하지 않았습니다") ||
+		!strings.Contains(w.Body.String(), ui.IngestRunParam+"="+first.ID+"#ingest-last") {
+		t.Errorf("the same confirmation again = %d (runs %d), want 409 %s, one run and a link to run %s\n%s", w.Code, ingestRunCount(s), ui.RefusedIngestReplay, first.ID, w.Body.String())
+	}
+	if err := os.WriteFile(s.scopeAssets, []byte(policyExcludeSSHD), 0o600); err != nil {
+		t.Fatal(err)
 	}
 
 	// 같은 양식을 동시에 둘: 하나만 시작된다.
@@ -420,7 +464,9 @@ func (f *failAfter) Append(s *history.Snapshot) error {
 // IC-U250 — **적재가 도중에 끝나면 이력을 다시 읽어 노드마다 보인다. 종료 코드로 말하지 않는다.** 첫 노드만 기록되고 적재가
 // 실패하면 화면은 「일부 노드만 기록됐습니다」와 함께 그 노드 「최신 참조가 기대와 같음」, 나머지 「기록되지 않음」을 보인다.
 // 적재 프로세스가 결과를 남기지 못하고 끝나도(강제 종료) 같은 표가 나오고 그 사실을 적는다. 이력을 읽지 못하면 모든 노드가
-// 「확인할 수 없음」이고 적재를 시작하지 않는다. 그 뒤 다시 확인해 적재하면 모든 노드가 기록된다.
+// 「확인할 수 없음」이고 「기록 여부를 확인하지 못했습니다」이며 적재를 시작하지 않는다. 그 뒤 다시 확인해 적재하면 모든 노드가
+// 기록된다. **「이력 변화가 없습니다」는 확인했을 때만 적는다**: 아무것도 쓰지 못한 채 실패한 적재(권한 없음)는 그 문장과 함께
+// 적재 계정의 쓰기 권한을 확인하라고 안내하고, 일부가 기록된 적재에는 그 문장이 없다.
 func TestAnInterruptedIngestShowsWhatTheHistoryHolds(t *testing.T) {
 	s, mem := ingestServer(t)
 	openIngestStore = func(string, string) (history.Store, func(), error) { return &failAfter{mem, 1}, func() {}, nil }
@@ -432,8 +478,13 @@ func TestAnInterruptedIngestShowsWhatTheHistoryHolds(t *testing.T) {
 	page := observePage(t, s)
 	got := ingestStates(page, "ingest-last")
 	if (got != "db=current web=absent" && got != "db=absent web=current") || !strings.Contains(page, `data-ingest-outcome="partial"`) ||
-		!strings.Contains(page, `data-ingest-reason="ingest-failed"`) || !strings.Contains(page, "일부가 기록됐을 수 있습니다") {
+		!strings.Contains(page, `data-ingest-reason="ingest-failed"`) || !strings.Contains(page, "적재에 실패했습니다") ||
+		!strings.Contains(page, "이력을 다시 읽은 결과: 일부 노드만 기록됐습니다") || strings.Contains(page, "이력 변화가 없습니다") {
 		t.Errorf("after a failure partway: %q\n%s", got, section(page, "ingest-last"))
+	}
+	// 오류의 문장은 화면에도 실행 자리에도 없다(연결 정보가 섞일 수 있다).
+	if strings.Contains(page, "write failed") || strings.Contains(readOrEmpty(filepath.Join(s.ingestRuns()[0], ingestResultFile)), "write failed") {
+		t.Error("the text of the error is shown or stored")
 	}
 	// 결과를 남기지 못하고 끝난 프로세스: 결과 파일을 지운다(강제 종료와 같은 자리다).
 	runs := s.ingestRuns()
@@ -448,6 +499,7 @@ func TestAnInterruptedIngestShowsWhatTheHistoryHolds(t *testing.T) {
 	useUpstream(s, downLookup{})
 	page = observePage(t, s)
 	if ingestStates(page, "ingest-last") != "db=unknown web=unknown" || !strings.Contains(page, `data-ingest-outcome="unknown"`) ||
+		!strings.Contains(page, "기록 여부를 확인하지 못했습니다") || strings.Contains(page, "이력 변화가 없습니다") ||
 		!strings.Contains(page, `data-ingest="state-unknown"`) || strings.Contains(page, "data-ingest-go") {
 		t.Errorf("with the history unreachable:\n%s", section(page, "observe-ingest"))
 	}
@@ -463,6 +515,45 @@ func TestAnInterruptedIngestShowsWhatTheHistoryHolds(t *testing.T) {
 	waitIngest(t, s)
 	if page = observePage(t, s); ingestStates(page, "ingest-last") != "db=current web=current" {
 		t.Errorf("after the retry: %s", ingestStates(page, "ingest-last"))
+	}
+}
+
+// denied: 쓰기가 권한 오류로 실패하는 이력.
+type denied struct{ *history.MemStore }
+
+func (denied) Append(*history.Snapshot) error {
+	return &pgconn.PgError{Code: "42501", Message: "permission denied for table pqcota_snapshots (host=db.internal user=svc)"}
+}
+
+// IC-U252 — **아무것도 쓰지 못한 채 실패한 적재는 「이력 변화가 없습니다」를 근거와 함께 적고, 권한 오류면 적재 계정의 쓰기
+// 권한을 확인하라고 안내한다.** 근거는 노드마다 적재 전에 적어 둔 본체 · 최신 참조 · 관측 기록 수가 지금과 같다는 것이다.
+// 오류의 문장(호스트 · 사용자가 실릴 수 있다)은 화면에도 실행 자리에도 없다. 같은 내용을 다시 적재해 관측 기록만 늘어난 경우는
+// 「변화 없음」이 아니다: 그 뒤 실패한 적재의 기록에서 관측 기록 수가 달라지면 그 문장을 적지 않는다.
+func TestAFailedIngestSaysUnchangedOnlyWhenItWasChecked(t *testing.T) {
+	s, mem := ingestServer(t)
+	openIngestStore = func(string, string) (history.Store, func(), error) { return denied{mem}, func() {}, nil }
+	form, _ := ingestForm(t, s)
+	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusSeeOther {
+		t.Fatalf("ingest = %d", w.Code)
+	}
+	waitIngest(t, s)
+	page := observePage(t, s)
+	for _, want := range []string{`data-ingest-reason="ingest-failed"`, `data-ingest-outcome="unchanged"`, "적재에 실패했습니다.", "이력 변화가 없습니다",
+		"PQCOTA_DSN의 계정이 이력 표에 쓸 수 있는지 확인하십시오"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the screen lacks %q\n%s", want, section(page, "ingest-last"))
+		}
+	}
+	dir := s.ingestRuns()[0]
+	for _, leak := range []string{"permission denied", "db.internal", "user=svc", "lacks privileges"} {
+		if strings.Contains(page, leak) || strings.Contains(readOrEmpty(filepath.Join(dir, ingestResultFile)), leak) {
+			t.Errorf("%q from the error is shown or stored", leak)
+		}
+	}
+	// 그 뒤 다른 경로로 이력이 달라지면(터미널에서 적재) 그 실패한 실행의 기록은 더는 「변화 없음」이 아니다.
+	ingestedUnder(t, s, s.scopeAssets, mem)
+	if page = observePage(t, s); strings.Contains(section(page, "ingest-last"), "이력 변화가 없습니다") {
+		t.Errorf("the history changed since, so the record must not say it did not:\n%s", section(page, "ingest-last"))
 	}
 }
 

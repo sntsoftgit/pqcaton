@@ -41,6 +41,12 @@ const (
 	RefusedIngestNotReady = "ingest-not-ready"
 	RefusedIngestBusy     = "ingest-busy"
 	RefusedIngestReplay   = "ingest-replayed"
+	// RefusedIngestChanged… — 확인한 뒤 적재할 입력이 바뀌어 시작하지 않았다(409). 무엇이 바뀌었는지로 가른다: 결과 파일,
+	// 활성 정책, 검증 키. 둘 이상이거나 그 밖의 것(조직 · 규칙 판)이면 뭉뚱그린 종류다.
+	RefusedIngestChangedResults = "ingest-results-changed"
+	RefusedIngestChangedPolicy  = "ingest-policy-changed"
+	RefusedIngestChangedKeys    = "ingest-keys-changed"
+	RefusedIngestChanged        = "ingest-inputs-changed"
 	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 06 화면이 서명 · 생성을 하지 않았다(409).
 	RefusedSignNotReady      = "sign-not-ready"
 	RefusedPlanNotApprovable = "plan-not-approvable"
@@ -109,7 +115,9 @@ var refusedText = map[string]struct{ head, body T }{
 	RefusedProvNotReady: {tProvRefusedHead, tProvRefusedNotReady}, RefusedProvBusy: {tProvRefusedHead, tProvRefusedBusy},
 	RefusedProvGrant:      {tApplyRefusedHead, tApplyRefusedGrant},
 	RefusedIngestNotReady: {tIngestRefusedHead, tIngestRefusedNotReady}, RefusedIngestBusy: {tIngestRefusedHead, tIngestRefusedBusy},
-	RefusedIngestReplay: {tIngestRefusedHead, tIngestRefusedReplay},
+	RefusedIngestReplay:         {tIngestRefusedHead, tIngestRefusedReplay},
+	RefusedIngestChangedResults: {tIngestRefusedHead, tIngestChangedResults}, RefusedIngestChangedPolicy: {tIngestRefusedHead, tIngestChangedPolicy},
+	RefusedIngestChangedKeys: {tIngestRefusedHead, tIngestChangedKeys}, RefusedIngestChanged: {tIngestRefusedHead, tIngestChangedInputs},
 	RefusedSignNotReady: {tSignRefusedHead, tSignNotReady}, RefusedPlanNotApprovable: {tSignRefusedHead, tPlanNotApprovable},
 	RefusedGenNotReady: {tGenRefusedHead, tGenNotReady}, RefusedSignedExists: {tSignRefusedHead, tSignedExists},
 	RefusedRulesetChanged:      {body: tRefusedRulesetChanged},

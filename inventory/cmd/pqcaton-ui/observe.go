@@ -71,7 +71,7 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 		v.Run.JCAUnconfirmed = wd.res.JCAUnconfirmed
 	}
 	if s.results != "" {
-		v.HasResults, v.Ingest = true, s.ingestView()
+		v.HasResults, v.Ingest = true, s.ingestView(r.URL.Query().Get(ui.IngestRunParam))
 	}
 	html(w, r, func(out io.Writer) error { return ui.RenderObserve(out, v) })
 }

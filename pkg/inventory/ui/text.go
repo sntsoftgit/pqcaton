@@ -1975,8 +1975,13 @@ var (
 	tIngestUnknownCell = T{KO: "확인할 수 없음", EN: "cannot be checked"}
 	tIngestNone        = T{KO: "없음", EN: "none"}
 	tIngestNoResult    = T{
-		KO: "적재 프로세스가 결과를 남기지 못하고 끝났습니다. 아래는 이력을 다시 읽은 것입니다.",
-		EN: "The ingest process ended without leaving a result. What is below was read back from the history."}
+		KO: "적재 프로세스가 결과를 남기지 못하고 끝났습니다.",
+		EN: "The ingest process ended without leaving a result."}
+	tIngestFailed   = T{KO: "적재에 실패했습니다.", EN: "The ingest failed."}
+	tIngestReadBack = T{KO: "이력을 다시 읽은 결과: ", EN: "Read back from the history: "}
+	tIngestShownRun = T{
+		KO: "가장 최근 적재가 아닙니다. 요청한 실행의 기록을 보이고 있습니다.",
+		EN: "This is not the most recent ingest. The record of the requested run is shown."}
 	tIngestCounts = T{
 		KO: "받은 결과 %d건 · 내용이 바뀐 노드 %d개 · 정책으로 제외한 자산 %d건",
 		EN: "%d results accepted · %d nodes with changed content · %d assets excluded by the policy"}
@@ -1997,14 +2002,26 @@ var (
 	tIngestLineAppendOnly = T{
 		KO: "이력은 덧붙이기만 됩니다. 적재한 것은 되돌릴 수 없습니다.",
 		EN: "The history is append-only. What is ingested cannot be undone."}
-	tIngestRefusedHead     = T{KO: "이력에 적재하지 않았습니다", EN: "Nothing was ingested into the history"}
+	tIngestRefusedHead    = T{KO: "적재를 시작하지 않았습니다", EN: "No ingest was started"}
+	tIngestChangedResults = T{
+		KO: "확인한 뒤 결과 파일이 바뀌었습니다. 다시 점검하고 적재할 내용을 확인하십시오.",
+		EN: "The result files changed after the confirmation. Check again and confirm what will be ingested."}
+	tIngestChangedPolicy = T{
+		KO: "확인한 뒤 활성 정책이 바뀌었습니다. 다시 점검하고 적재할 내용을 확인하십시오.",
+		EN: "The active policy changed after the confirmation. Check again and confirm what will be ingested."}
+	tIngestChangedKeys = T{
+		KO: "확인한 뒤 검증 키(신뢰할 수집기 공개 키)가 바뀌었습니다. 다시 점검하고 적재할 내용을 확인하십시오.",
+		EN: "The verification keys (trusted collector public keys) changed after the confirmation. Check again and confirm what will be ingested."}
+	tIngestChangedInputs = T{
+		KO: "확인한 뒤 적재할 입력이 둘 이상 바뀌었습니다(결과 파일 · 활성 정책 · 검증 키 · 조직 · 규칙 판 가운데). 다시 점검하고 적재할 내용을 확인하십시오.",
+		EN: "More than one input to the ingest changed after the confirmation (among the result files, the active policy, the verification keys, the organization and the ruleset). Check again and confirm what will be ingested."}
 	tIngestRefusedNotReady = T{
 		KO: "적재할 조건이 맞지 않습니다. 03 화면의 「이력에 적재」에서 까닭을 확인하십시오(설정 · 서명 · 이미 적재됨 · 이력을 읽지 못함 · 조회와 적재의 데이터베이스가 다름).",
 		EN: "The conditions for ingesting are not met. See \"Ingest into the history\" on screen 03 for the reason (setup, signatures, already ingested, the history could not be read, or the read and ingest databases differ)."}
 	tIngestRefusedBusy   = T{KO: "이미 적재가 돌고 있습니다. 끝난 뒤 다시 하십시오.", EN: "An ingest is already running. Try again when it ends."}
 	tIngestRefusedReplay = T{
-		KO: "이 확인으로 이미 한 번 적재를 시작했습니다. 03 화면에서 지금 상태를 본 뒤 다시 확인하십시오.",
-		EN: "This confirmation was already used to start an ingest once. Look at the current state on screen 03 and confirm again."}
+		KO: "이미 사용한 적재 확인입니다. 새 적재를 시작하지 않았습니다. 아래 링크로 돌아가면 이 확인으로 시작한 적재의 기록이 보입니다.",
+		EN: "This ingest confirmation was already used. No new ingest was started. The link below goes to the record of the ingest this confirmation started."}
 )
 
 var ingestBlockText = map[string]T{
@@ -2038,7 +2055,22 @@ var ingestOutcomeText = map[string]T{
 	"recorded": {KO: "모든 노드가 기록됐습니다. 최신 참조가 기대하는 것과 같습니다.", EN: "Every node is recorded: its latest reference is the expected one."},
 	"partial":  {KO: "일부 노드만 기록됐습니다. 아래 표가 노드마다 이력의 상태를 보입니다.", EN: "Only some nodes are recorded. The table below shows the state in the history per node."},
 	"nothing":  {KO: "기록된 노드가 없습니다. 어느 노드의 최신 참조도 기대하는 것이 아닙니다.", EN: "No node is recorded: no node's latest reference is the expected one."},
-	"unknown":  {KO: "이력을 읽지 못해 어디까지 기록됐는지 확인할 수 없습니다.", EN: "The history could not be read, so how far it was recorded cannot be checked."},
+	"unknown":  {KO: "기록 여부를 확인하지 못했습니다. 이력을 읽지 못했습니다.", EN: "Whether anything was recorded could not be checked: the history could not be read."},
+	// unchanged — 노드마다 본체 · 최신 참조 · 관측 기록 수가 적재 전과 같다고 확인했을 때만이다.
+	"unchanged": {KO: "이력 변화가 없습니다. 노드마다 본체 · 최신 참조 · 관측 기록 수가 적재 전과 같습니다.", EN: "The history did not change: per node, the body, the latest reference and the number of observation records are what they were before."},
+}
+
+// 적재 오류의 갈래(코드)로 고르는 안내. 오류의 문장은 싣지 않는다.
+const (
+	IngestDetailPermission = "permission"
+	IngestDetailSchema     = "schema"
+	IngestDetailTimeout    = "timeout"
+)
+
+var ingestDetailText = map[string]T{
+	IngestDetailPermission: {KO: "적재 계정에 권한이 없습니다. PQCOTA_DSN의 계정이 이력 표에 쓸 수 있는지 확인하십시오.", EN: "The ingest account lacks privileges. Check that the account in PQCOTA_DSN can write to the history tables."},
+	IngestDetailSchema:     {KO: "이력 스키마가 없거나 완전하지 않습니다.", EN: "The history schema is missing or incomplete."},
+	IngestDetailTimeout:    {KO: "시간 안에 응답을 받지 못했습니다.", EN: "No answer came in time."},
 }
 
 var ingestReasonText = map[string]T{
@@ -2047,5 +2079,5 @@ var ingestReasonText = map[string]T{
 	"signature":      {KO: "서명이 없거나 맞지 않는 결과가 있어 쓰기 전에 멈췄습니다.", EN: "A result was unsigned or did not verify, so it stopped before writing."},
 	"other-db":       {KO: "적재용 연결이 화면이 조회하는 데이터베이스가 아니어서 쓰기 전에 멈췄습니다.", EN: "The ingest connection is not the database the screen reads, so it stopped before writing."},
 	"store":          {KO: "적재용으로 이력을 열지 못해 쓰기 전에 멈췄습니다.", EN: "The history could not be opened for ingesting, so it stopped before writing."},
-	"ingest-failed":  {KO: "적재하다 실패했습니다. 일부가 기록됐을 수 있습니다.", EN: "The ingest failed partway. Some of it may have been recorded."},
+	"ingest-failed":  {KO: "적재하는 도중에 오류가 났습니다.", EN: "An error came up while ingesting."},
 }

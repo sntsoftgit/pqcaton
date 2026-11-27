@@ -1425,7 +1425,11 @@ screen.
 | `run-busy` | An observation is already running | Start again after it finishes or is stopped |
 | `ingest-not-ready` | The conditions for the 03 ingest are not met (ingesting from the screen is not set up · a result is unsigned or does not verify · already ingested · the history could not be read · the read and ingest databases differ) | Resolve the reason shown under "Ingest into the history" on the 03 screen |
 | `ingest-busy` | An ingest is already running | Try again after it ends |
-| `ingest-replayed` | This confirmation was already used to start an ingest once | Look at the current state on the 03 screen and confirm again |
+| `ingest-replayed` | This ingest confirmation was already used. No new ingest was started | The link on the refusal page goes to the record of the ingest that confirmation started. To ingest again, confirm anew on the 03 screen |
+| `ingest-results-changed` | The result files changed after the confirmation, so no ingest was started | Check again on the 03 screen and confirm what will be ingested |
+| `ingest-policy-changed` | The active policy changed after the confirmation, so no ingest was started | Check again on the 03 screen and confirm what will be ingested |
+| `ingest-keys-changed` | The verification keys (trusted collector public keys) changed after the confirmation, so no ingest was started | Check again on the 03 screen and confirm what will be ingested |
+| `ingest-inputs-changed` | More than one input to the ingest changed after the confirmation, so no ingest was started | Check again on the 03 screen and confirm what will be ingested |
 | `prov-not-ready` | The conditions for running the 06 preview, apply or recheck from the screen are not met (approval, an L2 playbook, access details, Ansible and its version (ansible-core 2.16.3), or a kind of task the screen does not run) | Provide what "Why the screen does not run this" on the 06 screen lists |
 | `prov-busy` | A 06 run is already going | Start again after it finishes or is stopped |
 | `prov-grant` | There is no valid preview to apply from (none · ended more than 10 minutes ago · an input changed after it · already used once) | Preview again on the 06 screen, then apply |

@@ -38,6 +38,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -163,6 +164,7 @@ type ingestPlan struct {
 	digest   string
 	keys     map[string][]string
 	keysSHA  string
+	filesSHA string
 	org      string
 	refs     []upstream.Ref
 	observed int
@@ -261,13 +263,41 @@ func (s *server) ingestPlan() ingestPlan {
 		p.block = ui.IngestNoResults
 		return p
 	}
-	h := sha256.New()
+	h, fh := sha256.New(), sha256.New()
 	fmt.Fprintf(h, "pqcaton ingest/1\n%s\n%s\n%v\n%s\n%s\n", p.org, normalize.RulesetVersion, p.noPolicy, sha(p.policy), p.keysSHA)
 	for _, f := range p.files {
 		fmt.Fprintf(h, "%s\x00%s\n", f.Name, f.SHA)
+		fmt.Fprintf(fh, "%s\x00%s\n", f.Name, f.SHA)
 	}
+	// 서명이 맞지 않게 된 파일도 「결과 파일이 바뀌었다」에 들어야 한다. 걸린 파일의 이름과 까닭을 함께 넣는다.
+	for _, pr := range p.problems {
+		fmt.Fprintf(fh, "!%s\x00%s\x00%s\n", pr.File, pr.Collector, pr.Why)
+	}
+	p.filesSHA = hex.EncodeToString(fh.Sum(nil))
+	fmt.Fprintf(h, "%s\n", p.filesSHA)
 	p.binding = hex.EncodeToString(h.Sum(nil))
 	return p
+}
+
+// parts: 묶음의 세 조각(결과 파일 · 활성 정책 · 신뢰할 공개 키)의 지문. 확인 뒤에 무엇이 바뀌었는지 가르는 데 쓴다.
+func (p ingestPlan) parts() [3]string {
+	return [3]string{p.filesSHA, fmt.Sprint(p.noPolicy) + ":" + sha(p.policy), p.keysSHA}
+}
+
+// ingestChanged: 확인한 조각(confirmed)과 지금의 조각을 견줘 거절 종류를 고른다. 하나만 바뀌었으면 그것을 짚고, 둘 이상이거나
+// 셋이 그대로인데 묶음이 다르면(조직 · 규칙 판) 뭉뚱그린 종류다.
+func ingestChanged(confirmed []string, now [3]string) string {
+	kinds := [3]string{ui.RefusedIngestChangedResults, ui.RefusedIngestChangedPolicy, ui.RefusedIngestChangedKeys}
+	var changed []string
+	for i := range now {
+		if i >= len(confirmed) || confirmed[i] != now[i] {
+			changed = append(changed, kinds[i])
+		}
+	}
+	if len(changed) == 1 {
+		return changed[0]
+	}
+	return ui.RefusedIngestChanged
 }
 
 // sortedKeys: 공개 키 지도를 순서가 정해진 꼴로(해시에 쓴다).
@@ -321,7 +351,7 @@ func (s *server) activePolicyPath(p ingestPlan) string {
 }
 
 // ingestView: 03의 적재 구역.
-func (s *server) ingestView() ui.IngestView {
+func (s *server) ingestView(runID string) ui.IngestView {
 	v := ui.IngestView{Running: s.ingest.running()}
 	cfg, err := s.loadDSNs()
 	v.Configured = err == nil && cfg.ingest != ""
@@ -350,22 +380,30 @@ func (s *server) ingestView() ui.IngestView {
 			}
 		}
 	}
-	v.Last = s.ingestLast()
+	v.Last = s.ingestLast(runID)
 	return v
 }
 
 // ingestLast: 가장 최근 적재의 기록과, **지금 이력을 다시 읽은** 노드별 상태.
-func (s *server) ingestLast() *ui.IngestLast {
+//
+// runID가 있고 그 실행이 있으면 그 실행을 보인다(이미 쓴 확인으로 온 사람을 그 확인이 시작한 실행으로 데려간다). 없으면 가장
+// 최근 것이다.
+func (s *server) ingestLast(runID string) *ui.IngestLast {
 	runs := s.ingestRuns()
 	if len(runs) == 0 {
 		return nil
 	}
 	dir := runs[len(runs)-1]
 	m, ok := readIngestManifest(dir)
+	for _, d := range runs {
+		if mm, found := readIngestManifest(d); found && runID != "" && mm.ID == runID {
+			dir, m, ok = d, mm, true
+		}
+	}
 	if !ok {
 		return nil
 	}
-	out := &ui.IngestLast{ID: m.ID, Started: m.Started, Files: len(m.Files), PolicyDigest: m.PolicyDigest}
+	out := &ui.IngestLast{ID: m.ID, Started: m.Started, Files: len(m.Files), PolicyDigest: m.PolicyDigest, Latest: dir == runs[len(runs)-1]}
 	if alive(dir) {
 		out.Running = true
 	}
@@ -378,16 +416,27 @@ func (s *server) ingestLast() *ui.IngestLast {
 	for _, b := range m.Before {
 		before[b.Node] = b
 	}
-	now, err := upstream.States(s.upstream, m.Refs)
+	// 끝까지 가지 못한 적재는 관측 기록 수까지 읽는다. 「이력 변화가 없습니다」는 노드마다 본체 · 최신 참조 · 관측 기록 수가
+	// 적재 전과 같다고 **확인했을 때만** 적는다.
+	clean := out.HasResult && out.Reason == ""
+	read := upstream.StatesWithObs
+	if clean || out.Running {
+		read = upstream.States
+	}
+	now, err := read(s.upstream, m.Refs)
 	if err != nil {
 		for _, r := range m.Refs {
 			out.Nodes = append(out.Nodes, ui.IngestNode{Node: r.Node, Want: r.Digest, Before: before[r.Node].Latest, Unknown: true})
 		}
 		return out
 	}
+	same := len(now) > 0 && len(now) == len(m.Before) && !clean && !out.Running
 	for _, st := range now {
 		out.Nodes = append(out.Nodes, ui.IngestNode{Node: st.Node, Want: st.Want, Before: before[st.Node].Latest, Latest: st.Latest, Body: st.Body, Current: st.Current})
+		b, had := before[st.Node]
+		same = same && had && b.ObsKnown && st.ObsKnown && b.Obs == st.Obs && b.Body == st.Body && b.Latest == st.Latest
 	}
+	out.Unchanged = same
 	return out
 }
 
@@ -464,7 +513,12 @@ func (s *server) ingestReady(w http.ResponseWriter, r *http.Request) (ingestPlan
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestNotReady, back, nil)
 		return ingestPlan{}, cfg, nil, false
 	}
-	p := s.ingestPlan()
+	return s.ingestReadyWith(w, r, s.ingestPlan(), cfg)
+}
+
+// ingestReadyWith: 이미 잰 묶음으로 ingestReady의 나머지를 본다.
+func (s *server) ingestReadyWith(w http.ResponseWriter, r *http.Request, p ingestPlan, cfg dsnConfig) (ingestPlan, dsnConfig, []upstream.NodeState, bool) {
+	back := ui.ScreenObserve
 	if p.block != "" || len(p.problems) > 0 || s.run.running() {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestNotReady, back, nil)
 		return p, cfg, nil, false
@@ -519,7 +573,9 @@ func (s *server) ingestConfirm(w http.ResponseWriter, r *http.Request) {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInternal, err)
 		return
 	}
-	s.confirmPageWith(w, r, kindIngest, ui.IngestPath, "", back, store.Identity{SessionID: p.org}, cur, p.binding+"|"+nonce, lines, nil, "ingest")
+	parts := p.parts()
+	s.confirmPageWith(w, r, kindIngest, ui.IngestPath, "", back, store.Identity{SessionID: p.org}, cur,
+		strings.Join(append([]string{p.binding, nonce}, parts[:]...), "|"), lines, nil, "ingest")
 }
 
 var errIngestBusy = errors.New("an ingest is already running")
@@ -534,28 +590,50 @@ func (s *server) ingestStart(w http.ResponseWriter, r *http.Request) {
 	if !s.writable(w, r, back) {
 		return
 	}
+	// 거절의 까닭을 정확히 적으려고 순서를 이렇게 둔다.
+	//  1. 이미 쓴 확인인가. 그사이 조건이 달라졌어도(이미 적재됨 · 입력이 바뀜) 까닭은 「이미 쓴 확인」이다.
+	//  2. 확인 토큰이 맞고 만료 전인가.
+	//  3. 확인한 묶음과 지금의 묶음이 같은가. 다르면 무엇이 바뀌었는지 짚는다.
+	//  4. 이미 돌고 있는가.  5. 지금 적재할 조건이 맞는가.
+	token := sha([]byte(r.PostForm.Get(ui.ConfirmTokenField)))
+	if id, used := s.ingestUsed(token); used {
+		s.ingestReplayed(w, r, id)
+		return
+	}
+	payload, ok := s.confirmed(w, r, kindIngest, back, store.Identity{SessionID: s.orgName()})
+	if !ok {
+		return
+	}
+	cfg, err := s.loadDSNs()
+	if err != nil || cfg.ingest == "" {
+		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestNotReady, back, nil)
+		return
+	}
+	p := s.ingestPlan()
+	// 확인한 묶음과 지금의 묶음이 같아야 한다(결과 파일 · 활성 정책 · 신뢰할 공개 키 · 조직 · 규칙 판). 묶음을 잴 수 없게 된
+	// 경우(p.block)는 5에서 거절한다.
+	if f := strings.Split(payload, "|"); p.block == "" && f[0] != p.binding {
+		confirmedParts := []string{}
+		if len(f) >= 5 {
+			confirmedParts = f[2:5]
+		}
+		s.refuse(w, r, http.StatusConflict, ingestChanged(confirmedParts, p.parts()), back, nil)
+		return
+	}
 	if s.ingestBusy() {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestBusy, back, nil)
 		return
 	}
-	p, cfg, states, ok := s.ingestReady(w, r)
+	p, cfg, states, ok := s.ingestReadyWith(w, r, p, cfg)
 	if !ok {
 		return
 	}
-	payload, ok := s.confirmed(w, r, kindIngest, back, store.Identity{SessionID: p.org})
-	if !ok {
-		return
-	}
-	// 확인한 묶음과 지금의 묶음이 같아야 한다(결과 파일 · 활성 정책 · 신뢰할 공개 키 · 조직 · 규칙 판).
-	if confirmedSet, _, _ := strings.Cut(payload, "|"); confirmedSet != p.binding {
-		s.refuse(w, r, http.StatusConflict, ui.RefusedStale, back, nil)
-		return
-	}
-	switch err := s.runIngest(p, cfg, states, sha([]byte(r.PostForm.Get(ui.ConfirmTokenField)))); {
+	switch err := s.runIngest(p, cfg, states, token); {
 	case errors.Is(err, errIngestBusy):
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestBusy, back, nil)
 	case errors.Is(err, errIngestReplay):
-		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestReplay, back, nil)
+		id, _ := s.ingestUsed(token)
+		s.ingestReplayed(w, r, id)
 	case errors.Is(err, errIngestOtherDB):
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestNotReady, back, nil)
 	case err != nil:
@@ -564,6 +642,27 @@ func (s *server) ingestStart(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, back+"?"+ui.LangParam+"="+string(ui.PickLang(r))+"#observe-ingest", http.StatusSeeOther)
 	}
 }
+
+// ingestUsed: 그 확인 토큰으로 이미 적재를 시작했는가. 시작했으면 그 실행의 ID다(쓴 표시에 적혀 있다).
+func (s *server) ingestUsed(token string) (string, bool) {
+	b, err := os.ReadFile(filepath.Join(s.ingestDir(), ingestTokens, token))
+	if err != nil {
+		return "", false
+	}
+	return strings.TrimSpace(string(b)), true
+}
+
+// ingestReplayed: 이미 쓴 확인의 거절. 돌아가는 주소가 그 확인이 시작한 실행의 기록이다.
+func (s *server) ingestReplayed(w http.ResponseWriter, r *http.Request, id string) {
+	back := ui.ScreenObserve + "?" + ui.LangParam + "=" + string(ui.PickLang(r))
+	if runIDPattern.MatchString(id) {
+		back += "&" + ui.IngestRunParam + "=" + id
+	}
+	s.refuse(w, r, http.StatusConflict, ui.RefusedIngestReplay, back+"#ingest-last", nil)
+}
+
+// runIDPattern: 실행 ID의 꼴(주소에 싣기 전에 본다).
+var runIDPattern = regexp.MustCompile(`^[0-9A-Za-z-]{1,64}$`)
 
 // ingestBusy: 적재가 돌고 있는가. 이 화면이 띄운 것과, 화면이 다시 뜨기 전에 띄운 것(PID 파일)을 함께 본다.
 func (s *server) ingestBusy() bool {
@@ -654,6 +753,10 @@ func (s *server) runIngest(p ingestPlan, cfg dsnConfig, before []upstream.NodeSt
 	if err := os.MkdirAll(filepath.Join(s.ingestDir(), ingestTokens), 0o700); err != nil {
 		return err
 	}
+	id, err := runID()
+	if err != nil {
+		return err
+	}
 	tf, err := os.OpenFile(filepath.Join(s.ingestDir(), ingestTokens, token), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if errors.Is(err, fs.ErrExist) {
 		return errIngestReplay
@@ -661,15 +764,20 @@ func (s *server) runIngest(p ingestPlan, cfg dsnConfig, before []upstream.NodeSt
 	if err != nil {
 		return err
 	}
-	_ = tf.Close()
+	// 쓴 표시에 실행 ID를 적는다. 같은 확인이 다시 오면 그 실행의 기록으로 데려간다.
+	_, werr := tf.WriteString(id + "\n")
+	if cerr := tf.Close(); werr != nil || cerr != nil {
+		return errors.Join(werr, cerr)
+	}
 
 	readDB, err := dbIdentity(cfg.read)
 	if err != nil {
 		return errIngestOtherDB
 	}
-	id, err := runID()
-	if err != nil {
-		return err
+	// 적재 전의 상태를 관측 기록 수까지 적어 둔다. 적재가 실패했을 때 「이력이 그대로다」를 근거 있게 적으려면 필요하다.
+	// 세지 못하면 앞서 읽은 상태를 그대로 둔다(그러면 그 문장은 적지 않는다).
+	if withObs, err := upstream.StatesWithObs(s.upstream, p.refs); err == nil {
+		before = withObs
 	}
 	dir := filepath.Join(s.ingestDir(), id)
 	if err := os.MkdirAll(filepath.Join(dir, ingestResultsCopy), 0o700); err != nil {
@@ -731,6 +839,20 @@ var openIngestStore = func(dsn, org string) (history.Store, func(), error) {
 		return nil, nil, err
 	}
 	return st, st.Close, nil
+}
+
+// ingestDetail: 적재 오류의 갈래. **코드만이다.** 화면은 코드로 고른 자기 문구만 보이고 오류의 문장은 어디에도 싣지 않는다
+// (연결 정보가 섞일 수 있다).
+func ingestDetail(err error) string {
+	switch c := upstream.Classify(err); {
+	case strings.HasPrefix(c, upstream.ClassNoPrivilege):
+		return ui.IngestDetailPermission
+	case c == upstream.ClassSchemaMissing:
+		return ui.IngestDetailSchema
+	case c == "timed out":
+		return ui.IngestDetailTimeout
+	}
+	return ""
 }
 
 // ingestMain: 적재 모드의 시작. 적재용 연결 정보를 표준 입력의 첫 줄로 받는다.
@@ -797,7 +919,7 @@ func ingestRun(dir, dsn string) int {
 	// 3. 적재용 연결이 화면이 조회하는 그 데이터베이스인가. 아니면 쓰지 않는다.
 	db, err := dbIdentity(dsn)
 	if err != nil {
-		return end(3, ingestStore, upstream.Classify(err))
+		return end(3, ingestStore, ingestDetail(err))
 	}
 	if db != m.ReadDB {
 		return end(3, ingestOtherDB, "")
@@ -806,7 +928,7 @@ func ingestRun(dir, dsn string) int {
 	// 4. 적재. 판정 조직으로 열고, 서명 검증은 수집기 ID에 묶은 것을 그대로 건다.
 	st, closeStore, err := openIngestStore(dsn, m.Org)
 	if err != nil {
-		return end(3, ingestStore, upstream.Classify(err))
+		return end(3, ingestStore, ingestDetail(err))
 	}
 	defer closeStore()
 	opts := ingest.IngestOptions{
@@ -828,7 +950,7 @@ func ingestRun(dir, dsn string) int {
 			rep.Accepted, rep.Rejected, rep.OffScope, rep.Snapshots, rep.Changed, rep.ExcludedByScope, rep.Nodes
 	}
 	if err != nil {
-		return end(1, ingestFailed, upstream.Classify(err))
+		return end(1, ingestFailed, ingestDetail(err))
 	}
 	return end(0, "", "")
 }

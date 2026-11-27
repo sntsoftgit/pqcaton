@@ -22,11 +22,28 @@ type NodeState struct {
 	// Latest — 그 노드의 최신 스냅샷의 지문. 스냅샷이 하나도 없으면 빈 값이다.
 	Latest  string
 	Current bool
+	// Obs — 그 노드의 관측 기록 수(스냅샷을 가리지 않고 모두). ObsKnown이 참일 때만 뜻이 있다. StatesWithObs만 채운다.
+	// 적재 전후를 견줘 「이력이 그대로다」를 근거 있게 적는 데 쓴다: 같은 내용을 다시 적재하면 본체와 최신 참조는 그대로이고
+	// 관측 기록만 는다.
+	Obs      int
+	ObsKnown bool
+}
+
+// obsCounter — 노드의 관측 기록을 세는 조회. 상류의 두 저장소가 구현한다. Lookup에 넣지 않는다: 세지 못하는 조회도 대조는
+// 할 수 있어야 한다.
+type obsCounter interface {
+	ObservationStats(node string) (map[string]history.ObsStat, error)
 }
 
 // States — refs마다 이력의 지금 상태. 조회 전체가 Timeout 하나 안에 끝나야 하고, 실패하면 ErrUnreachable(분류만)이다.
 // 실패했을 때 일부만 돌려주지 않는다: 확인하지 못한 것을 확인한 것과 섞지 않는다.
-func States(l Lookup, refs []Ref) ([]NodeState, error) {
+func States(l Lookup, refs []Ref) ([]NodeState, error) { return states(l, refs, false) }
+
+// StatesWithObs — States에 노드별 관측 기록 수를 더한다. 조회가 관측 기록을 세지 못하면 ObsKnown이 거짓이다(오류가 아니다).
+func StatesWithObs(l Lookup, refs []Ref) ([]NodeState, error) { return states(l, refs, true) }
+
+func states(l Lookup, refs []Ref, withObs bool) ([]NodeState, error) {
+	oc, _ := l.(obsCounter)
 	var (
 		out  []NodeState
 		qErr error
@@ -49,6 +66,17 @@ func States(l Lookup, refs []Ref) ([]NodeState, error) {
 				st.Latest = history.ContentHashV1(latest)
 			}
 			st.Current = st.Body && st.Latest == ref.Digest
+			if withObs && oc != nil {
+				stats, err := oc.ObservationStats(ref.Node)
+				if err != nil {
+					qErr = err
+					return nil
+				}
+				for _, o := range stats {
+					st.Obs += o.Count
+				}
+				st.ObsKnown = true
+			}
 			out = append(out, st)
 		}
 		return nil

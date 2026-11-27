@@ -60,11 +60,19 @@ templ observeIngest(v ObserveView) {
 		<section id="ingest-last" data-ingest-run={ v.Ingest.Last.ID } data-ingest-outcome={ v.Ingest.Last.Outcome() } data-ingest-reason={ v.Ingest.Last.Reason }>
 			<h3>{ tIngestLastHead.F(v.Page.Lang, v.Ingest.Last.Started.UTC().Format("2006-01-02 15:04:05 UTC")) }</h3>
 			<p class="hint">{ tProvRunID.F(v.Page.Lang, v.Ingest.Last.ID) }</p>
-			<p class={ "msg", templ.KV("ok", v.Ingest.Last.Outcome() == "recorded"), templ.KV("bad", v.Ingest.Last.Outcome() != "recorded" && v.Ingest.Last.Outcome() != "running") }>
-				{ v.Ingest.Last.OutcomeText(v.Page.Lang) }
-			</p>
-			if v.Ingest.Last.ReasonText(v.Page.Lang) != "" {
-				<p class="hint" data-ingest-ended>{ v.Ingest.Last.ReasonText(v.Page.Lang) }</p>
+			if !v.Ingest.Last.Latest && !v.Ingest.Last.Running {
+				<p class="hint" data-ingest-shown="requested">{ tIngestShownRun.In(v.Page.Lang) }</p>
+			}
+			if v.Ingest.Last.Failed() {
+				<p class="msg bad" data-ingest-ended>{ v.Ingest.Last.ReasonText(v.Page.Lang) }</p>
+				<p class="msg" data-ingest-history>{ tIngestReadBack.In(v.Page.Lang) }{ v.Ingest.Last.OutcomeText(v.Page.Lang) }</p>
+			} else {
+				<p class={ "msg", templ.KV("ok", v.Ingest.Last.Outcome() == "recorded"), templ.KV("bad", v.Ingest.Last.Outcome() != "recorded" && v.Ingest.Last.Outcome() != "running") }>
+					{ v.Ingest.Last.OutcomeText(v.Page.Lang) }
+				</p>
+				if v.Ingest.Last.ReasonText(v.Page.Lang) != "" {
+					<p class="hint" data-ingest-ended>{ v.Ingest.Last.ReasonText(v.Page.Lang) }</p>
+				}
 			}
 			@ingestNodes(v.Page.Lang, v.Ingest.Last.Nodes, true)
 		</section>

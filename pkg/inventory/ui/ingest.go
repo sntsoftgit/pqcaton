@@ -92,6 +92,10 @@ type IngestLast struct {
 	PolicyDigest   string
 	// Running — 적재 프로세스가 아직 돈다. HasResult — 프로세스가 결과를 남겼다. 남기지 못했으면 종료를 알 수 없다.
 	Running, HasResult bool
+	// Latest — 가장 최근 적재다. 거짓이면 주소로 요청한 옛 실행을 보이고 있다.
+	Latest bool
+	// Unchanged — 노드마다 본체 · 최신 참조 · 관측 기록 수가 적재 전과 같다고 **확인했다.** 확인하지 못했으면 거짓이다.
+	Unchanged          bool
 	Reason, Detail     string
 	Accepted, Rejected int
 	OffScope, Changed  int
@@ -112,6 +116,8 @@ func (r IngestLast) Outcome() string {
 		return "running"
 	case unknown:
 		return "unknown"
+	case r.Unchanged:
+		return "unchanged"
 	case all:
 		return "recorded"
 	case any:
@@ -123,19 +129,26 @@ func (r IngestLast) Outcome() string {
 // OutcomeText — 판정의 문구.
 func (r IngestLast) OutcomeText(l Lang) string { return ingestOutcomeText[r.Outcome()].In(l) }
 
-// ReasonText — 적재 프로세스가 끝난 까닭의 문구. 결과를 남기지 못했으면 그 사실이다.
+// Failed — 적재가 끝까지 가지 못했다(실패했거나, 결과를 남기지 못하고 끝났다).
+func (r IngestLast) Failed() bool { return !r.Running && (!r.HasResult || r.Reason != "") }
+
+// ReasonText — 적재 프로세스가 끝난 까닭의 문구. 실패면 「적재에 실패했습니다.」로 시작하고, 까닭과 갈래의 안내가 잇는다.
+// **오류의 문장은 싣지 않는다**: 갈래(코드)로 고른 문구만이다.
 func (r IngestLast) ReasonText(l Lang) string {
 	switch {
 	case r.Running:
 		return ""
 	case !r.HasResult:
-		return tIngestNoResult.In(l)
+		return tIngestFailed.In(l) + " " + tIngestNoResult.In(l)
 	case r.Reason == "":
 		return tIngestCounts.F(l, r.Accepted, r.Changed, r.Excluded)
 	}
-	s := ingestReasonText[r.Reason].In(l)
-	if r.Detail != "" {
-		s += " (" + r.Detail + ")"
+	s := tIngestFailed.In(l)
+	if t, ok := ingestReasonText[r.Reason]; ok {
+		s += " " + t.In(l)
+	}
+	if t, ok := ingestDetailText[r.Detail]; ok {
+		s += " " + t.In(l)
 	}
 	return s
 }

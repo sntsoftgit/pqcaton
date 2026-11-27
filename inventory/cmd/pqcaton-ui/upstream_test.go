@@ -35,6 +35,16 @@ type memStore struct{ upstream.Lookup }
 
 func (memStore) Close() {}
 
+// ObservationStats: 감싼 이력이 관측 기록을 세면 그것으로 센다.
+func (m memStore) ObservationStats(node string) (map[string]history.ObsStat, error) {
+	if oc, ok := m.Lookup.(interface {
+		ObservationStats(string) (map[string]history.ObsStat, error)
+	}); ok {
+		return oc.ObservationStats(node)
+	}
+	return nil, errors.New("this history does not count observation records")
+}
+
 // ingestedUnder — 서버의 결과 폴더를 정책 파일 policyPath로 적재한 메모리 pqcota 이력. 그 정책 파일을 지금 읽는다.
 func ingestedUnder(t *testing.T, s *server, policyPath string, into *history.MemStore) *history.MemStore {
 	t.Helper()
