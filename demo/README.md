@@ -158,7 +158,7 @@ default run keeps the realistic declaration and shows that no action is made for
 
 ### Activating a new policy
 
-To use the policy finalized on the asset scope screen for reconciliation, re-ingest pqcota with that policy and activate it in 04. The demo re-ingests with one
+To use the policy finalized on the asset scope screen for reconciliation, re-ingest pqcota with that policy and activate it on 02 Observation. The demo re-ingests with one
 command. The screen may stay up (re-ingesting does not touch the workspace).
 
 ```bash
@@ -168,7 +168,7 @@ command. The screen may stay up (re-ingesting does not touch the workspace).
 `apply-scope` checks the workspace files (the policy finalized on the asset scope screen, the declaration, the results), `pqcota-ingest` and the pqcota DB,
 then re-ingests pqcota with the `/work/ui/results` the screen uses and the policy finalized on the asset scope screen. **It does not activate.**
 
-Activation is done in 04 on the screen. Pressing "Review before activating" makes the screen reconcile, for every node, that the latest
+Activation is done on 02 Observation, under "Finalized policy to activate: re-ingest and activate". Pressing "Confirm policy activation" makes the screen reconcile, for every node, that the latest
 ingest in the pqcota history matches the results under the new policy, and when they match the confirmation page shows "At the time of
 checking, the pqcota history matched." Pressing activate reconciles again from the start, then activates. If any is missing, differs or
 cannot be looked up, nothing is written. The same fingerprint in a past run is not enough to pass. `ui.sh` starts the demo screen with the

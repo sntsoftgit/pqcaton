@@ -30,7 +30,7 @@
 #   ./demo/scripts/ui.sh stop    컨테이너 안의 화면을 끝낸다. 다시 빌드한 화면을 띄우려면 stop 뒤에 다시 연다.
 #   ./demo/scripts/ui.sh start   화면만 띄우고 중계는 열지 않는다(종단 검증이 쓴다).
 #   ./demo/scripts/ui.sh apply-scope
-#                                자산 스코프 화면에서 확정한 정책으로 pqcota를 다시 적재한다. **활성화는 하지 않는다.** 활성화는 화면(04)이
+#                                자산 스코프 화면에서 확정한 정책으로 pqcota를 다시 적재한다. **활성화는 하지 않는다.** 활성화는 화면(02)이
 #                                pqcota 이력 대조를 거쳐 한다. 화면이 떠 있어도 된다(적재는 작업 폴더를 건드리지 않는다).
 #   PQCATON_UI_PORT=8766 ...     이 기계에서 받을 포트(기본 8765). 이 기계에서 다른 화면을 이미 띄웠을 때 바꾼다.
 set -euo pipefail
@@ -203,7 +203,7 @@ if [ "$MODE" = "apply-scope" ]; then
     echo "   (results from the upstream demo carry no collector signature; ingesting them without -verify-keys)"
     docker exec -e PQCOTA_DSN="$INGEST_DSN" -e PQCOTA_AUTO_DDL=0 -e PQCOTA_ORG="$ORG" "$CTL" pqcota-ingest -scope-assets "$WS/asset-scope.csv" "$WS/results" | sed 's/^/   /'
   fi
-  echo "✅ re-ingested. Activate it in 04 (the screen reconciles the pqcota history first): ./demo/scripts/ui.sh"
+  echo "✅ re-ingested. Activate it on 02 Observation (the screen reconciles the pqcota history first): ./demo/scripts/ui.sh"
   exit 0
 fi
 

@@ -248,7 +248,7 @@ GOBIN="$HOME/.local/bin" go install github.com/sntsoftgit/pqcaton/inventory/cmd/
 | 일 | 필요한 것 |
 |---|---|
 | 02 관측 | Ansible과 노드 접속 정보, 공식 수집기, 수집기 서명 키와 신뢰할 공개 키(아래 「관측 실행 준비」 · 「수집기 서명 키 준비」) |
-| 관측 결과를 이력에 적재 | `pqcota-ingest`, 적재용 계정. 02의 결과는 서명을 확인(`pqcota-ingest -verify-keys`)한 뒤 판정 조직에 적재합니다(6절). 03 · 04의 대조와 04의 정책 활성화가 이 적재를 봅니다 |
+| 관측 결과를 이력에 적재 | `pqcota-ingest`, 적재용 계정. 02의 결과는 서명을 확인(`pqcota-ingest -verify-keys`)한 뒤 판정 조직에 적재합니다(6절). 03 · 04의 대조와 02의 정책 활성화가 이 적재를 봅니다 |
 | 05 프로비저닝(승인 서명 · 플레이북 생성) | 승인 키(아래 「승인 키 준비」의 `pqcota-keygen`). 화면 밖에서 서명 · 생성할 때만 `pqcota-approve` · `pqcota-provision` |
 | 노드에 적용 · 되돌리기 | `pqcota-hosts`(Ansible 인벤토리 만들기)와 `ansible-playbook`(05의 안내) |
 | 오래된 이력 정리 | `pqcota-prune`(골라서) |
@@ -1121,14 +1121,14 @@ v0.13.0으로 바로 올립니다.
 3. 노드의 수집기 셋(`pqcota-nodescan` · `pqcota-netcap` · `pqcota-jvmscan`)과 `collector.jar`를 [2절](#2-설치)대로 v0.13.0 릴리스
    자산으로 바꿉니다. 릴리스 자산도 「확인 불가」라 `-allow-unverified-collectors`는 그대로 필요합니다.
 4. [2절](#2-설치)의 `go install`로 바이너리를 바꾸고 화면을 띄운 뒤 02에서 다시 관측합니다. **pqcota 이력도 v4로 다시 적재합니다.**
-   규칙 판이 스냅샷 지문에 들어가므로, v0.11.0이 v3로 적재한 이력으로는 04의 활성화 · 기준선 대조가 통과하지 않습니다.
+   규칙 판이 스냅샷 지문에 들어가므로, v0.11.0이 v3로 적재한 이력으로는 02의 활성화와 04의 기준선 대조가 통과하지 않습니다.
    `PQCOTA_ORG='<판정 조직>' pqcota-ingest -scope-assets '<작업 폴더>/scope-assets.csv' '<작업 폴더>/results'`로 다시 적재합니다.
 5. 04가 「이 세션은 지금과 다른 상류 규칙 판으로 열렸습니다」를 보이면 「지금 규칙으로 새 회차 시작」을 누릅니다(명령으로는
    `pqcaton-decide new-round`). **지난 결론은 참고값으로만 옮겨집니다.** Java 자산은 근거가 배포본 단위의 새 finding으로 바뀌어
    보고서에 「바뀜」으로 보이고, 「사라짐」 · 「생김」에는 식별 규칙이 바뀐 영향이 섞일 수 있습니다. 항목마다 다시 판정하거나
    「다시 채택」을 누릅니다. 옛 결론을 새 근거에 자동으로 잇는 규칙은 없습니다.
 6. **자산 스코프 규칙의 `app_key`에 사용자 서비스 `user@<uid>.service`를 적었다면 고칩니다.** v0.13.0 수집기는 사용자 서비스의
-   앱 키를 `user@<uid>.service/<유닛>`으로 내므로 옛 값은 더는 맞지 않습니다. 아래처럼 찾은 뒤 자산 스코프 화면에서 규칙을 고쳐 확정하고 04에서
+   앱 키를 `user@<uid>.service/<유닛>`으로 내므로 옛 값은 더는 맞지 않습니다. 아래처럼 찾은 뒤 자산 스코프 화면에서 규칙을 고쳐 확정하고 02에서
    활성화합니다. `<…>`를 실제 값으로 바꾼 뒤 실행하십시오.
 
    ```bash
@@ -1153,7 +1153,7 @@ v0.28.0부터 화면은 pqcota 이력 없이 시작하지 않고, 정책 활성�
    적재했다면 `PQCOTA_ORG='<판정 조직>' pqcota-ingest -scope-assets '<작업 폴더>/scope-assets.csv' '<작업 폴더>/results'`로 다시 적재합니다.
    `-upstream-org`에 판정 조직과 다른 값을 주던 명령은 이제 멈춥니다.
 3. 화면을 끄고 [2절](#2-설치)의 `go install`로 바이너리를 바꿉니다.
-4. **`pqcaton-decide activate-scope -confirm-ingest`를 쓰던 스크립트를 고칩니다.** 이 판은 그 플래그를 받으면 아무것도 쓰지 않고 멈춥니다. 활성화는 화면 04에서
+4. **`pqcaton-decide activate-scope -confirm-ingest`를 쓰던 스크립트를 고칩니다.** 이 판은 그 플래그를 받으면 아무것도 쓰지 않고 멈춥니다. 활성화는 화면 02에서
    하거나, `PQCOTA_DSN`을 둔 채 `pqcaton-decide activate-scope`를 플래그 없이 돌립니다.
 5. **이전 정책으로 되돌리는 활성화는 이 판에서 할 수 없습니다**(`upstream-revert`). 되돌려야 하면 v0.27.x에서 하던 운영자 진술을
    대신할 길이 없으므로, 상류 이슈가 풀릴 때까지 기다리거나 새 정책으로 확정합니다.

@@ -267,7 +267,7 @@ it signs approvals and generates playbooks inside the screen.
 | Task | What it needs |
 |---|---|
 | 02 Observation | Ansible and node access, the official collectors, the collector signing keys and the trusted public keys ("Getting ready to run observations" and "Preparing the collector signing keys" below) |
-| Loading observation results into the history | `pqcota-ingest` and a loading account. The results of 02 are checked (`pqcota-ingest -verify-keys`) and then loaded under the judgment organization (section 6). Reconciliation in 03 and 04 and policy activation in 04 look at this load |
+| Loading observation results into the history | `pqcota-ingest` and a loading account. The results of 02 are checked (`pqcota-ingest -verify-keys`) and then loaded under the judgment organization (section 6). Reconciliation in 03 and 04 and policy activation on 02 look at this load |
 | 05 Provisioning (approval signature and playbook generation) | An approval key (`pqcota-keygen` in "Getting the approval key ready" below). `pqcota-approve` and `pqcota-provision` only to sign or generate outside the screen |
 | Applying to the nodes and rolling back | `pqcota-hosts` (to make the Ansible inventory) and `ansible-playbook` (as 05 explains) |
 | Trimming old history | `pqcota-prune` (optional) |
@@ -1252,7 +1252,7 @@ the same as v0.28.0. There is no need to pass through upstream v0.12.0; upgrade 
    `-allow-unverified-collectors` is still needed.
 4. Replace the binary with the `go install` of [section 2](#2-installation), start the screen and observe again on 02. **Re-ingest the
    pqcota history with v4 too.** The ruleset is part of the snapshot fingerprint, so with a history that v0.11.0 ingested under v3
-   the activation and baseline reconciliation on 04 do not pass. Re-ingest with
+   the activation on 02 and the baseline reconciliation on 04 do not pass. Re-ingest with
    `PQCOTA_ORG='<judgment org>' pqcota-ingest -scope-assets '<workspace>/scope-assets.csv' '<workspace>/results'`.
 5. When 04 shows "This session was opened under a different upstream ruleset", press "Start a new round under the current rules"
    (`pqcaton-decide new-round` on the command line). **Earlier conclusions move over only as reference values.** The evidence of Java
@@ -1261,7 +1261,7 @@ the same as v0.28.0. There is no need to pass through upstream v0.12.0; upgrade 
    evidence automatically.
 6. **If an asset scope rule has a user service `user@<uid>.service` in its `app_key`, fix it.** The v0.13.0 collectors give a user
    service the app key `user@<uid>.service/<unit>`, so the old value no longer matches. Find such rules as below, fix them on the asset scope screen,
-   finalize, and activate on 04. Replace each `<…>` with the real value before running it.
+   finalize, and activate on 02. Replace each `<…>` with the real value before running it.
 
    ```bash
    grep -n 'user@[0-9]*\.service' '<workspace>/asset-scope.csv' '<workspace>/scope-assets.csv'
@@ -1289,7 +1289,7 @@ goes through the pqcota history reconciliation. The state format, the session an
    Commands that gave `-upstream-org` a value other than the organization of the judgments now stop.
 3. Stop the screen and replace the binary with `go install` from [section 2](#2-installation).
 4. **Fix scripts that used `pqcaton-decide activate-scope -confirm-ingest`.** This version stops without writing anything when given that flag. Activate
-   in 04 of the screen, or run `pqcaton-decide activate-scope` without the flag while `PQCOTA_DSN` is set.
+   on 02 of the screen, or run `pqcaton-decide activate-scope` without the flag while `PQCOTA_DSN` is set.
 5. **An activation that goes back to an earlier policy cannot be done in this version** (`upstream-revert`). There is no
    operator statement to use instead as in v0.27.x, so wait until the upstream issue is resolved or finalize a new policy.
 

@@ -5,7 +5,7 @@
 #
 # pqcota 데모를 처음부터 띄우고, 화면 작업 폴더에서 04를 옛 정책으로 확정한 뒤, 자산 스코프 화면에서 새 정책을 확정하고,
 # ui.sh apply-scope(pqcota 재적재만)를 거쳐 **두 길로** 활성화한다: 작업 폴더 복사본에서 명령(pqcaton-decide activate-scope),
-# 그리고 작업 폴더에서 화면(04의 확인 → 활성화). 둘 다 pqcota 이력 대조를 거친다. 실패 경로(재적재 전 · 손으로 고친 후보 ·
+# 그리고 작업 폴더에서 화면(02의 확인 → 활성화). 둘 다 pqcota 이력 대조를 거친다. 실패 경로(재적재 전 · 손으로 고친 후보 ·
 # -confirm-ingest)마다 정책 · 세션 · 계획 · 처리 기록의 바이트와 pqcota 스냅샷 수가 그대로인지 보고, 성공 뒤에는 세 지문(활성
 # 정책 · 새 세션 · 활성화 처리 기록)이 같은지, 근거가 upstream-verified이고 보고서에 upstream_check가 있는지, 05가 옛 계획을
 # 막는지, 04에 지난 결론이 참고값으로만 보이는지 본다. 마지막으로 v0.25.0 태그로 빌드한 옛 바이너리가 이 작업 폴더의
@@ -294,7 +294,7 @@ OLD_ID="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -sco
 OLD_DIGEST="$(docker exec "$CTL" pqcaton-decide scope-status "$WS/session.json" -scope-assets "$WS/scope-assets.csv" | awk '$1=="active"{print $2}')"
 [ -n "$OLD_ID" ] && [ -n "$OLD_DIGEST" ] || fail "no session id or active digest before activation"
 
-# 04의 활성화를 화면이 보내는 그대로 보낸다. $1이 ok면 확인 페이지(「확인 시점에 일치」)를 거쳐 활성화까지 하고, 아니면 확인
+# 02의 활성화를 화면이 보내는 그대로 보낸다. $1이 ok면 확인 페이지(「확인 시점에 일치」)를 거쳐 활성화까지 하고, 아니면 확인
 # 요청이 그 거절 종류로 막히는지 본다.
 screen_activate() {
   docker exec -i "$CTL" python3 - "$1" <<'PY'
@@ -330,14 +330,14 @@ st, body = post("/review/scope-activate/confirm?lang=en", form(page, "/review/sc
 if want != "ok":
     if st < 400 or want not in body:
         sys.exit("confirm = %d, want the refusal %s" % (st, want))
-    print("   04: refused %s (%d)" % (want, st))
+    print("   02: refused %s (%d)" % (want, st))
     sys.exit(0)
 if st != 200 or "At the time of checking, the pqcota history matched" not in body:
     sys.exit("confirm = %d without the reconciliation line" % st)
 st, body = post("/review/scope-activate?lang=en", form(body, "/review/scope-activate"))
 if st != 200 or "/review/scope-activate/confirm" in body:
     sys.exit("activate = %d, or the activation is still offered" % st)
-print("   04: activated through the screen after the pqcota history reconciliation")
+print("   02: activated through the screen after the pqcota history reconciliation")
 PY
 }
 
