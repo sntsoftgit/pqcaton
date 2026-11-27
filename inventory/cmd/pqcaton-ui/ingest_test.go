@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/sntsoftgit/pqcaton/pkg/inventory/scope"
 	"net/http"
 	"net/url"
 	"os"
@@ -597,5 +598,194 @@ func TestIngestNeedsBothConnections(t *testing.T) {
 	}
 	if _, err := parseEnvFile([]byte("PQCOTA_INGEST_DSN=x\n")); err == nil {
 		t.Error("another variable in pqcota.env should be refused")
+	}
+}
+
+// candidateServer: ingestServer에 판정 세션과 02에서 확정한 새 정책(제외 없음)을 더한다. 활성 정책은 sshd를 제외한다.
+func candidateServer(t *testing.T) (*server, *history.MemStore) {
+	t.Helper()
+	s, mem := ingestServer(t)
+	savedSession(t, s)
+	finalizeCandidate(t, s, policyAll)
+	return s, mem
+}
+
+// policySection: 03의 「새 확정 정책」 구역(다음 구역 앞까지).
+func policySection(page string) string {
+	i := strings.Index(page, `id="scope-activate"`)
+	if i < 0 {
+		return ""
+	}
+	if j := strings.Index(page[i:], `id="observe-ingest"`); j >= 0 {
+		return page[i : i+j]
+	}
+	return page[i:]
+}
+
+// candidateForm: 새 확정 정책으로 재적재하는 확인 페이지의 양식.
+func candidateForm(t *testing.T, s *server) (url.Values, string) {
+	t.Helper()
+	w := postFormLang(t, s, ui.IngestConfirmPath, "ko", withRev(url.Values{ui.IngestPolicyField: {ui.IngestPolicyCandidate}}, s.revFor(ui.ScreenObserve)))
+	if w.Code != http.StatusOK {
+		t.Fatalf("candidate ingest confirm = %d\n%s", w.Code, w.Body.String())
+	}
+	return hiddenFields(w.Body.String()), w.Body.String()
+}
+
+// IC-U253 — **03이 현재 활성 정책과 새 확정 정책을 나란히 보이고, 재적재와 활성화는 따로다.** 02에서 확정한 정책이 활성 정책과
+// 다르면 03에 두 지문이 나란히 있고, 새 확정 정책으로 재적재하는 단추가 있으며, 활성화 단추는 없다. 확인 페이지는 적재에 쓸
+// 정책과 현재 활성 정책을 함께 적고 「적재가 끝나도 활성 정책은 바뀌지 않습니다」를 밝힌다.
+//
+//   - **새 확정 정책으로 재적재가 도중에 실패하면 활성 정책은 그대로다.** 활성 정책 파일의 바이트가 같고, 활성화 단추가 없으며,
+//     활성화를 직접 요청해도 409이고 파일이 그대로다.
+//   - **재적재가 끝나도 운영자가 활성화를 확인하기 전까지 활성 정책은 그대로다.** 이력의 최신 참조는 새 확정 정책의 것이고
+//     활성 정책 파일은 같다. 그때 비로소 활성화 단추가 나온다. 적재 기록은 「02에서 확정한 새 정책」으로 적재했다고 적는다.
+//   - **활성화 직전에 최신 참조가 바뀌면 거절된다.** 활성화 확인 페이지를 연 뒤 활성 정책으로 다시 적재되면(최신 참조가 옛 정책의
+//     것으로 돌아갔다) 활성화는 409이고 활성 정책 파일이 그대로다. 03에는 다시 재적재 단추가 나오고 활성화 단추가 없다.
+//   - 다시 재적재해 확인을 거쳐 활성화하면 활성 정책이 새 정책이 되고 03으로 돌아오며 「새 확정 정책」 구역이 없어진다.
+func TestReingestUnderTheNewPolicyAndActivationAreSeparate(t *testing.T) {
+	s, mem := candidateServer(t)
+	active := readFile(t, s.scopeAssets)
+	from, _ := scope.PolicyFileDigest(s.scopeAssets)
+	to, _ := scope.PolicyFileDigest(s.scopeOut)
+	same := func(when string) {
+		t.Helper()
+		if readFile(t, s.scopeAssets) != active {
+			t.Fatalf("%s: the active policy file changed", when)
+		}
+	}
+	sec := policySection(observePage(t, s))
+	if a, c := strings.Index(sec, from), strings.Index(sec, to); a < 0 || c < a || !strings.Contains(sec, "현재 활성 정책") || !strings.Contains(sec, "적재할 새 확정 정책") {
+		t.Fatalf("03 does not show the active and the newly finalized policy side by side:\n%s", sec)
+	}
+	if !strings.Contains(sec, "data-policy-go") || strings.Contains(sec, "data-policy-activate>") || !strings.Contains(sec, "data-policy-activate-wait") {
+		t.Fatalf("before the re-ingest: want a re-ingest button and no activation button:\n%s", sec)
+	}
+
+	// 1. 재적재가 도중에 실패한다.
+	openIngestStore = func(string, string) (history.Store, func(), error) { return &failAfter{mem, 1}, func() {}, nil }
+	form, confirm := candidateForm(t, s)
+	for _, want := range []string{"적재에 쓸 정책: 02에서 확정한 새 정책 " + to, "현재 활성 정책: " + from, "적재가 끝나도 활성 정책은 바뀌지 않습니다"} {
+		if !strings.Contains(confirm, want) {
+			t.Errorf("the confirmation page lacks %q", want)
+		}
+	}
+	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusSeeOther {
+		t.Fatalf("candidate ingest = %d\n%s", w.Code, w.Body.String())
+	}
+	waitIngest(t, s)
+	same("after a re-ingest that failed partway")
+	page := observePage(t, s)
+	if sec = policySection(page); strings.Contains(sec, "data-policy-activate>") || !strings.Contains(sec, "data-policy-go") {
+		t.Errorf("after a failed re-ingest: want no activation button and the re-ingest button again:\n%s", sec)
+	}
+	if !strings.Contains(page, `data-ingest-policy="candidate"`) || !strings.Contains(page, "적재에 실패했습니다") {
+		t.Errorf("the record should say which policy was used and that it failed:\n%s", section(page, "ingest-last"))
+	}
+	if w := postForm(t, s, ui.ReviewScopeActivateConfirmPath, url.Values{ui.ActivateFromField: {ui.ActivateFromObserve}}); w.Code != http.StatusConflict ||
+		!strings.Contains(w.Body.String(), `href="`+ui.ScreenObserve+`"`) {
+		t.Errorf("activation confirm after a failed re-ingest = %d, want 409 leading back to 03", w.Code)
+	}
+	same("after a refused activation")
+
+	// 2. 재적재가 끝난다. 활성화를 확인하기 전까지 활성 정책은 그대로다.
+	openIngestStore = func(string, string) (history.Store, func(), error) { return mem, func() {}, nil }
+	form, _ = candidateForm(t, s)
+	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusSeeOther {
+		t.Fatalf("candidate ingest = %d\n%s", w.Code, w.Body.String())
+	}
+	waitIngest(t, s)
+	same("after the re-ingest finished")
+	page = observePage(t, s)
+	sec = policySection(page)
+	if !strings.Contains(sec, `data-policy-state="reingested"`) || !strings.Contains(sec, "data-policy-activate>") || strings.Contains(sec, "data-policy-go") ||
+		!strings.Contains(sec, "현재 활성 정책은 아직 그대로입니다") {
+		t.Fatalf("after the re-ingest: want the activation button and no re-ingest button:\n%s", sec)
+	}
+	if !strings.Contains(page, `data-ingest-outcome="recorded"`) || !strings.Contains(page, "이 적재로 활성 정책은 바뀌지 않았습니다") {
+		t.Errorf("the record of the re-ingest:\n%s", section(page, "ingest-last"))
+	}
+	activate := func() (url.Values, string) {
+		t.Helper()
+		w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{ui.ActivateFromField: {ui.ActivateFromObserve}})
+		if w.Code != http.StatusOK {
+			t.Fatalf("activation confirm = %d\n%s", w.Code, w.Body.String())
+		}
+		return hiddenFields(w.Body.String()), w.Body.String()
+	}
+	aform, abody := activate()
+	if !strings.Contains(abody, from) || !strings.Contains(abody, to) {
+		t.Error("the activation confirmation does not show the two fingerprints")
+	}
+	same("after opening the activation confirmation")
+
+	// 3. 활성화 직전에 최신 참조가 바뀐다: 활성 정책으로 다시 적재됐다.
+	ingestedUnder(t, s, s.scopeAssets, mem)
+	if w := postForm(t, s, ui.ReviewScopeActivatePath, aform); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), `href="`+ui.ScreenObserve+`"`) {
+		t.Fatalf("activation after the latest references changed = %d, want 409 leading back to 03\n%s", w.Code, w.Body.String())
+	}
+	same("after an activation refused because the latest references changed")
+	if sec = policySection(observePage(t, s)); strings.Contains(sec, "data-policy-activate>") || !strings.Contains(sec, "data-policy-go") {
+		t.Errorf("after the latest references changed: want the re-ingest button and no activation button:\n%s", sec)
+	}
+
+	// 다시 재적재하고, 확인을 거쳐 활성화한다.
+	form, _ = candidateForm(t, s)
+	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusSeeOther {
+		t.Fatalf("candidate ingest = %d", w.Code)
+	}
+	waitIngest(t, s)
+	same("after the second re-ingest")
+	aform, _ = activate()
+	w := postForm(t, s, ui.ReviewScopeActivatePath, aform)
+	if w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), ui.ScreenObserve) {
+		t.Fatalf("activate = %d to %q, want 303 back to 03\n%s", w.Code, w.Header().Get("Location"), w.Body.String())
+	}
+	if readFile(t, s.scopeAssets) != policyAll {
+		t.Error("the active policy was not replaced by the newly finalized one")
+	}
+	if page = observePage(t, s); policySection(page) != "" || !strings.Contains(page, `data-ingest="already"`) {
+		t.Errorf("after the activation 03 should have no pending policy and read already ingested under the active one:\n%s", section(page, "observe-ingest"))
+	}
+}
+
+// IC-U254 — **새 확정 정책으로 적재하는 확인은 그 정책에 묶인다.** 확인 페이지를 연 뒤 02에서 확정한 정책 파일이 바뀌면(확정이
+// 쓴 그대로가 아니다) 그 양식으로 보낸 적재는 409이고 아무것도 쓰이지 않는다. 활성 정책으로 적재하는 확인의 양식에 정책 칸만
+// 바꿔 보내도 거절된다(확인한 묶음이 아니다). 알 수 없는 정책 값도 거절된다. 02에서 확정한 정책이 활성 정책과 같으면 03에 그
+// 구역이 없고 새 확정 정책으로 적재하는 확인 요청은 409다.
+func TestTheCandidateIngestIsBoundToItsPolicy(t *testing.T) {
+	s, mem := candidateServer(t)
+	form, _ := candidateForm(t, s)
+	finalized := readFile(t, s.scopeOut)
+	if err := os.WriteFile(s.scopeOut, []byte(finalized+"exclude,*,*,/opt/*,hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusConflict {
+		t.Errorf("candidate ingest after the candidate file changed = %d, want 409\n%s", w.Code, w.Body.String())
+	}
+	if err := os.WriteFile(s.scopeOut, []byte(finalized), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	form, _ = ingestForm(t, s)
+	form.Set(ui.IngestPolicyField, ui.IngestPolicyCandidate)
+	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedIngestChangedPolicy) {
+		t.Errorf("an active-policy confirmation sent as a candidate ingest = %d, want 409 %s", w.Code, ui.RefusedIngestChangedPolicy)
+	}
+	form.Set(ui.IngestPolicyField, "something-else")
+	if w := postForm(t, s, ui.IngestPath, form); w.Code != http.StatusConflict {
+		t.Errorf("an unknown policy value = %d, want 409", w.Code)
+	}
+	if latestDigest(t, mem, "web") != "" || ingestRunCount(s) != 0 {
+		t.Fatal("something was ingested")
+	}
+
+	same, _ := ingestServer(t)
+	savedSession(t, same)
+	finalizeCandidate(t, same, readFile(t, same.scopeAssets))
+	if policySection(observePage(t, same)) != "" {
+		t.Error("03 shows a pending policy although the finalized one equals the active one")
+	}
+	if w := postForm(t, same, ui.IngestConfirmPath, withRev(url.Values{ui.IngestPolicyField: {ui.IngestPolicyCandidate}}, same.revFor(ui.ScreenObserve))); w.Code != http.StatusConflict {
+		t.Errorf("candidate ingest confirm with nothing pending = %d, want 409", w.Code)
 	}
 }

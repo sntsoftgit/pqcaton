@@ -3,8 +3,9 @@
 
 package main
 
-// 05의 새 정책 활성화. 02에서 확정한 정책(asset-scope.csv)이 활성 정책(scope-assets.csv)과 의미상 다르면 05 위쪽에 알리고,
-// 확인 페이지를 거쳐 활성화한다. 활성화는 정책 보관본 · 활성 정책 교체 · 옛 세션 보관본 · 새 세션 · 변환 보고서 · 회차 표지 ·
+// 새 정책 활성화. 02에서 확정한 정책(asset-scope.csv)이 활성 정책(scope-assets.csv)과 의미상 다르면 **03 관측 화면**이
+// 두 지문을 나란히 보이고, 새 확정 정책으로 다시 적재한 뒤(ingest.go) 확인 페이지를 거쳐 활성화한다. 05는 그 사실과 03으로
+// 가는 길만 보인다. 재적재와 활성화는 따로다: 재적재가 끝났다고 활성화되지 않는다. 활성화는 정책 보관본 · 활성 정책 교체 · 옛 세션 보관본 · 새 세션 · 변환 보고서 · 회차 표지 ·
 // scope-activation 형식 2 처리 기록을 한 트랜잭션으로 쓴다(rulesetround.Open).
 //
 // **pqcota 이력 대조는 필수다.** 운영자 진술은 받지 않는다. 실행 요청 하나가 순서대로 한다: (1) 입력 스냅샷(확인 페이지가 본
@@ -153,7 +154,7 @@ func (s *server) activationRequest(o *ui.ActivationOffer) rulesetround.Request {
 // scopeActivateConfirm: 활성화 전 확인(POST). 아무것도 쓰지 않는다. pqcota 이력을 미리 대조해 일치하지 않으면 확인 페이지를
 // 내지 않는다. 일치하면 「확인 시점에 일치했다」와 노드 수 · 확인 시각을 보인다.
 func (s *server) scopeActivateConfirm(w http.ResponseWriter, r *http.Request) {
-	back := ui.ScreenReview
+	back := activateBack(r)
 	if !s.writable(w, r, back) {
 		return
 	}
@@ -200,7 +201,7 @@ func (s *server) scopeActivateConfirm(w http.ResponseWriter, r *http.Request) {
 // scopeActivate: 확인을 거친 활성화(POST). 확인 토큰이 맞고 만료 전이어야 하며, 다시 잰 지문이 확인한 것과 같아야 한다.
 // 그다음 pqcota 이력을 처음부터 다시 대조하고, 일치할 때만 연다(위 순서).
 func (s *server) scopeActivate(w http.ResponseWriter, r *http.Request) {
-	back := ui.ScreenReview
+	back := activateBack(r)
 	if !s.writable(w, r, back) {
 		return
 	}
@@ -243,6 +244,16 @@ func (s *server) scopeActivate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeRulesetRoundOpened)}, nil)
+}
+
+// activateBack: 활성화를 어느 화면에서 눌렀는가. 03의 양식은 ui.ActivateFromField에 「observe」를 싣는다. 거절과 끝난 뒤의
+// 이동이 그 화면으로 간다. 그 밖의 값은 05다(주소를 양식에서 받지 않는다).
+func activateBack(r *http.Request) string {
+	_ = r.ParseForm()
+	if r.PostForm.Get(ui.ActivateFromField) == ui.ActivateFromObserve {
+		return ui.ScreenObserve
+	}
+	return ui.ScreenReview
 }
 
 // nodesOf — 대조한 노드의 수.

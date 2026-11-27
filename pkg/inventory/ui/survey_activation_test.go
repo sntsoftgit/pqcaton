@@ -12,7 +12,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// IC-UI59 — **04의 활성화 안내는 두 말로, 두 지문과 05로 가는 링크를 보인다.** 이 대조가 활성 정책으로 한 것이라는 문장이
+// IC-UI59 — **04의 활성화 안내는 두 말로, 두 지문과 03의 「새 확정 정책」으로 가는 링크를 보인다.** 이 대조가 활성 정책으로 한 것이라는 문장이
 // 있고 활성화 양식은 없다. 활성화할 것이 없으면(nil) 안내도 없다.
 func TestSurveyActivationNote(t *testing.T) {
 	const from = "scope-policy-v1:" + "1111111111111111111111111111111111111111111111111111111111111111"
@@ -26,7 +26,7 @@ func TestSurveyActivationNote(t *testing.T) {
 			t.Fatal(err)
 		}
 		page := html.UnescapeString(b.String())
-		for _, want := range []string{body[lang], from, to, `href="` + ui.ScreenReview + `#scope-activate"`} {
+		for _, want := range []string{body[lang], from, to, `href="` + ui.ScreenObserve + `#scope-activate"`} {
 			if !strings.Contains(page, want) {
 				t.Errorf("%s: the notice does not show %q", lang, want)
 			}

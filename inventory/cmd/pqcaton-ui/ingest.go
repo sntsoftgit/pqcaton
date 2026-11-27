@@ -21,6 +21,11 @@ package main
 //   - 확인 토큰은 한 번만 쓴다(쓴 표시를 디스크에 새로 만든다). 더블클릭이나 같은 요청의 재전송으로 두 번째 적재가 시작되지
 //     않는다.
 //
+// **적재하는 정책은 둘 가운데 하나다.** 활성 정책(scope-assets.csv)이거나, 02에서 확정했지만 아직 활성이 아닌 정책
+// (asset-scope.csv, 「새 확정 정책」)이다. 새 확정 정책으로 다시 적재해도 **활성 정책은 바뀌지 않는다**: 적재는 활성 정책
+// 파일을 건드리지 않고, 활성화는 그 뒤에 운영자가 따로 확인한다(scope_activate.go). 그래서 재적재가 실패하거나 도중에 끝나도,
+// 끝까지 갔어도, 활성 정책은 그대로다.
+//
 // **적재 프로세스가 도중에 끝나면 종료 코드로 말하지 않는다.** 이력을 다시 읽어, 노드마다 스냅샷 본체가 있는지와 최신 참조가
 // 그것인지를 따로 보인다(upstream.States). 조회하지 못하면 「확인할 수 없음」이다.
 
@@ -69,6 +74,10 @@ const (
 	ingestResultsCopy  = "results"
 	ingestPolicyCopy   = "policy.csv"
 	ingestTokens       = ".confirmed"
+
+	// 적재하는 정책의 구실. 양식의 ui.IngestPolicyField로 온다.
+	ingestActive    = ""
+	ingestCandidate = "candidate"
 )
 
 // ingestFile — 적재할 결과 파일 하나.
@@ -89,6 +98,10 @@ type ingestManifest struct {
 	NoPolicy     bool   `json:"no_policy,omitempty"`
 	PolicySHA    string `json:"policy_sha256"`
 	PolicyDigest string `json:"policy_digest"`
+	// Role: 적재한 정책의 구실. 비면 활성 정책, "candidate"면 02에서 확정한 새 정책이다. ActiveDigest는 그때의 활성 정책
+	// 지문이다(새 확정 정책으로 적재한 실행에만 적는다).
+	Role         string `json:"policy_role,omitempty"`
+	ActiveDigest string `json:"active_policy_digest,omitempty"`
 	// Keys: 신뢰할 수집기 공개 키(수집기 ID → 키들). 03의 verify.pub에서 읽은 것이다.
 	Keys    map[string][]string `json:"keys"`
 	Binding string              `json:"binding"`
@@ -155,26 +168,32 @@ func sha(b []byte) string {
 // ingestPlan — 지금 적재한다면 무엇을 적재하는가. 화면 · 확인 · 시작이 같은 함수로 잰다.
 type ingestPlan struct {
 	// block: 적재를 막는 것의 코드(ui.Ingest…). 비면 막는 것이 없다.
-	block    string
-	problems []ui.IngestProblem
-	files    []ingestFile
-	bodies   map[string][]byte
-	policy   []byte
-	noPolicy bool
-	digest   string
-	keys     map[string][]string
-	keysSHA  string
-	filesSHA string
-	org      string
-	refs     []upstream.Ref
-	observed int
-	managed  int
-	binding  string
+	block string
+	// role: 적재하는 정책의 구실. policyPath: 그 정책 파일. active: 새 확정 정책으로 적재할 때의 활성 정책 지문.
+	role, policyPath, active string
+	problems                 []ui.IngestProblem
+	files                    []ingestFile
+	bodies                   map[string][]byte
+	policy                   []byte
+	noPolicy                 bool
+	digest                   string
+	keys                     map[string][]string
+	keysSHA                  string
+	filesSHA                 string
+	org                      string
+	refs                     []upstream.Ref
+	observed                 int
+	managed                  int
+	binding                  string
 }
 
 // ingestPlan: 결과 폴더 · 활성 정책 · 신뢰할 공개 키를 읽어 묶음을 잰다. 서명은 여기서 전부 확인한다.
-func (s *server) ingestPlan() ingestPlan {
-	p := ingestPlan{org: s.orgName(), bodies: map[string][]byte{}}
+func (s *server) ingestPlan(role string) ingestPlan {
+	p := ingestPlan{org: s.orgName(), bodies: map[string][]byte{}, role: role, policyPath: s.scopeAssets}
+	if role != ingestActive && role != ingestCandidate {
+		p.block = ui.IngestPolicy
+		return p
+	}
 	if s.st == nil || s.recovering || len(s.diag) > 0 {
 		p.block = ui.IngestViewOnly
 		return p
@@ -192,8 +211,17 @@ func (s *server) ingestPlan() ingestPlan {
 	kb, _ := json.Marshal(sortedKeys(trusted.Keys))
 	p.keysSHA = sha(kb)
 
-	if s.scopeAssets != "" {
-		b, err := os.ReadFile(s.scopeAssets)
+	if role == ingestCandidate {
+		// 새 확정 정책: 활성화와 같은 판정으로 본다(있고, 02 확정이 쓴 그대로이고, 활성 정책과 다르고, 세션이 잠기지 않았다).
+		o, err := s.activationCheck()
+		if err != nil {
+			p.block = ui.IngestNoCandidate
+			return p
+		}
+		p.policyPath, p.active = s.scopeOut, o.From
+	}
+	if p.policyPath != "" {
+		b, err := os.ReadFile(p.policyPath)
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
 			p.noPolicy = true
@@ -210,7 +238,7 @@ func (s *server) ingestPlan() ingestPlan {
 	if p.noPolicy {
 		p.digest, err = scope.PolicyFileDigest("")
 	} else {
-		p.digest, err = scope.PolicyFileDigest(s.scopeAssets)
+		p.digest, err = scope.PolicyFileDigest(p.policyPath)
 	}
 	if err != nil {
 		p.block = ui.IngestPolicy
@@ -264,7 +292,7 @@ func (s *server) ingestPlan() ingestPlan {
 		return p
 	}
 	h, fh := sha256.New(), sha256.New()
-	fmt.Fprintf(h, "pqcaton ingest/1\n%s\n%s\n%v\n%s\n%s\n", p.org, normalize.RulesetVersion, p.noPolicy, sha(p.policy), p.keysSHA)
+	fmt.Fprintf(h, "pqcaton ingest/2\n%s\n%s\n%s\n%s\n%v\n%s\n%s\n", p.org, normalize.RulesetVersion, p.role, p.active, p.noPolicy, sha(p.policy), p.keysSHA)
 	for _, f := range p.files {
 		fmt.Fprintf(h, "%s\x00%s\n", f.Name, f.SHA)
 		fmt.Fprintf(fh, "%s\x00%s\n", f.Name, f.SHA)
@@ -281,7 +309,7 @@ func (s *server) ingestPlan() ingestPlan {
 
 // parts: 묶음의 세 조각(결과 파일 · 활성 정책 · 신뢰할 공개 키)의 지문. 확인 뒤에 무엇이 바뀌었는지 가르는 데 쓴다.
 func (p ingestPlan) parts() [3]string {
-	return [3]string{p.filesSHA, fmt.Sprint(p.noPolicy) + ":" + sha(p.policy), p.keysSHA}
+	return [3]string{p.filesSHA, p.role + ":" + p.active + ":" + fmt.Sprint(p.noPolicy) + ":" + sha(p.policy), p.keysSHA}
 }
 
 // ingestChanged: 확인한 조각(confirmed)과 지금의 조각을 견줘 거절 종류를 고른다. 하나만 바뀌었으면 그것을 짚고, 둘 이상이거나
@@ -343,26 +371,34 @@ func (s *server) ingestExpected(p *ingestPlan, dir, policyPath string) error {
 	return nil
 }
 
-func (s *server) activePolicyPath(p ingestPlan) string {
+// policyPathOf: 묶음이 적재에 쓰는 정책 파일. 정책 파일이 없으면 빈 값이다(모든 자산이 관리 대상).
+func policyPathOf(p ingestPlan) string {
 	if p.noPolicy {
 		return ""
 	}
-	return s.scopeAssets
+	return p.policyPath
 }
 
 // ingestView: 03의 적재 구역.
 func (s *server) ingestView(runID string) ui.IngestView {
-	v := ui.IngestView{Running: s.ingest.running()}
+	v := s.ingestViewFor(ingestActive)
+	v.Last = s.ingestLast(runID)
+	return v
+}
+
+// ingestViewFor: 그 정책으로 적재한다면의 구역. 마지막 적재의 기록은 싣지 않는다.
+func (s *server) ingestViewFor(role string) ui.IngestView {
+	v := ui.IngestView{Running: s.ingestBusy()}
 	cfg, err := s.loadDSNs()
 	v.Configured = err == nil && cfg.ingest != ""
 	v.ReadVar = s.dsnReadVar
-	p := s.ingestPlan()
+	p := s.ingestPlan(role)
 	v.Block, v.Problems, v.Files, v.PolicyDigest, v.NoPolicy = p.block, p.problems, len(p.files), p.digest, p.noPolicy
 	if s.run.running() {
 		v.Block = ui.IngestObserving
 	}
 	if v.Block == "" && len(p.problems) == 0 {
-		if err := s.ingestExpected(&p, s.results, s.activePolicyPath(p)); err != nil {
+		if err := s.ingestExpected(&p, s.results, policyPathOf(p)); err != nil {
 			v.Block = ui.IngestInputs
 		} else {
 			v.Observed, v.Managed = p.observed, p.managed
@@ -380,7 +416,22 @@ func (s *server) ingestView(runID string) ui.IngestView {
 			}
 		}
 	}
-	v.Last = s.ingestLast(runID)
+	return v
+}
+
+// policyView: 03의 「새 확정 정책」 구역. 02에서 확정한 정책이 활성 정책과 다를 때만 있다(05가 활성화를 띄우던 것과 같은
+// 판정이다). 두 지문을 나란히 보이고, 새 확정 정책으로 적재한다면의 노드별 상태와, 활성화 양식에 실을 rev를 채운다.
+// **재적재와 활성화는 따로다**: 활성화 단추는 모든 노드의 최신 참조가 새 확정 정책의 것일 때만 나오고, 눌러도 확인 페이지를
+// 거치며, 활성화 직전에 이력을 처음부터 다시 대조한다.
+func (s *server) policyView() *ui.ObservePolicy {
+	o, err := s.activationCheck()
+	if err != nil {
+		return nil
+	}
+	v := &ui.ObservePolicy{Offer: *o, ActiveFile: filepath.Base(s.scopeAssets), CandidateFile: filepath.Base(s.scopeOut), Ingest: s.ingestViewFor(ingestCandidate)}
+	if rev, err := store.Rev(s.inputsFor(ui.ReviewScopeActivateConfirmPath)); err == nil {
+		v.ActivateRev = rev
+	}
 	return v
 }
 
@@ -403,7 +454,7 @@ func (s *server) ingestLast(runID string) *ui.IngestLast {
 	if !ok {
 		return nil
 	}
-	out := &ui.IngestLast{ID: m.ID, Started: m.Started, Files: len(m.Files), PolicyDigest: m.PolicyDigest, Latest: dir == runs[len(runs)-1]}
+	out := &ui.IngestLast{ID: m.ID, Started: m.Started, Files: len(m.Files), PolicyDigest: m.PolicyDigest, Candidate: m.Role == ingestCandidate, Latest: dir == runs[len(runs)-1]}
 	if alive(dir) {
 		out.Running = true
 	}
@@ -506,14 +557,14 @@ func writeSync(p string, v any) error {
 // ── 확인과 시작 ─────────────────────────────────────────────────────────────
 
 // ingestReady: 지금 적재할 수 있는가. 막히면 거절을 그리고 false다. 기대 참조와 이력 상태까지 채운 묶음을 돌려준다.
-func (s *server) ingestReady(w http.ResponseWriter, r *http.Request) (ingestPlan, dsnConfig, []upstream.NodeState, bool) {
+func (s *server) ingestReady(w http.ResponseWriter, r *http.Request, role string) (ingestPlan, dsnConfig, []upstream.NodeState, bool) {
 	back := ui.ScreenObserve
 	cfg, err := s.loadDSNs()
 	if err != nil || cfg.ingest == "" {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestNotReady, back, nil)
 		return ingestPlan{}, cfg, nil, false
 	}
-	return s.ingestReadyWith(w, r, s.ingestPlan(), cfg)
+	return s.ingestReadyWith(w, r, s.ingestPlan(role), cfg)
 }
 
 // ingestReadyWith: 이미 잰 묶음으로 ingestReady의 나머지를 본다.
@@ -523,7 +574,7 @@ func (s *server) ingestReadyWith(w http.ResponseWriter, r *http.Request, p inges
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestNotReady, back, nil)
 		return p, cfg, nil, false
 	}
-	if err := s.ingestExpected(&p, s.results, s.activePolicyPath(p)); err != nil || len(p.refs) == 0 {
+	if err := s.ingestExpected(&p, s.results, policyPathOf(p)); err != nil || len(p.refs) == 0 {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestNotReady, back, nil)
 		return p, cfg, nil, false
 	}
@@ -556,7 +607,7 @@ func (s *server) ingestConfirm(w http.ResponseWriter, r *http.Request) {
 		errorPage(w, r, http.StatusInternalServerError, ui.ErrInputBroken, err)
 		return
 	}
-	p, _, states, ok := s.ingestReady(w, r)
+	p, _, states, ok := s.ingestReady(w, r, r.PostForm.Get(ui.IngestPolicyField))
 	if !ok {
 		return
 	}
@@ -565,7 +616,7 @@ func (s *server) ingestConfirm(w http.ResponseWriter, r *http.Request) {
 	for _, st := range states {
 		nodes = append(nodes, ui.IngestNode{Node: st.Node, Want: st.Want, Latest: st.Latest, Body: st.Body, Current: st.Current})
 	}
-	lines := ui.IngestConfirmLines(l, p.org, p.digest, p.noPolicy, len(p.files), p.observed, p.managed, nodes)
+	lines := ui.IngestConfirmLines(l, p.org, p.digest, p.noPolicy, p.role == ingestCandidate, p.active, len(p.files), p.observed, p.managed, nodes)
 	// 확인마다 다른 값을 붙인다. 확인 토큰은 한 번만 쓰는데, 같은 묶음을 같은 초에 다시 확인하면 토큰이 같아져 정당한 두 번째
 	// 확인이 「이미 쓴 확인」으로 거절된다.
 	nonce, err := runID()
@@ -609,7 +660,7 @@ func (s *server) ingestStart(w http.ResponseWriter, r *http.Request) {
 		s.refuse(w, r, http.StatusConflict, ui.RefusedIngestNotReady, back, nil)
 		return
 	}
-	p := s.ingestPlan()
+	p := s.ingestPlan(r.PostForm.Get(ui.IngestPolicyField))
 	// 확인한 묶음과 지금의 묶음이 같아야 한다(결과 파일 · 활성 정책 · 신뢰할 공개 키 · 조직 · 규칙 판). 묶음을 잴 수 없게 된
 	// 경우(p.block)는 5에서 거절한다.
 	if f := strings.Split(payload, "|"); p.block == "" && f[0] != p.binding {
@@ -801,7 +852,7 @@ func (s *server) runIngest(p ingestPlan, cfg dsnConfig, before []upstream.NodeSt
 		return err
 	}
 	m := ingestManifest{ID: id, Started: time.Now(), Org: p.org, Files: p.files, NoPolicy: p.noPolicy, PolicySHA: sha(p.policy),
-		PolicyDigest: p.digest, Keys: p.keys, Binding: p.binding, Refs: p.refs, Before: before, Observed: p.observed, Managed: p.managed, ReadDB: readDB}
+		PolicyDigest: p.digest, Role: p.role, ActiveDigest: p.active, Keys: p.keys, Binding: p.binding, Refs: p.refs, Before: before, Observed: p.observed, Managed: p.managed, ReadDB: readDB}
 	if err := writeSync(filepath.Join(dir, ingestManifestFile), m); err != nil {
 		return err
 	}

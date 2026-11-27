@@ -60,6 +60,11 @@ templ observeIngest(v ObserveView) {
 		<section id="ingest-last" data-ingest-run={ v.Ingest.Last.ID } data-ingest-outcome={ v.Ingest.Last.Outcome() } data-ingest-reason={ v.Ingest.Last.Reason }>
 			<h3>{ tIngestLastHead.F(v.Page.Lang, v.Ingest.Last.Started.UTC().Format("2006-01-02 15:04:05 UTC")) }</h3>
 			<p class="hint">{ tProvRunID.F(v.Page.Lang, v.Ingest.Last.ID) }</p>
+			if v.Ingest.Last.Candidate {
+				<p class="hint" data-ingest-policy="candidate">{ tIngestLastCandidate.F(v.Page.Lang, shortPolicy(v.Page.Lang, v.Ingest.Last.PolicyDigest)) }</p>
+			} else {
+				<p class="hint" data-ingest-policy="active">{ tIngestLastActive.F(v.Page.Lang, shortPolicy(v.Page.Lang, v.Ingest.Last.PolicyDigest)) }</p>
+			}
 			if !v.Ingest.Last.Latest && !v.Ingest.Last.Running {
 				<p class="hint" data-ingest-shown="requested">{ tIngestShownRun.In(v.Page.Lang) }</p>
 			}
@@ -77,6 +82,85 @@ templ observeIngest(v ObserveView) {
 			@ingestNodes(v.Page.Lang, v.Ingest.Last.Nodes, true)
 		</section>
 	}
+}
+
+// observePolicy — 03의 「새 확정 정책: 재적재와 활성화」. 두 지문을 나란히 보이고, 두 일을 순서 있는 목록으로 둔다:
+// 새 확정 정책으로 재적재 → 정책 활성화. **둘은 따로다.** 재적재가 끝나도 활성 정책은 그대로이고, 활성화 단추는 모든 노드의
+// 최신 참조가 새 확정 정책의 것일 때만 나오며 확인 페이지를 거친다.
+templ observePolicy(p Page, v ObservePolicy) {
+	<h3 id={ scopeActivateAnchor }>{ tPolicyHead.In(p.Lang) }</h3>
+	<p class="lede">{ tPolicyLede.In(p.Lang) }</p>
+	<div class="table-wrap">
+		<table class="provrun" data-policy-pair>
+			<tr>
+				<th>{ tPolicyColPolicy.In(p.Lang) }</th>
+				<th>{ tPolicyColFile.In(p.Lang) }</th>
+				<th>{ tPolicyColDigest.In(p.Lang) }</th>
+			</tr>
+			<tr data-policy="active">
+				<td>{ tPolicyActive.In(p.Lang) }</td>
+				<td><code>{ v.ActiveFile }</code></td>
+				<td><code>{ v.Offer.From }</code></td>
+			</tr>
+			<tr data-policy="candidate">
+				<td>{ tPolicyCandidate.In(p.Lang) }</td>
+				<td><code>{ v.CandidateFile }</code></td>
+				<td><code>{ v.Offer.To }</code></td>
+			</tr>
+		</table>
+	</div>
+	<ol class="activation-steps">
+		<li data-policy-step="reingest">
+			<strong>{ tPolicyStep1.In(p.Lang) }</strong>
+			<span>{ tPolicyStep1Body.In(p.Lang) }</span>
+			if v.Ingest.Running {
+				<p class="msg" role="status">{ tIngestRunning.In(p.Lang) }</p>
+			} else if v.Ingest.Block != "" {
+				<p class="msg bad" data-policy-block={ v.Ingest.Block }>{ v.Ingest.BlockText(p.Lang) }</p>
+			} else if len(v.Ingest.Problems) > 0 {
+				<p class="msg bad" data-policy-block="problems">{ tPolicySeeBelow.In(p.Lang) }</p>
+			} else {
+				<p class="hint" data-policy-summary>{ tPolicySummary.F(p.Lang, v.Ingest.Files, v.Ingest.Observed-v.Ingest.Managed, v.Ingest.Observed) }</p>
+				if v.Ingest.StateUnknown {
+					<p class="msg bad" data-policy-state="unknown">{ tIngestStateUnknown.In(p.Lang) }</p>
+				} else if v.Ingest.AllCurrent {
+					<p class="msg ok" data-policy-state="reingested">{ tPolicyReingested.In(p.Lang) }</p>
+				}
+				@ingestNodes(p.Lang, v.Ingest.Nodes, false)
+				if v.Ingest.CanIngest() {
+					<form method="post" action={ templ.SafeURL(IngestConfirmPath) }>
+						@csrfField(p)
+						<input type="hidden" name={ IngestPolicyField } value={ IngestPolicyCandidate }/>
+						<div class="actions">
+							<button class="primary" data-policy-go>{ tPolicyGo.In(p.Lang) }</button>
+							@tip(p.Lang, tIngestGoHint.In(p.Lang))
+						</div>
+					</form>
+				} else if !v.Ingest.Configured && !v.Ingest.AllCurrent {
+					<p class="msg" data-policy-terminal>{ tPolicyTerminal.In(p.Lang) }</p>
+					<code>{ v.Offer.VerifyCommand() }</code>
+					<code>{ v.Offer.IngestCommand() }</code>
+					<span class="hint">{ tActivateStep1Body.In(p.Lang) } { tActivateStep1Hint.In(p.Lang) }</span>
+				}
+			}
+		</li>
+		<li data-policy-step="activate">
+			<strong>{ tPolicyStep2.In(p.Lang) }</strong>
+			if v.CanActivate() {
+				<span>{ tPolicyReady.In(p.Lang) }</span>
+				<form method="post" action={ templ.SafeURL(ReviewScopeActivateConfirmPath) }>
+					<input type="hidden" name={ CSRFField } value={ p.CSRF }/>
+					<input type="hidden" name={ RevField } value={ v.ActivateRev }/>
+					<input type="hidden" name={ ActivateFromField } value={ ActivateFromObserve }/>
+					<div class="actions">
+						<button class="primary" data-policy-activate>{ tActivateNext.In(p.Lang) }</button>
+					</div>
+				</form>
+			} else {
+				<span data-policy-activate-wait>{ tPolicyNotYet.In(p.Lang) }</span>
+			}
+		</li>
+	</ol>
 }
 
 // ingestNodes — 노드마다 기대하는 참조와 이력의 지금 상태. 적재 기록에서는 적재 전의 최신 참조도 함께 보인다.

@@ -688,13 +688,21 @@ required).
    PQCOTA_DSN='postgres://pqcota_ingest@<host>:5432/pqcota' PQCOTA_ORG='<organization of the judgments>' PQCOTA_AUTO_DDL=0 pqcota-ingest -scope-assets '<workspace>/asset-scope.csv' '<workspace>/results'
    ```
 
-   The "Re-ingest pqcota" step on 05 shows the same two commands (with paths relative to the workspace).
+   When ingesting from the screen is not set up, "Newly finalized policy: re-ingest and activate" on 03 shows the same two
+   commands (with paths relative to the workspace).
 
-   After finalizing 02, "Next" under the finalize notice leads to "View current reconciliation in 04" and "View the
-   activation steps in 05", and until it is activated the top of 04 also shows "The policy finalized in 02 is not active
-   yet", so that reconciliation is read as made under the active policy. "The policy finalized in 02 can be activated" at
-   the top of 05 shows three steps: re-ingest pqcota, reconcile the pqcota re-ingest, activate the policy. Re-ingest with
-   the command above, press "Review before activating" and activate through the confirmation page.
+   **Re-ingesting and activating are done on the 03 observation screen.** After finalizing 02, "Next" under the finalize
+   notice leads to "View current reconciliation in 04" and "View re-ingest and activation in 03", and until it is activated
+   the top of 04 and of 05 also show "The policy finalized in 02 is not active yet", so those screens are read as made under
+   the active policy. "Newly finalized policy: re-ingest and activate" on 03 shows **the fingerprints of the active policy
+   and of the newly finalized policy side by side** and has two steps.
+
+   1. **Re-ingest under the newly finalized policy.** When ingesting from the screen is set up, press "Re-ingest under the
+      newly finalized policy: go to the confirmation" and ingest through the confirmation page. That page states both the
+      policy used for the ingest and the active policy. **Whether the re-ingest fails, ends partway or finishes, the active
+      policy does not change.**
+   2. **Activate the policy.** Once every node's latest reference is the one for the newly finalized policy, "Review before
+      activating" appears. Activate through the confirmation page. Until then the active policy stays as it is.
 
    **Activation always goes through the pqcota history reconciliation.** There is no operator statement to use instead.
    pqcaton goes only in this order, within one activation request:
@@ -824,7 +832,9 @@ required).
    results and this policy, it ends with "Already ingested". When an ingest ended partway, the screen reads the history
    back and shows per node "latest reference is the expected one", "the body exists but is not the latest reference",
    "not recorded" or "cannot be checked". The history is append-only: what is ingested cannot be undone. When ingesting
-   from the screen is not set up, ingest from a terminal as before (the commands in item 2).
+   from the screen is not set up, ingest from a terminal as before (the commands in item 2). When the policy finalized in 02
+   differs from the active one, "Newly finalized policy: re-ingest and activate" sits above it as a section of its own
+   (item 2).
 4. **04 Reconciliation.** When the observation finishes, or pqcota collection writes results to `results/`, reload the
    screen. With no results, the screen points at that folder.
 
@@ -1405,7 +1415,7 @@ screen.
 | `scope-unactivated` | `scope-assets.csv` changed without an activation record, so nothing was saved or finalized | Restore the previous policy file, or re-ingest upstream with the new policy and go through the policy activation |
 | `upstream-unreachable` | The pqcota history could not be reached, or the lookup did not finish within 10 seconds, so no policy was activated or adopted as the baseline (503). The files are unchanged | Check the pqcota connection and try again. There is no operator statement to use instead |
 | `upstream-org` | The connected pqcota history, the organization of the judgments and the review session's organization are not the same, so nothing was looked up. Nothing was written | Use the pqcota history of the organization of the judgments. Another organization's history cannot activate a policy or adopt a baseline |
-| `upstream-missing` | In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy. Nothing was written | Re-ingest pqcota with this policy using the command shown in 05, then try again |
+| `upstream-missing` | In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy. Nothing was written | Re-ingest pqcota with this policy on the 03 screen, then try again |
 | `upstream-empty` | The results folder holds no observations to reconcile with the pqcota history. Nothing was written | Observe in 03, then try again |
 | `upstream-revert` | The latest ingest in the pqcota history differs from this policy; results under this policy are in the history but are not the latest of their nodes. Nothing was written | Re-ingest the results under this policy, then activate it |
 | `scope-same` | The policy finalized in 02 is already the active policy (only notes or spacing may differ), so there is nothing to activate. Nothing was written | Nothing to do |

@@ -159,7 +159,8 @@ func TestScreenDoesNotStartWithoutPqcota(t *testing.T) {
 	})
 }
 
-// IC-U197 — **05의 활성화는 pqcota 이력 대조를 거쳐야 한다.** 활성화 상자에 운영자 진술 칸이 없고 대조 단계를 적는다. pqcota가
+// IC-U197 — **활성화는 pqcota 이력 대조를 거쳐야 한다.** 05의 안내 상자에 운영자 진술 칸이 없고 재적재와 활성화를 03에서
+// 한다고 적는다(03의 구역은 그 구역의 시험이 본다). pqcota가
 // 옛 정책으로만 적재돼 있으면 확인 요청이 409 `upstream-missing`이고, 닿지 못하면 503 `upstream-unreachable`이다. 새 정책으로
 // 적재돼 있으면 확인 페이지가 「확인 시점에 pqcota 이력과 일치했습니다」와 노드 수를 적는다. 확인 페이지 뒤에 pqcota가 다른
 // 정책으로 다시 적재되면 실행이 409 `upstream-missing`이다(실행은 처음부터 다시 대조한다). 거절은 모두 작업 폴더를 그대로 둔다.
@@ -168,9 +169,8 @@ func TestActivationReconcilesPqcota(t *testing.T) {
 	s, _ := activationReady(t)
 	dir := filepath.Dir(s.path)
 	page := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
-	if strings.Contains(page, `type="checkbox" name="reingested"`) || !strings.Contains(page, "pqcota 재적재 결과 대조") ||
-		!strings.Contains(page, "하나라도 없거나 다르거나 조회할 수 없으면 활성화하지 않습니다") {
-		t.Fatal("the activation box still takes a statement or does not describe the reconciliation")
+	if strings.Contains(page, `type="checkbox" name="reingested"`) || !strings.Contains(page, "새 정책으로 다시 적재하고 활성화하는 일은 03 관측 화면에서 합니다") {
+		t.Fatal("the 05 notice still takes a statement or does not say where the re-ingest and the activation are done")
 	}
 	before := snapshotDir(t, dir)
 	refused := func(what string, w interface {

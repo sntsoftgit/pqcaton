@@ -110,8 +110,8 @@ var (
 		KO: "연결한 pqcota 이력의 조직이 판정 조직이나 판정 세션의 조직과 달라, 조회하지 않고 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. 다른 조직의 이력으로는 진행할 수 없습니다.",
 		EN: "The organization of the connected pqcota history differs from the organization of the judgments or of the review session, so nothing was looked up and no policy was activated or adopted as the baseline. The files are unchanged. The history of another organization cannot be used."}
 	tRefusedUpstreamMissing = T{
-		KO: "pqcota 이력에서 일부 노드의 최신 적재 결과가 없거나 이 정책으로 만든 결과와 달라 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. 05에 보이는 명령으로 pqcota를 이 정책으로 다시 적재한 뒤 하십시오.",
-		EN: "In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy, so no policy was activated or adopted as the baseline. The files are unchanged. Re-ingest pqcota with this policy using the command shown in 05, then try again."}
+		KO: "pqcota 이력에서 일부 노드의 최신 적재 결과가 없거나 이 정책으로 만든 결과와 달라 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. 03에서 pqcota를 이 정책으로 다시 적재한 뒤 하십시오.",
+		EN: "In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy, so no policy was activated or adopted as the baseline. The files are unchanged. Re-ingest pqcota with this policy on screen 03, then try again."}
 	tRefusedUpstreamEmpty = T{
 		KO: "결과 폴더에 pqcota 이력과 대조할 관측 결과가 없어 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다.",
 		EN: "The results folder holds no observations to reconcile with the pqcota history, so no policy was activated or adopted as the baseline. The files are unchanged."}
@@ -120,23 +120,17 @@ var (
 		EN: "The latest ingest in the pqcota history differs from this policy. Re-ingest the results under this policy, then activate it. The files are unchanged."}
 	tRefusedScopeSame           = T{KO: "02에서 확정한 정책이 이미 활성 정책과 같습니다(note · 공백만 다를 수 있습니다). 활성화할 것이 없어 아무것도 쓰지 않았습니다.", EN: "The policy finalized in 02 is already the active policy (only notes or spacing may differ). There is nothing to activate, so nothing was written."}
 	tRefusedScopeNotFinalized   = T{KO: "02에서 확정한 정책이 없거나, 확정한 뒤 asset-scope.csv가 바뀌었거나, 읽을 수 없어 활성화하지 않았습니다. 02에서 확정하십시오.", EN: "There is no policy finalized in 02, asset-scope.csv changed after it was finalized, or it cannot be read, so nothing was activated. Finalize it in 02."}
-	tActivateHead               = T{KO: "02에서 확정한 정책을 활성화할 수 있습니다", EN: "The policy finalized in 02 can be activated"}
-	tActivateBody               = T{KO: "02에서 확정한 정책(asset-scope.csv)이 지금 대조에 쓰는 활성 정책(scope-assets.csv)과 다릅니다. 아래 순서대로 활성화합니다. 활성화하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다.", EN: "The policy finalized in 02 (asset-scope.csv) differs from the active policy used for reconciliation (scope-assets.csv). Activate it in the order below. Activation opens a new round rebuilt from the results; earlier conclusions are carried only as previous values."}
-	tActivateStep1              = T{KO: "pqcota 재적재", EN: "Re-ingest pqcota"}
+	tActivateBody               = T{KO: "02에서 확정한 정책(asset-scope.csv)이 지금 대조에 쓰는 활성 정책(scope-assets.csv)과 다릅니다. 새 정책으로 다시 적재하고 활성화하는 일은 03 관측 화면에서 합니다. 활성화하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다.", EN: "The policy finalized in 02 (asset-scope.csv) differs from the active policy used for reconciliation (scope-assets.csv). Re-ingesting under the new policy and activating it are done on screen 03. Activation opens a new round rebuilt from the results; earlier conclusions are carried only as previous values."}
 	tActivateStep1Body          = T{KO: "02에서 확정한 정책으로 pqcota를 다시 적재합니다. 먼저 첫 명령으로 결과의 수집기 서명을 확인하고(저장하지 않습니다, 거절될 결과가 있으면 종료 코드 1), 통과하면 둘째 명령으로 적재합니다. 두 명령 모두 PQCOTA_VERIFY_KEY를 03이 신뢰하는 공개 키(verify.pub)와 같은 값으로 주고, 연결 정보는 PQCOTA_DSN으로만 넘깁니다.", EN: "Ingest pqcota again with the policy finalized in 02. First check the collector signatures of the results with the first command (it stores nothing and exits 1 if any result would be refused); when it passes, ingest with the second. Give both PQCOTA_VERIFY_KEY with the same value as the trusted public keys of 03 (verify.pub), and pass the connection only as PQCOTA_DSN."}
 	tActivateStep1Hint          = T{KO: "작업 폴더에서 실행합니다. 경로는 작업 폴더 기준의 상대 경로입니다.", EN: "Run it in the workspace folder; the paths are relative to it."}
-	tActivateStep2              = T{KO: "pqcota 재적재 결과 대조", EN: "Reconcile the pqcota re-ingest"}
-	tActivateStep2Body          = T{KO: "pqcaton이 pqcota 이력에서 노드마다 최신 적재 결과가 새 정책으로 만든 결과와 같은지 대조합니다. 하나라도 없거나 다르거나 조회할 수 없으면 활성화하지 않습니다.", EN: "pqcaton reconciles, for every node, that the latest ingest in the pqcota history matches the results under the new policy. If any is missing, differs or cannot be looked up, nothing is activated."}
-	tActivateStep3              = T{KO: "정책 활성화", EN: "Activate the policy"}
-	tActivateStep3Body          = T{KO: "확인 페이지에서 바뀌는 파일과 되돌리기 제한을 본 뒤 활성화합니다.", EN: "Review the files that change and the rollback limit on the confirmation page, then activate."}
 	tSurveyActivateHead         = T{KO: "02에서 확정한 정책이 아직 활성화되지 않았습니다", EN: "The policy finalized in 02 is not active yet"}
-	tSurveyActivateBody         = T{KO: "이 화면은 현재 활성 정책(scope-assets.csv)으로 대조했습니다. 02에서 확정한 정책(asset-scope.csv)은 아직 대조에 반영되지 않았습니다. 새 정책을 반영하려면 그 정책으로 상류 적재를 다시 마친 뒤 05에서 활성화하십시오.", EN: "This comparison uses the active policy (scope-assets.csv). The policy finalized in 02 (asset-scope.csv) has not yet been applied to reconciliation. To apply it, complete upstream ingestion with that policy, then activate it in 05."}
+	tSurveyActivateBody         = T{KO: "이 화면은 현재 활성 정책(scope-assets.csv)으로 대조했습니다. 02에서 확정한 정책(asset-scope.csv)은 아직 대조에 반영되지 않았습니다. 새 정책을 반영하려면 03에서 그 정책으로 다시 적재한 뒤 활성화하십시오.", EN: "This comparison uses the active policy (scope-assets.csv). The policy finalized in 02 (asset-scope.csv) has not yet been applied to reconciliation. To apply it, re-ingest under that policy on screen 03, then activate it there."}
 	tSurveyActivatePolicy       = T{KO: "활성 정책 → 02에서 확정한 정책:", EN: "Active policy → policy finalized in 02:"}
-	tSurveyActivateGo           = T{KO: "05에서 활성화 절차 보기", EN: "View the activation steps in 05"}
+	tSurveyActivateGo           = T{KO: "03에서 재적재 · 활성화 보기", EN: "View re-ingest and activation in 03"}
 	tScopeNextHead              = T{KO: "다음 단계", EN: "Next"}
 	tScopeNextBody              = T{KO: "이 정책은 아직 대조에 반영되지 않았습니다. 먼저 04에서 현재 활성 정책으로 계산한 대조 결과를 확인하십시오.", EN: "This policy has not yet been applied to reconciliation. First review the reconciliation produced with the currently active policy in 04."}
 	tScopeNextSurvey            = T{KO: "04에서 현재 대조 보기", EN: "View current reconciliation in 04"}
-	tScopeNextSteps             = T{KO: "05에서 활성화 절차 보기", EN: "View the activation steps in 05"}
+	tScopeNextSteps             = T{KO: "03에서 재적재 · 활성화 보기", EN: "View re-ingest and activation in 03"}
 	tActivateNext               = T{KO: "활성화 전 확인으로", EN: "Review before activating"}
 	tActivateConfirmTitle       = T{KO: "정책 활성화 전 확인", EN: "Before activating the policy"}
 	tActivateConfirmBody        = T{KO: "아래 내용으로 자산 스코프 정책을 활성화합니다. 아직 아무것도 쓰지 않았습니다.", EN: "The asset-scope policy will be activated as below. Nothing has been written yet."}
@@ -1989,14 +1983,53 @@ var (
 	tIngestConfirmBody  = T{
 		KO: "아래 묶음을 pqcota 이력에 적재합니다. 이 화면을 여는 것만으로는 아무것도 적재되지 않습니다.",
 		EN: "The set below will be ingested into the pqcota history. Opening this page ingests nothing."}
-	tIngestDo           = T{KO: "이력에 적재", EN: "Ingest into the history"}
-	tIngestLineOrg      = T{KO: "조직: %s", EN: "Organization: %s"}
-	tIngestLinePolicy   = T{KO: "활성 정책의 지문: %s", EN: "Fingerprint of the active policy: %s"}
-	tIngestLineNoPolicy = T{KO: "활성 정책 없음: 관측한 자산이 모두 관리 대상으로 적재됩니다", EN: "No active policy: every observed asset is ingested as managed"}
-	tIngestLineFiles    = T{KO: "서명을 확인한 결과 파일: %d개", EN: "Result files with a verified signature: %d"}
-	tIngestLineExcluded = T{KO: "정책으로 제외되는 자산: %d개(관측 %d개 가운데)", EN: "Assets excluded by the policy: %d (of %d observed)"}
-	tIngestLineNode     = T{KO: "%s: 기대하는 참조 %s · 지금 최신 참조 %s(%s)", EN: "%s: expected reference %s · latest reference now %s (%s)"}
-	tIngestLineSameDB   = T{
+	tIngestDo              = T{KO: "이력에 적재", EN: "Ingest into the history"}
+	tIngestLineOrg         = T{KO: "조직: %s", EN: "Organization: %s"}
+	tIngestLinePolicy      = T{KO: "활성 정책의 지문: %s", EN: "Fingerprint of the active policy: %s"}
+	tIngestLineNoPolicy    = T{KO: "활성 정책 없음: 관측한 자산이 모두 관리 대상으로 적재됩니다", EN: "No active policy: every observed asset is ingested as managed"}
+	tIngestLineFiles       = T{KO: "서명을 확인한 결과 파일: %d개", EN: "Result files with a verified signature: %d"}
+	tIngestLineExcluded    = T{KO: "정책으로 제외되는 자산: %d개(관측 %d개 가운데)", EN: "Assets excluded by the policy: %d (of %d observed)"}
+	tIngestLineNode        = T{KO: "%s: 기대하는 참조 %s · 지금 최신 참조 %s(%s)", EN: "%s: expected reference %s · latest reference now %s (%s)"}
+	tIngestLineCandidate   = T{KO: "적재에 쓸 정책: 02에서 확정한 새 정책 %s", EN: "Policy for this ingest: the new policy finalized in 02, %s"}
+	tIngestLineActiveStays = T{
+		KO: "현재 활성 정책: %s. 적재가 끝나도 활성 정책은 바뀌지 않습니다. 활성화는 따로 확인합니다.",
+		EN: "Active policy now: %s. The active policy does not change when the ingest ends. Activation is confirmed separately."}
+	tIngestLastActive    = T{KO: "적재에 쓴 정책: 활성 정책 %s", EN: "Policy used: the active policy %s"}
+	tIngestLastCandidate = T{KO: "적재에 쓴 정책: 02에서 확정한 새 정책 %s(이 적재로 활성 정책은 바뀌지 않았습니다)", EN: "Policy used: the new policy finalized in 02, %s (this ingest did not change the active policy)"}
+	tPolicyHead          = T{KO: "새 확정 정책: 재적재와 활성화", EN: "Newly finalized policy: re-ingest and activate"}
+	tPolicyLede          = T{
+		KO: "02에서 확정한 정책이 현재 활성 정책과 다릅니다. 새 확정 정책으로 이력에 다시 적재한 뒤 활성화합니다. 재적재가 끝나도 활성 정책은 바뀌지 않습니다. 활성화는 따로 확인합니다.",
+		EN: "The policy finalized in 02 differs from the active policy. Re-ingest into the history under the newly finalized policy, then activate it. The active policy does not change when the re-ingest ends. Activation is confirmed separately."}
+	tPolicyColPolicy = T{KO: "정책", EN: "Policy"}
+	tPolicyColFile   = T{KO: "파일", EN: "File"}
+	tPolicyColDigest = T{KO: "지문", EN: "Fingerprint"}
+	tPolicyActive    = T{KO: "현재 활성 정책", EN: "Active policy now"}
+	tPolicyCandidate = T{KO: "적재할 새 확정 정책", EN: "Newly finalized policy to ingest under"}
+	tPolicyStep1     = T{KO: "새 확정 정책으로 재적재", EN: "Re-ingest under the newly finalized policy"}
+	tPolicyStep1Body = T{
+		KO: "지금 결과 폴더의 서명된 결과를 새 확정 정책으로 이력에 적재합니다. 활성 정책 파일은 건드리지 않습니다.",
+		EN: "Ingests the signed results in the results folder into the history under the newly finalized policy. The active policy file is not touched."}
+	tPolicySummary = T{
+		KO: "결과 파일 %d개 · 새 확정 정책으로 제외되는 자산 %d개(관측 %d개 가운데)",
+		EN: "%d result files · %d assets excluded by the newly finalized policy (of %d observed)"}
+	tPolicyReingested = T{
+		KO: "모든 노드의 최신 참조가 새 확정 정책의 것입니다. 다시 적재할 것이 없습니다.",
+		EN: "Every node's latest reference is the one for the newly finalized policy. There is nothing to re-ingest."}
+	tPolicySeeBelow = T{
+		KO: "적재하지 못하는 결과가 있습니다. 아래 「이력에 적재」에 파일마다 까닭이 적혀 있습니다.",
+		EN: "Some results cannot be ingested. The reason per file is under \"Ingest into the history\" below."}
+	tPolicyGo       = T{KO: "새 확정 정책으로 재적재: 확인으로", EN: "Re-ingest under the newly finalized policy: go to the confirmation"}
+	tPolicyTerminal = T{
+		KO: "화면에서 적재하도록 설정되지 않았습니다. 작업 폴더의 터미널에서 다음 두 명령으로 다시 적재합니다.",
+		EN: "The screen is not set up to ingest. Re-ingest with the two commands below, in a terminal in the workspace folder."}
+	tPolicyStep2 = T{KO: "정책 활성화", EN: "Activate the policy"}
+	tPolicyReady = T{
+		KO: "재적재가 확인됐습니다. 현재 활성 정책은 아직 그대로입니다. 확인 페이지에서 바뀌는 파일과 되돌리기 제한을 본 뒤 활성화합니다. 활성화 직전에 이력을 처음부터 다시 대조하고, 최신 참조가 달라졌으면 활성화하지 않습니다.",
+		EN: "The re-ingest is confirmed. The active policy is still the same. Review the files that change and the rollback limit on the confirmation page, then activate. Right before activating, the history is reconciled again from the start; if a latest reference has changed, nothing is activated."}
+	tPolicyNotYet = T{
+		KO: "모든 노드의 최신 참조가 새 확정 정책의 것이 되면 활성화할 수 있습니다. 그 전에는 현재 활성 정책이 유지됩니다.",
+		EN: "Activation becomes possible once every node's latest reference is the one for the newly finalized policy. Until then the active policy stays as it is."}
+	tIngestLineSameDB = T{
 		KO: "화면이 조회하는 것과 같은 데이터베이스에만 적재합니다. 다르면 쓰기 전에 멈춥니다.",
 		EN: "The ingest only goes to the same database the screen reads. If they differ it stops before writing."}
 	tIngestLineAppendOnly = T{
@@ -2031,6 +2064,7 @@ var ingestBlockText = map[string]T{
 	IngestPolicy:      {KO: "활성 정책 파일을 읽을 수 없습니다.", EN: "The active policy file cannot be read."},
 	IngestInputs:      {KO: "선언이나 결과를 읽을 수 없어 기대하는 참조를 계산하지 못했습니다.", EN: "The declaration or the results could not be read, so the expected references could not be worked out."},
 	IngestObserving:   {KO: "관측이 돌고 있습니다. 끝난 뒤에 적재합니다.", EN: "An observation is running. Ingest after it ends."},
+	IngestNoCandidate: {KO: "02에서 확정한 새 정책이 없거나, 확정한 뒤 바뀌었거나, 이미 활성 정책과 같습니다.", EN: "There is no new policy finalized in 02, it changed after it was finalized, or it is already the active policy."},
 }
 
 var ingestWhyText = map[string]T{

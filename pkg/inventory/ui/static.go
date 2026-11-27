@@ -69,6 +69,13 @@ const (
 	IngestConfirmPath = "/observe/ingest/confirm"
 	// IngestRunParam — 03에서 보일 적재 실행의 ID. 없으면 가장 최근 것이다.
 	IngestRunParam = "ingest_run"
+	// IngestPolicyField — 적재 양식에서 어느 정책으로 적재하는지. 없으면 활성 정책, IngestPolicyCandidate면 02에서 확정한 새
+	// 정책이다.
+	IngestPolicyField     = "policy"
+	IngestPolicyCandidate = "candidate"
+	// ActivateFromField — 활성화 양식을 어느 화면에서 냈는지. ActivateFromObserve면 거절과 끝난 뒤의 이동이 03으로 간다.
+	ActivateFromField   = "from"
+	ActivateFromObserve = "observe"
 	// ProvRunPath — 06의 실행 상태 조각(GET). ProvPreviewPath — 대상 노드 미리 보기를 시작한다. ProvStopPath — 멈춘다.
 	ProvRunPath     = "/approve/run"
 	ProvPreviewPath = "/approve/preview"

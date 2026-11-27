@@ -97,7 +97,7 @@ templ layerCard(l Lang, e LayerEdit) {
 }
 
 // scopeActivationNext — 02 확정 직후, 그 정책이 아직 대조에 반영되지 않았을 때의 다음 단계. **먼저 04에서 현재 활성
-// 정책으로 계산한 대조를 보게 하고**, 05의 활성화 절차는 보조 링크로 둔다. 상류 재적재를 마치기 전에 바로 적용해도 된다는
+// 정책으로 계산한 대조를 보게 하고**, 03의 재적재 · 활성화는 보조 링크로 둔다. 상류 재적재를 마치기 전에 바로 적용해도 된다는
 // 인상을 주지 않으려는 것이다.
 templ scopeActivationNext(v ScopeView) {
 	if v.ActivationNext {
@@ -109,7 +109,7 @@ templ scopeActivationNext(v ScopeView) {
 			</div>
 			<div class="next-actions">
 				<a class="primary" href={ templ.SafeURL(ScreenSurvey) }>{ tScopeNextSurvey.In(v.Page.Lang) }</a>
-				<a class="quiet" href={ templ.SafeURL(ScreenReview + "#" + scopeActivateAnchor) }>{ tScopeNextSteps.In(v.Page.Lang) }</a>
+				<a class="quiet" href={ templ.SafeURL(ScreenObserve + "#" + scopeActivateAnchor) }>{ tScopeNextSteps.In(v.Page.Lang) }</a>
 			</div>
 		</div>
 	}

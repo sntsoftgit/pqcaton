@@ -72,6 +72,7 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.results != "" {
 		v.HasResults, v.Ingest = true, s.ingestView(r.URL.Query().Get(ui.IngestRunParam))
+		v.Policy = s.policyView()
 	}
 	html(w, r, func(out io.Writer) error { return ui.RenderObserve(out, v) })
 }

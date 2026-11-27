@@ -18,6 +18,8 @@ const (
 	IngestPolicy      = "policy"
 	IngestInputs      = "inputs"
 	IngestObserving   = "observing"
+	// IngestNoCandidate — 새 확정 정책으로 적재할 수 없다: 02에서 확정한 정책이 없거나, 확정한 뒤 바뀌었거나, 활성 정책과 같다.
+	IngestNoCandidate = "no-candidate"
 )
 
 // 결과 파일 하나가 적재되지 못하는 까닭. 하나라도 있으면 묶음 전체를 적재하지 않는다.
@@ -90,6 +92,8 @@ type IngestLast struct {
 	Started, Ended time.Time
 	Files          int
 	PolicyDigest   string
+	// Candidate — 02에서 확정한 새 정책으로 적재한 실행이다(그때 활성 정책이 아니었다). 거짓이면 활성 정책으로 적재했다.
+	Candidate bool
 	// Running — 적재 프로세스가 아직 돈다. HasResult — 프로세스가 결과를 남겼다. 남기지 못했으면 종료를 알 수 없다.
 	Running, HasResult bool
 	// Latest — 가장 최근 적재다. 거짓이면 주소로 요청한 옛 실행을 보이고 있다.
@@ -182,11 +186,17 @@ func (v IngestView) BlockText(l Lang) string { return ingestBlockText[v.Block].I
 
 // IngestConfirmLines: 적재 확인 페이지에 적을 것. 조직, 활성 정책의 지문, 검증된 결과 파일 수, 정책으로 제외되는 자산 수, 노드마다
 // 기대하는 참조와 지금의 최신 참조, 그리고 되돌릴 수 없다는 것.
-func IngestConfirmLines(l Lang, org, policy string, noPolicy bool, files, observed, managed int, nodes []IngestNode) []string {
+//
+// candidate면 02에서 확정한 새 정책으로 적재한다. 그때는 적재에 쓸 정책과 현재 활성 정책(active)의 지문을 나란히 적고, 적재가
+// 끝나도 활성 정책이 바뀌지 않는다는 것을 밝힌다.
+func IngestConfirmLines(l Lang, org, policy string, noPolicy, candidate bool, active string, files, observed, managed int, nodes []IngestNode) []string {
 	out := []string{tIngestLineOrg.F(l, org)}
-	if noPolicy {
+	switch {
+	case candidate:
+		out = append(out, tIngestLineCandidate.F(l, policy), tIngestLineActiveStays.F(l, active))
+	case noPolicy:
 		out = append(out, tIngestLineNoPolicy.In(l))
-	} else {
+	default:
 		out = append(out, tIngestLinePolicy.F(l, policy))
 	}
 	out = append(out, tIngestLineFiles.F(l, files), tIngestLineExcluded.F(l, observed-managed, observed))
@@ -194,6 +204,28 @@ func IngestConfirmLines(l Lang, org, policy string, noPolicy bool, files, observ
 		out = append(out, tIngestLineNode.F(l, n.Node, shortRef(l, n.Want), shortRef(l, n.Latest), n.StateText(l)))
 	}
 	return append(out, tIngestLineSameDB.In(l), tIngestLineAppendOnly.In(l))
+}
+
+// ObservePolicy — 03의 「새 확정 정책: 재적재와 활성화」. Offer의 From · To가 현재 활성 정책과 새 확정 정책의 지문이다.
+// Ingest는 **새 확정 정책으로** 적재한다면의 구역이다(노드별 기대 참조와 이력의 상태).
+type ObservePolicy struct {
+	Offer                     ActivationOffer
+	ActiveFile, CandidateFile string
+	Ingest                    IngestView
+	// ActivateRev — 활성화 양식에 실을 rev. 활성화는 판정 세션 · 두 정책 파일 · 결과 폴더를 함께 재므로 03의 rev와 다르다.
+	ActivateRev string
+}
+
+// Reingested — 모든 노드의 최신 참조가 새 확정 정책의 것이라고 **확인했다.** 이력을 읽지 못했거나 기대 참조를 계산하지
+// 못했으면 거짓이다.
+func (p ObservePolicy) Reingested() bool {
+	return p.Ingest.Block == "" && len(p.Ingest.Problems) == 0 && !p.Ingest.StateUnknown && p.Ingest.AllCurrent
+}
+
+// CanActivate — 활성화 확인으로 가는 단추를 낼 수 있는가. 재적재가 확인됐고 적재가 돌고 있지 않을 때다. 단추를 눌러도 확인
+// 페이지를 거치고, 활성화 직전에 이력을 처음부터 다시 대조한다.
+func (p ObservePolicy) CanActivate() bool {
+	return p.Reingested() && !p.Ingest.Running && p.ActivateRev != ""
 }
 
 // IngestConfirmTitle: 적재 확인 페이지의 제목.

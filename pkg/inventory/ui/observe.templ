@@ -45,6 +45,9 @@ templ observePage(v ObserveView) {
 			}
 			// 지금 결과가 화면의 관측에서 왔든 pqcota 수집에서 왔든 같은 경고를 낸다.
 			@jcaUnconfirmed(v.Page.Lang, v.Run.JCAUnconfirmed)
+			if v.HasResults && v.Policy != nil {
+				@observePolicy(v.Page, *v.Policy)
+			}
 			if v.HasResults {
 				@observeIngest(v)
 			}

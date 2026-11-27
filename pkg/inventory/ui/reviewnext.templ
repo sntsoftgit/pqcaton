@@ -168,37 +168,17 @@ templ scopeBaselineBox(p Page) {
 	</div>
 }
 
-// scopeActivateBox — 02에서 확정한 정책이 활성 정책과 다를 때 05 위쪽. **활성화에 필요한 순서를 단계로 보인다**: pqcota
-// 재적재(운영자 명령) → pqcota 재적재 결과 대조(pqcaton이 한다) → 정책 활성화(확인 페이지를 거친다, 요청 보호 · rev). 번호는
-// 의미 있는 <ol>이다. 운영자 진술 칸은 없다. 대조는 확인 페이지 요청과 실행 요청에서 한다.
+// scopeActivateBox — 02에서 확정한 정책이 활성 정책과 다를 때 05 위쪽. **05는 그 사실과 03으로 가는 길만 보인다.** 새 확정
+// 정책으로 다시 적재하고 활성화하는 일은 03 관측 화면에서 한다(ingest.templ의 observePolicy). 활성화 양식은 여기 없다.
 templ scopeActivateBox(p Page, o ActivationOffer) {
 	<div class="next ruleset activation" role="status" id={ scopeActivateAnchor }>
 		<div class="next-icon">!</div>
 		<div>
-			<strong>{ tActivateHead.In(p.Lang) }</strong>
+			<strong>{ tSurveyActivateHead.In(p.Lang) }</strong>
 			<span>{ tActivateBody.In(p.Lang) }</span>
-			<form method="post" action={ templ.SafeURL(ReviewScopeActivateConfirmPath) }>
-				@csrfField(p)
-				<ol class="activation-steps">
-					<li>
-						<strong>{ tActivateStep1.In(p.Lang) }</strong>
-						<span>{ tActivateStep1Body.In(p.Lang) }</span>
-						<code>{ o.VerifyCommand() }</code>
-						<code>{ o.IngestCommand() }</code>
-						<span class="hint">{ tActivateStep1Hint.In(p.Lang) }</span>
-					</li>
-					<li>
-						<strong>{ tActivateStep2.In(p.Lang) }</strong>
-						<span>{ tActivateStep2Body.In(p.Lang) }</span>
-					</li>
-					<li>
-						<strong>{ tActivateStep3.In(p.Lang) }</strong>
-						<span>{ tActivateStep3Body.In(p.Lang) }</span>
-						<button class="primary">{ tActivateNext.In(p.Lang) }</button>
-					</li>
-				</ol>
-			</form>
+			<span class="hint">{ tSurveyActivatePolicy.In(p.Lang) } <code>{ o.From }</code> → <code>{ o.To }</code></span>
 		</div>
+		<a class="primary" href={ templ.SafeURL(ScreenObserve + "#" + scopeActivateAnchor) }>{ tSurveyActivateGo.In(p.Lang) }</a>
 	</div>
 }
 

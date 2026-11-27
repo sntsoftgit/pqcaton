@@ -598,7 +598,7 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 }
 
 // scopeActivationNext — 02 확정 직후, 그 정책이 아직 대조에 반영되지 않았을 때의 다음 단계. **먼저 04에서 현재 활성
-// 정책으로 계산한 대조를 보게 하고**, 05의 활성화 절차는 보조 링크로 둔다. 상류 재적재를 마치기 전에 바로 적용해도 된다는
+// 정책으로 계산한 대조를 보게 하고**, 03의 재적재 · 활성화는 보조 링크로 둔다. 상류 재적재를 마치기 전에 바로 적용해도 된다는
 // 인상을 주지 않으려는 것이다.
 func scopeActivationNext(v ScopeView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -679,9 +679,9 @@ func scopeActivationNext(v ScopeView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var40 templ.SafeURL
-			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(ScreenReview + "#" + scopeActivateAnchor))
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(ScreenObserve + "#" + scopeActivateAnchor))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 112, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 112, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
@@ -694,7 +694,7 @@ func scopeActivationNext(v ScopeView) templ.Component {
 			var templ_7745c5c3_Var41 string
 			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(tScopeNextSteps.In(v.Page.Lang))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 112, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pkg/inventory/ui/scopenext.templ`, Line: 112, Col: 120}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {

@@ -677,7 +677,7 @@ func (s ReviewSummary) Ready() bool {
 // reviewEditAnchor — 요약에서 판정 폼으로 보내는 자리.
 const reviewEditAnchor = "review-edit"
 
-// scopeActivateAnchor — 05의 활성화 상자. 04의 안내가 이리로 잇는다.
+// scopeActivateAnchor — 03의 「새 확정 정책: 재적재와 활성화」. 02 · 04 · 05의 안내가 이리로 잇는다(05의 안내 상자도 같은 id다).
 const scopeActivateAnchor = "scope-activate"
 
 // RenderReview — 판정 화면(`/review`).
@@ -749,17 +749,17 @@ func RenderDeclCreate(w io.Writer, v DeclCreateView) error {
 	return declCreatePage(v).Render(context.Background(), w)
 }
 
-// ActivationOffer — 05 위쪽에 띄우는 「새 정책 활성화」. From · To는 활성 정책과 02 확정 정책의 지문이다.
+// ActivationOffer — 02에서 확정한 정책이 활성 정책과 달라 활성화를 기다린다. 03이 재적재와 활성화를 띄우고 04 · 05가 알린다. From · To는 활성 정책과 02 확정 정책의 지문이다.
 type ActivationOffer struct {
 	From, To string
-	// Candidate · Results — 05의 「상류 재적재」 단계에 보일 명령의 두 경로. 작업 폴더(세션 파일이 있는 폴더) 기준의
+	// Candidate · Results — 화면 적재가 설정되지 않았을 때 03에 보일 터미널 명령의 두 경로. 작업 폴더(세션 파일이 있는 폴더) 기준의
 	// 상대 경로다. 비면 기본 이름(asset-scope.csv · results)을 보인다.
 	Candidate, Results string
 	// Org — 판정 조직. pqcota 재적재도 이 조직으로 한다(PQCOTA_ORG). 비면 명령에 싣지 않는다.
 	Org string
 }
 
-// VerifyCommand — 05의 「pqcota 재적재」 단계에서 적재 전에 보일 확인 명령. 03이 받은 결과의 수집기 서명을 상류 적재와 같은
+// VerifyCommand — 03의 터미널 안내에서 적재 전에 보일 확인 명령. 03이 받은 결과의 수집기 서명을 상류 적재와 같은
 // 판정으로 확인하고 저장하지 않는다(pqcota v0.15.0). PQCOTA_VERIFY_KEY는 싣지 않는다(03이 신뢰하는 verify.pub과 같은 값을 준다).
 func (o ActivationOffer) VerifyCommand() string {
 	r := o.Results
@@ -769,7 +769,7 @@ func (o ActivationOffer) VerifyCommand() string {
 	return "pqcota-ingest -verify-keys " + r
 }
 
-// IngestCommand — 05의 「pqcota 재적재」 단계에 보일 명령. 작업 폴더에서 실행하는 상대 경로다. 연결 정보(PQCOTA_DSN)는
+// IngestCommand — 03의 터미널 안내에 보일 적재 명령. 작업 폴더에서 실행하는 상대 경로다. 연결 정보(PQCOTA_DSN)는
 // 싣지 않는다.
 func (o ActivationOffer) IngestCommand() string {
 	c, r := o.Candidate, o.Results
