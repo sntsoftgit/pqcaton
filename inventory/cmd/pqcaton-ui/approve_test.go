@@ -35,7 +35,7 @@ func keyReady(t *testing.T) (*server, string) {
 	return s, writeKey(t, s.approvalKey)
 }
 
-// bindPlan: 04 확정이 하는 그대로 계획을 쓴다. 계획과 형식 2 영수증(지금 활성 정책의 지문)이 한 트랜잭션이다. 05는 이
+// bindPlan: 03 확정이 하는 그대로 계획을 쓴다. 계획과 형식 2 영수증(지금 활성 정책의 지문)이 한 트랜잭션이다. 04는 이
 // 작업 폴더의 확정 기록과 이어진 계획만 서명 · 생성한다.
 func bindPlan(t *testing.T, s *server, content string) string {
 	t.Helper()
@@ -104,17 +104,17 @@ func signVia(t *testing.T, s *server, approver string) *httptest.ResponseRecorde
 	return finalizeVia(t, s, "ko", ui.SignConfirmPath, withRev(signForm(approver), s.revFor(ui.ScreenApprove)))
 }
 
-// IC-U120 — **화면의 승인 서명은 확인을 거치고, 상류가 그대로 확인한다.** 05 화면은 계획의 조치를 보이고, 서명 양식은
+// IC-U120 — **화면의 승인 서명은 확인을 거치고, 상류가 그대로 확인한다.** 04 화면은 계획의 조치를 보이고, 서명 양식은
 // 먼저 확인 페이지로 간다. 확인 페이지는 계획 · 계획 파일 해시 · 승인자 · 키 지문을 보이고 아무것도 쓰지 않는다. 확인을
 // 거친 서명은 계획 파일 옆 plan.signed.json에 FINALIZED 계획을 쓰고 plan.json은 그대로다. 서명은 상류 VerifyApprovals가
-// 그 승인자의 공개 키로 통과시키고 Executable도 지난다. 화면은 서명한 뒤에만 확인 키 줄을 보이고 05 카드는 「플레이북을
+// 그 승인자의 공개 키로 통과시키고 Executable도 지난다. 화면은 서명한 뒤에만 확인 키 줄을 보이고 04 카드는 「플레이북을
 // 만들 수 있습니다」다. 같은 계획에 다시 서명하는 양식은 없고, 직접 보내도 409(`signed-exists`)다.
 func TestApprovalIsVerifiedUpstream(t *testing.T) {
 	s, pub := keyReady(t)
 	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
 	for _, want := range []string{"ML-KEM (FIPS 203)", "config_only", "IN_REVIEW", `action="` + ui.SignConfirmPath + `"`, "단일 키"} {
 		if !strings.Contains(page, want) {
-			t.Errorf("the 05 screen does not show %q", want)
+			t.Errorf("the 04 screen does not show %q", want)
 		}
 	}
 	if strings.Contains(page, "PQCOTA_APPROVAL_KEYS=") {
@@ -161,8 +161,8 @@ func TestApprovalIsVerifiedUpstream(t *testing.T) {
 	if strings.Contains(page, `action="`+ui.SignConfirmPath+`"`) || strings.Contains(page, `action="`+ui.ArchivePath+`"`) {
 		t.Error("a valid signature is offered for re-signing or archiving")
 	}
-	if got := cards(t, page)["05"]; !strings.HasPrefix(got, "플레이북을 만들 수 있습니다") {
-		t.Errorf("card 05 = %q", got)
+	if got := cards(t, page)["04"]; !strings.HasPrefix(got, "플레이북을 만들 수 있습니다") {
+		t.Errorf("card 04 = %q", got)
 	}
 	if w := postForm(t, s, ui.SignConfirmPath, withRev(signForm("보안팀장"), s.revFor(ui.ScreenApprove))); w.Code != http.StatusConflict ||
 		!strings.Contains(w.Body.String(), ui.RefusedSignedExists) {
@@ -172,7 +172,7 @@ func TestApprovalIsVerifiedUpstream(t *testing.T) {
 
 // IC-U121 — **쓸 수 없는 승인 키로는 서명하지 않는다.** 키를 주지 않았거나, 다른 사용자가 읽을 수 있거나(0644), 심볼릭
 // 링크이거나, 하드 링크가 더 있거나, 작업 폴더(명시 모드면 계획이 놓이는 폴더) 안에 있거나(그 폴더를 가리키는 링크를
-// 거쳐도), pqcota-keygen의 개인 키가 아니면 05 화면이 그 까닭과 할 일을 두 말로 적고 서명 양식을 내지 않는다. 주소로
+// 거쳐도), pqcota-keygen의 개인 키가 아니면 04 화면이 그 까닭과 할 일을 두 말로 적고 서명 양식을 내지 않는다. 주소로
 // 직접 보내도 409(`sign-not-ready`)이고 아무것도 쓰지 않는다. 승인자 이름에 콜론이 있거나 검토 확인이 없어도 같다.
 func TestUnusableKeysDoNotSign(t *testing.T) {
 	cases := []struct {
@@ -310,11 +310,11 @@ func TestSignedPlansAreNeverOverwritten(t *testing.T) {
 
 // IC-U122 — **플레이북은 상류 생성기가 만드는 것과 같고, 계획이 바뀌면 낡은 것으로 보인다.** 서명한 뒤 「플레이북
 // 생성」(L3)은 plan.provision.yml과 plan.rollback.yml을 계획 파일 옆에 쓰고, 두 파일은 같은 계획 · 수준으로
-// provisioning.Generate…Playbook이 내는 것과 바이트까지 같다. 생성기가 짚은 빈 곳을 05 카드가 센다. 그 뒤 04에서
-// 계획이 달라지면 05 카드는 「서명이 지금 계획과 맞지 않습니다」이고 생성은 409(`generate-not-ready`)다.
+// provisioning.Generate…Playbook이 내는 것과 바이트까지 같다. 생성기가 짚은 빈 곳을 04 카드가 센다. 그 뒤 03에서
+// 계획이 달라지면 04 카드는 「서명이 지금 계획과 맞지 않습니다」이고 생성은 409(`generate-not-ready`)다.
 func TestPlaybooksMatchUpstreamAndGoStale(t *testing.T) {
 	s, _ := keyReady(t)
-	// 빈 곳을 세는 것을 보려면 실제로 빈 곳이 있어야 한다. 목표 알고리즘을 비운 계획이다(근거와 규칙 판은 04가 싣는 그대로다).
+	// 빈 곳을 세는 것을 보려면 실제로 빈 곳이 있어야 한다. 목표 알고리즘을 비운 계획이다(근거와 규칙 판은 03이 싣는 그대로다).
 	gapped := strings.Replace(planJSON, `"targetAlgorithm":"ML-KEM (FIPS 203)"`, `"targetAlgorithm":""`, 1)
 	bindPlan(t, s, gapped)
 	if w := signVia(t, s, "보안팀장"); w.Code != http.StatusSeeOther {
@@ -343,8 +343,8 @@ func TestPlaybooksMatchUpstreamAndGoStale(t *testing.T) {
 		t.Fatal("the sample plan should leave gaps at L3")
 	}
 	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
-	if got := cards(t, page)["05"]; got != ui.StepApproveIncompleteText(ui.KO, len(warnings)) {
-		t.Errorf("card 05 = %q", got)
+	if got := cards(t, page)["04"]; got != ui.StepApproveIncompleteText(ui.KO, len(warnings)) {
+		t.Errorf("card 04 = %q", got)
 	}
 	if !strings.Contains(page, "plan.rollback.yml") || !strings.Contains(page, "L3") {
 		t.Errorf("the screen does not show the generated files and level")
@@ -353,8 +353,8 @@ func TestPlaybooksMatchUpstreamAndGoStale(t *testing.T) {
 	changed := strings.Replace(planJSON, "ML-KEM (FIPS 203)", "ML-KEM-768", 1)
 	bindPlan(t, s, changed)
 	page = get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
-	if got := cards(t, page)["05"]; got != "서명이 지금 계획과 맞지 않습니다" {
-		t.Errorf("card 05 after the plan changed = %q", got)
+	if got := cards(t, page)["04"]; got != "서명이 지금 계획과 맞지 않습니다" {
+		t.Errorf("card 04 after the plan changed = %q", got)
 	}
 	w = postForm(t, s, ui.GeneratePath, withRev(url.Values{"level": {"l2"}}, s.revFor(ui.ScreenApprove)))
 	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedGenNotReady) {
@@ -483,7 +483,7 @@ func TestArchiveIsOneTransaction(t *testing.T) {
 	}
 }
 
-// IC-U142 — **다른 상류 규칙 판의 계획은 05에서 열람 · 보관만 한다.** 서명 양식이 없고 서명 확인은 409 `plan-ruleset`이다.
+// IC-U142 — **다른 상류 규칙 판의 계획은 04에서 열람 · 보관만 한다.** 서명 양식이 없고 서명 확인은 409 `plan-ruleset`이다.
 // 이미 서명된 그런 계획이 있으면 생성 양식이 없고, 생성은 409이며 이미 만든 플레이북은 바이트 그대로다. 보관은 할 수 있다.
 func TestOldRulesetPlansAreViewedNotSignedOrGenerated(t *testing.T) {
 	oldRuleset := "pqcota-enrich/v0" + strings.TrimPrefix(review.RulesetVersion, review.UpstreamRuleset(review.RulesetVersion))
@@ -495,7 +495,7 @@ func TestOldRulesetPlansAreViewedNotSignedOrGenerated(t *testing.T) {
 	bindPlan(t, s, old)
 	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
 	if strings.Contains(page, `action="`+ui.SignConfirmPath+`"`) || !strings.Contains(page, "다른 상류 규칙 판으로 판정됐습니다") {
-		t.Errorf("the 05 screen offers to sign an old-ruleset plan, or does not say why not")
+		t.Errorf("the 04 screen offers to sign an old-ruleset plan, or does not say why not")
 	}
 	w := postForm(t, s, ui.SignConfirmPath, withRev(signForm("보안팀장"), s.revFor(ui.ScreenApprove)))
 	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), ui.RefusedPlanRuleset) {
@@ -547,11 +547,11 @@ func TestOldRulesetPlansAreViewedNotSignedOrGenerated(t *testing.T) {
 	}
 }
 
-// IC-U207 — **05는 계획 파일 둘의 상태를 이름으로 나눠 보이고, 생성은 승인된 계획으로 한다.** 서명 전에는 원본 계획
+// IC-U207 — **04는 계획 파일 둘의 상태를 이름으로 나눠 보이고, 생성은 승인된 계획으로 한다.** 서명 전에는 원본 계획
 // (plan.json) 줄 하나만 있고(IN_REVIEW) 승인된 계획 줄과 생성 대상 줄이 없다. 서명 직후(서명이 돌려보낸 주소)에는 안내가
 // 「승인된 계획(plan.signed.json)이 FINALIZED」라고 말하고, 원본 계획 줄은 IN_REVIEW 그대로, 승인된 계획 줄은 FINALIZED, 생성
 // 대상은 승인된 계획이다. 새로고침(안내 없는 주소)도 같다. 영어 화면도 같은 구분을 보인다. 생성한 플레이북은 승인된 계획으로
-// 상류 생성기가 내는 것과 같고, 원본 계획이 그대로 있어도 승인된 계획을 치우면 생성 대상 줄이 없고 생성은 409다. 그 뒤 04에서 계획이 달라지면 서명한 계획을 승인된 계획이라
+// 상류 생성기가 내는 것과 같고, 원본 계획이 그대로 있어도 승인된 계획을 치우면 생성 대상 줄이 없고 생성은 409다. 그 뒤 03에서 계획이 달라지면 서명한 계획을 승인된 계획이라
 // 부르지 않고 생성 대상 줄도 없다.
 func TestApproveScreenNamesBothPlanFiles(t *testing.T) {
 	s, _ := keyReady(t)
@@ -566,12 +566,12 @@ func TestApproveScreenNamesBothPlanFiles(t *testing.T) {
 		t.Helper()
 		for _, w := range want {
 			if !strings.Contains(page, w) {
-				t.Errorf("%s: the 05 screen does not show %q", when, w)
+				t.Errorf("%s: the 04 screen does not show %q", when, w)
 			}
 		}
 		for _, n := range not {
 			if strings.Contains(page, n) {
-				t.Errorf("%s: the 05 screen shows %q", when, n)
+				t.Errorf("%s: the 04 screen shows %q", when, n)
 			}
 		}
 	}

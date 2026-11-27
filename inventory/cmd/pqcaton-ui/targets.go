@@ -10,7 +10,7 @@ package main
 // 밖에서 수집한 결과를 선언 노드에 붙이는 데만 쓴다(report.ResolveAssetNode).
 //
 //   - 선언에는 있고 접근 정보에 없는 노드: 「아직 관측하지 않는 노드」. 이번 관측에서 빠질 뿐이고 대조에는 남는다.
-//   - 접근 정보에는 있고 선언에 없는 행: 관측과 05의 원격 실행을 시작하지 않는다. 화면은 파일을 고치지 않는다.
+//   - 접근 정보에는 있고 선언에 없는 행: 관측과 04의 원격 실행을 시작하지 않는다. 화면은 파일을 고치지 않는다.
 //
 // 이 판정은 화면을 그릴 때와, **시작 요청을 처리할 때 현재 선언과 현재 파일을 다시 읽어** 한다. 화면을 연 뒤 선언에서 노드
 // 이름을 바꿨으면, 예전 화면에서 보낸 시작 요청은 노드에 접속하기 전에 거절된다.
@@ -108,7 +108,7 @@ func (s *server) hostsDeclared(hosts []inventory.Host) ([]ui.OrphanHost, error) 
 	return nil, nil
 }
 
-// observeTargets: 02 관측의 「대상 노드의 접속 준비」. 줄마다 접속 준비에 더해, 지금 결과에 그 노드가 있는가와 가장 최근
+// observeTargets: 01 관측의 「대상 노드의 접속 준비」. 줄마다 접속 준비에 더해, 지금 결과에 그 노드가 있는가와 가장 최근
 // 실행이 그 노드에서 실패했는가를 채운다.
 //
 // 「관측됨」의 시각은 지금 결과를 낸 실행의 기록(results/의 실행 표지)에서만 온다. 표지가 없는 결과(화면 밖에서 받은 것)는
@@ -158,7 +158,7 @@ func (s *server) observeTargets(hosts []inventory.Host, wd *world) ui.ObserveTar
 	return t
 }
 
-// surveySource: 03 대조가 어느 결과로 대조했는가. 대조에 쓴 결과의 시각(실행 표지가 있을 때만), 가장 최근 실행이 결과를 바꾸지
+// surveySource: 02 대조가 어느 결과로 대조했는가. 대조에 쓴 결과의 시각(실행 표지가 있을 때만), 가장 최근 실행이 결과를 바꾸지
 // 못하고 끝났으면 그 시각과 상태, 그리고 선언에는 있고 결과에는 없는 노드다.
 func (s *server) surveySource(wd *world) ui.SurveySource {
 	src := ui.SurveySource{Empty: s.resultsEmpty()}

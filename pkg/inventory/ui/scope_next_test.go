@@ -13,9 +13,9 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// IC-UI60 — **자산 스코프 화면 · 03 · 04의 안내와 02의 두 단계.** 자산 스코프 화면은 두 말로 「아직 대조에 반영되지 않았다」와 두 링크(먼저 03의 현재 대조,
-// 그다음 02의 재적재 · 활성화)를 보이고, 다음 단계가 없으면 아무것도 보이지 않는다. 04의 상자는 두 지문과 02로 가는 링크만
-// 보이고 활성화 양식이 없다. 02의 「활성화할 확정 정책」은 두 지문을 나란히 두고, 활성화할 확정 정책으로 재적재 · 정책 활성화를 의미 있는
+// IC-UI60 — **자산 스코프 화면 · 02 · 03의 안내와 01의 두 단계.** 자산 스코프 화면은 두 말로 「아직 대조에 반영되지 않았다」와 두 링크(먼저 02의 현재 대조,
+// 그다음 01의 재적재 · 활성화)를 보이고, 다음 단계가 없으면 아무것도 보이지 않는다. 03의 상자는 두 지문과 01로 가는 링크만
+// 보이고 활성화 양식이 없다. 01의 「활성화할 확정 정책」은 두 지문을 나란히 두고, 활성화할 확정 정책으로 재적재 · 정책 활성화를 의미 있는
 // <ol> 안에 그 순서로 둔다. 화면 적재가 설정되지 않았으면 첫 단계에 작업 폴더 기준 상대 경로의 두 명령(서명 확인이 먼저)이
 // 있다. 재적재가 확인되기 전에는 둘째 단계에 단추가 없고, 확인되면 활성화 확인으로 가는 단추가 그 단계 안에 있다(운영자 확인
 // 칸은 없다).
@@ -23,8 +23,8 @@ func TestActivationStepsAndLinks(t *testing.T) {
 	survey, steps := `href="`+ui.ScreenSurvey+`"`, `href="`+ui.ScreenObserve+`#scope-activate"`
 	type texts struct{ next, s1, s2, hint, go03, wait string }
 	want := map[ui.Lang]texts{
-		ui.KO: {"이 정책은 아직 대조에 반영되지 않았습니다", "활성화할 확정 정책으로 재적재", "정책 활성화", "작업 폴더 기준의 상대 경로입니다", "02에서 재적재 · 활성화 보기", "그 전에는 현재 활성 정책이 유지됩니다"},
-		ui.EN: {"This policy has not yet been applied to reconciliation", "Re-ingest under the finalized policy to activate", "Activate the policy", "the paths are relative to it", "View re-ingest and activation in 02", "Until then the active policy stays as it is"},
+		ui.KO: {"이 정책은 아직 대조에 반영되지 않았습니다", "활성화할 확정 정책으로 재적재", "정책 활성화", "작업 폴더 기준의 상대 경로입니다", "01에서 재적재 · 활성화 보기", "그 전에는 현재 활성 정책이 유지됩니다"},
+		ui.EN: {"This policy has not yet been applied to reconciliation", "Re-ingest under the finalized policy to activate", "Activate the policy", "the paths are relative to it", "View re-ingest and activation in 01", "Until then the active policy stays as it is"},
 	}
 	render := func(t *testing.T, f func(*strings.Builder) error) string {
 		t.Helper()
@@ -52,17 +52,17 @@ func TestActivationStepsAndLinks(t *testing.T) {
 		page = render(t, func(b *strings.Builder) error { return ui.RenderReview(b, rv) })
 		if !strings.Contains(page, steps) || !strings.Contains(page, offer.From) || !strings.Contains(page, offer.To) ||
 			strings.Contains(page, `action="`+ui.ReviewScopeActivateConfirmPath+`"`) || strings.Contains(page, "activation-steps") {
-			t.Errorf("%s: 04 should only point to 02 with the two fingerprints, with no activation form", lang)
+			t.Errorf("%s: 03 should only point to 01 with the two fingerprints, with no activation form", lang)
 		}
 
-		// 02: 화면 적재가 설정되지 않았고 아직 재적재되지 않았다.
+		// 01: 화면 적재가 설정되지 않았고 아직 재적재되지 않았다.
 		ov := ui.NewObserveView(nil, ui.Page{Lang: lang})
 		ov.HasResults = true
 		ov.Policy = &ui.ObservePolicy{Offer: offer, ActiveFile: "scope-assets.csv", CandidateFile: "asset-scope.csv", ActivateRev: "r1",
 			Ingest: ui.IngestView{Files: 1, Observed: 2, Managed: 1, Nodes: []ui.IngestNode{{Node: "web", Want: "abc"}}}}
 		page = render(t, func(b *strings.Builder) error { return ui.RenderObserve(b, ov) })
 		if a, c := strings.Index(page, offer.From), strings.Index(page, offer.To); a < 0 || c < a || !strings.Contains(page, `id="scope-activate"`) {
-			t.Fatalf("%s: 02 does not show the two fingerprints side by side", lang)
+			t.Fatalf("%s: 01 does not show the two fingerprints side by side", lang)
 		}
 		ol := strings.Index(page, `<ol class="activation-steps">`)
 		end := strings.Index(page, "</ol>")
@@ -84,7 +84,7 @@ func TestActivationStepsAndLinks(t *testing.T) {
 		if strings.Contains(list, `type="checkbox"`) || strings.Contains(items[1], "<button") || !strings.Contains(items[1], w.wait) {
 			t.Errorf("%s: before the re-ingest is confirmed the second step must have no button and say the active policy stays", lang)
 		}
-		// 재적재가 확인되면 둘째 단계에 활성화 확인으로 가는 단추가 있고, 02에서 냈다는 표시와 활성화의 rev를 싣는다.
+		// 재적재가 확인되면 둘째 단계에 활성화 확인으로 가는 단추가 있고, 01에서 냈다는 표시와 활성화의 rev를 싣는다.
 		ov.Policy.Ingest.AllCurrent = true
 		page = render(t, func(b *strings.Builder) error { return ui.RenderObserve(b, ov) })
 		second := strings.Split(page[strings.Index(page, `<ol class="activation-steps">`):], "<li ")[2]

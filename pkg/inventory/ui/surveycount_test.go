@@ -13,7 +13,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// excludedResult — 2026-11-23 격리 데모에서 03과 04의 숫자가 갈라진 대조 결과. 선언에 없는 libcrypto는 자산 스코프 정책이
+// excludedResult — 2026-11-23 격리 데모에서 02와 03의 숫자가 갈라진 대조 결과. 선언에 없는 libcrypto는 자산 스코프 정책이
 // 관리 대상에서 뺐고(UNDECLARED · EXCLUDED_BY_POLICY), 선언한 libssl은 보지 못했다(UNOBSERVED).
 func excludedResult() *report.Result {
 	key := func(node, runtime, component string) reconcile.AssetKey {
@@ -30,10 +30,10 @@ func excludedResult() *report.Result {
 	}
 }
 
-// IC-UI74 — **03의 「판정할 항목」과 04의 「필수 판정」은 같은 항목을 센다.**
+// IC-UI74 — **02의 「판정할 항목」과 03의 「필수 판정」은 같은 항목을 센다.**
 //
-// 03이 선언과 어긋난 자산을 모두 세면 정책이 뺀 자산까지 들어가, 판정 큐에 없는 항목을 판정하라고 알린다
-// (03은 2개, 04는 1개였다). 03은 큐에 필수로 오르는 것만 세고, 뺀 것은 따로 밝힌다.
+// 02가 선언과 어긋난 자산을 모두 세면 정책이 뺀 자산까지 들어가, 판정 큐에 없는 항목을 판정하라고 알린다
+// (02는 2개, 03은 1개였다). 02는 큐에 필수로 오르는 것만 세고, 뺀 것은 따로 밝힌다.
 func TestSurveyCountsWhatTheReviewQueueHolds(t *testing.T) {
 	r := excludedResult()
 	_, queue := reconcile.BuildReviewQueue(r.Assets)
@@ -52,7 +52,7 @@ func TestSurveyCountsWhatTheReviewQueueHolds(t *testing.T) {
 			t.Fatalf("the review queue holds %d required items, want 1", want)
 		}
 		if got.ToJudge != want {
-			t.Errorf("03 counts %d items to judge, 04 counts %d required judgments", got.ToJudge, want)
+			t.Errorf("02 counts %d items to judge, 03 counts %d required judgments", got.ToJudge, want)
 		}
 		if got.Undeclared != 1 || got.Unobserved != 1 || got.Excluded != 1 {
 			t.Errorf("the states and the excluded count are %+v", got)
@@ -68,7 +68,7 @@ func TestSurveyCountsWhatTheReviewQueueHolds(t *testing.T) {
 		}
 		for _, s := range []string{head, note, mark, `data-survey-excluded="1"`} {
 			if !strings.Contains(body, s) {
-				t.Errorf("%s: 03 does not show %q", l, s)
+				t.Errorf("%s: 02 does not show %q", l, s)
 			}
 		}
 	}
@@ -84,6 +84,6 @@ func TestSurveyCountsWhatTheReviewQueueHolds(t *testing.T) {
 		t.Fatal(err)
 	}
 	if body := b.String(); strings.Contains(body, "대조가 다 맞았습니다") || !strings.Contains(body, "판정할 항목이 없습니다") {
-		t.Error("03 says everything reconciled although an undeclared asset is excluded by policy")
+		t.Error("02 says everything reconciled although an undeclared asset is excluded by policy")
 	}
 }

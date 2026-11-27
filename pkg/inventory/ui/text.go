@@ -13,7 +13,7 @@ package ui
 
 // ── 이동 · 화면 이름 ────────────────────────────────────────────────────────
 var (
-	tTitleDecl    = T{KO: "선언", EN: "Declaration"}
+	tTitleDecl    = T{KO: "대상 노드와 기대 상태", EN: "Target nodes and expected state"}
 	tTitleScope   = T{KO: "암호 자산 스코프", EN: "Crypto asset scope"}
 	tTitleObserve = T{KO: "관측", EN: "Observation"}
 	tTitleSurvey  = T{KO: "대조", EN: "Reconciliation"}
@@ -71,8 +71,8 @@ var (
 	tPlanRulesetUnverifiable = T{KO: "이 계획의 관측 근거 가운데 스냅샷 참조나 규칙 판이 없는 것이 있어 지금 이력에서 되짚을 수 없습니다. 서명 · 생성하지 않습니다.", EN: "Some observed evidence in this plan has no snapshot reference or ruleset, so it cannot be traced in the current history. It is not signed or generated."}
 	tSignedRulesetProblem    = T{KO: "서명한 계획(plan.signed.json)이 지금과 다른 상류 규칙 판으로 판정됐거나 근거의 규칙 판을 확인할 수 없습니다. 그 계획으로는 다시 서명하거나 플레이북을 만들지 않습니다. 열람과 보관은 할 수 있습니다.", EN: "The signed plan (plan.signed.json) was judged under a different upstream ruleset, or the ruleset of its evidence cannot be confirmed. It is not signed again or used to generate playbooks; it can still be viewed and archived."}
 	tRefusedPlanScope        = T{
-		KO: "이 계획은 이 작업 폴더에서 확정한 기록과 이어지지 않거나, 지금 활성 자산 스코프 정책과 다른 정책으로 만들어졌습니다. 서명하거나 플레이북을 만들지 않았고, 있는 파일은 그대로입니다. 현재 정책에서 04의 새 판정 회차를 열어 다시 확정하십시오. 다른 곳에서 옮겨 온 계획은 pqcota-approve와 pqcota-provision으로 승인하고 생성하십시오.",
-		EN: "This plan does not lead back to a finalize recorded in this workspace, or it was made under an asset-scope policy other than the active one. Nothing was signed or generated, and the existing files are unchanged. Open a new review round in 04 under the current policy and finalize again. A plan brought in from elsewhere is approved and generated with pqcota-approve and pqcota-provision."}
+		KO: "이 계획은 이 작업 폴더에서 확정한 기록과 이어지지 않거나, 지금 활성 자산 스코프 정책과 다른 정책으로 만들어졌습니다. 서명하거나 플레이북을 만들지 않았고, 있는 파일은 그대로입니다. 현재 정책에서 03의 새 판정 회차를 열어 다시 확정하십시오. 다른 곳에서 옮겨 온 계획은 pqcota-approve와 pqcota-provision으로 승인하고 생성하십시오.",
+		EN: "This plan does not lead back to a finalize recorded in this workspace, or it was made under an asset-scope policy other than the active one. Nothing was signed or generated, and the existing files are unchanged. Open a new review round in 03 under the current policy and finalize again. A plan brought in from elsewhere is approved and generated with pqcota-approve and pqcota-provision."}
 	tRefusedPlanText = T{
 		KO: "현재 계획(plan.json)의 문자열에 NUL 문자가 있어 안전하게 승인할 수 없습니다. pqcota는 이런 계획의 서명과 생성을 거절합니다. 새 판정 회차를 열어 해당 값을 고친 뒤 다시 확정하십시오.",
 		EN: "The current plan (plan.json) contains a NUL character in a string and cannot be approved safely. pqcota refuses to sign or generate such a plan. Open a new review round, correct the affected value, and finalize it again."}
@@ -80,8 +80,8 @@ var (
 		KO: "서명한 계획(plan.signed.json)의 문자열에 NUL 문자가 있어 안전하게 승인할 수 없습니다. pqcota는 이런 계획의 서명과 생성을 거절합니다. 서명한 계획을 보관하고, 새 판정 회차를 열어 해당 값을 고친 뒤 다시 확정하십시오.",
 		EN: "The signed plan (plan.signed.json) contains a NUL character in a string and cannot be approved safely. pqcota refuses to sign or generate such a plan. Archive the signed plan, open a new review round, correct the affected value, and finalize it again."}
 	tRefusedPlanFields = T{
-		KO: "현재 계획(plan.json)에 소스 근거나 승인 가이드가 들어 있습니다. 계획이 손상된 것은 아닙니다. pqcaton은 아직 그 내용을 05에서 검토하거나 플레이북에 싣지 않으므로 이 계획에 서명하지 않습니다. pqcota-approve --review로 내용을 확인한 뒤 pqcota-approve와 pqcota-provision으로 승인하고 생성하십시오.",
-		EN: "The current plan (plan.json) carries source evidence or an approval guide. The plan is not damaged: pqcaton does not yet review that content on 05 or put it into playbooks, so it does not sign this plan. Check the content with pqcota-approve --review, then approve and generate with pqcota-approve and pqcota-provision."}
+		KO: "현재 계획(plan.json)에 소스 근거나 승인 가이드가 들어 있습니다. 계획이 손상된 것은 아닙니다. pqcaton은 아직 그 내용을 04에서 검토하거나 플레이북에 싣지 않으므로 이 계획에 서명하지 않습니다. pqcota-approve --review로 내용을 확인한 뒤 pqcota-approve와 pqcota-provision으로 승인하고 생성하십시오.",
+		EN: "The current plan (plan.json) carries source evidence or an approval guide. The plan is not damaged: pqcaton does not yet review that content on 04 or put it into playbooks, so it does not sign this plan. Check the content with pqcota-approve --review, then approve and generate with pqcota-approve and pqcota-provision."}
 	tSignedPlanFields = T{
 		KO: "서명한 계획(plan.signed.json)에 소스 근거나 승인 가이드가 들어 있습니다. 계획이 손상된 것은 아닙니다. pqcaton은 아직 그 내용을 검토하거나 플레이북에 싣지 않으므로 이 계획으로 플레이북을 만들지 않습니다. 서명한 계획은 보관할 수 있고, 생성은 pqcota-provision으로 하십시오.",
 		EN: "The signed plan (plan.signed.json) carries source evidence or an approval guide. The plan is not damaged: pqcaton does not yet review that content or put it into playbooks, so it does not generate from this plan. The signed plan can be archived; generate with pqcota-provision."}
@@ -110,8 +110,8 @@ var (
 		KO: "연결한 pqcota 이력의 조직이 판정 조직이나 판정 세션의 조직과 달라, 조회하지 않고 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. 다른 조직의 이력으로는 진행할 수 없습니다.",
 		EN: "The organization of the connected pqcota history differs from the organization of the judgments or of the review session, so nothing was looked up and no policy was activated or adopted as the baseline. The files are unchanged. The history of another organization cannot be used."}
 	tRefusedUpstreamMissing = T{
-		KO: "pqcota 이력에서 일부 노드의 최신 적재 결과가 없거나 이 정책으로 만든 결과와 달라 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. 02에서 pqcota를 이 정책으로 다시 적재한 뒤 하십시오.",
-		EN: "In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy, so no policy was activated or adopted as the baseline. The files are unchanged. Re-ingest pqcota with this policy on screen 02, then try again."}
+		KO: "pqcota 이력에서 일부 노드의 최신 적재 결과가 없거나 이 정책으로 만든 결과와 달라 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다. 01에서 pqcota를 이 정책으로 다시 적재한 뒤 하십시오.",
+		EN: "In the pqcota history, the latest ingest of some nodes is missing or differs from the results under this policy, so no policy was activated or adopted as the baseline. The files are unchanged. Re-ingest pqcota with this policy on screen 01, then try again."}
 	tRefusedUpstreamEmpty = T{
 		KO: "결과 폴더에 pqcota 이력과 대조할 관측 결과가 없어 정책을 활성화하거나 기준선을 채택하지 않았습니다. 파일은 그대로입니다.",
 		EN: "The results folder holds no observations to reconcile with the pqcota history, so no policy was activated or adopted as the baseline. The files are unchanged."}
@@ -120,17 +120,17 @@ var (
 		EN: "The latest ingest in the pqcota history differs from this policy. Re-ingest the results under this policy, then activate it. The files are unchanged."}
 	tRefusedScopeSame           = T{KO: "자산 스코프 화면에서 확정한 정책이 이미 활성 정책과 같습니다(note · 공백만 다를 수 있습니다). 활성화할 것이 없어 아무것도 쓰지 않았습니다.", EN: "The policy finalized on the asset scope screen is already the active policy (only notes or spacing may differ). There is nothing to activate, so nothing was written."}
 	tRefusedScopeNotFinalized   = T{KO: "자산 스코프 화면에서 확정한 정책이 없거나, 확정한 뒤 asset-scope.csv가 바뀌었거나, 읽을 수 없어 활성화하지 않았습니다. 자산 스코프 화면에서 확정하십시오.", EN: "There is no policy finalized on the asset scope screen, asset-scope.csv changed after it was finalized, or it cannot be read, so nothing was activated. Finalize it on the asset scope screen."}
-	tActivateBody               = T{KO: "자산 스코프 화면에서 확정한 정책(asset-scope.csv)이 지금 대조에 쓰는 활성 정책(scope-assets.csv)과 다릅니다. 새 정책으로 다시 적재하고 활성화하는 일은 02 관측 화면에서 합니다. 활성화하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다.", EN: "The policy finalized on the asset scope screen (asset-scope.csv) differs from the active policy used for reconciliation (scope-assets.csv). Re-ingesting under the new policy and activating it are done on screen 02. Activation opens a new round rebuilt from the results; earlier conclusions are carried only as previous values."}
-	tActivateStep1Body          = T{KO: "자산 스코프 화면에서 확정한 정책으로 pqcota를 다시 적재합니다. 먼저 첫 명령으로 결과의 수집기 서명을 확인하고(저장하지 않습니다, 거절될 결과가 있으면 종료 코드 1), 통과하면 둘째 명령으로 적재합니다. 두 명령 모두 PQCOTA_VERIFY_KEY를 02가 신뢰하는 공개 키(verify.pub)와 같은 값으로 주고, 연결 정보는 PQCOTA_DSN으로만 넘깁니다.", EN: "Ingest pqcota again with the policy finalized on the asset scope screen. First check the collector signatures of the results with the first command (it stores nothing and exits 1 if any result would be refused); when it passes, ingest with the second. Give both PQCOTA_VERIFY_KEY with the same value as the trusted public keys of 02 (verify.pub), and pass the connection only as PQCOTA_DSN."}
+	tActivateBody               = T{KO: "자산 스코프 화면에서 확정한 정책(asset-scope.csv)이 지금 대조에 쓰는 활성 정책(scope-assets.csv)과 다릅니다. 새 정책으로 다시 적재하고 활성화하는 일은 01 관측 화면에서 합니다. 활성화하면 결과에서 세션을 다시 세운 새 회차가 열리고, 지난 결론은 「지난 판정」으로만 옮겨집니다.", EN: "The policy finalized on the asset scope screen (asset-scope.csv) differs from the active policy used for reconciliation (scope-assets.csv). Re-ingesting under the new policy and activating it are done on screen 01. Activation opens a new round rebuilt from the results; earlier conclusions are carried only as previous values."}
+	tActivateStep1Body          = T{KO: "자산 스코프 화면에서 확정한 정책으로 pqcota를 다시 적재합니다. 먼저 첫 명령으로 결과의 수집기 서명을 확인하고(저장하지 않습니다, 거절될 결과가 있으면 종료 코드 1), 통과하면 둘째 명령으로 적재합니다. 두 명령 모두 PQCOTA_VERIFY_KEY를 01이 신뢰하는 공개 키(verify.pub)와 같은 값으로 주고, 연결 정보는 PQCOTA_DSN으로만 넘깁니다.", EN: "Ingest pqcota again with the policy finalized on the asset scope screen. First check the collector signatures of the results with the first command (it stores nothing and exits 1 if any result would be refused); when it passes, ingest with the second. Give both PQCOTA_VERIFY_KEY with the same value as the trusted public keys of 01 (verify.pub), and pass the connection only as PQCOTA_DSN."}
 	tActivateStep1Hint          = T{KO: "작업 폴더에서 실행합니다. 경로는 작업 폴더 기준의 상대 경로입니다.", EN: "Run it in the workspace folder; the paths are relative to it."}
 	tSurveyActivateHead         = T{KO: "자산 스코프 화면에서 확정한 정책이 아직 활성화되지 않았습니다", EN: "The policy finalized on the asset scope screen is not active yet"}
-	tSurveyActivateBody         = T{KO: "이 화면은 현재 활성 정책(scope-assets.csv)으로 대조했습니다. 자산 스코프 화면에서 확정한 정책(asset-scope.csv)은 아직 대조에 반영되지 않았습니다. 새 정책을 반영하려면 02에서 그 정책으로 다시 적재한 뒤 활성화하십시오.", EN: "This comparison uses the active policy (scope-assets.csv). The policy finalized on the asset scope screen (asset-scope.csv) has not yet been applied to reconciliation. To apply it, re-ingest under that policy on screen 02, then activate it there."}
+	tSurveyActivateBody         = T{KO: "이 화면은 현재 활성 정책(scope-assets.csv)으로 대조했습니다. 자산 스코프 화면에서 확정한 정책(asset-scope.csv)은 아직 대조에 반영되지 않았습니다. 새 정책을 반영하려면 01에서 그 정책으로 다시 적재한 뒤 활성화하십시오.", EN: "This comparison uses the active policy (scope-assets.csv). The policy finalized on the asset scope screen (asset-scope.csv) has not yet been applied to reconciliation. To apply it, re-ingest under that policy on screen 01, then activate it there."}
 	tSurveyActivatePolicy       = T{KO: "활성 정책 → 자산 스코프 화면에서 확정한 정책:", EN: "Active policy → policy finalized on the asset scope screen:"}
-	tSurveyActivateGo           = T{KO: "02에서 재적재 · 활성화 보기", EN: "View re-ingest and activation in 02"}
+	tSurveyActivateGo           = T{KO: "01에서 재적재 · 활성화 보기", EN: "View re-ingest and activation in 01"}
 	tScopeNextHead              = T{KO: "다음 단계", EN: "Next"}
-	tScopeNextBody              = T{KO: "이 정책은 아직 대조에 반영되지 않았습니다. 먼저 03에서 현재 활성 정책으로 계산한 대조 결과를 확인하십시오.", EN: "This policy has not yet been applied to reconciliation. First review the reconciliation produced with the currently active policy in 03."}
-	tScopeNextSurvey            = T{KO: "03에서 현재 대조 보기", EN: "View current reconciliation in 03"}
-	tScopeNextSteps             = T{KO: "02에서 재적재 · 활성화 보기", EN: "View re-ingest and activation in 02"}
+	tScopeNextBody              = T{KO: "이 정책은 아직 대조에 반영되지 않았습니다. 먼저 02에서 현재 활성 정책으로 계산한 대조 결과를 확인하십시오.", EN: "This policy has not yet been applied to reconciliation. First review the reconciliation produced with the currently active policy in 02."}
+	tScopeNextSurvey            = T{KO: "02에서 현재 대조 보기", EN: "View current reconciliation in 02"}
+	tScopeNextSteps             = T{KO: "01에서 재적재 · 활성화 보기", EN: "View re-ingest and activation in 01"}
 	tActivateNext               = T{KO: "정책 활성화 확인", EN: "Confirm policy activation"}
 	tActivateConfirmTitle       = T{KO: "정책 활성화 전 확인", EN: "Before activating the policy"}
 	tActivateConfirmBody        = T{KO: "아래 내용으로 자산 스코프 정책을 활성화합니다. 아직 아무것도 쓰지 않았습니다.", EN: "The asset-scope policy will be activated as below. Nothing has been written yet."}
@@ -138,7 +138,7 @@ var (
 	tActivateLineFrom           = T{KO: "지금 활성 정책: %s", EN: "Active policy now: %s"}
 	tActivateLineTo             = T{KO: "새 활성 정책: %s (%s)", EN: "New active policy: %s (%s)"}
 	tActivateLineFiles          = T{KO: "%s를 새 정책으로 바꾸고, 옛 정책은 %s로 보관합니다.", EN: "%s is replaced by the new policy; the old policy is archived as %s."}
-	tActivateLineRound          = T{KO: "판정 세션은 보관되고, 새 정책으로 다시 세운 새 회차가 열립니다. 지난 결론은 「지난 판정」으로만 옮겨지고 새 정책에서 빠진 항목은 변환 보고서에만 남습니다. 옛 정책으로 만든 계획은 05에서 서명 · 생성되지 않습니다.", EN: "The review session is archived and a new round rebuilt under the new policy opens. Earlier conclusions are carried only as previous values, and items the new policy no longer manages stay only in the change report. Plans made under the old policy are not signed or generated in 05."}
+	tActivateLineRound          = T{KO: "판정 세션은 보관되고, 새 정책으로 다시 세운 새 회차가 열립니다. 지난 결론은 「지난 판정」으로만 옮겨지고 새 정책에서 빠진 항목은 변환 보고서에만 남습니다. 옛 정책으로 만든 계획은 04에서 서명 · 생성되지 않습니다.", EN: "The review session is archived and a new round rebuilt under the new policy opens. Earlier conclusions are carried only as previous values, and items the new policy no longer manages stay only in the change report. Plans made under the old policy are not signed or generated in 04."}
 	tActivateLineUpstream       = T{KO: "확인 시점에 pqcota 이력과 일치했습니다(노드 %d개, %s 기준). 활성화를 누르면 처음부터 다시 대조합니다.", EN: "At the time of checking, the pqcota history matched (%d nodes, as of %s). Activating reconciles again from the start."}
 	tActivateLineDowngrade      = T{KO: "이 작업을 하면 이 작업 폴더를 v0.25.x 이하로 다시 열 수 없습니다. 필요하면 먼저 작업 폴더를 백업하십시오(운영자 안내서 7절).", EN: "After this, the workspace cannot be opened with v0.25.x or earlier; back it up first if you may need to (operator guide section 7)."}
 	tScopeBaselineHead          = T{KO: "정책 기준선을 채택해야 합니다", EN: "Adopt a policy baseline"}
@@ -149,9 +149,9 @@ var (
 	tStepReviewScopeBaseline    = T{KO: "정책 기준선을 채택해야 합니다", EN: "A policy baseline must be adopted"}
 	tStepReviewScopeUnactivated = T{KO: "정책이 활성화 없이 바뀌었습니다", EN: "The policy changed without activation"}
 	tPlanScopeNotHere           = T{KO: "이 계획(plan.json)은 이 작업 폴더에서 확정한 기록과 이어지지 않습니다. 다른 곳에서 옮겨 왔을 수 있습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다. 옮겨 온 계획은 pqcota-approve와 pqcota-provision으로 승인하고 생성하십시오.", EN: "This plan (plan.json) does not lead back to a finalize recorded in this workspace; it may have been brought in from elsewhere. It is not signed or generated here; it can still be viewed and archived. Approve and generate a plan brought in from elsewhere with pqcota-approve and pqcota-provision."}
-	tPlanScopeChanged           = T{KO: "이 계획(plan.json)은 확정한 뒤에 내용이 바뀌었습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다. 04에서 다시 확정하십시오.", EN: "This plan (plan.json) changed after it was finalized. It is not signed or generated here; it can still be viewed and archived. Finalize again in 04."}
-	tPlanScopeUnverifiable      = T{KO: "이 계획(plan.json)은 이 판보다 먼저 확정되어 어느 자산 스코프 정책으로 만들었는지 기록이 없습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다. 현재 정책에서 04의 새 판정 회차를 열어 다시 확정하십시오.", EN: "This plan (plan.json) was finalized before this version, so there is no record of the asset-scope policy it was made under. It is not signed or generated here; it can still be viewed and archived. Open a new review round in 04 under the current policy and finalize again."}
-	tPlanScopeMismatch          = T{KO: "이 계획(plan.json)은 지금 활성 정책(scope-assets.csv)과 다른 자산 스코프 정책으로 만들었습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다. 현재 정책에서 04의 새 판정 회차를 열어 다시 확정하십시오.", EN: "This plan (plan.json) was made under an asset-scope policy other than the active one (scope-assets.csv). It is not signed or generated here; it can still be viewed and archived. Open a new review round in 04 under the current policy and finalize again."}
+	tPlanScopeChanged           = T{KO: "이 계획(plan.json)은 확정한 뒤에 내용이 바뀌었습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다. 03에서 다시 확정하십시오.", EN: "This plan (plan.json) changed after it was finalized. It is not signed or generated here; it can still be viewed and archived. Finalize again in 03."}
+	tPlanScopeUnverifiable      = T{KO: "이 계획(plan.json)은 이 판보다 먼저 확정되어 어느 자산 스코프 정책으로 만들었는지 기록이 없습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다. 현재 정책에서 03의 새 판정 회차를 열어 다시 확정하십시오.", EN: "This plan (plan.json) was finalized before this version, so there is no record of the asset-scope policy it was made under. It is not signed or generated here; it can still be viewed and archived. Open a new review round in 03 under the current policy and finalize again."}
+	tPlanScopeMismatch          = T{KO: "이 계획(plan.json)은 지금 활성 정책(scope-assets.csv)과 다른 자산 스코프 정책으로 만들었습니다. 서명 · 생성하지 않습니다. 열람과 보관은 할 수 있습니다. 현재 정책에서 03의 새 판정 회차를 열어 다시 확정하십시오.", EN: "This plan (plan.json) was made under an asset-scope policy other than the active one (scope-assets.csv). It is not signed or generated here; it can still be viewed and archived. Open a new review round in 03 under the current policy and finalize again."}
 	tGenScopeBlocked            = T{KO: "이 작업 폴더의 확정 기록과 이어지지 않거나 정책이 맞지 않는 계획으로는 새 플레이북을 만들지 않습니다. 이미 만든 플레이북은 그대로 둡니다.", EN: "No new playbook is generated from a plan that does not lead back to this workspace's finalize record or whose policy does not match. Playbooks already made are left as they are."}
 	tGenRulesetBlocked          = T{KO: "규칙 판이 맞지 않는 계획으로는 새 플레이북을 만들지 않습니다. 이미 만든 플레이북은 그대로 둡니다.", EN: "No new playbook is generated from a plan whose ruleset does not match. Playbooks already made are left as they are."}
 	tJCAUnconfirmed             = T{KO: "v0.10.6 JCA 수집 결과임을 확인할 수 없는 노드가 있습니다. 수집기와 collector.jar의 판을 확인하십시오:", EN: "For some nodes, the JCA results cannot be confirmed as v0.10.6 collection results. Check the version of the collectors and collector.jar:"}
@@ -305,8 +305,8 @@ var (
 	// 관측 결과 폴더가 비어 있을 때. 결과를 넣으면 화면을 다시 불러오는 것만으로 대조에 들어간다(세션은 읽을 때마다 다시 세운다).
 	tEmptyResultsHead = T{KO: "대조할 성공 관측 결과가 아직 없습니다", EN: "No successful observation result to reconcile with yet"}
 	tEmptyResultsBody = T{
-		KO: "02 관측이 성공으로 끝나거나 pqcota 수집이 이 폴더에 결과를 쓰면, 이 화면을 다시 불러왔을 때 대조와 판정에 들어갑니다.",
-		EN: "Once an observation on 02 finishes successfully, or pqcota collection writes its results to this folder, reloading this screen takes them into reconciliation and review."}
+		KO: "01 관측이 성공으로 끝나거나 pqcota 수집이 이 폴더에 결과를 쓰면, 이 화면을 다시 불러왔을 때 대조와 판정에 들어갑니다.",
+		EN: "Once an observation on 01 finishes successfully, or pqcota collection writes its results to this folder, reloading this screen takes them into reconciliation and review."}
 
 	// 선언 문제 목록(decl.Check). 막지 않고 짚는다.
 	tDeclProblemsHead = T{KO: "앞뒤가 맞지 않는 자리", EN: "Places that do not add up"}
@@ -674,12 +674,12 @@ var (
 		EN: "The collector could not confirm which side opened these connections. They carry no port and no negotiated " +
 			"group, so they are not reconciled with the declaration and are not counted above. Observing again may confirm them."}
 
-	// 이력에서 앱별 통신 보기(03에서 여는 조회 화면).
+	// 이력에서 앱별 통신 보기(02에서 여는 조회 화면).
 	tHistTopoTitle    = T{KO: "이력에서 앱별 통신 보기", EN: "App connections from the history"}
 	tHistTopoLinkHint = T{
 		KO: "pqcota 이력에 적재된 관측에서 노드마다 어느 앱이 무엇과 통신했는지 봅니다. 위 그림과 달리 선언과 대조하지 않습니다.",
 		EN: "See which app on each node talked to what, from the observations loaded into the pqcota history. Unlike the picture above, it is not reconciled with the declaration."}
-	tHistBack       = T{KO: "03 대조로 돌아가기", EN: "Back to 03 reconciliation"}
+	tHistBack       = T{KO: "02 대조로 돌아가기", EN: "Back to 02 reconciliation"}
 	tHistSource     = T{KO: "출처", EN: "Source"}
 	tHistSourceOrg  = T{KO: "조회한 조직(판정 조직)", EN: "Organization queried (the judgment organization)"}
 	tHistSourceBody = T{
@@ -703,8 +703,8 @@ var (
 		EN: "Nodes with results in the workspace and no snapshot in this organization's history"}
 	tHistEmpty     = T{KO: "이 조직의 pqcota 이력에 스냅샷이 없습니다.", EN: "The pqcota history holds no snapshot for this organization."}
 	tHistEmptyNext = T{
-		KO: "02에서 관측한 결과를 이 조직(<code>PQCOTA_ORG</code>)으로 <code>pqcota-ingest</code>에 적재한 뒤 이 화면을 다시 여십시오. 다른 조직으로 적재한 이력은 여기에 보이지 않습니다.",
-		EN: "Load the results observed on 02 with <code>pqcota-ingest</code> under this organization (<code>PQCOTA_ORG</code>), then open this screen again. A history loaded under another organization does not show here."}
+		KO: "01에서 관측한 결과를 이 조직(<code>PQCOTA_ORG</code>)으로 <code>pqcota-ingest</code>에 적재한 뒤 이 화면을 다시 여십시오. 다른 조직으로 적재한 이력은 여기에 보이지 않습니다.",
+		EN: "Load the results observed on 01 with <code>pqcota-ingest</code> under this organization (<code>PQCOTA_ORG</code>), then open this screen again. A history loaded under another organization does not show here."}
 	tHistUnreachable = T{
 		KO: "pqcota 이력을 읽지 못했습니다. 연결과 화면 계정의 조회 권한을 확인한 뒤 다시 여십시오.",
 		EN: "The pqcota history could not be read. Check the connection and the read privileges of the screen's account, then open this screen again."}
@@ -719,8 +719,8 @@ var (
 		KO: "노드 %d대 · 저장된 연결 기록 %d건 · 노드로 잇지 못한 상대 %d곳",
 		EN: "Nodes: %d · stored connection records: %d · peers not tied to a node: %d"}
 	tHistRecordsNote = T{
-		KO: "기록은 관측한 노드마다 하나씩 저장됩니다. 같은 연결을 두 노드가 보면 두 줄이므로, 이 수는 03의 「협상된 통신」 건수와 다릅니다. 횟수는 그 기록의 것이고 더하지 않습니다.",
-		EN: "A record is stored per observing node. A connection seen by both nodes is two rows, so this number is not the “negotiated connections” count of 03. A count belongs to its record and is not added up."}
+		KO: "기록은 관측한 노드마다 하나씩 저장됩니다. 같은 연결을 두 노드가 보면 두 줄이므로, 이 수는 02의 「협상된 통신」 건수와 다릅니다. 횟수는 그 기록의 것이고 더하지 않습니다.",
+		EN: "A record is stored per observing node. A connection seen by both nodes is two rows, so this number is not the “negotiated connections” count of 02. A count belongs to its record and is not added up."}
 	tHistPick    = T{KO: "노드 고르기", EN: "Choose a node"}
 	tHistAll     = T{KO: "모든 노드", EN: "All nodes"}
 	tHistShow    = T{KO: "보기", EN: "Show"}
@@ -770,8 +770,8 @@ var (
 		KO: "그림을 그리고 있습니다. 위의 대조 결과와 표는 그림과 관계없이 볼 수 있습니다.",
 		EN: "The picture is being drawn. The reconciliation and the tables above can be read regardless of the picture."}
 	tSurveyPictureUnreadable = T{
-		KO: "대조 결과를 읽지 못해 그림을 그리지 못했습니다. 03을 다시 여십시오.",
-		EN: "The reconciliation could not be read, so the picture is not drawn. Open 03 again."}
+		KO: "대조 결과를 읽지 못해 그림을 그리지 못했습니다. 02를 다시 여십시오.",
+		EN: "The reconciliation could not be read, so the picture is not drawn. Open 02 again."}
 	tHistPicturePending = T{
 		KO: "그림을 그리고 있습니다. 위의 표와 DOT 내려받기는 그림과 관계없이 쓸 수 있습니다.",
 		EN: "The picture is being drawn. The table above and the DOT download work regardless of the picture."}
@@ -886,7 +886,7 @@ var (
 // 사람은 어디부터 손대야 하는지 알기 어렵다. 관측에 있는데 어느 노드에도 붙지 않은
 // 이름이 그 답이고, 그것이 곧 대조가 통째로 어긋나는 자리다.
 var (
-	tNextDeclEyebrow = T{KO: "01 · 선언", EN: "01 · Declaration"}
+	tNextDeclEyebrow = T{KO: "01 관측 · 대상 노드와 기대 상태", EN: "01 Observation · Target nodes and expected state"}
 	tNextDeclHead    = T{
 		KO: "관측한 노드를 선언과 연결합니다",
 		EN: "Link observed nodes to the declaration"}
@@ -1047,8 +1047,8 @@ var (
 	tSetKeyNone            = T{KO: "없음", EN: "not there"}
 	tSetKeyDisabled        = T{KO: "찾지 않음(기본 위치 검색을 껐습니다)", EN: "not looked for (the default location is turned off)"}
 	tSetKeyUnusable        = T{
-		KO: "쓸 수 없음. 까닭은 그 키를 쓰는 화면에 있습니다(승인 키는 05, 수집기 키는 02)",
-		EN: "not usable. The reason is on the screen that uses the key (05 for approval keys, 02 for collector keys)"}
+		KO: "쓸 수 없음. 까닭은 그 키를 쓰는 화면에 있습니다(승인 키는 04, 수집기 키는 01)",
+		EN: "not usable. The reason is on the screen that uses the key (04 for approval keys, 01 for collector keys)"}
 
 	tSetCollectors         = T{KO: "수집기 폴더", EN: "Collector folder"}
 	tSetCollectorsHow      = T{KO: "`-collectors` 플래그로 줍니다. 작업 폴더로 띄우면 그 안의 collectors 폴더입니다.", EN: "Give it with the `-collectors` flag. With a workspace it is the collectors folder inside it."}
@@ -1082,7 +1082,7 @@ var (
 
 // ── 스코프 요약 (`/scope-next`) ─────────────────────────────────────────────
 var (
-	tNextScopeEyebrow = T{KO: "02 관측 · 암호 자산 스코프", EN: "02 Observation · Crypto asset scope"}
+	tNextScopeEyebrow = T{KO: "01 관측 · 암호 자산 스코프", EN: "01 Observation · Crypto asset scope"}
 	tNextScopeHead    = T{
 		KO: "관리하지 않을 자산을 승인합니다",
 		EN: "Approve what will not be managed"}
@@ -1129,7 +1129,7 @@ var (
 
 // ── 대조 요약 (`/survey-next`) ──────────────────────────────────────────────
 var (
-	tNextSurveyEyebrow = T{KO: "03 · 대조", EN: "03 · Reconciliation"}
+	tNextSurveyEyebrow = T{KO: "02 · 대조", EN: "02 · Reconciliation"}
 	tNextSurveyHead    = T{
 		KO: "대조 결과에는 사람이 확인할 항목이 %d개 있습니다",
 		EN: "%d items need a person to look at the reconciliation"}
@@ -1178,7 +1178,7 @@ var (
 
 // ── 판정 요약 (`/review-next`) ──────────────────────────────────────────────
 var (
-	tNextReviewEyebrow = T{KO: "04 · 판정", EN: "04 · Judgment"}
+	tNextReviewEyebrow = T{KO: "03 · 판정", EN: "03 · Judgment"}
 	tNextReviewHead    = T{
 		KO: "정책별로 결론을 남기고, 예외만 개별로 봅니다",
 		EN: "Record a conclusion per policy, and look at exceptions one by one"}
@@ -1263,16 +1263,16 @@ var (
 			"you can send the screen as it is."}
 )
 
-// ── 02 관측 ─────────────────────────────────────────────────────────────────
+// ── 01 관측 ─────────────────────────────────────────────────────────────────
 var (
-	tObserveEyebrow = T{KO: "02 · 관측", EN: "02 · Observation"}
+	tObserveEyebrow = T{KO: "01 · 관측", EN: "01 · Observation"}
 	tObserveHead    = T{
 		KO: "관측할 노드와 접속 방법을 적습니다",
 		EN: "Write down the nodes to observe and how to reach them"}
 	tObserveLede = T{
-		KO: "관측은 이 표에 적힌 노드에 SSH나 WinRM으로 접속해 수집기를 실행합니다. 결과는 작업 폴더의 results에 들어오고 03 대조로 이어집니다.",
+		KO: "관측은 이 표에 적힌 노드에 SSH나 WinRM으로 접속해 수집기를 실행합니다. 결과는 작업 폴더의 results에 들어오고 02 대조로 이어집니다.",
 		EN: "Observation reaches each node in this table over SSH or WinRM and runs the collectors there. " +
-			"The results land in the workspace's results folder and go on to 03 Reconciliation."}
+			"The results land in the workspace's results folder and go on to 02 Reconciliation."}
 	tObserveMetricHosts = T{KO: "관측할 노드", EN: "nodes to observe"}
 
 	tHostsHead = T{KO: "접근 정보", EN: "Access"}
@@ -1281,12 +1281,12 @@ var (
 		EN: "This is saved to hosts.csv in the workspace, in the same format pqcota-hosts reads."}
 	tHostsLegend = T{KO: "노드", EN: "Nodes"}
 	tHostsHint   = T{
-		KO: "<b>줄은 01 선언의 노드입니다.</b> 노드 ID는 선언의 노드 이름이고 여기서 고치지 않습니다. 접속 정보를 적지 않은 줄은 저장되지 않고, 그 노드는 관측에서 빠집니다.<br>" +
+		KO: "<b>줄은 「대상 노드와 기대 상태」에 등록한 노드입니다.</b> 노드 ID는 선언의 노드 이름이고 여기서 고치지 않습니다. 접속 정보를 적지 않은 줄은 저장되지 않고, 그 노드는 관측에서 빠집니다.<br>" +
 			"<b>SSH 키는 개인 키 파일의 경로를 적습니다.</b> 키 자체는 화면에 들어오지 않습니다. 포트를 비우면 SSH는 22, WinRM은 5985입니다.<br>" +
 			"<b>비밀번호는 이 화면에서 적지 않습니다.</b> 파일에 있으면 「있음」으로만 보이고 저장해도 그대로 남습니다. " +
 			"WinRM 노드처럼 비밀번호가 필요하면 hosts.csv의 ssh_pass 열에 직접 적습니다.<br>" +
 			"고치지 않은 행은 저장해도 파일의 글자 그대로 남습니다. 행을 고치거나 옮겨도 그 앞의 주석 줄(#)은 그대로 남습니다.",
-		EN: "<b>The rows are the nodes of 01 Declaration.</b> The node ID is the declared node name and is not edited here. A row without access details is not saved, and that node is left out of the observation.<br>" +
+		EN: "<b>The rows are the nodes registered on the target nodes screen.</b> The node ID is the declared node name and is not edited here. A row without access details is not saved, and that node is left out of the observation.<br>" +
 			"<b>For an SSH key, write the path to the private key file.</b> The key itself never enters the screen. A blank port means 22 for SSH and 5985 for WinRM.<br>" +
 			"<b>Passwords are not written on this screen.</b> If the file has one, it shows only as 「set」 and is kept as is when you save. " +
 			"When a node needs a password, as WinRM nodes do, write it in the ssh_pass column of hosts.csv directly.<br>" +
@@ -1320,12 +1320,24 @@ var (
 	tHostNoIP         = T{KO: "IP가 없습니다", EN: "there is no IP"}
 	tHostControl      = T{KO: "줄바꿈 · 탭 · 줄 구분자 같은 인쇄할 수 없는 문자가 들어 있습니다", EN: "it holds a character that cannot be printed, such as a line break, a tab or a line separator"}
 
-	tStepObserveNoHosts = T{KO: "아직 접근 정보가 없습니다", EN: "no access written yet"}
+	tStepObserveNoHosts  = T{KO: "아직 접근 정보가 없습니다", EN: "no access written yet"}
+	tStepObserveNoRemote = T{KO: "대상 노드와 기대 상태만(작업 폴더 없이 열림)", EN: "target nodes and expected state only (opened without a workspace)"}
+	tObsPartDecl         = T{KO: "1. 대상 노드와 기대 상태", EN: "1. Target nodes and expected state"}
+	tObsPartAccess       = T{KO: "2. 접속 준비와 관측", EN: "2. Access and observation"}
+	tObsPartScope        = T{KO: "3. 자산 스코프와 이력 적재", EN: "3. Asset scope and ingest into the history"}
+	tObsDeclLede         = T{
+		KO: "관측할 노드를 한 번 등록하고, 그 노드에 있어야 할 암호 자산과 통신을 적습니다. 접속 정보는 같은 노드에 아래에서 채웁니다. 대조는 접속 준비나 관측의 성공과 무관하게 여기 등록한 전부를 대상으로 합니다.",
+		EN: "Register each node to observe once, and write the crypto assets and communications that should be on it. Access details are filled in below for the same node. Reconciliation covers everything registered here, whether or not a node is ready or was observed."}
+	tObsDeclCounts = T{KO: "대상 노드 %d곳 · 기대 자산 %d개 · 기대 통신 %d개", EN: "%d target nodes · %d expected assets · %d expected communications"}
+	tObsDeclEdit   = T{KO: "대상 노드와 기대 상태 고치기", EN: "Edit the target nodes and expected state"}
+	tObsNoRemote   = T{
+		KO: "접속 준비와 원격 관측을 쓰려면 작업 폴더로 시작하십시오(pqcaton-ui -workspace <폴더>). 지금은 대상 노드와 기대 상태만 볼 수 있습니다.",
+		EN: "To prepare access and observe remotely, start with a workspace (pqcaton-ui -workspace <folder>). Right now only the target nodes and expected state can be viewed."}
 	tStepObserveHosts   = T{KO: "관측할 노드 %d대", EN: "%d nodes to observe"}
 	tStepObserveRunning = T{KO: "관측 중", EN: "observing now"}
 )
 
-// ── 02 관측 · 실행 ──────────────────────────────────────────────────────────
+// ── 01 관측 · 실행 ──────────────────────────────────────────────────────────
 var (
 	tRunHead = T{KO: "관측 실행", EN: "Run the observation"}
 	tRunLede = T{
@@ -1350,24 +1362,24 @@ var (
 	tRunStopHint = T{
 		KO: "멈추면 그때까지 받은 결과만 옮깁니다. 실행 중이던 노드에는 스테이징 폴더(/tmp/pqcaton-observe-…)가 남을 수 있습니다.",
 		EN: "Stopping moves only the results received so far. A node that was mid-run may keep its staging folder (/tmp/pqcaton-observe-…)."}
-	tRunGoSurvey = T{KO: "03 대조에서 보기", EN: "See them in 03 Reconciliation"}
+	tRunGoSurvey = T{KO: "02 대조에서 보기", EN: "See them in 02 Reconciliation"}
 	tRunDropped  = T{KO: "화면에 남기지 않은 앞의 로그: %d줄", EN: "Log lines not kept from the start: %d"}
 	tRunLog      = T{KO: "관측 실행 로그", EN: "Observation log"}
 
 	tRunRefusedHead     = T{KO: "관측을 시작하지 않았습니다", EN: "The observation was not started"}
 	tRunRefusedNotReady = T{
-		KO: "시작하기 전에 갖출 것이 빠졌습니다. 02 관측 화면의 점검 목록에서 ✗ 표시된 것을 갖추십시오.",
-		EN: "Something needed before starting is missing. Provide the items marked ✗ in the checklist on the 02 Observation screen."}
+		KO: "시작하기 전에 갖출 것이 빠졌습니다. 01 관측 화면의 점검 목록에서 ✗ 표시된 것을 갖추십시오.",
+		EN: "Something needed before starting is missing. Provide the items marked ✗ in the checklist on the 01 Observation screen."}
 	tRunRefusedHostsUndeclared = T{
-		KO: "접근 정보(hosts.csv)에 지금 선언에 없는 노드 ID가 있어 관측을 시작하지 않았습니다. 노드에는 접속하지 않았고 파일은 그대로입니다. 02 관측 화면의 「선언에 없는 행」에서 그 행과 ID를 확인하십시오.",
-		EN: "The access details (hosts.csv) hold a node ID that is not in the current declaration, so no observation was started. No node was contacted and the files are unchanged. See the row and the ID under \"Rows not in the declaration\" on the 02 Observation screen."}
+		KO: "접근 정보(hosts.csv)에 지금 선언에 없는 노드 ID가 있어 관측을 시작하지 않았습니다. 노드에는 접속하지 않았고 파일은 그대로입니다. 01 관측 화면의 「선언에 없는 행」에서 그 행과 ID를 확인하십시오.",
+		EN: "The access details (hosts.csv) hold a node ID that is not in the current declaration, so no observation was started. No node was contacted and the files are unchanged. See the row and the ID under \"Rows not in the declaration\" on the 01 Observation screen."}
 	tTargetsHead = T{KO: "대상 노드의 접속 준비", EN: "Access readiness of the target nodes"}
 	tTargetsLede = T{
-		KO: "줄은 01 선언의 노드입니다. 접근 정보의 노드 ID가 선언의 노드 이름과 대소문자까지 같으면 그 노드의 접속 정보입니다. 접속 정보가 없는 노드는 이번 관측에서 빠질 뿐이고, 대조에는 선언의 모든 노드가 남습니다.",
-		EN: "The rows are the nodes of 01 Declaration. Access details belong to a node when their node ID equals the declared node name, including case. A node without access details is only left out of this observation; reconciliation keeps every declared node."}
+		KO: "줄은 「대상 노드와 기대 상태」에 등록한 노드입니다. 접근 정보의 노드 ID가 선언의 노드 이름과 대소문자까지 같으면 그 노드의 접속 정보입니다. 접속 정보가 없는 노드는 이번 관측에서 빠질 뿐이고, 대조에는 선언의 모든 노드가 남습니다.",
+		EN: "The rows are the nodes registered on the target nodes screen. Access details belong to a node when their node ID equals the declared node name, including case. A node without access details is only left out of this observation; reconciliation keeps every declared node."}
 	tTargetsDeclUnknown = T{
-		KO: "선언이 아직 없거나 읽을 수 없어 접근 정보의 노드 ID를 견줄 수 없습니다. 01 선언에서 대상 노드를 먼저 등록하십시오.",
-		EN: "There is no declaration yet, or it cannot be read, so the node IDs of the access details cannot be checked. Register the target nodes in 01 Declaration first."}
+		KO: "선언이 아직 없거나 읽을 수 없어 접근 정보의 노드 ID를 견줄 수 없습니다. 「대상 노드와 기대 상태」에서 대상 노드를 먼저 등록하십시오.",
+		EN: "There is no declaration yet, or it cannot be read, so the node IDs of the access details cannot be checked. Register the target nodes in the target nodes screen first."}
 	tTargetsColState       = T{KO: "접속 준비와 관측", EN: "Access and observation"}
 	tTargetUnready         = T{KO: "접속 정보 미입력(아직 관측하지 않는 노드)", EN: "no access details (not observed yet)"}
 	tTargetReady           = T{KO: "준비됨", EN: "ready"}
@@ -1376,8 +1388,8 @@ var (
 	tTargetFailed          = T{KO: "관측 실패: %s에 끝난 가장 최근 실행이 이 노드에 접속하지 못했거나 이 노드의 단계가 실패함", EN: "observation failed: the most recent run, which ended at %s, could not reach this node or a step failed on it"}
 	tOrphansHead           = T{KO: "선언에 없는 행 %d개", EN: "Rows not in the declaration: %d"}
 	tOrphansLede           = T{
-		KO: "접근 정보(hosts.csv)에는 있고 지금 선언에는 없는 노드 ID입니다. 이 행이 있는 동안에는 관측과 05의 원격 실행을 시작하지 않습니다. 선언에서 노드 이름을 바꿨다면 옛 ID의 행을 새 이름의 노드로 옮길 수 있습니다. 옮길 대상은 직접 고르고, 「저장」을 눌러야 파일이 바뀝니다.",
-		EN: "These node IDs are in the access details (hosts.csv) but not in the current declaration. While such a row exists, no observation and no remote run of 05 is started. If you renamed a node in the declaration, you can move the row with the old ID to the node with the new name. You choose the target yourself, and the file changes only when you press Save."}
+		KO: "접근 정보(hosts.csv)에는 있고 지금 선언에는 없는 노드 ID입니다. 이 행이 있는 동안에는 관측과 04의 원격 실행을 시작하지 않습니다. 선언에서 노드 이름을 바꿨다면 옛 ID의 행을 새 이름의 노드로 옮길 수 있습니다. 옮길 대상은 직접 고르고, 「저장」을 눌러야 파일이 바뀝니다.",
+		EN: "These node IDs are in the access details (hosts.csv) but not in the current declaration. While such a row exists, no observation and no remote run of 04 is started. If you renamed a node in the declaration, you can move the row with the old ID to the node with the new name. You choose the target yourself, and the file changes only when you press Save."}
 	tOrphanLine          = T{KO: "접속 정보 %d행: 선언에 없는 노드", EN: "Access details, line %d: a node that is not in the declaration,"}
 	tOrphanNoLine        = T{KO: "접속 정보: 선언에 없는 노드", EN: "Access details: a node that is not in the declaration,"}
 	tOrphanWhat          = T{KO: "주소 %s · 계정 %s", EN: "address %s · account %s"}
@@ -1386,7 +1398,7 @@ var (
 	tOrphanRemove        = T{KO: "이 행을 지움", EN: "Remove this row"}
 	tOrphanMoveTo        = T{KO: "선언 노드 %s로 옮김(옛 ID %s → 새 ID %s. 주소 · 계정 · 인증 정보는 그대로)", EN: "Move to the declared node %s (old ID %s → new ID %s; address, account and credentials are kept)"}
 	tHostEmpty           = T{KO: "접속 정보 미입력", EN: "no access details"}
-	tHostNotDeclared     = T{KO: "지금 선언에 없는 노드입니다. 저장하지 않았고 파일은 그대로입니다. 01 선언에서 노드 이름을 확인하십시오(이 화면을 연 뒤 선언이 바뀌었을 수 있습니다)", EN: "is not a node of the current declaration. Nothing was saved and the file is unchanged. Check the node name in 01 Declaration (the declaration may have changed after this screen was opened)"}
+	tHostNotDeclared     = T{KO: "지금 선언에 없는 노드입니다. 저장하지 않았고 파일은 그대로입니다. 「대상 노드와 기대 상태」에서 노드 이름을 확인하십시오(이 화면을 연 뒤 선언이 바뀌었을 수 있습니다)", EN: "is not a node of the current declaration. Nothing was saved and the file is unchanged. Check the node name in the target nodes screen (the declaration may have changed after this screen was opened)"}
 	tHostDeclUnknown     = T{KO: "선언이 없거나 읽을 수 없어 이 노드가 선언에 있는지 확인하지 못했습니다. 저장하지 않았습니다", EN: "the declaration is missing or cannot be read, so this node could not be checked against it. Nothing was saved"}
 	tHostMoveNotDeclared = T{KO: "옮길 대상이 지금 선언에 없습니다. 저장하지 않았고 파일은 그대로입니다", EN: "the target is not in the current declaration. Nothing was saved and the file is unchanged"}
 	tHostMoveTaken       = T{KO: "옮길 대상 노드에 이미 접속 정보가 있습니다. 덮어쓰지 않았고 파일은 그대로입니다", EN: "the target node already has access details. Nothing was overwritten and the file is unchanged"}
@@ -1471,7 +1483,7 @@ var runItemText = map[RunItem]T{
 	RunJarMismatch:         {KO: "collector.jar 판이 맞지 않음", EN: "collector.jar version does not match"},
 	RunJarUnverified:       {KO: "collector.jar를 확인할 수 없음", EN: "collector.jar cannot be verified"},
 	RunJarAllowed:          {KO: "확인하지 못한 collector.jar를 허용함", EN: "Unverified collector.jar allowed"},
-	RunWindowsUnsupported:  {KO: "Windows 노드(이번 판의 02는 지원하지 않음)", EN: "Windows nodes (not supported by 02 in this version)"},
+	RunWindowsUnsupported:  {KO: "Windows 노드(이번 판의 01은 지원하지 않음)", EN: "Windows nodes (not supported by 01 in this version)"},
 	RunCollectorKeys:       {KO: "수집기 서명 키", EN: "Collector signing keys"},
 	RunCollectorVerify:     {KO: "신뢰할 수집기 공개 키", EN: "Trusted collector public keys"},
 }
@@ -1479,8 +1491,8 @@ var runItemText = map[RunItem]T{
 var runItemMissing = map[RunItem]T{
 	RunHosts: {KO: "위 표에 노드를 적고 저장하십시오", EN: "Write the nodes in the table above and save"},
 	RunHostsDeclared: {
-		KO: "선언에 없는 행을 지워 저장하거나, 그 노드를 01 선언에 등록하십시오. 노드 ID는 선언의 노드 이름과 대소문자까지 같아야 합니다",
-		EN: "Remove the rows that are not in the declaration and save, or register those nodes in 01 Declaration. A node ID must equal the declared node name, including case"},
+		KO: "선언에 없는 행을 지워 저장하거나, 그 노드를 「대상 노드와 기대 상태」에 등록하십시오. 노드 ID는 선언의 노드 이름과 대소문자까지 같아야 합니다",
+		EN: "Remove the rows that are not in the declaration and save, or register those nodes in the target nodes screen. A node ID must equal the declared node name, including case"},
 	RunAnsible: {
 		KO: "이 기계에 Ansible을 설치하십시오. PATH에서 ansible-playbook을 찾습니다",
 		EN: "Install Ansible on this machine: ansible-playbook is looked up on the PATH"},
@@ -1515,8 +1527,8 @@ var runItemMissing = map[RunItem]T{
 		KO: "collector.jar의 판 · 커밋 · 수정 여부를 확인할 수 없습니다(판 정보 없음 · 직접 빌드 · 고친 트리 · 커밋 정보 없음). 옆에 적힌 판의 상류 릴리스 collector.jar로 바꾸십시오. 그대로 쓰려면 화면을 -allow-unverified-collectors로 시작하십시오",
 		EN: "The version, commit or modified flag of collector.jar cannot be verified (no version, a local build, a modified tree or no commit). Replace it with the upstream release collector.jar of the version shown. To use it as it is, start the screen with -allow-unverified-collectors"},
 	RunWindowsUnsupported: {
-		KO: "이번 판의 02는 Windows 노드에 서명 키를 넘기지 않아, 관측해도 그 결과가 서명 검증을 지나지 못합니다. 위 표에서 옆에 적힌 노드를 빼십시오. 그 노드는 pqcota-cngscan · pqcota-jvmscan을 서명 키와 함께 직접 돌려 관측합니다",
-		EN: "In this version 02 does not pass signing keys to Windows nodes, so their results would not pass the signature check. Remove the nodes shown from the table above, and observe them by running pqcota-cngscan and pqcota-jvmscan yourself with their signing keys"},
+		KO: "이번 판의 01은 Windows 노드에 서명 키를 넘기지 않아, 관측해도 그 결과가 서명 검증을 지나지 못합니다. 위 표에서 옆에 적힌 노드를 빼십시오. 그 노드는 pqcota-cngscan · pqcota-jvmscan을 서명 키와 함께 직접 돌려 관측합니다",
+		EN: "In this version 01 does not pass signing keys to Windows nodes, so their results would not pass the signature check. Remove the nodes shown from the table above, and observe them by running pqcota-cngscan and pqcota-jvmscan yourself with their signing keys"},
 	RunCollectorKeys: {
 		KO: "관측은 수집기 ID마다 서명 키가 있어야 시작합니다. 옆에 적힌 폴더(작업 폴더 밖, chmod 700)에 ID마다 pqcota-keygen -collector <ID>의 출력을 <ID>.key로, 소유자만 읽게(umask 077) 저장하십시오. 옆에 빠진 ID와 그 까닭이 있습니다",
 		EN: "An observation starts only with a signing key for each collector ID. In the folder shown (outside the workspace, chmod 700), save the output of pqcota-keygen -collector <ID> as <ID>.key for each ID, readable only by its owner (umask 077). The IDs missing and why are shown"},
@@ -1528,7 +1540,7 @@ var runItemMissing = map[RunItem]T{
 		EN: "Started with -allow-unverified-collectors: the observation uses a collector.jar that is not verified. The allowance ends with the screen and is not kept in the workspace"},
 }
 
-// 「회수 필요」 프로세스 정보(02).
+// 「회수 필요」 프로세스 정보(01).
 var (
 	tProcHead        = T{KO: "남은 프로세스", EN: "Processes left behind"}
 	tProcRecheck     = T{KO: "다시 확인", EN: "Check again"}
@@ -1592,9 +1604,9 @@ var collectorReasonText = map[string]T{
 	"no-commit":      {KO: "커밋 · 수정 여부 정보 없음", EN: "no commit or modified flag"},
 }
 
-// ── 05 프로비저닝(승인 서명 · 플레이북 생성) ──────────────────────────────────────────────────────────
+// ── 04 프로비저닝(승인 서명 · 플레이북 생성) ──────────────────────────────────────────────────────────
 var (
-	tApproveEyebrow = T{KO: "05 · 프로비저닝", EN: "05 · Provisioning"}
+	tApproveEyebrow = T{KO: "04 · 프로비저닝", EN: "04 · Provisioning"}
 	tApproveHead    = T{
 		KO: "확정한 계획에 승인 서명을 하고 플레이북을 만듭니다",
 		EN: "Sign the approval of the finalized plan and generate the playbooks"}
@@ -1605,8 +1617,8 @@ var (
 			"applying them to the machines is the operator's own Ansible run."}
 	tApproveNoPlan     = T{KO: "아직 확정한 계획이 없습니다", EN: "There is no finalized plan yet"}
 	tApproveNoPlanBody = T{
-		KO: "04 판정에서 확정하면 plan.json이 생기고 여기서 승인할 수 있습니다.",
-		EN: "Finalizing in 04 Judgment writes plan.json, which can then be approved here."}
+		KO: "03 판정에서 확정하면 plan.json이 생기고 여기서 승인할 수 있습니다.",
+		EN: "Finalizing in 03 Judgment writes plan.json, which can then be approved here."}
 	tPlanHead       = T{KO: "승인할 계획", EN: "The plan to approve"}
 	tPlanOriginal   = T{KO: "원본 계획(plan.json): %s", EN: "Original plan (plan.json): %s"}
 	tPlanApproved   = T{KO: "승인된 계획(plan.signed.json): %s", EN: "Approved plan (plan.signed.json): %s"}
@@ -1621,8 +1633,8 @@ var (
 		KO: "승인했습니다: %s(%s). 이 키로 확인했습니다",
 		EN: "Approved by %s (%s), checked with this key"}
 	tSignedStale = T{
-		KO: "서명한 계획(plan.signed.json)이 지금 계획과 다릅니다. 04에서 다시 확정했다면 새 계획에 다시 서명하십시오.",
-		EN: "The signed plan (plan.signed.json) differs from the current plan. If 04 was finalized again, sign the new plan."}
+		KO: "서명한 계획(plan.signed.json)이 지금 계획과 다릅니다. 03에서 다시 확정했다면 새 계획에 다시 서명하십시오.",
+		EN: "The signed plan (plan.signed.json) differs from the current plan. If 03 was finalized again, sign the new plan."}
 	tSignedInvalid = T{
 		KO: "서명한 계획의 서명을 이 키로 확인할 수 없습니다. 다른 키로 서명했거나 서명 뒤에 파일이 바뀌었습니다.",
 		EN: "The signed plan's signature does not check out with this key: it was signed with another key, or the file changed after signing."}
@@ -1650,9 +1662,9 @@ var (
 		EN: "The playbooks were generated (default level %s, %s)"}
 	tGenWarningsHead = T{KO: "생성기가 짚은 빈 곳 %d곳", EN: "Gaps the generator flagged: %d"}
 	tGenWarningsLede = T{
-		KO: "플레이북은 만들어졌지만 아래 자리가 비어 있습니다. pqcota-provision이라면 종료 상태 3으로 끝나는 경우입니다. 04에서 채워 다시 확정하거나, 알고 넘어가십시오.",
+		KO: "플레이북은 만들어졌지만 아래 자리가 비어 있습니다. pqcota-provision이라면 종료 상태 3으로 끝나는 경우입니다. 03에서 채워 다시 확정하거나, 알고 넘어가십시오.",
 		EN: "The playbooks were generated, but the places below are empty; pqcota-provision would end with exit status 3. " +
-			"Fill them in at 04 and finalize again, or go on knowingly."}
+			"Fill them in at 03 and finalize again, or go on knowingly."}
 	tApplyHint = T{
 		KO: "<b>화면이 적용하지 않는 플레이북은 운영자가 실행합니다.</b> 관측에 쓴 것과 같은 인벤토리로 실행합니다. " +
 			"<code>pqcota-hosts --ansible-out targets.ini hosts.csv</code>로 만든 뒤 " +
@@ -1696,24 +1708,24 @@ var (
 		EN: "This signs the approval of the plan below as this approver with this key. The signed plan is kept separately and never overwritten. Nothing has been written yet."}
 	tSignConfirmBack = T{KO: "서명하지 않고 화면으로 돌아가기", EN: "Back to the screen without signing"}
 	tSignedExists    = T{
-		KO: "서명한 계획 파일이 이미 있어 덮지 않았습니다. 지금 계획과 맞지 않으면 05 화면에서 지난 서명을 보관한 뒤 서명하십시오.",
-		EN: "A signed plan file already exists and was not overwritten. If it does not match the current plan, archive the earlier signature on the 05 screen, then sign."}
+		KO: "서명한 계획 파일이 이미 있어 덮지 않았습니다. 지금 계획과 맞지 않으면 04 화면에서 지난 서명을 보관한 뒤 서명하십시오.",
+		EN: "A signed plan file already exists and was not overwritten. If it does not match the current plan, archive the earlier signature on the 04 screen, then sign."}
 	tArchive    = T{KO: "지난 서명 보관", EN: "Archive the earlier signature"}
 	tArchiveAsk = T{
 		KO: "서명한 계획과 그 플레이북을 지우지 않고, 이름에 지금 시각을 붙여 옆에 둡니다. 그 뒤 새 계획에 서명할 수 있습니다.",
 		EN: "The signed plan and its playbooks are not deleted: they are kept beside it with the current time in their names. Then the new plan can be signed."}
 	tArchivedNotice = T{KO: "지난 서명을 보관했습니다. 파일 %d개", EN: "The earlier signature was archived (files: %d)"}
 	tSingleKey      = T{
-		KO: "05 화면은 승인 키 하나로 서명하고 확인합니다. 서명마다 승인자 이름이 들어가지만, 확인은 이 화면에 준 키 하나로 합니다(단일 키 · 단일 승인자).",
-		EN: "The 05 screen signs and checks with a single approval key. Each signature carries the approver's name, but checking uses the one key given to this screen (single key, single approver)."}
+		KO: "04 화면은 승인 키 하나로 서명하고 확인합니다. 서명마다 승인자 이름이 들어가지만, 확인은 이 화면에 준 키 하나로 합니다(단일 키 · 단일 승인자).",
+		EN: "The 04 screen signs and checks with a single approval key. Each signature carries the approver's name, but checking uses the one key given to this screen (single key, single approver)."}
 
 	tSignedNotice    = T{KO: "승인 서명을 했습니다. 승인된 계획(plan.signed.json)이 FINALIZED이고, 원본 계획(plan.json)은 그대로 둡니다", EN: "The approval was signed: the approved plan (plan.signed.json) is FINALIZED, and the original plan (plan.json) stays as it is"}
 	tGeneratedNotice = T{KO: "플레이북을 만들었습니다. 빈 곳 %d곳", EN: "The playbooks were generated: %d gaps"}
 
 	tSignRefusedHead = T{KO: "서명하지 않았습니다", EN: "Not signed"}
 	tSignNotReady    = T{
-		KO: "승인 키를 쓸 수 없거나, 승인자 이름이 비었거나 콜론을 담았거나, 검토 확인을 하지 않았습니다. 05 화면의 점검을 보십시오.",
-		EN: "The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed. See the checks on the 05 screen."}
+		KO: "승인 키를 쓸 수 없거나, 승인자 이름이 비었거나 콜론을 담았거나, 검토 확인을 하지 않았습니다. 04 화면의 점검을 보십시오.",
+		EN: "The approval key cannot be used, the approver's name is empty or holds a colon, or the review was not confirmed. See the checks on the 04 screen."}
 	tPlanNotApprovable = T{
 		KO: "이 계획은 승인할 수 없습니다. 검토 중(IN_REVIEW) 상태가 아니거나, 조치가 없거나, 조치에 대상 노드 · 종류가 비었거나, 이미 이 키로 서명했습니다.",
 		EN: "This plan cannot be approved: it is not in review (IN_REVIEW), has no actions, an action lacks its target node or kind, " +
@@ -1768,7 +1780,7 @@ var keyText = map[KeyState]T{
 		EN: "it is a collector signing key (its PQCOTA_VERIFY_KEY line names a collector ID): make the approval key with pqcota-keygen and no flags"},
 }
 
-// 05 의 승인 키 문구(서명용 개인 키와 확인용 공개 키).
+// 04 의 승인 키 문구(서명용 개인 키와 확인용 공개 키).
 var (
 	tKeyDefaultOK      = T{KO: "기본 승인 키를 사용합니다.", EN: "The default approval key is used."}
 	tKeyExplicitOK     = T{KO: "지정한 승인 키를 사용합니다.", EN: "The approval key given at start is used."}
@@ -1808,7 +1820,7 @@ var phaseNames = map[RunPhase]T{
 	PhaseCleanup: {KO: "노드의 스테이징 폴더 정리", EN: "removing the staging folders on the nodes"},
 }
 
-// 05 프로비저닝: 대상 노드 미리 보기와 실행 결과(provrun.go · provrun.templ).
+// 04 프로비저닝: 대상 노드 미리 보기와 실행 결과(provrun.go · provrun.templ).
 var (
 	tProvHead = T{KO: "대상 노드 미리 보기", EN: "Preview on the target nodes"}
 	tProvLede = T{
@@ -1886,14 +1898,14 @@ var (
 	tProvRunID            = T{KO: "실행 ID %s", EN: "Run ID %s"}
 
 	tProvVersionBlock = T{
-		KO: "감지한 ansible-core 버전: %s. 05의 미리 보기 · 적용 · 재확인은 ansible-core %s에서만 실행합니다. 화면을 띄운 환경의 PATH에서 먼저 찾아지는 ansible-playbook이 %s이 되게 한 뒤 이 화면을 다시 여십시오. 승인 서명, 플레이북 생성, 지난 실행 기록 조회는 그대로 할 수 있습니다.",
-		EN: "Detected ansible-core version: %s. The 05 preview, apply and recheck only run with ansible-core %s. Make the ansible-playbook found first on the PATH of the environment that started the screen be %s, then open this screen again. Signing the approval, generating the playbooks and reading earlier run records still work."}
+		KO: "감지한 ansible-core 버전: %s. 04의 미리 보기 · 적용 · 재확인은 ansible-core %s에서만 실행합니다. 화면을 띄운 환경의 PATH에서 먼저 찾아지는 ansible-playbook이 %s이 되게 한 뒤 이 화면을 다시 여십시오. 승인 서명, 플레이북 생성, 지난 실행 기록 조회는 그대로 할 수 있습니다.",
+		EN: "Detected ansible-core version: %s. The 04 preview, apply and recheck only run with ansible-core %s. Make the ansible-playbook found first on the PATH of the environment that started the screen be %s, then open this screen again. Signing the approval, generating the playbooks and reading earlier run records still work."}
 	tProvVersionUnread = T{KO: "판독할 수 없음", EN: "could not be read"}
 
-	tProvRefusedHead     = T{KO: "05의 원격 실행을 시작하지 않았습니다", EN: "The 05 remote run was not started"}
+	tProvRefusedHead     = T{KO: "04의 원격 실행을 시작하지 않았습니다", EN: "The 04 remote run was not started"}
 	tProvRefusedNotReady = T{
-		KO: "화면에서 실행할 조건이 맞지 않습니다. 05 화면의 「화면에서 실행하지 않는 까닭」을 확인하십시오.",
-		EN: "The conditions for running from the screen are not met. See \"Why the screen does not run this\" on screen 05."}
+		KO: "화면에서 실행할 조건이 맞지 않습니다. 04 화면의 「화면에서 실행하지 않는 까닭」을 확인하십시오.",
+		EN: "The conditions for running from the screen are not met. See \"Why the screen does not run this\" on screen 04."}
 	tProvRefusedBusy = T{KO: "이미 실행이 돌고 있습니다. 끝난 뒤 다시 하십시오.", EN: "A run is already going. Try again when it ends."}
 )
 
@@ -1905,7 +1917,7 @@ var provBlockText = map[string]T{
 	ProvNotGenerated:    {KO: "플레이북 파일이 승인된 계획에서 생성한 것과 다릅니다. 다시 생성하십시오.", EN: "The playbook file differs from what the approved plan generates. Generate it again."},
 	ProvUnknownForm:     {KO: "플레이북에 이 판이 알지 못하는 형식의 줄이 있습니다.", EN: "The playbook has a line in a form this version does not know."},
 	ProvNoHosts:         {KO: "접근 정보(hosts.csv)에서 이 노드를 읽지 못했습니다.", EN: "This node could not be read from the access details (hosts.csv)."},
-	ProvHostsUndeclared: {KO: "접근 정보(hosts.csv)에 선언에 없는 노드 ID가 있습니다. 02 관측에서 그 행을 지우거나 그 노드를 선언에 등록하십시오.", EN: "The access details (hosts.csv) hold a node ID that is not in the declaration. On 02 Observation, remove that row or register the node in the declaration."},
+	ProvHostsUndeclared: {KO: "접근 정보(hosts.csv)에 선언에 없는 노드 ID가 있습니다. 01 관측에서 그 행을 지우거나 그 노드를 선언에 등록하십시오.", EN: "The access details (hosts.csv) hold a node ID that is not in the declaration. On 01 Observation, remove that row or register the node in the declaration."},
 	ProvWindows:         {KO: "Windows 노드는 화면에서 실행하지 않습니다.", EN: "Windows nodes are not run from the screen."},
 	ProvNoAnsible:       {KO: "ansible-playbook을 찾지 못했습니다.", EN: "ansible-playbook was not found."},
 	ProvUnsupported + "-provider": {
@@ -1977,7 +1989,7 @@ var provTaskText = map[string]T{
 	"not-started": {KO: "시작 안 함", EN: "not started"},
 }
 
-// 02 관측: 이력에 적재(ingest.go · ingest.templ).
+// 01 관측: 이력에 적재(ingest.go · ingest.templ).
 var (
 	tIngestHead = T{KO: "이력에 적재", EN: "Ingest into the history"}
 	tIngestLede = T{
@@ -2082,7 +2094,7 @@ var (
 	tObsScopeFile      = T{KO: "파일 %s · 규칙 %d개", EN: "file %s · %d rules"}
 	tObsScopeState     = T{KO: "규칙 편집: %s · 확정 상태: %s", EN: "Rule editing: %s · finalization: %s"}
 	tObsScopeEdit      = T{KO: "규칙 고치기", EN: "Edit the rules"}
-	tScopeBackObserve  = T{KO: "02 관측으로 돌아가기", EN: "Back to 02 Observation"}
+	tScopeBackObserve  = T{KO: "01 관측으로 돌아가기", EN: "Back to 01 Observation"}
 	tIngestFoldSummary = T{KO: "현재 활성 정책으로 다시 적재", EN: "Ingest again under the active policy"}
 	tIngestFoldWarn    = T{
 		KO: "여기서 적재하면 이력의 최신 참조가 현재 활성 정책의 것으로 돌아갑니다. 그 뒤에 활성화할 확정 정책을 활성화하려면 그 정책으로 다시 적재해야 합니다.",
@@ -2090,8 +2102,8 @@ var (
 	tIngestFoldGo           = T{KO: "현재 활성 정책으로 다시 적재: 확인으로", EN: "Ingest again under the active policy: go to the confirmation"}
 	tActivateRefusedHead    = T{KO: "정책을 활성화하지 않았습니다", EN: "The policy was not activated"}
 	tActivateHistoryChanged = T{
-		KO: "확인 후 이력의 최신 참조가 달라졌습니다. 현재 활성 정책은 그대로입니다. 아래 링크로 돌아가 02의 「활성화할 확정 정책: 재적재와 활성화」에서 노드별 대조 결과를 확인하십시오.",
-		EN: "The latest references in the history changed after the confirmation. The active policy is unchanged. Follow the link below and check the per-node comparison under \"Finalized policy to activate: re-ingest and activate\" on screen 02."}
+		KO: "확인 후 이력의 최신 참조가 달라졌습니다. 현재 활성 정책은 그대로입니다. 아래 링크로 돌아가 01의 「활성화할 확정 정책: 재적재와 활성화」에서 노드별 대조 결과를 확인하십시오.",
+		EN: "The latest references in the history changed after the confirmation. The active policy is unchanged. Follow the link below and check the per-node comparison under \"Finalized policy to activate: re-ingest and activate\" on screen 01."}
 	tPolicyStep2 = T{KO: "정책 활성화", EN: "Activate the policy"}
 	tPolicyReady = T{
 		KO: "재적재가 확인됐습니다. 현재 활성 정책은 아직 그대로입니다. 확인 페이지에서 바뀌는 파일과 되돌리기 제한을 본 뒤 활성화합니다. 활성화 직전에 이력을 처음부터 다시 대조하고, 최신 참조가 달라졌으면 활성화하지 않습니다.",
@@ -2119,8 +2131,8 @@ var (
 		KO: "확인한 뒤 적재할 입력이 둘 이상 바뀌었습니다(결과 파일 · 활성 정책 · 검증 키 · 조직 · 규칙 판 가운데). 다시 점검하고 적재할 내용을 확인하십시오.",
 		EN: "More than one input to the ingest changed after the confirmation (among the result files, the active policy, the verification keys, the organization and the ruleset). Check again and confirm what will be ingested."}
 	tIngestRefusedNotReady = T{
-		KO: "적재할 조건이 맞지 않습니다. 02 화면의 「이력에 적재」에서 까닭을 확인하십시오(설정 · 서명 · 이미 적재됨 · 이력을 읽지 못함 · 조회와 적재의 데이터베이스가 다름).",
-		EN: "The conditions for ingesting are not met. See \"Ingest into the history\" on screen 02 for the reason (setup, signatures, already ingested, the history could not be read, or the read and ingest databases differ)."}
+		KO: "적재할 조건이 맞지 않습니다. 01 화면의 「이력에 적재」에서 까닭을 확인하십시오(설정 · 서명 · 이미 적재됨 · 이력을 읽지 못함 · 조회와 적재의 데이터베이스가 다름).",
+		EN: "The conditions for ingesting are not met. See \"Ingest into the history\" on screen 01 for the reason (setup, signatures, already ingested, the history could not be read, or the read and ingest databases differ)."}
 	tIngestRefusedBusy   = T{KO: "이미 적재가 돌고 있습니다. 끝난 뒤 다시 하십시오.", EN: "An ingest is already running. Try again when it ends."}
 	tIngestRefusedReplay = T{
 		KO: "이미 사용한 적재 확인입니다. 새 적재를 시작하지 않았습니다. 아래 링크로 돌아가면 이 확인으로 시작한 적재의 기록이 보입니다.",

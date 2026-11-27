@@ -25,7 +25,7 @@ var (
 	hostsBlock = regexp.MustCompile(`(?s)<form method="post" action="` + regexp.QuoteMeta(ui.HostsSavePath) + `".*?</form>`)
 )
 
-// hostsForm: 02의 접근 정보 양식을 브라우저가 보낼 그대로 읽는다(숨은 칸 · 글 칸 · 숫자 칸 · 고른 값).
+// hostsForm: 01의 접근 정보 양식을 브라우저가 보낼 그대로 읽는다(숨은 칸 · 글 칸 · 숫자 칸 · 고른 값).
 func hostsForm(t *testing.T, page string) url.Values {
 	t.Helper()
 	block := hostsBlock.FindString(page)
@@ -187,7 +187,7 @@ func TestCommentsStayWithAMovedRow(t *testing.T) {
 }
 
 // IC-U259 — **선언에서 노드 이름을 바꾼 뒤, 옛 접속 행을 운영자가 고른 노드로 옮긴다.** 화면의 선언 저장으로 web을 web-01로
-// 바꾸면 02는 새 이름의 빈 줄과 「접속 정보 n행: 선언에 없는 노드 web」을 보인다. 저장하기 전에는 hosts.csv가 바이트까지
+// 바꾸면 01은 새 이름의 빈 줄과 「접속 정보 n행: 선언에 없는 노드 web」을 보인다. 저장하기 전에는 hosts.csv가 바이트까지
 // 그대로다. 그 행을 web-01로 옮겨 저장하면 **그 행의 ID만** 바뀌고 주소 · 계정 · 키 경로 · 비밀번호와 다른 행은 그대로다. 다시
 // 열면 선언에 없는 행이 없고 관측을 시작할 수 있다.
 //
@@ -235,11 +235,11 @@ func TestOldAccessRowIsMovedByTheOperator(t *testing.T) {
 		for _, want := range []string{`data-host-node="web-01" data-host-access="false"`, `data-orphan-row="2" data-orphan-id="web"`,
 			"접속 정보 2행: 선언에 없는 노드 <code>web</code>", "선언 노드 web-01로 옮김(옛 ID web → 새 ID web-01"} {
 			if !strings.Contains(page, want) {
-				t.Errorf("after the rename 02 lacks %q", want)
+				t.Errorf("after the rename 01 lacks %q", want)
 			}
 		}
 		if strings.Contains(page, `action="`+ui.RunPath+`"`) || readFile(t, s.hosts) != before {
-			t.Fatal("02 still offers to start, or hosts.csv changed before saving")
+			t.Fatal("01 still offers to start, or hosts.csv changed before saving")
 		}
 		form := hostsForm(t, page)
 		form.Set("host.move."+hostField(t, form, "web"), ui.HostMoveTo("web-01"))

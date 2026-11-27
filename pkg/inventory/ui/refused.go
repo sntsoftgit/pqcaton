@@ -34,12 +34,12 @@ const (
 	// 않았다(409). 노드에 접속하기 전이고 파일은 그대로다. 시작 요청을 처리할 때 현재 선언으로 다시 견준다.
 	RefusedRunHostsUndeclared = "run-hosts-undeclared"
 	RefusedRunBusy            = "run-busy"
-	// RefusedProvNotReady · RefusedProvBusy — 05의 미리 보기를 시작하지 않았다(409).
+	// RefusedProvNotReady · RefusedProvBusy — 04의 미리 보기를 시작하지 않았다(409).
 	RefusedProvNotReady = "prov-not-ready"
 	RefusedProvBusy     = "prov-busy"
 	// RefusedProvGrant — 적용을 시작하지 않았다(409). 유효한 미리 보기가 없다(없음 · 만료 · 입력이 바뀜 · 이미 쓰임).
 	RefusedProvGrant = "prov-grant"
-	// RefusedIngestNotReady · RefusedIngestBusy · RefusedIngestReplay — 02의 이력 적재를 시작하지 않았다(409). 조건이 맞지
+	// RefusedIngestNotReady · RefusedIngestBusy · RefusedIngestReplay — 01의 이력 적재를 시작하지 않았다(409). 조건이 맞지
 	// 않거나(설정 · 서명 · 이미 적재됨 · 이력을 읽지 못함), 이미 돌고 있거나, 이 확인으로 이미 한 번 시작했다.
 	RefusedIngestNotReady = "ingest-not-ready"
 	RefusedIngestBusy     = "ingest-busy"
@@ -50,7 +50,7 @@ const (
 	RefusedIngestChangedPolicy  = "ingest-policy-changed"
 	RefusedIngestChangedKeys    = "ingest-keys-changed"
 	RefusedIngestChanged        = "ingest-inputs-changed"
-	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 05 화면이 서명 · 생성을 하지 않았다(409).
+	// RefusedSignNotReady · RefusedPlanNotApprovable · RefusedGenNotReady — 04 화면이 서명 · 생성을 하지 않았다(409).
 	RefusedSignNotReady      = "sign-not-ready"
 	RefusedPlanNotApprovable = "plan-not-approvable"
 	RefusedGenNotReady       = "generate-not-ready"
@@ -67,7 +67,7 @@ const (
 	// 정규형이 모호해 한 계획의 승인이 다른 계획에서 통과할 수 있다(상류 sign.CheckPlanText). 확정된 계획이라 새 회차로 고친다.
 	RefusedPlanText = "plan-text"
 	// RefusedPlanFields — 계획(또는 서명한 계획)에 소스 근거나 가이드(상류 v0.11.0)가 있어 서명 · 생성하지 않았다(409).
-	// 계획이 손상된 것이 아니라 05 이 아직 그 내용을 검토 · 생성하지 않는다. 상류 pqcota-approve · pqcota-provision 으로 다룬다.
+	// 계획이 손상된 것이 아니라 04 이 아직 그 내용을 검토 · 생성하지 않는다. 상류 pqcota-approve · pqcota-provision 으로 다룬다.
 	RefusedPlanFields = "plan-fields"
 	// RefusedSessionText — 확정하면 만들어질 계획의 문자열에 NUL 문자가 있어 확정하지 않았다(409). 세션 · 계획 · 영수증은
 	// 그대로이고, 아직 확정 전이라 그 자리에서 값을 고친다.

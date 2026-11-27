@@ -298,10 +298,10 @@ approval step sits in between. That is not a gap left unjoined but **the boundar
 approves execution**. Joining them would not remove the step: upstream always verifies with the key it registered, so only who holds the
 private key moves.
 
-**Approving on the 05 screen makes this screen hold that private key.** The screen reads the approval key file (`pqcaton/approval.key` in
+**Approving on the 04 screen makes this screen hold that private key.** The screen reads the approval key file (`pqcaton/approval.key` in
 the user configuration folder, or the file given with `-approval-key`) and signs with the same upstream function as the commands above, so
 judging and approval happen on one machine by one user. An organization that must separate the person who judges from the person who
-approves does not use 05 and runs the commands below on the approver's machine.
+approves does not use 04 and runs the commands below on the approver's machine.
 
 ```bash
 # all three below are commands of the pqcota repository.

@@ -62,7 +62,7 @@ func startRefused(t *testing.T, s *server) {
 	}
 }
 
-// IC-U165 — **모두 확인되면 통과하고, 02 화면이 파일마다 판과 출처를 보인다.** 확인됨은 의존에도 replace 가 없는
+// IC-U165 — **모두 확인되면 통과하고, 01 화면이 파일마다 판과 출처를 보인다.** 확인됨은 의존에도 replace 가 없는
 // 빌드뿐이다(상류가 그런 릴리스 빌드를 낼 때).
 func TestCollectorVersionsVerified(t *testing.T) {
 	s, _ := versionReady(t, judged(collectorver.Verified, collectorver.ReasonOK, pin), false)

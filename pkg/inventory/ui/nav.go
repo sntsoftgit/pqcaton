@@ -15,12 +15,12 @@ const (
 	ScreenInventory = "/inventory"
 	// ScreenSettings — 설정. 절차의 단계가 아니고 아무 때나 여는 자리다.
 	ScreenSettings = "/settings"
-	// ScreenHistTopo — 03에서 여는 조회 화면. 절차의 단계가 아니다. HistTopoDotPath는 그 그림의 DOT 내려받기다.
+	// ScreenHistTopo — 02에서 여는 조회 화면. 절차의 단계가 아니다. HistTopoDotPath는 그 그림의 DOT 내려받기다.
 	ScreenHistTopo  = "/survey/history"
 	HistTopoDotPath = "/survey/history.dot"
-	// SurveyPicturePath — 03의 대조 그림 조각. 대조 결과와 표가 `dot`을 기다리지 않게 따로 받는다.
+	// SurveyPicturePath — 02의 대조 그림 조각. 대조 결과와 표가 `dot`을 기다리지 않게 따로 받는다.
 	SurveyPicturePath = "/survey/picture"
-	// SurveyDotPath — 03의 대조 그림의 DOT. 그림이 없어도(스크립트를 끈 브라우저에서도) 받을 수 있다.
+	// SurveyDotPath — 02의 대조 그림의 DOT. 그림이 없어도(스크립트를 끈 브라우저에서도) 받을 수 있다.
 	SurveyDotPath = "/survey/topology.dot"
 	// HistTopoPicturePath — 그 화면의 그림 조각. 표와 따로 그린다(조직 전체의 그림은 오래 걸릴 수 있다).
 	HistTopoPicturePath = "/survey/history/picture"
@@ -48,8 +48,9 @@ func MovedScreens() map[string]string {
 // **입력을 주지 않은 자리는 만들지 않는다** — 없는 것을 눌러 보게 하지 않는다.
 type Screens struct {
 	Decl, Scope, Survey, Inventory bool
-	// Observe — 관측 화면. 작업 폴더 모드에서만 연다(접근 정보의 자리가 그 폴더 안에 정해져 있다).
-	Observe bool
+	// Observe — 관측 화면. 선언이 있거나 작업 폴더 모드이면 연다. 선언만 준 경우에는 「대상 노드와 기대 상태」만 보인다.
+	// Remote — 접속 준비와 원격 관측을 쓸 수 있다(작업 폴더 모드. 접근 정보의 자리가 그 폴더 안에 정해져 있다).
+	Observe, Remote bool
 	// Approve — 프로비저닝 화면(승인 서명 · 플레이북 생성). 계획 출력이 있으면 연다(서명한 계획과 플레이북은 그 옆에 쓴다).
 	Approve bool
 	// NoReview — 판정 화면을 닫는다. 작업 폴더에 선언이 아직 없으면 판정할 것이 없다(기본은 연다).
@@ -130,38 +131,36 @@ func (f Final) text(l Lang) string {
 	return tStepUnknown.In(l)
 }
 
-// StepsFor — 절차 카드 다섯: 선언 → 관측 → 대조 → 판정 → 프로비저닝.
+// StepsFor — 절차 카드 넷: 관측 → 대조 → 판정 → 프로비저닝.
 //
-// **자산 스코프는 카드가 아니다.** 관측 단계에 속하고, 규칙 편집 · 서명 · 확정은 관측 화면에서 여는 화면(ScreenScope)에서
-// 한다. 그 화면에 있을 때는 관측 카드가 「지금 여기」다. 스코프의 상태와 확정 상태는 관측 화면의 구역이 보인다(ScopeState).
+// **선언과 자산 스코프는 카드가 아니다.** 둘 다 관측 단계에 속한다: 「대상 노드와 기대 상태」(ScreenDecl)와 「자산 스코프」
+// (ScreenScope)는 관측 화면에서 여는 화면이고, 그 화면에 있을 때는 관측 카드가 「지금 여기」다. 그 둘의 상태는 관측 화면의
+// 구역이 보인다(DeclState · ScopeState).
 //
 // **모든 카드를 채운다**(v0.22.0). 서버가 요청 하나에서 입력을 한 번 읽어 본문과 카드가 같은
 // 값을 쓴다. 한 화면의 입력을 읽지 못하면 그 카드만 「확인할 수 없음」이고 다른 카드와 본문은
 // 그대로 선다.
 func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 	const (
-		stepDecl = iota
-		stepObserve
+		stepObserve = iota
 		stepSurvey
 		stepReview
 		stepApprove
 	)
 	steps := []Step{
-		{Num: "01", Title: tTitleDecl.In(l), Href: ScreenDecl, Open: s.Decl},
-		{Num: "02", Title: tTitleObserve.In(l), Href: ScreenObserve, Open: s.Observe},
-		{Num: "03", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
-		{Num: "04", Title: tTitleReview.In(l), Href: ScreenReview, Open: !s.NoReview},
-		{Num: "05", Title: tTitleApprove.In(l), Href: ScreenApprove, Open: s.Approve},
+		{Num: "01", Title: tTitleObserve.In(l), Href: ScreenObserve, Open: s.Observe},
+		{Num: "02", Title: tTitleSurvey.In(l), Href: ScreenSurvey, Open: s.Survey},
+		{Num: "03", Title: tTitleReview.In(l), Href: ScreenReview, Open: !s.NoReview},
+		{Num: "04", Title: tTitleApprove.In(l), Href: ScreenApprove, Open: s.Approve},
 	}
 	for i := range steps {
-		steps[i].Here = here == steps[i].Href || (i == stepObserve && here == ScreenScope && s.Observe)
+		steps[i].Here = here == steps[i].Href || (i == stepObserve && s.Observe && (here == ScreenScope || here == ScreenDecl))
 		switch {
 		case !steps[i].Open:
 			steps[i].State = tStepClosed.In(l)
-		case i == stepDecl && st.DeclMissing:
+		case i == stepObserve && st.DeclMissing:
+			// 대상 노드를 아직 등록하지 않았다. 관측의 첫 일이 그것이다.
 			steps[i].State, steps[i].Dot = tStepDeclMissing.In(l), "warn"
-		case i == stepDecl && st.Decl != nil:
-			steps[i].State, steps[i].Dot = declState(l, *st.Decl)
 		case i == stepObserve && st.Observe != nil:
 			steps[i].State, steps[i].Dot = observeState(l, *st.Observe)
 		case i == stepSurvey && st.Survey != nil:
@@ -179,6 +178,21 @@ func StepsFor(l Lang, here string, s Screens, st StepState) []Step {
 		}
 	}
 	return steps
+}
+
+// DeclState — 선언(대상 노드와 기대 상태)의 한 줄 상태와 점 색. 관측 화면의 첫 구역이 보인다(카드가 보이던 것과 같은
+// 판정이다). 선언 화면이 열리지 않으면 둘 다 비어 있다.
+func DeclState(l Lang, s Screens, st StepState) (state, dot string) {
+	switch {
+	case !s.Decl:
+		return "", ""
+	case st.DeclMissing:
+		return tStepDeclMissing.In(l), "warn"
+	case st.Decl != nil:
+		return declState(l, *st.Decl)
+	}
+	// 선언을 읽지 못했다. 원인은 서버가 표준오류에 남긴다.
+	return tStepUnknown.In(l), ""
 }
 
 // ScopeState — 자산 스코프의 한 줄 상태 · 점 색 · 확정 상태. 관측 화면의 「자산 스코프」 구역이 보인다(카드가 보이던 것과 같은
@@ -204,6 +218,9 @@ func observeState(l Lang, s ObserveSummary) (string, string) {
 	// 도는 동안에는 어느 화면에서든 카드가 그것을 말한다. 다른 화면을 보다가 돌아올 곳을 알 수 있어야 한다.
 	if s.Running {
 		return tStepObserveRunning.In(l), "warn"
+	}
+	if s.NoRemote {
+		return tStepObserveNoRemote.In(l), ""
 	}
 	if s.Hosts == 0 {
 		return tStepObserveNoHosts.In(l), "warn"

@@ -3,7 +3,7 @@
 
 package ui
 
-// 05 프로비저닝 화면(승인 서명 · 플레이북 생성).
+// 04 프로비저닝 화면(승인 서명 · 플레이북 생성).
 //
 // **서명과 생성은 상류 함수가 한다.** 계획을 FINALIZED로 올리고 서명하는 일(`PrepareApproval` ·
 // `SignApproval`), 서명을 확인하고 플레이북을 만드는 일(`VerifyApprovals` · `Generate…Playbook`)은
@@ -18,10 +18,10 @@ import (
 	"time"
 )
 
-// ApproveView — 05 프로비저닝 화면(승인 서명 · 플레이북 생성).
+// ApproveView — 04 프로비저닝 화면(승인 서명 · 플레이북 생성).
 type ApproveView struct {
 	Page
-	// Plan — 04에서 확정한 계획. nil이면 아직 없다.
+	// Plan — 03에서 확정한 계획. nil이면 아직 없다.
 	Plan *PlanSummary
 	// Key — 승인 키(서명용 개인 키) 점검. Verify — 확인용 공개 키 파일 점검. 서명된 계획의 확인은 Key 가 쓸 만하면 그
 	// 공개 키로, 아니면 Verify 로 한다.
@@ -57,9 +57,9 @@ type ApproveView struct {
 	Run ProvRun
 }
 
-// 05가 계획을 서명 · 생성하지 않는 정책 쪽 사유. 검사 순서(계획 ID 형식 → 동일성 → 계획 파일 해시 → 정책 지문)와 같다.
+// 04가 계획을 서명 · 생성하지 않는 정책 쪽 사유. 검사 순서(계획 ID 형식 → 동일성 → 계획 파일 해시 → 정책 지문)와 같다.
 const (
-	PlanScopeBadID        = "bad-id"       // 계획 ID가 04가 쓰는 모양이 아니다
+	PlanScopeBadID        = "bad-id"       // 계획 ID가 03이 쓰는 모양이 아니다
 	PlanScopeIdentity     = "identity"     // 계획 ID의 조직이 이 작업 폴더의 조직이 아니다
 	PlanScopeNoReceipt    = "no-receipt"   // 그 세션의 확정 영수증이 이 상태 디렉토리에 없다
 	PlanScopePlanHash     = "plan-hash"    // 계획 파일이 그 영수증이 적은 내용이 아니다
@@ -105,7 +105,7 @@ const (
 	// KeyCollector — 수집기 서명용 키다(`pqcota-keygen -collector <ID>`의 출력: 검증 줄이 `<수집기 ID>:<공개 키>`). 승인 키와
 	// 용도가 달라 받지 않는다. 같은 키를 두 용도에 쓰면 수집기 결과에 서명할 수 있는 쪽이 계획도 승인할 수 있게 된다.
 	KeyCollector KeyState = "collector"
-	// 02 수집기 서명 키(collector-keys)의 상태. KeyNotCollector — 수집기 ID가 없는 키(플래그 없이 만든 승인 키 꼴).
+	// 01 수집기 서명 키(collector-keys)의 상태. KeyNotCollector — 수집기 ID가 없는 키(플래그 없이 만든 승인 키 꼴).
 	// KeyOtherCollector — 파일 이름과 다른 수집기 ID의 키. KeyLegacyList — 신뢰할 공개 키가 ID에 묶이지 않은 옛 목록 꼴.
 	KeyNotCollector   KeyState = "not-collector"
 	KeyOtherCollector KeyState = "other-collector"
@@ -170,7 +170,7 @@ type PlaybookState struct {
 	Files    []string
 }
 
-// ApproveSummary — 05 카드에 적을 것.
+// ApproveSummary — 04 카드에 적을 것.
 type ApproveSummary struct {
 	HasPlan  bool
 	Signed   SignState
@@ -220,7 +220,7 @@ func (v ApproveView) PublicKey() string {
 	return ""
 }
 
-// KeyLines — 05 의 키 점검 문구. canVerify 는 개인 키 없이도 서명된 계획을 확인할 수 있는가(확인용 공개 키가 쓸 만한가)다.
+// KeyLines — 04 의 키 점검 문구. canVerify 는 개인 키 없이도 서명된 계획을 확인할 수 있는가(확인용 공개 키가 쓸 만한가)다.
 func (k KeyCheck) Lines(l Lang, canVerify bool) []string {
 	after := tKeyNoVerify.In(l)
 	if canVerify {
@@ -316,12 +316,12 @@ func (v ApproveView) RulesetText() string {
 	}
 }
 
-// RenderApprove — 05 프로비저닝 화면(승인 서명 · 플레이북 생성).
+// RenderApprove — 04 프로비저닝 화면(승인 서명 · 플레이북 생성).
 func RenderApprove(w io.Writer, v ApproveView) error {
 	return approvePage(v).Render(context.Background(), w)
 }
 
-// approveState — 05 카드의 한 줄.
+// approveState — 04 카드의 한 줄.
 func approveState(l Lang, s ApproveSummary) (string, string) {
 	switch {
 	case !s.HasPlan:
@@ -349,7 +349,7 @@ func joinNames(names []string) string {
 	return out
 }
 
-// StepApproveIncompleteText — 빈 곳이 남은 05 카드의 한 줄(시험이 견준다).
+// StepApproveIncompleteText — 빈 곳이 남은 04 카드의 한 줄(시험이 견준다).
 func StepApproveIncompleteText(l Lang, n int) string { return tStepApproveIncomplete.F(l, n) }
 
 // shortLevel — 위임 수준을 L1 · L2 · L3로. 고르지 않았으면 빈 값이다(생성기가 기본 수준을 쓴다).

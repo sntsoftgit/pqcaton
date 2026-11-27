@@ -33,8 +33,8 @@ type SurveyView struct {
 	// DOT — 토폴로지 원문. `dot`이 없는 기계에서도 **무엇을 그리려 했는지는 보여 준다.**
 	DOT string
 
-	// Activation — 자산 스코프 화면에서 확정한 정책이 활성 정책과 달라 활성화할 수 있으면 그 두 지문(02의 활성화 구역과 같은 판정). 03은
-	// 이 대조가 활성 정책으로 한 것이라고 알리고 02의 활성화 구역으로 잇기만 한다. 활성화 양식은 02에만 둔다. 없으면 nil이다.
+	// Activation — 자산 스코프 화면에서 확정한 정책이 활성 정책과 달라 활성화할 수 있으면 그 두 지문(01의 활성화 구역과 같은 판정). 02는
+	// 이 대조가 활성 정책으로 한 것이라고 알리고 01의 활성화 구역으로 잇기만 한다. 활성화 양식은 01에만 둔다. 없으면 nil이다.
 	Activation *ActivationOffer
 	// Source — 어느 결과로 대조했는가(시각 · 가장 최근 실패 · 결과에 없는 선언 노드). 서버가 채운다. 없으면 nil이다.
 	Source *SurveySource
@@ -166,8 +166,8 @@ func gradeLabel(l Lang, grade string) string {
 type SurveySummary struct {
 	Confirmed, Undeclared, Unobserved int
 	// ToJudge — 판정 큐에 필수로 오르는 항목(reconcile.BuildReviewQueue의 Mandatory와 같은 대상). 선언과 어긋난
-	// 자산(UNDECLARED · UNOBSERVED) 가운데 정책이 뺀 것은 세지 않는다. 04의 「필수 판정」이 세는 것과 같은 항목이고,
-	// 04는 그 가운데 결론이 아직 빈 것만 센다.
+	// 자산(UNDECLARED · UNOBSERVED) 가운데 정책이 뺀 것은 세지 않는다. 03의 「필수 판정」이 세는 것과 같은 항목이고,
+	// 03은 그 가운데 결론이 아직 빈 것만 센다.
 	ToJudge int
 	// Excluded — 선언과 어긋났지만 정책이 관리 대상에서 빼 판정 큐에 오르지 않는 자산.
 	Excluded int
@@ -201,7 +201,7 @@ func (v SurveyView) Summary() SurveySummary {
 const surveyEditAnchor = "survey-detail"
 
 // RenderSurvey — 대조 화면(`/survey`).
-// RenderSurveyPicture — 03의 그림 조각. 화면이 뜬 뒤에 따로 받아 끼운다. svg는 검사를 지난 것이고, 비었으면 state가 까닭이며
+// RenderSurveyPicture — 02의 그림 조각. 화면이 뜬 뒤에 따로 받아 끼운다. svg는 검사를 지난 것이고, 비었으면 state가 까닭이며
 // 그때는 DOT 원문을 함께 보인다. unreadable이면 대조 결과를 읽지 못한 것이다.
 func RenderSurveyPicture(w io.Writer, l Lang, svg, state, dot string, unreadable bool) error {
 	return surveyPictureBody(l, svg, state, dot, unreadable).Render(context.Background(), w)

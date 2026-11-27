@@ -986,16 +986,19 @@ func TestDeclNextLinksToTheRightNode(t *testing.T) {
 // 번호와 이름만 있는 탭은 어디부터 볼지 말해 주지 않습니다. 아직 세지 않는 화면은
 // **그렇다고 적습니다** — 빈 자리는 「할 일이 없다」로 읽힙니다.
 func TestStepsCarryState(t *testing.T) {
-	open := ui.Screens{Decl: true, Scope: true, Survey: true, Inventory: true}
-	steps := ui.StepsFor(ui.KO, ui.ScreenDecl, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3, Unlinked: 2}})
-	if len(steps) != 5 {
-		t.Fatalf("카드가 %d개 — 절차는 다섯이다", len(steps))
+	// 선언은 카드가 아니다. 01 관측에 속하고, 그 화면(ScreenDecl)에 있을 때 관측 카드가 「지금 여기」다. 선언의 상태 한 줄은
+	// 관측 화면의 첫 구역이 보인다(DeclState).
+	open := ui.Screens{Decl: true, Scope: true, Observe: true, Survey: true, Inventory: true}
+	st := ui.StepState{Decl: &ui.DeclSummary{Nodes: 3, Unlinked: 2}, Observe: &ui.ObserveSummary{NoRemote: true}}
+	steps := ui.StepsFor(ui.KO, ui.ScreenDecl, open, st)
+	if len(steps) != 4 {
+		t.Fatalf("카드가 %d개 — 절차는 넷이다", len(steps))
 	}
-	if steps[0].State != "연결할 관측 이름 2개" || steps[0].Dot != "warn" {
-		t.Errorf("선언 카드가 %q(%s) — 센 값을 말해야 한다", steps[0].State, steps[0].Dot)
+	if state, dot := ui.DeclState(ui.KO, open, st); state != "연결할 관측 이름 2개" || dot != "warn" {
+		t.Errorf("선언의 상태가 %q(%s) — 센 값을 말해야 한다", state, dot)
 	}
-	if !steps[0].Here {
-		t.Error("지금 보고 있는 카드를 짚지 않았다")
+	if !steps[0].Here || steps[0].Num != "01" || steps[0].Href != ui.ScreenObserve {
+		t.Error("선언 화면에서 01 관측 카드를 짚지 않았다")
 	}
 	for _, st := range steps[1:] {
 		if st.State == "" {
@@ -1003,26 +1006,25 @@ func TestStepsCarryState(t *testing.T) {
 		}
 	}
 
-	done := ui.StepsFor(ui.KO, ui.ScreenDecl, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3}})
-	if done[0].Dot != "ok" {
-		t.Errorf("붙일 이름이 없는데 점이 %q 다", done[0].Dot)
+	if _, dot := ui.DeclState(ui.KO, open, ui.StepState{Decl: &ui.DeclSummary{Nodes: 3}}); dot != "ok" {
+		t.Errorf("붙일 이름이 없는데 점이 %q 다", dot)
 	}
 }
 
 // IC-U34 — **입력을 주지 않은 화면은 닫힌 카드다.**
 //
 // 없는 것을 눌러 보게 하지 않습니다. 다만 카드는
-// **자리를 비우지 않고 왜 닫혔는지 적습니다** — 다섯이 늘 보여야 절차가 몇 걸음인지 읽힙니다.
+// **자리를 비우지 않고 왜 닫혔는지 적습니다** — 넷이 늘 보여야 절차가 몇 걸음인지 읽힙니다.
 func TestStepsMarkWhatIsClosed(t *testing.T) {
-	steps := ui.StepsFor(ui.KO, ui.ScreenDecl, ui.Screens{Decl: true}, ui.StepState{})
-	if len(steps) != 5 {
+	steps := ui.StepsFor(ui.KO, ui.ScreenReview, ui.Screens{}, ui.StepState{})
+	if len(steps) != 4 {
 		t.Fatalf("닫혔다고 카드를 뺐다: %d개", len(steps))
 	}
-	if steps[1].Open || steps[1].State != "입력 파일을 주지 않았습니다" {
-		t.Errorf("관측 카드가 open=%v %q", steps[1].Open, steps[1].State)
+	if steps[0].Open || steps[0].State != "입력 파일을 주지 않았습니다" {
+		t.Errorf("관측 카드가 open=%v %q", steps[0].Open, steps[0].State)
 	}
 	// 판정은 입력이 따로 없어 늘 열린다.
-	if !steps[3].Open {
+	if !steps[2].Open {
 		t.Error("판정 카드가 닫혔다")
 	}
 }
@@ -1254,7 +1256,7 @@ func TestInventoryNextTellsWhenNothingIsFlagged(t *testing.T) {
 func TestInventoryIsNotAStep(t *testing.T) {
 	steps := ui.StepsFor(ui.KO, ui.ScreenInventory,
 		ui.Screens{Decl: true, Scope: true, Survey: true, Inventory: true}, ui.StepState{})
-	if len(steps) != 5 {
+	if len(steps) != 4 {
 		t.Fatalf("절차 카드가 %d개 — 조회가 섞였다", len(steps))
 	}
 	for _, st := range steps {

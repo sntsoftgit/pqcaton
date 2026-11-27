@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// 02의 이력 적재를 막는 것.
+// 01의 이력 적재를 막는 것.
 const (
 	IngestViewOnly    = "view-only"
 	IngestNoResults   = "no-results"
@@ -157,7 +157,7 @@ func (r IngestLast) ReasonText(l Lang) string {
 	return s
 }
 
-// IngestView — 02의 적재 구역.
+// IngestView — 01의 적재 구역.
 type IngestView struct {
 	// Configured — 화면에서 적재하도록 설정됐다(조회용 PQCOTA_READONLY_DSN과 적재용 PQCOTA_DSN이 둘 다 있다).
 	Configured bool
@@ -206,13 +206,13 @@ func IngestConfirmLines(l Lang, org, policy string, noPolicy, candidate bool, ac
 	return append(out, tIngestLineSameDB.In(l), tIngestLineAppendOnly.In(l))
 }
 
-// ObservePolicy — 02의 「활성화할 확정 정책: 재적재와 활성화」. Offer의 From · To가 현재 활성 정책과 활성화할 확정 정책의 지문이다.
+// ObservePolicy — 01의 「활성화할 확정 정책: 재적재와 활성화」. Offer의 From · To가 현재 활성 정책과 활성화할 확정 정책의 지문이다.
 // Ingest는 **활성화할 확정 정책으로** 적재한다면의 구역이다(노드별 기대 참조와 이력의 상태).
 type ObservePolicy struct {
 	Offer                     ActivationOffer
 	ActiveFile, CandidateFile string
 	Ingest                    IngestView
-	// ActivateRev — 활성화 양식에 실을 rev. 활성화는 판정 세션 · 두 정책 파일 · 결과 폴더를 함께 재므로 02의 rev와 다르다.
+	// ActivateRev — 활성화 양식에 실을 rev. 활성화는 판정 세션 · 두 정책 파일 · 결과 폴더를 함께 재므로 01의 rev와 다르다.
 	ActivateRev string
 }
 

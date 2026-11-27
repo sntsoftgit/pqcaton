@@ -68,7 +68,7 @@ type OrphanHost struct {
 	ID  string
 }
 
-// ObserveTargets — 02 관측의 「대상 노드의 접속 준비」. 줄은 **선언의 노드**이고, 접근 정보의 노드 ID는 선언의 노드 이름과
+// ObserveTargets — 01 관측의 「대상 노드의 접속 준비」. 줄은 **선언의 노드**이고, 접근 정보의 노드 ID는 선언의 노드 이름과
 // 글자 그대로(대소문자까지) 같아야 그 노드의 것이다. `observed_as`나 IP로 잇지 않는다.
 type ObserveTargets struct {
 	// DeclUnknown — 선언이 없거나 읽지 못했다. 접근 정보의 ID를 견줄 기준이 없어 관측을 시작하지 않는다.
@@ -100,7 +100,7 @@ func OrphanDetail(orphans []OrphanHost) string {
 	return strings.Join(parts, " · ")
 }
 
-// SurveySource — 03 대조가 **어느 결과로** 대조했는가.
+// SurveySource — 02 대조가 **어느 결과로** 대조했는가.
 type SurveySource struct {
 	// Empty — 결과 폴더에 대조할 결과가 없다(성공한 관측이 아직 없거나 결과를 받지 않았다).
 	Empty bool

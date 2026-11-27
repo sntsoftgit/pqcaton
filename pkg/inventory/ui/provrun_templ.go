@@ -8,7 +8,7 @@ package ui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// approveRun — 05의 대상 노드 미리 보기와 마지막 실행의 결과. 플레이북을 만든 뒤에만 보인다.
+// approveRun — 04의 대상 노드 미리 보기와 마지막 실행의 결과. 플레이북을 만든 뒤에만 보인다.
 //
 // 이 판에는 적용 버튼이 없다. 미리 보기가 낸 적용 권한은 상태만 보인다.
 func approveRun(v ApproveView) templ.Component {

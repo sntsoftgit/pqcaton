@@ -40,7 +40,7 @@ func writeJVM(t *testing.T, path, node string, services bool) {
 	}
 }
 
-// IC-U143 — **JCA 서비스 목록을 확인하지 못한 노드는 02 관측과 03 대조 화면에 두 말로 알린다.** 노드 이름과 정해진 문구가
+// IC-U143 — **JCA 서비스 목록을 확인하지 못한 노드는 01 관측과 02 대조 화면에 두 말로 알린다.** 노드 이름과 정해진 문구가
 // 그대로 보인다. 서비스 목록이 있거나(비어 있어도) JCA 결과가 없으면 경고가 없다. 결과가 화면의 관측에서 오지 않았어도 같다.
 func TestJCAWarningReachesBothScreens(t *testing.T) {
 	text := map[string]string{

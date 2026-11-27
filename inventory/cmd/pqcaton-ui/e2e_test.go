@@ -166,7 +166,7 @@ var fieldName = regexp.MustCompile(`name="((?:policy|plan|kind|target|level):[^"
 
 // IC-U104 — **빈 작업 폴더에서 확정까지 터미널 없이 간다(두 말).** 화면을 실제 HTTP로만 쓴다(쿠키 · 요청
 // 보호 토큰 · 같은 출처). 선언을 만들고 노드를 적어 저장하고, 관측 결과가 결과 폴더에 들어오면(pqcota 수집의
-// 자리) 판정 화면에 그 자산이 오른다. 결론 · 계획 칸 · 서명을 채워 확인을 거쳐 확정하면 03 카드가
+// 자리) 판정 화면에 그 자산이 오른다. 결론 · 계획 칸 · 서명을 채워 확인을 거쳐 확정하면 02 카드가
 // 「확정됨」이 되고, 계획 파일은 pqcota가 읽는 계약 형식(FinalizedPlan, IN_REVIEW)이다. 판정 원장도 남는다.
 func TestEmptyWorkspaceToFinalizedPlan(t *testing.T) {
 	for _, c := range []struct{ lang, empty, finalized string }{
@@ -205,8 +205,8 @@ func TestEmptyWorkspaceToFinalizedPlan(t *testing.T) {
 
 			// 4 · 5. 판정하고 확인을 거쳐 확정한다.
 			b.judgeAndFinalize()
-			if got := cards(t, b.open(ui.ScreenReview))["04"]; !strings.HasSuffix(got, "| "+c.finalized) {
-				t.Errorf("the 03 card is %q, want it %s", got, c.finalized)
+			if got := cards(t, b.open(ui.ScreenReview))["03"]; !strings.HasSuffix(got, "| "+c.finalized) {
+				t.Errorf("the 02 card is %q, want it %s", got, c.finalized)
 			}
 
 			raw, err := os.ReadFile(filepath.Join(ws, "plan.json"))
@@ -396,7 +396,7 @@ func sessionIDOf(t *testing.T, p string) string {
 
 // IC-U109 — **확정한 세션은 읽기 전용이고, 화면에서 새 회차를 연다.** 확정한 판정 화면은 칸이 모두 잠기고
 // (`fieldset disabled`) 저장 · 확정 단추가 없으며 「새 검토 시작」 단추(요청 보호 · rev)가 있다. 누르면 새 ID의
-// 세션이 서고, 결론은 옮겨 오고, 승인 서명은 비고, 03 카드는 「미확정」으로 돌아가 다시 고칠 수 있다. 옛 세션의
+// 세션이 서고, 결론은 옮겨 오고, 승인 서명은 비고, 02 카드는 「미확정」으로 돌아가 다시 고칠 수 있다. 옛 세션의
 // 확정 요청을 다시 보내도 「복구 필요」(503)가 아니다.
 func TestFinalizedSessionOpensANewRound(t *testing.T) {
 	ws := t.TempDir()
@@ -440,8 +440,8 @@ func TestFinalizedSessionOpensANewRound(t *testing.T) {
 	if !strings.Contains(page, `name="signature" value=""`) {
 		t.Error("the signature was carried over")
 	}
-	if got := cards(t, page)["04"]; !strings.HasSuffix(got, "| 미확정") {
-		t.Errorf("the 03 card is %q after the new round, want 미확정", got)
+	if got := cards(t, page)["03"]; !strings.HasSuffix(got, "| 미확정") {
+		t.Errorf("the 02 card is %q after the new round, want 미확정", got)
 	}
 
 	// 옛 세션의 확인 페이지를 다시 보낸다.
@@ -491,14 +491,14 @@ func TestRoundsAcrossARestart(t *testing.T) {
 		reviews = append(reviews, sessionIDOf(t, session))
 		scopes = append(scopes, sessionIDOf(t, scopeSession))
 		page := b.open(ui.ScreenReview)
-		if c, sc := cards(t, page), scopeLine(b.open(ui.ScreenObserve)); !strings.HasSuffix(c["04"], "| Finalized") || !strings.HasSuffix(sc, "finalization: Finalized") {
+		if c, sc := cards(t, page), scopeLine(b.open(ui.ScreenObserve)); !strings.HasSuffix(c["03"], "| Finalized") || !strings.HasSuffix(sc, "finalization: Finalized") {
 			t.Fatalf("after finalizing: %v, asset scope %q", c, sc)
 		}
 	}
 	newRounds := func() {
 		b.openNewRound(ui.ScreenReview, ui.ReviewNewPath)
 		b.openNewRound(ui.ScreenScope, ui.ScopeNewPath)
-		if c, sc := cards(t, b.open(ui.ScreenReview)), scopeLine(b.open(ui.ScreenObserve)); !strings.HasSuffix(c["04"], "| Not finalized") || !strings.HasSuffix(sc, "finalization: Not finalized") {
+		if c, sc := cards(t, b.open(ui.ScreenReview)), scopeLine(b.open(ui.ScreenObserve)); !strings.HasSuffix(c["03"], "| Not finalized") || !strings.HasSuffix(sc, "finalization: Not finalized") {
 			t.Fatalf("after the new rounds: %v, asset scope %q", c, sc)
 		}
 	}

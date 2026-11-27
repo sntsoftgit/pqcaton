@@ -104,7 +104,7 @@ var firstLink = regexp.MustCompile(`<body class="wb">\s*<a class="skip" href="#m
 
 // IC-UI46 — **지금 자리를 기계도 안다.** 첫 Tab이 닿는 자리는 「본문으로 건너뛰기」이고, 본문은
 // `<main id="main">` 하나다. 지금 단계 카드에 `aria-current="step"`, 조회 탭에 `aria-current="page"`가
-// 붙고 다른 카드에는 붙지 않는다. 자산 스코프 화면에는 카드가 없어 02 관측 카드가 지금 단계다.
+// 붙고 다른 카드에는 붙지 않는다. 자산 스코프 화면에는 카드가 없어 01 관측 카드가 지금 단계다.
 func TestCurrentPlaceIsMarked(t *testing.T) {
 	s := observedServer(t)
 	for _, sc := range ui.AllScreens() {
@@ -126,9 +126,9 @@ func TestCurrentPlaceIsMarked(t *testing.T) {
 		if steps != 1 || pages != 0 {
 			t.Errorf("%s: aria-current step %d, page %d; want 1 and 0", sc, steps, pages)
 		}
-		// 자산 스코프 화면에는 카드가 없다. 그 화면에서는 02 관측 카드가 지금 단계다.
+		// 「대상 노드와 기대 상태」 화면과 자산 스코프 화면에는 카드가 없다. 그 화면들에서는 01 관측 카드가 지금 단계다.
 		card := sc
-		if sc == ui.ScreenScope {
+		if sc == ui.ScreenScope || sc == ui.ScreenDecl {
 			card = ui.ScreenObserve
 		}
 		if !regexp.MustCompile(`href="` + card + `" aria-current="step"`).MatchString(body) {

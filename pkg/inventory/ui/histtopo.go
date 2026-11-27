@@ -33,7 +33,7 @@ const (
 // LocalSnapshot — 작업 폴더의 관측 결과에서 화면이 만든 스냅샷 하나의 지문.
 type LocalSnapshot struct{ Digest, Ruleset string }
 
-// HistTopoView — 「이력에서 앱별 통신 보기」. 03의 대조 그림과 다른 것을 본다: 판정 조직의 pqcota 이력에 **적재된** 관측에서
+// HistTopoView — 「이력에서 앱별 통신 보기」. 02의 대조 그림과 다른 것을 본다: 판정 조직의 pqcota 이력에 **적재된** 관측에서
 // 노드마다 어느 앱이 무엇과 통신했는지다. 선언과 대조하지 않는다.
 type HistTopoView struct {
 	Page

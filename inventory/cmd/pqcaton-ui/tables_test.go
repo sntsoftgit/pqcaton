@@ -51,7 +51,7 @@ func TestEveryTableScrollsInItsBox(t *testing.T) {
 		"body.wb .topbar { flex-wrap: wrap; gap: 8px 12px; padding: 10px 0; min-height: 0; }",
 		// 좁은 화면에서 단추를 양식에 담은 상자의 양식이 첫 칸을 넓혀 글 칸이 찌그러지지 않는다(v0.23.0부터 그랬다).
 		".ui-next .next > form { grid-column: 1 / -1; }",
-		// 04의 활성화 단계는 01~05 단계 카드(.steps)와 다른 이름이라 그 격자를 물려받지 않는다.
+		// 03의 활성화 단계는 01~04 단계 카드(.steps)와 다른 이름이라 그 격자를 물려받지 않는다.
 		".ui-next .activation-steps { display: block;"} {
 		if !strings.Contains(css, want) {
 			t.Errorf("the stylesheet has no %q", want)

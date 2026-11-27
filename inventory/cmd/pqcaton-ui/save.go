@@ -127,6 +127,7 @@ func (s *server) inputsFor(where string) []store.Input {
 		}
 		return s.approveInputs()
 	case ui.ScreenObserve, ui.HostsSavePath, ui.IngestConfirmPath, ui.IngestPath:
+		// 선언만 준 서버의 관측 화면에는 양식이 없다(「대상 노드와 기대 상태」만 보인다).
 		if s.hosts == "" {
 			return nil
 		}

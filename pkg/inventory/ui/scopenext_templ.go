@@ -633,8 +633,8 @@ func layerCard(l Lang, e LayerEdit) templ.Component {
 	})
 }
 
-// scopeActivationNext — 자산 스코프 화면에서 확정한 직후, 그 정책이 아직 대조에 반영되지 않았을 때의 다음 단계. **먼저 03에서 현재 활성
-// 정책으로 계산한 대조를 보게 하고**, 02의 재적재 · 활성화는 보조 링크로 둔다. 상류 재적재를 마치기 전에 바로 적용해도 된다는
+// scopeActivationNext — 자산 스코프 화면에서 확정한 직후, 그 정책이 아직 대조에 반영되지 않았을 때의 다음 단계. **먼저 02에서 현재 활성
+// 정책으로 계산한 대조를 보게 하고**, 01의 재적재 · 활성화는 보조 링크로 둔다. 상류 재적재를 마치기 전에 바로 적용해도 된다는
 // 인상을 주지 않으려는 것이다.
 func scopeActivationNext(v ScopeView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -745,7 +745,7 @@ func scopeActivationNext(v ScopeView) templ.Component {
 	})
 }
 
-// scopeRulesUnsaved — 자산 스코프 화면의 저장을 거절한 까닭. 01의 거절 상자와 같은 자리 · 같은 모양이고, 포커스를 여기 둔다.
+// scopeRulesUnsaved — 자산 스코프 화면의 저장을 거절한 까닭. 「대상 노드와 기대 상태」 화면의 거절 상자와 같은 자리 · 같은 모양이고, 포커스를 여기 둔다.
 // 저장을 막은 규칙 줄이 있으면 줄마다 그 칸으로 가는 링크를 보인다. 없으면(규칙을 고친 채 「저장만」 · 「확정」을 눌렀다)
 // 「규칙 저장」 버튼으로 가는 링크를 보인다.
 func scopeRulesUnsaved(v ScopeView) templ.Component {

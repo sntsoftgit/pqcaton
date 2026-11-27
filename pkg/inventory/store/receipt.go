@@ -441,7 +441,7 @@ var ErrNoReceipt = errors.New("store: no receipt for this session")
 // ErrOutputMismatch: 영수증이 그 파일을 출력으로 적지 않았거나, 파일의 지금 내용이 영수증이 적은 것과 다르다.
 var ErrOutputMismatch = errors.New("store: the file is not what this session finalized")
 
-// OutputReceipt — path를 **지금 내용 그대로** 쓴 세션 id의 영수증. 05가 계획 파일을 그 계획을 쓴 확정에 잇는 자리다.
+// OutputReceipt — path를 **지금 내용 그대로** 쓴 세션 id의 영수증. 04가 계획 파일을 그 계획을 쓴 확정에 잇는 자리다.
 // 영수증이 없으면 ErrNoReceipt, 영수증의 출력에 path가 없거나 해시가 다르면 ErrOutputMismatch다. 동일성이 쓸 수 없는
 // 모양이면 그 오류를 그대로 돌려준다.
 func (s *State) OutputReceipt(id Identity, path string) (*Receipt, error) {

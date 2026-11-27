@@ -47,7 +47,7 @@ func renderHist(t *testing.T, v ui.HistTopoView) string {
 // IC-UI76 — **이력 화면은 무엇을 읽었는지부터 밝히고, 표는 그림 없이도 읽힌다.**
 //
 // 조회한 조직과 노드마다의 이력 스냅샷을 적고, 작업 폴더의 것과 같은지는 지문으로만 가른다(일치 · 다름 · 비교 불가). 요약
-// 표는 고른 노드 하나로 좁혀지고, 기록 수를 03의 통신 건수라고 하지 않는다. 관측에서 온 문자열은 글자로만 나간다.
+// 표는 고른 노드 하나로 좁혀지고, 기록 수를 02의 통신 건수라고 하지 않는다. 관측에서 온 문자열은 글자로만 나간다.
 func TestHistoryTopologyStatesItsSourceAndReadsWithoutThePicture(t *testing.T) {
 	top := histTopology()
 	local := map[string]ui.LocalSnapshot{
@@ -68,10 +68,10 @@ func TestHistoryTopologyStatesItsSourceAndReadsWithoutThePicture(t *testing.T) {
 		}
 		body := renderHist(t, v)
 		words := []string{"일치", "다름", "비교 불가", "작업 폴더에 이 노드의 결과가 없습니다", "노드 3대 · 저장된 연결 기록 4건 · 노드로 잇지 못한 상대 2곳",
-			"03의 「협상된 통신」 건수와 다릅니다", "등록 노드 2대가 함께 쓰는 IP", "등록되지 않은 주소", "← 받았음", "→ 열었음", "↔ 방향 미확인", "DOT 내려받기"}
+			"02의 「협상된 통신」 건수와 다릅니다", "등록 노드 2대가 함께 쓰는 IP", "등록되지 않은 주소", "← 받았음", "→ 열었음", "↔ 방향 미확인", "DOT 내려받기"}
 		if l == ui.EN {
 			words = []string{"same", "different", "cannot compare", "the workspace has no results for this node",
-				"Nodes: 3 · stored connection records: 4 · peers not tied to a node: 2", "is not the “negotiated connections” count of 03",
+				"Nodes: 3 · stored connection records: 4 · peers not tied to a node: 2", "is not the “negotiated connections” count of 02",
 				"IP shared by registered nodes: 2", "unregistered address", "← accepted", "→ opened", "↔ not confirmed", "Download DOT"}
 		}
 		for _, s := range append(words, `data-hist-org>demo-corp<`, `data-compare="same"`, `data-compare="differ"`, `data-compare="none"`,

@@ -397,7 +397,8 @@ func get(t *testing.T, s *server, target string) *httptest.ResponseRecorder {
 // 쓰는 사람이 무엇이 되고 무엇이 안 되는지 헷갈린다.
 func TestDeclHiddenWithoutFile(t *testing.T) {
 	s, _ := newServer(t)
-	if body := get(t, s, "/review").Body.String(); strings.Contains(body, `href="/decl"`) {
+	// 선언은 01 관측에서 연다. 선언도 작업 폴더도 없으면 01 카드가 닫혀 있다.
+	if body := get(t, s, "/review").Body.String(); strings.Contains(body, `href="/decl`) || strings.Contains(body, `href="/observe"`) {
 		t.Error("선언 파일이 없는데 이동 링크가 보인다")
 	}
 	if code := get(t, s, "/decl").Code; code != http.StatusNotFound {
@@ -405,8 +406,11 @@ func TestDeclHiddenWithoutFile(t *testing.T) {
 	}
 
 	s2, _ := withDecl(t)
-	if body := get(t, s2, "/review").Body.String(); !strings.Contains(body, `href="/decl"`) {
-		t.Error("선언 파일을 줬는데 이동 링크가 없다")
+	if body := get(t, s2, "/review").Body.String(); !strings.Contains(body, `href="/observe"`) {
+		t.Error("선언 파일을 줬는데 01 관측으로 가는 카드가 없다")
+	}
+	if body := get(t, s2, ui.ScreenObserve+"?lang=ko").Body.String(); !strings.Contains(body, `href="/decl?lang=ko" data-decl-edit`) {
+		t.Error("01 관측에 「대상 노드와 기대 상태」로 가는 길이 없다")
 	}
 }
 
@@ -482,14 +486,14 @@ func TestDeclAbsentRowIsRemoved(t *testing.T) {
 
 // ── 절차 순서 ──────────────────────────────────────────────────────────────
 
-// IC-U13 — **탭 순서가 절차 순서다.** 선언 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을
+// IC-U13 — **탭 순서가 절차 순서다.** 관측 → 대조 → 리뷰 큐. 쓰는 사람이 다음에 무엇을
 // 할지 순서 자체가 말해 준다 — 뒤섞이면 화면이 절차를 가르치지 못한다.
 func TestNavFollowsProcedure(t *testing.T) {
 	s, dir := withDecl(t)
 	s.results = filepath.Join(dir, "results")
 	body := get(t, s, "/review").Body.String()
 
-	iDecl := strings.Index(body, `href="/decl"`)
+	iDecl := strings.Index(body, `href="/observe"`)
 	iSurvey := strings.Index(body, `href="/survey"`)
 	iReview := strings.Index(body, `href="/review"`)
 	if iDecl < 0 || iSurvey < 0 || iReview < 0 {
@@ -520,15 +524,15 @@ func TestTabsNameWhatTheScreensCall(t *testing.T) {
 	}
 }
 
-// IC-U14 — **첫 화면은 절차의 첫 자리다.** 선언이 있으면 거기서 시작한다.
+// IC-U14 — **첫 화면은 절차의 첫 자리다.** 선언이 있으면 01 관측에서 시작한다(대상 노드와 기대 상태가 그 첫 구역이다).
 func TestHomeGoesToFirstStep(t *testing.T) {
 	s, _ := withDecl(t)
 	w := get(t, s, "/")
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("상태 %d", w.Code)
 	}
-	if loc := w.Header().Get("Location"); !strings.HasPrefix(loc, "/decl") {
-		t.Errorf("첫 화면이 %q — 선언이 있으면 거기서 시작해야 한다", loc)
+	if loc := w.Header().Get("Location"); !strings.HasPrefix(loc, ui.ScreenObserve) {
+		t.Errorf("첫 화면이 %q — 선언이 있으면 01 관측에서 시작해야 한다", loc)
 	}
 
 	// 선언이 없으면 판정부터다.
@@ -572,9 +576,15 @@ func withScope(t *testing.T) (*server, string) {
 	return s, dir
 }
 
-// IC-U16 — **절차 카드는 선언 → 대조 → 판정 순이고, 자산 스코프는 카드가 아니다.** 스코프는 02 관측에 속한다. 관측 화면이
-// 없는 서버(작업 폴더 없이 띄웠다)에서는 카드 뒤의 번호 없는 링크가 자산 스코프 화면으로 잇는다.
+// IC-U16 — **절차 카드는 관측 → 대조 → 판정 순이고, 선언과 자산 스코프는 카드가 아니다.** 둘은 01 관측에 속하고 그 화면에서
+// 연다. 관측 화면이 없는 서버(선언도 작업 폴더도 없이 스코프만 줬다)에서는 카드 뒤의 번호 없는 링크가 자산 스코프 화면으로 잇는다.
 func TestScopeTabComesBeforeSurvey(t *testing.T) {
+	bare, _ := withScope(t)
+	if body := get(t, bare, "/review").Body.String(); !regexp.MustCompile(`<a class="inventory-tab[^"]*" href="/scope" data-scope-tab`).MatchString(body) ||
+		len(cards(t, body)) != 4 {
+		t.Error("with no observation screen the asset scope should be an unnumbered link after the four cards")
+	}
+
 	s, dir := withScope(t)
 	s.decl = filepath.Join(dir, "declaration.json")
 	if err := os.WriteFile(s.decl, []byte(declJSON), 0o644); err != nil {
@@ -582,14 +592,16 @@ func TestScopeTabComesBeforeSurvey(t *testing.T) {
 	}
 	s.results = filepath.Join(dir, "results")
 	body := get(t, s, "/review").Body.String()
-
 	i := func(h string) int { return strings.Index(body, `href="`+h+`"`) }
-	if !(i("/decl") < i("/survey") && i("/survey") < i("/review") && i("/review") < i("/scope")) {
-		t.Errorf("순서가 절차와 다르다: decl=%d survey=%d review=%d scope=%d",
-			i("/decl"), i("/survey"), i("/review"), i("/scope"))
+	if !(i("/observe") >= 0 && i("/observe") < i("/survey") && i("/survey") < i("/review")) {
+		t.Errorf("순서가 절차와 다르다: observe=%d survey=%d review=%d", i("/observe"), i("/survey"), i("/review"))
 	}
-	if !regexp.MustCompile(`<a class="inventory-tab[^"]*" href="/scope" data-scope-tab`).MatchString(body) || len(cards(t, body)) != 5 {
-		t.Error("with no observation screen the asset scope should be an unnumbered link after the five cards")
+	if strings.Contains(body, "data-scope-tab") || len(cards(t, body)) != 4 {
+		t.Error("with the observation screen open the asset scope should be reached from 01, not from an unnumbered link")
+	}
+	observe := get(t, s, ui.ScreenObserve+"?lang=ko").Body.String()
+	if !strings.Contains(observe, "data-decl-edit") || !strings.Contains(observe, "data-scope-edit") {
+		t.Error("01 does not lead to the target nodes screen and the asset scope screen")
 	}
 }
 

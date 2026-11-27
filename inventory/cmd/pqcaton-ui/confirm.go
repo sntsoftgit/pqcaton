@@ -102,7 +102,7 @@ func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, kind, actio
 	s.confirmPageWith(w, r, kind, action, saveAction, back, id, cur, payload, lines, files, "")
 }
 
-// signConfirmPage: 05 승인 서명의 확인 페이지. 저장만 하는 단추가 없고, 말이 서명의 것이다.
+// signConfirmPage: 04 승인 서명의 확인 페이지. 저장만 하는 단추가 없고, 말이 서명의 것이다.
 func (s *server) signConfirmPage(w http.ResponseWriter, r *http.Request, kind, action, back string,
 	id store.Identity, cur, payload string, lines []string, files []ui.FileRef) {
 	s.confirmPageWith(w, r, kind, action, "", back, id, cur, payload, lines, files, "sign")

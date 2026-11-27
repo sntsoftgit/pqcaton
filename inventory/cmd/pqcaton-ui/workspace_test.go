@@ -318,7 +318,7 @@ func TestBrokenWorkspaceOpensForDiagnostics(t *testing.T) {
 }
 
 // IC-U98 — **선언이 없는 작업 폴더에서 화면으로 선언을 만든다.** GET은 만들기 폼만 보이고 아무것도 만들지 않는다.
-// 대조 · 판정 · 조회는 닫혀 있고, 02 관측 화면의 「자산 스코프」 구역은 「아직 계층이 없습니다」다. POST가 빈 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다.
+// 대조 · 판정 · 조회는 닫혀 있고, 01 관측 화면의 「자산 스코프」 구역은 「아직 계층이 없습니다」다. POST가 빈 선언과 리뷰 세션을 만들고, 다시 보내면 덮어쓰지 않고 409다.
 func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 	ws := t.TempDir()
 	h, code, _, stderr := started(t, "-workspace", ws, "-no-browser")
@@ -337,11 +337,11 @@ func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 		t.Errorf("review before a declaration: %d, want 404", w.Code)
 	}
 	got := cards(t, body)
-	if !strings.HasPrefix(got["03"], "입력 파일을 주지 않았습니다") || !strings.HasPrefix(got["04"], "입력 파일을 주지 않았습니다") {
+	if !strings.HasPrefix(got["02"], "입력 파일을 주지 않았습니다") || !strings.HasPrefix(got["03"], "입력 파일을 주지 않았습니다") {
 		t.Errorf("survey and review are not closed: %v", got)
 	}
 	if line := scopeLine(do(h, newReq(http.MethodGet, "/observe?lang=ko", nil)).Body.String()); !strings.HasPrefix(line, "규칙 편집: 아직 계층이 없습니다") {
-		t.Errorf("the asset scope section of 02 is %q, want it to say there is no layer yet", line)
+		t.Errorf("the asset scope section of 01 is %q, want it to say there is no layer yet", line)
 	}
 
 	w := do(h, posted(ui.DeclCreatePath+"?lang=ko", url.Values{"org": {"acme"}}))
@@ -367,9 +367,9 @@ func TestDeclarationIsCreatedFromTheScreen(t *testing.T) {
 	}
 }
 
-// IC-U99 — **선언의 앞뒤가 안 맞는 자리를 01 화면이 칸 단위로 짚는다.** 어느 노드 · 엣지의 어느 칸이, 무엇이,
-// 그대로 두면 어떻게 되는지를 두 말로 보인다. 01 카드에 그 수가 오르고, 판정 화면의 경고는 `pqcaton-report`로
-// 보내지 않고 01 화면을 가리킨다.
+// IC-U99 — **선언의 앞뒤가 안 맞는 자리를 「대상 노드와 기대 상태」 화면이 칸 단위로 짚는다.** 어느 노드 · 엣지의 어느 칸이, 무엇이,
+// 그대로 두면 어떻게 되는지를 두 말로 보인다. 「대상 노드와 기대 상태」 화면 카드에 그 수가 오르고, 판정 화면의 경고는 `pqcaton-report`로
+// 보내지 않고 「대상 노드와 기대 상태」 화면을 가리킨다.
 func TestDeclProblemsAreListedByField(t *testing.T) {
 	ws := t.TempDir()
 	d := decl.Declaration{Org: "acme", Scope: []string{"web", "db"},
@@ -387,8 +387,8 @@ func TestDeclProblemsAreListedByField(t *testing.T) {
 		t.Fatalf("code %d\n%s", code, stderr)
 	}
 	for _, c := range []struct{ lang, head, ip, port, why, warn string }{
-		{"ko", "앞뒤가 맞지 않는 자리", "노드 web</strong> · IP: IP 주소가 아닙니다", "엣지 web → db</strong> · 포트: 포트가 0입니다", "그대로 두면", "01 선언 화면이 보여 줍니다"},
-		{"en", "Places that do not add up", "Node web</strong> · IP: not an IP address", "Edge web → db</strong> · Port: the port is 0", "If left as is", "The 01 declaration screen shows where"},
+		{"ko", "앞뒤가 맞지 않는 자리", "노드 web</strong> · IP: IP 주소가 아닙니다", "엣지 web → db</strong> · 포트: 포트가 0입니다", "그대로 두면", "「대상 노드와 기대 상태」 화면이 보여 줍니다"},
+		{"en", "Places that do not add up", "Node web</strong> · IP: not an IP address", "Edge web → db</strong> · Port: the port is 0", "If left as is", "The target nodes screen shows where"},
 	} {
 		body := do(h, newReq(http.MethodGet, "/decl?lang="+c.lang, nil)).Body.String()
 		for _, want := range []string{c.head, c.ip, c.port, c.why} {
@@ -402,12 +402,13 @@ func TestDeclProblemsAreListedByField(t *testing.T) {
 		if c.lang == "en" && hasHangul(visible(body)) {
 			t.Error("en: Korean on the English declaration screen")
 		}
-		if got := cards(t, body)["01"]; !strings.Contains(got, "2") {
-			t.Errorf("%s: the 01 card does not count the problems: %q", c.lang, got)
+		// 선언에는 카드가 없다. 그 수는 01 관측의 「대상 노드와 기대 상태」 구역에 오른다.
+		if got := declLine(do(h, newReq(http.MethodGet, "/observe?lang="+c.lang, nil)).Body.String()); !strings.Contains(got, "2") {
+			t.Errorf("%s: the target nodes section of 01 does not count the problems: %q", c.lang, got)
 		}
 		review := do(h, newReq(http.MethodGet, "/review?lang="+c.lang, nil)).Body.String()
 		if strings.Contains(review, "pqcaton-report") || !strings.Contains(review, c.warn) {
-			t.Errorf("%s: the review warning does not point at the 01 screen", c.lang)
+			t.Errorf("%s: the review warning does not point at the target nodes screen", c.lang)
 		}
 	}
 }
@@ -444,7 +445,7 @@ func TestEmptyResultsPointAtTheFolder(t *testing.T) {
 }
 
 // IC-U101 — **계층이 없는 작업 폴더에서 화면으로 계층을 만든다.** GET은 만들기 폼만 보이고 아무것도 만들지 않는다.
-// 02 관측 화면의 「자산 스코프」 구역은 「아직 계층이 없습니다」다. POST가 `layers/<이름>.csv`와 스코프 세션을 만들고 화면은 규칙 편집이
+// 01 관측 화면의 「자산 스코프」 구역은 「아직 계층이 없습니다」다. POST가 `layers/<이름>.csv`와 스코프 세션을 만들고 화면은 규칙 편집이
 // 된다. 같은 이름을 다시 보내면 덮어쓰지 않고 409, 틀린 이름은 400이다. 계층이 생기기 전의 스코프 저장 · 확정은
 // 404다. 명시 모드에는 이 주소가 없다.
 func TestLayerIsCreatedFromTheScreen(t *testing.T) {
@@ -455,7 +456,7 @@ func TestLayerIsCreatedFromTheScreen(t *testing.T) {
 		t.Fatalf("no create form:\n%s", body)
 	}
 	if line := scopeLine(do(h, newReq(http.MethodGet, "/observe?lang=ko", nil)).Body.String()); !strings.HasPrefix(line, "규칙 편집: 아직 계층이 없습니다") {
-		t.Errorf("the asset scope section of 02 = %q", line)
+		t.Errorf("the asset scope section of 01 = %q", line)
 	}
 	if ents, _ := os.ReadDir(filepath.Join(ws, "layers")); len(ents) != 0 {
 		t.Fatal("GET created a layer")

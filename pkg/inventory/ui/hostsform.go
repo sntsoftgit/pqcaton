@@ -14,7 +14,7 @@ import (
 	"github.com/randyinthedev-hash/pqcota-inventory/pkg/inventory"
 )
 
-// 02 관측의 접근 정보 양식. **줄은 선언의 노드가 정한다.**
+// 01 관측의 접근 정보 양식. **줄은 선언의 노드가 정한다.**
 //
 //   - 선언의 노드마다 한 줄이 있다. 노드 ID는 선언의 이름이고 고칠 수 없다. 접속 정보가 없는 노드의 줄은 비어 있고, 빈 줄은
 //     저장해도 hosts.csv에 생기지 않는다.

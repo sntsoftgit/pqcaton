@@ -31,7 +31,7 @@ const hostsCSV = "node_id,name,ip,port,ssh_user,ssh_key,ssh_pass,os,connection\n
 	"web,Web,10.0.0.2,22,deploy,/home/me/.ssh/id_ed25519,,linux,ssh\n" +
 	"db,DB,10.0.0.9,22,deploy,,s3cret-pw,linux,ssh\n"
 
-// declWithHosts: declJSON에 접근 정보의 노드(web · app · db)를 등록한 선언. 접근 정보의 노드 ID는 선언에 있어야 관측과 05의
+// declWithHosts: declJSON에 접근 정보의 노드(web · app · db)를 등록한 선언. 접근 정보의 노드 ID는 선언에 있어야 관측과 04의
 // 원격 실행이 시작된다(targets.go). 그 노드들에는 기대 자산을 적지 않았다.
 var declWithHosts = strings.Replace(declJSON, `"nodes":[{"name":"web-gw","ips":["10.0.0.1"]}]`,
 	`"nodes":[{"name":"web-gw","ips":["10.0.0.1"]},{"name":"web","ips":["10.0.0.2"]},{"name":"app","ips":["10.0.0.5"]},{"name":"db","ips":["10.0.0.9"]}]`, 1)

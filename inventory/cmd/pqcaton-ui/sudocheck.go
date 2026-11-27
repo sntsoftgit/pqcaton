@@ -3,7 +3,7 @@
 
 package main
 
-// 02 관측 전 노드 점검: 노드 계정의 sudo 정책(`LC_ALL=C sudo -n -l`)을 읽어, 서명 키를 보내도 되는지 판정한다.
+// 01 관측 전 노드 점검: 노드 계정의 sudo 정책(`LC_ALL=C sudo -n -l`)을 읽어, 서명 키를 보내도 되는지 판정한다.
 //
 // 키는 pipelining으로 모듈 꾸러미와 함께 sudo의 표준 입력에 실려 간다. 노드 sudo가 입출력 기록을 켰으면 그 기록에 키가 남는다
 // (검증: pqcaton-aai reports/2026-11-18-v0.31.0-key-delivery-paths.md). 그래서 기록 설정이 보이면 거절한다.

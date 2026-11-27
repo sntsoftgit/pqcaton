@@ -3,7 +3,7 @@
 
 package ui
 
-// 02 관측 화면의 접근 정보(`hosts.csv`).
+// 01 관측 화면의 접근 정보(`hosts.csv`).
 //
 // **파일 형식은 상류의 것이다.** 해석과 Ansible 인벤토리 생성은 `pqcota-inventory`의 ParseHosts ·
 // RenderAnsibleInventory가 하고, 여기서는 화면의 칸과 그 형식을 오간다. 형식을 따로 정하면 같은 파일을
@@ -49,7 +49,7 @@ type HostProblem struct {
 	What T
 }
 
-// ObserveView — 02 관측 화면.
+// ObserveView — 01 관측 화면.
 type ObserveView struct {
 	Page
 	Hosts []HostRow
@@ -66,6 +66,10 @@ type ObserveView struct {
 	Scope *ObserveScope
 	// Targets — 선언의 노드별 접속 준비와 관측 상태, 그리고 선언에 없는 접근 정보 행.
 	Targets ObserveTargets
+	// Decl — 첫 구역 「대상 노드와 기대 상태」. 선언 화면이 열리지 않으면 nil이다.
+	Decl *ObserveDecl
+	// Remote — 접속 준비와 원격 관측을 쓸 수 있다(작업 폴더 모드). 거짓이면 둘째 구역 대신 그 까닭 한 줄을 보인다.
+	Remote bool
 }
 
 // ObserveScope — 관측 화면의 「자산 스코프」 구역. 현재 활성 정책(파일 · 규칙 수 · 지문)과, 규칙 편집의 상태 · 확정 상태를
@@ -146,7 +150,7 @@ const (
 	// 확인 불가처럼 막고, -allow-unverified-collectors 로 허용하면 RunJarAllowed(경고)다. v0.30.0 전에는 판 정보가 없으면 경고만 했다.
 	RunJarUnverified RunItem = "jar-unverified"
 	RunJarAllowed    RunItem = "jar-allowed"
-	// RunWindowsUnsupported — 관측할 노드에 Windows가 있다. 이번 판의 02는 Windows 노드에 서명 키를 넘기지 않아 결과가 반영되지
+	// RunWindowsUnsupported — 관측할 노드에 Windows가 있다. 이번 판의 01은 Windows 노드에 서명 키를 넘기지 않아 결과가 반영되지
 	// 않으므로, Linux 관측을 다 돌린 뒤 거절되는 대신 실행 전에 막는다.
 	RunWindowsUnsupported RunItem = "windows-unsupported"
 	// RunCollectorKeys · RunCollectorVerify — 수집기 ID별 서명 키와 신뢰할 공개 키(collectorkeys.go). 없으면 시작하지 않는다.
@@ -339,6 +343,16 @@ type ObserveSummary struct {
 	Hosts int
 	// Running — 관측이 돌고 있거나 마무리하는 중이다. 카드에 「관측 중」을 적는다.
 	Running bool
+	// NoRemote — 작업 폴더 없이 선언만 열었다. 접속 준비와 원격 관측은 쓰지 않는다.
+	NoRemote bool
+}
+
+// ObserveDecl — 01 관측의 첫 구역 「대상 노드와 기대 상태」. 등록한 노드와 기대 자산 · 기대 통신의 수, 그 상태 한 줄, 그리고
+// 고치러 가는 길이다. 선언을 읽지 못했으면 Known이 거짓이고 수를 적지 않는다.
+type ObserveDecl struct {
+	Href, State, Dot     string
+	Known                bool
+	Nodes, Assets, Edges int
 }
 
 // Summary — 카드의 숫자. 접속 정보가 있는 줄만 센다(선언 노드의 빈 줄은 관측할 노드가 아니다).
@@ -432,7 +446,7 @@ func RenderRunPart(w io.Writer, l Lang, part string, st *RunStatus) error {
 	return runLive(l, st).Render(context.Background(), w)
 }
 
-// RenderObserve — 02 관측 화면.
+// RenderObserve — 01 관측 화면.
 func RenderObserve(w io.Writer, v ObserveView) error {
 	return observePage(v).Render(context.Background(), w)
 }

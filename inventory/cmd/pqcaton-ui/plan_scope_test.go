@@ -24,7 +24,7 @@ const (
 	policyB = "action,runtime,lib,app_key,note\nexclude,*,*,/usr/sbin/sshd*,managed by OS patching\nexclude,*,*,/usr/bin/python*,package runtime\n"
 )
 
-// setPolicy: 활성 정책(scope-assets.csv)을 쓴다. 05가 견주는 것은 이 파일이다.
+// setPolicy: 활성 정책(scope-assets.csv)을 쓴다. 04가 견주는 것은 이 파일이다.
 func setPolicy(t *testing.T, s *server, body string) {
 	t.Helper()
 	if s.scopeAssets == "" {
@@ -53,14 +53,14 @@ func signConfirm(t *testing.T, s *server) int {
 	return w.Code
 }
 
-// IC-P34~P39 — **05는 이 작업 폴더에서 확정한 계획만, 그 계획을 만든 정책이 지금 활성 정책일 때만 서명한다.** 검사
+// IC-P34~P39 — **04는 이 작업 폴더에서 확정한 계획만, 그 계획을 만든 정책이 지금 활성 정책일 때만 서명한다.** 검사
 // 순서는 계획 ID 형식 → 동일성 → 계획 파일 해시 → 정책 지문이다. 어긋나면 화면에 서명 양식이 없고 그 계획의 문제를
 // 적으며, 서명 확인은 409 `plan-scope`이고 작업 폴더의 어떤 파일도 바뀌지 않는다.
 //
 //   - IC-P34: 계획을 만든 정책과 지금 활성 정책이 다르다.
 //   - IC-P35: 형식 1 영수증(이 판보다 먼저 확정). 활성 정책을 비워 두어 **없는 지문을 빈 정책의 지문으로 읽으면 통과하는**
 //     자리에서 잰다.
-//   - IC-P36: 계획 ID가 04가 쓰는 모양이 아니다(옛 모양 · 세션이 빠짐 · 조직에 쓸 수 없는 글자).
+//   - IC-P36: 계획 ID가 03이 쓰는 모양이 아니다(옛 모양 · 세션이 빠짐 · 조직에 쓸 수 없는 글자).
 //   - IC-P37: 계획 ID의 조직이 이 작업 폴더의 조직이 아니다.
 //   - IC-P38: 그 세션의 영수증이 없다(다른 작업 폴더에서 옮겨 온 계획).
 //   - IC-P39: 확정한 뒤 계획 파일이 바뀌었다.
@@ -190,12 +190,12 @@ func TestPlansFromBeforeActivationAreNotSignedOrGenerated(t *testing.T) {
 
 // IC-U151 — **이 판보다 먼저 확정한 계획(형식 1 영수증)은 열람과 보관만 한다.** 서명 전이면 서명 양식이 없고 서명
 // 확인이 409다. 서명과 플레이북까지 만든 뒤라면 생성 양식이 없고 생성이 409이며, 플레이북은 바이트 그대로다. 화면은
-// 현재 정책에서 04의 새 판정 회차를 열어 다시 확정하라고 안내한다.
+// 현재 정책에서 03의 새 판정 회차를 열어 다시 확정하라고 안내한다.
 func TestPlansFinalizedBeforeThisVersionAreViewedOnly(t *testing.T) {
 	s, _ := keyReady(t)
 	bindPlanUnder(t, s, planJSON, "")
 	page := get(t, s, ui.ScreenApprove+"?lang=ko").Body.String()
-	if strings.Contains(page, `action="`+ui.SignConfirmPath+`"`) || !strings.Contains(page, "현재 정책에서 04의 새 판정 회차를 열어 다시 확정하십시오") {
+	if strings.Contains(page, `action="`+ui.SignConfirmPath+`"`) || !strings.Contains(page, "현재 정책에서 03의 새 판정 회차를 열어 다시 확정하십시오") {
 		t.Errorf("an old plan before signing: sign form offered, or no guidance")
 	}
 	if code := signConfirm(t, s); code != http.StatusConflict {

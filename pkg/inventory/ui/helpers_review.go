@@ -30,7 +30,7 @@ var deployLevels = []string{"L1", "L2", "L3"}
 
 // kindName — 조치 종류를 고르는 자리에 보일 이름: 그 말로 풀어 쓴 뜻과 계약 어휘의 짧은 꼴.
 // 「설정만 변경 (config_only)」. **값은 바꾸지 않는다.** 보내고 저장하는 것은 계약 어휘(`REMEDIATION_KIND_*`) 그대로다.
-// 짧은 꼴을 함께 적는 것은 계획 파일과 05 화면이 그 꼴로 적기 때문이다. 풀어 쓴 뜻이 없는 값은 짧은 꼴만 보인다.
+// 짧은 꼴을 함께 적는 것은 계획 파일과 04 화면이 그 꼴로 적기 때문이다. 풀어 쓴 뜻이 없는 값은 짧은 꼴만 보인다.
 func kindName(l Lang, k string) string {
 	if t, ok := kindNames[k]; ok {
 		return t.In(l) + " (" + shortKind(k) + ")"

@@ -15,7 +15,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// everyScreen: 화면 일곱이 모두 열리는 서버. 05에 보일 계획(검토 중)을 하나 둔다.
+// everyScreen: 화면 일곱이 모두 열리는 서버. 04에 보일 계획(검토 중)을 하나 둔다.
 func everyScreen(t *testing.T) *server {
 	t.Helper()
 	s, dir := fullServer(t)
@@ -29,7 +29,7 @@ func everyScreen(t *testing.T) *server {
 	return s
 }
 
-// planJSON: 04 확정이 쓰는 것과 같은 모양의 계획(검토 중, 조치 하나). 규칙 판과 근거(스냅샷 내용 지문)도 04가 싣는 그대로다.
+// planJSON: 03 확정이 쓰는 것과 같은 모양의 계획(검토 중, 조치 하나). 규칙 판과 근거(스냅샷 내용 지문)도 03이 싣는 그대로다.
 const planJSON = `{"id":"plan-1","status":"PLAN_STATUS_IN_REVIEW","scope":"acme","rulesetVersion":"` + review.RulesetVersion + `",` +
 	`"actions":[{"id":"a1","targetNodeId":"web","findingId":"f1","kind":"REMEDIATION_KIND_CONFIG_ONLY",` +
 	`"automationLevel":"DEPLOY_AUTOMATION_LEVEL_L2_STAGE_INSTALL","targetAlgorithm":"ML-KEM (FIPS 203)",` +
@@ -62,7 +62,7 @@ func TestDefaultAddressesAreTheScreens(t *testing.T) {
 
 // titles: 화면마다 브라우저 제목. 단계 카드의 이름과 같다.
 var titles = map[string]string{
-	ui.ScreenDecl: "선언", ui.ScreenScope: "암호 자산 스코프", ui.ScreenObserve: "관측", ui.ScreenSurvey: "대조", ui.ScreenApprove: "프로비저닝",
+	ui.ScreenDecl: "대상 노드와 기대 상태", ui.ScreenScope: "암호 자산 스코프", ui.ScreenObserve: "관측", ui.ScreenSurvey: "대조", ui.ScreenApprove: "프로비저닝",
 	ui.ScreenReview: "판정(리뷰 큐)", ui.ScreenInventory: "인벤토리·판정 이력",
 }
 

@@ -134,7 +134,7 @@ func (s *server) jarCheck(path string) *ui.RunCheck {
 	case f.State == collectorver.Unverified:
 		return &ui.RunCheck{Item: ui.RunJarUnverified, OK: false, Blocking: true, Detail: path, Files: rows}
 	}
-	// 확인됨: 02의 collector.jar 줄에 판과 커밋(짧게, 전체는 title)을 보인다.
+	// 확인됨: 01의 collector.jar 줄에 판과 커밋(짧게, 전체는 title)을 보인다.
 	return &ui.RunCheck{Item: ui.RunJar, OK: true, Blocking: false, Detail: path, Files: rows}
 }
 

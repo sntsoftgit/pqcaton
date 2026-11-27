@@ -18,6 +18,9 @@ templ declNextPage(v DeclView) {
 		<div class="ui-next">
 			@declRefused(v)
 			<p class="eyebrow">{ tNextDeclEyebrow.In(v.Page.Lang) }</p>
+			if v.Page.ObserveOpen() {
+				<p class="hint"><a href={ templ.SafeURL(ScreenObserve + "?" + LangParam + "=" + string(v.Page.Lang) + "#observe-decl") } data-decl-back>{ tScopeBackObserve.In(v.Page.Lang) }</a></p>
+			}
 			<h2>{ tNextDeclHead.In(v.Page.Lang) }</h2>
 			<p class="lede">{ tNextDeclLede.In(v.Page.Lang) }</p>
 			@declNextTodo(v)

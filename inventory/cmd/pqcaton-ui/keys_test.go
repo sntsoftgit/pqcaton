@@ -81,7 +81,7 @@ func TestExplicitKeyWins(t *testing.T) {
 	}
 }
 
-// IC-U172 — **-no-default-approval-key 는 기본 검색만 끈다.** 기본 위치에 키가 있어도 쓰지 않고, 05 은 「자동 검색을
+// IC-U172 — **-no-default-approval-key 는 기본 검색만 끈다.** 기본 위치에 키가 있어도 쓰지 않고, 04 은 「자동 검색을
 // 껐습니다」를 보이며 서명 양식을 내지 않는다.
 func TestNoDefaultKeyTurnsTheSearchOff(t *testing.T) {
 	dir := configDir(t)
@@ -154,7 +154,7 @@ func TestDefaultKeyIsUsed(t *testing.T) {
 	}
 }
 
-// IC-U175 — **기본 위치의 키가 잘못됐으면(권한 · 심볼릭 링크) 정상 시작하되, 05 과 표준 오류에 분명히 알리고 서명을 막는다.**
+// IC-U175 — **기본 위치의 키가 잘못됐으면(권한 · 심볼릭 링크) 정상 시작하되, 04 과 표준 오류에 분명히 알리고 서명을 막는다.**
 func TestDefaultKeyUnusable(t *testing.T) {
 	for name, setup := range map[string]func(t *testing.T, keyFile string){
 		"open": func(t *testing.T, keyFile string) {
@@ -478,7 +478,7 @@ func keygenV016(t *testing.T, collector string) (text, pub string) {
 		"PQCOTA_VERIFY_KEY=" + pub + "\n", pub
 }
 
-// IC-U208 — **05는 수집기 서명용 키를 승인 키로 받지 않는다(pqcota v0.15.0).** `pqcota-keygen -collector <ID>`의 출력은 승인 키로도,
+// IC-U208 — **04는 수집기 서명용 키를 승인 키로 받지 않는다(pqcota v0.15.0).** `pqcota-keygen -collector <ID>`의 출력은 승인 키로도,
 // 확인용 공개 키로도 「collector」이고 서명할 수 없다. 공개 키 자리에 `<ID>:<키>` 한 줄만 둔 확인용 공개 키 파일도 같다. 명시한
 // 키면 화면이 시작하지 않는다. 플래그 없는 v0.16.0 출력(주석 한 줄이 늘었다)은 지금처럼 승인 키와 확인용 공개 키로 쓸 수 있다.
 func TestApprovalRefusesCollectorKeys(t *testing.T) {

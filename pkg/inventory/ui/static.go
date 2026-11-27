@@ -54,29 +54,29 @@ const (
 	ReviewScopeActivateConfirmPath = "/review/scope-activate/confirm"
 	ReviewScopeActivatePath        = "/review/scope-activate"
 	ScopeNewPath                   = "/scope/new"
-	// HostsSavePath — 02 관측 화면의 접근 정보 저장.
+	// HostsSavePath — 01 관측 화면의 접근 정보 저장.
 	HostsSavePath = "/observe/hosts"
 	// RunPath — 관측 실행. GET은 상태 조각, POST는 시작이다. RunStopPath — 돌고 있는 실행을 멈춘다.
 	RunPath     = "/observe/run"
 	RunStopPath = "/observe/run/stop"
-	// SignPath — 05 화면의 승인 서명. GeneratePath — 서명한 계획으로 플레이북을 만든다.
+	// SignPath — 04 화면의 승인 서명. GeneratePath — 서명한 계획으로 플레이북을 만든다.
 	SignPath        = "/approve/sign"
 	SignConfirmPath = "/approve/sign/confirm"
 	GeneratePath    = "/approve/generate"
-	// IngestPath — 02의 이력 적재. GET은 도는 동안의 상태 조각, POST는 확인을 거친 적재 시작이다. IngestConfirmPath — 적재 전
+	// IngestPath — 01의 이력 적재. GET은 도는 동안의 상태 조각, POST는 확인을 거친 적재 시작이다. IngestConfirmPath — 적재 전
 	// 확인(아무것도 쓰지 않는다).
 	IngestPath        = "/observe/ingest"
 	IngestConfirmPath = "/observe/ingest/confirm"
-	// IngestRunParam — 02에서 보일 적재 실행의 ID. 없으면 가장 최근 것이다.
+	// IngestRunParam — 01에서 보일 적재 실행의 ID. 없으면 가장 최근 것이다.
 	IngestRunParam = "ingest_run"
 	// IngestPolicyField — 적재 양식에서 어느 정책으로 적재하는지. 없으면 활성 정책, IngestPolicyCandidate면 자산 스코프 화면에서 확정한 새
 	// 정책이다.
 	IngestPolicyField     = "policy"
 	IngestPolicyCandidate = "candidate"
-	// ActivateFromField — 활성화 양식을 어느 화면에서 냈는지. ActivateFromObserve면 거절과 끝난 뒤의 이동이 02로 간다.
+	// ActivateFromField — 활성화 양식을 어느 화면에서 냈는지. ActivateFromObserve면 거절과 끝난 뒤의 이동이 01로 간다.
 	ActivateFromField   = "from"
 	ActivateFromObserve = "observe"
-	// ProvRunPath — 05의 실행 상태 조각(GET). ProvPreviewPath — 대상 노드 미리 보기를 시작한다. ProvStopPath — 멈춘다.
+	// ProvRunPath — 04의 실행 상태 조각(GET). ProvPreviewPath — 대상 노드 미리 보기를 시작한다. ProvStopPath — 멈춘다.
 	ProvRunPath     = "/approve/run"
 	ProvPreviewPath = "/approve/preview"
 	ProvStopPath    = "/approve/run/stop"
@@ -99,7 +99,7 @@ const (
 	KindNode  = "node"
 	KindAsset = "asset"
 	KindEdge  = "edge"
-	// KindHost — 02 관측 화면의 접근 정보 한 줄.
+	// KindHost — 01 관측 화면의 접근 정보 한 줄.
 	KindHost = "host"
 )
 

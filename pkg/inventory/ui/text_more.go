@@ -42,17 +42,17 @@ func layerName(l Lang, name string) string {
 // 세션을 세우며 나온 경고의 한국어. **영어는 `review`에 있다.**
 func warningText(l Lang, w review.Warning) string {
 	if l != KO {
-		// 명령의 영어는 자리를 `pqcaton-report`로 보낸다. 화면은 01 선언 화면이 그 자리를 보인다.
+		// 명령의 영어는 자리를 `pqcaton-report`로 보낸다. 화면은 「대상 노드와 기대 상태」 화면이 그 자리를 보인다.
 		if w.Code == review.WarnDeclProblems {
 			return enCounts(fmt.Sprintf("%d places where the declaration does not add up. Left as is, reconciliation "+
-				"is wrong without any error. The 01 declaration screen shows where", w.Count))
+				"is wrong without any error. The target nodes screen shows where", w.Count))
 		}
 		return w.English()
 	}
 	switch w.Code {
 	case review.WarnDeclProblems:
 		return fmt.Sprintf("선언에 앞뒤가 맞지 않는 자리가 %d곳 있습니다. 그대로 두면 대조 결과가 오류 없이 "+
-			"틀립니다. 어느 자리인지는 01 선언 화면이 보여 줍니다", w.Count)
+			"틀립니다. 어느 자리인지는 「대상 노드와 기대 상태」 화면이 보여 줍니다", w.Count)
 	case review.WarnUnreadableResult:
 		return "건너뜀(읽을 수 없음): " + w.Detail
 	}

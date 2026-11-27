@@ -81,9 +81,9 @@ func TestRunProgressReadsOnlyWhatTheLogShows(t *testing.T) {
 	}
 }
 
-// IC-UI73 — **02는 상세 로그를 펼치지 않고도 지금 무엇을 하는지, 언제 시작했는지, 끝난 뒤 무엇을 할지를 보인다.** 도는
+// IC-UI73 — **01은 상세 로그를 펼치지 않고도 지금 무엇을 하는지, 언제 시작했는지, 끝난 뒤 무엇을 할지를 보인다.** 도는
 // 동안: 상태 줄에 시작 시각과 시간대, 지금 단계, 근거가 있는 노드의 상태, 중지 버튼이 있고 로그는 접힌 `details` 안에
-// 있다. 알림 영역은 요약뿐이고 다시 받는 상자 전체가 아니다. 성공: 03으로 가는 링크와 시작 · 종료 시각. 실패 · 중지: 멈춘
+// 있다. 알림 영역은 요약뿐이고 다시 받는 상자 전체가 아니다. 성공: 02로 가는 링크와 시작 · 종료 시각. 실패 · 중지: 멈춘
 // 단계, 시작 · 종료 시각, 정리 결과, 다시 하는 법. 두 말 모두.
 func TestRunStatusShowsProgressAboveTheLog(t *testing.T) {
 	render := func(l ui.Lang, st ui.RunStatus) string {
@@ -99,9 +99,9 @@ func TestRunStatusShowsProgressAboveTheLog(t *testing.T) {
 		goSurvey, stoppedAt, again, cleaned   string
 	}{
 		{ui.KO, "관측 중입니다(2026-11-23 07:08:04 UTC 시작)", "지금 단계 3/6: OpenSSL 런타임 관측", "pay-app: 실패", "중지", "상세 로그(", "UTC",
-			"03 대조에서 보기", "멈춘 단계: 3/6 OpenSSL 런타임 관측", "다시 실행합니다", "스테이징 폴더를 지웠습니다"},
+			"02 대조에서 보기", "멈춘 단계: 3/6 OpenSSL 런타임 관측", "다시 실행합니다", "스테이징 폴더를 지웠습니다"},
 		{ui.EN, "Observing (started at 2026-11-23 07:08:04 UTC)", "Step 3 of 6 now: observing the OpenSSL runtime", "pay-app: failed", "Stop", "Detailed log (", "UTC",
-			"See them in 03 Reconciliation", "Stopped at: 3 of 6, observing the OpenSSL runtime", "run it again", "staging folders on the nodes were removed"},
+			"See them in 02 Reconciliation", "Stopped at: 3 of 6, observing the OpenSSL runtime", "run it again", "staging folders on the nodes were removed"},
 	} {
 		body := render(c.lang, runAt(ui.RunRunning, runLog()))
 		for _, want := range []string{c.running, c.phase, c.node, "web-gw: ", ">" + c.stop + "<", c.log,
@@ -149,7 +149,7 @@ func TestRunStatusShowsProgressAboveTheLog(t *testing.T) {
 				}
 			}
 			if strings.Contains(body, c.goSurvey) {
-				t.Errorf("%s %s: a run that did not finish points at 03", c.lang, state)
+				t.Errorf("%s %s: a run that did not finish points at 02", c.lang, state)
 			}
 		}
 	}

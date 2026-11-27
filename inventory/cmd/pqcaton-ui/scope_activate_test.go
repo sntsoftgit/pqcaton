@@ -30,9 +30,9 @@ func finalizeCandidate(t *testing.T, s *server, body string) {
 	}
 }
 
-// IC-U157 — **새 정책 활성화.** 자산 스코프 화면에서 확정한 정책이 활성 정책과 다르면 04는 그 사실과 02로 가는 링크를 보이고(활성화
-// 양식은 없다) 02에 활성화 양식이 있다. pqcota를 새 정책으로 적재한 뒤 확인을 요청하면, 확인 페이지는 두 지문 · 바뀌는 파일 · 되돌리기 제한과 백업 위치를 적고 아무것도 쓰지 않는다. 활성화하면 활성 정책이 바뀌고 옛 정책과 옛 세션이 보관되며, 새 세션은 새 정책의 지문을 든다. 활성화 전에
-// 확정한 계획은 05에서 서명되지 않는다. 같은 활성화를 다시 요청하면 409 `scope-same`이고, 자산 스코프 화면에서 확정한 뒤 손으로 고친 후보는
+// IC-U157 — **새 정책 활성화.** 자산 스코프 화면에서 확정한 정책이 활성 정책과 다르면 03은 그 사실과 01로 가는 링크를 보이고(활성화
+// 양식은 없다) 01에 활성화 양식이 있다. pqcota를 새 정책으로 적재한 뒤 확인을 요청하면, 확인 페이지는 두 지문 · 바뀌는 파일 · 되돌리기 제한과 백업 위치를 적고 아무것도 쓰지 않는다. 활성화하면 활성 정책이 바뀌고 옛 정책과 옛 세션이 보관되며, 새 세션은 새 정책의 지문을 든다. 활성화 전에
+// 확정한 계획은 04에서 서명되지 않는다. 같은 활성화를 다시 요청하면 409 `scope-same`이고, 자산 스코프 화면에서 확정한 뒤 손으로 고친 후보는
 // 409 `scope-not-finalized`다.
 func TestActivateTheFinalizedPolicy(t *testing.T) {
 	s, _ := keyReady(t)
@@ -46,7 +46,7 @@ func TestActivateTheFinalizedPolicy(t *testing.T) {
 
 	page := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
 	if hasForm(page, ui.ReviewScopeActivateConfirmPath) || !strings.Contains(page, `href="`+ui.ScreenObserve+`#scope-activate"`) {
-		t.Fatal("the review screen should point to 02 and carry no activation form")
+		t.Fatal("the review screen should point to 01 and carry no activation form")
 	}
 	dir := filepath.Dir(s.path)
 	before := snapshotDir(t, dir)
@@ -100,9 +100,9 @@ func TestActivateTheFinalizedPolicy(t *testing.T) {
 	}
 }
 
-// IC-U158 — **03도 자산 스코프 화면에서 확정한 정책이 아직 활성화되지 않았다고 알린다.** 04의 안내 상자와 같은 판정이다. 확정한 후보가
-// 활성 정책과 다르면 03에 안내(두 지문, 이 대조가 활성 정책으로 한 것이라는 문장)와 02의 「활성화할 확정 정책」으로 가는 링크가 있고,
-// 활성화 양식은 없다. 04에도 같은 안내 상자가 있다. 세션이 잠겼거나(활성화 기록 없이 바뀐 정책), 후보를 손으로
+// IC-U158 — **02도 자산 스코프 화면에서 확정한 정책이 아직 활성화되지 않았다고 알린다.** 03의 안내 상자와 같은 판정이다. 확정한 후보가
+// 활성 정책과 다르면 02에 안내(두 지문, 이 대조가 활성 정책으로 한 것이라는 문장)와 01의 「활성화할 확정 정책」으로 가는 링크가 있고,
+// 활성화 양식은 없다. 03에도 같은 안내 상자가 있다. 세션이 잠겼거나(활성화 기록 없이 바뀐 정책), 후보를 손으로
 // 고쳤거나, 활성화한 뒤에는 알리지 않는다.
 func TestSurveyTellsThePolicyIsNotActiveYet(t *testing.T) {
 	s, _ := keyReady(t)
@@ -170,9 +170,9 @@ func TestSurveyTellsThePolicyIsNotActiveYet(t *testing.T) {
 	}
 }
 
-// IC-U159 — **자산 스코프 화면에서 확정한 직후, 그 정책이 활성화를 기다릴 때만 다음 단계를 잇는다.** 확정 알림과 활성화 대기(04와 같은 판정)가
-// 모두 있으면 자산 스코프 화면에 다음 단계와 두 링크(03의 현재 대조 · 02의 재적재와 활성화)가 있다. 알림이 없거나, 후보가 활성 정책과
-// 같거나, 04가 잠겼으면(활성화 기록 없이 바뀐 정책) 없다. 04의 안내 상자와 03의 단추는 「02에서 재적재 · 활성화 보기」다.
+// IC-U159 — **자산 스코프 화면에서 확정한 직후, 그 정책이 활성화를 기다릴 때만 다음 단계를 잇는다.** 확정 알림과 활성화 대기(03과 같은 판정)가
+// 모두 있으면 자산 스코프 화면에 다음 단계와 두 링크(02의 현재 대조 · 01의 재적재와 활성화)가 있다. 알림이 없거나, 후보가 활성 정책과
+// 같거나, 03이 잠겼으면(활성화 기록 없이 바뀐 정책) 없다. 03의 안내 상자와 02의 단추는 「01에서 재적재 · 활성화 보기」다.
 func TestScopeFinalizeLeadsToTheActivationSteps(t *testing.T) {
 	s, _ := keyReady(t)
 	observed(t, s.results, "web", "libssl.so.3", "/usr/sbin/nginx")
@@ -190,13 +190,13 @@ func TestScopeFinalizeLeadsToTheActivationSteps(t *testing.T) {
 	}
 	for _, lang := range []string{"ko", "en"} {
 		page, ok := next(t, lang, "&"+ui.MsgParam+"="+finalized)
-		want := map[string]string{"ko": "먼저 03에서 현재 활성 정책으로 계산한 대조 결과를 확인하십시오",
-			"en": "First review the reconciliation produced with the currently active policy in 03"}[lang]
+		want := map[string]string{"ko": "먼저 02에서 현재 활성 정책으로 계산한 대조 결과를 확인하십시오",
+			"en": "First review the reconciliation produced with the currently active policy in 02"}[lang]
 		if !ok || !strings.Contains(page, survey) || !strings.Contains(page, want) {
 			t.Fatalf("%s: no next step after finalizing a policy that waits for activation", lang)
 		}
 		if strings.Index(page, survey) > strings.Index(page, steps) {
-			t.Errorf("%s: the 03 link is not the first (main) action", lang)
+			t.Errorf("%s: the 02 link is not the first (main) action", lang)
 		}
 	}
 	if _, ok := next(t, "ko", ""); ok {
@@ -204,16 +204,16 @@ func TestScopeFinalizeLeadsToTheActivationSteps(t *testing.T) {
 	}
 
 	review := get(t, s, ui.ScreenReview+"?lang=ko").Body.String()
-	if !strings.Contains(review, "02에서 재적재 · 활성화 보기") || !strings.Contains(review, steps) || strings.Contains(review, "activation-steps") {
-		t.Error("the 04 notice box should point to 02 and show no steps of its own")
+	if !strings.Contains(review, "01에서 재적재 · 활성화 보기") || !strings.Contains(review, steps) || strings.Contains(review, "activation-steps") {
+		t.Error("the 03 notice box should point to 01 and show no steps of its own")
 	}
-	if page := get(t, s, ui.ScreenSurvey+"?lang=ko").Body.String(); !strings.Contains(page, "02에서 재적재 · 활성화 보기") {
-		t.Error("the reconciliation screen's button is not 「02에서 재적재 · 활성화 보기」")
+	if page := get(t, s, ui.ScreenSurvey+"?lang=ko").Body.String(); !strings.Contains(page, "01에서 재적재 · 활성화 보기") {
+		t.Error("the reconciliation screen's button is not 「01에서 재적재 · 활성화 보기」")
 	}
 
 	setPolicy(t, s, policyA+"exclude,*,*,/opt/legacy*,hand edit\n")
 	if _, ok := next(t, "ko", "&"+ui.MsgParam+"="+finalized); ok {
-		t.Error("the next step is shown while 04 is locked")
+		t.Error("the next step is shown while 03 is locked")
 	}
 	setPolicy(t, s, policyB)
 	if _, ok := next(t, "ko", "&"+ui.MsgParam+"="+finalized); ok {

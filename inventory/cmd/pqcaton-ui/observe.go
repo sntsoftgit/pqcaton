@@ -3,7 +3,7 @@
 
 package main
 
-// 02 관측 화면. 작업 폴더 모드에서만 열린다 — 접근 정보(`hosts.csv`)의 자리가 그 폴더 안에 정해져 있다.
+// 01 관측 화면. 작업 폴더 모드에서만 열린다 — 접근 정보(`hosts.csv`)의 자리가 그 폴더 안에 정해져 있다.
 //
 // **접근 정보는 비밀을 담을 수 있다**(`ssh_pass`). 그래서 화면은 비밀번호를 보이지도 받지도 않고, 파일은
 // 저장 경로가 소유자 전용(0600)으로 쓴다.
@@ -52,12 +52,18 @@ func (s *server) hostsInputs() []store.Input {
 }
 
 func (s *server) observe(w http.ResponseWriter, r *http.Request) {
-	if s.hosts == "" {
+	// 관측 화면은 작업 폴더 모드이거나 선언을 준 경우에 열린다. 선언만 준 경우(접근 정보의 자리가 없다)에는 「대상 노드와 기대
+	// 상태」만 보이고, 접속 준비와 원격 관측은 작업 폴더로 시작해야 한다고 알린다.
+	if s.hosts == "" && s.decl == "" {
 		notFound(w, r)
 		return
 	}
+	remote := s.hosts != ""
 	var hosts []inventory.Host
 	rev, err := s.snapshotScreen(ui.ScreenObserve, func() error {
+		if !remote {
+			return nil
+		}
 		var err error
 		hosts, err = s.loadHosts()
 		return err
@@ -71,10 +77,18 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 	page := s.nextPage(r, ui.ScreenObserve, s.hosts, st)
 	page.Rev = rev
 	v := ui.NewObserveView(hosts, page)
+	v.Remote = remote
+	v.Decl = s.observeDecl(page.Lang, st, wd)
+	if s.scope != "" || remote {
+		v.Scope = s.observeScope(page.Lang, st)
+	}
+	if !remote {
+		html(w, r, func(out io.Writer) error { return ui.RenderObserve(out, v) })
+		return
+	}
 	// 양식의 줄은 선언의 노드가 정한다(ui/hostsform.go). 선언에 없는 행은 파일의 줄 번호와 함께 따로 온다.
 	names, declKnown := s.declaredNodes()
 	v.Hosts = ui.HostFormRows(names, declKnown, hosts, s.hostLines(len(hosts)))
-	v.Scope = s.observeScope(page.Lang, st)
 	v.Targets = s.observeTargets(hosts, wd)
 	v.Run = s.runView()
 	if wd.res != nil {
@@ -85,6 +99,21 @@ func (s *server) observe(w http.ResponseWriter, r *http.Request) {
 		v.Policy = s.policyView()
 	}
 	html(w, r, func(out io.Writer) error { return ui.RenderObserve(out, v) })
+}
+
+// observeDecl: 01 관측의 첫 구역 「대상 노드와 기대 상태」. 선언 화면이 열리지 않으면 nil이다. 카드가 보이던 것과 같은 판정으로
+// 상태 한 줄을 채우고, 선언을 읽었으면 노드 · 기대 자산 · 기대 통신의 수를 적는다.
+func (s *server) observeDecl(l ui.Lang, st ui.StepState, wd *world) *ui.ObserveDecl {
+	sc := s.screens()
+	if !sc.Decl {
+		return nil
+	}
+	d := &ui.ObserveDecl{Href: ui.ScreenDecl}
+	d.State, d.Dot = ui.DeclState(l, sc, st)
+	if st.Decl != nil && wd != nil && wd.declErr == nil && !st.DeclMissing {
+		d.Known, d.Nodes, d.Assets, d.Edges = true, st.Decl.Nodes, st.Decl.Assets, len(wd.decl.Edges)
+	}
+	return d
 }
 
 // observeScope: 관측 화면의 「자산 스코프」 구역. 현재 활성 정책의 파일 · 규칙 수 · 지문과, 규칙 편집의 상태 · 확정 상태다.
@@ -148,7 +177,7 @@ func (s *server) runStatusFragment(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		// 실행이 끝났으면 화면을 통째로 새로 받게 한다. 이 상자 밖에도 달라지는 것이 있다: 02 카드의 「관측 중」이 걷히고
+		// 실행이 끝났으면 화면을 통째로 새로 받게 한다. 이 상자 밖에도 달라지는 것이 있다: 01 카드의 「관측 중」이 걷히고
 		// 「관측 시작」 양식이 다시 나온다. 조각만 갈면 새로 고칠 때까지 카드는 「관측 중」으로 남는다.
 		if st == nil || st.Over() {
 			w.Header().Set("HX-Refresh", "true")
@@ -261,7 +290,7 @@ func (s *server) hostsSave(w http.ResponseWriter, r *http.Request) {
 		page := s.nextPage(r, back, s.hosts, s.steps(s.load()))
 		page.Rev = r.PostForm.Get(ui.RevField)
 		// 받은 값 그대로 다시 그린다. 비밀번호는 양식에 없고(「있음」 표시뿐), 응답에도 싣지 않는다.
-		v := ui.ObserveView{Page: page, Hosts: ui.HostRowsFrom(prev, r.PostForm), Problems: problems, Run: s.runView()}
+		v := ui.ObserveView{Page: page, Hosts: ui.HostRowsFrom(prev, r.PostForm), Problems: problems, Run: s.runView(), Remote: true}
 		v.Targets = s.observeTargets(prev, nil)
 		writePage(w, http.StatusUnprocessableEntity, func(out io.Writer) error { return ui.RenderObserve(out, v) })
 		return

@@ -151,7 +151,7 @@ func latestDigest(t *testing.T, mem *history.MemStore, node string) string {
 	return history.ContentHashV1(snap)
 }
 
-// IC-U246 — **02에서 서명된 결과를 활성 정책으로 이력에 적재한다. 운영자가 확인을 거쳐 누를 때만.** 적재 전 화면은 노드마다
+// IC-U246 — **01에서 서명된 결과를 활성 정책으로 이력에 적재한다. 운영자가 확인을 거쳐 누를 때만.** 적재 전 화면은 노드마다
 // 「기록되지 않음」과 적재 확인으로 가는 버튼을 보인다. 확인 페이지는 조직 · 활성 정책의 지문 · 서명을 확인한 결과 파일 수 ·
 // 정책으로 제외되는 자산 수 · 노드별 기대 참조를 보이고 **아무것도 적재하지 않는다.** 적재 뒤 이력의 노드별 최신 참조가 화면이
 // 기대한 참조와 같고, 화면은 적재 전의 최신 참조(없음)와 지금의 것을 함께 보인다. 그 뒤에는 「이미 적재됨」이고 버튼이 없으며
@@ -205,7 +205,7 @@ func TestResultsAreIngestedOnlyWhenTheOperatorConfirms(t *testing.T) {
 	if !strings.Contains(settings, "PQCOTA_READONLY_DSN") || !strings.Contains(settings, `id="setting-ingest-dsn"`) {
 		t.Error("the settings screen should name the read variable and show the ingest row")
 	}
-	for name, text := range map[string]string{"02": page, "confirmation": confirm, "settings": settings} {
+	for name, text := range map[string]string{"01": page, "confirmation": confirm, "settings": settings} {
 		if strings.Contains(text, "s3cret-ingest") || strings.Contains(text, "db.internal") {
 			t.Errorf("%s shows the ingest connection", name)
 		}
@@ -247,7 +247,7 @@ func readOrEmpty(p string) string {
 	return string(b)
 }
 
-// IC-U247 — **결과 하나라도 서명이 없거나 맞지 않으면 묶음 전체를 적재하지 않는다.** 서명 뒤에 바뀐 결과가 하나 섞이면 02는
+// IC-U247 — **결과 하나라도 서명이 없거나 맞지 않으면 묶음 전체를 적재하지 않는다.** 서명 뒤에 바뀐 결과가 하나 섞이면 01은
 // 파일 · 수집기 ID · 사유를 보이고 버튼을 내지 않는다. 확인 요청은 409이고 이력에는 아무것도 쓰이지 않는다(맞는 서명의 결과도).
 // 서명이 없는 결과도 같다. 해독되지 않는 파일도 같다.
 func TestOneBadSignatureRefusesTheWholeSet(t *testing.T) {
@@ -610,7 +610,7 @@ func candidateServer(t *testing.T) (*server, *history.MemStore) {
 	return s, mem
 }
 
-// policySection: 02의 「활성화할 확정 정책」 구역(다음 구역 앞까지).
+// policySection: 01의 「활성화할 확정 정책」 구역(다음 구역 앞까지).
 func policySection(page string) string {
 	i := strings.Index(page, `id="scope-activate"`)
 	if i < 0 {
@@ -632,8 +632,8 @@ func candidateForm(t *testing.T, s *server) (url.Values, string) {
 	return hiddenFields(w.Body.String()), w.Body.String()
 }
 
-// IC-U253 — **02가 현재 활성 정책과 활성화할 확정 정책을 나란히 보이고, 재적재와 활성화는 따로다.** 자산 스코프 화면에서 확정한 정책이 활성 정책과
-// 다르면 02에 두 지문이 나란히 있고, 활성화할 확정 정책으로 재적재하는 단추가 있으며, 활성화 단추는 없다. 확인 페이지는 적재에 쓸
+// IC-U253 — **01이 현재 활성 정책과 활성화할 확정 정책을 나란히 보이고, 재적재와 활성화는 따로다.** 자산 스코프 화면에서 확정한 정책이 활성 정책과
+// 다르면 01에 두 지문이 나란히 있고, 활성화할 확정 정책으로 재적재하는 단추가 있으며, 활성화 단추는 없다. 확인 페이지는 적재에 쓸
 // 정책과 현재 활성 정책을 함께 적고 「적재가 끝나도 활성 정책은 바뀌지 않습니다」를 밝힌다.
 //
 //   - **활성화할 확정 정책으로 재적재가 도중에 실패하면 활성 정책은 그대로다.** 활성 정책 파일의 바이트가 같고, 활성화 단추가 없으며,
@@ -644,9 +644,9 @@ func candidateForm(t *testing.T, s *server) (url.Values, string) {
 //     아래에 접혀 있으며 펼치면 최신 참조가 돌아간다는 결과를 알린다.
 //   - **활성화 직전에 최신 참조가 바뀌면 거절된다.** 활성화 확인 페이지를 연 뒤 활성 정책으로 다시 적재되면(최신 참조가 옛 정책의
 //     것으로 돌아갔다) 활성화는 409 `activate-history-changed`이고 활성 정책 파일이 그대로다. 거절은 「정책을 활성화하지
-//     않았습니다」로 서고, 확인 후 최신 참조가 달라졌으며 현재 활성 정책은 그대로라고 적고, 02의 활성화 구역으로 잇는다. 02에는
+//     않았습니다」로 서고, 확인 후 최신 참조가 달라졌으며 현재 활성 정책은 그대로라고 적고, 01의 활성화 구역으로 잇는다. 01에는
 //     다시 재적재 단추가 나오고 활성화 단추가 없으며 접힌 구역도 없다.
-//   - 다시 재적재해 확인을 거쳐 활성화하면 활성 정책이 새 정책이 되고 02로 돌아오며 「활성화할 확정 정책」 구역이 없어진다.
+//   - 다시 재적재해 확인을 거쳐 활성화하면 활성 정책이 새 정책이 되고 01로 돌아오며 「활성화할 확정 정책」 구역이 없어진다.
 func TestReingestUnderTheNewPolicyAndActivationAreSeparate(t *testing.T) {
 	s, mem := candidateServer(t)
 	active := readFile(t, s.scopeAssets)
@@ -660,7 +660,7 @@ func TestReingestUnderTheNewPolicyAndActivationAreSeparate(t *testing.T) {
 	}
 	sec := policySection(observePage(t, s))
 	if a, c := strings.Index(sec, from), strings.Index(sec, to); a < 0 || c < a || !strings.Contains(sec, "현재 활성 정책") || !strings.Contains(sec, "활성화할 확정 정책") {
-		t.Fatalf("02 does not show the active and the newly finalized policy side by side:\n%s", sec)
+		t.Fatalf("01 does not show the active and the newly finalized policy side by side:\n%s", sec)
 	}
 	if !strings.Contains(sec, "data-policy-go") || strings.Contains(sec, "data-policy-activate>") || !strings.Contains(sec, "data-policy-activate-wait") {
 		t.Fatalf("before the re-ingest: want a re-ingest button and no activation button:\n%s", sec)
@@ -689,7 +689,7 @@ func TestReingestUnderTheNewPolicyAndActivationAreSeparate(t *testing.T) {
 	if w := postFormLang(t, s, ui.ReviewScopeActivateConfirmPath, "ko", url.Values{ui.ActivateFromField: {ui.ActivateFromObserve}}); w.Code != http.StatusConflict ||
 		!strings.Contains(w.Body.String(), `href="`+ui.ScreenObserve+`"`) || !strings.Contains(w.Body.String(), "정책을 활성화하지 않았습니다") ||
 		strings.Contains(w.Body.String(), "저장하지 않았습니다") {
-		t.Errorf("activation confirm after a failed re-ingest = %d, want 409 headed as an activation refusal and leading back to 02\n%s", w.Code, w.Body.String())
+		t.Errorf("activation confirm after a failed re-ingest = %d, want 409 headed as an activation refusal and leading back to 01\n%s", w.Code, w.Body.String())
 	}
 	same("after a refused activation")
 
@@ -765,7 +765,7 @@ func TestReingestUnderTheNewPolicyAndActivationAreSeparate(t *testing.T) {
 	aform, _ = activate()
 	w := postForm(t, s, ui.ReviewScopeActivatePath, aform)
 	if w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), ui.ScreenObserve) {
-		t.Fatalf("activate = %d to %q, want 303 back to 02\n%s", w.Code, w.Header().Get("Location"), w.Body.String())
+		t.Fatalf("activate = %d to %q, want 303 back to 01\n%s", w.Code, w.Header().Get("Location"), w.Body.String())
 	}
 	if readFile(t, s.scopeAssets) != policyAll {
 		t.Error("the active policy was not replaced by the newly finalized one")
@@ -773,16 +773,16 @@ func TestReingestUnderTheNewPolicyAndActivationAreSeparate(t *testing.T) {
 	// 활성화한 뒤: 위쪽에 현재 활성 정책의 지문이 있고, 지난 재적재의 기록은 여전히 맞는 말이다.
 	if page = observePage(t, s); !strings.Contains(page, "<p data-active-policy>현재 활성 정책: <code>"+to+"</code>") ||
 		!strings.Contains(page, "이 실행은 이력에만 적재했습니다") || strings.Contains(page, "data-ingest-fold") {
-		t.Errorf("after the activation 02 should show the active policy's fingerprint above the record:\n%s", section(page, "observe-ingest"))
+		t.Errorf("after the activation 01 should show the active policy's fingerprint above the record:\n%s", section(page, "observe-ingest"))
 	}
 	if policySection(page) != "" || !strings.Contains(page, `data-ingest="already"`) {
-		t.Errorf("after the activation 02 should have no pending policy and read already ingested under the active one:\n%s", section(page, "observe-ingest"))
+		t.Errorf("after the activation 01 should have no pending policy and read already ingested under the active one:\n%s", section(page, "observe-ingest"))
 	}
 }
 
 // IC-U254 — **활성화할 확정 정책으로 적재하는 확인은 그 정책에 묶인다.** 확인 페이지를 연 뒤 자산 스코프 화면에서 확정한 정책 파일이 바뀌면(확정이
 // 쓴 그대로가 아니다) 그 양식으로 보낸 적재는 409이고 아무것도 쓰이지 않는다. 활성 정책으로 적재하는 확인의 양식에 정책 칸만
-// 바꿔 보내도 거절된다(확인한 묶음이 아니다). 알 수 없는 정책 값도 거절된다. 자산 스코프 화면에서 확정한 정책이 활성 정책과 같으면 02에 그
+// 바꿔 보내도 거절된다(확인한 묶음이 아니다). 알 수 없는 정책 값도 거절된다. 자산 스코프 화면에서 확정한 정책이 활성 정책과 같으면 01에 그
 // 구역이 없고 활성화할 확정 정책으로 적재하는 확인 요청은 409다.
 func TestTheCandidateIngestIsBoundToItsPolicy(t *testing.T) {
 	s, mem := candidateServer(t)
@@ -814,7 +814,7 @@ func TestTheCandidateIngestIsBoundToItsPolicy(t *testing.T) {
 	savedSession(t, same)
 	finalizeCandidate(t, same, readFile(t, same.scopeAssets))
 	if policySection(observePage(t, same)) != "" {
-		t.Error("02 shows a pending policy although the finalized one equals the active one")
+		t.Error("01 shows a pending policy although the finalized one equals the active one")
 	}
 	if w := postForm(t, same, ui.IngestConfirmPath, withRev(url.Values{ui.IngestPolicyField: {ui.IngestPolicyCandidate}}, same.revFor(ui.ScreenObserve))); w.Code != http.StatusConflict {
 		t.Errorf("candidate ingest confirm with nothing pending = %d, want 409", w.Code)
@@ -822,9 +822,9 @@ func TestTheCandidateIngestIsBoundToItsPolicy(t *testing.T) {
 }
 
 // IC-U255 — **화면이 서명을 확인하지 못하는 결과를 터미널에서 다시 적재했어도, 이력이 맞으면 활성화할 수 있다.** 활성화의 조건은
-// 이력 대조뿐이고, 화면이 적재할 수 있는가(서명 · 검증 키)와는 따로다. 서명이 없는 결과가 섞였거나 검증 키가 없으면 02의
+// 이력 대조뿐이고, 화면이 적재할 수 있는가(서명 · 검증 키)와는 따로다. 서명이 없는 결과가 섞였거나 검증 키가 없으면 01의
 // 「이 정책으로 재적재」 단추는 나오지 않고 까닭이 보인다. 그 상태에서 이력이 아직 활성 정책의 것이면 활성화 단추도 없다.
-// 같은 결과를 확정 정책으로 (화면 밖에서) 적재하면 02가 노드별 상태로 그것을 확인하고 「정책 활성화 확인」을 내며, 확인을 거쳐
+// 같은 결과를 확정 정책으로 (화면 밖에서) 적재하면 01이 노드별 상태로 그것을 확인하고 「정책 활성화 확인」을 내며, 확인을 거쳐
 // 활성화된다. 막힌 까닭은 재적재가 더 필요 없으므로 사라진다.
 func TestActivationFollowsTheHistoryNotTheScreenIngest(t *testing.T) {
 	for name, blind := range map[string]func(t *testing.T, s *server) string{

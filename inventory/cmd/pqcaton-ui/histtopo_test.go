@@ -33,7 +33,7 @@ func useEndpoints(t *testing.T, eps inventory.EndpointLister, err error) *string
 	return asked
 }
 
-// IC-U227 — **03에서 「이력에서 앱별 통신 보기」를 열면 판정 조직의 pqcota 이력을 읽어 보이고, DOT은 `dot` 없이 받는다.**
+// IC-U227 — **02에서 「이력에서 앱별 통신 보기」를 열면 판정 조직의 pqcota 이력을 읽어 보이고, DOT은 `dot` 없이 받는다.**
 //
 // 화면은 판정 조직으로 연 이력과 그 조직의 등록 목록만 읽는다. 작업 폴더의 결과와 같은 정책으로 적재한 이력은 노드마다
 // 「일치」이고, 다른 정책으로 적재하면 「다름」이다. 이력이 비었거나 읽지 못해도 화면은 뜨고 어느 조직을 읽었는지 밝힌다.
@@ -41,7 +41,7 @@ func TestHistoryTopologyScreen(t *testing.T) {
 	s, _ := activationReady(t)
 	survey := get(t, s, ui.ScreenSurvey+"?lang=ko").Body.String()
 	if !strings.Contains(survey, `href="`+ui.ScreenHistTopo+`"`) || !strings.Contains(survey, "이력에서 앱별 통신 보기") {
-		t.Fatal("03 has no link to the history topology")
+		t.Fatal("02 has no link to the history topology")
 	}
 
 	meta := inventory.NewMemMetaStore()
@@ -120,7 +120,7 @@ const graphvizSVG = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 </svg>
 `
 
-// IC-U228 — **그림은 Graphviz가 그릴 때 쓰는 요소와 속성만 싣는다.** 03과 이력 화면이 같은 검사를 지난다.
+// IC-U228 — **그림은 Graphviz가 그릴 때 쓰는 요소와 속성만 싣는다.** 02와 이력 화면이 같은 검사를 지난다.
 //
 // 그림의 라벨에는 관측에서 온 문자열(노드 이름 · 주소 · 실행 파일 경로 · 라이브러리 이름)이 들어간다. 화면은 SVG를 문서
 // 안에 넣으므로 스크립트 · 이벤트 속성 · 링크 · 바깥 자원이 하나라도 있으면 싣지 않는다. 걸러 낸 뒤에 싣지 않고 통째로

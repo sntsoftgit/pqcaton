@@ -3,7 +3,7 @@
 
 package main
 
-// 02가 Ansible을 부르는 조건. **운영자의 ansible.cfg와 ANSIBLE_* 환경을 쓰지 않는다.**
+// 01이 Ansible을 부르는 조건. **운영자의 ansible.cfg와 ANSIBLE_* 환경을 쓰지 않는다.**
 //
 // 서명 키는 노드 표준 입력으로 넘어간다. 그 길에 운영자 설정이 끼면 키가 샌다는 것을 실험으로 확인했다(pqcaton-aai
 // reports/2026-11-18-v0.31.0-ansible-isolation.md): 운영자 폴더의 콜백 플러그인은 `no_log`여도 작업 인자로 키를 받았고, 설정이나
@@ -40,8 +40,8 @@ func ansibleConfig(dir string) []byte {
 	return ansibleConfigWith(dir, "", "ansible.builtin.default")
 }
 
-// ansibleConfigWith: callbackDir가 있으면 callback 플러그인만 그 폴더에서 읽고(05의 전용 callback), stdout은 표준 출력용
-// callback의 이름이다. 나머지 플러그인 경로는 02와 같이 빈 폴더다.
+// ansibleConfigWith: callbackDir가 있으면 callback 플러그인만 그 폴더에서 읽고(04의 전용 callback), stdout은 표준 출력용
+// callback의 이름이다. 나머지 플러그인 경로는 01과 같이 빈 폴더다.
 func ansibleConfigWith(dir, callbackDir, stdout string) []byte {
 	none := filepath.Join(dir, runPluginsNone)
 	var b strings.Builder
@@ -122,12 +122,12 @@ func writeRunConfig(dir string) error {
 	return os.WriteFile(filepath.Join(dir, runConfigName), ansibleConfig(dir), 0o600)
 }
 
-// provAnsibleCore: 05가 원격 실행(미리 보기 · 적용 · 재확인)을 허용하는 ansible-core 판. **하나뿐이다.**
+// provAnsibleCore: 04가 원격 실행(미리 보기 · 적용 · 재확인)을 허용하는 ansible-core 판. **하나뿐이다.**
 //
-// 05는 「이 노드에는 실행하지 않았다」고 말한다. 그 근거는 Ansible 안의 순서다: 작업을 알린 뒤(callback이 그 줄을 디스크에
+// 04는 「이 노드에는 실행하지 않았다」고 말한다. 그 근거는 Ansible 안의 순서다: 작업을 알린 뒤(callback이 그 줄을 디스크에
 // 내린 뒤)에야 그 작업을 노드에 보낸다. 이 순서를 확인한 판이 2.16.3이다(pqcaton-aai
 // reports/2026-11-26-provisioning-apply-path.md). 다른 판을 더할 때는 그 판에서 callback 호출 순서와 기록 중단 시의 동작을
-// 확인한 뒤에 넓힌다. 02 관측의 지원 범위는 이것과 무관하다.
+// 확인한 뒤에 넓힌다. 01 관측의 지원 범위는 이것과 무관하다.
 const provAnsibleCore = "2.16.3"
 
 var coreVersionLine = regexp.MustCompile(`^ansible-playbook \[core ([0-9][0-9A-Za-z.+-]*)\]`)

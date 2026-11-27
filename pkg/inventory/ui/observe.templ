@@ -2,7 +2,7 @@ package ui
 
 import "strconv"
 
-// observePage — 02 관측. 관측할 노드에 어떻게 붙는지(접근 정보)를 적는다.
+// observePage — 01 관측. 관측할 노드에 어떻게 붙는지(접근 정보)를 적는다.
 //
 // **비밀번호 칸은 없다.** 파일에 있으면 「있음」만 보이고 저장해도 그대로 남는다(observe.go).
 templ observePage(v ObserveView) {
@@ -11,45 +11,64 @@ templ observePage(v ObserveView) {
 			<p class="eyebrow">{ tObserveEyebrow.In(v.Page.Lang) }</p>
 			<h2>{ tObserveHead.In(v.Page.Lang) }</h2>
 			<p class="lede">{ tObserveLede.In(v.Page.Lang) }</p>
-			@hostProblemList(v)
-			<div class="metrics">
-				<div class={ "metric", templ.KV("warn", v.WithAccess() == 0) }>
-					<b>{ strconv.Itoa(v.WithAccess()) }</b>
-					<span>{ tObserveMetricHosts.In(v.Page.Lang) }</span>
+			// 세 구역: 대상 노드와 기대 상태 → 접속 준비와 관측 → 자산 스코프와 이력 적재.
+			if v.Decl != nil {
+				<div class="section-label" id="observe-decl">
+					<h3>{ tObsPartDecl.In(v.Page.Lang) }</h3>
 				</div>
+				@observeDecl(v.Page, *v.Decl)
+			}
+			<div class="section-label" id="observe-access">
+				<h3>{ tObsPartAccess.In(v.Page.Lang) }</h3>
 			</div>
-			<h3>{ tHostsHead.In(v.Page.Lang) }</h3>
-			<p class="lede">{ tHostsLede.In(v.Page.Lang) }</p>
-			@hostsForm(v)
-			@observeTargets(v.Page.Lang, v.Targets)
-			<h3 id="observe-run">{ tRunHead.In(v.Page.Lang) }</h3>
-			<p class="lede">{ tRunLede.In(v.Page.Lang) }</p>
-			// 실행 상태가 시작 전 점검보다 위다. 시작하면 이 자리(#observe-run)로 오는데, 점검 목록이 길어 좁은 화면에서는
-			// 그 아래에 둔 상태와 중지 버튼이 화면 밖에 있었다.
-			@runStatus(v.Page.Lang, v.Page.CSRF, v.Run.Status)
-			@runChecks(v.Page.Lang, v.Run)
-			if v.Run.CanStart() {
-				<form method="post" action={ templ.SafeURL(RunPath) } class="run-start">
-					<input type="hidden" name={ CSRFField } value={ v.Page.CSRF }/>
-					<label>
-						{ tRunWindow.In(v.Page.Lang) }
-						<input type="number" name="window" min="5" max="3600" value={ strconv.Itoa(v.Run.Window) }/>
-					</label>
-					<p class="hint" data-run-targets>{ tRunTargets.F(v.Page.Lang, len(v.Targets.Ready()), nodeNames(v.Targets.Ready())) }</p>
-					if len(v.Targets.Unready()) > 0 {
-						<p class="msg" data-run-omitted>{ tRunOmitted.F(v.Page.Lang, len(v.Targets.Unready()), nodeNames(v.Targets.Unready())) }</p>
-					}
-					<div class="actions">
-						<button class="primary">{ tRunStart.In(v.Page.Lang) }</button>
-						@tip(v.Page.Lang, tRunStartHint.In(v.Page.Lang))
+			if v.Remote {
+				@hostProblemList(v)
+				<div class="metrics">
+					<div class={ "metric", templ.KV("warn", v.WithAccess() == 0) }>
+						<b>{ strconv.Itoa(v.WithAccess()) }</b>
+						<span>{ tObserveMetricHosts.In(v.Page.Lang) }</span>
 					</div>
-				</form>
+				</div>
+				<h3>{ tHostsHead.In(v.Page.Lang) }</h3>
+				<p class="lede">{ tHostsLede.In(v.Page.Lang) }</p>
+				@hostsForm(v)
+				@observeTargets(v.Page.Lang, v.Targets)
+				<h3 id="observe-run">{ tRunHead.In(v.Page.Lang) }</h3>
+				<p class="lede">{ tRunLede.In(v.Page.Lang) }</p>
+				// 실행 상태가 시작 전 점검보다 위다. 시작하면 이 자리(#observe-run)로 오는데, 점검 목록이 길어 좁은 화면에서는
+				// 그 아래에 둔 상태와 중지 버튼이 화면 밖에 있었다.
+				@runStatus(v.Page.Lang, v.Page.CSRF, v.Run.Status)
+				@runChecks(v.Page.Lang, v.Run)
+				if v.Run.CanStart() {
+					<form method="post" action={ templ.SafeURL(RunPath) } class="run-start">
+						<input type="hidden" name={ CSRFField } value={ v.Page.CSRF }/>
+						<label>
+							{ tRunWindow.In(v.Page.Lang) }
+							<input type="number" name="window" min="5" max="3600" value={ strconv.Itoa(v.Run.Window) }/>
+						</label>
+						<p class="hint" data-run-targets>{ tRunTargets.F(v.Page.Lang, len(v.Targets.Ready()), nodeNames(v.Targets.Ready())) }</p>
+						if len(v.Targets.Unready()) > 0 {
+							<p class="msg" data-run-omitted>{ tRunOmitted.F(v.Page.Lang, len(v.Targets.Unready()), nodeNames(v.Targets.Unready())) }</p>
+						}
+						<div class="actions">
+							<button class="primary">{ tRunStart.In(v.Page.Lang) }</button>
+							@tip(v.Page.Lang, tRunStartHint.In(v.Page.Lang))
+						</div>
+					</form>
+				}
+				if v.Run.Current != nil {
+					<p class="lede">{ tRunCurrent.F(v.Page.Lang, v.Run.Current.Ended.Format("2006-01-02 15:04 MST"), v.Run.Current.Nodes, v.Run.Current.Files) }</p>
+				}
+				// 지금 결과가 화면의 관측에서 왔든 pqcota 수집에서 왔든 같은 경고를 낸다.
+				@jcaUnconfirmed(v.Page.Lang, v.Run.JCAUnconfirmed)
+			} else {
+				<p class="msg" data-observe="no-remote">{ tObsNoRemote.In(v.Page.Lang) }</p>
 			}
-			if v.Run.Current != nil {
-				<p class="lede">{ tRunCurrent.F(v.Page.Lang, v.Run.Current.Ended.Format("2006-01-02 15:04 MST"), v.Run.Current.Nodes, v.Run.Current.Files) }</p>
+			if v.Scope != nil || v.HasResults {
+				<div class="section-label" id="observe-scope-ingest">
+					<h3>{ tObsPartScope.In(v.Page.Lang) }</h3>
+				</div>
 			}
-			// 지금 결과가 화면의 관측에서 왔든 pqcota 수집에서 왔든 같은 경고를 낸다.
-			@jcaUnconfirmed(v.Page.Lang, v.Run.JCAUnconfirmed)
 			if v.Scope != nil {
 				@observeScope(v.Page, *v.Scope)
 			}
@@ -172,7 +191,7 @@ templ runSummary(l Lang, st *RunStatus) {
 	</div>
 }
 
-// runAfter — 요약 바로 아래: 도는 동안에는 중지 버튼, 끝났으면 다음에 할 일(03으로 가는 길, 또는 정리 결과와 다시 하는 법).
+// runAfter — 요약 바로 아래: 도는 동안에는 중지 버튼, 끝났으면 다음에 할 일(02로 가는 길, 또는 정리 결과와 다시 하는 법).
 templ runAfter(l Lang, csrf string, st *RunStatus) {
 	if st.State == RunRunning {
 		<form method="post" action={ templ.SafeURL(RunStopPath) }>
@@ -404,7 +423,7 @@ templ runProcs(l Lang, procs []ProcInfo) {
 	@tip(l, tProcRecheckHint.In(l))
 }
 
-// observeScope — 02 관측의 「자산 스코프」. 현재 활성 정책의 지문을 여기서 보이고(아래 적재 구역과 지난 적재 기록이 이 값에
+// observeScope — 01 관측의 「자산 스코프」. 현재 활성 정책의 지문을 여기서 보이고(아래 적재 구역과 지난 적재 기록이 이 값에
 // 견줘 읽힌다), 규칙 편집 · 서명 · 확정은 자산 스코프 화면에서 한다.
 templ observeScope(p Page, v ObserveScope) {
 	<h3 id="observe-scope">{ tObsScopeHead.In(p.Lang) }</h3>
@@ -451,5 +470,23 @@ templ observeTargets(l Lang, t ObserveTargets) {
 			</table>
 		</div>
 	}
+}
+
+// observeDecl — 01 관측의 첫 구역. 관측할 대상(노드)과 그 노드에 있어야 할 것(기대 자산 · 기대 통신)은 여기서 등록한다.
+// 접속 정보는 같은 노드에 나중에 채운다. 고치는 일은 「대상 노드와 기대 상태」 화면에서 한다.
+templ observeDecl(p Page, v ObserveDecl) {
+	<p class="lede">{ tObsDeclLede.In(p.Lang) }</p>
+	if v.Known {
+		<p data-decl-counts>{ tObsDeclCounts.F(p.Lang, v.Nodes, v.Assets, v.Edges) }</p>
+	}
+	<p data-decl-state>
+		if v.Dot != "" {
+			<span class={ "dot", v.Dot }></span>
+		}
+		{ v.State }
+	</p>
+	<div class="actions">
+		<a class="quiet" href={ templ.SafeURL(v.Href + "?" + LangParam + "=" + string(p.Lang)) } data-decl-edit>{ tObsDeclEdit.In(p.Lang) }</a>
+	</div>
 }
 

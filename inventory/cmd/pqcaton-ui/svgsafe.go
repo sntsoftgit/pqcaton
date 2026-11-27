@@ -181,7 +181,7 @@ var dotCache struct {
 }
 
 // renderDOT — `dot`이 있으면 SVG로 그리고, safeSVG를 지난 것만 돌려준다. 그리지 못했으면 빈 값과 까닭을 돌려주고 화면이
-// 원문을 보인다. 03과 이력 화면이 함께 쓴다.
+// 원문을 보인다. 02와 이력 화면이 함께 쓴다.
 //
 // **의존성이 아니라 있으면 좋은 것이다.** 없다고 화면이 깨지면 표준 라이브러리만 쓴다는 약속이 무의미해진다.
 func renderDOT(dot string) (svg, state string) {

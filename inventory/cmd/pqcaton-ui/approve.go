@@ -3,7 +3,7 @@
 
 package main
 
-// 05 프로비저닝 화면(승인 서명 · 플레이북 생성). 서명한 계획과 플레이북은 plan.json 옆에 쓴다(작업 폴더 모드면 작업 폴더다).
+// 04 프로비저닝 화면(승인 서명 · 플레이북 생성). 서명한 계획과 플레이북은 plan.json 옆에 쓴다(작업 폴더 모드면 작업 폴더다).
 //
 // **서명 · 확인 · 생성은 상류 함수다.** pqcota-approve와 pqcota-provision이 하는 일을 같은 함수로 한다
 // (provisioning.PrepareApproval · sign.SignApproval · sign.VerifyApprovals · provisioning.Generate…Playbook).
@@ -49,7 +49,7 @@ const (
 	kindArchive   = "archive"
 )
 
-// 05 화면이 쓰는 자리. 계획 파일 옆이고 이름은 계획 파일을 따른다(plan.json → plan.signed.json · plan.provision.yml ·
+// 04 화면이 쓰는 자리. 계획 파일 옆이고 이름은 계획 파일을 따른다(plan.json → plan.signed.json · plan.provision.yml ·
 // plan.rollback.yml). 명시 모드에서 한 폴더에 계획을 여럿 두어도 서로 덮지 않는다. 계획 출력이 없으면 모두 비어 있다.
 func (s *server) signedPath() string    { return s.besidePlan(".signed.json") }
 func (s *server) provisionPath() string { return s.besidePlan(".provision.yml") }
@@ -62,7 +62,7 @@ func (s *server) besidePlan(suffix string) string {
 	return strings.TrimSuffix(s.planOut, filepath.Ext(s.planOut)) + suffix
 }
 
-// approveInputs: 05 화면이 그려질 때 읽는 것. 서명 · 생성 · 보관 양식의 rev가 덮는다. **승인 키도 넣는다** — 화면이
+// approveInputs: 04 화면이 그려질 때 읽는 것. 서명 · 생성 · 보관 양식의 rev가 덮는다. **승인 키도 넣는다** — 화면이
 // 보인 키와 서명하는 키가 다르면(그 사이 파일이 바뀌면) 오래된 화면으로 거절한다.
 func (s *server) approveInputs() []store.Input {
 	in := []store.Input{{Name: "plan", Path: s.planOut}, {Name: "signed", Path: s.signedPath()},
@@ -73,7 +73,7 @@ func (s *server) approveInputs() []store.Input {
 	if s.verifyKey != "" {
 		in = append(in, store.Input{Name: "approval-verify-key", Path: s.verifyKey})
 	}
-	// **활성 정책도 넣는다.** 05는 계획을 만든 정책과 이것을 견주므로, 화면을 그린 뒤 정책이 바뀌면 오래된 화면이다.
+	// **활성 정책도 넣는다.** 04는 계획을 만든 정책과 이것을 견주므로, 화면을 그린 뒤 정책이 바뀌면 오래된 화면이다.
 	if s.scopeAssets != "" {
 		in = append(in, store.Input{Name: "scope-assets", Path: s.scopeAssets})
 	}
@@ -223,7 +223,7 @@ func verifyWith(public string, signed *provisioningv1.FinalizedPlan) sign.Approv
 	return sign.VerifyApprovals(keys, signed)
 }
 
-// approveModel: 05 화면 모델. 카드도 같은 것을 쓴다.
+// approveModel: 04 화면 모델. 카드도 같은 것을 쓴다.
 func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	v := ui.ApproveView{Page: page, Writable: s.st != nil && !s.recovering && len(s.diag) == 0}
 	v.Key, _ = s.readKey()
@@ -251,7 +251,7 @@ func (s *server) approveModel(page ui.Page) (ui.ApproveView, error) {
 	if sign.CheckPlanText(plan) != nil {
 		v.TextProblem = true
 	}
-	// 소스 근거 · 가이드가 든 계획은 05 이 아직 검토 · 생성하지 않는다(planfields.go). 네 자리가 같은 판정을 쓴다.
+	// 소스 근거 · 가이드가 든 계획은 04 이 아직 검토 · 생성하지 않는다(planfields.go). 네 자리가 같은 판정을 쓴다.
 	if checkPlanFields(plan) != nil {
 		v.FieldsProblem = true
 	}
@@ -673,7 +673,7 @@ func (s *server) approveGenerate(w http.ResponseWriter, r *http.Request) {
 			if err := sign.CheckPlanText(pre); err != nil {
 				return nil, err
 			}
-			// 서명한 계획에 소스 근거 · 가이드가 있으면 05 은 만들지 않는다(GenerateProvisioningPlaybook 은 그것을 싣지 않는다).
+			// 서명한 계획에 소스 근거 · 가이드가 있으면 04 은 만들지 않는다(GenerateProvisioningPlaybook 은 그것을 싣지 않는다).
 			if err := checkPlanFields(pre); err != nil {
 				return nil, err
 			}

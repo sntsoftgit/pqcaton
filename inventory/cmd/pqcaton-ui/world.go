@@ -166,6 +166,10 @@ func (s *server) steps(wd *world) ui.StepState {
 			st.Scope = &got
 		}
 	}
+	if s.hosts == "" && s.decl != "" {
+		// 작업 폴더 없이 선언만 열었다. 관측 카드는 열리되 접속 · 관측은 쓰지 않는다.
+		st.Observe = &ui.ObserveSummary{NoRemote: true}
+	}
 	if s.hosts != "" {
 		if hosts, err := s.loadHosts(); err != nil {
 			unavailable("observe", err)

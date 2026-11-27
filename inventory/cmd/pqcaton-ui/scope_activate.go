@@ -3,8 +3,8 @@
 
 package main
 
-// 새 정책 활성화. 자산 스코프 화면에서 확정한 정책(asset-scope.csv)이 활성 정책(scope-assets.csv)과 의미상 다르면 **02 관측 화면**이
-// 두 지문을 나란히 보이고, 활성화할 확정 정책으로 다시 적재한 뒤(ingest.go) 확인 페이지를 거쳐 활성화한다. 04는 그 사실과 02로
+// 새 정책 활성화. 자산 스코프 화면에서 확정한 정책(asset-scope.csv)이 활성 정책(scope-assets.csv)과 의미상 다르면 **01 관측 화면**이
+// 두 지문을 나란히 보이고, 활성화할 확정 정책으로 다시 적재한 뒤(ingest.go) 확인 페이지를 거쳐 활성화한다. 03은 그 사실과 01로
 // 가는 길만 보인다. 재적재와 활성화는 따로다: 재적재가 끝났다고 활성화되지 않는다. 활성화는 정책 보관본 · 활성 정책 교체 · 옛 세션 보관본 · 새 세션 · 변환 보고서 · 회차 표지 ·
 // scope-activation 형식 2 처리 기록을 한 트랜잭션으로 쓴다(rulesetround.Open).
 //
@@ -75,7 +75,7 @@ func (s *server) activationCheck() (*ui.ActivationOffer, error) {
 		return nil, err
 	}
 	o := &ui.ActivationOffer{From: from, To: to, Org: s.orgName()}
-	// 04의 「상류 재적재」 명령에 보일 경로. 작업 폴더(세션 파일이 있는 폴더) 기준이다. 그 밖에 있으면 절대 경로로 둔다.
+	// 03의 「상류 재적재」 명령에 보일 경로. 작업 폴더(세션 파일이 있는 폴더) 기준이다. 그 밖에 있으면 절대 경로로 둔다.
 	dir := filepath.Dir(s.path)
 	for _, p := range []struct {
 		dst  *string
@@ -93,7 +93,7 @@ func (s *server) activationCheck() (*ui.ActivationOffer, error) {
 	return o, nil
 }
 
-// activationOffer: 04 위쪽에 띄울 활성화. 할 수 없으면 nil이다(까닭은 활성화를 누를 때 거절문으로 알린다).
+// activationOffer: 03 위쪽에 띄울 활성화. 할 수 없으면 nil이다(까닭은 활성화를 누를 때 거절문으로 알린다).
 func (s *server) activationOffer() (*ui.ActivationOffer, error) {
 	o, err := s.activationCheck()
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *server) activationRefuse(w http.ResponseWriter, r *http.Request, back s
 
 // activationUpstreamRefuse: 활성화의 이력 대조 실패를 거절로. 처리했으면 true다. confirmed면 확인을 거친 실행 요청이다:
 // 확인 페이지는 대조가 맞을 때만 나오므로, 그때의 「최신이 아니다 · 없다」는 **확인 뒤에 이력이 달라졌다**는 뜻이다. 그 거절은
-// 02의 노드별 대조 결과(활성화 구역)로 돌려보낸다.
+// 01의 노드별 대조 결과(활성화 구역)로 돌려보낸다.
 func (s *server) activationUpstreamRefuse(w http.ResponseWriter, r *http.Request, back string, err error, confirmed bool) bool {
 	kind, code, ok := upstreamKind(err)
 	if !ok {
@@ -263,8 +263,8 @@ func (s *server) scopeActivate(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, back, []ui.Notice{ui.N(ui.NoticeRulesetRoundOpened)}, nil)
 }
 
-// activateBack: 활성화를 어느 화면에서 눌렀는가. 02의 양식은 ui.ActivateFromField에 「observe」를 싣는다. 거절과 끝난 뒤의
-// 이동이 그 화면으로 간다. 그 밖의 값은 04다(주소를 양식에서 받지 않는다).
+// activateBack: 활성화를 어느 화면에서 눌렀는가. 01의 양식은 ui.ActivateFromField에 「observe」를 싣는다. 거절과 끝난 뒤의
+// 이동이 그 화면으로 간다. 그 밖의 값은 03다(주소를 양식에서 받지 않는다).
 func activateBack(r *http.Request) string {
 	_ = r.ParseForm()
 	if r.PostForm.Get(ui.ActivateFromField) == ui.ActivateFromObserve {

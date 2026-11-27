@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// IC-U113 — **접근 정보를 화면에서 저장해도 비밀번호는 화면에 오가지 않고 그대로 남는다.** 02 관측 화면은
+// IC-U113 — **접근 정보를 화면에서 저장해도 비밀번호는 화면에 오가지 않고 그대로 남는다.** 01 관측 화면은
 // 비밀번호를 「있음」으로만 보이고 값은 싣지 않는다. 그 줄의 노드 ID를 고치고, 다른 줄을 고치고, 새 줄을
 // 더해 저장하면 비밀번호는 고친 노드 ID를 따라가고 새 줄에는 없다. 저장한 파일은 상류 ParseHosts가 그대로
 // 읽고 소유자 전용(0600)이다.
@@ -108,15 +109,39 @@ func TestBadHostsAreShownBackUnsaved(t *testing.T) {
 	}
 }
 
-// IC-U115 — **관측 화면은 작업 폴더 모드에서만 열린다.** 명시 모드에는 접근 정보의 자리가 없어 `/observe`가 404이고,
-// 02 카드는 닫혀 있다. 작업 폴더 모드에서는 hosts.csv가 아직 없어도 열리고 카드가 「아직 접근 정보가 없습니다」를 적는다.
+// IC-U115 — **01 관측은 선언이 있으면 열리고, 접속 준비와 원격 관측은 작업 폴더 모드에서만 쓴다.** 작업 폴더 없이 선언만 연
+// 서버에서는 01이 「대상 노드와 기대 상태」와 그리로 가는 길을 보이고, 접속 준비와 관측 자리에는 작업 폴더로 시작하라는 안내 한
+// 줄이 있으며, 접근 정보 양식도 시작 양식도 없다. 그 선언 화면에서 01 카드가 지금 단계이고 돌아가는 링크가 있다. 선언도 작업
+// 폴더도 없으면 `/observe`는 404이고 01 카드는 닫혀 있다. 작업 폴더 모드에서는 선언이 아직 없어도 열리고 카드가 「아직 선언이
+// 없습니다」를 적는다.
 func TestObserveOpensOnlyInAWorkspace(t *testing.T) {
 	s, _ := withDecl(t)
-	if w := get(t, s, ui.ScreenObserve); w.Code != http.StatusNotFound {
-		t.Errorf("explicit mode: /observe = %d, want 404", w.Code)
+	w0 := get(t, s, ui.ScreenObserve+"?lang=ko")
+	if w0.Code != http.StatusOK {
+		t.Fatalf("a declaration without a workspace: /observe = %d, want 200", w0.Code)
 	}
-	if got := cards(t, get(t, s, ui.ScreenDecl+"?lang=ko").Body.String())["02"]; !strings.HasPrefix(got, "입력 파일을 주지 않았습니다") {
-		t.Errorf("explicit mode: card 02 = %q, want closed", got)
+	page := w0.Body.String()
+	for _, want := range []string{`data-observe="no-remote"`, "작업 폴더로 시작하십시오", `href="/decl?lang=ko" data-decl-edit`, "기대 자산 1개 · 기대 통신 1개", "data-decl-counts"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("a declaration without a workspace: 01 lacks %q", want)
+		}
+	}
+	if strings.Contains(page, `action="`+ui.HostsSavePath+`"`) || strings.Contains(page, `action="`+ui.RunPath+`"`) {
+		t.Error("a declaration without a workspace: 01 shows the access form or offers to start")
+	}
+	if got := cards(t, page)["01"]; !strings.HasPrefix(got, "대상 노드와 기대 상태만") {
+		t.Errorf("a declaration without a workspace: card 01 = %q", got)
+	}
+	decl := get(t, s, ui.ScreenDecl+"?lang=ko").Body.String()
+	if !regexp.MustCompile(`href="/observe" aria-current="step"`).MatchString(decl) || !strings.Contains(decl, `href="/observe?lang=ko#observe-decl" data-decl-back`) {
+		t.Error("on the target nodes screen the 01 card is not the current step, or there is no way back to 01")
+	}
+	bare, _ := newServer(t)
+	if w := get(t, bare, ui.ScreenObserve); w.Code != http.StatusNotFound {
+		t.Errorf("no declaration and no workspace: /observe = %d, want 404", w.Code)
+	}
+	if got := cards(t, get(t, bare, ui.ScreenReview+"?lang=ko").Body.String())["01"]; !strings.HasPrefix(got, "입력 파일을 주지 않았습니다") {
+		t.Errorf("no declaration and no workspace: card 01 = %q, want closed", got)
 	}
 
 	h, code, _, _ := started(t, "-workspace", t.TempDir(), "-no-browser")
@@ -127,7 +152,7 @@ func TestObserveOpensOnlyInAWorkspace(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("workspace: /observe = %d", w.Code)
 	}
-	if got := cards(t, w.Body.String())["02"]; !strings.HasPrefix(got, "아직 접근 정보가 없습니다") {
-		t.Errorf("workspace: card 02 = %q", got)
+	if got := cards(t, w.Body.String())["01"]; !strings.HasPrefix(got, "아직 선언이 없습니다") {
+		t.Errorf("workspace: card 01 = %q", got)
 	}
 }

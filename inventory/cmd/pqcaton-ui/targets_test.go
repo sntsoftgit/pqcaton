@@ -14,7 +14,7 @@ import (
 	"github.com/sntsoftgit/pqcaton/pkg/inventory/ui"
 )
 
-// targetState: 02의 「대상 노드의 접속 준비」에서 그 노드 줄의 상태 코드. 줄이 없으면 빈 문자열이다.
+// targetState: 01의 「대상 노드의 접속 준비」에서 그 노드 줄의 상태 코드. 줄이 없으면 빈 문자열이다.
 func targetState(page, node string) string {
 	i := strings.Index(page, `data-target-node="`+node+`" data-target-state="`)
 	if i < 0 {
@@ -163,7 +163,7 @@ func TestObservationTargetsAreTheDeclaredNodes(t *testing.T) {
 	})
 }
 
-// IC-U257 — **대조는 어느 결과로 했는지를 밝힌다.** 성공한 관측이 한 번도 없으면 03이 「대조할 성공 관측 결과가 아직
+// IC-U257 — **대조는 어느 결과로 했는지를 밝힌다.** 성공한 관측이 한 번도 없으면 02가 「대조할 성공 관측 결과가 아직
 // 없습니다」를 먼저 보이고, 선언 자산의 미관측이 「찾지 못했다」가 아니라고 적으며, 실패한 실행의 시각을 적는다. 성공한 관측
 // 뒤에는 그 결과의 시각과 노드 수를 적고, 선언에는 있고 그 결과에는 없는 노드를 이름으로 적으며 그 노드의 미관측 자산에
 // 표시를 단다. 그 뒤 실행이 실패하면 결과는 그대로이고, 대조에 쓴 결과의 시각과 실패한 실행의 시각이 따로 보인다.
@@ -189,7 +189,7 @@ func TestReconciliationSaysWhichResultsItUsed(t *testing.T) {
 	for _, want := range []string{"대조할 성공 관측 결과가 아직 없습니다", `data-survey-source="empty"`, "성공한 관측에서 찾지 못했다는 뜻이 아닙니다",
 		"data-survey-last-failed", "「실패」로 끝나 결과를 바꾸지 않았습니다"} {
 		if !strings.Contains(page, want) {
-			t.Errorf("with no successful observation yet 03 lacks %q", want)
+			t.Errorf("with no successful observation yet 02 lacks %q", want)
 		}
 	}
 	if !strings.Contains(page, "<code>web-gw</code>") {
@@ -201,16 +201,16 @@ func TestReconciliationSaysWhichResultsItUsed(t *testing.T) {
 	for _, want := range []string{`data-survey-source="run"`, "data-survey-source-at", "에 끝난 관측의 결과로 했습니다(노드 2곳)",
 		"대조에 쓴 결과에 없는 선언 노드 2곳: web-gw, app", "data-node-absent"} {
 		if !strings.Contains(page, want) {
-			t.Errorf("after a successful observation 03 lacks %q", want)
+			t.Errorf("after a successful observation 02 lacks %q", want)
 		}
 	}
 	if strings.Contains(page, "data-survey-last-failed") || strings.Contains(page, "대조할 성공 관측 결과가 아직 없습니다") {
-		t.Error("03 still reports a failure or no result after a successful observation")
+		t.Error("02 still reports a failure or no result after a successful observation")
 	}
 
 	run("fail", ui.RunFailed)
 	page = survey()
 	if !strings.Contains(page, "data-survey-source-at") || !strings.Contains(page, "data-survey-last-failed") {
-		t.Errorf("after a later failure 03 should show both the time of the results used and the time of the failed run")
+		t.Errorf("after a later failure 02 should show both the time of the results used and the time of the failed run")
 	}
 }
